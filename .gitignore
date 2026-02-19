@@ -139,3 +139,23 @@ venv.bak/
 *.bak
 *.backup
 *~
+
+# Documentation and planning files (uncomment if these are generated/temporary)
+# *.md files in root might be project documentation, so leave them tracked
+# BACKUP_STORAGE_COST_COMPARISON.md
+# INFISICAL_SETUP.md
+# INFRASTRUCTURE_IMPLEMENTATION.md
+# MIGRATIONS.md
+# MONITORING.md
+# REALTIME_FEATURES_README.md
+# RUNBOOK.md
+# SECURITY.md
+# SUPABASE_MIGRATION_GUIDE.md
+
+# Security audit files
+security-audit-simple.go.disabled
+
+# Setup and test scripts (uncomment if these are temporary)
+# setup-test-db.sh
+# test-api.sh
+# test-function.js
