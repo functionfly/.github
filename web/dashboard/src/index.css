@@ -1,0 +1,399 @@
+@import "tailwindcss";
+
+@theme {
+  /* Background Colors */
+  --color-bg-primary: #0a0a0f;
+  --color-bg-secondary: #12121a;
+  --color-bg-tertiary: #1a1a25;
+  --color-bg-hover: #252535;
+  --color-bg-glass: rgba(26, 26, 37, 0.6);
+
+  /* Background Colors (Light Mode) */
+  --color-bg-primary-light: #ffffff;
+  --color-bg-secondary-light: #f8f9fa;
+  --color-bg-tertiary-light: #f1f3f4;
+  --color-bg-hover-light: #e8eaed;
+  --color-bg-glass-light: rgba(255, 255, 255, 0.8);
+
+  /* Text Colors */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a0a0b0;
+  --color-text-muted: #6b6b7b;
+  --color-text-accent: #6366f1;
+
+  /* Text Colors (Light Mode) */
+  --color-text-primary-light: #1a1a1f;
+  --color-text-secondary-light: #5f6368;
+  --color-text-muted-light: #9aa0a6;
+  --color-text-accent-light: #6366f1;
+
+  /* Brand Colors */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+
+  /* Status Colors */
+  --color-status-online: #10b981;
+  --color-status-offline: #ef4444;
+  --color-status-degraded: #f59e0b;
+  --color-status-pending: #6b7280;
+
+  /* Semantic Colors */
+  --color-success: #10b981;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  /* Border Colors */
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-default: rgba(255, 255, 255, 0.12);
+  --color-border-focus: rgba(99, 102, 241, 0.5);
+
+  /* Border Colors (Light Mode) */
+  --color-border-subtle-light: rgba(0, 0, 0, 0.08);
+  --color-border-default-light: rgba(0, 0, 0, 0.12);
+  --color-border-focus-light: rgba(99, 102, 241, 0.3);
+
+  /* Card Colors */
+  --color-card: var(--color-bg-tertiary);
+  --color-card-foreground: var(--color-text-primary);
+
+  /* Card Colors (Light Mode) */
+  --color-card-light: #ffffff;
+  --color-card-foreground-light: var(--color-text-primary-light);
+
+  /* Button Colors */
+  --color-button-primary: var(--color-brand-500);
+  --color-button-primary-hover: var(--color-brand-600);
+  --color-button-secondary: var(--color-bg-secondary);
+  --color-button-secondary-hover: var(--color-bg-hover);
+  --color-button-ghost: transparent;
+  --color-button-ghost-hover: var(--color-bg-hover);
+  --color-button-outline: transparent;
+  --color-button-outline-hover: var(--color-bg-hover);
+  --color-button-destructive: var(--color-error);
+  --color-button-destructive-hover: #dc2626;
+
+  /* Button Colors (Light Mode) */
+  --color-button-primary-light: var(--color-brand-500);
+  --color-button-primary-hover-light: var(--color-brand-600);
+  --color-button-secondary-light: #f8f9fa;
+  --color-button-secondary-hover-light: #e8eaed;
+  --color-button-ghost-light: transparent;
+  --color-button-ghost-hover-light: #f1f3f4;
+  --color-button-outline-light: transparent;
+  --color-button-outline-hover-light: #f1f3f4;
+  --color-button-destructive-light: var(--color-error);
+  --color-button-destructive-hover-light: #dc2626;
+
+  /* Input Colors */
+  --color-input: var(--color-bg-secondary);
+  --color-input-foreground: var(--color-text-primary);
+
+  /* Input Colors (Light Mode) */
+  --color-input-light: #ffffff;
+  --color-input-foreground-light: var(--color-text-primary-light);
+
+  /* Provider Colors */
+  --color-cloudflare: #f48120;
+  --color-vercel: #000000;
+  --color-fly: #7b68ee;
+  --color-deno: #000000;
+
+  /* Font Family */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Spacing */
+  --spacing-18: 4.5rem;
+  --spacing-88: 22rem;
+  --spacing-128: 32rem;
+}
+
+/* Base Styles */
+* {
+  border-color: var(--color-border-subtle);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Theme Variables */
+:root {
+  --bg-primary: var(--color-bg-primary);
+  --bg-secondary: var(--color-bg-secondary);
+  --bg-tertiary: var(--color-bg-tertiary);
+  --bg-hover: var(--color-bg-hover);
+  --bg-glass: var(--color-bg-glass);
+
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --text-accent: var(--color-text-accent);
+
+  --border-subtle: var(--color-border-subtle);
+  --border-default: var(--color-border-default);
+  --border-focus: var(--color-border-focus);
+
+  --card: var(--color-card);
+  --card-foreground: var(--color-card-foreground);
+
+  --button-primary: var(--color-button-primary);
+  --button-primary-hover: var(--color-button-primary-hover);
+  --button-secondary: var(--color-button-secondary);
+  --button-secondary-hover: var(--color-button-secondary-hover);
+  --button-ghost: var(--color-button-ghost);
+  --button-ghost-hover: var(--color-button-ghost-hover);
+  --button-outline: var(--color-button-outline);
+  --button-outline-hover: var(--color-button-outline-hover);
+  --button-destructive: var(--color-button-destructive);
+  --button-destructive-hover: var(--color-button-destructive-hover);
+
+  --input: var(--color-input);
+  --input-foreground: var(--color-input-foreground);
+
+  --ring: var(--color-border-focus);
+  --ring-offset: var(--color-bg-primary);
+
+  --color-success: var(--color-success);
+  --color-error: var(--color-error);
+  --color-warning: var(--color-warning);
+  --color-info: var(--color-info);
+}
+
+[data-theme="light"] {
+  --bg-primary: var(--color-bg-primary-light);
+  --bg-secondary: var(--color-bg-secondary-light);
+  --bg-tertiary: var(--color-bg-tertiary-light);
+  --bg-hover: var(--color-bg-hover-light);
+  --bg-glass: var(--color-bg-glass-light);
+
+  --text-primary: var(--color-text-primary-light);
+  --text-secondary: var(--color-text-secondary-light);
+  --text-muted: var(--color-text-muted-light);
+  --text-accent: var(--color-text-accent-light);
+
+  --border-subtle: var(--color-border-subtle-light);
+  --border-default: var(--color-border-default-light);
+  --border-focus: var(--color-border-focus-light);
+
+  --card: var(--color-card-light);
+  --card-foreground: var(--color-card-foreground-light);
+
+  --button-primary: var(--color-button-primary-light);
+  --button-primary-hover: var(--color-button-primary-hover-light);
+  --button-secondary: var(--color-button-secondary-light);
+  --button-secondary-hover: var(--color-button-secondary-hover-light);
+  --button-ghost: var(--color-button-ghost-light);
+  --button-ghost-hover: var(--color-button-ghost-hover-light);
+  --button-outline: var(--color-button-outline-light);
+  --button-outline-hover: var(--color-button-outline-hover-light);
+  --button-destructive: var(--color-button-destructive-light);
+  --button-destructive-hover: var(--color-button-destructive-hover-light);
+
+  --input: var(--color-input-light);
+  --input-foreground: var(--color-input-foreground-light);
+
+  --ring: var(--color-border-focus-light);
+  --ring-offset: var(--color-bg-primary-light);
+
+  --color-success: #059669;
+  --color-error: #dc2626;
+  --color-warning: #d97706;
+  --color-info: #2563eb;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Gradient Utilities */
+.gradient-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+}
+
+.gradient-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+}
+
+.gradient-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+}
+
+.gradient-text {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass Effect */
+.glass {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Text Utilities */
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+/* Animations */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Status Dot Pulse */
+.status-dot-pulse::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.5;
+  animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Focus Styles */
+.focus-ring:focus-visible {
+  outline: none;
+  ring: 2px;
+  ring-color: var(--border-focus);
+  ring-offset: 2px;
+  ring-offset-color: var(--bg-primary);
+}
+
+/* Selection */
+::selection {
+  background: var(--color-brand-500);
+  color: white;
+}
+
+[data-theme="light"] ::selection {
+  background: var(--color-brand-400);
+  color: var(--text-primary);
+}
+
+/* Semantic Color Classes */
+.text-success {
+  color: var(--color-success);
+}
+
+.text-error {
+  color: var(--color-error);
+}
+
+.text-warning {
+  color: var(--color-warning);
+}
+
+.text-info {
+  color: var(--color-info);
+}
+
+/* Theme-aware Border */
+.border-theme {
+  border-color: var(--border-subtle);
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,14 @@
+/home/micro/projects/functionfly/examples/webhook-notifier/target/wasm32-wasip1/release/deps/serde-73541c698ca2f531.d: /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/micro/projects/functionfly/examples/webhook-notifier/target/wasm32-wasip1/release/build/serde-dd5b4c566bb17a20/out/private.rs
+
+/home/micro/projects/functionfly/examples/webhook-notifier/target/wasm32-wasip1/release/deps/libserde-73541c698ca2f531.rlib: /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/micro/projects/functionfly/examples/webhook-notifier/target/wasm32-wasip1/release/build/serde-dd5b4c566bb17a20/out/private.rs
+
+/home/micro/projects/functionfly/examples/webhook-notifier/target/wasm32-wasip1/release/deps/libserde-73541c698ca2f531.rmeta: /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/micro/projects/functionfly/examples/webhook-notifier/target/wasm32-wasip1/release/build/serde-dd5b4c566bb17a20/out/private.rs
+
+/home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/home/micro/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/home/micro/projects/functionfly/examples/webhook-notifier/target/wasm32-wasip1/release/build/serde-dd5b4c566bb17a20/out/private.rs:
+
+# env-dep:OUT_DIR=/home/micro/projects/functionfly/examples/webhook-notifier/target/wasm32-wasip1/release/build/serde-dd5b4c566bb17a20/out

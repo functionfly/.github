@@ -2,65 +2,59 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"net/http"
+	"log"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api"
 	"github.com/functionfly/functionfly/internal/storage"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	logrus.SetFormatter(&logrus.JSONFormatter{})
-	logrus.SetLevel(logrus.InfoLevel)
+	skipMigrations := os.Getenv("SKIP_MIGRATIONS") == "true"
+	if skipMigrations {
+		log.Println("SKIP_MIGRATIONS=true: migrations will be skipped")
+	}
 
-	logrus.Info("Starting FunctionFly Orchestrator API")
-
-	// Initialize database connection
-	db, err := storage.NewPostgresDB()
+	// Initialize database without prepared statements so migrations can create schema first
+	db, err := storage.NewPostgresDBWithOptions(true)
 	if err != nil {
-		logrus.WithError(err).Fatal("Failed to connect to database")
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
-	// Run migrations
-	if err := storage.RunMigrations(db); err != nil {
-		logrus.WithError(err).Fatal("Failed to run database migrations")
+	// Run database migrations (skip when SKIP_MIGRATIONS=true, e.g. DB already up-to-date)
+	if !skipMigrations {
+		log.Println("Running database migrations...")
+		if err := storage.RunMigrations(db); err != nil {
+			log.Fatalf("Failed to run database migrations: %v", err)
+		}
+		log.Println("Database migrations completed successfully")
+	} else {
+		log.Println("Skipping migrations (SKIP_MIGRATIONS=true)")
+	}
+
+	// Now that schema exists, initialize prepared statements
+	stmtCtx, stmtCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer stmtCancel()
+	if err := db.InitPreparedStatements(stmtCtx); err != nil {
+		log.Fatalf("Failed to initialize prepared statements: %v", err)
 	}
 
 	// Create API server
 	server := api.NewServer(db)
 
-	// Start server
-	go func() {
-		port := os.Getenv("PORT")
-		if port == "" {
-			port = "8080"
-		}
-		addr := fmt.Sprintf(":%s", port)
-		logrus.WithField("addr", addr).Info("Starting HTTP server")
-		if err := server.ListenAndServe(addr); err != nil && err != http.ErrServerClosed {
-			logrus.WithError(err).Fatal("Server failed to start")
-		}
-	}()
-
-	// Wait for interrupt signal to gracefully shutdown the server
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	logrus.Info("Shutting down server...")
-
-	// Give outstanding requests 30 seconds to complete
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := server.Shutdown(ctx); err != nil {
-		logrus.WithError(err).Fatal("Server forced to shutdown")
+	// Port from env (e.g. .env PORT=8080) so dashboard and scripts stay in sync
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
 
-	logrus.Info("Server exited")
+	addr := ":" + port
+	log.Printf("Starting orchestrator API server on %s", addr)
+
+	// Start server
+	if err := server.ListenAndServe(addr); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
 }

@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flypy"
+dynamic = ["version"]
+description = "Deterministic Python compilation to WebAssembly"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "FunctionFly Team", email = "team@functionfly.com"},
+]
+maintainers = [
+    {name = "FunctionFly Team", email = "team@functionfly.com"},
+]
+keywords = ["functionfly", "serverless", "wasm", "deterministic", "compilation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Compilers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "typing-extensions>=4.12.0",
+    "pydantic>=2.9.0",
+    "jsonschema>=4.23.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "black>=24.0.0",
+    "mypy>=1.11.0",
+    "flake8>=7.0.0",
+]
+build = [
+    "build>=1.0.0",
+    "twine>=5.0.0",
+]
+
+[project.scripts]
+flypy = "flypy.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/functionfly/functionfly"
+Repository = "https://github.com/functionfly/functionfly.git"
+Issues = "https://github.com/functionfly/functionfly/issues"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {file = "flypy/version.py"}
+
+[tool.setuptools.packages.find]

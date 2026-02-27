@@ -1,0 +1,59 @@
+global:
+  smtp_smarthost: 'mailpit:1025'
+  smtp_from: 'alerts@functionfly.dev'
+  smtp_require_tls: false
+
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'security-team'
+  routes:
+  - match:
+      severity: critical
+    receiver: 'security-team'
+  - match:
+      category: security
+    receiver: 'security-team'
+  - match:
+      category: compliance
+    receiver: 'compliance-team'
+
+receivers:
+- name: 'security-team'
+  email_configs:
+  - to: 'security@functionfly.dev'
+    subject: '🚨 FunctionFly Security Alert: {{ .GroupLabels.alertname }}'
+    body: |
+      {{ range .Alerts }}
+      🚨 **{{ .Annotations.summary }}**
+
+      {{ .Annotations.description }}
+
+      Labels:
+      {{ range .Labels.SortedPairs }}{{ .Name }}: {{ .Value }}
+      {{ end }}
+
+      {{ end }}
+
+- name: 'compliance-team'
+  email_configs:
+  - to: 'compliance@functionfly.dev'
+    subject: '📋 FunctionFly Compliance Alert: {{ .GroupLabels.alertname }}'
+    body: |
+      {{ range .Alerts }}
+      📋 **{{ .Annotations.summary }}**
+
+      {{ .Annotations.description }}
+
+      Labels:
+      {{ range .Labels.SortedPairs }}{{ .Name }}: {{ .Value }}
+      {{ end }}
+
+      {{ end }}
+
+- name: 'default'
+  email_configs:
+  - to: 'ops@functionfly.dev'
+    subject: '⚠️ FunctionFly Alert: {{ .GroupLabels.alertname }}'

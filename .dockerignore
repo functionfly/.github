@@ -1,0 +1,69 @@
+# Git and IDE
+.git
+.gitignore
+.cursor
+.vscode
+*.swp
+*.swo
+*~
+
+# Dependencies and build artifacts (orchestrator-api only needs Go source)
+web/
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/out
+runtimes/local/target
+**/target
+
+# cmd/ subdirs not needed for orchestrator-api (saves context size and COPY time)
+cmd/blog-api
+cmd/create-admin
+cmd/fly
+cmd/flypy-go
+cmd/delete-functions
+cmd/ffly
+cmd/migrate
+cmd/test-rust-gen
+cmd/test-publish
+cmd/setup
+cmd/server
+cmd/publish
+cmd/publish-tool
+cmd/health-monitor
+
+# Env and local config (use build args or mount at run)
+.env
+.env.*
+!.env.example
+*.local.yml
+
+# Test and dev artifacts
+**/*_test.go
+**/testdata
+**/__pycache__
+**/.pytest_cache
+**/.venv
+**/venv
+*.test
+coverage.out
+*.prof
+
+# Docs and plans (not needed for build)
+docs/
+plans/
+*.md
+!internal/**/*.md
+
+# Docker (avoid recursive context)
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Misc
+*.log
+.DS_Store
+Thumbs.db
+*.sqlite
+*.db

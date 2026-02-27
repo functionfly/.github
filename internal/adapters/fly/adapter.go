@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	ProviderName = "fly"
-	RequestTimeout = 20 * time.Second // Fly.io can have variable latency
+	ProviderName   = "fly"
+	RequestTimeout = 30 * time.Second
 )
 
 // FlyAdapter implements the ProviderAdapter interface for Fly.io
@@ -54,7 +54,7 @@ func (a *FlyAdapter) ValidateConfig(region, urlStr string) error {
 		return fmt.Errorf("invalid region '%s', valid regions: %v", region, validRegions)
 	}
 
-	// Validate URL format - should be fly.dev domain or custom domain
+	// Validate URL format - should be a fly.dev domain or custom domain
 	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
@@ -62,8 +62,9 @@ func (a *FlyAdapter) ValidateConfig(region, urlStr string) error {
 
 	// Check if it's a fly.dev subdomain or custom domain
 	if !strings.HasSuffix(parsedURL.Host, ".fly.dev") &&
-	   !strings.Contains(parsedURL.Host, ".") {
-		return fmt.Errorf("URL must be a fly.dev subdomain or custom domain, got: %s", parsedURL.Host)
+		!strings.Contains(parsedURL.Host, ".") &&
+		!strings.HasSuffix(parsedURL.Host, ".internal") {
+		return fmt.Errorf("URL must be a fly.dev subdomain, .internal domain, or custom domain, got: %s", parsedURL.Host)
 	}
 
 	if parsedURL.Scheme != "https" {
@@ -77,30 +78,37 @@ func (a *FlyAdapter) ValidateConfig(region, urlStr string) error {
 func (a *FlyAdapter) GetRegions() []string {
 	return []string{
 		"ams", // Amsterdam
+		"arn", // Stockholm
+		"atl", // Atlanta
+		"bog", // Bogotá
+		"bos", // Boston
+		"bru", // Brussels
 		"cdg", // Paris
 		"den", // Denver
 		"dfw", // Dallas
-		"ewr", // Newark
+		"ewr", // New Jersey
+		"eze", // Buenos Aires
 		"fra", // Frankfurt
+		"gig", // Rio de Janeiro
 		"gru", // São Paulo
 		"hkg", // Hong Kong
 		"iad", // Ashburn
+		"jnb", // Johannesburg
 		"lax", // Los Angeles
 		"lhr", // London
-		"maa", // Chennai
 		"mad", // Madrid
 		"mia", // Miami
 		"nrt", // Tokyo
 		"ord", // Chicago
-		"otp", // Bucharest
-		"qro", // Querétaro
+		"phx", // Phoenix
+		"pma", // Palm Beach
 		"sea", // Seattle
+		"sfo", // San Francisco
 		"sin", // Singapore
-		"sjc", // San Jose
 		"syd", // Sydney
+		"tsn", // Toronto
 		"waw", // Warsaw
-		"yul", // Montreal
-		"yyc", // Calgary
+		"yyz", // Toronto
 	}
 }
 
@@ -119,31 +127,19 @@ func (a *FlyAdapter) HealthCheck(ctx context.Context, backend *storage.Backend) 
 	}
 
 	// Add Fly.io specific headers
-	req.Header.Set("Fly-Client-IP", "") // Will be set by Fly proxy
-	req.Header.Set("Fly-Forwarded-Port", "")
-	req.Header.Set("Fly-Forwarded-Proto", "")
-	req.Header.Set("Fly-Region", backend.Region)
-
-	// Add request signing
-	err = a.SignRequest(req, backend, startTime)
-	if err != nil {
-		return &common.HealthCheckResult{
-			OK:           false,
-			ErrorMessage: fmt.Sprintf("failed to sign request: %v", err),
-		}, nil
-	}
+	req.Header.Set("User-Agent", "FunctionFly-HealthCheck/1.0")
+	req.Header.Set("fly-client-ip", "0.0.0.0")
 
 	resp, err := a.client.Do(req)
-	latencyMs := int(time.Since(startTime).Milliseconds())
-
 	if err != nil {
 		return &common.HealthCheckResult{
 			OK:           false,
-			LatencyMs:    latencyMs,
-			ErrorMessage: fmt.Sprintf("health check failed: %v", err),
+			ErrorMessage: fmt.Sprintf("health check request failed: %v", err),
 		}, nil
 	}
 	defer resp.Body.Close()
+
+	latencyMs := int(time.Since(startTime).Milliseconds())
 
 	// Fly.io should return 200 for healthy
 	result := &common.HealthCheckResult{
@@ -154,30 +150,27 @@ func (a *FlyAdapter) HealthCheck(ctx context.Context, backend *storage.Backend) 
 	}
 
 	if !result.OK {
-		result.ErrorMessage = fmt.Sprintf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	// Try to extract Fly.io specific headers
-	if region := resp.Header.Get("Fly-Region"); region != "" {
-		result.Region = region
-	}
-	if version := resp.Header.Get("Fly-App-Version"); version != "" {
-		result.Version = version
+		result.ErrorMessage = fmt.Sprintf("health check returned status %d", resp.StatusCode)
 	}
 
 	return result, nil
 }
 
-// SignRequest adds Fly.io specific headers and request signing
+// SignRequest adds Fly.io specific headers/signatures to requests
 func (a *FlyAdapter) SignRequest(req *http.Request, backend *storage.Backend, timestamp time.Time) error {
-	// Add Fly.io specific headers that may be expected
-	req.Header.Set("Fly-Request-Id", "") // Will be set by Fly proxy
+	// Add Fly.io specific headers
+	req.Header.Set("fly-client-ip", "0.0.0.0")
+	req.Header.Set("fly-forwarded-proto", "https")
 
-	// Add FunctionFly request signing
-	return a.signer.SignRequest(req, backend.SharedSecret, timestamp)
+	// Use HMAC signing if configured
+	if backend.SharedSecret != "" {
+		return a.signer.SignRequest(req, backend.SharedSecret, timestamp)
+	}
+
+	return nil
 }
 
-// GetRequestTimeout returns the recommended timeout for Fly.io requests
+// GetRequestTimeout returns the recommended timeout for requests to Fly.io
 func (a *FlyAdapter) GetRequestTimeout() time.Duration {
 	return RequestTimeout
 }

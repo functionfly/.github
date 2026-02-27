@@ -1,0 +1,183 @@
+import { apiClient } from "./client";
+
+export interface RegistryFunction {
+  id: string;
+  author: string;
+  name: string;
+  title?: string;
+  description?: string;
+  category?: string;
+  tags: string[];
+  visibility: string;
+  price_per_call: number;
+  popularity_score: number;
+  reliability_score: number;
+  deterministic_score: number;
+  latest_version?: string;
+  total_ratings: number;
+  overall_score: number;
+  created_at: string;
+}
+
+export interface RegistryFunctionVersion {
+  id: string;
+  version: string;
+  manifest: any;
+  runtime: string;
+  timeout_ms: number;
+  memory_mb: number;
+  deterministic: boolean;
+  cache_ttl: number;
+  published_at: string;
+}
+
+export interface RegistrySearchParams {
+  query?: string;
+  category?: string;
+  author?: string;
+  visibility?: string;
+  tags?: string[];
+  limit?: number;
+  offset?: number;
+}
+
+export interface RegistryExecutionRequest {
+  input: any;
+  version?: string;
+}
+
+export interface RegistryExecutionResponse {
+  ok: boolean;
+  data: any;
+  cached: boolean;
+  duration_ms: number;
+  version: string;
+  execution_id?: string;
+}
+
+export interface RegistryRatingRequest {
+  overall_score: number;
+  reliability_score: number;
+  latency_score: number;
+  documentation_score: number;
+}
+
+class RegistryApi {
+  // Get list of functions
+  async getFunctions(params?: RegistrySearchParams) {
+    const queryParams = new URLSearchParams();
+    if (params?.query) queryParams.append("q", params.query);
+    if (params?.category) queryParams.append("category", params.category);
+    if (params?.author) queryParams.append("author", params.author);
+    if (params?.visibility) queryParams.append("visibility", params.visibility);
+    if (params?.tags) params.tags.forEach(tag => queryParams.append("tags", tag));
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.offset) queryParams.append("offset", params.offset.toString());
+
+    const url = `/v1/registry/functions${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+    return apiClient.get<{ functions: RegistryFunction[] }>(url);
+  }
+
+  // Get function details
+  async getFunction(author: string, name: string) {
+    return apiClient.get<{ function: RegistryFunction; versions: RegistryFunctionVersion[] }>(
+      `/v1/registry/functions/${author}/${name}`
+    );
+  }
+
+  // Get function versions
+  async getFunctionVersions(author: string, name: string) {
+    return apiClient.get<{ versions: RegistryFunctionVersion[] }>(
+      `/v1/registry/functions/${author}/${name}/versions`
+    );
+  }
+
+  // Search functions
+  async searchFunctions(query: string, category?: string, limit = 50) {
+    const params = new URLSearchParams({ q: query, limit: limit.toString() });
+    if (category) params.append("category", category);
+
+    return apiClient.get<{ functions: RegistryFunction[] }>(
+      `/v1/registry/search?${params.toString()}`
+    );
+  }
+
+  // Execute function
+  async executeFunction(author: string, name: string, request: RegistryExecutionRequest) {
+    return apiClient.post<RegistryExecutionResponse>(
+      `/v1/fx/${author}/${name}`,
+      request
+    );
+  }
+
+  // Execute function with specific version
+  async executeFunctionVersion(author: string, name: string, version: string, request: RegistryExecutionRequest) {
+    return apiClient.post<RegistryExecutionResponse>(
+      `/v1/fx/${author}/${name}@${version}`,
+      request
+    );
+  }
+
+  // Get function stats
+  async getFunctionStats(author: string, name: string) {
+    return apiClient.get<{
+      function_id: string;
+      author: string;
+      name: string;
+      total_calls: number;
+      success_rate: number;
+      avg_latency_ms: number;
+      p95_latency_ms: number;
+      reliability_score: number;
+      latency_score: number;
+      overall_score: number;
+      total_ratings: number;
+      popularity_score: number;
+    }>(`/v1/registry/functions/${author}/${name}/stats`);
+  }
+
+  // Submit rating
+  async submitRating(author: string, name: string, rating: RegistryRatingRequest) {
+    return apiClient.post<{ ok: boolean; message: string }>(
+      `/v1/registry/functions/${author}/${name}/rating`,
+      rating
+    );
+  }
+
+  // Test function
+  async testFunction(author: string, name: string, input: any) {
+    return apiClient.post<{ ok: boolean; output: any; duration_ms: number }>(
+      `/v1/registry/functions/${author}/${name}/test`,
+      { input }
+    );
+  }
+
+  // Publish function (requires authentication)
+  async publishFunction(publishRequest: {
+    author: string;
+    name: string;
+    version: string;
+    manifest: any;
+    source: { code: string; language?: string };
+    readme?: string;
+  }) {
+    return apiClient.post<{ ok: boolean; function_id: string; version_id: string }>(
+      "/v1/registry/publish",
+      publishRequest
+    );
+  }
+
+  // Get replay (public executions)
+  async getReplay(executionId: string) {
+    return apiClient.get<{
+      execution_id: string;
+      function: { author: string; name: string; version: string };
+      input: any;
+      output: any;
+      duration_ms: number;
+      executed_at: string;
+    }>(`/v1/registry/replay/${executionId}`);
+  }
+}
+
+export const registryApi = new RegistryApi();

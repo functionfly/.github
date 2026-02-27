@@ -1,0 +1,133 @@
+# FunctionFly Caddy Configuration
+# This Caddyfile sets up the edge proxy for FunctionFly with:
+# - Automatic HTTPS/TLS termination
+# - Public routing endpoint /{appSlug}/*
+# - Rate limiting per app
+# - Proxy to orchestrator for route decisions and backend proxying
+
+# Global settings
+{
+    # Enable automatic HTTPS
+    auto_https disable_redirects
+    # Log to stdout for Docker
+    log {
+        output stdout
+        format json
+    }
+}
+
+# Main domain - replace with your actual domain
+functionfly.com {
+    # Rate limiting for the entire domain
+    rate_limit {
+        zone static {
+            key {remote_host}
+            window 1m
+            events 100
+        }
+    }
+
+    # Health check endpoint (public)
+    /health {
+        respond "OK" 200
+    }
+
+    # Public routing endpoint: /{appSlug}/*
+    handle /{appSlug}/* {
+        # Rate limiting per app
+        rate_limit {
+            zone per_app {
+                key {path.0}  # appSlug from path
+                window 1m
+                events 1000   # Higher limit per app
+            }
+        }
+
+        # Forward to orchestrator API for routing and proxying
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+
+            # Health check settings for the orchestrator
+            health_uri /health
+            health_interval 30s
+            health_timeout 10s
+        }
+    }
+
+    # API routes - proxy to orchestrator
+    /v1/* {
+        # Rate limiting for API calls
+        rate_limit {
+            zone api {
+                key {remote_host}
+                window 1m
+                events 100
+            }
+        }
+
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # Playground routes (public) - /run/{appSlug}/{functionName} and /run/{author}/{name}
+    /run/* {
+        # More permissive rate limiting for playground
+        rate_limit {
+            zone playground {
+                key {remote_host}
+                window 1m
+                events 60
+            }
+        }
+
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # Function page routes (public) - /fx/{author}/{name}
+    /fx/* {
+        # More permissive rate limiting for function pages
+        rate_limit {
+            zone function_page {
+                key {remote_host}
+                window 1m
+                events 120
+            }
+        }
+
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # Replay routes (public) - /replay/{executionId}
+    /replay/* {
+        # More permissive rate limiting for replay
+        rate_limit {
+            zone replay {
+                key {remote_host}
+                window 1m
+                events 120
+            }
+        }
+
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # Default response for unmatched routes
+    respond "FunctionFly - Not Found" 404
+}

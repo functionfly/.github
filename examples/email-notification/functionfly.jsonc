@@ -1,0 +1,17 @@
+{
+  "name": "email-notification",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "description": "Example function demonstrating email capability",
+  "entry": "main.py",
+  "handler": "handler",
+  "memory": "128MB",
+  "timeout": "5s",
+  "capabilities": [
+    "email"
+  ],
+  "environment": {
+    "FROM_EMAIL": "noreply@functionfly.dev",
+    "NOTIFICATION_EMAIL": "admin@example.com"
+  }
+}

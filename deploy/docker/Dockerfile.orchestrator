@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
@@ -6,22 +6,30 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
-COPY . .
+# Copy only dirs needed for orchestrator-api (faster than COPY . . and avoids accidental bloat)
+COPY cmd ./cmd
+COPY internal ./internal
+COPY migrations ./migrations
 
 # Build the binary
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o orchestrator-api ./cmd/orchestrator-api
 
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates
+# Install Infisical CLI and wget for healthcheck
+RUN apk --no-cache add ca-certificates curl wget && \
+    curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | sh && \
+    apk --no-cache add infisical && \
+    apk del curl
+
 WORKDIR /root/
 
-# Copy the binary from builder stage
+# Copy the binary and migrations (internal/storage/sql/migrations matches DB version format 20260217200000)
 COPY --from=builder /app/orchestrator-api .
+COPY --from=builder /app/internal/storage/sql/migrations ./internal/storage/sql/migrations
 
 # Expose port
 EXPOSE 8080
 
-# Run the binary
-CMD ["./orchestrator-api"]
+# Run the binary with Infisical if token is set, otherwise run directly
+CMD ["sh", "-c", "if [ -n \"$INFISICAL_TOKEN\" ]; then infisical run --token=$INFISICAL_TOKEN --env=dev -- ./orchestrator-api; else ./orchestrator-api; fi"]

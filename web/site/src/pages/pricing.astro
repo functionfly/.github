@@ -1,0 +1,177 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const title = "Pricing - FunctionFly | Serverless Reliability Platform";
+const description = "Transparent pricing for enterprise-grade serverless reliability. No hidden fees, no vendor lock-in. Pay only for what you use with FunctionFly's multi-cloud failover platform.";
+
+const pricingTiers = [
+  {
+    name: "Starter",
+    price: "$99",
+    period: "month",
+    description: "Perfect for small applications and side projects",
+    features: [
+      "Up to 100K function invocations",
+      "2 cloud providers",
+      "Basic monitoring",
+      "Email support",
+      "99.5% uptime SLA"
+    ],
+    cta: "Start Free Trial",
+    popular: false
+  },
+  {
+    name: "Professional",
+    price: "$499",
+    period: "month",
+    description: "For growing businesses and production workloads",
+    features: [
+      "Up to 1M function invocations",
+      "3 cloud providers",
+      "Advanced monitoring & alerting",
+      "Priority support",
+      "99.9% uptime SLA",
+      "Custom routing rules",
+      "API access"
+    ],
+    cta: "Start Free Trial",
+    popular: true
+  },
+  {
+    name: "Enterprise",
+    price: "Custom",
+    period: "pricing",
+    description: "For large-scale applications and mission-critical systems",
+    features: [
+      "Unlimited function invocations",
+      "All cloud providers",
+      "White-label solution",
+      "Dedicated support",
+      "99.99% uptime SLA",
+      "Custom integrations",
+      "On-premise deployment option"
+    ],
+    cta: "Contact Sales",
+    popular: false
+  }
+];
+---
+
+<BaseLayout title={title} description={description}>
+  <main class="min-h-screen">
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary py-24">
+      <div class="absolute inset-0 bg-grid-pattern opacity-5"></div>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center">
+          <h1 class="text-5xl md:text-6xl font-bold text-text-primary mb-6">
+            Transparent Pricing,
+            <span class="text-accent-primary block">No Surprises</span>
+          </h1>
+          <p class="text-xl md:text-2xl text-text-secondary mb-8 max-w-3xl mx-auto">
+            Pay only for what you use. No hidden fees, no vendor lock-in, no complex licensing. Just reliable serverless infrastructure.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing Cards -->
+    <section class="py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid md:grid-cols-3 gap-8">
+          {pricingTiers.map((tier) => (
+            <div class={`relative bg-bg-secondary rounded-xl p-8 border ${tier.popular ? 'border-accent-primary ring-2 ring-accent-primary/20' : 'border-text-secondary/20'}`}>
+              {tier.popular && (
+                <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                  <span class="bg-accent-primary text-white px-4 py-2 rounded-full text-sm font-semibold">
+                    Most Popular
+                  </span>
+                </div>
+              )}
+
+              <div class="text-center mb-6">
+                <h3 class="text-2xl font-bold text-text-primary mb-2">{tier.name}</h3>
+                <div class="mb-4">
+                  <span class="text-4xl font-bold text-accent-primary">{tier.price}</span>
+                  {tier.period !== "pricing" && <span class="text-text-secondary">/{tier.period}</span>}
+                </div>
+                <p class="text-text-secondary">{tier.description}</p>
+              </div>
+
+              <ul class="space-y-3 mb-8">
+                {tier.features.map((feature) => (
+                  <li class="flex items-center text-text-secondary">
+                    <svg class="w-5 h-5 text-accent-primary mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              <a
+                href={tier.cta === "Contact Sales" ? "/contact" : "/signup"}
+                class={`block w-full text-center py-3 px-6 rounded-lg font-semibold transition-colors ${
+                  tier.popular
+                    ? 'bg-accent-primary hover:bg-accent-primary/90 text-white'
+                    : 'border border-text-secondary hover:border-accent-primary text-text-primary hover:text-accent-primary'
+                }`}
+              >
+                {tier.cta}
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="py-24 bg-bg-secondary">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+          <h2 class="text-4xl font-bold text-text-primary mb-4">Frequently Asked Questions</h2>
+        </div>
+
+        <div class="space-y-8">
+          <div>
+            <h3 class="text-xl font-semibold text-text-primary mb-2">How does billing work?</h3>
+            <p class="text-text-secondary">We bill based on actual function invocations across all your configured providers. No minimums, no overages—just pay for what you use.</p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-text-primary mb-2">Can I change plans anytime?</h3>
+            <p class="text-text-secondary">Yes! Upgrade or downgrade at any time. Changes take effect immediately, and we'll prorate your billing accordingly.</p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-text-primary mb-2">What happens during the free trial?</h3>
+            <p class="text-text-secondary">Get full access to all features for 14 days. No credit card required. We'll send you a reminder before the trial ends.</p>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-semibold text-text-primary mb-2">Do you offer refunds?</h3>
+            <p class="text-text-secondary">Yes, we offer a 30-day money-back guarantee. If you're not satisfied with FunctionFly, we'll refund your payment in full.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-24">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-4xl font-bold text-text-primary mb-4">Ready to Get Started?</h2>
+        <p class="text-xl text-text-secondary mb-8">
+          Join hundreds of companies that trust FunctionFly with their critical infrastructure.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a href="/signup" class="bg-accent-primary hover:bg-accent-primary/90 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors">
+            Start Free Trial
+          </a>
+          <a href="/contact" class="border border-text-secondary hover:border-accent-primary text-text-primary hover:text-accent-primary px-8 py-4 rounded-lg font-semibold text-lg transition-colors">
+            Contact Sales
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

@@ -1,0 +1,29 @@
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the binary
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o health-monitor ./cmd/health-monitor
+
+FROM alpine:latest
+
+# Install Infisical CLI
+RUN apk --no-cache add ca-certificates curl && \
+    curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | sh && \
+    apk --no-cache add infisical && \
+    apk del curl
+
+WORKDIR /root/
+
+# Copy the binary from builder stage
+COPY --from=builder /app/health-monitor .
+
+# Run the binary with Infisical if token is set, otherwise run directly
+CMD ["sh", "-c", "if [ -n \"$INFISICAL_TOKEN\" ]; then infisical run --token=$INFISICAL_TOKEN --env=dev -- ./health-monitor; else ./health-monitor; fi"]

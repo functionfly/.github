@@ -1,0 +1,559 @@
+package cloudflare
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/functionfly/functionfly/internal/adapters/common"
+)
+
+// CloudflareDeploymentClient handles deployment operations for Cloudflare Workers
+type CloudflareDeploymentClient struct {
+	httpClient *http.Client
+	apiToken   string
+	accountID  string
+}
+
+// NewCloudflareDeploymentClient creates a new Cloudflare deployment client
+func NewCloudflareDeploymentClient(apiToken, accountID string) *CloudflareDeploymentClient {
+	return &CloudflareDeploymentClient{
+		httpClient: &http.Client{
+			Timeout: 60 * time.Second, // Workers API can be slow
+		},
+		apiToken:  apiToken,
+		accountID: accountID,
+	}
+}
+
+// Deploy uploads a Worker script and creates a deployment
+func (c *CloudflareDeploymentClient) Deploy(ctx context.Context, scriptContent []byte, scriptName string) (*DeploymentResult, error) {
+	// Upload the script to Workers API
+	uploadURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/workers/scripts/%s", c.accountID, scriptName)
+
+	req, err := http.NewRequestWithContext(ctx, "PUT", uploadURL, bytes.NewReader(scriptContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create upload request: %w", err)
+	}
+
+	c.setAuthHeaders(req)
+	req.Header.Set("Content-Type", "application/javascript")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload script: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("upload failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var uploadResult struct {
+		Success bool `json:"success"`
+		Result  struct {
+			ID string `json:"id"`
+		} `json:"result"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&uploadResult); err != nil {
+		return nil, fmt.Errorf("failed to decode upload response: %w", err)
+	}
+
+	if !uploadResult.Success {
+		if len(uploadResult.Errors) > 0 {
+			return nil, fmt.Errorf("upload failed: %s", uploadResult.Errors[0].Message)
+		}
+		return nil, fmt.Errorf("upload failed with unknown error")
+	}
+
+	return &DeploymentResult{
+		DeploymentID: uploadResult.Result.ID,
+		Status:       common.DeploymentStatusSuccess,
+		Message:      "Worker script uploaded successfully",
+		Metadata: map[string]interface{}{
+			"script_name": scriptName,
+			"uploaded_at": time.Now().Format(time.RFC3339),
+		},
+	}, nil
+}
+
+// SetEnvironmentVariables sets environment variables for a Worker
+func (c *CloudflareDeploymentClient) SetEnvironmentVariables(ctx context.Context, scriptName string, vars, secrets map[string]string) error {
+	// Combine vars and secrets (Cloudflare treats them similarly in the API)
+	env := make(map[string]interface{})
+	for k, v := range vars {
+		env[k] = map[string]interface{}{
+			"type":  "plain_text",
+			"value": v,
+		}
+	}
+	for k, v := range secrets {
+		env[k] = map[string]interface{}{
+			"type":  "secret_text",
+			"value": v,
+		}
+	}
+
+	envURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/workers/scripts/%s/settings", c.accountID, scriptName)
+
+	envData := map[string]interface{}{
+		"bindings": env,
+	}
+
+	jsonData, err := json.Marshal(envData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal environment data: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "PATCH", envURL, bytes.NewReader(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create env request: %w", err)
+	}
+
+	c.setAuthHeaders(req)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to set environment variables: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("set env failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// BindRoutes binds routes to a Worker deployment
+func (c *CloudflareDeploymentClient) BindRoutes(ctx context.Context, zoneID, scriptName string, routes []string) error {
+	routesURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/workers/routes", zoneID)
+
+	// Convert route patterns to Cloudflare route objects
+	var routeObjects []map[string]interface{}
+	for _, pattern := range routes {
+		routeObjects = append(routeObjects, map[string]interface{}{
+			"pattern": pattern,
+			"script":  scriptName,
+		})
+	}
+
+	routesData := map[string]interface{}{
+		"routes": routeObjects,
+	}
+
+	jsonData, err := json.Marshal(routesData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal routes data: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "PUT", routesURL, bytes.NewReader(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create routes request: %w", err)
+	}
+
+	c.setAuthHeaders(req)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to bind routes: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("bind routes failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// GetDeploymentStatus gets the current status of a deployment
+func (c *CloudflareDeploymentClient) GetDeploymentStatus(ctx context.Context, scriptName string) (common.DeploymentStatus, error) {
+	statusURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/workers/scripts/%s", c.accountID, scriptName)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", statusURL, nil)
+	if err != nil {
+		return common.DeploymentStatusFailed, fmt.Errorf("failed to create status request: %w", err)
+	}
+
+	c.setAuthHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return common.DeploymentStatusFailed, fmt.Errorf("failed to get deployment status: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return common.DeploymentStatusFailed, fmt.Errorf("deployment not found")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return common.DeploymentStatusFailed, fmt.Errorf("status check failed with status %d", resp.StatusCode)
+	}
+
+	// If we can retrieve the script, it's successfully deployed
+	return common.DeploymentStatusSuccess, nil
+}
+
+// DeleteDeployment deletes a Worker script
+func (c *CloudflareDeploymentClient) DeleteDeployment(ctx context.Context, scriptName string) error {
+	deleteURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/workers/scripts/%s", c.accountID, scriptName)
+
+	req, err := http.NewRequestWithContext(ctx, "DELETE", deleteURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create delete request: %w", err)
+	}
+
+	c.setAuthHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to delete deployment: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("delete failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// DNSRecord represents a DNS record for Cloudflare
+type DNSRecord struct {
+	ID      string `json:"id,omitempty"`
+	Type    string `json:"type"`
+	Name    string `json:"name"`
+	Content string `json:"content"`
+	TTL     int    `json:"ttl"`
+	Proxied bool   `json:"proxied"`
+}
+
+// UpdateDNSRecord updates a DNS record to point to a new target
+func (c *CloudflareDeploymentClient) UpdateDNSRecord(ctx context.Context, zoneID, recordName, recordType, newContent string) error {
+	// First, find the existing record
+	listURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/dns_records?name=%s&type=%s", zoneID, recordName, recordType)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", listURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create DNS list request: %w", err)
+	}
+
+	c.setAuthHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to list DNS records: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var listResult struct {
+		Success bool        `json:"success"`
+		Result  []DNSRecord `json:"result"`
+		Errors  []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&listResult); err != nil {
+		return fmt.Errorf("failed to decode DNS list response: %w", err)
+	}
+
+	if !listResult.Success || len(listResult.Errors) > 0 {
+		return fmt.Errorf("DNS list failed: %v", listResult.Errors)
+	}
+
+	if len(listResult.Result) == 0 {
+		return fmt.Errorf("no DNS record found for %s %s", recordType, recordName)
+	}
+
+	record := listResult.Result[0]
+
+	// Update the record with new content
+	updateURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/dns_records/%s", zoneID, record.ID)
+
+	updateData := map[string]interface{}{
+		"content": newContent,
+		"ttl":     record.TTL,
+		"proxied": record.Proxied,
+	}
+
+	jsonData, err := json.Marshal(updateData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal DNS update data: %w", err)
+	}
+
+	req, err = http.NewRequestWithContext(ctx, "PUT", updateURL, bytes.NewReader(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create DNS update request: %w", err)
+	}
+
+	c.setAuthHeaders(req)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err = c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to update DNS record: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("DNS update failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// Rollback redeploys a previous Worker script
+func (c *CloudflareDeploymentClient) Rollback(ctx context.Context, scriptContent []byte, scriptName string) (*common.DeploymentResult, error) {
+	// Rollback is essentially redeploying with the previous artifact
+	result, err := c.Deploy(ctx, scriptContent, scriptName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to common.DeploymentResult
+	return &common.DeploymentResult{
+		DeploymentID: result.DeploymentID,
+		Status:       result.Status,
+		Message:      result.Message,
+		Metadata:     result.Metadata,
+	}, nil
+}
+
+// SwitchDNSForBlueGreen switches DNS records to point to the new deployment
+// This enables zero-downtime blue/green deployments
+func (c *CloudflareDeploymentClient) SwitchDNSForBlueGreen(ctx context.Context, zoneID, domain, newTarget string, enableProxied bool) error {
+	// First, get the current DNS records for the domain
+	listURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/dns_records?name=%s", zoneID, domain)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", listURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create DNS list request: %w", err)
+	}
+
+	c.setAuthHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to list DNS records: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var listResult struct {
+		Success bool        `json:"success"`
+		Result  []DNSRecord `json:"result"`
+		Errors  []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&listResult); err != nil {
+		return fmt.Errorf("failed to decode DNS list response: %w", err)
+	}
+
+	if !listResult.Success {
+		return fmt.Errorf("DNS list failed: %v", listResult.Errors)
+	}
+
+	// If no existing records, create new ones
+	if len(listResult.Result) == 0 {
+		// Create new CNAME record
+		return c.createDNSRecord(ctx, zoneID, domain, "CNAME", newTarget, enableProxied)
+	}
+
+	// Update existing records
+	for _, record := range listResult.Result {
+		updateURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/dns_records/%s", zoneID, record.ID)
+
+		// Determine record type based on target
+		recordType := "CNAME"
+		if strings.HasPrefix(newTarget, "https://") || strings.HasPrefix(newTarget, "http://") {
+			recordType = "A"
+			newTarget = strings.TrimPrefix(strings.TrimPrefix(newTarget, "https://"), "http://")
+		}
+
+		updateData := map[string]interface{}{
+			"type":    recordType,
+			"name":    domain,
+			"content": newTarget,
+			"ttl":     record.TTL,
+			"proxied": enableProxied,
+		}
+
+		jsonData, err := json.Marshal(updateData)
+		if err != nil {
+			return fmt.Errorf("failed to marshal DNS update data: %w", err)
+		}
+
+		updateReq, err := http.NewRequestWithContext(ctx, "PUT", updateURL, bytes.NewReader(jsonData))
+		if err != nil {
+			return fmt.Errorf("failed to create DNS update request: %w", err)
+		}
+
+		c.setAuthHeaders(updateReq)
+		updateReq.Header.Set("Content-Type", "application/json")
+
+		updateResp, err := c.httpClient.Do(updateReq)
+		if err != nil {
+			return fmt.Errorf("failed to update DNS record: %w", err)
+		}
+		defer updateResp.Body.Close()
+
+		if updateResp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(updateResp.Body)
+			return fmt.Errorf("DNS update failed with status %d: %s", updateResp.StatusCode, string(body))
+		}
+	}
+
+	return nil
+}
+
+// createDNSRecord creates a new DNS record
+func (c *CloudflareDeploymentClient) createDNSRecord(ctx context.Context, zoneID, name, recordType, content string, proxied bool) error {
+	createURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/dns_records", zoneID)
+
+	createData := map[string]interface{}{
+		"type":    recordType,
+		"name":    name,
+		"content": content,
+		"ttl":     1, // 1 = Auto TTL
+		"proxied": proxied,
+	}
+
+	jsonData, err := json.Marshal(createData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal DNS create data: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", createURL, bytes.NewReader(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create DNS create request: %w", err)
+	}
+
+	c.setAuthHeaders(req)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to create DNS record: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("DNS create failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// BlueGreenDeploymentResult represents the result of a blue/green deployment
+type BlueGreenDeploymentResult struct {
+	BlueDeploymentID  string
+	GreenDeploymentID string
+	ActiveDeployment  string
+	DNSSwitched       bool
+	SwitchedAt        time.Time
+}
+
+// DeployBlueGreen performs a blue/green deployment with DNS switching
+func (c *CloudflareDeploymentClient) DeployBlueGreen(ctx context.Context, scriptContent []byte, scriptName, zoneID, domain string, enableProxied bool) (*BlueGreenDeploymentResult, error) {
+	// Determine current active color (blue or green)
+	// We'll use timestamp to determine which one is newer
+	blueScriptName := scriptName + "-blue"
+	greenScriptName := scriptName + "-green"
+
+	// Deploy to the inactive color
+	var newScriptName string
+
+	// Check which version exists
+	blueExists := c.scriptExists(ctx, blueScriptName)
+	greenExists := c.scriptExists(ctx, greenScriptName)
+
+	if !blueExists && !greenExists {
+		// First deployment - use blue
+		newScriptName = blueScriptName
+	} else if blueExists && !greenExists {
+		newScriptName = greenScriptName
+	} else if !blueExists && greenExists {
+		newScriptName = blueScriptName
+	} else {
+		// Both exist - use green (toggle from blue)
+		newScriptName = greenScriptName
+	}
+
+	// Deploy to the new color
+	_, err := c.Deploy(ctx, scriptContent, newScriptName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deploy to %s: %w", newScriptName, err)
+	}
+
+	// Get the target for DNS - workers.dev subdomain
+	target := fmt.Sprintf("%s.%s.workers.dev", newScriptName, c.accountID)
+
+	// Switch DNS to point to new deployment
+	err = c.SwitchDNSForBlueGreen(ctx, zoneID, domain, target, enableProxied)
+	if err != nil {
+		return nil, fmt.Errorf("failed to switch DNS: %w", err)
+	}
+
+	return &BlueGreenDeploymentResult{
+		BlueDeploymentID:  blueScriptName,
+		GreenDeploymentID: greenScriptName,
+		ActiveDeployment:  newScriptName,
+		DNSSwitched:       true,
+		SwitchedAt:        time.Now(),
+	}, nil
+}
+
+// scriptExists checks if a worker script exists
+func (c *CloudflareDeploymentClient) scriptExists(ctx context.Context, scriptName string) bool {
+	statusURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/workers/scripts/%s", c.accountID, scriptName)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", statusURL, nil)
+	if err != nil {
+		return false
+	}
+
+	c.setAuthHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK
+}
+
+// setAuthHeaders sets the required Cloudflare API authentication headers
+func (c *CloudflareDeploymentClient) setAuthHeaders(req *http.Request) {
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiToken))
+	req.Header.Set("Content-Type", "application/json")
+}
+
+// DeploymentResult represents the result of a Cloudflare deployment operation
+type DeploymentResult struct {
+	DeploymentID string
+	Status       common.DeploymentStatus
+	Message      string
+	Metadata     map[string]interface{}
+}

@@ -26,8 +26,8 @@ Staging uses a **Neon Postgres** staging branch with the following configuration
 
 ```bash
 DB_HOST=ep-lucky-bird-aie8580h.c-4.us-east-1.aws.neon.tech
-DB_NAME=neondb
-DB_USER=neondb_owner
+DB_NAME=functionfly
+DB_USER=functionfly_owner
 DB_SSLMODE=require
 ```
 
@@ -110,7 +110,7 @@ ENVIRONMENT=staging
 
 # Database (Neon staging branch)
 DB_HOST=ep-lucky-bird-aie8580h.c-4.us-east-1.aws.neon.tech
-DB_NAME=neondb
+DB_NAME=functionfly
 
 # Ports (different from production)
 PORT=8082

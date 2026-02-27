@@ -1,12 +1,11 @@
 package main
 
 import (
-	"context"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
+	"github.com/functionfly/functionfly/internal/health"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
 )
@@ -24,11 +23,12 @@ func main() {
 	}
 	defer db.Close()
 
-	// TODO: Initialize health monitor service
-	// monitor := health.NewMonitor(db)
+	// Initialize health monitor service
+	monitor := health.NewMonitor(db.Repository())
 
 	// Start health monitoring
-	// go monitor.Start()
+	monitor.Start()
+	defer monitor.Stop()
 
 	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)

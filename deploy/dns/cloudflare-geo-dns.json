@@ -1,0 +1,140 @@
+{
+  "description": "Cloudflare GeoDNS Configuration for FunctionFly Multi-Region Deployment",
+  "zone": "functionfly.com",
+  "accounts": [
+    {
+      "account_id": "${CLOUDFLARE_ACCOUNT_ID}",
+      "zone_id": "${CLOUDFLARE_ZONE_ID}"
+    }
+  ],
+  "records": [
+    {
+      "type": "A",
+      "name": "api",
+      "content": null,
+      "proxied": true,
+      "ttl": 60,
+      "description": "API endpoint - GeoDNS routing to nearest region",
+      "geo": {
+        "default": "functionfly-control.iad.fly.dev",
+        "country": {
+          "US": "functionfly-control.iad.fly.dev",
+          "CA": "functionfly-control.iad.fly.dev",
+          "MX": "functionfly-control.lax.fly.dev",
+          "GB": "functionfly-control.fra.fly.dev",
+          "DE": "functionfly-control.fra.fly.dev",
+          "FR": "functionfly-control.fra.fly.dev",
+          "NL": "functionfly-control.fra.fly.dev",
+          "BE": "functionfly-control.fra.fly.dev",
+          "IT": "functionfly-control.fra.fly.dev",
+          "ES": "functionfly-control.fra.fly.dev",
+          "JP": "functionfly-control.iad.fly.dev",
+          "KR": "functionfly-control.iad.fly.dev",
+          "SG": "functionfly-control.iad.fly.dev",
+          "IN": "functionfly-control.iad.fly.dev",
+          "AU": "functionfly-control.iad.fly.dev",
+          "NZ": "functionfly-control.iad.fly.dev"
+        },
+        "continent": {
+          "NA": "functionfly-control.iad.fly.dev",
+          "SA": "functionfly-control.iad.fly.dev",
+          "EU": "functionfly-control.fra.fly.dev",
+          "AF": "functionfly-control.fra.fly.dev",
+          "AS": "functionfly-control.iad.fly.dev",
+          "OC": "functionfly-control.iad.fly.dev"
+        }
+      }
+    },
+    {
+      "type": "A",
+      "name": "api.internal",
+      "content": null,
+      "proxied": false,
+      "ttl": 5,
+      "description": "Internal API for Fly.io mesh DNS",
+      "dns_only": true,
+      "health_check": {
+        "endpoint": "/healthz",
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3
+      },
+      "geo": {
+        "default": "functionfly-control.iad.internal",
+        "country": {
+          "US": "functionfly-control.iad.internal",
+          "CA": "functionfly-control.iad.internal",
+          "MX": "functionfly-control.lax.internal"
+        }
+      }
+    },
+    {
+      "type": "CNAME",
+      "name": "@",
+      "content": "functionfly.pages.dev",
+      "proxied": true,
+      "ttl": 300,
+      "description": "Main website - Cloudflare Pages"
+    },
+    {
+      "type": "CNAME",
+      "name": "www",
+      "content": "functionfly.pages.dev",
+      "proxied": true,
+      "ttl": 300,
+      "description": "WWW redirect"
+    },
+    {
+      "type": "CNAME",
+      "name": "dashboard",
+      "content": "functionfly-dashboard.pages.dev",
+      "proxied": true,
+      "ttl": 300,
+      "description": "Dashboard application"
+    },
+    {
+      "type": "CNAME",
+      "name": "docs",
+      "content": "functionfly-docs.pages.dev",
+      "proxied": true,
+      "ttl": 300,
+      "description": "Documentation site"
+    }
+  ],
+  "load_balancing": {
+    "enabled": true,
+    "description": "Geographic load balancing configuration",
+    "fallback": "functionfly-control.iad.fly.dev",
+    "regions": {
+      "US-EAST": {
+        "primary": "functionfly-control.iad.fly.dev",
+        "targets": ["functionfly-control.iad.fly.dev"]
+      },
+      "US-WEST": {
+        "primary": "functionfly-control.lax.fly.dev",
+        "targets": ["functionfly-control.lax.fly.dev"]
+      },
+      "EU": {
+        "primary": "functionfly-control.fra.fly.dev",
+        "targets": ["functionfly-control.fra.fly.dev"]
+      }
+    }
+  },
+  "health_checks": {
+    "api_health": {
+      "description": "Health check for API endpoints",
+      "type": "http",
+      "endpoint": "/healthz",
+      "interval": 30,
+      "timeout": 10,
+      "retries": 3,
+      "regions": ["WNAM", "ENAM", "WEU", "EEU", "SEAS", "EAS"],
+      "follow_redirects": false
+    }
+  },
+  "monitoring": {
+    "slack_webhook": "${SLACK_WEBHOOK_URL}",
+    "pagerduty_key": "${PAGERDUTY_KEY}",
+    "email_alerts": ["ops@functionfly.com"]
+  }
+}

@@ -1,0 +1,174 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { sanityClient, queries, urlFor } from '../../lib/sanity';
+
+const title = "Case Studies - FunctionFly | Serverless Success Stories";
+const description = "Real-world examples of serverless reliability improvements, multi-cloud deployments, and performance optimizations achieved with FunctionFly.";
+
+// Fetch case studies from Sanity
+const caseStudies = await sanityClient.fetch(queries.caseStudies);
+const featuredCaseStudies = await sanityClient.fetch(queries.featuredCaseStudies);
+---
+
+<BaseLayout title={title} description={description}>
+  <main class="min-h-screen">
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary py-24">
+      <div class="absolute inset-0 bg-grid-pattern opacity-5"></div>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center">
+          <h1 class="text-5xl md:text-6xl font-bold text-text-primary mb-6">
+            Case Studies
+            <span class="text-accent-primary block">Success Stories</span>
+          </h1>
+          <p class="text-xl md:text-2xl text-text-secondary mb-8 max-w-3xl mx-auto">
+            Real-world examples of how organizations achieve serverless reliability and performance excellence.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Featured Case Studies -->
+    {featuredCaseStudies && featuredCaseStudies.length > 0 && (
+      <section class="py-24 bg-bg-secondary">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 class="text-3xl font-bold text-text-primary mb-12 text-center">Featured Stories</h2>
+          <div class="grid lg:grid-cols-2 gap-8">
+            {featuredCaseStudies.map((study) => (
+              <article class="bg-bg-primary rounded-xl p-8 border border-text-secondary/20 hover:border-accent-primary transition-colors">
+                <div class="flex items-start gap-6 mb-6">
+                  {study.logo && (
+                    <img
+                      src={urlFor(study.logo).width(80).height(80).fit('crop').url()}
+                      alt={`${study.company} logo`}
+                      class="w-20 h-20 object-contain rounded"
+                    />
+                  )}
+                  <div class="flex-1">
+                    <h3 class="text-2xl font-bold text-text-primary mb-2 hover:text-accent-primary transition-colors">
+                      <a href={`/case-studies/${study.slug.current}`}>{study.title}</a>
+                    </h3>
+                    <p class="text-lg text-accent-primary font-medium mb-2">{study.company}</p>
+                    {study.industry && (
+                      <span class="bg-accent-primary/10 text-accent-primary px-3 py-1 rounded-full text-sm">
+                        {study.industry}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <p class="text-text-secondary mb-6">{study.description}</p>
+
+                {study.results && study.results.length > 0 && (
+                  <div class="grid grid-cols-2 gap-4 mb-6">
+                    {study.results.slice(0, 4).map((result) => (
+                      <div class="text-center">
+                        <div class="text-2xl font-bold text-accent-primary">{result.value}</div>
+                        <div class="text-sm text-text-secondary">{result.metric}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div class="flex items-center justify-between">
+                  <a
+                    href={`/case-studies/${study.slug.current}`}
+                    class="text-accent-primary hover:text-accent-primary/80 font-medium transition-colors"
+                  >
+                    Read Full Story →
+                  </a>
+                  <span class="text-sm text-text-secondary">
+                    {new Date(study.publishedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    )}
+
+    <!-- All Case Studies -->
+    <section class="py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-3xl font-bold text-text-primary mb-12 text-center">All Case Studies</h2>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {caseStudies.filter(study => !study.featured).map((study) => (
+            <article class="bg-bg-secondary rounded-xl p-6 border border-text-secondary/20 hover:border-accent-primary transition-colors">
+              <div class="flex items-start gap-4 mb-4">
+                {study.logo && (
+                  <img
+                    src={urlFor(study.logo).width(60).height(60).fit('crop').url()}
+                    alt={`${study.company} logo`}
+                    class="w-15 h-15 object-contain rounded"
+                  />
+                )}
+                <div class="flex-1">
+                  <h3 class="text-xl font-bold text-text-primary mb-1 hover:text-accent-primary transition-colors">
+                    <a href={`/case-studies/${study.slug.current}`}>{study.title}</a>
+                  </h3>
+                  <p class="text-accent-primary font-medium text-sm">{study.company}</p>
+                  {study.industry && (
+                    <span class="bg-accent-primary/10 text-accent-primary px-2 py-1 rounded text-xs mt-2 inline-block">
+                      {study.industry}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <p class="text-text-secondary text-sm mb-4 line-clamp-3">{study.description}</p>
+
+              {study.results && study.results.length > 0 && (
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                  {study.results.slice(0, 2).map((result) => (
+                    <div class="text-center">
+                      <div class="text-lg font-bold text-accent-primary">{result.value}</div>
+                      <div class="text-xs text-text-secondary">{result.metric}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div class="flex items-center justify-between">
+                <a
+                  href={`/case-studies/${study.slug.current}`}
+                  class="text-accent-primary hover:text-accent-primary/80 text-sm font-medium transition-colors"
+                >
+                  Read Story →
+                </a>
+                <span class="text-xs text-text-secondary">
+                  {new Date(study.publishedAt).toLocaleDateString()}
+                </span>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-24 bg-bg-secondary">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-3xl font-bold text-text-primary mb-4">Ready to Join Our Success Stories?</h2>
+        <p class="text-xl text-text-secondary mb-8">
+          See how FunctionFly can transform your serverless infrastructure reliability and performance.
+        </p>
+
+        <div class="flex gap-4 justify-center">
+          <a
+            href="/pricing"
+            class="bg-accent-primary hover:bg-accent-primary/90 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
+          >
+            Start Free Trial
+          </a>
+          <a
+            href="/docs/getting-started"
+            class="bg-bg-primary hover:bg-bg-secondary text-text-primary px-8 py-3 rounded-lg font-semibold border border-text-secondary/20 transition-colors"
+          >
+            View Documentation
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

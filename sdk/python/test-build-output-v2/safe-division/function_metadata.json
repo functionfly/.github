@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "name": "safe-division",
+    "version": "1.0.0",
+    "description": "Perform safe division with error handling",
+    "deterministic": true,
+    "idempotent": false,
+    "pure": false,
+    "cache_ttl": null,
+    "capabilities": [],
+    "max_execution_time": null,
+    "input_schema": null,
+    "output_schema": null,
+    "source_file": "/home/micro/projects/functionfly/sdk/python/example_functions.py",
+    "source_hash": "893dfc827835921b3b71bf13a95a09f0e293471d7c470ed7f5e38e6a4a2ca42a",
+    "execution_mode": "deterministic"
+  },
+  "source": {
+    "code": "@flypy.function(\n    name=\"safe-division\",\n    description=\"Perform safe division with error handling\",\n    deterministic=True,\n    enable_performance_monitoring=True\n)\ndef safe_division(calculation_data: Dict[str, Any]) -> Dict[str, Any]:\n    \"\"\"Perform division with comprehensive error handling.\"\"\"\n\n    try:\n        numerator = calculation_data.get(\"numerator\", 0)\n        denominator = calculation_data.get(\"denominator\", 1)\n\n        # Validate inputs\n        if not isinstance(numerator, (int, float)):\n            raise ValueError(\"Numerator must be a number\")\n        if not isinstance(denominator, (int, float)):\n            raise ValueError(\"Denominator must be a number\")\n        if denominator == 0:\n            raise ZeroDivisionError(\"Division by zero\")\n\n        result = numerator / denominator\n\n        return {\n            \"result\": result,\n            \"status\": \"success\",\n            \"error\": None\n        }\n\n    except ZeroDivisionError:\n        return {\n            \"result\": None,\n            \"status\": \"error\",\n            \"error\": \"division_by_zero\"\n        }\n    except ValueError as e:\n        return {\n            \"result\": None,\n            \"status\": \"error\",\n            \"error\": str(e)\n        }\n    except Exception as e:\n        return {\n            \"result\": None,\n            \"status\": \"error\",\n            \"error\": f\"unexpected_error: {str(e)}\"\n        }\n",
+    "file": "/home/micro/projects/functionfly/sdk/python/example_functions.py",
+    "dependencies": [],
+    "imports": []
+  },
+  "ast": null
+}

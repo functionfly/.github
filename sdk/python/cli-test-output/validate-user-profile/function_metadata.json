@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "name": "validate-user-profile",
+    "version": "1.0.0",
+    "description": "Validate and process user profile data",
+    "deterministic": true,
+    "idempotent": false,
+    "pure": false,
+    "cache_ttl": null,
+    "capabilities": [],
+    "max_execution_time": null,
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        }
+      },
+      "required": [
+        "name",
+        "age"
+      ]
+    },
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "string"
+        },
+        "profile_complete": {
+          "type": "boolean"
+        },
+        "age_group": {
+          "type": "string"
+        },
+        "validation_status": {
+          "type": "string"
+        }
+      }
+    },
+    "source_file": "/home/micro/projects/functionfly/sdk/python/example_functions.py",
+    "source_hash": "bb41444ebd8a9e16f170b4f53d4a8ffae926eca2c50aa8984de7e821647249c3",
+    "execution_mode": "deterministic"
+  },
+  "source": {
+    "code": "@flypy.input_schema({\n    \"type\": \"object\",\n    \"properties\": {\n        \"name\": {\"type\": \"string\"},\n        \"age\": {\"type\": \"integer\", \"minimum\": 0},\n        \"email\": {\"type\": \"string\", \"format\": \"email\"}\n    },\n    \"required\": [\"name\", \"age\"]\n})\n@flypy.output_schema({\n    \"type\": \"object\",\n    \"properties\": {\n        \"user_id\": {\"type\": \"string\"},\n        \"profile_complete\": {\"type\": \"boolean\"},\n        \"age_group\": {\"type\": \"string\"},\n        \"validation_status\": {\"type\": \"string\"}\n    }\n})\n@flypy.function(\n    name=\"validate-user-profile\",\n    description=\"Validate and process user profile data\",\n    deterministic=True\n)\ndef validate_user_profile(user_data: Dict[str, Any]) -> Dict[str, Any]:\n    \"\"\"Validate user profile and return processed information.\"\"\"\n\n    # Generate a simple user ID\n    user_id = f\"user_{hash(user_data['name'] + str(user_data['age'])) % 10000}\"\n\n    # Determine if profile is complete\n    required_fields = [\"name\", \"age\", \"email\"]\n    profile_complete = all(field in user_data for field in required_fields)\n\n    # Age group classification\n    age = user_data[\"age\"]\n    if age < 18:\n        age_group = \"minor\"\n    elif age < 25:\n        age_group = \"young_adult\"\n    elif age < 65:\n        age_group = \"adult\"\n    else:\n        age_group = \"senior\"\n\n    # Validation status\n    validation_status = \"valid\" if profile_complete else \"incomplete\"\n\n    return {\n        \"user_id\": user_id,\n        \"profile_complete\": profile_complete,\n        \"age_group\": age_group,\n        \"validation_status\": validation_status\n    }\n",
+    "file": "/home/micro/projects/functionfly/sdk/python/example_functions.py",
+    "dependencies": [],
+    "imports": []
+  },
+  "ast": null
+}

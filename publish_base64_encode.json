@@ -1,0 +1,16 @@
+{
+  "author": "functionfly",
+  "name": "base64-encode",
+  "version": "1.0.0",
+  "manifest": {
+    "name": "base64-encode",
+    "version": "1.0.0",
+    "runtime": "python3.11",
+    "description": "Encode a string to Base64. Optional URL-safe encoding.",
+    "handler": "handler"
+  },
+  "source": {
+    "code": "import base64\n\ndef handler(event):\n    if isinstance(event, dict):\n        text = event.get(\"text\", event.get(\"data\", \"\"))\n        url_safe = event.get(\"url_safe\", False)\n    else:\n        text = str(event) if event is not None else \"\"\n        url_safe = False\n\n    if text is None:\n        return {\"ok\": False, \"error\": \"Input 'text' is required\"}\n\n    try:\n        if isinstance(text, str):\n            data = text.encode(\"utf-8\")\n        else:\n            data = text\n        if url_safe:\n            encoded = base64.urlsafe_b64encode(data).decode(\"ascii\").rstrip(\"=\")\n        else:\n            encoded = base64.b64encode(data).decode(\"ascii\")\n        return {\"ok\": True, \"encoded\": encoded}\n    except Exception as e:\n        return {\"ok\": False, \"error\": str(e)}\n",
+    "runtime": "python3.11"
+  }
+}

@@ -9,6 +9,7 @@
 bin/
 dist/
 orchestrator-api
+functionfly-server
 api-test
 ffly
 fly
@@ -92,6 +93,23 @@ test-results/
 # Runtime and deployment files
 runtimes/**/*.wasm
 runtimes/**/*.so
+runtimes/**/target/
+**/target/
+# Large ONNX models (use Git LFS or download script)
+*.onnx
+runtimes/local/models/onnx-env/
+
+# Rust build artifacts
+Cargo.lock
+*.rs.bk
+
+# Additional build binaries and artifacts
+server
+setup-bin
+statefabric-sdk/
+statefabric/
+tools/
+sdk/js/
 
 # Database and backup files
 *.db

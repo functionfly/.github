@@ -1,0 +1,16 @@
+{
+  "name": "ai-sentiment",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "description": "Example function demonstrating AI capability for sentiment analysis",
+  "entry": "main.py",
+  "handler": "handler",
+  "memory": "256MB",
+  "timeout": "10s",
+  "capabilities": [
+    "ai"
+  ],
+  "environment": {
+    "AI_MODEL": "sentiment"
+  }
+}

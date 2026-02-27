@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "name": "transform-user-data",
+    "version": "1.0.0",
+    "description": "Transform user data for analytics",
+    "deterministic": true,
+    "idempotent": false,
+    "pure": false,
+    "cache_ttl": null,
+    "capabilities": [],
+    "max_execution_time": null,
+    "input_schema": null,
+    "output_schema": null,
+    "source_file": "/home/micro/projects/functionfly/sdk/python/example_functions.py",
+    "source_hash": "d7c75c0d392b5cd0271a0bbf92402f8e769a69c0626cff085e76a2786b1c5af3",
+    "execution_mode": "deterministic"
+  },
+  "source": {
+    "code": "@flypy.function(\n    name=\"transform-user-data\",\n    description=\"Transform user data for analytics\",\n    deterministic=True,\n    enable_performance_monitoring=True\n)\ndef transform_user_data(user_data: Dict[str, Any]) -> Dict[str, Any]:\n    \"\"\"Transform raw user data into analytics-ready format.\"\"\"\n    # Extract and normalize user information\n    user = {\n        \"user_id\": user_data[\"id\"],\n        \"full_name\": f\"{user_data['first_name']} {user_data['last_name']}\",\n        \"email_domain\": user_data[\"email\"].split(\"@\")[1],\n        \"age_group\": \"18-24\" if user_data[\"age\"] < 25 else \"25+\",\n        \"account_status\": \"active\" if user_data[\"is_active\"] else \"inactive\"\n    }\n\n    # Process activity data\n    activities = user_data.get(\"activities\", [])\n    activity_summary = {\n        \"total_activities\": len(activities),\n        \"last_activity\": max(act[\"timestamp\"] for act in activities) if activities else None,\n        \"activity_types\": list(set(act[\"type\"] for act in activities))\n    }\n\n    # Calculate engagement score (simplified)\n    engagement_score = min(100, len(activities) * 10 + (user_data.get(\"login_count\", 0) * 5))\n\n    return {\n        \"user\": user,\n        \"activity_summary\": activity_summary,\n        \"engagement_score\": engagement_score,\n        \"processed_at\": \"2024-01-01T00:00:00Z\"  # Would be dynamic in real implementation\n    }\n",
+    "file": "/home/micro/projects/functionfly/sdk/python/example_functions.py",
+    "dependencies": [],
+    "imports": []
+  },
+  "ast": null
+}

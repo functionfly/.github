@@ -1,0 +1,535 @@
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import Editor from "@monaco-editor/react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Play,
+  Rocket,
+  Save,
+  ArrowLeft,
+  Plus,
+  X,
+  Eye,
+  EyeOff,
+  Copy,
+  CheckCircle2,
+  AlertCircle,
+  Terminal
+} from "lucide-react";
+import { ProviderIcon } from "@/components/common/ProviderIcon";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { functionsApi } from "@/api";
+import { apiClient } from "@/api/client";
+import { FunctionConfig, TestFunctionRequest } from "@/types";
+import "@/styles/components.css";
+
+interface EnvironmentVariable {
+  id: string;
+  key: string;
+  value: string;
+  isSecret: boolean;
+}
+
+interface DeploymentLog {
+  id: string;
+  timestamp: string;
+  level: 'info' | 'warn' | 'error' | 'success';
+  message: string;
+}
+
+const mockProviders = [
+  { id: "workers", name: "Cloudflare Workers", regions: ["global"] },
+  { id: "vercel", name: "Vercel", regions: ["iad1", "sfo1", "dub1"] },
+  { id: "fly", name: "Fly.io", regions: ["lax", "iad", "fra", "sin"] },
+];
+
+const defaultCode = `export default {
+  async fetch(request, env, ctx) {
+    // Your function code here
+    return new Response('Hello World!', {
+      headers: { 'content-type': 'text/plain' },
+    });
+  }
+};`;
+
+export function FunctionEditorPage() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditing = !!id;
+
+  const [functionName, setFunctionName] = useState("");
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [code, setCode] = useState(defaultCode);
+  const [envVars, setEnvVars] = useState<EnvironmentVariable[]>([]);
+  const [newEnvKey, setNewEnvKey] = useState("");
+  const [newEnvValue, setNewEnvValue] = useState("");
+  const [isNewEnvSecret, setIsNewEnvSecret] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [activeTab, setActiveTab] = useState("editor");
+  const [currentDeploymentId, setCurrentDeploymentId] = useState<string | null>(null);
+  const [deploymentStatus, setDeploymentStatus] = useState<string | null>(null);
+  const [logs, setLogs] = useState<DeploymentLog[]>([
+    {
+      id: "1",
+      timestamp: "2024-01-15 10:30:15",
+      level: "info",
+      message: isEditing ? "Editor initialized for editing" : "Editor initialized"
+    }
+  ]);
+
+  // Load function data if editing
+  useEffect(() => {
+    if (isEditing && id) {
+      // Fetch function data from API
+      const fetchFunctionData = async () => {
+        try {
+          addLog("info", `Loading function data for ${id}...`);
+
+          const functionData = await functionsApi.get(id);
+
+          setFunctionName(functionData.name);
+          setSelectedProviders(functionData.providers);
+          setSelectedRegion(functionData.region);
+          setCode(functionData.code);
+          setEnvVars(functionData.envVars.map((env, index) => ({
+            id: `env-${index + 1}`,
+            ...env
+          })));
+
+          addLog("success", `Function data loaded successfully`);
+        } catch (error) {
+          addLog("error", `Failed to load function data: ${error}`);
+        }
+      };
+
+      fetchFunctionData();
+    }
+  }, [isEditing, id]);
+
+  // Poll for deployment status updates
+  useEffect(() => {
+    if (!currentDeploymentId) return;
+
+    const pollDeploymentStatus = async () => {
+      try {
+        const data = await apiClient.get<{ deployment: { status: string } }>(`/v1/functions/deployments/${currentDeploymentId}`);
+        const status = data.deployment?.status;
+
+        if (status !== deploymentStatus) {
+          setDeploymentStatus(status);
+          addLog("info", `Deployment status: ${status}`);
+
+          if (status === "success") {
+            addLog("success", "Deployment completed successfully!");
+            setCurrentDeploymentId(null);
+          } else if (status === "failed") {
+            addLog("error", "Deployment failed");
+            setCurrentDeploymentId(null);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to poll deployment status:", error);
+      }
+    };
+
+    // Poll immediately and then every 5 seconds
+    pollDeploymentStatus();
+    const interval = setInterval(pollDeploymentStatus, 5000);
+
+    return () => clearInterval(interval);
+  }, [currentDeploymentId, deploymentStatus]);
+
+  const addLog = (level: DeploymentLog['level'], message: string) => {
+    const newLog: DeploymentLog = {
+      id: Date.now().toString(),
+      timestamp: new Date().toLocaleString(),
+      level,
+      message
+    };
+    setLogs(prev => [...prev, newLog]);
+  };
+
+  const handleProviderToggle = (providerId: string) => {
+    setSelectedProviders(prev =>
+      prev.includes(providerId)
+        ? prev.filter(id => id !== providerId)
+        : [...prev, providerId]
+    );
+  };
+
+  const addEnvironmentVariable = () => {
+    if (!newEnvKey.trim() || !newEnvValue.trim()) return;
+
+    const newVar: EnvironmentVariable = {
+      id: Date.now().toString(),
+      key: newEnvKey.trim(),
+      value: newEnvValue.trim(),
+      isSecret: isNewEnvSecret
+    };
+
+    setEnvVars(prev => [...prev, newVar]);
+    setNewEnvKey("");
+    setNewEnvValue("");
+    setIsNewEnvSecret(false);
+    addLog("info", `Added environment variable: ${newVar.key}`);
+  };
+
+  const removeEnvironmentVariable = (id: string) => {
+    setEnvVars(prev => {
+      const removed = prev.find(v => v.id === id);
+      if (removed) {
+        addLog("info", `Removed environment variable: ${removed.key}`);
+      }
+      return prev.filter(v => v.id !== id);
+    });
+  };
+
+  const handleDeploy = async () => {
+    if (!functionName.trim() || selectedProviders.length === 0) {
+      addLog("error", "Function name and at least one provider are required");
+      return;
+    }
+
+    setIsDeploying(true);
+    addLog("info", "Starting deployment...");
+
+    try {
+      const deployData = isEditing && id
+        ? { functionId: id }
+        : {
+            functionId: "", // Will be generated by backend
+            name: functionName,
+            providers: selectedProviders,
+            region: selectedRegion,
+            code,
+            envVars
+          };
+
+      const result = await functionsApi.deploy(deployData as any);
+      setCurrentDeploymentId(result.deploymentId);
+      setDeploymentStatus("pending");
+      addLog("success", `Deployment started with ID: ${result.deploymentId}`);
+
+    } catch (error) {
+      addLog("error", `Deployment failed: ${error}`);
+    } finally {
+      setIsDeploying(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setIsTesting(true);
+    addLog("info", "Running function test...");
+
+    try {
+      const testData: TestFunctionRequest = {
+        functionId: isEditing ? id : undefined,
+        code: isEditing ? undefined : code,
+        envVars,
+        testInput: {} // Default test input
+      };
+
+      const result = await functionsApi.test(testData);
+
+      if (result.success) {
+        addLog("success", `Test completed in ${result.executionTimeMs}ms`);
+        if (result.output) {
+          addLog("info", `Output: ${JSON.stringify(result.output)}`);
+        }
+      } else {
+        addLog("error", `Test failed: ${result.error}`);
+      }
+
+      // Log any additional logs from the test
+      result.logs.forEach(log => {
+        addLog(log.level as any, log.message);
+      });
+
+    } catch (error) {
+      addLog("error", `Test failed: ${error}`);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const handleSaveDraft = () => {
+    addLog("info", "Draft saved successfully");
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/functions")}
+            className="text-text-secondary hover:text-text-primary"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              {isEditing ? `Edit ${functionName || "Function"}` : (functionName || "New Function")}
+            </h1>
+            <p className="text-text-secondary">
+              {isEditing ? "Edit and redeploy your edge function" : "Create and deploy your edge function"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleSaveDraft}
+            disabled={isDeploying || isTesting}
+          >
+            <Save className="w-4 h-4 mr-2" />
+            Save Draft
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleTest}
+            disabled={isDeploying || isTesting}
+          >
+            <Play className="w-4 h-4 mr-2" />
+            Test
+          </Button>
+          <Button
+            onClick={handleDeploy}
+            disabled={isDeploying || isTesting}
+            className="gap-2"
+          >
+            <Rocket className="w-4 h-4" />
+            {isDeploying ? "Deploying..." : "Deploy"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column - Form */}
+        <div className="space-y-6">
+          {/* Basic Configuration */}
+          <Card className="card">
+            <CardHeader className="card-header">
+              <CardTitle className="card-title">Configuration</CardTitle>
+            </CardHeader>
+            <CardContent className="card-content space-y-4">
+              <div>
+                <Label htmlFor="function-name">Function Name</Label>
+                <Input
+                  id="function-name"
+                  placeholder="my-function"
+                  value={functionName}
+                  onChange={(e) => setFunctionName(e.target.value)}
+                  className="input mt-1"
+                />
+              </div>
+
+              <div>
+                <Label>Providers</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {mockProviders.map((provider) => (
+                    <button
+                      key={provider.id}
+                      onClick={() => handleProviderToggle(provider.id)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                        selectedProviders.includes(provider.id)
+                          ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-400"
+                          : "bg-bg-tertiary border-border-subtle text-text-secondary hover:border-border-default"
+                      }`}
+                    >
+                      <ProviderIcon provider={provider.id} size="sm" />
+                      <span className="text-sm">{provider.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {selectedProviders.length > 0 && (
+                <div>
+                  <Label htmlFor="region">Region</Label>
+                  <Select value={selectedRegion} onValueChange={setSelectedRegion}>
+                    <SelectTrigger className="select mt-1">
+                      <SelectValue placeholder="Select a region" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockProviders
+                        .filter(p => selectedProviders.includes(p.id))
+                        .flatMap(p => p.regions)
+                        .filter((region, index, arr) => arr.indexOf(region) === index)
+                        .map((region) => (
+                          <SelectItem key={region} value={region}>
+                            {region.toUpperCase()}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Environment Variables */}
+          <Card className="card">
+            <CardHeader className="card-header">
+              <CardTitle className="card-title">Environment Variables</CardTitle>
+            </CardHeader>
+            <CardContent className="card-content space-y-4">
+              {envVars.length > 0 && (
+                <div className="space-y-2">
+                  {envVars.map((envVar) => (
+                    <div key={envVar.id} className="flex items-center gap-3 p-3 rounded-lg bg-bg-tertiary">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm font-medium text-text-primary">{envVar.key}</code>
+                          {envVar.isSecret && <EyeOff className="w-3 h-3 text-text-muted" />}
+                        </div>
+                        <div className="text-sm text-text-secondary mt-1">
+                          {envVar.isSecret ? "••••••••" : envVar.value}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeEnvironmentVariable(envVar.id)}
+                        className="text-text-muted hover:text-red-400"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Separator />
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="env-key">Key</Label>
+                    <Input
+                      id="env-key"
+                      placeholder="API_KEY"
+                      value={newEnvKey}
+                      onChange={(e) => setNewEnvKey(e.target.value)}
+                      className="input mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="env-value">Value</Label>
+                    <Input
+                      id="env-value"
+                      type={isNewEnvSecret ? "password" : "text"}
+                      placeholder="your-api-key"
+                      value={newEnvValue}
+                      onChange={(e) => setNewEnvValue(e.target.value)}
+                      className="input mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={isNewEnvSecret}
+                      onChange={(e) => setIsNewEnvSecret(e.target.checked)}
+                      className="rounded border-border-subtle"
+                    />
+                    Mark as secret
+                  </label>
+                  <Button
+                    size="sm"
+                    onClick={addEnvironmentVariable}
+                    disabled={!newEnvKey.trim() || !newEnvValue.trim()}
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Editor & Preview */}
+        <div className="space-y-6">
+          <Card className="card h-[600px]">
+            <CardHeader className="card-header">
+              <div className="flex items-center justify-between">
+                <CardTitle className="card-title">Code Editor</CardTitle>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm">
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="card-content p-0">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
+                <TabsList className="grid w-full grid-cols-2 rounded-none border-b border-border-subtle">
+                  <TabsTrigger value="editor" className="rounded-none">Editor</TabsTrigger>
+                  <TabsTrigger value="logs" className="rounded-none">Logs</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="editor" className="mt-0 h-[calc(100%-48px)]">
+                  <Editor
+                    height="100%"
+                    defaultLanguage="javascript"
+                    value={code}
+                    onChange={(value) => setCode(value || "")}
+                    theme="vs-dark"
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 14,
+                      lineNumbers: "on",
+                      roundedSelection: false,
+                      scrollBeyondLastLine: false,
+                      automaticLayout: true,
+                      tabSize: 2,
+                      wordWrap: "on",
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="logs" className="mt-0 h-[calc(100%-48px)]">
+                  <ScrollArea className="h-full p-4">
+                    <div className="space-y-2">
+                      {logs.map((log) => (
+                        <div key={log.id} className="flex items-start gap-3 text-sm">
+                          <div className="text-text-muted font-mono text-xs w-20">
+                            {log.timestamp.split(' ')[1]}
+                          </div>
+                          <div className="flex items-center gap-2 flex-1">
+                            {log.level === 'success' && <CheckCircle2 className="w-4 h-4 text-green-400" />}
+                            {log.level === 'error' && <AlertCircle className="w-4 h-4 text-red-400" />}
+                            {log.level === 'warn' && <AlertCircle className="w-4 h-4 text-yellow-400" />}
+                            {log.level === 'info' && <Terminal className="w-4 h-4 text-blue-400" />}
+                            <span className="font-mono">{log.message}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,17 @@
+{
+  "name": "webhook-notifier",
+  "version": "1.0.0",
+  "runtime": "rust",
+  "description": "Example function demonstrating webhook capability",
+  "entry": "main.rs",
+  "handler": "handler",
+  "memory": "128MB",
+  "timeout": "30s",
+  "capabilities": [
+    "webhook"
+  ],
+  "environment": {
+    "WEBHOOK_URL": "https://httpbin.org/post",
+    "NOTIFICATION_TYPE": "alert"
+  }
+}

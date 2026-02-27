@@ -1,14 +1,19 @@
-version: '3.8'
-
+# Full stack in Docker. For local development (no Docker): use make dev or ./dev.sh
+# (expects local Postgres on 5432 and Redis on 6379).
+#
+# This file: Postgres on host port 5434 (container 5432). Set DB_PORT=5434 when using this stack.
+# "Everything in Docker except Postgres": docker compose -f docker-compose.local.yml up -d
+# Dashboard: docker compose --profile dashboard up -d → http://localhost:3001
+#
 services:
   postgres:
-    image: postgres:15
+    image: pgvector/pgvector:pg17
     environment:
       POSTGRES_DB: functionfly
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,6 +21,51 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    command: ["postgres", "-c", "shared_preload_libraries=vector"]
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    command: [
+      "redis-server",
+      "--appendonly",
+      "yes",
+      "--maxmemory", "256mb",
+      "--maxmemory-policy", "allkeys-lru"
+    ]
+
+  clamav:
+    image: clamav/clamav:latest
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav_data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    environment:
+      - CLAMD_CONF_FILE=/etc/clamav/clamd.conf
+
+  yara:
+    build:
+      context: .
+      dockerfile: deploy/yara/Dockerfile
+    ports:
+      - "8082:8080"
+    volumes:
+      - yara_data:/data
+    environment:
+      - YARA_RULES_PATH=/data/rules
 
   orchestrator-api:
     build:
@@ -23,20 +73,136 @@ services:
       dockerfile: deploy/docker/Dockerfile.orchestrator
     ports:
       - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     environment:
+      # Development mode to bypass MFA requirement for admin routes
+      - DEVELOPMENT=true
+      # Set your Infisical service token here
+      - INFISICAL_TOKEN=${INFISICAL_TOKEN}
+      # Auth: required for login JWT signing (override in production)
+      - JWT_SECRET=${JWT_SECRET:-default-secret-key-change-in-production}
+      # Database configuration
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_NAME=functionfly
+      - DB_SSLMODE=disable
+      # Redis configuration for StateFabric caching and pub/sub
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+      # Email configuration for development (Mailpit) - these will be overridden by Infisical in production
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_USERNAME=
+      - SMTP_PASSWORD=
+      - FROM_EMAIL=noreply@functionfly.dev
+      - FROM_NAME=FunctionFly
+      - BASE_URL=http://localhost:8080
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+
+  caddy:
+    build:
+      context: .
+      dockerfile: deploy/caddy/Dockerfile
+      args:
+        - CADDY_CONFIG=${CADDY_CONFIG:-local}
+    ports:
+      - "8083:8083"
+    depends_on:
+      - orchestrator-api
+    volumes:
+      - caddy_data:/data
+    environment:
+      - CADDYPATH=/data/caddy
+      - CADDY_CONFIG=${CADDY_CONFIG:-local}
+
+  health-monitor:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.health-monitor
+    environment:
+      # Set your Infisical service token here
+      - INFISICAL_TOKEN=${INFISICAL_TOKEN}
+      # Database configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=functionfly
+      - DB_SSLMODE=disable
+      # Email configuration for development (Mailpit) - these will be overridden by Infisical in production
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_USERNAME=
+      - SMTP_PASSWORD=
+      - FROM_EMAIL=noreply@functionfly.dev
+      - FROM_NAME=FunctionFly
+      - BASE_URL=http://localhost:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025"    # SMTP port
+      - "8025:8025"    # Web interface
+    environment:
+      - MP_SMTP_AUTH_ACCEPT_ANY=1
+      - MP_SMTP_AUTH_ALLOW_INSECURE=1
+    volumes:
+      - mailpit_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8025/"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Dashboard (Vite dev server). Use when "everything on Docker":
+  #   docker compose --profile dashboard up -d
+  # Then open http://localhost:3001 (host 3001 so local "bun dev" can use 3000). API proxy forwards /api -> orchestrator-api:8080 (path /api stripped).
+  # If /v1/admin/functions returns 404, rebuild API: docker compose build orchestrator-api --no-cache
+  dashboard:
+    image: node:22-alpine
+    working_dir: /app/web/dashboard
+    command: sh -c "npm install --legacy-peer-deps && npx vite"
+    ports:
+      - "3001:3000"   # host 3001 so local "bun dev" can use 3000
+    environment:
+      - API_PROXY_TARGET=http://orchestrator-api:8080
+      - VITE_NEON_AUTH_URL=/api/v1/auth
+      - VITE_API_URL=/api
     volumes:
       - .:/app
-    command: ["go", "run", "./cmd/orchestrator-api"]
-
-  # TODO: Add health-monitor service when ready
+      # Keep container node_modules (don't use host's); avoids react-is / recharts resolution issues
+      - dashboard_node_modules:/app/web/dashboard/node_modules
+    depends_on:
+      orchestrator-api:
+        condition: service_healthy
+    profiles:
+      - dashboard
 
 volumes:
   postgres_data:
+  caddy_data:
+  mailpit_data:
+  redis_data:
+  clamav_data:
+  yara_data:
+  dashboard_node_modules:

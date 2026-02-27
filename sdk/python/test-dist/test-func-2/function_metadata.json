@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "name": "test-func-2",
+    "version": "1.0.0",
+    "description": "Test function 2.",
+    "deterministic": true,
+    "idempotent": false,
+    "pure": false,
+    "cache_ttl": null,
+    "capabilities": [],
+    "max_execution_time": null,
+    "input_schema": null,
+    "output_schema": null,
+    "source_file": "/home/micro/projects/functionfly/sdk/python/test_build_optimization.py",
+    "source_hash": "bc218525ab3bffd1f79c51faf5fcdff1979ed9ae31d72e386d550565b7288ba5",
+    "execution_mode": "deterministic"
+  },
+  "source": {
+    "code": "@flypy.function(name=\"test-func-2\")\ndef test_function_2(data: dict) -> dict:\n    \"\"\"Test function 2.\"\"\"\n    return {\"result\": data.get(\"input\", \"\") + \"_processed_2\"}\n",
+    "file": "/home/micro/projects/functionfly/sdk/python/test_build_optimization.py",
+    "dependencies": [],
+    "imports": []
+  },
+  "ast": null
+}

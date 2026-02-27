@@ -1,0 +1,12 @@
+{
+  "build_time": "2026-02-19T21:28:59-06:00",
+  "cold_start_optimized": true,
+  "determinism_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+  "mode": "deterministic",
+  "name": null,
+  "optimization_level": "balanced",
+  "source_hash": "3b2",
+  "version": "1.0.0",
+  "wasm_file": "function.wasm",
+  "wasm_size_bytes": 8
+}

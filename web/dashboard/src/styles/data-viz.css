@@ -1,0 +1,773 @@
+/* ==========================================================================
+   FunctionFly Data Visualization Styles
+   Charts, Metrics, and Status Indicators
+   ========================================================================== */
+
+/* ==========================================================================
+   Metric Cards
+   ========================================================================== */
+
+/* Metric Card Base */
+.metric-card {
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.metric-card:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-glow-sm);
+  transform: translateY(-2px);
+}
+
+[data-theme="light"] .metric-card {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .metric-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* Metric Value */
+.metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.metric-value-positive {
+  color: var(--color-success);
+}
+
+.metric-value-negative {
+  color: var(--color-error);
+}
+
+/* Metric Label */
+.metric-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Metric Change */
+.metric-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  margin-top: 0.5rem;
+}
+
+.metric-change-positive {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+}
+
+.metric-change-negative {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-error);
+}
+
+[data-theme="light"] .metric-change-positive {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+[data-theme="light"] .metric-change-negative {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Metric Icon */
+.metric-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.metric-icon-primary {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+}
+
+.metric-icon-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+}
+
+.metric-icon-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning);
+}
+
+.metric-icon-error {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-error);
+}
+
+[data-theme="light"] .metric-icon-primary {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+[data-theme="light"] .metric-icon-success {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+[data-theme="light"] .metric-icon-warning {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+[data-theme="light"] .metric-icon-error {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ==========================================================================
+   Sparklines
+   ========================================================================== */
+
+/* Sparkline Container */
+.sparkline {
+  width: 100%;
+  height: 40px;
+}
+
+/* Sparkline Path */
+.sparkline-path {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sparkline-path-positive {
+  stroke: var(--color-success);
+}
+
+.sparkline-path-negative {
+  stroke: var(--color-error);
+}
+
+.sparkline-path-neutral {
+  stroke: var(--text-accent);
+}
+
+/* Sparkline Gradient Area */
+.sparkline-area {
+  opacity: 0.2;
+}
+
+.sparkline-area-positive {
+  fill: var(--color-success);
+}
+
+.sparkline-area-negative {
+  fill: var(--color-error);
+}
+
+.sparkline-area-neutral {
+  fill: var(--text-accent);
+}
+
+/* ==========================================================================
+   Status Indicators
+   ========================================================================== */
+
+/* Status Dot */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+}
+
+.status-dot-online {
+  background: var(--color-success);
+  box-shadow: 0 0 8px var(--color-success-glow);
+}
+
+.status-dot-online::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.4;
+  animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.status-dot-offline {
+  background: var(--color-error);
+  box-shadow: 0 0 8px var(--color-error-glow);
+}
+
+.status-dot-warning {
+  background: var(--color-warning);
+  box-shadow: 0 0 8px var(--color-warning-glow);
+}
+
+.status-dot-pending {
+  background: var(--text-muted);
+}
+
+/* Status Indicator with Label */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-indicator-label {
+  color: var(--text-secondary);
+}
+
+/* Large Status Indicator */
+.status-indicator-large {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+}
+
+.status-indicator-large .status-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.status-indicator-large .status-icon-online {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+  box-shadow: 0 0 20px var(--color-success-glow);
+}
+
+.status-indicator-large .status-icon-offline {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-error);
+  box-shadow: 0 0 20px var(--color-error-glow);
+}
+
+.status-indicator-large .status-icon-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning);
+  box-shadow: 0 0 20px var(--color-warning-glow);
+}
+
+[data-theme="light"] .status-indicator-large {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .status-indicator-large .status-icon-online {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+[data-theme="light"] .status-indicator-large .status-icon-offline {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+[data-theme="light"] .status-indicator-large .status-icon-warning {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+/* ==========================================================================
+   Progress Indicators
+   ========================================================================== */
+
+/* Progress Bar */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-bar-fill-primary {
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+}
+
+.progress-bar-fill-success {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.progress-bar-fill-warning {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.progress-bar-fill-error {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+/* Progress Bar with Glow */
+.progress-bar-glow .progress-bar-fill-primary {
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+}
+
+.progress-bar-glow .progress-bar-fill-success {
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+/* Circular Progress */
+.circular-progress {
+  transform: rotate(-90deg);
+}
+
+.circular-progress-track {
+  fill: none;
+  stroke: var(--bg-tertiary);
+  stroke-width: 8;
+}
+
+.circular-progress-fill {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.circular-progress-fill-primary {
+  stroke: url(#gradient-primary);
+}
+
+.circular-progress-fill-success {
+  stroke: var(--color-success);
+}
+
+.circular-progress-fill-warning {
+  stroke: var(--color-warning);
+}
+
+.circular-progress-fill-error {
+  stroke: var(--color-error);
+}
+
+/* ==========================================================================
+   Charts
+   ========================================================================== */
+
+/* Chart Container */
+.chart-container {
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+[data-theme="light"] .chart-container {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Chart Header */
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.chart-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Chart Legend */
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.chart-legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* Chart Tooltip */
+.chart-tooltip {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  box-shadow: var(--shadow-lg);
+  font-size: 0.875rem;
+}
+
+[data-theme="light"] .chart-tooltip {
+  background: white;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.chart-tooltip-label {
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.chart-tooltip-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Activity Timeline
+   ========================================================================== */
+
+/* Timeline */
+.timeline {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border-default);
+}
+
+/* Timeline Item */
+.timeline-item {
+  position: relative;
+  padding-bottom: 1.5rem;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+/* Timeline Dot */
+.timeline-dot {
+  position: absolute;
+  left: -1.5rem;
+  top: 0.25rem;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-primary);
+}
+
+.timeline-dot-primary {
+  background: #6366f1;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+}
+
+.timeline-dot-success {
+  background: var(--color-success);
+  box-shadow: 0 0 10px var(--color-success-glow);
+}
+
+.timeline-dot-warning {
+  background: var(--color-warning);
+  box-shadow: 0 0 10px var(--color-warning-glow);
+}
+
+.timeline-dot-error {
+  background: var(--color-error);
+  box-shadow: 0 0 10px var(--color-error-glow);
+}
+
+/* Timeline Content */
+.timeline-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+[data-theme="light"] .timeline-content {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.timeline-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.timeline-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.timeline-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Provider Cards
+   ========================================================================== */
+
+/* Provider Card */
+.provider-card {
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.provider-card:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.provider-card.connected {
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 20px var(--color-success-glow);
+}
+
+[data-theme="light"] .provider-card {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .provider-card.connected {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+}
+
+/* Provider Header */
+.provider-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.provider-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.provider-icon-cloudflare {
+  background: rgba(244, 129, 32, 0.15);
+  color: #f48120;
+}
+
+.provider-icon-vercel {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--text-primary);
+}
+
+.provider-icon-fly {
+  background: rgba(123, 104, 238, 0.15);
+  color: #7b68ee;
+}
+
+[data-theme="light"] .provider-icon-vercel {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Provider Status */
+.provider-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.provider-status-connected {
+  color: var(--color-success);
+}
+
+.provider-status-disconnected {
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Health Indicators
+   ========================================================================== */
+
+/* Health Score */
+.health-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.health-score-value {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.health-score-value-excellent {
+  color: var(--color-success);
+  text-shadow: 0 0 20px var(--color-success-glow);
+}
+
+.health-score-value-good {
+  color: #3b82f6;
+}
+
+.health-score-value-warning {
+  color: var(--color-warning);
+  text-shadow: 0 0 20px var(--color-warning-glow);
+}
+
+.health-score-value-critical {
+  color: var(--color-error);
+  text-shadow: 0 0 20px var(--color-error-glow);
+}
+
+.health-score-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Health Bar */
+.health-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 9999px;
+  overflow: hidden;
+  gap: 2px;
+}
+
+.health-bar-segment {
+  flex: 1;
+  transition: all 0.3s ease;
+}
+
+.health-bar-segment-healthy {
+  background: var(--color-success);
+  box-shadow: 0 0 8px var(--color-success-glow);
+}
+
+.health-bar-segment-degraded {
+  background: var(--color-warning);
+  box-shadow: 0 0 8px var(--color-warning-glow);
+}
+
+.health-bar-segment-down {
+  background: var(--color-error);
+  box-shadow: 0 0 8px var(--color-error-glow);
+}
+
+/* ==========================================================================
+   Data Tables
+   ========================================================================== */
+
+/* Data Table Row Status */
+.table-row-status {
+  position: relative;
+}
+
+.table-row-status::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+
+.table-row-status-online::before {
+  background: var(--color-success);
+  box-shadow: 0 0 10px var(--color-success-glow);
+}
+
+.table-row-status-offline::before {
+  background: var(--color-error);
+  box-shadow: 0 0 10px var(--color-error-glow);
+}
+
+.table-row-status-warning::before {
+  background: var(--color-warning);
+  box-shadow: 0 0 10px var(--color-warning-glow);
+}
+
+/* Table Cell with Trend */
+.table-cell-trend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.table-cell-trend-up {
+  color: var(--color-success);
+}
+
+.table-cell-trend-down {
+  color: var(--color-error);
+}
+
+/* ==========================================================================
+   Pulse Animations for Data Viz
+   ========================================================================== */
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px currentColor;
+  }
+  50% {
+    box-shadow: 0 0 20px currentColor, 0 0 30px currentColor;
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}

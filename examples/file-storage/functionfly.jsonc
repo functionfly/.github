@@ -1,0 +1,16 @@
+{
+  "name": "file-storage",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "description": "Example function demonstrating storage capability",
+  "entry": "main.py",
+  "handler": "handler",
+  "memory": "128MB",
+  "timeout": "5s",
+  "capabilities": [
+    "storage"
+  ],
+  "environment": {
+    "STORAGE_FILE": "data.json"
+  }
+}

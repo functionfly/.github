@@ -1,0 +1,250 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const title = "Serverless Outage Postmortem Template - FunctionFly";
+const description = "A comprehensive template for documenting serverless outages. Learn from incidents and prevent future failures with this detailed postmortem framework.";
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Serverless Outage Postmortem Template",
+  "description": "Comprehensive template for documenting serverless outages with sections for impact, timeline, root cause, and prevention measures.",
+  "author": {
+    "@type": "Organization",
+    "name": "FunctionFly"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "FunctionFly"
+  },
+  "datePublished": "2024-01-15",
+  "dateModified": "2024-01-15",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://functionfly.com/tools/outage-postmortem-template"
+  }
+};
+---
+
+<BaseLayout title={title} description={description} structuredData={structuredData}>
+  <main class="min-h-screen">
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary py-24">
+      <div class="absolute inset-0 bg-grid-pattern opacity-5"></div>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center">
+          <h1 class="text-5xl md:text-6xl font-bold text-text-primary mb-6">
+            Serverless Outage
+            <span class="text-accent-primary block">Postmortem Template</span>
+          </h1>
+          <p class="text-xl md:text-2xl text-text-secondary mb-8 max-w-3xl mx-auto">
+            A comprehensive framework for documenting incidents, learning from failures, and preventing future outages.
+          </p>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="#template" class="bg-accent-primary hover:bg-accent-primary/90 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors">
+              View Template
+            </a>
+            <a href="/tools/outage-postmortem-template.pdf" download class="border border-text-secondary hover:border-accent-primary text-text-primary hover:text-accent-primary px-8 py-4 rounded-lg font-semibold text-lg transition-colors">
+              Download PDF
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Template Content -->
+    <section id="template" class="py-24">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-bg-secondary rounded-xl p-8 border border-text-secondary/20">
+          <h2 class="text-3xl font-bold text-text-primary mb-8">Postmortem Template</h2>
+
+          <!-- Incident Summary -->
+          <div class="mb-8">
+            <h3 class="text-2xl font-semibold text-text-primary mb-4">1. Incident Summary</h3>
+            <div class="bg-bg-primary rounded-lg p-6 border border-text-secondary/20">
+              <h4 class="font-semibold text-accent-primary mb-2">Title</h4>
+              <p class="text-text-secondary mb-4">[Brief, descriptive title of the incident]</p>
+
+              <h4 class="font-semibold text-accent-primary mb-2">Duration</h4>
+              <p class="text-text-secondary mb-4">[Start time] to [End time] ([Total duration])</p>
+
+              <h4 class="font-semibold text-accent-primary mb-2">Impact</h4>
+              <ul class="text-text-secondary space-y-1">
+                <li>• [Percentage/number of affected users]</li>
+                <li>• [Business impact: revenue loss, user experience, etc.]</li>
+                <li>• [Technical impact: error rates, latency, etc.]</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Timeline -->
+          <div class="mb-8">
+            <h3 class="text-2xl font-semibold text-text-primary mb-4">2. Timeline</h3>
+            <div class="bg-bg-primary rounded-lg p-6 border border-text-secondary/20">
+              <div class="space-y-4">
+                <div class="border-l-4 border-accent-primary pl-4">
+                  <div class="font-semibold text-accent-primary">[Time] - Incident Started</div>
+                  <p class="text-text-secondary">[What happened and how it was detected]</p>
+                </div>
+                <div class="border-l-4 border-text-secondary pl-4">
+                  <div class="font-semibold text-text-primary">[Time] - Initial Response</div>
+                  <p class="text-text-secondary">[Who responded and what actions were taken]</p>
+                </div>
+                <div class="border-l-4 border-green-500 pl-4">
+                  <div class="font-semibold text-green-400">[Time] - Incident Resolved</div>
+                  <p class="text-text-secondary">[Final resolution and service restoration]</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Root Cause -->
+          <div class="mb-8">
+            <h3 class="text-2xl font-semibold text-text-primary mb-4">3. Root Cause Analysis</h3>
+            <div class="bg-bg-primary rounded-lg p-6 border border-text-secondary/20">
+              <h4 class="font-semibold text-accent-primary mb-2">Technical Root Cause</h4>
+              <p class="text-text-secondary mb-4">[Detailed technical explanation of what caused the incident]</p>
+
+              <h4 class="font-semibold text-accent-primary mb-2">Contributing Factors</h4>
+              <ul class="text-text-secondary space-y-1 mb-4">
+                <li>• [Factor 1 and how it contributed]</li>
+                <li>• [Factor 2 and how it contributed]</li>
+                <li>• [Human factors, if applicable]</li>
+              </ul>
+
+              <h4 class="font-semibold text-accent-primary mb-2">Impact Radius</h4>
+              <p class="text-text-secondary">[Which systems, services, or user segments were affected]</p>
+            </div>
+          </div>
+
+          <!-- Resolution -->
+          <div class="mb-8">
+            <h3 class="text-2xl font-semibold text-text-primary mb-4">4. Resolution & Recovery</h3>
+            <div class="bg-bg-primary rounded-lg p-6 border border-text-secondary/20">
+              <h4 class="font-semibold text-accent-primary mb-2">Immediate Actions</h4>
+              <ul class="text-text-secondary space-y-1 mb-4">
+                <li>• [Step 1 taken to resolve]</li>
+                <li>• [Step 2 taken to resolve]</li>
+                <li>• [Verification that service was restored]</li>
+              </ul>
+
+              <h4 class="font-semibold text-accent-primary mb-2">Verification</h4>
+              <p class="text-text-secondary">[How the resolution was tested and confirmed]</p>
+            </div>
+          </div>
+
+          <!-- Prevention -->
+          <div class="mb-8">
+            <h3 class="text-2xl font-semibold text-text-primary mb-4">5. Prevention & Improvements</h3>
+            <div class="bg-bg-primary rounded-lg p-6 border border-text-secondary/20">
+              <h4 class="font-semibold text-accent-primary mb-2">Short-term Fixes</h4>
+              <ul class="text-text-secondary space-y-1 mb-4">
+                <li>• [Immediate fix 1 with timeline]</li>
+                <li>• [Immediate fix 2 with timeline]</li>
+                <li>• [Monitoring improvements]</li>
+              </ul>
+
+              <h4 class="font-semibold text-accent-primary mb-2">Long-term Improvements</h4>
+              <ul class="text-text-secondary space-y-1 mb-4">
+                <li>• [Architectural change 1]</li>
+                <li>• [Process improvement 2]</li>
+                <li>• [Additional redundancy measures]</li>
+              </ul>
+
+              <h4 class="font-semibold text-accent-primary mb-2">Success Metrics</h4>
+              <p class="text-text-secondary">[How to measure if these improvements prevent similar incidents]</p>
+            </div>
+          </div>
+
+          <!-- Lessons Learned -->
+          <div class="mb-8">
+            <h3 class="text-2xl font-semibold text-text-primary mb-4">6. Lessons Learned</h3>
+            <div class="bg-bg-primary rounded-lg p-6 border border-text-secondary/20">
+              <h4 class="font-semibold text-accent-primary mb-2">What Went Well</h4>
+              <ul class="text-text-secondary space-y-1 mb-4">
+                <li>• [Positive aspect of response]</li>
+                <li>• [Effective communication]</li>
+                <li>• [Quick detection/monitoring that worked]</li>
+              </ul>
+
+              <h4 class="font-semibold text-accent-primary mb-2">What Could Be Improved</h4>
+              <ul class="text-text-secondary space-y-1 mb-4">
+                <li>• [Process that was slow or ineffective]</li>
+                <li>• [Communication that could be better]</li>
+                <li>• [Technical gap that was exposed]</li>
+              </ul>
+
+              <h4 class="font-semibold text-accent-primary mb-2">Action Items</h4>
+              <div class="space-y-2">
+                <div class="flex justify-between items-center p-3 bg-bg-secondary rounded">
+                  <span class="text-text-secondary">[Action item description]</span>
+                  <span class="text-accent-primary font-semibold">Owner: [Name]</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-bg-secondary rounded">
+                  <span class="text-text-secondary">[Action item description]</span>
+                  <span class="text-accent-primary font-semibold">Owner: [Name]</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Download Section -->
+        <div class="mt-12 text-center">
+          <div class="bg-accent-primary/10 rounded-xl p-8 border border-accent-primary/20">
+            <h3 class="text-2xl font-bold text-text-primary mb-4">Get the Complete Template</h3>
+            <p class="text-text-secondary mb-6">
+              Download the full postmortem template with additional sections, checklists, and formatting guidelines.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+              <a href="/tools/outage-postmortem-template.docx" download class="bg-accent-primary hover:bg-accent-primary/90 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                Download Word Doc
+              </a>
+              <a href="/tools/outage-postmortem-template.md" download class="border border-text-secondary hover:border-accent-primary text-text-primary hover:text-accent-primary px-6 py-3 rounded-lg font-semibold transition-colors">
+                Download Markdown
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Related Resources -->
+    <section class="py-24 bg-bg-secondary">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+          <h2 class="text-4xl font-bold text-text-primary mb-4">Related Resources</h2>
+          <p class="text-xl text-text-secondary max-w-2xl mx-auto">
+            More tools and templates to improve your serverless reliability practices.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="bg-bg-primary rounded-xl p-6 border border-text-secondary/20">
+            <h3 class="text-xl font-bold text-text-primary mb-3">Failover Readiness Checklist</h3>
+            <p class="text-text-secondary mb-4">A comprehensive checklist to ensure your multi-cloud setup is production-ready.</p>
+            <a href="/tools/failover-readiness-checklist" class="text-accent-primary hover:text-accent-primary/80 font-semibold">
+              View Checklist →
+            </a>
+          </div>
+
+          <div class="bg-bg-primary rounded-xl p-6 border border-text-secondary/20">
+            <h3 class="text-xl font-bold text-text-primary mb-3">Chaos Engineering Playbook</h3>
+            <p class="text-text-secondary mb-4">Step-by-step guide to testing your system's resilience under failure conditions.</p>
+            <a href="/tools/chaos-engineering-playbook" class="text-accent-primary hover:text-accent-primary/80 font-semibold">
+              View Playbook →
+            </a>
+          </div>
+
+          <div class="bg-bg-primary rounded-xl p-6 border border-text-secondary/20">
+            <h3 class="text-xl font-bold text-text-primary mb-3">Serverless Monitoring Guide</h3>
+            <p class="text-text-secondary mb-4">Essential metrics and alerts to monitor for serverless application health.</p>
+            <a href="/docs/monitoring" class="text-accent-primary hover:text-accent-primary/80 font-semibold">
+              View Guide →
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

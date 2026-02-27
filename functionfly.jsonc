@@ -1,0 +1,12 @@
+{
+  "$schema": "https://functionfly.com/schemas/functionfly.json",
+  "name": "test-python",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "public": true,
+  "deterministic": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "description": "Convert string to URL-friendly slug"
+}

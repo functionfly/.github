@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: functionfly-postgres-prod
+    environment:
+      POSTGRES_DB: functionfly_prod
+      POSTGRES_USER: functionfly_prod
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./deploy/database/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - postgres_prod_backups:/var/backups
+    ports:
+      - "127.0.0.1:5432:5432"  # Only expose locally for security
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U functionfly_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+
+  # Read replica for better read performance
+  postgres-replica:
+    image: postgres:17
+    container_name: functionfly-postgres-replica
+    environment:
+      POSTGRES_DB: functionfly_prod
+      POSTGRES_USER: functionfly_prod
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # Replica configuration
+      REPLICATION_MODE: replica
+      PRIMARY_CONNINFO: "host=postgres port=5432 user=functionfly_prod password=${DB_PASSWORD} dbname=functionfly_prod"
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+      - ./deploy/database/postgresql-replica.conf:/etc/postgresql/postgresql.conf:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5433:5432"  # Read replica on port 5433
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U functionfly_prod -h localhost -p 5432"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+
+  # Backup service
+  postgres-backup:
+    image: postgres:17
+    container_name: functionfly-postgres-backup
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - PGPASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_prod_backups:/backups
+      - ./scripts/backup-database.sh:/backup-database.sh:ro
+    command: >
+      sh -c "
+        echo '0 2 * * * /backup-database.sh production' > /etc/crontabs/root &&
+        crond -f -l 8
+      "
+    networks:
+      - functionfly-prod
+    restart: unless-stopped
+
+  # PgBouncer connection pooler
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: functionfly-pgbouncer
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=functionfly_prod
+      - DB_PASSWORD=${DB_PASSWORD}
+      - POOL_MODE=transaction  # Better for web apps than session pooling
+      - MAX_CLIENT_CONN=1000
+      - DEFAULT_POOL_SIZE=20
+      - MIN_POOL_SIZE=5
+      - RESERVE_POOL_SIZE=5
+      - RESERVE_POOL_TIMEOUT=3
+      - MAX_DB_CONNECTIONS=50
+      - MAX_USER_CONNECTIONS=100
+      - QUERY_WAIT_TIMEOUT=120  # Wait up to 2 minutes for a connection
+      - IDLE_TRANSACTION_TIMEOUT=300  # Close idle transactions after 5 minutes
+      - SERVER_IDLE_TIMEOUT=600  # Close server connections after 10 minutes of inactivity
+      - SERVER_LIFETIME=3600  # Recycle server connections after 1 hour
+    ports:
+      - "127.0.0.1:6432:6432"  # PgBouncer port
+    healthcheck:
+      test: ["CMD-SHELL", "psql -h localhost -p 6432 -U functionfly_prod -d functionfly_prod -c 'SELECT 1'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - functionfly-prod
+    restart: unless-stopped
+
+volumes:
+  postgres_prod_data:
+    driver: local
+  postgres_replica_data:
+    driver: local
+  postgres_prod_backups:
+    driver: local
+
+networks:
+  functionfly-prod:
+    driver: bridge

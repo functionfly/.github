@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "json-to-csv",
+  "version": "1.0.0",
+  "manifest": {
+    "name": "json-to-csv",
+    "version": "1.0.0",
+    "runtime": "python3.11",
+    "description": "Convert JSON array to CSV format",
+    "handler": "handler"
+  },
+  "source": {
+    "code": "import csv\nimport io\nimport json\n\ndef handler(event):\n    # Handle direct list input\n    if isinstance(event, list):\n        data = event\n    # Handle dict input with data key\n    elif isinstance(event, dict):\n        data = event.get(\"data\", [])\n    else:\n        return {\"error\": \"Input must be a list or dict with data key\"}\n\n    if not data:\n        return {\"csv\": \"\", \"rows\": 0}\n\n    # Get field names from first object\n    if isinstance(data[0], dict):\n        fieldnames = list(data[0].keys())\n    else:\n        return {\"error\": \"Array items must be objects\"}\n\n    # Create CSV\n    output = io.StringIO()\n    writer = csv.DictWriter(output, fieldnames=fieldnames)\n    writer.writeheader()\n    for row in data:\n        writer.writerow(row)\n\n    return {\"csv\": output.getvalue(), \"rows\": len(data)}",
+    "runtime": "python3.11"
+  },
+  "description": "Convert JSON array to CSV format",
+  "tags": ["json", "csv", "convert", "data", "format"],
+  "visibility": "public",
+  "pricing": {
+    "type": "free"
+  }
+}

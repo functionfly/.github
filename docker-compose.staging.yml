@@ -1,0 +1,187 @@
+version: '3.8'
+
+services:
+  # Neon Postgres is cloud-hosted, so we don't need a local database container
+  # Database connection configured via environment variables to Neon staging branch
+
+  orchestrator-api:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.orchestrator
+    container_name: functionfly-orchestrator-staging
+    ports:
+      - "8082:8080"  # Different port to avoid conflicts with dev/production
+    environment:
+      # Staging environment configuration
+      - NODE_ENV=staging
+      - ENVIRONMENT=staging
+      # Database configuration (Neon staging branch)
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_SSLMODE=${DB_SSLMODE}
+      # Disable Supabase for staging
+      - USE_SUPABASE=false
+      # Email configuration for staging (uses external SMTP)
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - FROM_EMAIL=${FROM_EMAIL}
+      - FROM_NAME=${FROM_NAME}
+      # Staging-specific URLs
+      - BASE_URL=${BASE_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      # JWT and security
+      - JWT_SECRET=${JWT_SECRET}
+      - API_SHARED_SECRET=${API_SHARED_SECRET}
+      # Rate limiting (more permissive for staging)
+      - RATE_LIMIT_REQUESTS=200
+      - RATE_LIMIT_WINDOW_SECONDS=60
+      # CORS for staging
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - CORS_ALLOWED_METHODS=GET, POST, PUT, PATCH, DELETE, OPTIONS
+      - CORS_ALLOWED_HEADERS=Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info
+      # Security headers
+      - CONTENT_SECURITY_POLICY=default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:;
+      - HSTS_MAX_AGE=31536000
+      # Advanced security (enabled for staging testing)
+      - ADVANCED_SECURITY_SLIDING_WINDOW_LIMIT=200
+      - ADVANCED_SECURITY_SLIDING_WINDOW_MINUTES=1
+      - ADVANCED_SECURITY_TOKEN_BUCKET_RATE=20.0
+      - ADVANCED_SECURITY_TOKEN_BUCKET_BURST=40
+      - ADVANCED_SECURITY_ENABLE_BOT_DETECTION=true
+      - ADVANCED_SECURITY_ENABLE_TRAFFIC_ANALYSIS=true
+      - ADVANCED_SECURITY_SUSPICIOUS_THRESHOLD=15
+      - ADVANCED_SECURITY_BLOCK_MINUTES=30
+      - ADVANCED_SECURITY_CIRCUIT_BREAKER_THRESHOLD=0.7
+      - ADVANCED_SECURITY_CIRCUIT_BREAKER_MINUTES=2
+      - ADVANCED_SECURITY_QUEUE_SIZE=2000
+      - ADVANCED_SECURITY_QUEUE_SECONDS=60
+      - ADVANCED_SECURITY_BLOCKED_COUNTRIES=
+      - ADVANCED_SECURITY_BLOCKED_IPS=
+      - ADVANCED_SECURITY_ALLOWED_IPS=
+      - ADVANCED_SECURITY_ENABLE_SQL_INJECTION_FILTER=true
+      - ADVANCED_SECURITY_ENABLE_XSS_FILTER=true
+      - ADVANCED_SECURITY_ENABLE_PATH_TRAVERSAL_FILTER=true
+      - ADVANCED_SECURITY_METRICS_ENABLED=true
+      # Database encryption (staging uses same keys as production for testing)
+      - DB_ENCRYPTION_ENABLED=true
+      - DB_MASTER_KEY_PASSWORD=${DB_MASTER_KEY_PASSWORD}
+      # Archive storage (disabled in staging to reduce costs)
+      - ARCHIVE_ENABLED=false
+      - ARCHIVE_RETENTION_DAYS=30
+      - ARCHIVE_CLEANUP_INTERVAL_HOURS=24
+      # Redis for artifact storage (staging can use local Redis or external)
+      - REDIS_ADDR=${REDIS_ADDR}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=1  # Different DB than production
+      - ARTIFACT_TTL=24h  # Shorter TTL for staging
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - functionfly-staging
+    # Resource limits for staging
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Redis for artifact storage in staging
+  redis:
+    image: redis:7-alpine
+    container_name: functionfly-redis-staging
+    ports:
+      - "127.0.0.1:6380:6379"  # Different port than dev/production
+    volumes:
+      - redis_staging_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - functionfly-staging
+    restart: unless-stopped
+
+  # Caddy reverse proxy for staging
+  caddy:
+    build:
+      context: .
+      dockerfile: deploy/caddy/Dockerfile
+    container_name: functionfly-caddy-staging
+    ports:
+      - "8083:80"   # Different port for staging
+      - "8444:443"  # Different SSL port for staging
+    depends_on:
+      - orchestrator-api
+    volumes:
+      - caddy_staging_data:/data
+      - ./deploy/caddy/staging.Caddyfile:/etc/caddy/Caddyfile:ro
+    environment:
+      - CADDYPATH=/data/caddy
+    networks:
+      - functionfly-staging
+    restart: unless-stopped
+
+  # Health monitor for staging
+  health-monitor:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.health-monitor
+    container_name: functionfly-health-monitor-staging
+    environment:
+      # Staging environment configuration
+      - NODE_ENV=staging
+      - ENVIRONMENT=staging
+      # Database configuration (Neon staging branch)
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_SSLMODE=${DB_SSLMODE}
+      # Disable Supabase for staging
+      - USE_SUPABASE=false
+      # Email configuration for staging
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - FROM_EMAIL=${FROM_EMAIL}
+      - FROM_NAME=${FROM_NAME}
+      # Staging-specific URLs
+      - BASE_URL=${BASE_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      # JWT and security
+      - JWT_SECRET=${JWT_SECRET}
+      - API_SHARED_SECRET=${API_SHARED_SECRET}
+    depends_on:
+      - orchestrator-api
+      - redis
+    networks:
+      - functionfly-staging
+    restart: unless-stopped
+
+volumes:
+  redis_staging_data:
+    driver: local
+  caddy_staging_data:
+    driver: local
+
+networks:
+  functionfly-staging:
+    driver: bridge
+    name: functionfly-staging

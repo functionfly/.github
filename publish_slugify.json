@@ -1,0 +1,16 @@
+{
+  "author": "functionfly",
+  "name": "slugify",
+  "version": "1.0.0",
+  "manifest": {
+    "name": "slugify",
+    "version": "1.0.0",
+    "runtime": "python3.11",
+    "description": "Convert text to a URL-friendly slug (lowercase, hyphens, no special chars)",
+    "handler": "handler"
+  },
+  "source": {
+    "code": "import re\n\ndef handler(event):\n    if isinstance(event, dict):\n        text = event.get(\"text\", \"\")\n        separator = str(event.get(\"separator\", \"-\")).strip() or \"-\"\n        max_length = event.get(\"max_length\", 0)\n        try:\n            max_length = int(max_length)\n        except (TypeError, ValueError):\n            max_length = 0\n    else:\n        text = str(event)\n        separator = \"-\"\n        max_length = 0\n\n    if text is None or (isinstance(text, str) and not text.strip()):\n        return {\"ok\": False, \"error\": \"Input 'text' is required and cannot be empty\"}\n\n    s = str(text).lower().strip()\n    s = re.sub(r\"[^a-z0-9\\s-]\", \"\", s)\n    s = re.sub(r\"[-\\s]+\", separator, s).strip(separator)\n    if max_length > 0:\n        s = s[:max_length].rstrip(separator)\n\n    return {\"ok\": True, \"slug\": s}\n",
+    "runtime": "python3.11"
+  }
+}

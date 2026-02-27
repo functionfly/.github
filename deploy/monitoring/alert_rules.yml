@@ -1,0 +1,104 @@
+groups:
+  - name: functionfly.alerts
+    rules:
+      # Security Alerts
+      - alert: SecurityEventDetected
+        expr: functionfly_security_events_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Security event detected"
+          description: "A security event has been detected in FunctionFly"
+
+      - alert: SQLInjectionAttempt
+        expr: functionfly_sql_injection_attempts_total > 0
+        for: 30s
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "SQL Injection Attempt Detected"
+          description: "Potential SQL injection attack detected"
+
+      - alert: XSSAttempt
+        expr: functionfly_xss_attempts_total > 0
+        for: 30s
+        labels:
+          severity: high
+          category: security
+        annotations:
+          summary: "XSS Attempt Detected"
+          description: "Potential cross-site scripting attack detected"
+
+      - alert: BruteForceAttack
+        expr: rate(functionfly_failed_auth_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: high
+          category: security
+        annotations:
+          summary: "Brute Force Attack Detected"
+          description: "Multiple failed authentication attempts detected"
+
+      - alert: SuspiciousTrafficSpike
+        expr: rate(functionfly_requests_total[2m]) > 3 * rate(functionfly_requests_total[10m])
+        for: 1m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Unusual Traffic Spike"
+          description: "Significant increase in traffic detected"
+
+      - alert: DatabaseEncryptionFailure
+        expr: functionfly_encryption_status == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Database Encryption Failure"
+          description: "Database encryption is not functioning properly"
+
+      - alert: ComplianceViolation
+        expr: functionfly_compliance_violations_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: compliance
+        annotations:
+          summary: "Compliance Violation Detected"
+          description: "A compliance requirement violation has been detected"
+
+      # Performance Alerts
+      - alert: HighErrorRate
+        expr: rate(functionfly_http_requests_total{status=~"5.."}[5m]) / rate(functionfly_http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High Error Rate"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(functionfly_http_request_duration_seconds_bucket[5m])) > 1.0
+        for: 3m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High Response Latency"
+          description: "95th percentile response time is {{ $value }}s"
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: error
+          category: availability
+        annotations:
+          summary: "Service Down"
+          description: "{{ $labels.job }} service is down"

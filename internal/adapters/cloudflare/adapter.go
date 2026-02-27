@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	ProviderName = "workers"
+	ProviderName   = "workers"
 	RequestTimeout = 30 * time.Second
 )
 
@@ -62,7 +62,7 @@ func (a *CloudflareAdapter) ValidateConfig(region, urlStr string) error {
 
 	// Check if it's a workers.dev subdomain or custom domain
 	if !strings.HasSuffix(parsedURL.Host, ".workers.dev") &&
-	   !strings.Contains(parsedURL.Host, ".") {
+		!strings.Contains(parsedURL.Host, ".") {
 		return fmt.Errorf("URL must be a workers.dev subdomain or custom domain, got: %s", parsedURL.Host)
 	}
 
@@ -76,14 +76,14 @@ func (a *CloudflareAdapter) ValidateConfig(region, urlStr string) error {
 // GetRegions returns available Cloudflare Workers regions
 func (a *CloudflareAdapter) GetRegions() []string {
 	return []string{
-		"us-east-1",    // Northern Virginia
-		"us-west-1",    // Northern California
-		"eu-west-1",    // Ireland
+		"us-east-1",      // Northern Virginia
+		"us-west-1",      // Northern California
+		"eu-west-1",      // Ireland
 		"ap-southeast-1", // Singapore
 		"ap-northeast-1", // Tokyo
 		"ap-southeast-2", // Sydney
-		"sa-east-1",    // São Paulo
-		"af-south-1",   // Cape Town
+		"sa-east-1",      // São Paulo
+		"af-south-1",     // Cape Town
 	}
 }
 
@@ -145,9 +145,9 @@ func (a *CloudflareAdapter) HealthCheck(ctx context.Context, backend *storage.Ba
 // SignRequest adds Cloudflare-specific headers and request signing
 func (a *CloudflareAdapter) SignRequest(req *http.Request, backend *storage.Backend, timestamp time.Time) error {
 	// Add Cloudflare-specific headers that Workers expect
-	req.Header.Set("CF-Ray", "") // Will be set by Cloudflare
+	req.Header.Set("CF-Ray", "")           // Will be set by Cloudflare
 	req.Header.Set("CF-Connecting-IP", "") // Will be set by Cloudflare
-	req.Header.Set("CF-IPCountry", "") // Will be set by Cloudflare
+	req.Header.Set("CF-IPCountry", "")     // Will be set by Cloudflare
 
 	// Add FunctionFly request signing
 	return a.signer.SignRequest(req, backend.SharedSecret, timestamp)
@@ -156,4 +156,213 @@ func (a *CloudflareAdapter) SignRequest(req *http.Request, backend *storage.Back
 // GetRequestTimeout returns the recommended timeout for Cloudflare Workers requests
 func (a *CloudflareAdapter) GetRequestTimeout() time.Duration {
 	return RequestTimeout
+}
+
+// Deploy implements the DeploymentAdapter interface
+func (a *CloudflareAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
+	// Extract standardized and Cloudflare-specific config
+	var accountID, apiToken, scriptName string
+	if spec.ProviderConfig != nil {
+		if aid, ok := spec.ProviderConfig["account_id"].(string); ok {
+			accountID = aid
+		}
+		if token, ok := spec.ProviderConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := spec.ProviderConfig["script_name"].(string); ok {
+			scriptName = name
+		}
+	}
+
+	// Use standardized app name as fallback for script name if not specified
+	if scriptName == "" && spec.AppName != "" {
+		scriptName = spec.AppName
+	}
+
+	if accountID == "" || apiToken == "" || scriptName == "" {
+		return nil, fmt.Errorf("missing required Cloudflare config: account_id, api_token, script_name")
+	}
+
+	client := NewCloudflareDeploymentClient(apiToken, accountID)
+
+	// Deploy the script
+	result, err := client.Deploy(ctx, spec.Artifact, scriptName)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("deployment failed: %v", err),
+		}, nil
+	}
+
+	// Set environment variables if provided
+	if len(spec.EnvVars) > 0 || len(spec.Secrets) > 0 {
+		if err := client.SetEnvironmentVariables(ctx, scriptName, spec.EnvVars, spec.Secrets); err != nil {
+			return &common.DeploymentResult{
+				Status:  common.DeploymentStatusFailed,
+				Message: fmt.Sprintf("failed to set environment variables: %v", err),
+			}, nil
+		}
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID: result.DeploymentID,
+		Status:       result.Status,
+		Message:      result.Message,
+		Metadata:     result.Metadata,
+	}, nil
+}
+
+// SetEnv implements the DeploymentAdapter interface
+func (a *CloudflareAdapter) SetEnv(ctx context.Context, deploymentID string, providerConfig map[string]interface{}, envVars, secrets map[string]string) error {
+	// Extract Cloudflare-specific config
+	var accountID, apiToken, scriptName string
+	if providerConfig != nil {
+		if aid, ok := providerConfig["account_id"].(string); ok {
+			accountID = aid
+		}
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := providerConfig["script_name"].(string); ok {
+			scriptName = name
+		}
+	}
+
+	if accountID == "" || apiToken == "" || scriptName == "" {
+		return fmt.Errorf("missing required Cloudflare config: account_id, api_token, script_name")
+	}
+
+	client := NewCloudflareDeploymentClient(apiToken, accountID)
+	return client.SetEnvironmentVariables(ctx, scriptName, envVars, secrets)
+}
+
+// BindRoutes implements the DeploymentAdapter interface
+func (a *CloudflareAdapter) BindRoutes(ctx context.Context, deploymentID string, providerConfig map[string]interface{}, routes []common.RouteBinding) error {
+	// Extract Cloudflare-specific config
+	var accountID, apiToken, zoneID string
+	if providerConfig != nil {
+		if aid, ok := providerConfig["account_id"].(string); ok {
+			accountID = aid
+		}
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if zid, ok := providerConfig["zone_id"].(string); ok {
+			zoneID = zid
+		}
+	}
+
+	if accountID == "" || apiToken == "" || zoneID == "" {
+		return fmt.Errorf("missing required Cloudflare config: account_id, api_token, zone_id")
+	}
+
+	client := NewCloudflareDeploymentClient(apiToken, accountID)
+
+	// Convert RouteBinding to string routes
+	var routePatterns []string
+	for _, route := range routes {
+		routePatterns = append(routePatterns, route.Pattern)
+	}
+
+	return client.BindRoutes(ctx, zoneID, deploymentID, routePatterns)
+}
+
+// GetDeploymentStatus implements the DeploymentAdapter interface
+func (a *CloudflareAdapter) GetDeploymentStatus(ctx context.Context, deploymentID string, providerConfig map[string]interface{}) (common.DeploymentStatus, error) {
+	// Extract Cloudflare-specific config
+	var accountID, apiToken string
+	if providerConfig != nil {
+		if aid, ok := providerConfig["account_id"].(string); ok {
+			accountID = aid
+		}
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+	}
+
+	if accountID == "" || apiToken == "" {
+		return common.DeploymentStatusFailed, fmt.Errorf("missing required Cloudflare config: account_id, api_token")
+	}
+
+	client := NewCloudflareDeploymentClient(apiToken, accountID)
+	return client.GetDeploymentStatus(ctx, deploymentID)
+}
+
+// Rollback implements the DeploymentAdapter interface
+func (a *CloudflareAdapter) Rollback(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
+	// Extract Cloudflare-specific config from provider config
+	var accountID, apiToken, scriptName string
+	if spec.ProviderConfig != nil {
+		if aid, ok := spec.ProviderConfig["account_id"].(string); ok {
+			accountID = aid
+		}
+		if token, ok := spec.ProviderConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := spec.ProviderConfig["script_name"].(string); ok {
+			scriptName = name
+		}
+	}
+
+	if accountID == "" || apiToken == "" || scriptName == "" {
+		return nil, fmt.Errorf("missing required Cloudflare config: account_id, api_token, script_name")
+	}
+
+	// For Cloudflare rollback, we redeploy the previous artifact
+	client := NewCloudflareDeploymentClient(apiToken, accountID)
+	return client.Rollback(ctx, spec.Artifact, scriptName)
+}
+
+// DeployBlueGreen performs a blue/green deployment with DNS switching
+func (a *CloudflareAdapter) DeployBlueGreen(ctx context.Context, spec *common.DeploymentSpec, zoneID, domain string, enableProxied bool) (*common.DeploymentResult, error) {
+	// Extract Cloudflare-specific config
+	var accountID, apiToken, scriptName string
+	if spec.ProviderConfig != nil {
+		if aid, ok := spec.ProviderConfig["account_id"].(string); ok {
+			accountID = aid
+		}
+		if token, ok := spec.ProviderConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := spec.ProviderConfig["script_name"].(string); ok {
+			scriptName = name
+		}
+	}
+
+	// Use standardized app name as fallback
+	if scriptName == "" && spec.AppName != "" {
+		scriptName = spec.AppName
+	}
+
+	if accountID == "" || apiToken == "" || scriptName == "" {
+		return nil, fmt.Errorf("missing required Cloudflare config: account_id, api_token, script_name")
+	}
+
+	if zoneID == "" || domain == "" {
+		return nil, fmt.Errorf("missing required blue/green config: zone_id, domain")
+	}
+
+	client := NewCloudflareDeploymentClient(apiToken, accountID)
+
+	// Perform blue/green deployment
+	result, err := client.DeployBlueGreen(ctx, spec.Artifact, scriptName, zoneID, domain, enableProxied)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("blue/green deployment failed: %v", err),
+		}, nil
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID: result.ActiveDeployment,
+		Status:       common.DeploymentStatusSuccess,
+		Message:      fmt.Sprintf("Blue/Green deployment complete: %s is now active", result.ActiveDeployment),
+		Metadata: map[string]interface{}{
+			"blue_deployment":  result.BlueDeploymentID,
+			"green_deployment": result.GreenDeploymentID,
+			"active_color":     result.ActiveDeployment,
+			"dns_switched":     result.DNSSwitched,
+			"switched_at":      result.SwitchedAt.Format(time.RFC3339),
+		},
+	}, nil
 }

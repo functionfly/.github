@@ -1,0 +1,133 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PortableText from '../../components/PortableText.astro';
+import { sanityClient, queries, urlFor } from '../../lib/sanity';
+
+export async function getStaticPaths() {
+  const docs = await sanityClient.fetch(queries.docs);
+  return docs.map((doc) => ({
+    params: { slug: doc.slug.current },
+    props: { doc },
+  }));
+}
+
+const { doc } = Astro.props;
+
+const title = doc.seoTitle || doc.title;
+const description = doc.seoDescription || doc.description;
+
+// Structured data for SEO
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": doc.title,
+  "description": doc.description,
+  "publisher": {
+    "@type": "Organization",
+    "name": "FunctionFly"
+  },
+  "datePublished": doc.publishedAt,
+  "dateModified": doc.updatedAt || doc.publishedAt,
+};
+---
+
+<BaseLayout title={title} description={description} structuredData={structuredData}>
+  <main class="min-h-screen">
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary py-16">
+      <div class="absolute inset-0 bg-grid-pattern opacity-5"></div>
+      <div class="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center">
+          <div class="mb-4">
+            <span class="bg-accent-primary/10 text-accent-primary px-3 py-1 rounded-full text-sm font-medium">
+              {doc.category?.title || 'Documentation'}
+            </span>
+          </div>
+
+          <h1 class="text-3xl md:text-4xl font-bold text-text-primary mb-4">
+            {doc.title}
+          </h1>
+
+          <p class="text-lg text-text-secondary mb-6 max-w-2xl mx-auto">
+            {doc.description}
+          </p>
+
+          {doc.updatedAt && (
+            <div class="text-sm text-text-secondary">
+              Last updated: {new Date(doc.updatedAt).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </div>
+          )}
+
+          {doc.tags && doc.tags.length > 0 && (
+            <div class="flex gap-2 justify-center mt-4">
+              {doc.tags.map((tag) => (
+                <span class="bg-bg-primary text-text-secondary px-2 py-1 rounded text-xs">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+
+    <!-- Article Content -->
+    <article class="py-16">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {doc.heroImage && (
+          <div class="mb-8">
+            <img
+              src={urlFor(doc.heroImage).width(1200).height(400).fit('crop').url()}
+              alt={doc.heroImage.alt || doc.title}
+              class="w-full h-64 object-cover rounded-lg"
+            />
+            {doc.heroImage.caption && (
+              <p class="text-sm text-text-secondary mt-2 text-center italic">
+                {doc.heroImage.caption}
+              </p>
+            )}
+          </div>
+        )}
+
+        <div class="prose prose-lg prose-invert max-w-none">
+          <PortableText value={doc.body} />
+        </div>
+
+        <!-- Navigation -->
+        <div class="mt-12 pt-8 border-t border-text-secondary/20">
+          <div class="flex justify-between items-center">
+            <div>
+              {/* Previous doc navigation would go here */}
+            </div>
+            <div>
+              {/* Next doc navigation would go here */}
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback Section -->
+        <div class="mt-12 pt-8 border-t border-text-secondary/20">
+          <div class="text-center">
+            <h3 class="text-lg font-semibold text-text-primary mb-4">Was this helpful?</h3>
+            <div class="flex gap-4 justify-center">
+              <button class="bg-accent-primary hover:bg-accent-primary/90 text-white px-6 py-2 rounded-lg transition-colors">
+                Yes 👍
+              </button>
+              <button class="bg-bg-secondary hover:bg-bg-primary text-text-secondary hover:text-text-primary px-6 py-2 rounded-lg transition-colors">
+                No 👎
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </main>
+</BaseLayout>
+
+<script>
+  // Add any client-side functionality here
+</script>

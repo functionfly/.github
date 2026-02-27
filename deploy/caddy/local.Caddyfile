@@ -1,0 +1,60 @@
+# FunctionFly Local Development Caddy Configuration
+# Simplified configuration for local development without HTTPS
+
+# Global settings
+{
+    # Disable automatic HTTPS for local development
+    auto_https off
+    # Log to stdout for Docker
+    log {
+        output stdout
+        format json
+    }
+}
+
+# Local development - bind to all interfaces
+:8083 {
+    # Health check endpoint
+    /health {
+        respond "Local Development OK" 200
+    }
+
+    # API routes - proxy to orchestrator
+    /v1/* {
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Environment "local"
+        }
+    }
+
+    # Public routing endpoint: /{appSlug}/*
+    handle /{appSlug}/* {
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Environment "local"
+            header_up X-App-Slug {path.0}
+
+            # Health check settings
+            health_uri /health
+            health_interval 30s
+            health_timeout 10s
+        }
+    }
+
+    # Playground routes (public) - /run/{appSlug}/{functionName}
+    /run/* {
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Environment "local"
+        }
+    }
+
+    # Default response for unmatched routes
+    respond "FunctionFly Local - Not Found" 404
+}

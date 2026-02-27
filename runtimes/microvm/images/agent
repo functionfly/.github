@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""
+FunctionFly VM Agent
+
+This agent runs inside the MicroVM and handles function execution requests.
+It communicates with the orchestrator via stdin/stdout or vsock.
+"""
+
+import json
+import sys
+import os
+import traceback
+from typing import Any, Dict, Optional
+
+
+class VMAgent:
+    """Agent that handles function execution inside the MicroVM"""
+
+    def __init__(self):
+        self.function_code: Optional[str] = None
+        self.handler_name: str = "handler"
+        self.installed_packages: set = set()
+
+    def load_function(self, code: str, handler: str = "handler", packages: list = None) -> None:
+        """Load the function code into the VM"""
+        self.handler_name = handler
+        packages = packages or []
+
+        # Execute the function code to define the handler
+        try:
+            exec(code, globals())
+            self.function_code = code
+            print(f"Function loaded: {handler}", file=sys.stderr)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load function: {e}\n{traceback.format_exc()}")
+
+    def install_packages(self, packages: list) -> None:
+        """Install required Python packages"""
+        new_packages = set(packages) - self.installed_packages
+
+        if not new_packages:
+            return
+
+        print(f"Installing packages: {new_packages}", file=sys.stderr)
+
+        import subprocess
+        for package in new_packages:
+            try:
+                subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "--quiet", "--user", package],
+                    check=True,
+                    capture_output=True,
+                )
+                self.installed_packages.add(package)
+                print(f"Installed: {package}", file=sys.stderr)
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to install {package}: {e.stderr.decode()}", file=sys.stderr)
+                raise
+
+    def execute(self, input_data: Any) -> Dict[str, Any]:
+        """Execute the function with the given input"""
+        if not self.function_code:
+            return {
+                "success": False,
+                "error": "No function loaded"
+            }
+
+        try:
+            # Get the handler function
+            handler = globals().get(self.handler_name)
+
+            if not handler:
+                return {
+                    "success": False,
+                    "error": f"Handler function '{self.handler_name}' not found"
+                }
+
+            # Execute the handler
+            result = handler(input_data)
+
+            return {
+                "success": True,
+                "result": result
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            }
+
+
+def main():
+    """Main entry point for the agent"""
+    import argparse
+
+    parser = argparse.ArgumentParser(description='FunctionFly VM Agent')
+    parser.add_argument('command', nargs='?', default='serve',
+                       help='Command to run (serve or test)')
+    args = parser.parse_args()
+
+    agent = VMAgent()
+
+    if args.command == 'test':
+        # Simple test mode
+        print("VM Agent test mode")
+        agent.load_function("""
+def handler(data):
+    return {"message": "Hello from MicroVM!", "input": data}
+""", "handler", [])
+        result = agent.execute({"test": "data"})
+        print("Test result:", json.dumps(result))
+        return
+
+    # Read execution requests from stdin
+    # Format: JSON with fields: code, input, handler, packages
+    while True:
+        try:
+            line = sys.stdin.readline()
+            if not line:
+                break
+
+            request = json.loads(line.strip())
+
+            # Handle different command types
+            command = request.get("command", "execute")
+
+            if command == "load":
+                # Load function code
+                agent.load_function(
+                    request.get("code", ""),
+                    request.get("handler", "handler"),
+                    request.get("packages", [])
+                )
+                print(json.dumps({"status": "loaded"}), flush=True)
+
+            elif command == "execute":
+                # Execute function
+                if request.get("packages"):
+                    try:
+                        agent.install_packages(request["packages"])
+                    except Exception as e:
+                        print(json.dumps({
+                            "success": False,
+                            "error": f"Failed to install packages: {e}"
+                        }), flush=True)
+                        continue
+
+                result = agent.execute(request.get("input"))
+                print(json.dumps(result), flush=True)
+
+            elif command == "ping":
+                print(json.dumps({"status": "ok"}), flush=True)
+
+            else:
+                print(json.dumps({
+                    "success": False,
+                    "error": f"Unknown command: {command}"
+                }), flush=True)
+
+        except KeyboardInterrupt:
+            break
+        except Exception as e:
+            print(json.dumps({
+                "success": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            }), flush=True)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "name": "process-inventory",
+    "version": "1.0.0",
+    "description": "Process inventory data with filtering and aggregation",
+    "deterministic": true,
+    "idempotent": false,
+    "pure": false,
+    "cache_ttl": null,
+    "capabilities": [],
+    "max_execution_time": null,
+    "input_schema": null,
+    "output_schema": null,
+    "source_file": "/home/micro/projects/functionfly/sdk/python/example_functions.py",
+    "source_hash": "cbccf4baf0f471ca6c07a17908c9850e22caa4d61700c5e290a7cdbdab799d85",
+    "execution_mode": "deterministic"
+  },
+  "source": {
+    "code": "@flypy.function(\n    name=\"process-inventory\",\n    description=\"Process inventory data with filtering and aggregation\",\n    deterministic=True\n)\ndef process_inventory(inventory_data: Dict[str, Any]) -> Dict[str, Any]:\n    \"\"\"Process inventory data with filtering and statistics.\"\"\"\n    items = inventory_data.get(\"items\", [])\n    filters = inventory_data.get(\"filters\", {})\n\n    # Apply filters\n    filtered_items = []\n    for item in items:\n        # Category filter\n        if \"category\" in filters and item.get(\"category\") != filters[\"category\"]:\n            continue\n\n        # Price range filter\n        if \"min_price\" in filters and item.get(\"price\", 0) < filters[\"min_price\"]:\n            continue\n        if \"max_price\" in filters and item.get(\"price\", 0) > filters[\"max_price\"]:\n            continue\n\n        # Stock level filter\n        if \"min_stock\" in filters and item.get(\"stock_quantity\", 0) < filters[\"min_stock\"]:\n            continue\n\n        filtered_items.append(item)\n\n    # Calculate statistics\n    if filtered_items:\n        prices = [item[\"price\"] for item in filtered_items]\n        stocks = [item[\"stock_quantity\"] for item in filtered_items]\n\n        stats = {\n            \"total_items\": len(filtered_items),\n            \"avg_price\": sum(prices) / len(prices),\n            \"min_price\": min(prices),\n            \"max_price\": max(prices),\n            \"total_value\": sum(price * stock for price, stock in zip(prices, stocks)),\n            \"low_stock_items\": len([s for s in stocks if s < 10])\n        }\n    else:\n        stats = {\n            \"total_items\": 0,\n            \"avg_price\": 0.0,\n            \"min_price\": 0.0,\n            \"max_price\": 0.0,\n            \"total_value\": 0.0,\n            \"low_stock_items\": 0\n        }\n\n    return {\n        \"filtered_items\": filtered_items,\n        \"statistics\": stats,\n        \"filters_applied\": filters\n    }\n",
+    "file": "/home/micro/projects/functionfly/sdk/python/example_functions.py",
+    "dependencies": [],
+    "imports": []
+  },
+  "ast": null
+}

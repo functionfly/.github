@@ -1,0 +1,111 @@
+/* ==========================================================================
+   FunctionFly Styles - Main Entry Point
+   Premium Dark & Light Mode UI System
+   ========================================================================== */
+
+@import "tailwindcss";
+
+/* Import all style modules */
+@import './themes.css';
+@import './animations.css';
+@import './effects.css';
+@import './components.css';
+@import './data-viz.css';
+@import './features.css';
+@import './contact-faq.css';
+
+/* ==========================================================================
+   Additional Utility Classes
+   ========================================================================== */
+
+/* Text Utilities */
+.text-gradient {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Background Utilities */
+.bg-gradient-radial {
+  background: radial-gradient(ellipse at center, var(--bg-secondary) 0%, var(--bg-primary) 70%);
+}
+
+/* Border Utilities */
+.border-gradient {
+  border-image: linear-gradient(135deg, #6366f1, #8b5cf6, #d946ef) 1;
+}
+
+/* ==========================================================================
+   Layout Utilities
+   ========================================================================== */
+
+/* Container with max width */
+.container-narrow {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.container-wide {
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Section spacing */
+.section-padding {
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+}
+
+@media (min-width: 768px) {
+  .section-padding {
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+  }
+}
+
+/* ==========================================================================
+   Interactive States
+   ========================================================================== */
+
+/* Disabled state */
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* Loading state */
+.loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--bg-primary);
+  opacity: 0.5;
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}

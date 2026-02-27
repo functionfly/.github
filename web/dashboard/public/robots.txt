@@ -1,0 +1,8 @@
+# FunctionFly Dashboard - No indexing allowed
+# This dashboard contains sensitive user data and should never be indexed by search engines
+
+User-agent: *
+Disallow: /
+
+# No sitemap for dashboard
+# Sitemaps are only for the public marketing site at functionfly.com

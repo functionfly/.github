@@ -1,0 +1,17 @@
+# Dashboard redirects to app subdomain
+/dashboard        https://app.functionfly.com/dashboard         301
+/dashboard/*      https://app.functionfly.com/dashboard/:splat   301
+
+# Other protected routes
+/functions        https://app.functionfly.com/functions         301
+/functions/*      https://app.functionfly.com/functions/:splat   301
+/providers        https://app.functionfly.com/providers         301
+/providers/*      https://app.functionfly.com/providers/:splat   301
+/analytics        https://app.functionfly.com/analytics         301
+/analytics/*      https://app.functionfly.com/analytics/:splat   301
+/settings         https://app.functionfly.com/settings          301
+/settings/*       https://app.functionfly.com/settings/:splat    301
+/admin            https://app.functionfly.com/admin             301
+/admin/*          https://app.functionfly.com/admin/:splat       301
+/login            https://app.functionfly.com/login             301
+/signup           https://app.functionfly.com/signup            301

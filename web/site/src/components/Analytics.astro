@@ -1,0 +1,40 @@
+---
+// Analytics configuration for FunctionFly public site
+// Includes Google Analytics, Search Console verification, and other measurement tools
+---
+
+<!-- Google Analytics 4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'GA_MEASUREMENT_ID', {
+    'custom_map': {
+      'dimension1': 'page_type',
+      'dimension2': 'content_category'
+    }
+  });
+</script>
+
+<!-- Google Search Console Verification -->
+<meta name="google-site-verification" content="YOUR_SEARCH_CONSOLE_VERIFICATION_CODE" />
+
+<!-- Bing Webmaster Tools Verification -->
+<meta name="msvalidate.01" content="YOUR_BING_VERIFICATION_CODE" />
+
+<!-- Vercel Analytics (if using Vercel) -->
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+
+<!-- Optional: PostHog for product analytics -->
+<script>
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},u.people._i=[],u.onFeatureFlags=function(){return function(t){if(u[t]=function(){var e=Array.prototype.slice.call(arguments,0);return e.unshift(t),u.push(e),u},!window.posthogFeatureFlags)return u[t];for(var o=0;o<u[t].length;o++)window.posthogFeatureFlags[u[t][o]]&&u[t][o](window.posthogFeatureFlags[u[t][o]])}}(u._i),u.featureFlags=u.featureFlags||{},u.featureFlags._i=u.featureFlags._i||[],u.onFeatureFlags=u.onFeatureFlags||function(){return u.featureFlags._i&&u.featureFlags._i.push(arguments),u},u.featureFlags.set=function(t){for(var e=u.featureFlags._i,o=0;o<e.length;o++){var n=e[o];u[n[0]]=n[1]}},u.featureFlags.get=function(){return window.posthogFeatureFlags||{}},u.featureFlags.isFeatureEnabled=function(t){return!!(window.posthogFeatureFlags&&window.posthogFeatureFlags[t])},u.featureFlags.on=function(t,e){u.featureFlags._i||(u.featureFlags._i=[]),u.featureFlags._i.push([t,e])},u.featureFlags.add=function(t,e){u.featureFlags._i||(u.featureFlags._i=[]),u.featureFlags._i.push([t,e])},u._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  posthog.init('YOUR_POSTHOG_API_KEY', {
+    api_host: 'https://app.posthog.com',
+    capture_pageview: true,
+    capture_pageleave: true
+  });
+</script>

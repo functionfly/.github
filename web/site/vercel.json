@@ -1,0 +1,99 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://api.functionfly.com/$1"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/dashboard",
+      "destination": "https://app.functionfly.com/dashboard",
+      "permanent": true
+    },
+    {
+      "source": "/dashboard/(.*)",
+      "destination": "https://app.functionfly.com/dashboard/$1",
+      "permanent": true
+    },
+    {
+      "source": "/functions",
+      "destination": "https://app.functionfly.com/functions",
+      "permanent": true
+    },
+    {
+      "source": "/functions/(.*)",
+      "destination": "https://app.functionfly.com/functions/$1",
+      "permanent": true
+    },
+    {
+      "source": "/providers",
+      "destination": "https://app.functionfly.com/providers",
+      "permanent": true
+    },
+    {
+      "source": "/providers/(.*)",
+      "destination": "https://app.functionfly.com/providers/$1",
+      "permanent": true
+    },
+    {
+      "source": "/analytics",
+      "destination": "https://app.functionfly.com/analytics",
+      "permanent": true
+    },
+    {
+      "source": "/analytics/(.*)",
+      "destination": "https://app.functionfly.com/analytics/$1",
+      "permanent": true
+    },
+    {
+      "source": "/settings",
+      "destination": "https://app.functionfly.com/settings",
+      "permanent": true
+    },
+    {
+      "source": "/settings/(.*)",
+      "destination": "https://app.functionfly.com/settings/$1",
+      "permanent": true
+    },
+    {
+      "source": "/admin",
+      "destination": "https://app.functionfly.com/admin",
+      "permanent": true
+    },
+    {
+      "source": "/admin/(.*)",
+      "destination": "https://app.functionfly.com/admin/$1",
+      "permanent": true
+    },
+    {
+      "source": "/login",
+      "destination": "https://app.functionfly.com/login",
+      "permanent": true
+    },
+    {
+      "source": "/signup",
+      "destination": "https://app.functionfly.com/signup",
+      "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ]
+}

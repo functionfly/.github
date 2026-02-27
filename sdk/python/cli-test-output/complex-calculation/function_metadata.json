@@ -1,0 +1,31 @@
+{
+  "metadata": {
+    "name": "complex-calculation",
+    "version": "1.0.0",
+    "description": "Complex calculation with optimization opportunities",
+    "deterministic": true,
+    "idempotent": false,
+    "pure": false,
+    "cache_ttl": null,
+    "capabilities": [],
+    "max_execution_time": null,
+    "input_schema": null,
+    "output_schema": null,
+    "source_file": "/home/micro/projects/functionfly/sdk/python/example_functions.py",
+    "source_hash": "096ee6164c312db0dcdeb66b052dc5d3f7e5fa7682d2a2d559e668cb682574b9",
+    "execution_mode": "deterministic"
+  },
+  "source": {
+    "code": "@flypy.function(\n    name=\"complex-calculation\",\n    description=\"Complex calculation with optimization opportunities\",\n    deterministic=True\n)\ndef complex_calculation(input_data: Dict[str, Any]) -> Dict[str, Any]:\n    \"\"\"Perform complex calculations with dead code and constant folding opportunities.\"\"\"\n\n    # Constants that can be folded\n    TAX_RATE = 0.08\n    DISCOUNT_THRESHOLD = 100.0\n    PREMIUM_MULTIPLIER = 1.5\n\n    # Dead code that should be removed\n    unused_variable = \"this will be removed\"\n    another_unused = 42\n    never_called_function = lambda x: x * 2\n\n    # Unused import that should be removed\n    import math\n    import json\n\n    # Actual processing\n    base_amount = input_data.get(\"amount\", 0.0)\n    is_premium = input_data.get(\"is_premium\", False)\n\n    # Calculations with constant folding opportunities\n    discount = base_amount * 0.1 if base_amount > DISCOUNT_THRESHOLD else 0.0\n    discounted_amount = base_amount - discount\n\n    tax = discounted_amount * TAX_RATE\n    final_amount = discounted_amount + tax\n\n    if is_premium:\n        final_amount = final_amount * PREMIUM_MULTIPLIER\n\n    # More dead code\n    unused_list = [1, 2, 3, 4, 5]\n    unused_dict = {\"key\": \"value\"}\n\n    return {\n        \"original_amount\": base_amount,\n        \"discount\": discount,\n        \"tax\": tax,\n        \"final_amount\": final_amount,\n        \"is_premium\": is_premium\n    }\n",
+    "file": "/home/micro/projects/functionfly/sdk/python/example_functions.py",
+    "dependencies": [
+      "math",
+      "json"
+    ],
+    "imports": [
+      "import math",
+      "import json"
+    ]
+  },
+  "ast": null
+}

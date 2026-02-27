@@ -1,0 +1,16 @@
+{
+  "name": "kv-counter",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "description": "Example function demonstrating KV store capability",
+  "entry": "main.py",
+  "handler": "handler",
+  "memory": "128MB",
+  "timeout": "5s",
+  "capabilities": [
+    "kv"
+  ],
+  "environment": {
+    "COUNTER_KEY": "visit_count"
+  }
+}

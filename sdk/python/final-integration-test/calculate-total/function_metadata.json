@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "name": "calculate-total",
+    "version": "1.0.0",
+    "description": "Calculate order total with tax",
+    "deterministic": true,
+    "idempotent": true,
+    "pure": false,
+    "cache_ttl": 3600,
+    "capabilities": [],
+    "max_execution_time": null,
+    "input_schema": null,
+    "output_schema": null,
+    "source_file": "/home/micro/projects/functionfly/sdk/python/example_functions.py",
+    "source_hash": "60ce75f72e7ade0e111c4a98a7aaa01db499991002e06fdb49433fca7f36a110",
+    "execution_mode": "deterministic"
+  },
+  "source": {
+    "code": "@flypy.function(\n    name=\"calculate-total\",\n    description=\"Calculate order total with tax\",\n    deterministic=True,\n    idempotent=True,\n    cache_ttl=3600\n)\ndef calculate_total(order_data: Dict[str, Any]) -> Dict[str, float]:\n    \"\"\"Calculate order total with tax and discounts.\"\"\"\n    items = order_data.get(\"items\", [])\n    tax_rate = order_data.get(\"tax_rate\", 0.08)\n    discount_percent = order_data.get(\"discount_percent\", 0.0)\n\n    # Calculate subtotal\n    subtotal = sum(item[\"price\"] * item[\"quantity\"] for item in items)\n\n    # Apply discount\n    discount_amount = subtotal * discount_percent\n    discounted_subtotal = subtotal - discount_amount\n\n    # Calculate tax on discounted amount\n    tax = discounted_subtotal * tax_rate\n\n    # Calculate final total\n    total = discounted_subtotal + tax\n\n    return {\n        \"subtotal\": subtotal,\n        \"discount_amount\": discount_amount,\n        \"tax\": tax,\n        \"total\": total\n    }\n",
+    "file": "/home/micro/projects/functionfly/sdk/python/example_functions.py",
+    "dependencies": [],
+    "imports": []
+  },
+  "ast": null
+}

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	ProviderName = "vercel"
+	ProviderName   = "vercel"
 	RequestTimeout = 25 * time.Second // Vercel can be slower than Workers
 )
 
@@ -62,7 +62,7 @@ func (a *VercelAdapter) ValidateConfig(region, urlStr string) error {
 
 	// Check if it's a vercel.app subdomain or custom domain
 	if !strings.HasSuffix(parsedURL.Host, ".vercel.app") &&
-	   !strings.Contains(parsedURL.Host, ".") {
+		!strings.Contains(parsedURL.Host, ".") {
 		return fmt.Errorf("URL must be a vercel.app subdomain or custom domain, got: %s", parsedURL.Host)
 	}
 
@@ -173,4 +173,260 @@ func (a *VercelAdapter) SignRequest(req *http.Request, backend *storage.Backend,
 // GetRequestTimeout returns the recommended timeout for Vercel requests
 func (a *VercelAdapter) GetRequestTimeout() time.Duration {
 	return RequestTimeout
+}
+
+// Deploy implements the DeploymentAdapter interface
+func (a *VercelAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
+	// Extract standardized and Vercel-specific config
+	var apiToken, teamID, projectName string
+	if spec.ProviderConfig != nil {
+		if token, ok := spec.ProviderConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if team, ok := spec.ProviderConfig["team_id"].(string); ok {
+			teamID = team
+		}
+		if project, ok := spec.ProviderConfig["project_name"].(string); ok {
+			projectName = project
+		}
+	}
+
+	// Use standardized app name as fallback for project name if not specified
+	if projectName == "" && spec.AppName != "" {
+		projectName = spec.AppName
+	}
+
+	if apiToken == "" {
+		return nil, fmt.Errorf("missing required Vercel config: api_token")
+	}
+
+	if projectName == "" {
+		projectName = "functionfly-deployment" // Default project name
+	}
+
+	// Combine env vars and secrets for deployment
+	env := make(map[string]string)
+	for k, v := range spec.EnvVars {
+		env[k] = v
+	}
+	for k, v := range spec.Secrets {
+		env[k] = v
+	}
+
+	// Create deployment client and deploy
+	client := NewVercelDeploymentClient(apiToken, teamID)
+	return client.Deploy(ctx, spec.Artifact, projectName, env)
+}
+
+// SetEnv implements the DeploymentAdapter interface
+func (a *VercelAdapter) SetEnv(ctx context.Context, deploymentID string, providerConfig map[string]interface{}, envVars, secrets map[string]string) error {
+	// Extract Vercel-specific config
+	var apiToken, teamID, projectID string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if team, ok := providerConfig["team_id"].(string); ok {
+			teamID = team
+		}
+		if project, ok := providerConfig["project_id"].(string); ok {
+			projectID = project
+		}
+	}
+
+	if apiToken == "" || projectID == "" {
+		return fmt.Errorf("missing required Vercel config: api_token, project_id")
+	}
+
+	// Create deployment client and set environment variables
+	client := NewVercelDeploymentClient(apiToken, teamID)
+	return client.SetEnvironmentVariables(ctx, projectID, envVars, secrets)
+}
+
+// BindRoutes implements the DeploymentAdapter interface
+func (a *VercelAdapter) BindRoutes(ctx context.Context, deploymentID string, providerConfig map[string]interface{}, routes []common.RouteBinding) error {
+	// Extract Vercel-specific config
+	var apiToken, teamID, projectID string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if team, ok := providerConfig["team_id"].(string); ok {
+			teamID = team
+		}
+		if project, ok := providerConfig["project_id"].(string); ok {
+			projectID = project
+		}
+	}
+
+	if apiToken == "" || projectID == "" {
+		return fmt.Errorf("missing required Vercel config: api_token, project_id")
+	}
+
+	// Create deployment client and bind routes
+	client := NewVercelDeploymentClient(apiToken, teamID)
+	return client.BindRoutes(ctx, projectID, routes)
+}
+
+// GetDeploymentStatus implements the DeploymentAdapter interface
+func (a *VercelAdapter) GetDeploymentStatus(ctx context.Context, deploymentID string, providerConfig map[string]interface{}) (common.DeploymentStatus, error) {
+	// Extract Vercel-specific config
+	var apiToken, teamID string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if team, ok := providerConfig["team_id"].(string); ok {
+			teamID = team
+		}
+	}
+
+	if apiToken == "" {
+		return common.DeploymentStatusFailed, fmt.Errorf("missing required Vercel config: api_token")
+	}
+
+	// Create deployment client and get status
+	client := NewVercelDeploymentClient(apiToken, teamID)
+	return client.GetDeploymentStatus(ctx, deploymentID)
+}
+
+// Rollback implements the DeploymentAdapter interface
+func (a *VercelAdapter) Rollback(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
+	// Extract Vercel-specific config from provider config
+	var apiToken, teamID, projectName string
+	if spec.ProviderConfig != nil {
+		if token, ok := spec.ProviderConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if team, ok := spec.ProviderConfig["team_id"].(string); ok {
+			teamID = team
+		}
+		if project, ok := spec.ProviderConfig["project_name"].(string); ok {
+			projectName = project
+		}
+	}
+
+	if apiToken == "" {
+		return nil, fmt.Errorf("missing required Vercel config: api_token")
+	}
+
+	if projectName == "" {
+		projectName = "functionfly-deployment" // Default project name
+	}
+
+	// Combine env vars and secrets for rollback deployment
+	env := make(map[string]string)
+	for k, v := range spec.EnvVars {
+		env[k] = v
+	}
+	for k, v := range spec.Secrets {
+		env[k] = v
+	}
+
+	// Create deployment client and rollback (redeploy)
+	client := NewVercelDeploymentClient(apiToken, teamID)
+	return client.Rollback(ctx, spec.Artifact, projectName, env)
+}
+
+// LinkProject links a FunctionFly app to a Vercel project
+func (a *VercelAdapter) LinkProject(ctx context.Context, providerConfig map[string]interface{}, functionFlyAppID, environment string) (*common.DeploymentResult, error) {
+	var apiToken, teamID, projectName string
+
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if team, ok := providerConfig["team_id"].(string); ok {
+			teamID = team
+		}
+		if project, ok := providerConfig["project_name"].(string); ok {
+			projectName = project
+		}
+	}
+
+	if apiToken == "" {
+		return nil, fmt.Errorf("missing required Vercel config: api_token")
+	}
+
+	if projectName == "" {
+		return nil, fmt.Errorf("missing required Vercel config: project_name")
+	}
+
+	client := NewVercelDeploymentClient(apiToken, teamID)
+
+	result, err := client.LinkProject(ctx, projectName, functionFlyAppID, environment)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("project linking failed: %v", err),
+		}, nil
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID: result.VercelProjectID,
+		Status:       common.DeploymentStatusSuccess,
+		Message:      fmt.Sprintf("Successfully linked to Vercel project: %s", result.VercelProjectName),
+		Metadata: map[string]interface{}{
+			"vercel_project_id":   result.VercelProjectID,
+			"vercel_project_name": result.VercelProjectName,
+			"functionfly_app_id":  result.FunctionFlyAppID,
+			"linked_at":           result.LinkedAt.Format(time.RFC3339),
+			"environment":         result.Environment,
+		},
+	}, nil
+}
+
+// GetLinkedProject gets the linked Vercel project info
+func (a *VercelAdapter) GetLinkedProject(ctx context.Context, providerConfig map[string]interface{}) (*common.DeploymentResult, error) {
+	var apiToken, teamID, projectName string
+
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if team, ok := providerConfig["team_id"].(string); ok {
+			teamID = team
+		}
+		if project, ok := providerConfig["project_name"].(string); ok {
+			projectName = project
+		}
+	}
+
+	if apiToken == "" {
+		return nil, fmt.Errorf("missing required Vercel config: api_token")
+	}
+
+	if projectName == "" {
+		return nil, fmt.Errorf("missing required Vercel config: project_name")
+	}
+
+	client := NewVercelDeploymentClient(apiToken, teamID)
+
+	project, err := client.GetLinkedProject(ctx, projectName)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to get linked project: %v", err),
+		}, nil
+	}
+
+	if project == nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "No linked Vercel project found",
+		}, nil
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID: project.ID,
+		Status:       common.DeploymentStatusSuccess,
+		Message:      fmt.Sprintf("Vercel project: %s", project.Name),
+		Metadata: map[string]interface{}{
+			"vercel_project_id":   project.ID,
+			"vercel_project_name": project.Name,
+			"framework":           project.Framework,
+			"created_at":          project.CreatedAt,
+			"updated_at":          project.UpdatedAt,
+		},
+	}, nil
 }

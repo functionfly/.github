@@ -1,0 +1,13 @@
+export { HeroSection } from './HeroSection';
+export { TargetUsersSection } from './TargetUsersSection';
+export { TrustMetricsSection } from './TrustMetricsSection';
+export { ProcessStepsSection } from './ProcessStepsSection';
+export { IntegrationsSection } from './IntegrationsSection';
+export { SecuritySection } from './SecuritySection';
+export { FeaturesSection } from './FeaturesSection';
+export { PricingSection } from './PricingSection';
+export { InteractiveDemoSection } from './InteractiveDemoSection';
+export { PerformanceMetricsDashboard } from './PerformanceMetricsDashboard';
+export { FAQSection } from './FAQSection';
+export { TeamSection } from './TeamSection';
+export { Footer } from './Footer';

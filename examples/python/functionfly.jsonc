@@ -1,0 +1,18 @@
+{
+  "name": "python-hello",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "description": "Example Python function using Micropython WASM runtime",
+  "entry": "main.py",
+  "handler": "handler",
+  "memory": "128MB",
+  "timeout": "5s",
+  "capabilities": [
+    "fetch:read",
+    "crypto",
+    "cache:write"
+  ],
+  "environment": {
+    "API_KEY": "example-key"
+  }
+}

@@ -1,0 +1,224 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { sanityClient, queries, urlFor } from '../../lib/sanity';
+
+const title = "Tools & Templates - FunctionFly | Free Serverless Resources";
+const description = "Free tools, templates, checklists, and resources to help you build reliable serverless applications and improve your development workflow.";
+
+// Fetch tools from Sanity
+const tools = await sanityClient.fetch(queries.tools);
+const featuredTools = await sanityClient.fetch(queries.featuredTools);
+---
+
+<BaseLayout title={title} description={description}>
+  <main class="min-h-screen">
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary py-24">
+      <div class="absolute inset-0 bg-grid-pattern opacity-5"></div>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center">
+          <h1 class="text-5xl md:text-6xl font-bold text-text-primary mb-6">
+            Tools & Templates
+            <span class="text-accent-primary block">Free Resources</span>
+          </h1>
+          <p class="text-xl md:text-2xl text-text-secondary mb-8 max-w-3xl mx-auto">
+            Accelerate your serverless development with our curated collection of tools, templates, and best practice resources.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Featured Tools -->
+    {featuredTools && featuredTools.length > 0 && (
+      <section class="py-24 bg-bg-secondary">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 class="text-3xl font-bold text-text-primary mb-12 text-center">Featured Resources</h2>
+          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {featuredTools.map((tool) => (
+              <article class="bg-bg-primary rounded-xl p-6 border border-text-secondary/20 hover:border-accent-primary transition-colors">
+                {tool.heroImage && (
+                  <div class="mb-4">
+                    <img
+                      src={urlFor(tool.heroImage).width(400).height(200).fit('crop').url()}
+                      alt={tool.heroImage.alt || tool.title}
+                      class="w-full h-32 object-cover rounded-lg"
+                    />
+                  </div>
+                )}
+
+                <div class="mb-3">
+                  <span class="bg-accent-primary/10 text-accent-primary px-3 py-1 rounded-full text-sm font-medium capitalize">
+                    {tool.type}
+                  </span>
+                </div>
+
+                <h3 class="text-xl font-bold text-text-primary mb-2 hover:text-accent-primary transition-colors">
+                  <a href={`/tools/${tool.slug.current}`}>{tool.title}</a>
+                </h3>
+
+                <p class="text-text-secondary mb-4 line-clamp-3">{tool.description}</p>
+
+                <div class="flex gap-2 mb-4">
+                  {tool.tags?.slice(0, 2).map((tag) => (
+                    <span class="bg-bg-secondary text-text-secondary px-2 py-1 rounded text-xs">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <div class="flex gap-2">
+                    {tool.downloadUrl && (
+                      <a
+                        href={tool.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-accent-primary hover:text-accent-primary/80 text-sm font-medium transition-colors"
+                      >
+                        Download
+                      </a>
+                    )}
+                    {tool.demoUrl && (
+                      <a
+                        href={tool.demoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-accent-primary hover:text-accent-primary/80 text-sm font-medium transition-colors"
+                      >
+                        Demo
+                      </a>
+                    )}
+                  </div>
+                  <span class="text-sm text-text-secondary">
+                    {new Date(tool.publishedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    )}
+
+    <!-- All Tools -->
+    <section class="py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-3xl font-bold text-text-primary mb-12 text-center">All Resources</h2>
+
+        <!-- Filter by type -->
+        <div class="flex flex-wrap gap-2 justify-center mb-12">
+          <button class="bg-accent-primary text-white px-4 py-2 rounded-lg text-sm font-medium">
+            All
+          </button>
+          <button class="bg-bg-secondary hover:bg-bg-primary text-text-secondary hover:text-text-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Templates
+          </button>
+          <button class="bg-bg-secondary hover:bg-bg-primary text-text-secondary hover:text-text-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Tools
+          </button>
+          <button class="bg-bg-secondary hover:bg-bg-primary text-text-secondary hover:text-text-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Checklists
+          </button>
+          <button class="bg-bg-secondary hover:bg-bg-primary text-text-secondary hover:text-text-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Guides
+          </button>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {tools.filter(tool => !tool.featured).map((tool) => (
+            <article class="bg-bg-secondary rounded-lg p-6 border border-text-secondary/20 hover:border-accent-primary transition-colors">
+              <div class="mb-3">
+                <span class="bg-accent-primary/10 text-accent-primary px-2 py-1 rounded text-xs font-medium capitalize">
+                  {tool.type}
+                </span>
+              </div>
+
+              <h3 class="text-lg font-bold text-text-primary mb-2 hover:text-accent-primary transition-colors">
+                <a href={`/tools/${tool.slug.current}`}>{tool.title}</a>
+              </h3>
+
+              <p class="text-text-secondary text-sm mb-3 line-clamp-2">{tool.description}</p>
+
+              <div class="flex items-center justify-between text-xs">
+                <div class="flex gap-2">
+                  {tool.downloadUrl && (
+                    <a
+                      href={tool.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-accent-primary hover:text-accent-primary/80 transition-colors"
+                    >
+                      Download
+                    </a>
+                  )}
+                  {tool.demoUrl && (
+                    <span class="text-text-secondary">•</span>
+                  )}
+                  {tool.demoUrl && (
+                    <a
+                      href={tool.demoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-accent-primary hover:text-accent-primary/80 transition-colors"
+                    >
+                      Demo
+                    </a>
+                  )}
+                </div>
+                <span class="text-text-secondary">
+                  {new Date(tool.publishedAt).toLocaleDateString()}
+                </span>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Contribute Section -->
+    <section class="py-24 bg-bg-secondary">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-3xl font-bold text-text-primary mb-4">Have a Useful Resource?</h2>
+        <p class="text-xl text-text-secondary mb-8">
+          Help the serverless community by contributing your tools, templates, or best practices.
+        </p>
+
+        <a
+          href="mailto:contribute@functionfly.com"
+          class="bg-accent-primary hover:bg-accent-primary/90 text-white px-8 py-3 rounded-lg font-semibold transition-colors inline-block"
+        >
+          Contribute a Resource
+        </a>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<script>
+  // Add filtering functionality
+  document.addEventListener('DOMContentLoaded', () => {
+    const filterButtons = document.querySelectorAll('[data-filter]');
+    const toolCards = document.querySelectorAll('[data-tool-type]');
+
+    filterButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const filter = button.dataset.filter;
+
+        // Update active button
+        filterButtons.forEach(btn => btn.classList.remove('bg-accent-primary', 'text-white'));
+        filterButtons.forEach(btn => btn.classList.add('bg-bg-secondary', 'hover:bg-bg-primary', 'text-text-secondary', 'hover:text-text-primary'));
+        button.classList.remove('bg-bg-secondary', 'hover:bg-bg-primary', 'text-text-secondary', 'hover:text-text-primary');
+        button.classList.add('bg-accent-primary', 'text-white');
+
+        // Filter tools
+        toolCards.forEach(card => {
+          if (filter === 'all' || card.dataset.toolType === filter) {
+            card.style.display = 'block';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    });
+  });
+</script>

@@ -1,0 +1,177 @@
+---
+interface Props {
+  value: any[];
+}
+
+const { value } = Astro.props;
+
+// Simple portable text renderer
+function renderBlock(block: any): string {
+  if (block._type !== 'block') return '';
+
+  let html = '';
+
+  // Handle marks (decorators and annotations)
+  const applyMarks = (text: string, marks: string[] = []) => {
+    let markedText = text;
+
+    // Apply decorators in reverse order
+    if (marks.includes('strong')) {
+      markedText = `<strong>${markedText}</strong>`;
+    }
+    if (marks.includes('em')) {
+      markedText = `<em>${markedText}</em>`;
+    }
+    if (marks.includes('code')) {
+      markedText = `<code>${markedText}</code>`;
+    }
+
+    // Apply annotations
+    block.markDefs?.forEach((markDef: any) => {
+      if (marks.includes(markDef._key)) {
+        if (markDef._type === 'link') {
+          const target = markDef.blank ? ' target="_blank" rel="noopener noreferrer"' : '';
+          markedText = `<a href="${markDef.href}"${target}>${markedText}</a>`;
+        }
+      }
+    });
+
+    return markedText;
+  };
+
+  // Process children
+  block.children?.forEach((child: any) => {
+    html += applyMarks(child.text, child.marks);
+  });
+
+  // Wrap in appropriate tag
+  switch (block.style) {
+    case 'h1':
+      html = `<h1>${html}</h1>`;
+      break;
+    case 'h2':
+      html = `<h2>${html}</h2>`;
+      break;
+    case 'h3':
+      html = `<h3>${html}</h3>`;
+      break;
+    case 'h4':
+      html = `<h4>${html}</h4>`;
+      break;
+    case 'blockquote':
+      html = `<blockquote>${html}</blockquote>`;
+      break;
+    default:
+      html = `<p>${html}</p>`;
+  }
+
+  return html;
+}
+
+function renderImage(image: any): string {
+  if (image._type !== 'image') return '';
+
+  const url = `https://cdn.sanity.io/images/${import.meta.env.SANITY_PROJECT_ID}/${import.meta.env.SANITY_DATASET}/${image.asset._ref.replace('image-', '').replace('-jpg', '.jpg').replace('-png', '.png').replace('-webp', '.webp')}`;
+  const alt = image.alt || '';
+  const caption = image.caption ? `<figcaption>${image.caption}</figcaption>` : '';
+
+  return `<figure><img src="${url}" alt="${alt}" />${caption}</figure>`;
+}
+
+function renderCode(code: any): string {
+  if (code._type !== 'code') return '';
+
+  const language = code.language ? ` class="language-${code.language}"` : '';
+  const filename = code.filename ? `<div class="code-filename">${code.filename}</div>` : '';
+
+  return `${filename}<pre><code${language}>${code.code}</code></pre>`;
+}
+
+// Render the portable text
+let html = '';
+value?.forEach((block) => {
+  switch (block._type) {
+    case 'block':
+      html += renderBlock(block);
+      break;
+    case 'image':
+      html += renderImage(block);
+      break;
+    case 'code':
+      html += renderCode(block);
+      break;
+  }
+});
+---
+
+<div class="portable-text" set:html={html}></div>
+
+<style>
+  .portable-text {
+    @apply text-text-primary;
+  }
+
+  .portable-text h1 {
+    @apply text-3xl font-bold mt-8 mb-4 text-text-primary;
+  }
+
+  .portable-text h2 {
+    @apply text-2xl font-bold mt-6 mb-3 text-text-primary;
+  }
+
+  .portable-text h3 {
+    @apply text-xl font-bold mt-6 mb-3 text-text-primary;
+  }
+
+  .portable-text h4 {
+    @apply text-lg font-bold mt-4 mb-2 text-text-primary;
+  }
+
+  .portable-text p {
+    @apply mb-4 leading-relaxed;
+  }
+
+  .portable-text blockquote {
+    @apply border-l-4 border-accent-primary pl-4 italic text-text-secondary my-6;
+  }
+
+  .portable-text strong {
+    @apply font-bold text-text-primary;
+  }
+
+  .portable-text em {
+    @apply italic;
+  }
+
+  .portable-text code {
+    @apply bg-bg-primary px-2 py-1 rounded text-sm font-mono text-accent-primary;
+  }
+
+  .portable-text pre {
+    @apply bg-bg-primary p-4 rounded-lg overflow-x-auto my-6;
+  }
+
+  .portable-text pre code {
+    @apply bg-transparent px-0 py-0 text-text-primary;
+  }
+
+  .portable-text a {
+    @apply text-accent-primary hover:text-accent-primary/80 underline;
+  }
+
+  .portable-text figure {
+    @apply my-8;
+  }
+
+  .portable-text img {
+    @apply w-full h-auto rounded-lg;
+  }
+
+  .portable-text figcaption {
+    @apply text-sm text-text-secondary mt-2 text-center italic;
+  }
+
+  .code-filename {
+    @apply bg-bg-secondary px-3 py-2 rounded-t text-sm font-mono text-text-secondary border-b border-text-secondary/20;
+  }
+</style>

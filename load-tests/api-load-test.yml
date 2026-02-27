@@ -1,0 +1,172 @@
+config:
+  target: 'http://localhost:8080'
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 10
+      name: "Warm up"
+    # Normal load
+    - duration: 300
+      arrivalRate: 50
+      name: "Normal load"
+    # High load
+    - duration: 120
+      arrivalRate: 200
+      name: "High load"
+    # Stress test
+    - duration: 60
+      arrivalRate: 500
+      name: "Stress test"
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+
+scenarios:
+  # Authentication and user management
+  - name: "Authentication flow"
+    weight: 5
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ email }}"
+            password: "password123"
+          capture:
+            json: "$.token"
+            as: "auth_token"
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer {{ auth_token }}"
+      - get:
+          url: "/api/apps"
+          headers:
+            Authorization: "Bearer {{ auth_token }}"
+
+  # Function deployment and management
+  - name: "Function management"
+    weight: 15
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ email }}"
+            password: "password123"
+          capture:
+            json: "$.token"
+            as: "auth_token"
+      - post:
+          url: "/api/functions"
+          headers:
+            Authorization: "Bearer {{ auth_token }}"
+          json:
+            name: "load-test-func-{{ $randomInt }}"
+            runtime: "node18"
+            code: |
+              export default async function handler(request) {
+                return new Response(JSON.stringify({
+                  message: "Hello from load test!",
+                  timestamp: new Date().toISOString(),
+                  requestId: request.headers.get('x-request-id')
+                }), {
+                  headers: { 'Content-Type': 'application/json' }
+                });
+              }
+          capture:
+            json: "$.id"
+            as: "function_id"
+      - get:
+          url: "/api/functions/{{ function_id }}"
+          headers:
+            Authorization: "Bearer {{ auth_token }}"
+      - put:
+          url: "/api/functions/{{ function_id }}/publish"
+          headers:
+            Authorization: "Bearer {{ auth_token }}"
+          json:
+            version: "1.0.{{ $randomInt }}"
+
+  # Function execution (most common scenario)
+  - name: "Function execution - GET requests"
+    weight: 40
+    flow:
+      - get:
+          url: "/api/functions/{{ functionId }}/invoke"
+          headers:
+            Authorization: "Bearer {{ function_token }}"
+            x-request-id: "{{ $randomString }}"
+          qs:
+            param1: "{{ $randomString }}"
+            param2: "{{ $randomInt }}"
+          expect:
+            - statusCode: 200
+            - hasProperty: "message"
+
+  # Function execution with payload
+  - name: "Function execution - POST requests"
+    weight: 25
+    flow:
+      - post:
+          url: "/api/functions/{{ functionId }}/invoke"
+          headers:
+            Authorization: "Bearer {{ function_token }}"
+            x-request-id: "{{ $randomString }}"
+          json:
+            action: "process"
+            data:
+              id: "{{ $randomInt }}"
+              items: ["{{ $randomString }}", "{{ $randomString }}", "{{ $randomString }}"]
+              metadata:
+                userId: "{{ $randomInt }}"
+                timestamp: "{{ $isoTimestamp }}"
+          expect:
+            - statusCode: 200
+
+  # Health monitoring and routing
+  - name: "Health checks and monitoring"
+    weight: 10
+    flow:
+      - get:
+          url: "/health"
+      - get:
+          url: "/api/monitoring/metrics"
+          headers:
+            Authorization: "Bearer {{ admin_token }}"
+      - get:
+          url: "/api/routing/status"
+          headers:
+            Authorization: "Bearer {{ admin_token }}"
+
+  # Error scenarios
+  - name: "Error handling"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/functions/nonexistent/invoke"
+          expect:
+            - statusCode: 404
+      - post:
+          url: "/api/functions/{{ functionId }}/invoke"
+          headers:
+            Authorization: "invalid_token"
+          expect:
+            - statusCode: 401
+      - post:
+          url: "/api/functions/{{ functionId }}/invoke"
+          json:
+            invalid: "payload"
+          expect:
+            - statusCode: 400
+
+variables:
+  email:
+    - "user1@example.com"
+    - "user2@example.com"
+    - "user3@example.com"
+    - "admin@example.com"
+  functionId:
+    - "550e8400-e29b-41d4-a716-446655440000"
+    - "550e8400-e29b-41d4-a716-446655440001"
+    - "550e8400-e29b-41d4-a716-446655440002"
+  function_token: "ff_token_1234567890abcdef"
+  admin_token: "ff_admin_token_abcdef1234567890"

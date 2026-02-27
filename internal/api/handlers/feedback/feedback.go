@@ -1,0 +1,480 @@
+package feedback
+
+import (
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/services"
+	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
+)
+
+// Handler handles feedback-related HTTP requests
+type Handler struct {
+	repo           storage.Repository
+	storageService *services.StorageService
+}
+
+// NewHandler creates a new feedback handler
+func NewHandler(repo storage.Repository, storageService *services.StorageService) *Handler {
+	return &Handler{
+		repo:           repo,
+		storageService: storageService,
+	}
+}
+
+// CreateFeedback handles POST /v1/feedback
+func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
+	// Parse multipart form (for file uploads)
+	err := r.ParseMultipartForm(32 << 20) // 32MB max
+	if err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	// Extract basic fields
+	feedbackType := r.FormValue("feedbackType")
+	subject := r.FormValue("subject")
+	message := r.FormValue("message")
+	priority := r.FormValue("priority")
+	browserInfo := r.FormValue("browserInfo")
+
+	// Validate required fields
+	if feedbackType == "" || subject == "" || message == "" {
+		http.Error(w, `{"error":"feedbackType, subject, and message are required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Smart form validation
+	if feedbackType == "bug" && !strings.Contains(strings.ToLower(message), "steps to reproduce") {
+		http.Error(w, `{"error":"Bug reports should include steps to reproduce"}`, http.StatusBadRequest)
+		return
+	}
+
+	if feedbackType == "feature" && len(message) < 50 {
+		http.Error(w, `{"error":"Feature requests need more detail (minimum 50 characters)"}`, http.StatusBadRequest)
+		return
+	}
+
+	if len(message) > 1000 {
+		http.Error(w, `{"error":"Message must be 1000 characters or less"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Get user context (if authenticated)
+	var userID *uuid.UUID
+	var userEmail *string
+
+	if user := middleware.GetUserFromContext(r); user != nil {
+		userID = &user.UserID
+	} else {
+		// For anonymous feedback, we could optionally collect email
+		// userEmail = &someEmailField
+	}
+
+	// Rate limiting check
+	if userID != nil {
+		// For authenticated users, check if they've submitted feedback recently
+		feedbacks, err := h.repo.GetFeedbackByUser(userID, nil, 1, 0)
+		if err == nil && len(feedbacks) > 0 {
+			lastSubmission := feedbacks[0].CreatedAt
+			if time.Since(lastSubmission) < time.Hour {
+				http.Error(w, `{"error":"Please wait an hour before submitting another feedback"}`, http.StatusTooManyRequests)
+				return
+			}
+		}
+	}
+
+	// Create feedback
+	feedback := &storage.Feedback{
+		FeedbackType: feedbackType,
+		Subject:      subject,
+		Message:      message,
+		Priority:     priority,
+		BrowserInfo:  browserInfo,
+		UserID:       userID,
+		UserEmail:    userEmail,
+		IPAddress:    r.RemoteAddr,
+		UserAgent:    r.Header.Get("User-Agent"),
+	}
+
+	createdFeedback, err := h.repo.CreateFeedback(feedback)
+	if err != nil {
+		http.Error(w, `{"error":"Failed to create feedback"}`, http.StatusInternalServerError)
+		return
+	}
+
+	// Handle file uploads
+	files := r.MultipartForm.File
+	if len(files) > 0 {
+		for fieldName, fileHeaders := range files {
+			if strings.HasPrefix(fieldName, "attachment_") {
+				for _, fileHeader := range fileHeaders {
+					// Validate file
+					if fileHeader.Size > 10*1024*1024 { // 10MB
+						continue // Skip oversized files
+					}
+
+					allowedTypes := []string{
+						"image/jpeg", "image/png", "image/gif", "image/webp",
+						"text/plain", "text/log",
+					}
+
+					contentType := fileHeader.Header.Get("Content-Type")
+					isAllowed := false
+					for _, allowedType := range allowedTypes {
+						if contentType == allowedType || strings.HasSuffix(fileHeader.Filename, allowedType[5:]) {
+							isAllowed = true
+							break
+						}
+					}
+
+					if !isAllowed {
+						continue // Skip unsupported files
+					}
+
+					// Upload file to S3 (placeholder - replace with actual S3 upload)
+					file, err := fileHeader.Open()
+					if err != nil {
+						continue
+					}
+					defer file.Close()
+
+					// Generate unique path for storage
+					storagePath := h.storageService.GenerateUniquePath(
+						fmt.Sprintf("feedback/%s", createdFeedback.ID),
+						fileHeader.Filename,
+					)
+
+					// Upload file to Supabase Storage
+					_, err = h.storageService.UploadFile(r.Context(), fileHeader, storagePath)
+					if err != nil {
+						// Log error but don't fail the entire request
+						fmt.Printf("Failed to upload file to storage: %v\n", err)
+						continue
+					}
+
+					// Create attachment record with actual storage info
+					attachment := &storage.FeedbackAttachment{
+						FeedbackID:  createdFeedback.ID,
+						Filename:    fileHeader.Filename,
+						ContentType: contentType,
+						Size:        fileHeader.Size,
+						S3Key:       storagePath,
+						S3Bucket:    "functionfly-feedback",
+					}
+
+					_, err = h.repo.CreateFeedbackAttachment(attachment)
+					if err != nil {
+						// Log error but don't fail the entire request
+						fmt.Printf("Failed to create attachment: %v\n", err)
+					}
+				}
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(createdFeedback)
+}
+
+// GetFeedbackHistory handles GET /v1/feedback/history
+func (h *Handler) GetFeedbackHistory(w http.ResponseWriter, r *http.Request) {
+	// Get user context
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+
+	// Parse query parameters
+	limit := 10 // Default limit
+	offset := 0
+
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l >= 1 && l <= 50 {
+			limit = l
+		}
+	}
+
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 && o <= 1000 {
+			offset = o
+		}
+	}
+
+	// Get feedback history
+	feedbacks, err := h.repo.GetFeedbackByUser(&user.UserID, nil, limit, offset)
+	if err != nil {
+		http.Error(w, `{"error":"Failed to retrieve feedback history"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"feedback": feedbacks,
+		"limit":    limit,
+		"offset":   offset,
+	})
+}
+
+// ListFeedback handles GET /v1/admin/feedback (admin only)
+func (h *Handler) ListFeedback(w http.ResponseWriter, r *http.Request) {
+	// Parse query parameters
+	limit := 50 // Default limit for admin
+	offset := 0
+	var statusFilter *string
+
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l >= 1 && l <= 100 {
+			limit = l
+		}
+	}
+
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 && o <= 10000 {
+			offset = o
+		}
+	}
+
+	if status := r.URL.Query().Get("status"); status != "" {
+		statusFilter = &status
+	}
+
+	// Get feedback list
+	feedbacks, err := h.repo.ListFeedback(limit, offset, statusFilter)
+	if err != nil {
+		http.Error(w, `{"error":"Failed to retrieve feedback"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"feedback": feedbacks,
+		"limit":    limit,
+		"offset":   offset,
+	})
+}
+
+// UpdateFeedbackStatus handles PATCH /v1/admin/feedback/{id}/status (admin only)
+func (h *Handler) UpdateFeedbackStatus(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	feedbackIDStr := vars["id"]
+
+	feedbackID, err := uuid.Parse(feedbackIDStr)
+	if err != nil {
+		http.Error(w, `{"error":"Invalid feedback ID"}`, http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Status string `json:"status"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Validate status
+	validStatuses := []string{"submitted", "in-review", "resolved", "closed"}
+	isValid := false
+	for _, status := range validStatuses {
+		if req.Status == status {
+			isValid = true
+			break
+		}
+	}
+
+	if !isValid {
+		http.Error(w, `{"error":"Invalid status. Must be one of: submitted, in-review, resolved, closed"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Update status
+	err = h.repo.UpdateFeedbackStatus(feedbackID, req.Status)
+	if err != nil {
+		http.Error(w, `{"error":"Failed to update feedback status"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Status updated successfully"})
+}
+
+// GetFeedbackStats handles GET /v1/admin/feedback/stats (admin only)
+func (h *Handler) GetFeedbackStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.repo.GetFeedbackStats()
+	if err != nil {
+		http.Error(w, `{"error":"Failed to retrieve feedback stats"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stats)
+}
+
+// GetFeedbackAnalytics handles GET /v1/admin/feedback/analytics (admin only)
+func (h *Handler) GetFeedbackAnalytics(w http.ResponseWriter, r *http.Request) {
+	analytics, err := h.repo.GetFeedbackAnalytics()
+	if err != nil {
+		http.Error(w, `{"error":"Failed to retrieve feedback analytics"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(analytics)
+}
+
+// ExportFeedback handles GET /v1/admin/feedback/export (admin only)
+func (h *Handler) ExportFeedback(w http.ResponseWriter, r *http.Request) {
+	// Parse query parameters
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "json" // default format
+	}
+
+	if format != "json" && format != "csv" {
+		http.Error(w, `{"error":"Invalid format. Must be 'json' or 'csv'"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Parse filters
+	statusFilter := r.URL.Query().Get("status")
+	typeFilter := r.URL.Query().Get("type")
+	priorityFilter := r.URL.Query().Get("priority")
+	dateFrom := r.URL.Query().Get("date_from")
+	dateTo := r.URL.Query().Get("date_to")
+
+	// Get all feedback (admin can see all)
+	feedbacks, err := h.repo.ListFeedback(10000, 0, nil) // Get up to 10k records
+	if err != nil {
+		http.Error(w, `{"error":"Failed to retrieve feedback"}`, http.StatusInternalServerError)
+		return
+	}
+
+	// Apply filters
+	filteredFeedback := make([]storage.Feedback, 0)
+	for _, fb := range feedbacks {
+		// Status filter
+		if statusFilter != "" && fb.Status != statusFilter {
+			continue
+		}
+
+		// Type filter
+		if typeFilter != "" && fb.FeedbackType != typeFilter {
+			continue
+		}
+
+		// Priority filter
+		if priorityFilter != "" && fb.Priority != priorityFilter {
+			continue
+		}
+
+		// Date filters
+		if dateFrom != "" {
+			if fromDate, err := time.Parse("2006-01-02", dateFrom); err == nil {
+				if fb.CreatedAt.Before(fromDate) {
+					continue
+				}
+			}
+		}
+
+		if dateTo != "" {
+			if toDate, err := time.Parse("2006-01-02", dateTo); err == nil {
+				toDate = toDate.AddDate(0, 0, 1) // Include the end date
+				if fb.CreatedAt.After(toDate) {
+					continue
+				}
+			}
+		}
+
+		filteredFeedback = append(filteredFeedback, fb)
+	}
+
+	// Export based on format
+	if format == "csv" {
+		h.exportCSV(w, filteredFeedback)
+	} else {
+		h.exportJSON(w, filteredFeedback)
+	}
+}
+
+func (h *Handler) exportCSV(w http.ResponseWriter, feedbacks []storage.Feedback) {
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=feedback_export.csv")
+
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+
+	// Write header
+	header := []string{
+		"ID", "User Email", "Feedback Type", "Subject", "Message", "Priority",
+		"Status", "Browser Info", "IPAddress", "User Agent", "Created At", "Updated At",
+	}
+	writer.Write(header)
+
+	// Write data
+	for _, fb := range feedbacks {
+		userEmail := ""
+		if fb.UserEmail != nil {
+			userEmail = *fb.UserEmail
+		}
+		record := []string{
+			fb.ID.String(),
+			userEmail,
+			fb.FeedbackType,
+			fb.Subject,
+			fb.Message,
+			fb.Priority,
+			fb.Status,
+			fb.BrowserInfo,
+			fb.IPAddress,
+			fb.UserAgent,
+			fb.CreatedAt.Format(time.RFC3339),
+			fb.UpdatedAt.Format(time.RFC3339),
+		}
+		writer.Write(record)
+	}
+}
+
+func (h *Handler) exportJSON(w http.ResponseWriter, feedbacks []storage.Feedback) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", "attachment; filename=feedback_export.json")
+
+	// Convert to export format (exclude sensitive internal fields)
+	exportData := make([]map[string]interface{}, 0, len(feedbacks))
+	for _, fb := range feedbacks {
+		userEmail := ""
+		if fb.UserEmail != nil {
+			userEmail = *fb.UserEmail
+		}
+		exportItem := map[string]interface{}{
+			"id":             fb.ID.String(),
+			"user_email":     userEmail,
+			"feedback_type":  fb.FeedbackType,
+			"subject":        fb.Subject,
+			"message":        fb.Message,
+			"priority":       fb.Priority,
+			"status":         fb.Status,
+			"browser_info":   fb.BrowserInfo,
+			"created_at":     fb.CreatedAt.Format(time.RFC3339),
+			"updated_at":     fb.UpdatedAt.Format(time.RFC3339),
+			"has_attachments": len(fb.Attachments) > 0,
+		}
+		exportData = append(exportData, exportItem)
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"exported_at": time.Now().Format(time.RFC3339),
+		"total_count": len(feedbacks),
+		"data":        exportData,
+	})
+}
