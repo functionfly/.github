@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
+	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
 	authHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/auth"
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
@@ -105,6 +106,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize state handler
 	stateRepo := staterepo.NewStateRepository(s.postgresDB.GORM)
 	stateHandler := state.NewHandler(stateRepo)
+
+	// Initialize AEP (Agent Execution Plan) handler
+	aepHandler := agenthandler.NewHandler(s.postgresDB.GORM, s.redisClient, registryRepo)
 
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(s.authSvc)
@@ -501,6 +505,50 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/triggers", authMiddleware.RequireAuth(stateHandler.HandleGetTriggers)).Methods("GET")
 	protected.HandleFunc("/triggers", authMiddleware.RequireAuth(stateHandler.HandleCreateTrigger)).Methods("POST")
 	protected.HandleFunc("/triggers/{id}", authMiddleware.RequireAuth(stateHandler.HandleDeleteTrigger)).Methods("DELETE")
+
+	// ============================================================
+	// AEP (Agent Execution Plan) routes
+	// ============================================================
+
+	// Discovery (public - no auth required for discovery)
+	api.HandleFunc("/agent/discover", aepHandler.HandleDiscover).Methods("GET", "OPTIONS")
+	api.HandleFunc("/agent/discover/{author}/{name}", aepHandler.HandleDiscoverFunction).Methods("GET", "OPTIONS")
+
+	// Agent execution (supports both X-Agent-API-Key and JWT auth)
+	api.HandleFunc("/agent/execute/{author}/{name}", aepHandler.HandleExecute).Methods("POST", "OPTIONS")
+	api.HandleFunc("/agent/execute/{author}/{name}/{version}", aepHandler.HandleExecute).Methods("POST", "OPTIONS")
+
+	// Agent management (protected - JWT required)
+	protected.HandleFunc("/agent/register", authMiddleware.RequireAuth(aepHandler.HandleRegisterAgent)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent", authMiddleware.RequireAuth(aepHandler.HandleListAgents)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(aepHandler.HandleGetAgent)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(aepHandler.HandleDeleteAgent)).Methods("DELETE", "OPTIONS")
+
+	// Quota management (protected)
+	protected.HandleFunc("/agent/{agent_id}/quota", authMiddleware.RequireAuth(aepHandler.HandleUpdateQuota)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/usage", authMiddleware.RequireAuth(aepHandler.HandleGetUsage)).Methods("GET", "OPTIONS")
+
+	// Policy management (protected)
+	protected.HandleFunc("/agent/{agent_id}/policy", authMiddleware.RequireAuth(aepHandler.HandleGetPolicy)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/policy", authMiddleware.RequireAuth(aepHandler.HandleUpdatePolicy)).Methods("PUT", "OPTIONS")
+
+	// Attribution & observability (protected)
+	protected.HandleFunc("/agent/{agent_id}/executions", authMiddleware.RequireAuth(aepHandler.HandleListExecutions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/executions/{exec_id}", authMiddleware.RequireAuth(aepHandler.HandleGetExecution)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/analytics", authMiddleware.RequireAuth(aepHandler.HandleGetAnalytics)).Methods("GET", "OPTIONS")
+
+	// Session management (protected)
+	protected.HandleFunc("/agent/{agent_id}/session/start", authMiddleware.RequireAuth(aepHandler.HandleStartSession)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/session/{session_id}/end", authMiddleware.RequireAuth(aepHandler.HandleEndSession)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/session/{session_id}", authMiddleware.RequireAuth(aepHandler.HandleGetSession)).Methods("GET", "OPTIONS")
+
+	// Billing & economic controls (protected)
+	protected.HandleFunc("/agent/{agent_id}/billing/summary", authMiddleware.RequireAuth(aepHandler.HandleGetBillingSummary)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/billing/spend-cap", authMiddleware.RequireAuth(aepHandler.HandleUpdateSpendCap)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/credits/balance", authMiddleware.RequireAuth(aepHandler.HandleGetCreditBalance)).Methods("GET", "OPTIONS")
+
+	// Concurrency stats (protected)
+	protected.HandleFunc("/agent/concurrency/stats", authMiddleware.RequireAuth(aepHandler.HandleGetConcurrencyStats)).Methods("GET", "OPTIONS")
 
 	// Backend routes (protected)
 	protected.HandleFunc("/apps/{appId}/backends", authMiddleware.RequireAuth(backendsHandler.HandleCreateBackend)).Methods("POST")
