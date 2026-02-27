@@ -96,8 +96,10 @@ func generateEmbedScript(fn *registry.RegistryFunction, fnVersion *registry.Regi
     }
 
     var headers = {
-      "Content-Type": "application/json",
-      "User-Agent":   "FunctionFly-Embed/1.0",
+      "Content-Type":   "application/json",
+      "User-Agent":     "FunctionFly-Embed/1.0",
+      // Phase 3: send the page origin so the server can track embed analytics
+      "X-Embed-Origin": window.location.origin,
     };
 
     // Support data-api-key on the <script> tag

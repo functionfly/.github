@@ -233,6 +233,17 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		UserAgent:  toNullString(func() *string { ua := r.UserAgent(); return &ua }()),
 	}
 
+	// Phase 3 — Embed analytics: record the Origin header when the request
+	// comes from an embed script (identified by the X-Embed-Origin header or
+	// the standard Origin header when the Referer suggests an embed context).
+	if embedOrigin := r.Header.Get("X-Embed-Origin"); embedOrigin != "" {
+		execRecord.EmbedOrigin = sql.NullString{String: embedOrigin, Valid: true}
+	} else if origin := r.Header.Get("Origin"); origin != "" {
+		// Only record as embed origin when the request is cross-origin
+		// (i.e., the Origin header is present and differs from the API host).
+		execRecord.EmbedOrigin = sql.NullString{String: origin, Valid: true}
+	}
+
 	// Add verification results if available
 	if verificationResult != nil {
 		execRecord.VerifiedAt = sql.NullTime{Time: verificationResult.VerifiedAt, Valid: true}

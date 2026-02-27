@@ -9,6 +9,38 @@ import (
 	"github.com/google/uuid"
 )
 
+// ── isOriginAllowed ───────────────────────────────────────────────────────────
+
+func TestIsOriginAllowed_Wildcard(t *testing.T) {
+	if !isOriginAllowed("https://example.com", []string{"*"}) {
+		t.Error("wildcard should allow any origin")
+	}
+}
+
+func TestIsOriginAllowed_ExactMatch(t *testing.T) {
+	if !isOriginAllowed("https://example.com", []string{"https://example.com"}) {
+		t.Error("exact match should be allowed")
+	}
+}
+
+func TestIsOriginAllowed_CaseInsensitive(t *testing.T) {
+	if !isOriginAllowed("https://EXAMPLE.COM", []string{"https://example.com"}) {
+		t.Error("origin matching should be case-insensitive")
+	}
+}
+
+func TestIsOriginAllowed_NotInList(t *testing.T) {
+	if isOriginAllowed("https://evil.com", []string{"https://example.com", "https://app.example.com"}) {
+		t.Error("origin not in list should be denied")
+	}
+}
+
+func TestIsOriginAllowed_EmptyList(t *testing.T) {
+	if isOriginAllowed("https://example.com", []string{}) {
+		t.Error("empty allowed list should deny all origins")
+	}
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func makeTestFunction(author, name, description string) *registry.RegistryFunction {
@@ -192,5 +224,22 @@ func TestParseEmbedOptions_InvalidThemeFallsBackToAuto(t *testing.T) {
 
 	if opts.Theme != "auto" {
 		t.Errorf("invalid theme should fall back to 'auto', got %q", opts.Theme)
+	}
+}
+
+// ── Phase 3: X-Embed-Origin header in generated script ───────────────────────
+
+func TestGenerateEmbedScript_ContainsEmbedOriginHeader(t *testing.T) {
+	fn := makeTestFunction("acme", "slugify", "")
+	ver := makeTestVersion("1.0.0")
+	opts := EmbedOptions{Namespace: "ff", Autoload: true, UI: false, Theme: "auto"}
+
+	script := generateEmbedScript(fn, ver, "", opts)
+
+	if !strings.Contains(script, "X-Embed-Origin") {
+		t.Error("expected script to send X-Embed-Origin header for analytics tracking")
+	}
+	if !strings.Contains(script, "window.location.origin") {
+		t.Error("expected script to use window.location.origin as embed origin value")
 	}
 }

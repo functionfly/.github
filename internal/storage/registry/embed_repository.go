@@ -3,6 +3,7 @@ package registry
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -49,4 +50,50 @@ func (r *RegistryRepository) UpdateFunctionEmbedConfig(functionID uuid.UUID, cfg
 	}
 
 	return nil
+}
+
+// EmbedOriginStat holds execution count for a single embed origin domain.
+type EmbedOriginStat struct {
+	Origin string `json:"origin"`
+	Count  int64  `json:"count"`
+}
+
+// GetEmbedAnalytics returns the top embed origin domains for a function
+// within the given time window, ordered by execution count descending.
+func (r *RegistryRepository) GetEmbedAnalytics(functionID uuid.UUID, since time.Time, limit int) ([]EmbedOriginStat, error) {
+	type row struct {
+		EmbedOrigin string
+		Count       int64
+	}
+
+	var rows []row
+	err := r.db.Model(&RegistryFunctionExecution{}).
+		Select("embed_origin, COUNT(*) as count").
+		Where("function_id = ? AND embed_origin IS NOT NULL AND timestamp >= ?", functionID, since).
+		Group("embed_origin").
+		Order("count DESC").
+		Limit(limit).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get embed analytics: %w", err)
+	}
+
+	stats := make([]EmbedOriginStat, len(rows))
+	for i, r := range rows {
+		stats[i] = EmbedOriginStat{Origin: r.EmbedOrigin, Count: r.Count}
+	}
+	return stats, nil
+}
+
+// GetEmbedExecutionCountByOrigin returns the number of embed executions from a
+// specific origin domain within the given time window (for rate limiting).
+func (r *RegistryRepository) GetEmbedExecutionCountByOrigin(functionID uuid.UUID, origin string, since time.Time) (int64, error) {
+	var count int64
+	err := r.db.Model(&RegistryFunctionExecution{}).
+		Where("function_id = ? AND embed_origin = ? AND timestamp >= ?", functionID, origin, since).
+		Count(&count).Error
+	if err != nil {
+		return 0, fmt.Errorf("failed to count embed executions by origin: %w", err)
+	}
+	return count, nil
 }

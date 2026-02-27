@@ -390,7 +390,13 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	//   GET /v1/embed/{author}/{nameVersion}   e.g. /v1/embed/acme/slugify.js
 	//                                               /v1/embed/acme/slugify@1.2.0.js
 	api.HandleFunc("/embed/{author}/{nameVersion}", registryHandler.HandleServeEmbed).Methods("GET", "OPTIONS")
+
+	// Embed configuration & dashboard routes (public read, protected write)
 	api.HandleFunc("/registry/functions/{author}/{name}/embed", registryHandler.HandleGetEmbedConfig).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/functions/{author}/{name}/embed/snippet", registryHandler.HandleGetEmbedSnippet).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/functions/{author}/{name}/embed/analytics", registryHandler.HandleGetEmbedAnalytics).Methods("GET", "OPTIONS")
+	// Update embed config requires authentication (function owner only)
+	api.HandleFunc("/registry/functions/{author}/{name}/embed", authMiddleware.RequireAuth(registryHandler.HandleUpdateEmbedConfig)).Methods("PUT", "OPTIONS")
 
 	// Cache monitoring routes (public for metrics)
 	api.HandleFunc("/cache/stats", registryHandler.HandleGetCacheStats).Methods("GET")
