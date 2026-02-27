@@ -105,8 +105,16 @@ func (sm *SecurityMiddleware) RequireHMACSignature(next http.HandlerFunc) http.H
 		// Get the shared secret from environment
 		sharedSecret := os.Getenv("API_SHARED_SECRET")
 		if sharedSecret == "" {
-			logrus.Warn("API_SHARED_SECRET not configured, skipping HMAC verification")
-			next.ServeHTTP(w, r)
+			// In development, allow the request but log a prominent warning.
+			// In production, reject the request — a missing secret is a misconfiguration.
+			isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
+			if isDev {
+				logrus.Warn("API_SHARED_SECRET not configured — HMAC verification skipped (development only)")
+				next.ServeHTTP(w, r)
+				return
+			}
+			logrus.Error("API_SHARED_SECRET not configured — rejecting HMAC-required request in production")
+			http.Error(w, "Service misconfigured", http.StatusInternalServerError)
 			return
 		}
 
@@ -205,8 +213,10 @@ func (sm *SecurityMiddleware) CORSMiddleware(next http.HandlerFunc) http.Handler
 					break
 				}
 			}
-			// Always allow localhost/127.0.0.1 origins so the dashboard on :3000 can call the API (e.g. :8090)
-			if !allowed && (strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")) {
+			// Allow localhost/127.0.0.1 only in development mode so the local dashboard
+			// can reach the API. In production CORS_ALLOWED_ORIGINS must be set explicitly.
+			isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
+			if !allowed && isDev && (strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")) {
 				allowed = true
 			}
 			if allowed {
@@ -473,4 +483,51 @@ func stripPortFromHost(s string) string {
 func NewAdvancedSecurityMiddleware(db storage.Repository) *advanced_security.AdvancedSecurityMiddleware {
 	securityMiddleware := NewSecurityMiddleware()
 	return advanced_security.NewAdvancedSecurityMiddleware(securityMiddleware, db)
+}
+
+// AuthRateLimiter is a strict per-IP rate limiter for sensitive auth endpoints
+// (login, signup, resend-verification). Defaults to 10 req/min — configurable
+// via AUTH_RATE_LIMIT_REQUESTS and AUTH_RATE_LIMIT_WINDOW_SECONDS.
+type AuthRateLimiter struct {
+	limiter *RateLimiter
+}
+
+// NewAuthRateLimiter creates an AuthRateLimiter with values from env or defaults.
+func NewAuthRateLimiter() *AuthRateLimiter {
+	limit := 10
+	window := 60 // seconds
+
+	if v := os.Getenv("AUTH_RATE_LIMIT_REQUESTS"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if v := os.Getenv("AUTH_RATE_LIMIT_WINDOW_SECONDS"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			window = parsed
+		}
+	}
+
+	return &AuthRateLimiter{
+		limiter: NewRateLimiter(time.Duration(window)*time.Second, limit),
+	}
+}
+
+// Limit wraps a handler with auth-specific rate limiting.
+func (a *AuthRateLimiter) Limit(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		clientIP := getClientIP(r)
+		if !a.limiter.Allow(clientIP) {
+			logrus.WithFields(logrus.Fields{
+				"ip":   clientIP,
+				"path": r.URL.Path,
+			}).Warn("Auth rate limit exceeded")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(a.limiter.window.Seconds())))
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_ = fmt.Fprintf(w, `{"message":"Too many requests. Please wait before trying again."}`)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
 }

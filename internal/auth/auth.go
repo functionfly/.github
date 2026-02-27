@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/email"
@@ -90,9 +92,15 @@ func (a *AuthService) IsMFARequired(userID uuid.UUID) (bool, error) {
 	return a.mfaSvc.IsMFARequired(userID)
 }
 
-// GenerateInviteToken generates a secure token for team invitations
+// GenerateInviteToken generates a cryptographically secure token for team invitations.
+// Uses 32 bytes of crypto/rand (256 bits) — significantly stronger than a UUID v4.
 func GenerateInviteToken() (string, time.Time) {
-	token := uuid.New().String()
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		// Fall back to UUID if crypto/rand is unavailable (should never happen in practice)
+		return uuid.New().String(), time.Now().Add(7 * 24 * time.Hour)
+	}
+	token := hex.EncodeToString(b)
 	expiresAt := time.Now().Add(7 * 24 * time.Hour) // 7 days
 	return token, expiresAt
 }

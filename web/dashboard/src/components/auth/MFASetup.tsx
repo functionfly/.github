@@ -1,25 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-// import { FormError } from "@/components/ui/form-error"; // Not used in this component
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { OTPInput } from './OTPInput';
 import { Shield, Smartphone } from 'lucide-react';
-
-// Note: In production, generate TOTP secret on the server
-// This is for demonstration purposes only
-const generateTOTPSecret = () => {
-  // Generate a random 32-character base32 secret
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let secret = '';
-  for (let i = 0; i < 32; i++) {
-    secret += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return secret;
-};
-
-// const generateTOTPUrl = (secret: string, email: string, issuer: string = 'FunctionFly') => {
-//   return `otpauth://totp/${issuer}:${email}?secret=${secret}&issuer=${issuer}`;
-// };
+import { apiClient } from '@/api/client';
 
 interface MFASetupProps {
   email: string;
@@ -27,46 +11,64 @@ interface MFASetupProps {
   onSkip: () => void;
 }
 
+interface MFASetupData {
+  secret: string;
+  qr_code_url: string;
+  backup_codes: string[];
+}
+
 export function MFASetup({ onComplete, onSkip }: MFASetupProps) {
   const [step, setStep] = useState<'setup' | 'verify'>('setup');
-  const [secret, setSecret] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [setupData, setSetupData] = useState<MFASetupData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Generate secret on mount
+  // Fetch TOTP secret from backend on mount — never generate secrets client-side
   useEffect(() => {
-    const newSecret = generateTOTPSecret();
-    setSecret(newSecret);
+    const initMFA = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await apiClient.post<MFASetupData>('/v1/auth/mfa/setup', {});
+        setSetupData(data);
+      } catch (err) {
+        setError('Failed to initialize MFA setup. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initMFA();
   }, []);
 
-  const handleSetupComplete = async () => {
+  const handleSetupComplete = () => {
     setStep('verify');
   };
 
-  const handleOTPComplete = async (_otp: string) => {
+  const handleOTPComplete = async (otp: string) => {
+    if (!setupData) return;
+
     setIsLoading(true);
     setError(null);
 
     try {
-      // TODO: Verify TOTP code with your backend
-      // const response = await fetch('/api/auth/mfa/verify', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ secret, code: otp }),
-      // });
-
-      // if (!response.ok) throw new Error('Invalid code');
-
-      onComplete(secret);
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await apiClient.post('/v1/auth/mfa/verify', { code: otp });
+      await apiClient.post('/v1/auth/mfa/enable', {});
+      onComplete(setupData.secret);
     } catch (err) {
       setError('Invalid verification code. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isLoading && !setupData) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   if (step === 'setup') {
     return (
@@ -88,27 +90,35 @@ export function MFASetup({ onComplete, onSkip }: MFASetupProps) {
           </div>
 
           <div className="flex justify-center">
-            {secret ? (
+            {setupData?.qr_code_url ? (
+              <img
+                src={setupData.qr_code_url}
+                alt="MFA QR code"
+                className="w-48 h-48 border border-input rounded-md"
+              />
+            ) : (
               <div className="w-48 h-48 border border-input rounded-md flex items-center justify-center bg-muted">
                 <div className="text-center text-sm text-muted-foreground">
                   <Smartphone className="w-8 h-8 mx-auto mb-2" />
-                  <p>QR Code will be displayed here</p>
+                  <p>QR Code unavailable</p>
                   <p className="text-xs mt-1">Use manual entry below</p>
                 </div>
-              </div>
-            ) : (
-              <div className="w-48 h-48 border border-input rounded-md flex items-center justify-center">
-                <LoadingSpinner />
               </div>
             )}
           </div>
 
-          <div className="text-center space-y-2">
-            <p className="text-xs text-text-muted">Or enter this code manually:</p>
-            <code className="text-xs bg-muted px-2 py-1 rounded font-mono break-all">
-              {secret}
-            </code>
-          </div>
+          {setupData?.secret && (
+            <div className="text-center space-y-2">
+              <p className="text-xs text-text-muted">Or enter this code manually:</p>
+              <code className="text-xs bg-muted px-2 py-1 rounded font-mono break-all">
+                {setupData.secret}
+              </code>
+            </div>
+          )}
+
+          {error && (
+            <p className="text-sm text-destructive text-center">{error}</p>
+          )}
         </div>
 
         <div className="flex space-x-3">
@@ -123,6 +133,7 @@ export function MFASetup({ onComplete, onSkip }: MFASetupProps) {
           <Button
             type="button"
             onClick={handleSetupComplete}
+            disabled={!setupData}
             className="flex-1"
           >
             Continue

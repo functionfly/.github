@@ -104,11 +104,13 @@ func (r *SessionRepository) GetSessionByID(sessionID uuid.UUID) (*Session, error
 // UpdateSessionMFAStatus updates the MFA verification status of a session
 func (r *SessionRepository) UpdateSessionMFAStatus(sessionToken string, mfaVerified bool) error {
 	now := time.Now()
+	// Use distinct parameter indices: $1=mfaVerified, $2=mfa_last_used, $3=last_activity,
+	// $4=updated_at, $5=sessionToken — avoids $1 being reused in the WHERE clause.
 	_, err := r.db.Exec(`
 		UPDATE sessions
 		SET mfa_verified = $1, mfa_last_used = $2, last_activity = $3, updated_at = $4
-		WHERE session_token = $1 AND expires_at > NOW()`,
-		mfaVerified, now, now, now)
+		WHERE session_token = $5 AND expires_at > NOW()`,
+		mfaVerified, now, now, now, sessionToken)
 
 	if err != nil {
 		return fmt.Errorf("failed to update session MFA status: %w", err)
