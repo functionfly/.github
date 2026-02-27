@@ -41,20 +41,23 @@ func (a *AuthService) VerifyEmail(token string) error {
 	return nil
 }
 
-// ResendVerificationEmail resends verification email to an unverified user
+// ResendVerificationEmail resends verification email to an unverified user.
+// Returns a generic error for non-existent and already-verified accounts to
+// avoid leaking account existence information to callers.
 func (a *AuthService) ResendVerificationEmail(email string) error {
 	// Get user by email
 	user, err := a.repo.GetUserByEmail(email)
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
+	// Return a generic message so callers cannot enumerate accounts
 	if user == nil {
-		return fmt.Errorf("user not found")
+		return fmt.Errorf("if that email is registered and unverified, a new verification email has been sent")
 	}
 
-	// Check if already verified
+	// Already verified — return a generic message to avoid distinguishing from non-existent
 	if user.EmailVerified {
-		return fmt.Errorf("email is already verified")
+		return fmt.Errorf("if that email is registered and unverified, a new verification email has been sent")
 	}
 
 	// Generate new verification token

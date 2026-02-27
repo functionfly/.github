@@ -198,11 +198,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// API versioning
 	api := s.router.PathPrefix("/v1").Subrouter()
 
+	// Dedicated rate limiter for auth endpoints: 10 req/min per IP (much stricter than global)
+	// Configurable via AUTH_RATE_LIMIT_REQUESTS / AUTH_RATE_LIMIT_WINDOW_SECONDS env vars.
+	authRateLimiter := middleware.NewAuthRateLimiter()
+
 	// Auth routes (public)
-	api.HandleFunc("/auth/login", authHandler.HandleLogin).Methods("POST", "OPTIONS")
-	api.HandleFunc("/auth/signup", authHandler.HandleSignup).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/verify-email", authHandler.HandleVerifyEmail).Methods("GET", "OPTIONS")
-	api.HandleFunc("/auth/resend-verification", authHandler.HandleResendVerification).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/resend-verification", authRateLimiter.Limit(authHandler.HandleResendVerification)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/get-session", authHandler.HandleGetSession).Methods("GET", "OPTIONS")
 
 	// OAuth routes (public)
@@ -210,6 +214,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/auth/oauth/url", authHandler.HandleGetOAuthURL).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/oauth/{provider}/callback", authHandler.HandleOAuthCallback).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/validate", authMiddleware.RequireAuth(authHandler.HandleValidateToken)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/logout", authMiddleware.RequireAuth(authHandler.HandleLogout)).Methods("POST", "OPTIONS")
 
 	// MFA routes (protected)
 	api.HandleFunc("/auth/mfa/setup", authMiddleware.RequireAuth(mfaHandler.SetupMFA)).Methods("POST", "OPTIONS")

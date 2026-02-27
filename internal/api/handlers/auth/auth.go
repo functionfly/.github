@@ -9,7 +9,6 @@ import (
 	"os"
 	"runtime/debug"
 	"strings"
-	"time"
 
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/sirupsen/logrus"
@@ -72,7 +71,7 @@ func isLoginInternalError(err error) bool {
 	return false
 }
 
-// handleLogin handles user authentication
+// HandleLogin handles user authentication
 func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// Identify responses from this handler (vs proxy 500) for debugging
 	w.Header().Set("X-FunctionFly-Auth", "1")
@@ -95,31 +94,7 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// #region agent log
-	payloadA := map[string]interface{}{"sessionId": "c3cea7", "hypothesisId": "A", "location": "auth.go:HandleLogin", "message": "handler entered, calling Login", "data": map[string]interface{}{"email": req.Email}, "timestamp": time.Now().UnixMilli()}
-	if f, _ := os.OpenFile("/home/micro/projects/functionfly/.cursor/debug-c3cea7.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); f != nil {
-		b, _ := json.Marshal(payloadA)
-		f.Write(append(b, '\n'))
-		f.Close()
-	}
-	logrus.WithField("debug_c3cea7", payloadA).Info("agent log")
-	// #endregion
-
 	response, err := h.authSvc.Login(req.Email, req.Password)
-
-	// #region agent log
-	errStr := ""
-	if err != nil {
-		errStr = err.Error()
-	}
-	payloadB := map[string]interface{}{"sessionId": "c3cea7", "hypothesisId": "B", "location": "auth.go:HandleLogin after Login", "message": "Login returned", "data": map[string]interface{}{"hasErr": err != nil, "errMsg": errStr, "isInternal": err != nil && isLoginInternalError(err), "hasResponse": response != nil}, "timestamp": time.Now().UnixMilli()}
-	if f, _ := os.OpenFile("/home/micro/projects/functionfly/.cursor/debug-c3cea7.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); f != nil {
-		b, _ := json.Marshal(payloadB)
-		f.Write(append(b, '\n'))
-		f.Close()
-	}
-	logrus.WithField("debug_c3cea7", payloadB).Info("agent log")
-	// #endregion
 
 	if err != nil {
 		logrus.WithError(err).WithField("email", req.Email).Warn("Login failed")
@@ -164,35 +139,35 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleSignup(w http.ResponseWriter, r *http.Request) {
 	var req auth.SignupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.Email == "" || req.Password == "" {
-		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Email and password are required")
 		return
 	}
 
 	if req.Password != req.ConfirmPassword {
-		http.Error(w, "Passwords do not match", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Passwords do not match")
 		return
 	}
 
 	if !req.TermsAccepted {
-		http.Error(w, "Terms must be accepted", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Terms must be accepted")
 		return
 	}
 
 	response, err := h.authSvc.Signup(req)
 	if err != nil {
 		logrus.WithError(err).WithField("email", req.Email).Warn("Signup failed")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated) // 201 Created
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // HandleVerifyEmail handles email verification
@@ -200,14 +175,14 @@ func (h *Handler) HandleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 	// Get token from query parameter
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		http.Error(w, "Verification token is required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Verification token is required")
 		return
 	}
 
 	err := h.authSvc.VerifyEmail(token)
 	if err != nil {
-		logrus.WithError(err).WithField("token", token).Warn("Email verification failed")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		logrus.WithError(err).Warn("Email verification failed")
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -216,7 +191,7 @@ func (h *Handler) HandleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // HandleResendVerification handles resending verification emails
@@ -225,42 +200,43 @@ func (h *Handler) HandleResendVerification(w http.ResponseWriter, r *http.Reques
 		Email string `json:"email"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.Email == "" {
-		http.Error(w, "Email is required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Email is required")
 		return
 	}
 
 	err := h.authSvc.ResendVerificationEmail(req.Email)
 	if err != nil {
 		logrus.WithError(err).WithField("email", req.Email).Warn("Resend verification failed")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		// Always return a generic success message to avoid leaking whether the email exists
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	response := map[string]string{
-		"message": "Verification email sent successfully. Please check your email.",
+		"message": "If that email address is registered and unverified, a verification email has been sent.",
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // HandleGetOAuthURL generates OAuth authorization URL for a provider
 func (h *Handler) HandleGetOAuthURL(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	if provider == "" {
-		http.Error(w, "Provider is required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Provider is required")
 		return
 	}
 
 	url, err := h.authSvc.GetOAuthURL(provider)
 	if err != nil {
 		logrus.WithError(err).WithField("provider", provider).Warn("Failed to get OAuth URL")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -269,26 +245,26 @@ func (h *Handler) HandleGetOAuthURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // HandleOAuthCallback processes OAuth callback from providers
 func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	if provider == "" {
-		http.Error(w, "Provider is required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Provider is required")
 		return
 	}
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		http.Error(w, "Authorization code is required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "Authorization code is required")
 		return
 	}
 
 	state := r.URL.Query().Get("state")
 	if state == "" {
-		http.Error(w, "State parameter is required", http.StatusBadRequest)
+		writeJSONError(w, http.StatusBadRequest, "State parameter is required")
 		return
 	}
 
@@ -339,7 +315,7 @@ func (h *Handler) HandleGetOAuthProviders(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // HandleGetSession returns session information (compatible with Supabase auth flow)
@@ -361,7 +337,7 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 		return
 	}
 
@@ -375,7 +351,7 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 		return
 	}
 
@@ -392,7 +368,7 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 		return
 	}
 
@@ -407,7 +383,7 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 		return
 	}
 	if user == nil {
@@ -418,7 +394,7 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 		return
 	}
 
@@ -466,22 +442,22 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
-// HandleValidateToken validates a JWT token and returns user information
+// HandleValidateToken validates a JWT token and returns safe user information (no sensitive fields)
 func (h *Handler) HandleValidateToken(w http.ResponseWriter, r *http.Request) {
 	// Get token from Authorization header
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		http.Error(w, "Authorization header required", http.StatusUnauthorized)
+		writeJSONError(w, http.StatusUnauthorized, "Authorization header required")
 		return
 	}
 
 	// Extract Bearer token
 	parts := strings.Split(authHeader, " ")
 	if len(parts) != 2 || parts[0] != "Bearer" {
-		http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
+		writeJSONError(w, http.StatusUnauthorized, "Invalid authorization header format")
 		return
 	}
 
@@ -491,7 +467,7 @@ func (h *Handler) HandleValidateToken(w http.ResponseWriter, r *http.Request) {
 	claims, err := h.authSvc.ValidateToken(tokenString)
 	if err != nil {
 		logrus.WithError(err).Warn("Token validation failed")
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		writeJSONError(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -499,19 +475,59 @@ func (h *Handler) HandleValidateToken(w http.ResponseWriter, r *http.Request) {
 	user, err := h.authSvc.Repo().GetUserByID(claims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Warn("Failed to get user by ID")
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		writeJSONError(w, http.StatusUnauthorized, "User not found")
 		return
 	}
 	if user == nil {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+		writeJSONError(w, http.StatusUnauthorized, "User not found")
 		return
+	}
+
+	// Return only the safe subset of user data — never expose password hash, MFA secrets, or tokens
+	safeUser := map[string]interface{}{
+		"id":             user.ID,
+		"tenant_id":      user.TenantID,
+		"email":          user.Email,
+		"role":           user.Role,
+		"email_verified": user.EmailVerified,
+		"mfa_enabled":    user.MFAEnabled,
+		"created_at":     user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		"updated_at":     user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	// Include provider display fields if present
+	if user.ProviderData != nil {
+		if name, ok := user.ProviderData["name"].(string); ok {
+			safeUser["name"] = name
+		}
+		if avatar, ok := user.ProviderData["avatar_url"].(string); ok {
+			safeUser["avatar"] = avatar
+		}
 	}
 
 	response := map[string]interface{}{
 		"token": tokenString,
-		"user":  user,
+		"user":  safeUser,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
+}
+
+// HandleLogout invalidates the current session server-side
+func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" {
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) == 2 && parts[0] == "Bearer" {
+			tokenString := parts[1]
+			// Best-effort: delete the session; ignore errors (token may already be expired)
+			if err := h.authSvc.Repo().DeleteSession(tokenString); err != nil {
+				logrus.WithError(err).Debug("Logout: failed to delete session (may already be expired)")
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Logged out successfully"})
 }

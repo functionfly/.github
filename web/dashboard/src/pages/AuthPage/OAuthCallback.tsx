@@ -66,32 +66,11 @@ export function OAuthCallback() {
           return;
         }
 
-        // Store the token in localStorage (this mimics what Supabase would do)
+        // Store the JWT token — initialize() will validate it and fetch real user data
         localStorage.setItem("sb-access-token", token);
-        localStorage.setItem("sb-provider-token", token);
 
-        // Create a mock session object for the auth store
-        const mockSession = {
-          access_token: token,
-          refresh_token: "", // Backend handles refresh
-          expires_at: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 hours
-          token_type: "bearer",
-          user: {
-            id: "oauth-user", // This will be updated when we fetch user data
-            email: "oauth@example.com", // This will be updated
-            user_metadata: {
-              provider: "oauth",
-              new_user: newUser,
-            },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        };
-
-        // Store session in localStorage for persistence
-        localStorage.setItem("supabase.auth.token", JSON.stringify(mockSession));
-
-        // Re-initialize auth store to pick up the new session
+        // Re-initialize auth store: validates the token against the backend
+        // and populates real user data (no placeholder values stored)
         await initialize();
 
         // Navigate to dashboard or onboarding based on whether it's a new user

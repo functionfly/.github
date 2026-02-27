@@ -12,6 +12,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// contextKey is an unexported type used for context keys in this package.
+// Using a typed key prevents collisions with keys from other packages.
+type contextKey int
+
+const (
+	contextKeyUser contextKey = iota
+	contextKeyActingTenantID
+)
+
 // AuthMiddleware contains authentication middleware functions
 type AuthMiddleware struct {
 	authSvc *auth.AuthService
@@ -50,15 +59,15 @@ func (m *AuthMiddleware) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// Add user claims to request context
-		ctx := context.WithValue(r.Context(), "user", claims)
+		// Add user claims to request context using typed key to prevent collisions
+		ctx := context.WithValue(r.Context(), contextKeyUser, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }
 
 // getUserFromContext extracts user claims from request context
 func GetUserFromContext(r *http.Request) *auth.Claims {
-	if claims, ok := r.Context().Value("user").(*auth.Claims); ok {
+	if claims, ok := r.Context().Value(contextKeyUser).(*auth.Claims); ok {
 		return claims
 	}
 	return nil
@@ -66,7 +75,7 @@ func GetUserFromContext(r *http.Request) *auth.Claims {
 
 // getActingTenantID gets the tenant ID the admin is currently acting as (for tenant-scoped operations)
 func GetActingTenantID(r *http.Request) *uuid.UUID {
-	if tenantID, ok := r.Context().Value("acting_tenant_id").(*uuid.UUID); ok {
+	if tenantID, ok := r.Context().Value(contextKeyActingTenantID).(*uuid.UUID); ok {
 		return tenantID
 	}
 	return nil
@@ -74,7 +83,7 @@ func GetActingTenantID(r *http.Request) *uuid.UUID {
 
 // setActingTenantID sets the tenant context for tenant-scoped operations
 func SetActingTenantID(r *http.Request, tenantID *uuid.UUID) *http.Request {
-	ctx := context.WithValue(r.Context(), "acting_tenant_id", tenantID)
+	ctx := context.WithValue(r.Context(), contextKeyActingTenantID, tenantID)
 	return r.WithContext(ctx)
 }
 

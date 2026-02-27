@@ -2,16 +2,58 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 	"runtime/debug"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
+
+// validatePasswordStrength checks that a password meets minimum security requirements:
+//   - At least 8 characters
+//   - At least one uppercase letter
+//   - At least one lowercase letter
+//   - At least one digit
+//   - At least one special character
+func validatePasswordStrength(password string) error {
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters long")
+	}
+	var hasUpper, hasLower, hasDigit, hasSpecial bool
+	for _, ch := range password {
+		switch {
+		case unicode.IsUpper(ch):
+			hasUpper = true
+		case unicode.IsLower(ch):
+			hasLower = true
+		case unicode.IsDigit(ch):
+			hasDigit = true
+		case unicode.IsPunct(ch) || unicode.IsSymbol(ch):
+			hasSpecial = true
+		}
+	}
+	var missing []string
+	if !hasUpper {
+		missing = append(missing, "an uppercase letter")
+	}
+	if !hasLower {
+		missing = append(missing, "a lowercase letter")
+	}
+	if !hasDigit {
+		missing = append(missing, "a digit")
+	}
+	if !hasSpecial {
+		missing = append(missing, "a special character")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("password must contain %s", strings.Join(missing, ", "))
+	}
+	return nil
+}
 
 // Login authenticates a user and returns a JWT token
 func (a *AuthService) Login(email, password string) (res *LoginResponse, err error) {
@@ -27,33 +69,8 @@ func (a *AuthService) Login(email, password string) (res *LoginResponse, err err
 		return nil, fmt.Errorf("internal error: auth not configured")
 	}
 
-	// #region agent log
-	payloadC := map[string]interface{}{"sessionId": "c3cea7", "hypothesisId": "C", "location": "user_auth.go:Login entry", "message": "Login entered", "data": map[string]interface{}{"email": email}, "timestamp": time.Now().UnixMilli()}
-	if f, _ := os.OpenFile("/home/micro/projects/functionfly/.cursor/debug-c3cea7.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); f != nil {
-		b, _ := json.Marshal(payloadC)
-		f.Write(append(b, '\n'))
-		f.Close()
-	}
-	logrus.WithField("debug_c3cea7", payloadC).Info("agent log")
-	// #endregion
-
 	// Get user by email
 	user, err := a.repo.GetUserByEmail(email)
-
-	// #region agent log
-	getUserErrStr := ""
-	if err != nil {
-		getUserErrStr = err.Error()
-	}
-	payloadD := map[string]interface{}{"sessionId": "c3cea7", "hypothesisId": "D", "location": "user_auth.go:after GetUserByEmail", "message": "after GetUserByEmail", "data": map[string]interface{}{"err": getUserErrStr, "userNil": user == nil}, "timestamp": time.Now().UnixMilli()}
-	if f, _ := os.OpenFile("/home/micro/projects/functionfly/.cursor/debug-c3cea7.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); f != nil {
-		b, _ := json.Marshal(payloadD)
-		f.Write(append(b, '\n'))
-		f.Close()
-	}
-	logrus.WithField("debug_c3cea7", payloadD).Info("agent log")
-	// #endregion
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -78,37 +95,12 @@ func (a *AuthService) Login(email, password string) (res *LoginResponse, err err
 
 	// Generate JWT token
 	token, err := a.generateToken(user)
-
-	// #region agent log
-	tokenErrStr := ""
-	if err != nil {
-		tokenErrStr = err.Error()
-	}
-	payloadE := map[string]interface{}{"sessionId": "c3cea7", "hypothesisId": "E", "location": "user_auth.go:after generateToken", "message": "after generateToken", "data": map[string]interface{}{"err": tokenErrStr, "hasToken": token != ""}, "timestamp": time.Now().UnixMilli()}
-	if f, _ := os.OpenFile("/home/micro/projects/functionfly/.cursor/debug-c3cea7.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); f != nil {
-		b, _ := json.Marshal(payloadE)
-		f.Write(append(b, '\n'))
-		f.Close()
-	}
-	logrus.WithField("debug_c3cea7", payloadE).Info("agent log")
-	// #endregion
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
 	// Build safe user for response (no password hash, MFA secrets, or verification tokens)
 	loginUser := userToLoginUser(user)
-
-	// #region agent log
-	payloadF := map[string]interface{}{"sessionId": "c3cea7", "hypothesisId": "F", "location": "user_auth.go:Login success", "message": "Login success path", "data": map[string]interface{}{}, "timestamp": time.Now().UnixMilli()}
-	if f, _ := os.OpenFile("/home/micro/projects/functionfly/.cursor/debug-c3cea7.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); f != nil {
-		b, _ := json.Marshal(payloadF)
-		f.Write(append(b, '\n'))
-		f.Close()
-	}
-	logrus.WithField("debug_c3cea7", payloadF).Info("agent log")
-	// #endregion
 
 	return &LoginResponse{
 		Token: token,
@@ -157,6 +149,10 @@ func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 
 	if req.Password != req.ConfirmPassword {
 		return nil, fmt.Errorf("passwords do not match")
+	}
+
+	if err := validatePasswordStrength(req.Password); err != nil {
+		return nil, err
 	}
 
 	if !req.TermsAccepted {

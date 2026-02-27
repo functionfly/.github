@@ -270,15 +270,33 @@ func (a *AuthService) getUserInfoFromProvider(provider, accessToken string) (*OA
 		return nil, fmt.Errorf("failed to decode user info: %w", err)
 	}
 
-	// For GitHub, we need to get email separately
-	if provider == "github" && userInfo.Email == "" {
+	// For GitHub, the /user endpoint may not include email if it's private.
+	// Always fetch the emails list and prefer a primary+verified address.
+	if provider == "github" {
 		emails, err := a.getGitHubEmails(client)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get GitHub emails: %w", err)
 		}
-		if len(emails) > 0 {
-			userInfo.Email = emails[0].Email
-			userInfo.VerifiedEmail = emails[0].Verified
+		// Selection priority: primary+verified → primary → first verified → first
+		var chosen *GitHubEmail
+		for i := range emails {
+			e := &emails[i]
+			if chosen == nil {
+				chosen = e
+				continue
+			}
+			// Prefer primary+verified over anything else
+			if e.Primary && e.Verified && !(chosen.Primary && chosen.Verified) {
+				chosen = e
+			} else if e.Primary && !chosen.Primary {
+				chosen = e
+			} else if e.Verified && !chosen.Verified && !chosen.Primary {
+				chosen = e
+			}
+		}
+		if chosen != nil {
+			userInfo.Email = chosen.Email
+			userInfo.VerifiedEmail = chosen.Verified
 		}
 	}
 
