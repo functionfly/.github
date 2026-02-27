@@ -10,10 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/dre/antimanip"
+	"github.com/functionfly/functionfly/internal/dre/capsule"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/google/uuid"
 )
 
-// verifyReplay re-executes a function with the same input and verifies the output matches
+// verifyReplay re-executes a function with the same input and verifies the output matches.
+// DRE 2.0: Uses MEG root hash comparison instead of raw output byte comparison.
 func (h *Handler) verifyReplay(fnVersion *storage.RegistryFunctionVersion, originalInput json.RawMessage, originalOutput json.RawMessage, originalDuration int) *ReplayVerificationResult {
 	result := &ReplayVerificationResult{
 		Status:           VerificationPending,
@@ -93,15 +97,93 @@ func (h *Handler) verifyReplay(fnVersion *storage.RegistryFunctionVersion, origi
 
 	result.ReplayedOutput = replayedOutput
 
-	// Compare outputs - for deterministic functions, outputs should be identical
-	result.OutputMatches = outputsEqual(originalOutput, replayedOutput)
+	// DRE 2.0: Build MEG for both original and replay executions, compare root hashes
+	nonce := fmt.Sprintf("replay-%d", time.Now().UnixNano())
+	execMeta := ExecutionMetadata{
+		ExecutionID:     uuid.New().String(),
+		FunctionID:      fnVersion.FunctionID.String(),
+		NodeID:          h.NodeID,
+		Region:          h.Region,
+		Nonce:           nonce,
+		ProtocolVersion: "dre/1.0",
+	}
 
-	if result.OutputMatches {
+	capsuleDesc := capsule.Default(execMeta.ExecutionID, "", "")
+
+	// Build MEG for original output
+	originalMEG, origErr := BuildMEGFromExecution(fnVersion, originalInput, originalOutput, nil, capsuleDesc, execMeta)
+	// Build MEG for replay output (same capsule = same deterministic environment)
+	replayMEG, replayErr := BuildMEGFromExecution(fnVersion, originalInput, replayedOutput, nil, capsuleDesc, execMeta)
+
+	if origErr != nil || replayErr != nil {
+		// Fall back to output byte comparison if MEG construction fails
+		result.OutputMatches = outputsEqual(originalOutput, replayedOutput)
+		if result.OutputMatches {
+			result.Status = VerificationVerified
+		} else {
+			result.Status = VerificationFailed
+			result.Error = "output mismatch: replay produced different result"
+		}
+		return result
+	}
+
+	result.OriginalMEG = originalMEG
+	result.ReplayMEG = replayMEG
+	result.OriginalRootHash = originalMEG.ExecutionRootHash
+	result.ReplayRootHash = replayMEG.ExecutionRootHash
+
+	// Compare MEG root hashes (DRE 2.0 verification)
+	if originalMEG.ExecutionRootHash == replayMEG.ExecutionRootHash {
+		result.OutputMatches = true
 		result.Status = VerificationVerified
 	} else {
+		result.OutputMatches = false
 		result.Status = VerificationFailed
-		result.Error = "output mismatch: replay produced different result"
+
+		// Classify the drift using the anti-manipulation detector
+		detector := &antimanip.DriftDetector{}
+		driftReport, _ := detector.Analyze(originalMEG, replayMEG)
+		if driftReport != nil {
+			result.DriftCategory = driftReport.Category
+			result.ComponentDiff = driftReport.ComponentDiff
+			result.Error = fmt.Sprintf("MEG root hash mismatch: drift category=%s", driftReport.Category)
+
+			// Store drift report asynchronously
+			go h.storeDriftReport(fnVersion, originalMEG.ExecutionRootHash, replayMEG.ExecutionRootHash, driftReport)
+		} else {
+			result.DriftCategory = capsule.DriftUnknown
+			result.Error = fmt.Sprintf("MEG root hash mismatch: original=%s replay=%s",
+				originalMEG.ExecutionRootHash[:16], replayMEG.ExecutionRootHash[:16])
+		}
 	}
 
 	return result
+}
+
+// storeDriftReport persists a drift report and updates the function passport.
+func (h *Handler) storeDriftReport(
+	fnVersion *storage.RegistryFunctionVersion,
+	originalRoot, replayRoot string,
+	driftReport *capsule.DriftReport,
+) {
+	if driftReport == nil {
+		return
+	}
+
+	componentDiffJSON, _ := json.Marshal(driftReport.ComponentDiff)
+
+	record := &storage.DriftReportRecord{
+		FunctionID:       fnVersion.FunctionID,
+		Version:          fnVersion.Version,
+		OriginalRootHash: originalRoot,
+		ReplayRootHash:   replayRoot,
+		DriftCategory:    string(driftReport.Category),
+		ComponentDiff:    componentDiffJSON,
+		TrustPenalty:     driftReport.TrustPenalty,
+	}
+
+	if err := h.Repo.StoreDriftReport(record); err != nil {
+		// Log but don't fail — this is async
+		fmt.Printf("DRE: failed to store drift report: %v\n", err)
+	}
 }

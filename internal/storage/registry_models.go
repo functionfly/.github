@@ -21,6 +21,14 @@ type (
 	RegistryFunctionApproval             = registry.RegistryFunctionApproval
 	RegistryFunctionApprovalComment      = registry.RegistryFunctionApprovalComment
 	RegistryFunctionVerificationStatus   = registry.RegistryFunctionVerificationStatus
+
+	// DRE 2.0 type aliases
+	MEGRecord             = registry.MEGRecord
+	ExecutionCertificate  = registry.ExecutionCertificate
+	DriftReportRecord     = registry.DriftReportRecord
+	ExecutionPassport     = registry.ExecutionPassport
+	PassportUpdate        = registry.PassportUpdate
+	DREScores             = registry.DREScores
 )
 
 // ============================================

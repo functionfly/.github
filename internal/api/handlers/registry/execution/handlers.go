@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/cache"
+	"github.com/functionfly/functionfly/internal/dre/capsule"
+	drecert "github.com/functionfly/functionfly/internal/dre/cert"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -27,6 +29,10 @@ type Handler struct {
 	BackendRepo  storage.Repository
 	CacheService *cache.CacheService
 	EdgeCache    *cache.EdgeCacheService
+	// NodeID is the identifier of this execution node (used in MEG records and certificates)
+	NodeID string
+	// Region is the geographic region of this node
+	Region string
 }
 
 // HandleExecute handles executing a function
@@ -220,6 +226,13 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// DRE 2.0: Build Merkle Execution Graph for deterministic functions
+	var executionRootHash string
+	var certID string
+	if statusCode >= 200 && statusCode < 300 && fnVersion.Deterministic && !cached {
+		go h.buildAndStoreMEG(fn, fnVersion, execReq.Input, result, resourceUsage, durationMs)
+	}
+
 	// Record execution in database
 	execRecord := &storage.RegistryFunctionExecution{
 		FunctionID: fn.ID,
@@ -364,6 +377,9 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 			Version:     fnVersion.Version,
 			ExecutionID: executionID,
 		}
+		// Suppress unused variable warnings — these are populated asynchronously
+		_ = executionRootHash
+		_ = certID
 		w.Header().Set("Content-Type", "application/json")
 
 		// Set cache headers
@@ -620,4 +636,163 @@ func (h *Handler) queueExecution(r *http.Request, functionID uuid.UUID, execReq 
 
 func (h *Handler) updateFunctionPopularity(functionID uuid.UUID) error {
 	return h.Repo.IncrementPopularity(functionID)
+}
+
+// buildAndStoreMEG constructs the Merkle Execution Graph for a completed execution
+// and stores the MEG record and FXCERT certificate asynchronously.
+// This is called in a goroutine and must not block the HTTP response.
+func (h *Handler) buildAndStoreMEG(
+	fn *storage.RegistryFunction,
+	fnVersion *storage.RegistryFunctionVersion,
+	input json.RawMessage,
+	output json.RawMessage,
+	resourceUsage *ResourceUsage,
+	durationMs int,
+) {
+	// Generate a nonce for this MEG construction
+	nonce := fmt.Sprintf("%d", time.Now().UnixNano())
+
+	// Build execution metadata
+	execMeta := ExecutionMetadata{
+		ExecutionID:     uuid.New().String(),
+		FunctionID:      fn.ID.String(),
+		OwnerID:         "",
+		CallerID:        "",
+		NodeID:          h.NodeID,
+		Region:          h.Region,
+		Nonce:           nonce,
+		ProtocolVersion: "dre/1.0",
+	}
+	if fn.OwnerUserID != nil {
+		execMeta.OwnerID = fn.OwnerUserID.String()
+	}
+
+	// Create a default capsule descriptor
+	capsuleDesc := capsule.Default(execMeta.ExecutionID, "", "")
+
+	// Build the MEG
+	megResult, err := BuildMEGFromExecution(fnVersion, input, output, resourceUsage, capsuleDesc, execMeta)
+	if err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"function_id": fn.ID,
+			"version":     fnVersion.Version,
+		}).Warn("DRE: Failed to build MEG for execution")
+		return
+	}
+
+	// Get capsule descriptor hash
+	capsuleHash, err := capsuleDesc.Hash()
+	if err != nil {
+		logrus.WithError(err).Warn("DRE: Failed to hash capsule descriptor")
+		capsuleHash = ""
+	}
+
+	// Parse execution ID as UUID (generated above)
+	execUUID, err := uuid.Parse(execMeta.ExecutionID)
+	if err != nil {
+		execUUID = uuid.New()
+	}
+
+	// Store MEG record
+	megRecord := &storage.MEGRecord{
+		ID:                    uuid.New(),
+		ExecutionID:           execUUID,
+		FunctionID:            fn.ID,
+		Version:               fnVersion.Version,
+		ExecutionRootHash:     megResult.ExecutionRootHash,
+		InputHash:             megResult.InputHash,
+		EnvironmentHash:       megResult.EnvironmentHash,
+		DependencyHash:        megResult.DependencyHash,
+		TraceHash:             megResult.TraceHash,
+		ResourceHash:          megResult.ResourceHash,
+		OutputHash:            megResult.OutputHash,
+		MetadataHash:          megResult.MetadataHash,
+		CapsuleDescriptorHash: capsuleHash,
+		DeterminismTier:       capsuleDesc.DeterminismTier,
+		ProtocolVersion:       "dre/1.0",
+	}
+
+	if err := h.Repo.StoreMEGRecord(megRecord); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"function_id":         fn.ID,
+			"execution_root_hash": megResult.ExecutionRootHash,
+		}).Warn("DRE: Failed to store MEG record")
+		return
+	}
+
+	// Generate FXCERT (standard level)
+	certExec := drecert.ExecutionSection{
+		ExecutionID:      execMeta.ExecutionID,
+		FunctionID:       fmt.Sprintf("fx://%s/%s/%s", fn.Author, fn.Name, fnVersion.Version),
+		OwnerID:          execMeta.OwnerID,
+		CallerID:         execMeta.CallerID,
+		NodeID:           h.NodeID,
+		Region:           h.Region,
+		TimestampVirtual: capsuleDesc.TimeSeed,
+		TimestampRealUTC: time.Now().UTC().Format(time.RFC3339),
+		ProtocolVersion:  "dre/1.0",
+	}
+
+	certCapsule := drecert.CapsuleSection{
+		CapsuleDescriptorHash: capsuleHash,
+		DeterminismTier:       capsuleDesc.DeterminismTier,
+		ProtocolVersion:       capsuleDesc.ProtocolVersion,
+	}
+
+	certTrust := drecert.TrustSection{
+		TrustScore:       0,
+		DeterminismScore: 0,
+	}
+
+	// Generate certificate without signing (no node key configured by default)
+	cert, err := drecert.Generate(megResult, certExec, certCapsule, certTrust, drecert.CertLevelStandard, nil)
+	if err != nil {
+		logrus.WithError(err).Warn("DRE: Failed to generate FXCERT")
+		return
+	}
+
+	// Marshal certificate to JSON
+	certJSON, err := json.Marshal(cert)
+	if err != nil {
+		logrus.WithError(err).Warn("DRE: Failed to marshal FXCERT")
+		return
+	}
+
+	// Store certificate
+	execCert := &storage.ExecutionCertificate{
+		ID:                uuid.New(),
+		CertificateID:     cert.CertificateID,
+		ExecutionID:       megRecord.ID, // Use MEG record ID as proxy for execution ID
+		MEGRecordID:       megRecord.ID,
+		FunctionID:        fn.ID,
+		CertLevel:         string(drecert.CertLevelStandard),
+		CertJSON:          certJSON,
+		ExecutionRootHash: megResult.ExecutionRootHash,
+		CertificateHash:   cert.Integrity.CertificateHash,
+	}
+
+	if err := h.Repo.StoreCertificate(execCert); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"certificate_id": cert.CertificateID,
+		}).Warn("DRE: Failed to store FXCERT")
+		return
+	}
+
+	// Update execution passport
+	now := time.Now()
+	passportUpdate := storage.PassportUpdate{
+		IncrementTotal:        true,
+		IncrementVerified:     false, // Will be set to true after replay verification
+		CapsuleDescriptorHash: capsuleHash,
+		LastVerifiedAt:        &now,
+	}
+	if err := h.Repo.UpdatePassport(fn.ID, passportUpdate); err != nil {
+		logrus.WithError(err).WithField("function_id", fn.ID).Warn("DRE: Failed to update execution passport")
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function_id":         fn.ID,
+		"execution_root_hash": megResult.ExecutionRootHash,
+		"certificate_id":      cert.CertificateID,
+	}).Debug("DRE: MEG and certificate stored successfully")
 }

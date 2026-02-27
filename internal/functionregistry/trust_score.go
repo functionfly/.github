@@ -255,6 +255,135 @@ func GetFunctionAgeDays(createdAt time.Time) int {
 	return int(time.Since(createdAt).Hours() / 24)
 }
 
+// TrustMetricsV2 extends TrustMetrics with DRE 2.0 sub-scores.
+type TrustMetricsV2 struct {
+	TrustMetrics
+
+	// DRE 2.0 sub-scores (from ExecutionPassport)
+	// All values are in range [0.0, 1.0]
+	DeterminismScore          float64 // verified_executions / total_executions
+	ReplayIntegrityScore      float64 // 1 - (drift_incidents / verified_executions)
+	PerformanceStabilityScore float64 // 1 - stddev(resource_hash_variance)
+	DriftScore                float64 // exp(-drift_incidents * 0.1)
+}
+
+// TrustScoreResultV2 extends TrustScoreResult with DRE 2.0 fields.
+type TrustScoreResultV2 struct {
+	TrustScoreResult
+
+	// DRE 2.0 component scores (scaled to 0-100)
+	DREDeterminismScore          float64 `json:"dre_determinism_score"`
+	DREReplayIntegrityScore      float64 `json:"dre_replay_integrity_score"`
+	DREPerformanceStabilityScore float64 `json:"dre_performance_stability_score"`
+	DREDriftScore                float64 `json:"dre_drift_score"`
+	TrustScoreV2                 float64 `json:"trust_score_v2"`
+}
+
+// CalculateV2 computes the TrustScore v2 incorporating DRE 2.0 sub-scores.
+//
+// TrustScore_v2 formula (weights sum to 1.0):
+//
+//	success_rate              * 0.15
+//	latency_score             * 0.10
+//	reliability_score         * 0.15
+//	volume_score              * 0.08
+//	diversity_score           * 0.17
+//	determinism_score         * 0.10  ← DRE 2.0
+//	replay_integrity_score    * 0.10  ← DRE 2.0
+//	performance_stability     * 0.08  ← DRE 2.0
+//	drift_score               * 0.07  ← DRE 2.0
+func (t *TrustScoreCalculator) CalculateV2(metrics *TrustMetricsV2) *TrustScoreResultV2 {
+	// Calculate base v1 components
+	baseResult := t.Calculate(&metrics.TrustMetrics)
+
+	// Scale DRE sub-scores from [0,1] to [0,100]
+	dreDetScore := metrics.DeterminismScore * 100
+	dreReplayScore := metrics.ReplayIntegrityScore * 100
+	drePerfScore := metrics.PerformanceStabilityScore * 100
+	dreDriftScore := metrics.DriftScore * 100
+
+	// If no DRE data yet, use neutral values
+	if metrics.DeterminismScore == 0 && metrics.DriftScore == 0 {
+		dreDetScore = 0
+		dreReplayScore = 0
+		drePerfScore = 0
+		dreDriftScore = 100 // No drift = perfect drift score
+	}
+
+	// Compute TrustScore v2 with redistributed weights
+	trustScoreV2 := (baseResult.SuccessScore * 0.15) +
+		(baseResult.LatencyScore * 0.10) +
+		(baseResult.ReliabilityScore * 0.15) +
+		(baseResult.VolumeScore * 0.08) +
+		(baseResult.DiversityScore * 0.17) +
+		(dreDetScore * 0.10) +
+		(dreReplayScore * 0.10) +
+		(drePerfScore * 0.08) +
+		(dreDriftScore * 0.07)
+
+	// Apply freshness decay (same as v1)
+	if metrics.LastActivityDays > t.InactivityDays {
+		decayFactor := math.Max(0.5, 1.0-float64(metrics.LastActivityDays-t.InactivityDays)/100.0)
+		trustScoreV2 *= decayFactor
+	}
+
+	// Clamp to 0-100
+	trustScoreV2 = math.Min(100, math.Max(0, trustScoreV2))
+
+	return &TrustScoreResultV2{
+		TrustScoreResult:             *baseResult,
+		DREDeterminismScore:          dreDetScore,
+		DREReplayIntegrityScore:      dreReplayScore,
+		DREPerformanceStabilityScore: drePerfScore,
+		DREDriftScore:                dreDriftScore,
+		TrustScoreV2:                 trustScoreV2,
+	}
+}
+
+// CalculateTrustV2ForRating calculates TrustScore v2 and updates the rating record.
+func (t *TrustScoreCalculator) CalculateTrustV2ForRating(
+	rating *storage.RegistryFunctionRating,
+	function *storage.RegistryFunction,
+	functionAgeDays int,
+	dreScores *storage.DREScores,
+) *TrustScoreResultV2 {
+	metrics := &TrustMetricsV2{
+		TrustMetrics: TrustMetrics{
+			SuccessRate:     rating.SuccessRate,
+			P50LatencyMs:    rating.P50LatencyMs,
+			P95LatencyMs:    rating.P95LatencyMs,
+			AvgLatencyMs:    rating.AvgLatencyMs,
+			TimeoutRate:     rating.TimeoutRate,
+			ErrorRate:       rating.ErrorRate,
+			TotalCalls:      rating.TotalRatings,
+			IsDeterministic: function != nil && function.DeterministicScore > 0,
+			UniqueTenants:   rating.TenantDiversity,
+			UniqueUsers:     rating.UserDiversity,
+			UniqueIPs:       int(rating.ConsumerDiversity),
+			FunctionAgeDays: functionAgeDays,
+		},
+	}
+
+	if dreScores != nil {
+		metrics.DeterminismScore = dreScores.DeterminismScore
+		metrics.ReplayIntegrityScore = dreScores.ReplayIntegrityScore
+		metrics.PerformanceStabilityScore = dreScores.PerformanceStabilityScore
+		metrics.DriftScore = dreScores.DriftScore
+	}
+
+	result := t.CalculateV2(metrics)
+
+	// Update rating with both v1 and v2 trust scores
+	rating.TrustScore = result.TrustScore
+	rating.TrustScoreV2 = result.TrustScoreV2
+	rating.DeterminismScore = metrics.DeterminismScore
+	rating.ReplayIntegrityScore = metrics.ReplayIntegrityScore
+	rating.PerformanceStabilityScore = metrics.PerformanceStabilityScore
+	rating.DriftScore = metrics.DriftScore
+
+	return result
+}
+
 // GenerateTrustScore generates a trust score for a function given its execution data
 func GenerateTrustScore(
 	functionID uuid.UUID,
