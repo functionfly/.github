@@ -1,0 +1,1011 @@
+/* ==========================================================================
+   FunctionFly Registry Page Styles
+   Premium "WOW UI 2027" — Futuristic Registry Experience
+   ========================================================================== */
+
+/* ==========================================================================
+   Registry Hero Section
+   ========================================================================== */
+
+.registry-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99, 102, 241, 0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 60% at 10% 80%, rgba(217, 70, 239, 0.12) 0%, transparent 50%),
+    var(--color-bg-primary, #0a0a0f);
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+}
+
+.registry-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236366f1' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+.registry-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme="light"] .registry-hero {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 60% at 10% 80%, rgba(217, 70, 239, 0.06) 0%, transparent 50%),
+    #fafafa;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Floating orb decorations */
+.registry-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  opacity: 0.6;
+  animation: float 8s ease-in-out infinite;
+}
+
+.registry-orb-1 {
+  width: 500px;
+  height: 500px;
+  top: -200px;
+  right: -100px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+  animation-delay: 0s;
+}
+
+.registry-orb-2 {
+  width: 350px;
+  height: 350px;
+  bottom: -150px;
+  left: 5%;
+  background: radial-gradient(circle, rgba(217, 70, 239, 0.2) 0%, transparent 70%);
+  animation-delay: -3s;
+}
+
+.registry-orb-3 {
+  width: 250px;
+  height: 250px;
+  top: 20%;
+  left: 40%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
+  animation-delay: -6s;
+  animation-duration: 12s;
+}
+
+/* ==========================================================================
+   Registry Hero Title
+   ========================================================================== */
+
+.registry-hero-title {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  background: linear-gradient(135deg, #ffffff 0%, #e0e0ff 30%, #a78bfa 60%, #d946ef 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+}
+
+[data-theme="light"] .registry-hero-title {
+  background: linear-gradient(135deg, #1a1a2e 0%, #3b3b6b 30%, #6366f1 60%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ==========================================================================
+   Registry Label Pill
+   ========================================================================== */
+
+.registry-label-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #a78bfa;
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="light"] .registry-label-pill {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.08) 100%);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #6366f1;
+}
+
+/* ==========================================================================
+   Registry Stats Bar
+   ========================================================================== */
+
+.registry-stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0.9rem 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+[data-theme="light"] .registry-stats-bar {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.registry-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  flex: 1;
+  padding: 0 1rem;
+  position: relative;
+}
+
+.registry-stat-item + .registry-stat-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15%;
+  height: 70%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+
+[data-theme="light"] .registry-stat-item + .registry-stat-item::before {
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.1), transparent);
+}
+
+.registry-stat-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #ffffff 0%, #c4b5fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+}
+
+[data-theme="light"] .registry-stat-value {
+  background: linear-gradient(135deg, #1a1a2e 0%, #6366f1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.registry-stat-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #6b6b7b);
+}
+
+/* ==========================================================================
+   Registry Live Badge
+   ========================================================================== */
+
+.registry-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+
+.registry-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  position: relative;
+}
+
+.registry-live-dot::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.4);
+  animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ==========================================================================
+   Registry Auth Banner
+   ========================================================================== */
+
+.registry-auth-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.2rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(251, 191, 36, 0.05) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme="light"] .registry-auth-banner {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.06) 100%);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* ==========================================================================
+   Registry Layout (Sidebar + Content)
+   ========================================================================== */
+
+.registry-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .registry-layout {
+    grid-template-columns: 260px 1fr;
+    gap: 2rem;
+  }
+}
+
+/* ==========================================================================
+   Registry Sidebar
+   ========================================================================== */
+
+.registry-sidebar {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  overflow: hidden;
+  position: sticky;
+  top: 5rem;
+}
+
+[data-theme="light"] .registry-sidebar {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.07);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.registry-sidebar-header {
+  padding: 1rem 1.25rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light"] .registry-sidebar-header {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+.registry-sidebar-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #6b6b7b);
+}
+
+.registry-sidebar-list {
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: calc(100vh - 16rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+.registry-sidebar-list::-webkit-scrollbar {
+  width: 3px;
+}
+.registry-sidebar-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.registry-sidebar-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+.registry-cat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--color-text-secondary, #a0a0b0);
+}
+
+.registry-cat-item:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.15);
+  color: var(--color-text-primary, #ffffff);
+}
+
+.registry-cat-item.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(139, 92, 246, 0.12) 100%);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #a78bfa;
+  box-shadow: inset 0 0 12px rgba(99, 102, 241, 0.06);
+}
+
+[data-theme="light"] .registry-cat-item.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.07) 100%);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: #6366f1;
+}
+
+.registry-cat-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+  transition: all 0.18s ease;
+}
+
+.registry-cat-item.active .registry-cat-icon {
+  background: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.25);
+}
+
+[data-theme="light"] .registry-cat-icon {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .registry-cat-item.active .registry-cat-icon {
+  background: rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.15);
+}
+
+.registry-cat-label {
+  flex: 1;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.registry-cat-count {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-muted, #6b6b7b);
+  min-width: 22px;
+  text-align: center;
+}
+
+.registry-cat-item.active .registry-cat-count {
+  background: rgba(99, 102, 241, 0.2);
+  color: #c4b5fd;
+}
+
+[data-theme="light"] .registry-cat-item.active .registry-cat-count {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+}
+
+/* ==========================================================================
+   Registry Search Spotlight
+   ========================================================================== */
+
+.registry-search-wrapper {
+  position: relative;
+}
+
+.registry-search-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0), rgba(139, 92, 246, 0), rgba(217, 70, 239, 0));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.registry-search-wrapper:focus-within::before {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(139, 92, 246, 0.4), rgba(217, 70, 239, 0.5));
+  opacity: 1;
+}
+
+.registry-search-input {
+  position: relative;
+  z-index: 1;
+  border-radius: 12px;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.registry-search-input:focus-within {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15), 0 8px 32px rgba(99, 102, 241, 0.12);
+}
+
+.registry-search-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #6b6b7b);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  letter-spacing: 0.02em;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  line-height: 1;
+}
+
+[data-theme="light"] .registry-search-shortcut {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #6b6b7b;
+}
+
+/* ==========================================================================
+   Registry Filter Chips (Active filter row)
+   ========================================================================== */
+
+.registry-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.1);
+  color: #a78bfa;
+}
+
+.registry-filter-chip:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+}
+
+.registry-filter-chip .registry-filter-chip-close {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  transition: background 0.15s ease;
+  margin-left: 2px;
+}
+
+.registry-filter-chip:hover .registry-filter-chip-close {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="light"] .registry-filter-chip {
+  border-color: rgba(99, 102, 241, 0.25);
+  background: rgba(99, 102, 241, 0.08);
+  color: #6366f1;
+}
+
+/* ==========================================================================
+   Registry Card (Premium Glass Cards)
+   ========================================================================== */
+
+.registry-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.registry-card::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0), rgba(139, 92, 246, 0), rgba(217, 70, 239, 0));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.registry-card:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.15), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.registry-card:hover::before {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.3), rgba(217, 70, 239, 0.4));
+  opacity: 1;
+}
+
+[data-theme="light"] .registry-card {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.07);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .registry-card:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.1), 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translateY(-3px);
+}
+
+/* Accent stripe on left edge */
+.registry-card-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.6) 0%, rgba(139, 92, 246, 0.3) 50%, transparent 100%);
+  border-radius: 3px 0 0 3px;
+  transition: opacity 0.28s ease;
+  opacity: 0;
+}
+
+.registry-card:hover .registry-card-accent {
+  opacity: 1;
+}
+
+/* Card icon container */
+.registry-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.28s ease;
+}
+
+.registry-card:hover .registry-card-icon {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* Rating mini bar */
+.registry-rating-bar {
+  width: 48px;
+  height: 3px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.registry-rating-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Reliability indicator */
+.registry-reliability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.registry-reliability-high {
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.registry-reliability-mid {
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.registry-reliability-low {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Card flash on live update */
+@keyframes registry-flash {
+  0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6); }
+  50% { box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.2); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+
+.registry-card-flash {
+  animation: registry-flash 0.6s ease-out;
+}
+
+/* ==========================================================================
+   Registry Category Color Accents
+   ========================================================================== */
+
+.registry-cat-color-indigo { --cat-color: #6366f1; --cat-bg: rgba(99, 102, 241, 0.12); }
+.registry-cat-color-violet { --cat-color: #8b5cf6; --cat-bg: rgba(139, 92, 246, 0.12); }
+.registry-cat-color-fuchsia { --cat-color: #d946ef; --cat-bg: rgba(217, 70, 239, 0.12); }
+.registry-cat-color-rose { --cat-color: #f43f5e; --cat-bg: rgba(244, 63, 94, 0.12); }
+.registry-cat-color-amber { --cat-color: #f59e0b; --cat-bg: rgba(245, 158, 11, 0.12); }
+.registry-cat-color-emerald { --cat-color: #10b981; --cat-bg: rgba(16, 185, 129, 0.12); }
+.registry-cat-color-sky { --cat-color: #0ea5e9; --cat-bg: rgba(14, 165, 233, 0.12); }
+.registry-cat-color-cyan { --cat-color: #06b6d4; --cat-bg: rgba(6, 182, 212, 0.12); }
+.registry-cat-color-orange { --cat-color: #f97316; --cat-bg: rgba(249, 115, 22, 0.12); }
+.registry-cat-color-teal { --cat-color: #14b8a6; --cat-bg: rgba(20, 184, 166, 0.12); }
+
+.registry-cat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--cat-color, #6366f1);
+  box-shadow: 0 0 6px var(--cat-color, rgba(99, 102, 241, 0.5));
+}
+
+.registry-cat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--cat-color, #a78bfa);
+  background: var(--cat-bg, rgba(99, 102, 241, 0.12));
+  border: 1px solid color-mix(in srgb, var(--cat-color, #6366f1) 30%, transparent);
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Registry List Card
+   ========================================================================== */
+
+.registry-list-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 3px solid rgba(99, 102, 241, 0.25);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.registry-list-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(99, 102, 241, 0.25);
+  border-left-color: rgba(99, 102, 241, 0.6);
+  transform: translateX(2px);
+  box-shadow: 0 2px 16px rgba(99, 102, 241, 0.1);
+}
+
+[data-theme="light"] .registry-list-card {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.06);
+  border-left-color: rgba(99, 102, 241, 0.2);
+}
+
+[data-theme="light"] .registry-list-card:hover {
+  background: rgba(255, 255, 255, 1);
+  border-left-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 2px 16px rgba(99, 102, 241, 0.08);
+}
+
+/* ==========================================================================
+   Registry Controls Bar
+   ========================================================================== */
+
+.registry-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="light"] .registry-controls {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(0, 0, 0, 0.07);
+}
+
+/* ==========================================================================
+   Registry View Toggle
+   ========================================================================== */
+
+.registry-view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+}
+
+[data-theme="light"] .registry-view-toggle {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.registry-view-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted, #6b6b7b);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.registry-view-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-secondary, #a0a0b0);
+}
+
+.registry-view-btn.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.2));
+  color: #a78bfa;
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.2);
+}
+
+[data-theme="light"] .registry-view-btn.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+}
+
+/* ==========================================================================
+   Registry Results Count
+   ========================================================================== */
+
+.registry-results-count {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-text-muted, #6b6b7b);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.registry-results-count strong {
+  color: var(--color-text-secondary, #a0a0b0);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Registry Empty State
+   ========================================================================== */
+
+.registry-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 2rem;
+  text-align: center;
+}
+
+.registry-empty-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  margin-bottom: 1.5rem;
+  animation: float 4s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   Registry Loading Skeletons
+   ========================================================================== */
+
+.registry-skeleton-card {
+  height: 280px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  position: relative;
+}
+
+.registry-skeleton-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 40%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0.04) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+}
+
+[data-theme="light"] .registry-skeleton-card {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .registry-skeleton-card::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.03) 40%,
+    rgba(0, 0, 0, 0.05) 50%,
+    rgba(0, 0, 0, 0.03) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Mobile horizontal category chips */
+.registry-mobile-cats {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.registry-mobile-cats::-webkit-scrollbar {
+  display: none;
+}
+
+.registry-mobile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-secondary, #a0a0b0);
+  flex-shrink: 0;
+}
+
+.registry-mobile-chip:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: var(--color-text-primary, #ffffff);
+}
+
+.registry-mobile-chip.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #a78bfa;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="light"] .registry-mobile-chip {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #6b6b7b;
+}
+
+[data-theme="light"] .registry-mobile-chip.active {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #6366f1;
+}
+
+/* ==========================================================================
+   Registry Price Badge
+   ========================================================================== */
+
+.registry-price-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  letter-spacing: 0.02em;
+}
+
+[data-theme="light"] .registry-price-badge {
+  background: rgba(245, 158, 11, 0.08);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+/* ==========================================================================
+   Registry Mobile Filter Panel
+   ========================================================================== */
+
+.registry-filter-panel {
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  overflow: hidden;
+  animation: fade-in-scale 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+[data-theme="light"] .registry-filter-panel {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.07);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
