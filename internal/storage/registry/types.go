@@ -8,6 +8,16 @@ import (
 	"github.com/google/uuid"
 )
 
+// EmbedConfig holds per-function embed configuration
+type EmbedConfig struct {
+	Enabled          bool     `json:"enabled"`
+	AllowedOrigins   []string `json:"allowed_origins"`
+	RequireAPIKey    bool     `json:"require_api_key"`
+	UIEnabled        bool     `json:"ui_enabled"`
+	UITheme          string   `json:"ui_theme"` // "light", "dark", "auto"
+	RateLimitPerHour int      `json:"rate_limit_per_hour"`
+}
+
 // RegistryFunction represents a function in the public registry
 type RegistryFunction struct {
 	ID                 uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
@@ -24,6 +34,7 @@ type RegistryFunction struct {
 	ReliabilityScore   float64         `json:"reliability_score" gorm:"default:0"`
 	DeterministicScore float64         `json:"deterministic_score" gorm:"default:0"`
 	Capabilities       json.RawMessage `json:"capabilities" gorm:"type:jsonb"` // Declared capabilities for sandbox enforcement
+	EmbedConfig        json.RawMessage `json:"embed_config,omitempty" gorm:"type:jsonb"` // Per-function embed configuration
 	TenantID           *uuid.UUID      `json:"tenant_id,omitempty" gorm:"type:uuid"`
 	OwnerUserID        *uuid.UUID      `json:"owner_user_id,omitempty" gorm:"type:uuid"`
 	CreatedAt          time.Time       `json:"created_at" gorm:"autoCreateTime"`
@@ -87,6 +98,8 @@ type RegistryFunctionExecution struct {
 	TenantID   *uuid.UUID     `json:"tenant_id" gorm:"type:uuid;index"`
 	UserID     *uuid.UUID     `json:"user_id" gorm:"type:uuid;index"`
 	Timestamp  time.Time      `json:"timestamp" gorm:"autoCreateTime;index"`
+	// Embed tracking
+	EmbedOrigin sql.NullString `json:"embed_origin,omitempty" gorm:"type:text"` // Domain that triggered embed execution
 	// Replay verification fields
 	VerifiedAt         sql.NullTime   `json:"verified_at" gorm:"index"`
 	VerificationStatus sql.NullString `json:"verification_status" gorm:"type:text"` // "verified", "failed", "pending"

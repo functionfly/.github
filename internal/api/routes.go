@@ -384,6 +384,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/docs/{type}/{version}/{path}", registryHandler.HandleServeDocs).Methods("GET")
 	api.HandleFunc("/static/{category}/{path}", registryHandler.HandleServeStatic).Methods("GET")
 
+	// Function Embed routes (public)
+	// Serves a self-contained JavaScript embed script for any registered function.
+	// Supports optional version pinning via the "@version" suffix in the filename.
+	//   GET /v1/embed/{author}/{nameVersion}   e.g. /v1/embed/acme/slugify.js
+	//                                               /v1/embed/acme/slugify@1.2.0.js
+	api.HandleFunc("/embed/{author}/{nameVersion}", registryHandler.HandleServeEmbed).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/functions/{author}/{name}/embed", registryHandler.HandleGetEmbedConfig).Methods("GET", "OPTIONS")
+
 	// Cache monitoring routes (public for metrics)
 	api.HandleFunc("/cache/stats", registryHandler.HandleGetCacheStats).Methods("GET")
 
