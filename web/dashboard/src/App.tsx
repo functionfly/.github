@@ -65,6 +65,8 @@ import RegistryDeployPage from "@/pages/RegistryDeployPage";
 import { DocsPage } from "@/pages/DocsPage";
 import { UserProfilePage } from "@/pages/UserProfilePage";
 import { MyProfilePage } from "@/pages/MyProfilePage";
+import { AppsPage } from "@/pages/AppsPage";
+import { AppDetailPage } from "@/pages/AppDetailPage";
 
 function RegistryFunctionRedirect() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -261,6 +263,8 @@ function AppContent() {
         }
       >
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="apps" element={<AppsPage />} />
+        <Route path="apps/:appId" element={<AppDetailPage />} />
         <Route path="functions" element={<FunctionsPage />} />
         <Route path="functions/new" element={<FunctionEditorPage />} />
         <Route path="functions/deploy" element={<RegistryDeployPage />} />

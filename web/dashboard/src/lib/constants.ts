@@ -13,6 +13,8 @@ export const ROUTES = {
   ANALYTICS: "/analytics",
   STATE_FABRIC: "/state-fabric",
   SETTINGS: "/settings",
+  APPS: "/apps",
+  APP_DETAIL: "/apps/:appId",
   // Admin routes
   ADMIN: "/admin",
   ADMIN_TENANTS: "/admin/tenants",
