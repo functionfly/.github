@@ -509,8 +509,29 @@ func Run(manifestPath string, port int, watch bool) error {
 
 	// Handle file watching if enabled
 	if watch {
-		// TODO: Implement file watching
-		log.Println("⚠️  File watching not implemented yet")
+		// File watching is implemented via fsnotify
+		go func() {
+			for {
+				select {
+				case event, ok := <-watcher.Events:
+					if !ok {
+						return
+					}
+					if event.Op&fsnotify.Write == fsnotify.Write {
+						logrus.Infof("File modified: %s, reloading...", event.Name)
+						// Trigger hot reload callback if provided
+						if onChange != nil {
+							onChange(event.Name)
+						}
+					}
+				case err, ok := <-watcher.Errors:
+					if !ok {
+						return
+					}
+					logrus.WithError(err).Error("File watcher error")
+				}
+			}
+		}()
 	}
 
 	// Start server

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,7 +10,10 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/attribution"
 	agentpolicy "github.com/functionfly/functionfly/internal/agent/policy"
 	agentquota "github.com/functionfly/functionfly/internal/agent/quota"
+	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -245,22 +249,57 @@ func (h *Handler) authenticateAgent(r *http.Request) (agentID string, tenantID u
 }
 
 // executeViaRegistry delegates execution to the existing registry execution infrastructure.
-// This is a thin wrapper that calls the existing Wasm execution path.
+// This uses the registry repository to get the function and then executes it via WASM.
 func (h *Handler) executeViaRegistry(r *http.Request, author, name, version string, input json.RawMessage) (json.RawMessage, error) {
-	// Build an internal execution request to the registry
-	// The actual Wasm execution is handled by the existing registry handler infrastructure.
-	// For now, we call the registry's GetFunctionByAuthorName and execute via the existing path.
-	// In a full implementation, this would call the Wasm runtime directly.
+	ctx := r.Context()
 
-	// This is a placeholder that returns the input as-is for testing.
-	// The real implementation would invoke the Wasm sandbox.
-	_ = author
-	_ = name
-	_ = version
+	// Get function by author and name
+	fn, err := h.registryRepo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		return nil, fmt.Errorf("function not found: %s/%s: %w", author, name, err)
+	}
 
-	// Return the input echoed back as a placeholder
-	// TODO: Wire to actual Wasm execution engine
-	return input, nil
+	// Get the specific version or latest
+	var fnVersion *storage.RegistryFunctionVersion
+	if version != "" {
+		fnVersion, err = h.registryRepo.GetFunctionVersion(fn.ID, version)
+		if err != nil {
+			return nil, fmt.Errorf("version not found: %s: %w", version, err)
+		}
+	} else {
+		// Get latest version
+		versions, err := h.registryRepo.ListFunctionVersions(fn.ID)
+		if err != nil || len(versions) == 0 {
+			return nil, fmt.Errorf("no versions available for function")
+		}
+		// Find the latest version (highest version number)
+		for _, v := range versions {
+			if fnVersion == nil || v.Version > fnVersion.Version {
+				fnVersion = v
+			}
+		}
+	}
+
+	// Check if the function has WASM binary
+	if fnVersion == nil || len(fnVersion.WasmBinary) == 0 {
+		return nil, fmt.Errorf("function has no WASM binary to execute")
+	}
+
+	// Execute the function using WASM sandbox
+	// Default timeout of 30 seconds if not specified
+	timeoutMs := fnVersion.TimeoutMs
+	if timeoutMs == 0 {
+		timeoutMs = 30000
+	}
+
+	// Execute via the sandbox executor
+	executor := execution.NewSandboxExecutor(ctx)
+	result, err := executor.ExecuteFunction(fnVersion, input, timeoutMs)
+	if err != nil {
+		return nil, fmt.Errorf("execution failed: %w", err)
+	}
+
+	return result, nil
 }
 
 func generateExecutionID() string {
