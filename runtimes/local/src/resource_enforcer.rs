@@ -57,6 +57,29 @@ pub struct GlobalResourceLimits {
     pub max_total_cpu_percent: f64,
     pub max_concurrent_functions: usize,
     pub max_bandwidth_mbps: f64,
+    // --- Per-tenant limits (P4.1 — noisy-neighbour prevention) ---
+    /// Maximum memory (MB) that a single tenant may consume across all their
+    /// concurrent function instances.
+    pub max_memory_per_tenant_mb: usize,
+    /// Maximum number of concurrent function instances for a single tenant.
+    pub max_concurrent_per_tenant: usize,
+    /// Maximum number of function executions a single tenant may start per
+    /// minute (rate-limiting).
+    pub max_executions_per_tenant_per_minute: usize,
+}
+
+impl Default for GlobalResourceLimits {
+    fn default() -> Self {
+        Self {
+            max_total_memory_mb: 3072,          // 3 GB (leave 1 GB for OS on 4 GB node)
+            max_total_cpu_percent: 90.0,
+            max_concurrent_functions: 200,
+            max_bandwidth_mbps: 100.0,
+            max_memory_per_tenant_mb: 512,
+            max_concurrent_per_tenant: 20,
+            max_executions_per_tenant_per_minute: 600,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,11 +102,17 @@ pub enum EnforcementDecision {
 impl ResourceEnforcer {
     /// Create a new enterprise resource enforcer
     pub fn new(monitor: Arc<ResourceMonitor>, config: Config) -> Self {
+        // Derive sensible per-tenant limits from the budget tier
+        let tier_specs = crate::budget::NodeSpecs::for_tier(&config.get_budget_tier());
         let global_limits = GlobalResourceLimits {
-            max_total_memory_mb: 8192, // 8GB default
+            max_total_memory_mb: tier_specs.ram_gb * 1024 * 9 / 10, // 90% of RAM
             max_total_cpu_percent: 80.0,
-            max_concurrent_functions: 100,
+            max_concurrent_functions: tier_specs.max_concurrent_wasm,
             max_bandwidth_mbps: 100.0,
+            // Per-tenant: allow each tenant up to 10% of total capacity by default
+            max_memory_per_tenant_mb: (tier_specs.ram_gb * 1024 / 10).max(128),
+            max_concurrent_per_tenant: (tier_specs.max_concurrent_wasm / 10).max(5),
+            max_executions_per_tenant_per_minute: 600,
         };
 
         let mut policies = HashMap::new();

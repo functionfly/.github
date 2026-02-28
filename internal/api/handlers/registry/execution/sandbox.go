@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -650,4 +651,248 @@ func executeOnBackend(execURL string, input string, timeoutMs int) (json.RawMess
 	}
 
 	return response, nil
+}
+
+// ---------------------------------------------------------------------------
+// SandboxClient — persistent daemon connection (P1.7)
+//
+// SandboxClient replaces the per-request SandboxExecutor process-spawn model
+// with a single long-lived runtime daemon process.  The daemon handles
+// multiple functions concurrently via its internal instance pool, eliminating
+// the ~200ms cold-start overhead of spawning a new OS process per request.
+//
+// Usage:
+//
+//	client, err := NewSandboxClient(runtimePath)
+//	defer client.Close()
+//	result, err := client.Execute(fnVersion, input, timeoutMs)
+// ---------------------------------------------------------------------------
+
+// SandboxClient manages a single persistent runtime daemon process and
+// communicates with it over HTTP.
+type SandboxClient struct {
+	runtimePath string
+	daemonURL   string
+	daemonCmd   *exec.Cmd
+	httpClient  *http.Client
+	mu          sync.Mutex
+	isRunning   bool
+	tempDir     string
+}
+
+// NewSandboxClient creates a SandboxClient and starts the runtime daemon.
+// The daemon is started with --daemon-mode which keeps it alive across
+// requests and enables the internal Wasm instance pool.
+func NewSandboxClient(runtimePath string) (*SandboxClient, error) {
+	if runtimePath == "" {
+		var err error
+		runtimePath, err = findLocalRuntime()
+		if err != nil {
+			return nil, fmt.Errorf("sandbox runtime not found: %w", err)
+		}
+	}
+
+	tempDir, err := os.MkdirTemp("", "functionfly-daemon-*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp dir: %w", err)
+	}
+
+	// Find a free port for the daemon
+	port, err := getAvailablePort()
+	if err != nil {
+		os.RemoveAll(tempDir)
+		return nil, fmt.Errorf("failed to find available port: %w", err)
+	}
+
+	daemonURL := fmt.Sprintf("http://127.0.0.1:%d", port)
+
+	// Build daemon command — enable daemon mode and AOT cache
+	args := []string{
+		"--port", fmt.Sprintf("%d", port),
+		"--daemon-mode",
+		"--aot-cache-enabled",
+	}
+
+	cmd := exec.Command(runtimePath, args...)
+	cmd.Dir = tempDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		os.RemoveAll(tempDir)
+		return nil, fmt.Errorf("failed to start runtime daemon: %w", err)
+	}
+
+	sc := &SandboxClient{
+		runtimePath: runtimePath,
+		daemonURL:   daemonURL,
+		daemonCmd:   cmd,
+		httpClient: &http.Client{
+			Timeout: 60 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        50,
+				IdleConnTimeout:     90 * time.Second,
+				MaxConnsPerHost:     50,
+				MaxIdleConnsPerHost: 50,
+			},
+		},
+		isRunning: true,
+		tempDir:   tempDir,
+	}
+
+	// Wait for the daemon to become ready
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := sc.waitForReady(ctx); err != nil {
+		sc.Close()
+		return nil, fmt.Errorf("runtime daemon did not become ready: %w", err)
+	}
+
+	logrus.WithField("url", daemonURL).Info("Runtime daemon started and ready")
+	return sc, nil
+}
+
+// Close stops the daemon process and cleans up temporary files.
+func (sc *SandboxClient) Close() {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+
+	if sc.daemonCmd != nil && sc.daemonCmd.Process != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		sc.daemonCmd.Process.Signal(os.Interrupt)
+		done := make(chan error, 1)
+		go func() { done <- sc.daemonCmd.Wait() }()
+		select {
+		case <-done:
+		case <-ctx.Done():
+			sc.daemonCmd.Process.Kill()
+			<-done
+		}
+		sc.isRunning = false
+		sc.daemonCmd = nil
+	}
+
+	if sc.tempDir != "" {
+		os.RemoveAll(sc.tempDir)
+		sc.tempDir = ""
+	}
+}
+
+// IsRunning reports whether the daemon process is still alive.
+func (sc *SandboxClient) IsRunning() bool {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+	return sc.isRunning
+}
+
+// Execute sends a function execution request to the persistent daemon.
+// The daemon looks up the function in its internal pool and executes it,
+// returning the result without spawning a new process.
+func (sc *SandboxClient) Execute(fnVersion *storage.RegistryFunctionVersion, input []byte, timeoutMs int) ([]byte, error) {
+	if len(fnVersion.WasmBinary) == 0 {
+		return nil, fmt.Errorf("function version has no WASM binary")
+	}
+
+	// Build the per-function execution URL:
+	//   POST /execute/{functionID}/{version}
+	// The daemon routes by function ID + version and uses its pool.
+	execURL := fmt.Sprintf("%s/execute/%s/%s",
+		sc.daemonURL,
+		fnVersion.FunctionID.String(),
+		fnVersion.Version,
+	)
+
+	// Request body: wasm_binary (base64) + input
+	type execRequest struct {
+		WasmBinary string `json:"wasm_binary"` // base64-encoded
+		Input      string `json:"input"`
+		TimeoutMs  int    `json:"timeout_ms"`
+		MemoryMB   int    `json:"memory_mb"`
+	}
+
+	reqBody := execRequest{
+		WasmBinary: base64.StdEncoding.EncodeToString(fnVersion.WasmBinary),
+		Input:      string(input),
+		TimeoutMs:  timeoutMs,
+		MemoryMB:   fnVersion.MemoryMB,
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal execution request: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs+5000)*time.Millisecond)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", execURL, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := sc.httpClient.Do(req)
+	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("execution timeout after %dms", timeoutMs)
+		}
+		return nil, fmt.Errorf("daemon request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if decErr := json.NewDecoder(resp.Body).Decode(&errResp); decErr == nil && errResp.Error != "" {
+			return nil, fmt.Errorf("daemon error (status %d): %s", resp.StatusCode, errResp.Error)
+		}
+		return nil, fmt.Errorf("daemon returned status %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Result     string `json:"result"`
+		ExecTimeMs uint64 `json:"exec_time_ms"`
+		CacheHit   bool   `json:"cache_hit"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode daemon response: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"exec_time_ms": result.ExecTimeMs,
+		"cache_hit":    result.CacheHit,
+	}).Debug("SandboxClient: function executed via daemon")
+
+	return []byte(result.Result), nil
+}
+
+// waitForReady polls the daemon health endpoint until it responds.
+func (sc *SandboxClient) waitForReady(ctx context.Context) error {
+	healthURL := sc.daemonURL + "/health"
+	healthClient := &http.Client{Timeout: 200 * time.Millisecond}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "GET", healthURL, nil)
+		if err != nil {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+		resp, err := healthClient.Do(req)
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return nil
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
