@@ -13,6 +13,7 @@ use crate::cache::ResultCache;
 use crate::config::Config;
 use crate::kv::SharedKVStore;
 use crate::logging::StructuredLogger;
+use crate::module_cache::ModuleCache;
 use crate::monitoring::{ExecutionMetrics, ResourceMonitor};
 use crate::orchestrator_client::{OrchestratorClient, MicroVMExecutionRequest};
 use crate::pool::InstancePool;
@@ -69,6 +70,8 @@ pub struct SharedState {
     pub monitor: Arc<ResourceMonitor>,
     /// MicroVM orchestrator client (for Enterprise tier)
     pub orchestrator_client: Option<Arc<OrchestratorClient>>,
+    /// AOT module cache
+    pub module_cache: Arc<ModuleCache>,
 }
 
 impl SharedState {
@@ -83,6 +86,13 @@ impl SharedState {
             None
         };
 
+        // Create AOT module cache
+        let module_cache = Arc::new(ModuleCache::new(
+            &config.aot_cache_dir,
+            config.aot_cache_memory_capacity,
+            config.aot_cache_enabled,
+        ));
+
         // Create WASM engine with logger and orchestrator client
         let engine = match WasmEngine::with_config(
             config.clone(),
@@ -90,6 +100,7 @@ impl SharedState {
             logger.clone(),
             orchestrator_client.clone(),
             security_monitor,
+            Arc::clone(&module_cache),
         ) {
             Ok(e) => e,
             Err(e) => {
@@ -107,6 +118,7 @@ impl SharedState {
             logger: logger.clone(),
             monitor: Arc::new(ResourceMonitor::new(Some(Arc::new(logger)))),
             orchestrator_client,
+            module_cache,
         }
     }
 }
@@ -120,17 +132,31 @@ pub struct WasmEngine {
     logger: StructuredLogger,
     orchestrator_client: Option<Arc<OrchestratorClient>>,
     security_monitor: Arc<crate::security::SecurityMonitor>,
+    /// AOT module cache shared with the rest of the runtime.
+    module_cache: Arc<ModuleCache>,
 }
 
 impl WasmEngine {
     /// Create a new Wasm engine
     pub fn new(logger: StructuredLogger, security_monitor: Arc<crate::security::SecurityMonitor>) -> anyhow::Result<Self> {
         let config = Config::parse();
-        Self::with_config(config, None, logger, None, security_monitor)
+        let module_cache = Arc::new(ModuleCache::new(
+            &config.aot_cache_dir,
+            config.aot_cache_memory_capacity,
+            config.aot_cache_enabled,
+        ));
+        Self::with_config(config, None, logger, None, security_monitor, module_cache)
     }
 
     /// Create engine with explicit config
-    pub fn with_config(config: Config, kv_store: Option<SharedKVStore>, logger: StructuredLogger, orchestrator_client: Option<Arc<OrchestratorClient>>, security_monitor: Arc<crate::security::SecurityMonitor>) -> anyhow::Result<Self> {
+    pub fn with_config(
+        config: Config,
+        kv_store: Option<SharedKVStore>,
+        logger: StructuredLogger,
+        orchestrator_client: Option<Arc<OrchestratorClient>>,
+        security_monitor: Arc<crate::security::SecurityMonitor>,
+        module_cache: Arc<ModuleCache>,
+    ) -> anyhow::Result<Self> {
         // Configure Wasmtime
         let mut wasm_config = wasmtime::Config::new();
         wasm_config
@@ -156,6 +182,7 @@ impl WasmEngine {
             logger,
             orchestrator_client,
             security_monitor,
+            module_cache,
         })
     }
 
@@ -189,24 +216,35 @@ impl WasmEngine {
                 .context("Failed to execute Python in blocking task")?
             }
             RuntimeType::Wasm => {
-                // Execute standard WASM module in a blocking task to avoid runtime conflicts
+                // Execute standard WASM module in a blocking task to avoid runtime conflicts.
+                // Phase 1.2: wrap with wall-clock timeout so fuel-only limiting is supplemented
+                // by a hard wall-clock deadline.
                 let wasm_bytes = wasm_bytes.to_vec();
                 let input = input.to_string();
                 let engine = self.engine.clone();
                 let config = config.clone();
                 let wasi_linker = self.wasi_linker.clone();
+                let module_cache = Arc::clone(&self.module_cache);
 
-                tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
+                let timeout_duration = std::time::Duration::from_millis(config.timeout_ms);
+
+                let blocking_task = tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
                     if let Some(ref linker) = wasi_linker {
                         // Execute with WASI support synchronously
-                        execute_wasi_sync(&engine, linker, &wasm_bytes, &input, &config)
+                        execute_wasi_sync(&engine, linker, &wasm_bytes, &input, &config, &module_cache)
                     } else {
                         // No WASI linker available - this shouldn't happen in normal operation
                         Err(anyhow::anyhow!("WASI linker not available for WASM execution"))
                     }
-                })
-                .await
-                .context("Failed to execute WASM in blocking task")?
+                });
+
+                tokio::time::timeout(timeout_duration, blocking_task)
+                    .await
+                    .map_err(|_| anyhow::anyhow!(
+                        "WASM execution timed out after {}ms (wall-clock)",
+                        config.timeout_ms
+                    ))?
+                    .context("Failed to execute WASM in blocking task")?
             }
             RuntimeType::PythonMicroVM => {
                 // Execute in MicroVM using the orchestrator
@@ -332,14 +370,18 @@ impl WasmEngine {
     }
 }
 
-/// Synchronous WASI execution function for use in spawn_blocking
-/// This avoids the "Cannot start a runtime from within a runtime" panic
+/// Synchronous WASI execution function for use in spawn_blocking.
+///
+/// Phase 1.3: Uses the AOT module cache to avoid recompiling on every call.
+/// Phase 1.4: Converts `cpu_ms_limit` to fuel units when set.
+/// Phase 2.2: Returns an explicit error when stdout/stderr output is truncated.
 fn execute_wasi_sync(
     engine: &Engine,
     linker: &WasiLinker,
     wasm_bytes: &[u8],
     input: &str,
     config: &Config,
+    module_cache: &ModuleCache,
 ) -> anyhow::Result<String> {
     let execution_start = std::time::Instant::now();
 
@@ -352,8 +394,12 @@ fn execute_wasi_sync(
     // Create store with WASI context
     let mut store = Store::new(engine, wasi_ctx.ctx);
 
-    // Set fuel limit for execution (configurable CPU control)
-    let fuel_limit = if config.cpu_fuel_limit > 0 {
+    // Phase 1.4: Compute fuel limit.
+    // If cpu_ms_limit is set, convert to fuel units using the calibration constant.
+    // Otherwise fall back to the raw cpu_fuel_limit.
+    let fuel_limit = if config.cpu_ms_limit > 0 && config.fuel_per_ms > 0 {
+        config.cpu_ms_limit.saturating_mul(config.fuel_per_ms)
+    } else if config.cpu_fuel_limit > 0 {
         config.cpu_fuel_limit
     } else {
         1_000_000 // Default fallback
@@ -365,9 +411,27 @@ fn execute_wasi_sync(
         store.set_epoch_deadline(1); // Set initial deadline
     }
 
-    // Compile module
-    let module = Module::new(engine, wasm_bytes)
-        .context("Failed to compile Wasm module")?;
+    // Phase 1.3: Use AOT module cache — compile once, reuse across restarts.
+    // The cache is a no-op when disabled (returns None from get()).
+    let module = {
+        // module_cache.get_or_compile is async; we need a sync version here.
+        // Use the blocking runtime to drive the future.
+        let rt = tokio::runtime::Handle::try_current();
+        match rt {
+            Ok(handle) => {
+                // We are inside a tokio runtime (spawn_blocking context).
+                // Use block_in_place to avoid blocking the executor thread.
+                tokio::task::block_in_place(|| {
+                    handle.block_on(module_cache.get_or_compile(engine, wasm_bytes))
+                })?
+            }
+            Err(_) => {
+                // No runtime available — compile directly (test context).
+                Module::new(engine, wasm_bytes)
+                    .context("Failed to compile Wasm module")?
+            }
+        }
+    };
 
     // Instantiate module with WASI
     let instance = linker.linker().instantiate(&mut store, &module)
@@ -430,9 +494,34 @@ fn execute_wasi_sync(
         }
     }
 
-    // Fall back to stdout/stderr
+    // Fall back to stdout/stderr.
+    // Phase 2.2: detect truncation and return an explicit error instead of silently
+    // dropping bytes.  `MemoryOutputPipe` stops accepting bytes once its capacity is
+    // reached; we detect this by comparing the pipe's byte count to the configured
+    // limit.
     let stdout = stdout_pipe.contents();
     let stderr = stderr_pipe.contents();
+
+    let pipe_capacity = if config.max_output_bytes > 0 {
+        config.max_output_bytes
+    } else {
+        1024 * 1024
+    };
+
+    if stdout.len() >= pipe_capacity {
+        return Err(anyhow::anyhow!(
+            "Function output was truncated: stdout reached the {} byte limit. \
+             Increase --max-output-bytes to capture more output.",
+            pipe_capacity
+        ));
+    }
+    if stderr.len() >= pipe_capacity {
+        return Err(anyhow::anyhow!(
+            "Function output was truncated: stderr reached the {} byte limit. \
+             Increase --max-output-bytes to capture more output.",
+            pipe_capacity
+        ));
+    }
 
     if !stdout.is_empty() {
         Ok(String::from_utf8_lossy(&stdout).to_string())
@@ -698,118 +787,36 @@ mod tests {
     use super::*;
     use tokio::runtime::Runtime;
 
+    /// Helper: create a `WasmEngine` from a `Config` using a temporary AOT cache dir.
+    fn make_engine(config: Config) -> WasmEngine {
+        let logger = crate::logging::init_structured_logging(false);
+        let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
+        let module_cache = Arc::new(ModuleCache::new(
+            config.aot_cache_dir.clone(),
+            config.aot_cache_memory_capacity,
+            false, // disable disk cache in tests
+        ));
+        WasmEngine::with_config(config, None, logger, None, security_monitor, module_cache).unwrap()
+    }
+
     #[test]
     fn test_wasm_engine_creation_without_wasi() {
         let config = Config {
-            port: 8787,
-            function: "test".to_string(),
-            version: "1.0.0".to_string(),
-            wasm: None,
-            runtime: "nodejs".to_string(),
-            memory_mb: 128,
-            timeout_ms: 5000,
-            deterministic: false,
-            cache_ttl: 3600,
-            verbose: false,
             wasi_enabled: false,
-            cpu_fuel_limit: 1000000,
-            max_cpu_time_ms: 5000,
-            enable_monitoring: true,
-            hardened_security: true,
-            max_concurrent_per_function: 10,
-            memory_overhead_percent: 10,
-            wasi_dirs: vec![],
-            wasi_env: vec![],
-            wasi_args: vec![],
-            wasi_allow_network: false,
-            wasi_allow_time: true,
-            python_runtime: "rustpython-0.4".to_string(),
-            capabilities: "".to_string(),
-            python_packages: vec![],
-            python_debug: false,
-            smtp_host: "localhost".to_string(),
-            smtp_port: 587,
-            smtp_username: None,
-            smtp_password: None,
-            storage_base_dir: "./storage".to_string(),
-            ai_models_dir: "./models".to_string(),
-            external_api_rate_limit: 60,
-            external_api_timeout_secs: 30,
-            orchestrator_url: "http://localhost:8080".to_string(),
-            orchestrator_timeout_secs: 60,
-            enterprise_enabled: false,
-            tier: "ultra-low".to_string(),
-            network_whitelist: vec![],
-            strict_network_whitelist: false,
-            package_caching_enabled: false,
-            package_cache_dir: "./package-cache".to_string(),
-            package_cache_size_mb: 1024,
-            max_output_bytes: 1024 * 1024,
-            max_input_bytes: 1024 * 1024,
-            microvm_fallback_allowed: true,
+            ..Config::default()
         };
-        let logger = crate::logging::init_structured_logging(false);
-        let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
-        let engine = WasmEngine::with_config(config, None, logger, None, security_monitor);
-        assert!(engine.is_ok());
-        assert!(engine.unwrap().wasi_linker.is_none());
+        let engine = make_engine(config);
+        assert!(engine.wasi_linker.is_none());
     }
 
     #[test]
     fn test_wasm_engine_creation_with_wasi() {
         let config = Config {
-            port: 8787,
-            function: "test".to_string(),
-            version: "1.0.0".to_string(),
-            wasm: None,
-            runtime: "nodejs".to_string(),
-            memory_mb: 128,
-            timeout_ms: 5000,
-            deterministic: false,
-            cache_ttl: 3600,
-            verbose: false,
             wasi_enabled: true,
-            cpu_fuel_limit: 1000000,
-            max_cpu_time_ms: 5000,
-            enable_monitoring: true,
-            hardened_security: true,
-            max_concurrent_per_function: 10,
-            memory_overhead_percent: 10,
-            wasi_dirs: vec![],
-            wasi_env: vec![],
-            wasi_args: vec![],
-            wasi_allow_network: false,
-            wasi_allow_time: true,
-            python_runtime: "rustpython-0.4".to_string(),
-            capabilities: "".to_string(),
-            python_packages: vec![],
-            python_debug: false,
-            smtp_host: "localhost".to_string(),
-            smtp_port: 587,
-            smtp_username: None,
-            smtp_password: None,
-            storage_base_dir: "./storage".to_string(),
-            ai_models_dir: "./models".to_string(),
-            external_api_rate_limit: 60,
-            external_api_timeout_secs: 30,
-            orchestrator_url: "http://localhost:8080".to_string(),
-            orchestrator_timeout_secs: 60,
-            enterprise_enabled: false,
-            tier: "ultra-low".to_string(),
-            network_whitelist: vec![],
-            strict_network_whitelist: false,
-            package_caching_enabled: false,
-            package_cache_dir: "./package-cache".to_string(),
-            package_cache_size_mb: 1024,
-            max_output_bytes: 1024 * 1024,
-            max_input_bytes: 1024 * 1024,
-            microvm_fallback_allowed: true,
+            ..Config::default()
         };
-        let logger = crate::logging::init_structured_logging(false);
-        let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
-        let engine = WasmEngine::with_config(config, None, logger, None, security_monitor);
-        assert!(engine.is_ok());
-        assert!(engine.unwrap().wasi_linker.is_some());
+        let engine = make_engine(config);
+        assert!(engine.wasi_linker.is_some());
     }
 
     #[test]
@@ -817,67 +824,17 @@ mod tests {
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
             let config = Config {
-                port: 8787,
-                function: "test".to_string(),
-                version: "1.0.0".to_string(),
-                wasm: None,
-                runtime: "nodejs".to_string(),
-                memory_mb: 128,
-                timeout_ms: 5000,
-                deterministic: false,
-                cache_ttl: 3600,
-                verbose: false,
                 wasi_enabled: false,
-                cpu_fuel_limit: 1000000,
-                max_cpu_time_ms: 5000,
-                enable_monitoring: true,
-                hardened_security: true,
-                max_concurrent_per_function: 10,
-                memory_overhead_percent: 10,
-                wasi_dirs: vec![],
-                wasi_env: vec![],
-                wasi_args: vec![],
-                wasi_allow_network: false,
-                wasi_allow_time: true,
-                python_runtime: "rustpython-0.4".to_string(),
-                capabilities: "".to_string(),
-                python_packages: vec![],
-                python_debug: false,
-                smtp_host: "localhost".to_string(),
-                smtp_port: 587,
-                smtp_username: None,
-                smtp_password: None,
-                storage_base_dir: "./storage".to_string(),
-                ai_models_dir: "./models".to_string(),
-                external_api_rate_limit: 60,
-                external_api_timeout_secs: 30,
-                orchestrator_url: "http://localhost:8080".to_string(),
-                orchestrator_timeout_secs: 60,
-                enterprise_enabled: false,
-                tier: "ultra-low".to_string(),
-                network_whitelist: vec![],
-                strict_network_whitelist: false,
-                package_caching_enabled: false,
-                package_cache_dir: "./package-cache".to_string(),
-                package_cache_size_mb: 1024,
-                max_output_bytes: 1024 * 1024,
-                max_input_bytes: 1024 * 1024,
-                microvm_fallback_allowed: true,
+                ..Config::default()
             };
-            let logger = crate::logging::init_structured_logging(false);
-            let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
-
-            // Create a simple WebAssembly module that just returns
-            // This is a minimal valid WebAssembly module
             let wasm_bytes = wat::parse_str(r#"
                 (module
                     (func (export "main"))
                 )
             "#).unwrap();
 
-            let engine = WasmEngine::with_config(config.clone(), None, logger, None, security_monitor).unwrap();
+            let engine = make_engine(config.clone());
             let result = engine.execute(&wasm_bytes, "test", &config).await;
-            // Should succeed even with a minimal module
             assert!(result.is_ok());
         });
     }
@@ -885,61 +842,13 @@ mod tests {
     #[tokio::test]
     async fn test_handler_function_input_marshaling() {
         let config = Config {
-            port: 8787,
-            function: "test".to_string(),
-            version: "1.0.0".to_string(),
-            wasm: None,
-            runtime: "wasm".to_string(),
-            memory_mb: 128,
-            timeout_ms: 5000,
-            deterministic: false,
-            cache_ttl: 3600,
-            verbose: false,
             wasi_enabled: true,
-            cpu_fuel_limit: 1000000,
-            max_cpu_time_ms: 5000,
-            enable_monitoring: true,
-            hardened_security: true,
-            max_concurrent_per_function: 10,
-            memory_overhead_percent: 10,
-            wasi_dirs: vec![],
-            wasi_env: vec![],
-            wasi_args: vec![],
-            wasi_allow_network: false,
-            wasi_allow_time: true,
-            python_runtime: "rustpython-0.4".to_string(),
-            capabilities: "".to_string(),
-            python_packages: vec![],
-            python_debug: false,
-            smtp_host: "localhost".to_string(),
-            smtp_port: 587,
-            smtp_username: None,
-            smtp_password: None,
-            storage_base_dir: "./storage".to_string(),
-            ai_models_dir: "./models".to_string(),
-            external_api_rate_limit: 60,
-            external_api_timeout_secs: 30,
-            orchestrator_url: "http://localhost:8080".to_string(),
-            orchestrator_timeout_secs: 60,
-            enterprise_enabled: false,
-            tier: "ultra-low".to_string(),
-            network_whitelist: vec![],
-            strict_network_whitelist: false,
-            package_caching_enabled: false,
-            package_cache_dir: "./package-cache".to_string(),
-            package_cache_size_mb: 1024,
-            max_output_bytes: 1024 * 1024,
-            max_input_bytes: 1024 * 1024,
-            microvm_fallback_allowed: true,
+            runtime: "wasm".to_string(),
+            ..Config::default()
         };
 
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
-            let logger = crate::logging::init_structured_logging(false);
-            let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
-
-            // Create a WebAssembly module with a handler function that expects (i32, i32) parameters
-            // The handler function will return the length of the input string
             let wasm_bytes = wat::parse_str(r#"
                 (module
                     (import "wasi_snapshot_preview1" "proc_exit" (func $__wasi_proc_exit (param i32)))
@@ -951,15 +860,10 @@ mod tests {
                 )
             "#).unwrap();
 
-            let engine = WasmEngine::with_config(config.clone(), None, logger, None, security_monitor).unwrap();
+            let engine = make_engine(config.clone());
             let test_input = "hello world";
             let result = engine.execute(&wasm_bytes, test_input, &config).await;
-
-            // The handler should return the length of the input string
             assert!(result.is_ok());
-            // We can't easily verify the exact output since it's captured via stdout,
-            // but the important thing is that the function executed without error
-            // and received the correct parameters
         });
     }
 }

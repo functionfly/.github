@@ -15,6 +15,7 @@ use tower_http::trace::TraceLayer;
 use crate::cache::ResultCache;
 use crate::config::Config;
 use crate::engine::{SharedState, WasmEngine};
+use crate::module_cache::ModuleCache;
 use crate::handlers::{execute_function, health_check, ready_check, monitoring_stats, budget_analysis, security_status, kv_status, webhook_status, orchestrator_status, AppState};
 use crate::kv::SharedKVStore;
 use crate::logging::{CorrelationId, StructuredLogger};
@@ -55,6 +56,13 @@ pub async fn run_server(
     // Create security monitor
     let security_monitor = Arc::new(SecurityMonitor::new());
 
+    // Create AOT module cache
+    let module_cache = Arc::new(ModuleCache::new(
+        &config.aot_cache_dir,
+        config.aot_cache_memory_capacity,
+        config.aot_cache_enabled,
+    ));
+
     // Create Wasm engine with KV store and orchestrator client
     let engine = WasmEngine::with_config(
         config.clone(),
@@ -62,6 +70,7 @@ pub async fn run_server(
         (*logger).clone(),
         orchestrator_client.clone(),
         security_monitor.clone(),
+        Arc::clone(&module_cache),
     )?;
 
     // Create instance pool

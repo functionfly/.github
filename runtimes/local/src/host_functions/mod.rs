@@ -79,12 +79,15 @@ impl HostFunctionsLinker {
             fetch::add_fetch_function(linker, self.security_monitor.clone(), self.config.clone())?;
         }
 
-        // Add KV functions if KV capability is declared
+        // Add KV functions if KV capability is declared.
+        // Phase 2.1: use per-function namespace to prevent cross-tenant data leakage.
         if capabilities.can_kv() {
             let kv_store = self.kv_store.as_ref()
                 .context("KV store required for KV capability")?
                 .clone();
-            kv::add_kv_functions(kv_store, linker)?;
+            // Namespace = "function_name@version" so each function has its own key space.
+            let namespace = self.config.function_key();
+            kv::add_kv_functions_namespaced(kv_store, namespace, linker)?;
         }
 
         // Add email function if email capability is declared

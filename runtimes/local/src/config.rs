@@ -201,6 +201,78 @@ pub struct Config {
     /// degrading to a different Python runtime.
     #[arg(long, default_value = "true")]
     pub microvm_fallback_allowed: bool,
+
+    // -------------------------------------------------------------------------
+    // Phase 1: AOT module cache
+    // -------------------------------------------------------------------------
+
+    /// Enable AOT (Ahead-of-Time) compiled module cache.
+    ///
+    /// When enabled, compiled Wasmtime modules are serialised to disk so that
+    /// subsequent process restarts skip JIT compilation.
+    #[arg(long, default_value = "true")]
+    pub aot_cache_enabled: bool,
+
+    /// Directory where AOT-compiled `.cwasm` files are stored.
+    #[arg(long, default_value = "./module-cache")]
+    pub aot_cache_dir: String,
+
+    /// Maximum number of compiled modules to keep in the in-memory LRU cache.
+    #[arg(long, default_value = "64")]
+    pub aot_cache_memory_capacity: usize,
+
+    // -------------------------------------------------------------------------
+    // Phase 1: CPU millisecond limit (fuel calibration abstraction)
+    // -------------------------------------------------------------------------
+
+    /// CPU time limit expressed in **milliseconds** of wall-clock CPU time.
+    ///
+    /// When non-zero this overrides `cpu_fuel_limit`: the runtime converts the
+    /// millisecond budget to Wasmtime fuel units using the `fuel_per_ms`
+    /// calibration constant.  Set to 0 to use `cpu_fuel_limit` directly.
+    #[arg(long, default_value = "0")]
+    pub cpu_ms_limit: u64,
+
+    /// Fuel units consumed per millisecond of CPU time on this hardware class.
+    ///
+    /// Run the calibration benchmark (`functionfly-local --calibrate`) to
+    /// determine the correct value for your deployment.  The default of 200_000
+    /// is a conservative estimate suitable for most cloud VMs.
+    #[arg(long, default_value = "200000")]
+    pub fuel_per_ms: u64,
+
+    // -------------------------------------------------------------------------
+    // Phase 2: YARA scanner
+    // -------------------------------------------------------------------------
+
+    /// Enable YARA scanning of WASM artifacts before execution.
+    #[arg(long, default_value = "false")]
+    pub yara_scan_enabled: bool,
+
+    /// URL of the YARA service (e.g. `http://localhost:5000`).
+    #[arg(long, default_value = "http://localhost:5000")]
+    pub yara_service_url: String,
+
+    /// YARA scanner timeout in seconds.
+    #[arg(long, default_value = "5")]
+    pub yara_timeout_secs: u64,
+
+    /// If true, allow execution when the YARA service is unreachable (fail-open).
+    /// If false, block execution when the service is unreachable (fail-closed).
+    #[arg(long, default_value = "true")]
+    pub yara_fail_open: bool,
+
+    // -------------------------------------------------------------------------
+    // Phase 3: Python runtime pool
+    // -------------------------------------------------------------------------
+
+    /// Maximum number of concurrent Python (RustPython) runtimes.
+    #[arg(long, default_value = "8")]
+    pub python_pool_max_concurrent: usize,
+
+    /// Maximum number of idle Python runtimes to keep warm in the pool.
+    #[arg(long, default_value = "4")]
+    pub python_pool_max_idle: usize,
 }
 
 impl Config {
@@ -307,6 +379,21 @@ impl Default for Config {
             max_output_bytes: 1024 * 1024,   // 1 MiB
             max_input_bytes: 1024 * 1024,    // 1 MiB
             microvm_fallback_allowed: true,
+            // Phase 1: AOT cache
+            aot_cache_enabled: true,
+            aot_cache_dir: "./module-cache".to_string(),
+            aot_cache_memory_capacity: 64,
+            // Phase 1: CPU ms limit
+            cpu_ms_limit: 0,
+            fuel_per_ms: 200_000,
+            // Phase 2: YARA scanner
+            yara_scan_enabled: false,
+            yara_service_url: "http://localhost:5000".to_string(),
+            yara_timeout_secs: 5,
+            yara_fail_open: true,
+            // Phase 3: Python pool
+            python_pool_max_concurrent: 8,
+            python_pool_max_idle: 4,
         }
     }
 }
@@ -364,6 +451,17 @@ mod tests {
             max_output_bytes: 1024 * 1024,
             max_input_bytes: 1024 * 1024,
             microvm_fallback_allowed: true,
+            aot_cache_enabled: true,
+            aot_cache_dir: "./module-cache".to_string(),
+            aot_cache_memory_capacity: 64,
+            cpu_ms_limit: 0,
+            fuel_per_ms: 200_000,
+            yara_scan_enabled: false,
+            yara_service_url: "http://localhost:5000".to_string(),
+            yara_timeout_secs: 5,
+            yara_fail_open: true,
+            python_pool_max_concurrent: 8,
+            python_pool_max_idle: 4,
         };
 
         assert_eq!(config.function_key(), "slugify@1.0.0");

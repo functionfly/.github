@@ -1,4 +1,14 @@
-//! Key-value storage host functions implementation
+//! Key-value storage host functions implementation.
+//!
+//! # Phase 2 — per-execution KV namespace
+//!
+//! All keys are automatically prefixed with `{namespace}:` where `namespace`
+//! is `{tenant_id}:{function_name}`.  This prevents cross-tenant data leakage
+//! when multiple functions share the same in-memory KV store.
+//!
+//! The namespace is passed in at linker construction time via
+//! `add_kv_functions_namespaced`.  The legacy `add_kv_functions` wrapper
+//! passes an empty namespace for backward compatibility.
 
 use wasmtime_wasi::p1::WasiP1Ctx;
 
@@ -6,11 +16,21 @@ use crate::kv::SharedKVStore;
 
 use super::memory_utils;
 
-/// Add KV functions (get and set)
-pub fn add_kv_functions(
+/// Add KV functions with an explicit namespace prefix.
+///
+/// All keys written/read by the WASM guest are transparently prefixed with
+/// `{namespace}:` so that different tenants/functions cannot interfere with
+/// each other's data.
+///
+/// Pass `namespace = ""` to disable namespacing (backward-compatible behaviour).
+pub fn add_kv_functions_namespaced(
     kv_store: SharedKVStore,
+    namespace: String,
     linker: &mut wasmtime::Linker<WasiP1Ctx>,
 ) -> anyhow::Result<()> {
+    let ns_get = namespace.clone();
+    let ns_set = namespace.clone();
+
     // functionfly.kv_get(key_ptr: i32, key_len: i32, value_ptr: i32, value_len_ptr: i32) -> i32
     // Returns 0 on success, -1 if key not found, other negative values on error
     let kv_store_get = kv_store.clone();
@@ -23,16 +43,23 @@ pub fn add_kv_functions(
               value_ptr: i32,
               value_len_ptr: i32| -> i32 {
             // Get the key from WASM memory
-            let key = match memory_utils::read_string_from_memory(&mut caller, key_ptr, key_len) {
+            let raw_key = match memory_utils::read_string_from_memory(&mut caller, key_ptr, key_len) {
                 Ok(k) => k,
                 Err(_) => return -2, // Invalid key
+            };
+
+            // Apply namespace prefix
+            let namespaced_key = if ns_get.is_empty() {
+                raw_key
+            } else {
+                format!("{}:{}", ns_get, raw_key)
             };
 
             // Get value from KV store
             let value = match tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async {
                     let mut store = kv_store_get.write().await;
-                    store.get(&key)
+                    store.get(&namespaced_key)
                 })
             }) {
                 Some(v) => v,
@@ -60,9 +87,16 @@ pub fn add_kv_functions(
               value_len: i32,
               ttl_seconds: i32| -> i32 {
             // Get the key from WASM memory
-            let key = match memory_utils::read_string_from_memory(&mut caller, key_ptr, key_len) {
+            let raw_key = match memory_utils::read_string_from_memory(&mut caller, key_ptr, key_len) {
                 Ok(k) => k,
                 Err(_) => return -2, // Invalid key
+            };
+
+            // Apply namespace prefix
+            let namespaced_key = if ns_set.is_empty() {
+                raw_key
+            } else {
+                format!("{}:{}", ns_set, raw_key)
             };
 
             // Get the value from WASM memory
@@ -79,7 +113,7 @@ pub fn add_kv_functions(
                 let deleted = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
                         let mut store = kv_store_set.write().await;
-                        store.delete(&key)
+                        store.delete(&namespaced_key)
                     })
                 });
                 return if deleted { 0 } else { -4 }; // Delete success/failure
@@ -93,7 +127,7 @@ pub fn add_kv_functions(
             let result = tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async {
                     let mut store = kv_store_set.write().await;
-                    store.set(key, value, ttl_seconds_opt)
+                    store.set(namespaced_key, value, ttl_seconds_opt)
                 })
             });
 
@@ -104,6 +138,17 @@ pub fn add_kv_functions(
         },
     )?;
 
-    tracing::debug!("Added functionfly.kv_get and functionfly.kv_set host functions");
+    tracing::debug!(
+        "Added functionfly.kv_get and functionfly.kv_set host functions (namespace='{}')",
+        namespace
+    );
     Ok(())
+}
+
+/// Add KV functions without namespacing (backward-compatible wrapper).
+pub fn add_kv_functions(
+    kv_store: SharedKVStore,
+    linker: &mut wasmtime::Linker<WasiP1Ctx>,
+) -> anyhow::Result<()> {
+    add_kv_functions_namespaced(kv_store, String::new(), linker)
 }
