@@ -92,7 +92,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	edgeCache.SetRepository(registryRepo)
 
 	registryHandler := registryhandler.NewHandler(registryRepo, s.repo, cacheService, cdnService, edgeCache, s.realtimeMonitor)
-	adminRegistryHandler := admin.NewRegistryHandler(registryRepo)
+	adminRegistryHandler := admin.NewRegistryHandler(registryRepo, cacheService)
 
 	// Initialize documentation handler
 	docsHandler := registryhandler.NewDocumentationHandler(registryRepo)
@@ -783,6 +783,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	adminRoutes.HandleFunc("/registry/functions/{functionId}/versions/{versionId}/deactivate", authMiddleware.RequirePermission(auth.PermTenantsWrite)(adminRegistryHandler.HandleDeactivateRegistryVersion)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/registry/functions/{functionId}/metrics", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminRegistryHandler.HandleGetRegistryFunctionMetrics)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/registry/generate-description", authMiddleware.RequirePermission(auth.PermTenantsWrite)(adminRegistryHandler.HandleGenerateRegistryDescription)).Methods("POST", "OPTIONS")
+
+	// Admin cache management routes
+	adminRoutes.HandleFunc("/cache/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(adminRegistryHandler.HandleGetCacheStats)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/cache", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminRegistryHandler.HandlePurgeAllCache))).Methods("DELETE", "OPTIONS")
+	adminRoutes.HandleFunc("/cache/{functionId}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminRegistryHandler.HandlePurgeFunctionCache))).Methods("DELETE", "OPTIONS")
+	adminRoutes.HandleFunc("/cache/{functionId}/{version}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminRegistryHandler.HandlePurgeVersionCache))).Methods("DELETE", "OPTIONS")
 
 	// Admin state fabrics (stats before {id} for route precedence)
 	adminRoutes.HandleFunc("/state-fabrics/stats", authMiddleware.RequirePermission(auth.PermTenantsRead)(stateFabricHandler.HandleGetStats)).Methods("GET", "OPTIONS")

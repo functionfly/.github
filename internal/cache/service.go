@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -104,17 +105,27 @@ func (c *CacheService) GetOrExecute(
 	// Normalize input for consistent cache key
 	normalizedInput, err := NormalizeInput(input)
 	if err != nil {
-		// If normalization fails, execute without caching
-		output, err := executeFn()
-		if err != nil {
-			return nil, err
+		// Try wrapping as a JSON string value for bare string inputs
+		// This handles inputs like "Hello World" which are valid but not JSON objects
+		quoted, marshalErr := json.Marshal(string(input))
+		if marshalErr == nil {
+			normalizedInput, err = NormalizeInput(quoted)
 		}
-		return &CacheResult{
-			Output:    output,
-			FromCache: false,
-			Layer:     "none",
-			Hit:       false,
-		}, nil
+
+		if err != nil {
+			// Truly malformed input - execute without caching and log warning
+			logrus.WithError(err).Warn("cache: input normalization failed, bypassing cache")
+			output, err := executeFn()
+			if err != nil {
+				return nil, err
+			}
+			return &CacheResult{
+				Output:    output,
+				FromCache: false,
+				Layer:     "none",
+				Hit:       false,
+			}, nil
+		}
 	}
 
 	// Generate cache key

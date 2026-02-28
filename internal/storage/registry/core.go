@@ -8,27 +8,23 @@ import (
 
 // RegistryRepository handles function registry database operations
 type RegistryRepository struct {
-	db             *gorm.DB
-	cache          *cache.RegistryRedisCache
-	executionCache *cache.ExecutionCache
-	keyGen         *cache.RegistryCacheKey
+	db     *gorm.DB
+	cache  *cache.RegistryRedisCache
+	keyGen *cache.RegistryCacheKey
 }
 
 // NewRegistryRepository creates a new registry repository
 func NewRegistryRepository(db *gorm.DB, cacheClient *cache.RegistryRedisCache) *RegistryRepository {
 	var keyGen *cache.RegistryCacheKey
-	var executionCache *cache.ExecutionCache
 
 	if cacheClient != nil {
 		keyGen = cache.NewRegistryCacheKey()
-		executionCache = cache.NewExecutionCache(cacheClient)
 	}
 
 	return &RegistryRepository{
-		db:             db,
-		cache:          cacheClient,
-		executionCache: executionCache,
-		keyGen:         keyGen,
+		db:     db,
+		cache:  cacheClient,
+		keyGen: keyGen,
 	}
 }
 

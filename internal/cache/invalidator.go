@@ -10,6 +10,7 @@ import (
 // RegistryRepository interface for cache invalidation
 type RegistryRepository interface {
 	GetLatestFunctionVersion(functionID uuid.UUID) (interface{}, error)
+	GetLatestFunctionVersionInfo(functionID uuid.UUID) (*FunctionVersionInfo, error)
 }
 
 // CacheInvalidator handles cache invalidation based on function lifecycle events
@@ -82,19 +83,23 @@ type FunctionVersionInfo struct {
 }
 
 // OnFunctionUpdated is called when function metadata changes
-// This checks if cache-affecting fields were modified
+// This checks if cache-affecting fields were modified and invalidates cache if needed
 func (i *CacheInvalidator) OnFunctionUpdated(fn FunctionInfo, oldVersion FunctionVersionInfo) error {
 	// Check if any cache-affecting fields changed
 	// We need the current version to compare - get from registry if available
-	var currentVersion FunctionVersionInfo
+	var currentVersion *FunctionVersionInfo
 	if i.registryRepository != nil {
-		if _, err := i.registryRepository.GetLatestFunctionVersion(fn.ID); err == nil {
-			// Try to extract version info (simplified - in real implementation would cast properly)
-			currentVersion = FunctionVersionInfo{} // Placeholder
-		} else {
+		var err error
+		currentVersion, err = i.registryRepository.GetLatestFunctionVersionInfo(fn.ID)
+		if err != nil {
 			// If we can't get current version, safest to invalidate all
 			return i.invalidateAllLayers(fn.ID.String(), "")
 		}
+	}
+
+	// If we couldn't get current version info, invalidate all to be safe
+	if currentVersion == nil {
+		return i.invalidateAllLayers(fn.ID.String(), "")
 	}
 
 	// Check if eligibility-affecting fields changed
@@ -175,30 +180,7 @@ func (i *CacheInvalidator) PurgeVersion(functionID, version string) error {
 	return i.service.InvalidateVersion(functionID, version)
 }
 
-// getCurrentVersion retrieves the current version of a function
-// This is a helper to get the latest version for comparison
-func (i *CacheInvalidator) getCurrentVersion(functionID string) (FunctionVersionInfo, error) {
-	if i.registryRepository == nil {
-		// Fallback to safe behavior if repository not injected
-		return FunctionVersionInfo{}, nil
-	}
 
-	// Parse the function ID string to UUID
-	functionUUID, err := uuid.Parse(functionID)
-	if err != nil {
-		return FunctionVersionInfo{}, fmt.Errorf("invalid function ID format: %w", err)
-	}
-
-	// Get the latest version from the repository
-	_, err = i.registryRepository.GetLatestFunctionVersion(functionUUID)
-	if err != nil {
-		return FunctionVersionInfo{}, fmt.Errorf("failed to get latest function version: %w", err)
-	}
-
-	// In a real implementation, you'd properly cast the version interface
-	// to extract the needed fields. For now, return a default.
-	return FunctionVersionInfo{}, nil
-}
 
 // CacheStats returns current cache statistics for monitoring
 type CacheStats struct {
