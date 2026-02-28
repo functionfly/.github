@@ -157,6 +157,55 @@ func (r *UserRepository) GetUserByEmail(email string) (*User, error) {
 	return user, nil
 }
 
+// GetUserByUsername retrieves a user by their username (case-insensitive)
+func (r *UserRepository) GetUserByUsername(username string) (*User, error) {
+	user := &User{}
+	var usernameNull sql.NullString
+	var companyName sql.NullString
+	var role sql.NullString
+	var provider sql.NullString
+	var providerID sql.NullString
+	var providerData []byte
+
+	err := r.db.QueryRowContext(context.Background(), `
+		SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name,
+		       provider, provider_id, provider_data, created_at, updated_at
+		FROM users WHERE LOWER(username) = LOWER($1)`, username).Scan(
+		&user.ID, &user.TenantID, &usernameNull, &user.Email, &user.PasswordHash, &role,
+		&user.EmailVerified, &companyName, &provider, &providerID, &providerData,
+		&user.CreatedAt, &user.UpdatedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user by username: %w", err)
+	}
+
+	if usernameNull.Valid {
+		user.Username = &usernameNull.String
+	}
+	if companyName.Valid {
+		user.CompanyName = &companyName.String
+	}
+	if role.Valid {
+		user.Role = role.String
+	}
+	if provider.Valid {
+		user.Provider = &provider.String
+	}
+	if providerID.Valid {
+		user.ProviderID = &providerID.String
+	}
+	if len(providerData) > 0 {
+		if err := json.Unmarshal(providerData, &user.ProviderData); err != nil {
+			return nil, fmt.Errorf("failed to parse provider data: %w", err)
+		}
+	}
+
+	return user, nil
+}
+
 // GetUserByVerificationToken retrieves a user by verification token
 func (r *UserRepository) GetUserByVerificationToken(token string) (*User, error) {
 	user := &User{}

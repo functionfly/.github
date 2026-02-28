@@ -532,6 +532,51 @@ func (h *Handler) HandleValidateToken(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(response)
 }
 
+// HandlePasswordResetRequest initiates a password reset by sending an email with a reset token.
+// Always returns 200 to avoid leaking whether the email exists.
+func (h *Handler) HandlePasswordResetRequest(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" {
+		writeJSONError(w, http.StatusBadRequest, "email is required")
+		return
+	}
+
+	// Best-effort — don't reveal whether the email exists
+	_ = h.authSvc.RequestPasswordReset(req.Email)
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"message": "If that email is registered, a password reset link has been sent.",
+	})
+}
+
+// HandlePasswordResetConfirm completes a password reset using the token from the email.
+func (h *Handler) HandlePasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token       string `json:"token"`
+		NewPassword string `json:"newPassword"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Token == "" || req.NewPassword == "" {
+		writeJSONError(w, http.StatusBadRequest, "token and newPassword are required")
+		return
+	}
+
+	if err := h.authSvc.ConfirmPasswordReset(req.Token, req.NewPassword); err != nil {
+		logrus.WithError(err).Debug("Password reset confirm failed")
+		writeJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Password reset successfully"})
+}
+
 // HandleLogout invalidates the current session server-side
 func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	authHeader := r.Header.Get("Authorization")

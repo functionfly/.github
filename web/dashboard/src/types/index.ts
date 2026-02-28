@@ -6,10 +6,48 @@ export interface User {
   name: string;
   avatar?: string; // Profile picture URL from social providers
   tenantId: string;
-  plan: "starter" | "pro";
+  plan: "starter" | "pro" | "free";
   role?: string; // Admin role for admin users
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface Session {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  token_type: string;
+  user: {
+    id: string;
+    email: string;
+    user_metadata: {
+      name?: string;
+      avatar_url?: string;
+    };
+    created_at: string;
+    updated_at?: string;
+  };
+}
+
+export interface PublicUserProfile {
+  id: string;
+  username: string;
+  name: string;
+  avatar?: string;
+  bio?: string;
+  createdAt: string;
+  publishedFunctions: PublicRegistryFunction[];
+}
+
+export interface PublicRegistryFunction {
+  name: string;
+  author: string;
+  description: string;
+  version: string;
+  tags?: string[];
+  executionCount?: number;
+  rating?: number;
+  createdAt: string;
 }
 
 export interface App {

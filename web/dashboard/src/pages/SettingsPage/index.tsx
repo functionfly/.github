@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import { apiClient } from "@/api/client";
+import { usersApi } from "@/api/users";
 import { useQuery } from "@tanstack/react-query";
 
 export function SettingsPage() {
@@ -20,6 +21,7 @@ export function SettingsPage() {
   const nameParts = (user?.name || "").split(" ");
   const [firstName, setFirstName] = useState(nameParts[0] || "");
   const [lastName, setLastName] = useState(nameParts.slice(1).join(" ") || "");
+  const [username, setUsername] = useState(user?.username || "");
   const [email, setEmail] = useState(user?.email || "");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -47,13 +49,15 @@ export function SettingsPage() {
   const handleSaveProfile = async () => {
     setIsSavingProfile(true);
     try {
-      await apiClient.patch("/v1/users/me", {
-        name: `${firstName} ${lastName}`.trim(),
-        email,
+      await usersApi.updateMe({
+        name: `${firstName} ${lastName}`.trim() || undefined,
+        username: username.trim() || undefined,
       });
+      // Refresh auth store so Navbar reflects changes
+      await useAuthStore.getState().initialize();
       toast.success("Profile updated successfully");
-    } catch {
-      toast.error("Failed to update profile");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update profile");
     } finally {
       setIsSavingProfile(false);
     }
@@ -70,16 +74,13 @@ export function SettingsPage() {
     }
     setIsUpdatingPassword(true);
     try {
-      await apiClient.post("/v1/users/me/change-password", {
-        currentPassword,
-        newPassword,
-      });
+      await usersApi.changePassword({ currentPassword, newPassword });
       toast.success("Password updated successfully");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch {
-      toast.error("Failed to update password. Check your current password.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update password. Check your current password.");
     } finally {
       setIsUpdatingPassword(false);
     }
@@ -153,13 +154,29 @@ export function SettingsPage() {
                 </div>
               </div>
               <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="yourhandle"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                />
+                <p className="text-xs text-text-muted">
+                  Lowercase letters, numbers, hyphens and underscores only.
+                  {username && <span className="ml-1 text-brand-400">Public URL: /u/{username}</span>}
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  disabled
+                  className="opacity-60 cursor-not-allowed"
                 />
+                <p className="text-xs text-text-muted">Email cannot be changed here.</p>
               </div>
               <Button onClick={handleSaveProfile} disabled={isSavingProfile}>
                 {isSavingProfile ? "Saving..." : "Save Changes"}

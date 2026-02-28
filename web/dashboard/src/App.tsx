@@ -59,6 +59,8 @@ import { StateFabricMarketingPage } from "@/pages/StateFabricMarketingPage";
 import { BrowseFunctionsPage } from "@/pages/BrowseFunctionsPage";
 import RegistryDeployPage from "@/pages/RegistryDeployPage";
 import { DocsPage } from "@/pages/DocsPage";
+import { UserProfilePage } from "@/pages/UserProfilePage";
+import { MyProfilePage } from "@/pages/MyProfilePage";
 
 function RegistryFunctionRedirect() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -184,6 +186,9 @@ function AppContent() {
         element={<RegistryFunctionRedirect />}
       />
 
+      {/* Public user profile pages */}
+      <Route path="/u/:username" element={<UserProfilePage />} />
+
       {/* Registry Playground Routes (Public) */}
       <Route path="/fx/:author/:name" element={<FunctionPage />} />
       <Route path="/run/:author/:name" element={<PlaygroundPage />} />
@@ -256,6 +261,7 @@ function AppContent() {
         <Route path="state-fabric/:id" element={<StateFabricDetailPage />} />
         <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="profile" element={<MyProfilePage />} />
 
         {/* Admin Routes - use Outlet so only one DashboardLayout (parent) is used */}
         <Route

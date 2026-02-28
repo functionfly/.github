@@ -13,6 +13,82 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// RequestPasswordReset sends a password reset email to the given address.
+// Returns nil even if the email doesn't exist to avoid account enumeration.
+func (a *AuthService) RequestPasswordReset(email string) error {
+	user, err := a.repo.GetUserByEmail(email)
+	if err != nil {
+		return fmt.Errorf("failed to look up user: %w", err)
+	}
+	if user == nil {
+		// Don't reveal that the email doesn't exist
+		return nil
+	}
+
+	// Generate a secure reset token (reuse the verification token mechanism)
+	resetToken, err := a.generateVerificationToken()
+	if err != nil {
+		return fmt.Errorf("failed to generate reset token: %w", err)
+	}
+	expiresAt := time.Now().Add(1 * time.Hour) // 1 hour expiry for password resets
+
+	// Store the token in the verification_token field (reuse existing column)
+	if err := a.repo.UpdateUserEmailVerification(nil, user.ID, user.EmailVerified, &resetToken, &expiresAt); err != nil {
+		return fmt.Errorf("failed to store reset token: %w", err)
+	}
+
+	// Send the reset email
+	if err := a.emailSvc.SendPasswordResetEmail(user, resetToken); err != nil {
+		logrus.WithError(err).WithField("email", email).Warn("Failed to send password reset email")
+		// Don't fail — the token is stored; user can request again
+	}
+
+	return nil
+}
+
+// ConfirmPasswordReset validates the reset token and sets a new password.
+func (a *AuthService) ConfirmPasswordReset(token, newPassword string) error {
+	if token == "" || newPassword == "" {
+		return fmt.Errorf("token and new password are required")
+	}
+
+	if err := validatePasswordStrength(newPassword); err != nil {
+		return err
+	}
+
+	// Look up user by the reset token (stored in verification_token column)
+	user, err := a.repo.GetUserByVerificationToken(token)
+	if err != nil {
+		return fmt.Errorf("failed to look up reset token: %w", err)
+	}
+	if user == nil {
+		return fmt.Errorf("invalid or expired reset token")
+	}
+
+	// Check expiry
+	if user.VerificationExpiresAt != nil && time.Now().After(*user.VerificationExpiresAt) {
+		return fmt.Errorf("reset token has expired")
+	}
+
+	// Hash the new password
+	hashedPassword, err := a.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Update password and clear the reset token
+	updates := map[string]interface{}{
+		"password_hash":           hashedPassword,
+		"verification_token":      nil,
+		"verification_expires_at": nil,
+	}
+	if _, err := a.repo.UpdateUser(context.Background(), user.ID, updates); err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	return nil
+}
+
 // validatePasswordStrength checks that a password meets minimum security requirements:
 //   - At least 8 characters
 //   - At least one uppercase letter
@@ -128,13 +204,21 @@ func userToLoginUser(u *storage.User) *LoginUser {
 	if u.CompanyName != nil && *u.CompanyName != "" {
 		lu.CompanyName = *u.CompanyName
 	}
+	// Prefer the explicit Name field; fall back to OAuth provider data
+	if u.Name != "" {
+		lu.Name = u.Name
+	}
 	if u.ProviderData != nil {
 		lu.ProviderData = u.ProviderData
-		if n, ok := u.ProviderData["name"].(string); ok {
-			lu.Name = n
+		if lu.Name == "" {
+			if n, ok := u.ProviderData["name"].(string); ok {
+				lu.Name = n
+			}
 		}
-		if fn, ok := u.ProviderData["full_name"].(string); ok && lu.Name == "" {
-			lu.Name = fn
+		if lu.Name == "" {
+			if fn, ok := u.ProviderData["full_name"].(string); ok {
+				lu.Name = fn
+			}
 		}
 		if a, ok := u.ProviderData["avatar_url"].(string); ok {
 			lu.Avatar = a

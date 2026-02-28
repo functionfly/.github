@@ -38,13 +38,16 @@ export function UserMenu({ className }: UserMenuProps) {
     logout();
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
+  const getInitials = () => {
+    // Prefer username, then name, then email as fallback
+    const source = user.username || user.name || user.email;
+    return source
+      .split(/[@.\s_-]+/)
+      .filter(Boolean)
       .map(word => word.charAt(0))
       .join('')
       .toUpperCase()
-      .slice(0, 2);
+      .slice(0, 2) || '??';
   };
 
   return (
@@ -59,14 +62,18 @@ export function UserMenu({ className }: UserMenuProps) {
         >
           <div className="text-right hidden sm:block">
             <p className="text-sm font-medium text-white truncate max-w-24">
-              {user.name}
+              {user.username ? `@${user.username}` : (user.name || user.email)}
             </p>
             <p className="text-xs text-text-muted capitalize">
-              {planInfo.name} Plan
+              {user.name && user.username ? user.name : `${planInfo.name} Plan`}
             </p>
           </div>
           <div className="w-9 h-9 rounded-full bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-medium text-sm">
-            {getInitials(user.name)}
+            {user.avatar ? (
+              <img src={user.avatar} alt={user.name || user.username || 'User'} className="w-full h-full rounded-full object-cover" />
+            ) : (
+              getInitials()
+            )}
           </div>
           <ChevronDown className={cn(
             "w-4 h-4 text-text-secondary transition-transform",
@@ -82,7 +89,10 @@ export function UserMenu({ className }: UserMenuProps) {
       >
         <DropdownMenuLabel className="px-3 py-2">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium text-white">{user.name}</p>
+            <p className="text-sm font-medium text-white">{user.name || user.username || 'User'}</p>
+            {user.username && (
+              <p className="text-xs text-brand-400">@{user.username}</p>
+            )}
             <p className="text-xs text-text-muted truncate">{user.email}</p>
           </div>
         </DropdownMenuLabel>

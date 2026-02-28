@@ -15,6 +15,7 @@ import (
 // Service defines the interface for email operations
 type Service interface {
 	SendVerificationEmail(user *storage.User, verificationToken string) error
+	SendPasswordResetEmail(user *storage.User, resetToken string) error
 	SendBreachNotification(recipients []string, breachDetails map[string]interface{}) error
 	ValidateConfiguration() error
 }
@@ -104,6 +105,37 @@ If you didn't create an account, please ignore this email.
 --
 FunctionFly Team
 `, verificationURL)
+
+	return s.sendEmail(user.Email, subject, textBody, htmlBody)
+}
+
+// SendPasswordResetEmail sends a password reset email to a user
+func (s *SMTPService) SendPasswordResetEmail(user *storage.User, resetToken string) error {
+	if user == nil {
+		return fmt.Errorf("user is nil")
+	}
+
+	subject := "Reset Your Password - FunctionFly"
+	resetURL := fmt.Sprintf("%s/auth/reset-password?token=%s", s.config.BaseURL, resetToken)
+
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Reset Your Password</title>
+<style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background-color:#4F46E5;color:white;padding:20px;text-align:center}.content{padding:30px 20px;background-color:#f9f9f9}.button{display:inline-block;background-color:#4F46E5;color:white;padding:12px 24px;text-decoration:none;border-radius:4px;margin:20px 0}.footer{text-align:center;font-size:12px;color:#666;padding:20px}</style>
+</head>
+<body><div class="container">
+<div class="header"><h1>FunctionFly</h1></div>
+<div class="content">
+<h2>Reset Your Password</h2>
+<p>We received a request to reset the password for your account.</p>
+<p>Click the button below to reset your password. This link expires in 1 hour.</p>
+<a href="%s" class="button">Reset Password</a>
+<p>If you didn't request a password reset, you can safely ignore this email.</p>
+</div>
+<div class="footer"><p>© FunctionFly. All rights reserved.</p></div>
+</div></body></html>`, resetURL)
+
+	textBody := fmt.Sprintf("Reset your FunctionFly password by visiting: %s\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email.", resetURL)
 
 	return s.sendEmail(user.Email, subject, textBody, htmlBody)
 }
@@ -451,6 +483,21 @@ FunctionFly Team
 
 * This is a test email from the development environment.
 `, verificationURL)
+
+	return m.sendEmail(user.Email, subject, textBody, htmlBody)
+}
+
+// SendPasswordResetEmail sends a password reset email (mock/dev version)
+func (m *MockService) SendPasswordResetEmail(user *storage.User, resetToken string) error {
+	if user == nil {
+		return fmt.Errorf("user is nil")
+	}
+
+	subject := "[TEST] Reset Your Password - FunctionFly"
+	resetURL := fmt.Sprintf("%s/auth/reset-password?token=%s", m.config.BaseURL, resetToken)
+
+	htmlBody := fmt.Sprintf(`<html><body><p>[TEST] Reset your password: <a href="%s">%s</a></p><p>Expires in 1 hour.</p></body></html>`, resetURL, resetURL)
+	textBody := fmt.Sprintf("[TEST] Reset your FunctionFly password: %s\nExpires in 1 hour.", resetURL)
 
 	return m.sendEmail(user.Email, subject, textBody, htmlBody)
 }

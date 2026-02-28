@@ -13,10 +13,12 @@ type User struct {
 	Tenant                *Tenant    `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
 	Username              *string    `json:"username,omitempty" gorm:"uniqueIndex;size:255"`
 	Email                 string     `json:"email" gorm:"uniqueIndex;not null"`
+	Name                  string     `json:"name,omitempty" gorm:"size:255"` // Display name (separate from OAuth provider name)
 	PasswordHash          string     `json:"password_hash" gorm:"column:password_hash"`
 	Role                  string     `json:"role,omitempty" gorm:"size:50"` // Platform role for admin users
 	EmailVerified         bool       `json:"email_verified" gorm:"default:false"`
 	CompanyName           *string    `json:"company_name,omitempty" gorm:"size:255"`
+	Bio                   *string    `json:"bio,omitempty" gorm:"type:text"`
 	VerificationToken     *string    `json:"verification_token,omitempty"`
 	VerificationExpiresAt *time.Time `json:"verification_expires_at,omitempty"`
 	// Social authentication fields

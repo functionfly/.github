@@ -22,6 +22,7 @@ type Repository interface {
 	CreateUserWithRole(ctx context.Context, user *User) (*User, error)
 	GetUserByEmail(email string) (*User, error)
 	GetUserByID(userID uuid.UUID) (*User, error)
+	GetUserByUsername(username string) (*User, error)
 	GetUserByVerificationToken(token string) (*User, error)
 	GetUserBySocialProvider(provider, providerID string) (*User, error)
 	ListUsers() ([]*User, error)

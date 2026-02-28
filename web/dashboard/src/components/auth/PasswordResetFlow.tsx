@@ -10,6 +10,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { OTPInput } from './OTPInput';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { ArrowLeft, Mail } from 'lucide-react';
+import { usersApi } from '@/api/users';
 
 const emailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -38,6 +39,7 @@ interface PasswordResetFlowProps {
 export function PasswordResetFlow({ onBack, onComplete }: PasswordResetFlowProps) {
   const [step, setStep] = useState<'email' | 'otp' | 'password'>('email');
   const [email, setEmail] = useState('');
+  const [resetToken, setResetToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,43 +60,25 @@ export function PasswordResetFlow({ onBack, onComplete }: PasswordResetFlowProps
     setError(null);
 
     try {
-      // TODO: Call your password reset API
-      // await fetch('/api/auth/forgot-password', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email: data.email }),
-      // });
-
+      await usersApi.requestPasswordReset(data.email);
       setEmail(data.email);
       setStep('otp');
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (err) {
-      setError('Failed to send reset email. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to send reset email. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleOTPComplete = async (_otp: string) => {
+  const handleOTPComplete = async (otp: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // TODO: Verify OTP with your API
-      // const response = await fetch('/api/auth/verify-otp', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, otp }),
-      // });
-
-      // if (!response.ok) throw new Error('Invalid OTP');
-
+      // The OTP IS the reset token returned via email link.
+      // Store it so the password step can use it.
+      setResetToken(otp);
       setStep('password');
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (err) {
       setError('Invalid verification code. Please try again.');
     } finally {
@@ -102,24 +86,15 @@ export function PasswordResetFlow({ onBack, onComplete }: PasswordResetFlowProps
     }
   };
 
-  const handlePasswordSubmit = async (_data: PasswordFormData) => {
+  const handlePasswordSubmit = async (data: PasswordFormData) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // TODO: Reset password with your API
-      // await fetch('/api/auth/reset-password', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password: data.password }),
-      // });
-
+      await usersApi.confirmPasswordReset(resetToken, data.password);
       onComplete();
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (err) {
-      setError('Failed to reset password. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to reset password. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -130,17 +105,9 @@ export function PasswordResetFlow({ onBack, onComplete }: PasswordResetFlowProps
     setError(null);
 
     try {
-      // TODO: Resend OTP via your API
-      // await fetch('/api/auth/resend-otp', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email }),
-      // });
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await usersApi.requestPasswordReset(email);
     } catch (err) {
-      setError('Failed to resend code. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to resend code. Please try again.');
     } finally {
       setIsLoading(false);
     }

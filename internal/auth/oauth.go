@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -14,6 +15,41 @@ import (
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
 )
+
+// oauthStateStore is a simple in-memory store for OAuth state tokens.
+// In production, this should be replaced with a Redis-backed store.
+var oauthStateStore = struct {
+	sync.Mutex
+	states map[string]time.Time
+}{
+	states: make(map[string]time.Time),
+}
+
+// storeOAuthState stores an OAuth state token with a 10-minute TTL
+func storeOAuthState(state string) {
+	oauthStateStore.Lock()
+	defer oauthStateStore.Unlock()
+	// Purge expired states
+	now := time.Now()
+	for s, exp := range oauthStateStore.states {
+		if now.After(exp) {
+			delete(oauthStateStore.states, s)
+		}
+	}
+	oauthStateStore.states[state] = now.Add(10 * time.Minute)
+}
+
+// validateAndConsumeOAuthState validates and removes an OAuth state token (one-time use)
+func validateAndConsumeOAuthState(state string) bool {
+	oauthStateStore.Lock()
+	defer oauthStateStore.Unlock()
+	exp, ok := oauthStateStore.states[state]
+	if !ok {
+		return false
+	}
+	delete(oauthStateStore.states, state)
+	return time.Now().Before(exp)
+}
 
 // SetBaseURL sets the base URL for OAuth redirects
 func (a *AuthService) SetBaseURL(baseURL string) {
@@ -80,11 +116,23 @@ func (a *AuthService) GetOAuthURL(provider string) (string, error) {
 		return "", fmt.Errorf("failed to generate OAuth state: %w", err)
 	}
 
+	// Store state server-side so we can validate it on callback
+	storeOAuthState(state)
+
 	return p.Config.AuthCodeURL(state, oauth2.AccessTypeOffline), nil
 }
 
 // HandleOAuthCallback processes OAuth callback and returns user authentication
 func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthCallbackResponse, error) {
+	// Validate CSRF state token — must match one issued by GetOAuthURL
+	if state == "" || !validateAndConsumeOAuthState(state) {
+		return nil, &OAuthError{
+			Type:        "invalid_state",
+			Message:     "Invalid or expired OAuth state",
+			Description: "The OAuth state parameter is invalid or has expired. Please try signing in again.",
+		}
+	}
+
 	// Validate provider
 	p, exists := a.oauthProviders[provider]
 	if !exists {

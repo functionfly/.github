@@ -1,5 +1,6 @@
 export { apiClient } from "./client";
 export { authApi } from "./auth";
+export { usersApi } from "./users";
 export { appsApi } from "./apps";
 export { functionsApi } from "./functions";
 export { deploymentsApi } from "./deployments";

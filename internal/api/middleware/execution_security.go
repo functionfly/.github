@@ -62,9 +62,12 @@ type ExecutionSecurityMiddleware struct {
 
 // getUserIDFromContext extracts user ID from request context (set by auth middleware)
 func getUserIDFromContext(r *http.Request) *uuid.UUID {
-	// This would be set by the auth middleware
-	// For now, return nil for anonymous users
-	return nil
+	claims := GetUserFromContext(r)
+	if claims == nil {
+		return nil
+	}
+	id := claims.UserID
+	return &id
 }
 
 // NewExecutionSecurityMiddleware creates a new execution security middleware

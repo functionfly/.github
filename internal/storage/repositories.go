@@ -32,6 +32,10 @@ func (db *PostgresDB) GetUserByID(userID uuid.UUID) (*User, error) {
 	return db.userRepository.GetUserByID(userID)
 }
 
+func (db *PostgresDB) GetUserByUsername(username string) (*User, error) {
+	return db.userRepository.GetUserByUsername(username)
+}
+
 func (db *PostgresDB) GetUserByVerificationToken(token string) (*User, error) {
 	return db.userRepository.GetUserByVerificationToken(token)
 }

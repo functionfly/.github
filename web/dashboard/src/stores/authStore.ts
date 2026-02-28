@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { User, LoginRequest, SignupRequest, SignupResponse } from "@/types";
+import type { User, Session, LoginRequest, SignupRequest, SignupResponse } from "@/types";
 import { apiClient } from "@/api/client";
 
 // Extend window interface
@@ -22,7 +22,7 @@ interface AuthState {
   signup: (data: SignupRequest) => Promise<SignupResponse>;
   logout: () => Promise<void>;
   clearError: () => void;
-  initialize: () => void;
+  initialize: () => Promise<void>;
   refreshSession: () => Promise<void>;
 }
 
@@ -68,7 +68,7 @@ const authStore = create<AuthState>()(
               updatedAt: userData.user.updated_at,
             };
 
-            const mockSession = {
+            const session: Session = {
               access_token: jwtToken,
               refresh_token: "",
               expires_at: Math.floor(Date.now() / 1000) + (24 * 60 * 60),
@@ -87,7 +87,7 @@ const authStore = create<AuthState>()(
 
             set({
               user,
-              session: mockSession as any,
+              session,
               isAuthenticated: true,
             });
           } else {
@@ -117,6 +117,7 @@ const authStore = create<AuthState>()(
       refreshSession: async () => {
         // JWT tokens are stateless; re-run initialize to re-validate the stored token
         // and refresh in-memory state from the backend.
+        await authStore.getState().initialize();
       },
 
       login: async (data) => {
@@ -178,7 +179,7 @@ const authStore = create<AuthState>()(
             updatedAt: authData.user.updated_at,
           };
 
-          const mockSession = {
+          const loginSession: Session = {
             access_token: authData.token,
             refresh_token: '',
             expires_at: Math.floor(Date.now() / 1000) + (24 * 60 * 60),
@@ -197,7 +198,7 @@ const authStore = create<AuthState>()(
 
           set({
             user,
-            session: mockSession as any,
+            session: loginSession,
             isAuthenticated: true,
             isLoading: false,
           });

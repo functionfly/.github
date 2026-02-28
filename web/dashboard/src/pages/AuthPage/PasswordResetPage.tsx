@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Mail, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { usersApi } from "@/api/users";
 
 export function PasswordResetPage() {
   const [email, setEmail] = useState("");
@@ -18,17 +19,7 @@ export function PasswordResetPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_NEON_AUTH_URL}/password-reset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || "Failed to send reset email");
-      }
-
+      await usersApi.requestPasswordReset(email);
       setIsSubmitted(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to send reset email. Please try again.");
