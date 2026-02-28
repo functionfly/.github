@@ -13,6 +13,7 @@ functionfly-server
 api-test
 ffly
 fly
+!cmd/fly/
 functionfly
 health-monitor
 migrate
