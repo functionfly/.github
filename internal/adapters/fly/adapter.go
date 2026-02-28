@@ -174,3 +174,163 @@ func (a *FlyAdapter) SignRequest(req *http.Request, backend *storage.Backend, ti
 func (a *FlyAdapter) GetRequestTimeout() time.Duration {
 	return RequestTimeout
 }
+
+// NewFlyDeploymentAdapter creates a new Fly.io adapter (alias for server.go compatibility)
+func NewFlyDeploymentAdapter() *FlyAdapter {
+	return NewFlyAdapter()
+}
+
+// Deploy implements the DeploymentAdapter interface
+func (a *FlyAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
+	var apiToken, appName, orgSlug string
+	if spec.ProviderConfig != nil {
+		if token, ok := spec.ProviderConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := spec.ProviderConfig["app_name"].(string); ok {
+			appName = name
+		}
+		if org, ok := spec.ProviderConfig["org_slug"].(string); ok {
+			orgSlug = org
+		}
+	}
+	if appName == "" && spec.AppName != "" {
+		appName = spec.AppName
+	}
+	if apiToken == "" || appName == "" {
+		return nil, fmt.Errorf("missing required Fly.io config: api_token, app_name")
+	}
+
+	client := NewFlyDeploymentClient(apiToken)
+	if err := client.EnsureApp(ctx, appName, orgSlug); err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to ensure app exists: %v", err),
+		}, nil
+	}
+
+	result, err := client.Deploy(ctx, spec.Artifact, appName, spec.Version)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("deployment failed: %v", err),
+		}, nil
+	}
+
+	if len(spec.EnvVars) > 0 {
+		if err := client.SetEnvVars(ctx, appName, spec.EnvVars); err != nil {
+			return &common.DeploymentResult{
+				Status:  common.DeploymentStatusFailed,
+				Message: fmt.Sprintf("failed to set env vars: %v", err),
+			}, nil
+		}
+	}
+	if len(spec.Secrets) > 0 {
+		if err := client.SetSecrets(ctx, appName, spec.Secrets); err != nil {
+			return &common.DeploymentResult{
+				Status:  common.DeploymentStatusFailed,
+				Message: fmt.Sprintf("failed to set secrets: %v", err),
+			}, nil
+		}
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID:  result.DeploymentID,
+		Status:        result.Status,
+		Message:       result.Message,
+		DeploymentURL: fmt.Sprintf("https://%s.fly.dev", appName),
+		Metadata:      result.Metadata,
+	}, nil
+}
+
+// SetEnv implements the DeploymentAdapter interface
+func (a *FlyAdapter) SetEnv(ctx context.Context, deploymentID string, providerConfig map[string]interface{}, envVars, secrets map[string]string) error {
+	var apiToken, appName string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := providerConfig["app_name"].(string); ok {
+			appName = name
+		}
+	}
+	if apiToken == "" || appName == "" {
+		return fmt.Errorf("missing required Fly.io config: api_token, app_name")
+	}
+	client := NewFlyDeploymentClient(apiToken)
+	if len(envVars) > 0 {
+		if err := client.SetEnvVars(ctx, appName, envVars); err != nil {
+			return fmt.Errorf("failed to set env vars: %w", err)
+		}
+	}
+	if len(secrets) > 0 {
+		if err := client.SetSecrets(ctx, appName, secrets); err != nil {
+			return fmt.Errorf("failed to set secrets: %w", err)
+		}
+	}
+	return nil
+}
+
+// BindRoutes implements the DeploymentAdapter interface
+func (a *FlyAdapter) BindRoutes(ctx context.Context, deploymentID string, providerConfig map[string]interface{}, routes []common.RouteBinding) error {
+	var apiToken, appName string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := providerConfig["app_name"].(string); ok {
+			appName = name
+		}
+	}
+	if apiToken == "" || appName == "" {
+		return fmt.Errorf("missing required Fly.io config: api_token, app_name")
+	}
+	client := NewFlyDeploymentClient(apiToken)
+	for _, route := range routes {
+		if route.Domain != "" {
+			if err := client.AddCertificate(ctx, appName, route.Domain); err != nil {
+				return fmt.Errorf("failed to add certificate for domain %s: %w", route.Domain, err)
+			}
+		}
+	}
+	return nil
+}
+
+// GetDeploymentStatus implements the DeploymentAdapter interface
+func (a *FlyAdapter) GetDeploymentStatus(ctx context.Context, deploymentID string, providerConfig map[string]interface{}) (common.DeploymentStatus, error) {
+	var apiToken, appName string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := providerConfig["app_name"].(string); ok {
+			appName = name
+		}
+	}
+	if apiToken == "" || appName == "" {
+		return common.DeploymentStatusFailed, fmt.Errorf("missing required Fly.io config: api_token, app_name")
+	}
+	client := NewFlyDeploymentClient(apiToken)
+	return client.GetDeploymentStatus(ctx, appName, deploymentID)
+}
+
+// Rollback implements the DeploymentAdapter interface
+func (a *FlyAdapter) Rollback(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
+	var apiToken, appName string
+	if spec.ProviderConfig != nil {
+		if token, ok := spec.ProviderConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := spec.ProviderConfig["app_name"].(string); ok {
+			appName = name
+		}
+	}
+	if appName == "" && spec.AppName != "" {
+		appName = spec.AppName
+	}
+	if apiToken == "" || appName == "" {
+		return nil, fmt.Errorf("missing required Fly.io config: api_token, app_name")
+	}
+	client := NewFlyDeploymentClient(apiToken)
+	return client.Rollback(ctx, appName, spec.Version)
+}

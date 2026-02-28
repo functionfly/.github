@@ -3,9 +3,22 @@ package storage
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+)
+
+// VersionConflictStrategy defines how to handle re-publishing an existing version
+type VersionConflictStrategy string
+
+const (
+	// VersionConflictError returns an error if the version already exists (default)
+	VersionConflictError VersionConflictStrategy = "error"
+	// VersionConflictOverwrite updates the existing version with new content
+	VersionConflictOverwrite VersionConflictStrategy = "overwrite"
+	// VersionConflictCreateNew creates a new version entry (allows duplicates)
+	VersionConflictCreateNew VersionConflictStrategy = "create_new"
 )
 
 // CreateFunctionVersion creates a new function version
@@ -18,6 +31,75 @@ func (r *RegistryRepository) CreateFunctionVersion(v *RegistryFunctionVersion) e
 	}
 
 	return nil
+}
+
+// UpsertFunctionVersion creates or updates a function version based on the conflict strategy.
+func (r *RegistryRepository) UpsertFunctionVersion(v *RegistryFunctionVersion, strategy VersionConflictStrategy) (created bool, err error) {
+	existing, lookupErr := r.GetFunctionVersion(v.FunctionID, v.Version)
+
+	if lookupErr != nil && !isVersionNotFound(lookupErr) {
+		return false, fmt.Errorf("failed to check existing version: %w", lookupErr)
+	}
+
+	if existing != nil {
+		switch strategy {
+		case VersionConflictError:
+			return false, fmt.Errorf("version %s already exists for function %s; use conflict_strategy=overwrite to update it",
+				v.Version, v.FunctionID)
+
+		case VersionConflictOverwrite:
+			v.ID = existing.ID
+			v.PublishedAt = existing.PublishedAt
+			v.UpdatedAt = time.Now()
+
+			if err := r.db.Model(existing).Updates(map[string]interface{}{
+				"manifest":      v.Manifest,
+				"runtime":       v.Runtime,
+				"timeout_ms":    v.TimeoutMs,
+				"memory_mb":     v.MemoryMB,
+				"deterministic": v.Deterministic,
+				"side_effects":  v.SideEffects,
+				"idempotent":    v.Idempotent,
+				"cache_ttl":     v.CacheTTL,
+				"capabilities":  v.Capabilities,
+				"wasm_binary":   v.WasmBinary,
+				"source_hash":   v.SourceHash,
+				"bundle_size":   v.BundleSize,
+				"source_code":   v.SourceCode,
+				"updated_at":    v.UpdatedAt,
+			}).Error; err != nil {
+				return false, fmt.Errorf("failed to overwrite function version: %w", err)
+			}
+
+			if r.cache != nil && r.keyGen != nil {
+				go func() {
+					cacheKey := r.keyGen.FunctionVersion(v.FunctionID.String(), v.Version)
+					_ = r.cache.Delete(context.Background(), cacheKey)
+					latestKey := r.keyGen.FunctionVersion(v.FunctionID.String(), "latest")
+					_ = r.cache.Delete(context.Background(), latestKey)
+				}()
+			}
+			return false, nil
+
+		case VersionConflictCreateNew:
+			// Fall through to create new
+		}
+	}
+
+	v.ID = uuid.New()
+	v.PublishedAt = time.Now()
+	if err := r.db.Create(v).Error; err != nil {
+		return false, fmt.Errorf("failed to create function version: %w", err)
+	}
+	return true, nil
+}
+
+func isVersionNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "record not found") || strings.Contains(s, "no rows in result set")
 }
 
 // GetFunctionVersion retrieves a specific version of a function

@@ -1,6 +1,7 @@
 package advanced_security
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -169,27 +170,136 @@ func NewAdvancedSecurityMiddleware(securityMiddleware SecurityMiddlewareInterfac
 	return asm
 }
 
-// AdvancedRateLimit applies multiple rate limiting strategies
+// AdvancedRateLimit applies multiple rate limiting strategies.
+// Rate limit keys are scoped per-tenant when a tenant ID is available in the JWT,
+// falling back to IP-based limiting for unauthenticated requests.
+// This prevents a single noisy tenant from degrading service for all others.
 func (asm *AdvancedSecurityMiddleware) AdvancedRateLimit(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		clientIP := getClientIP(r)
 
-		// Apply sliding window rate limiting
-		if !asm.slidingWindowLimiter.Allow(clientIP) {
-			asm.logRateLimit(clientIP, "sliding_window", r)
+		// Build per-tenant rate limit key when possible
+		rateLimitKey := buildPerTenantRateLimitKey(r, clientIP)
+
+		// Apply sliding window rate limiting (per-tenant key)
+		if !asm.slidingWindowLimiter.Allow(rateLimitKey) {
+			asm.logRateLimit(rateLimitKey, "sliding_window", r)
 			asm.respondRateLimited(w, r)
 			return
 		}
 
-		// Apply token bucket rate limiting
-		if !asm.tokenBucketLimiter.Allow(clientIP) {
-			asm.logRateLimit(clientIP, "token_bucket", r)
+		// Apply token bucket rate limiting (per-tenant key)
+		if !asm.tokenBucketLimiter.Allow(rateLimitKey) {
+			asm.logRateLimit(rateLimitKey, "token_bucket", r)
 			asm.respondRateLimited(w, r)
 			return
 		}
 
 		next.ServeHTTP(w, r)
 	}
+}
+
+// buildPerTenantRateLimitKey constructs a rate limit key scoped per-tenant when possible.
+// For authenticated requests: "tenant:{tenantID}:{normalizedPath}"
+// For unauthenticated requests: "ip:{clientIP}"
+func buildPerTenantRateLimitKey(r *http.Request, clientIP string) string {
+	if tenantID := extractTenantIDFromJWT(r); tenantID != "" {
+		return fmt.Sprintf("tenant:%s:%s", tenantID, normalizePathForRateLimit(r.URL.Path))
+	}
+	return fmt.Sprintf("ip:%s", clientIP)
+}
+
+// extractTenantIDFromJWT extracts the tenant_id claim from the JWT Authorization header.
+// Returns empty string if no valid JWT is found. Does NOT verify the signature
+// (verification is done by the auth middleware; here we only need the tenant ID for rate limiting).
+func extractTenantIDFromJWT(r *http.Request) string {
+	auth := r.Header.Get("Authorization")
+	if len(auth) < 8 || auth[:7] != "Bearer " {
+		return ""
+	}
+	token := auth[7:]
+	// JWT: header.payload.signature
+	dot1 := indexByte(token, '.')
+	if dot1 < 0 {
+		return ""
+	}
+	dot2 := indexByte(token[dot1+1:], '.')
+	if dot2 < 0 {
+		return ""
+	}
+	payload := token[dot1+1 : dot1+1+dot2]
+
+	// Decode base64url payload
+	decoded := base64URLDecodeSimple(payload)
+	if decoded == "" {
+		return ""
+	}
+	return extractJSONField(decoded, "tenant_id")
+}
+
+func indexByte(s string, c byte) int {
+	for i := 0; i < len(s); i++ {
+		if s[i] == c {
+			return i
+		}
+	}
+	return -1
+}
+
+func base64URLDecodeSimple(s string) string {
+	// Add padding
+	switch len(s) % 4 {
+	case 2:
+		s += "=="
+	case 3:
+		s += "="
+	}
+	// Replace URL-safe chars
+	b := []byte(s)
+	for i, c := range b {
+		if c == '-' {
+			b[i] = '+'
+		} else if c == '_' {
+			b[i] = '/'
+		}
+	}
+	decoded, err := base64.StdEncoding.DecodeString(string(b))
+	if err != nil {
+		return ""
+	}
+	return string(decoded)
+}
+
+func extractJSONField(json, field string) string {
+	key := `"` + field + `":"`
+	idx := 0
+	for idx <= len(json)-len(key) {
+		if json[idx:idx+len(key)] == key {
+			start := idx + len(key)
+			end := start
+			for end < len(json) && json[end] != '"' {
+				end++
+			}
+			return json[start:end]
+		}
+		idx++
+	}
+	return ""
+}
+
+// normalizePathForRateLimit normalizes a URL path to avoid per-resource key explosion.
+// e.g., /v1/functions/abc-123/versions/1.0.0 -> /v1/functions
+func normalizePathForRateLimit(path string) string {
+	count := 0
+	for i, c := range path {
+		if c == '/' {
+			count++
+			if count == 3 {
+				return path[:i]
+			}
+		}
+	}
+	return path
 }
 
 // DDoSProtection applies DDoS protection mechanisms

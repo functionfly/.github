@@ -51,6 +51,7 @@ import { ThemeProvider } from "@/components/common/ThemeProvider";
 import FunctionPage from "@/pages/FunctionPage";
 import ExecutionExplorerPage from "@/pages/ExecutionExplorerPage";
 import { PlaygroundPage } from "@/pages/PlaygroundPage";
+import { StandalonePlaygroundPage } from "@/pages/StandalonePlaygroundPage";
 import { ReplayPage } from "@/pages/ReplayPage";
 import { StateFabricPage } from "@/pages/StateFabricPage";
 import { StateFabricDetailPage } from "@/pages/StateFabricPage/StateFabricDetailPage";
@@ -188,6 +189,9 @@ function AppContent() {
 
       {/* Public user profile pages */}
       <Route path="/u/:username" element={<UserProfilePage />} />
+
+      {/* Standalone Playground (Public) */}
+      <Route path="/playground" element={<StandalonePlaygroundPage />} />
 
       {/* Registry Playground Routes (Public) */}
       <Route path="/fx/:author/:name" element={<FunctionPage />} />

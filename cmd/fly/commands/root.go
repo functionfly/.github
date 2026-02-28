@@ -37,6 +37,7 @@ Go from idea → global API in under 60 seconds.
 		NewInitCmd(),
 		NewDevCmd(),
 		NewPublishCmd(),
+		NewPublishBatchCmd(),
 		NewTestCmd(),
 		NewUpdateCmd(),
 		NewStatsCmd(),

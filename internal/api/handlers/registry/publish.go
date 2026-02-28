@@ -57,6 +57,28 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate semver format
+	if err := functionregistry.ValidateSemVer(req.Version); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Parse conflict strategy (default: error)
+	conflictStrategy := storage.VersionConflictError
+	if cs := r.URL.Query().Get("conflict_strategy"); cs != "" {
+		switch cs {
+		case "overwrite":
+			conflictStrategy = storage.VersionConflictOverwrite
+		case "create_new":
+			conflictStrategy = storage.VersionConflictCreateNew
+		case "error":
+			conflictStrategy = storage.VersionConflictError
+		default:
+			http.Error(w, "invalid conflict_strategy: must be 'error', 'overwrite', or 'create_new'", http.StatusBadRequest)
+			return
+		}
+	}
+
 	// For registry functions, source code is required for sandbox execution
 	if req.Source == nil || req.Source.Code == "" {
 		http.Error(w, "source code is required for registry functions", http.StatusBadRequest)
@@ -202,9 +224,13 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := h.repo.CreateFunctionVersion(version); err != nil {
-		logrus.WithError(err).Error("Failed to create function version")
-		http.Error(w, "Failed to create version: "+err.Error(), http.StatusInternalServerError)
+	if _, upsertErr := h.repo.UpsertFunctionVersion(version, conflictStrategy); upsertErr != nil {
+		logrus.WithError(upsertErr).Error("Failed to create/update function version")
+		if strings.Contains(upsertErr.Error(), "already exists") {
+			http.Error(w, upsertErr.Error(), http.StatusConflict)
+			return
+		}
+		http.Error(w, "Failed to create version: "+upsertErr.Error(), http.StatusInternalServerError)
 		return
 	}
 

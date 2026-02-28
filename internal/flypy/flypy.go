@@ -45,6 +45,11 @@ type Config struct {
 
 	// Logger is the structured logger to use. Defaults to logrus.StandardLogger().
 	Logger *logrus.Logger
+
+	// AutoFallback enables automatic fallback to CompatibleMode when the requested
+	// mode fails due to unsupported Python features (classes, generators, decorators).
+	// When true, a warning is added to the result instead of returning an error.
+	AutoFallback bool
 }
 
 // ExecutionMode defines how the function will be executed
@@ -137,12 +142,48 @@ func NewCompilerWithDefaults() *Compiler {
 
 // Compile compiles Python source code to a deterministic Wasm artifact.
 // It enforces the CompileTimeout from Config to prevent runaway compilations.
+// If AutoFallback is enabled and the requested mode fails due to unsupported features,
+// it automatically retries with CompatibleMode (MicroPython runtime).
 func (c *Compiler) Compile(ctx context.Context, source string, name string) (*Result, error) {
-	// Apply compile timeout
 	compileCtx, cancel := context.WithTimeout(ctx, c.config.CompileTimeout)
 	defer cancel()
 
-	return c.compile(compileCtx, source, name)
+	result, err := c.compile(compileCtx, source, name)
+	if err != nil && c.config.AutoFallback && c.config.Mode != CompatibleMode {
+		errStr := err.Error()
+		isUnsupported := strings.Contains(errStr, "restriction violations") ||
+			strings.Contains(errStr, "UNSUPPORTED_FEATURE") ||
+			strings.Contains(errStr, "FORBIDDEN_FEATURE") ||
+			strings.Contains(errStr, "class") ||
+			strings.Contains(errStr, "generator") ||
+			strings.Contains(errStr, "decorator")
+
+		if isUnsupported {
+			c.log.WithFields(logrus.Fields{
+				"function":      name,
+				"original_mode": string(c.config.Mode),
+				"fallback_mode": string(CompatibleMode),
+			}).Warn("Auto-falling back to CompatibleMode due to unsupported features")
+
+			fallbackConfig := *c.config
+			fallbackConfig.Mode = CompatibleMode
+			fallbackCompiler := NewCompiler(&fallbackConfig)
+
+			fallbackResult, fallbackErr := fallbackCompiler.compile(compileCtx, source, name)
+			if fallbackErr != nil {
+				return nil, fmt.Errorf("original error: %w; fallback also failed: %v", err, fallbackErr)
+			}
+
+			fallbackResult.Warnings = append(fallbackResult.Warnings,
+				fmt.Sprintf("Auto-fallback: compiled with CompatibleMode (MicroPython) because %s mode failed: %s. "+
+					"CompatibleMode may have non-deterministic behavior.",
+					string(c.config.Mode), errStr),
+			)
+			return fallbackResult, nil
+		}
+	}
+
+	return result, err
 }
 
 // compile is the internal implementation of Compile with a pre-configured context.

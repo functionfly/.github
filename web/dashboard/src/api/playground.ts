@@ -1,5 +1,24 @@
 import { apiClient } from "./client";
 
+// Standalone playground execution (for /playground page)
+export interface StandaloneExecuteRequest {
+  code: string;
+  runtime: string;
+  input: unknown;
+}
+
+export interface StandaloneExecuteResponse {
+  output?: unknown;
+  error?: string;
+  duration_ms?: number;
+  logs?: string[];
+}
+
+export const playgroundAPI = {
+  execute: (req: StandaloneExecuteRequest): Promise<StandaloneExecuteResponse> =>
+    apiClient.post<StandaloneExecuteResponse>('/v1/playground/execute', req),
+};
+
 // Types based on the backend handler
 export interface PlaygroundInfo {
   function_id: string;

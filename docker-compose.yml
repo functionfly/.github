@@ -68,6 +68,31 @@ services:
     environment:
       - YARA_RULES_PATH=/data/rules
 
+  # Blog API service - start with: docker compose --profile blog up
+  # See cmd/blog-api/README.md for full documentation
+  blog-api:
+    build:
+      context: ./cmd/blog-api
+      dockerfile: Dockerfile
+    profiles:
+      - blog
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/blog_db
+      - JWT_SECRET=${JWT_SECRET:-default-secret-key-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   orchestrator-api:
     build:
       context: .

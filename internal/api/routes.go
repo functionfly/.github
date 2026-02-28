@@ -172,6 +172,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		verificationMiddleware = middleware.NewVerificationMiddleware(registryRepo, clamAVURL, yaraURL, minimumTrustLevel)
 	}
 
+	// Apply distributed tracing middleware first (W3C Trace Context)
+	s.router.Use(middleware.TracingMiddleware)
+
 	// Apply logging middleware first (temporarily disabled)
 	// s.router.Use(func(next http.Handler) http.Handler {
 	// 	return http.HandlerFunc(loggingMiddleware.StructuredLogger(http.HandlerFunc(next.ServeHTTP)))
