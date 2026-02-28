@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -17,12 +18,16 @@ import (
 // RegistryHandler handles admin registry API (stats, list, get, update, delete, visibility, pricing).
 // Uses the same registry repo as the public registry handler.
 type RegistryHandler struct {
-	registryRepo *registry.RegistryRepository
+	registryRepo  *registry.RegistryRepository
+	cacheService  *cache.CacheService
 }
 
 // NewRegistryHandler creates a new admin registry handler.
-func NewRegistryHandler(registryRepo *registry.RegistryRepository) *RegistryHandler {
-	return &RegistryHandler{registryRepo: registryRepo}
+func NewRegistryHandler(registryRepo *registry.RegistryRepository, cacheService *cache.CacheService) *RegistryHandler {
+	return &RegistryHandler{
+		registryRepo:  registryRepo,
+		cacheService:  cacheService,
+	}
 }
 
 // HandleGetRegistryStats returns GET /v1/admin/registry/stats
@@ -622,4 +627,143 @@ func (h *RegistryHandler) HandleGenerateRegistryDescription(w http.ResponseWrite
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"description": description})
+}
+
+// HandlePurgeAllCache returns DELETE /v1/admin/cache - Purge all cache entries
+func (h *RegistryHandler) HandlePurgeAllCache(w http.ResponseWriter, r *http.Request) {
+	if h.cacheService == nil {
+		http.Error(w, "Cache service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	if err := h.cacheService.PurgeAll(); err != nil {
+		logrus.WithError(err).Error("Failed to purge all cache entries")
+		http.Error(w, "Failed to purge cache", http.StatusInternalServerError)
+		return
+	}
+
+	logrus.Info("Admin purged all cache entries")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"ok":      true,
+		"message": "All cache entries purged successfully",
+	})
+}
+
+// HandlePurgeFunctionCache returns DELETE /v1/admin/cache/{functionId} - Purge all cache for a function
+func (h *RegistryHandler) HandlePurgeFunctionCache(w http.ResponseWriter, r *http.Request) {
+	if h.cacheService == nil {
+		http.Error(w, "Cache service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	vars := mux.Vars(r)
+	functionID := vars["functionId"]
+	if functionID == "" {
+		http.Error(w, "Function ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate UUID format
+	if _, err := uuid.Parse(functionID); err != nil {
+		http.Error(w, "Invalid function ID format", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.cacheService.InvalidateFunction(functionID); err != nil {
+		logrus.WithError(err).WithField("function_id", functionID).Error("Failed to purge function cache")
+		http.Error(w, "Failed to purge function cache", http.StatusInternalServerError)
+		return
+	}
+
+	logrus.WithField("function_id", functionID).Info("Admin purged function cache")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"ok":          true,
+		"message":     "Function cache purged successfully",
+		"function_id": functionID,
+	})
+}
+
+// HandlePurgeVersionCache returns DELETE /v1/admin/cache/{functionId}/{version} - Purge specific version cache
+func (h *RegistryHandler) HandlePurgeVersionCache(w http.ResponseWriter, r *http.Request) {
+	if h.cacheService == nil {
+		http.Error(w, "Cache service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	vars := mux.Vars(r)
+	functionID := vars["functionId"]
+	version := vars["version"]
+
+	if functionID == "" || version == "" {
+		http.Error(w, "Function ID and version are required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate UUID format
+	if _, err := uuid.Parse(functionID); err != nil {
+		http.Error(w, "Invalid function ID format", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.cacheService.InvalidateVersion(functionID, version); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"function_id": functionID,
+			"version":     version,
+		}).Error("Failed to purge version cache")
+		http.Error(w, "Failed to purge version cache", http.StatusInternalServerError)
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function_id": functionID,
+		"version":     version,
+	}).Info("Admin purged version cache")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"ok":          true,
+		"message":     "Version cache purged successfully",
+		"function_id": functionID,
+		"version":     version,
+	})
+}
+
+// HandleGetCacheStats returns GET /v1/admin/cache/stats - Get comprehensive cache statistics
+func (h *RegistryHandler) HandleGetCacheStats(w http.ResponseWriter, r *http.Request) {
+	if h.cacheService == nil {
+		http.Error(w, "Cache service not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	stats := map[string]interface{}{
+		"cache_service_enabled": true,
+	}
+
+	// Get memory cache stats
+	if memStats := h.cacheService.GetMemoryStats(); memStats != nil {
+		stats["memory_cache"] = map[string]interface{}{
+			"hits":       memStats.Hits,
+			"misses":     memStats.Misses,
+			"hit_ratio":  memStats.Ratio,
+			"size_bytes": memStats.SizeBytes,
+			"evictions":  memStats.Evictions,
+		}
+	}
+
+	// Get disk cache stats
+	if diskStats, err := h.cacheService.GetDiskStats(); err == nil && diskStats != nil {
+		stats["disk_cache"] = map[string]interface{}{
+			"total_entries":   diskStats.TotalEntries,
+			"total_size_bytes": diskStats.TotalSizeBytes,
+			"total_hits":      diskStats.TotalHits,
+			"expired_entries": diskStats.ExpiredEntries,
+		}
+	}
+
+	// Check Redis status
+	stats["redis_enabled"] = h.cacheService.IsRedisCacheEnabled()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stats)
 }

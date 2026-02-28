@@ -409,6 +409,16 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 
 				h.EdgeCache.SetEdgeCacheHeaders(w, fn.ID, fnVersion.Version, popularityScore)
 			}
+
+			// Set X-Cache-Status and X-Cache-Layer headers for observability
+			if cached {
+				w.Header().Set("X-Cache-Status", "HIT")
+			} else {
+				w.Header().Set("X-Cache-Status", "MISS")
+			}
+			if cacheResult.Layer != "" && cacheResult.Layer != "none" {
+				w.Header().Set("X-Cache-Layer", cacheResult.Layer)
+			}
 		} else {
 			cache.SetNoCacheHeaders(w)
 		}

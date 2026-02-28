@@ -2,6 +2,7 @@ package cache
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,11 +36,9 @@ type DiskCache struct {
 }
 
 // NewDiskCache creates a new disk cache with the given GORM database
+// Note: The function_cache table should be created via migrations (see migrations/ directory)
+// This function assumes the table already exists
 func NewDiskCache(db *gorm.DB) (*DiskCache, error) {
-	// Auto migrate the table
-	if err := db.AutoMigrate(&FunctionCache{}); err != nil {
-		return nil, err
-	}
 	return &DiskCache{db: db}, nil
 }
 
@@ -90,9 +89,14 @@ func (d *DiskCache) Set(record *FunctionCache) error {
 
 // SetWithExpiry creates a cache record with the specified TTL
 func (d *DiskCache) SetWithExpiry(cacheKey, functionID, version, inputHash string, output json.RawMessage, ttlSeconds int) error {
+	fnUUID, err := uuid.Parse(functionID)
+	if err != nil {
+		return fmt.Errorf("invalid function ID %q: %w", functionID, err)
+	}
+
 	record := &FunctionCache{
 		CacheKey:   cacheKey,
-		FunctionID: uuid.MustParse(functionID),
+		FunctionID: fnUUID,
 		Version:    version,
 		InputHash:  inputHash,
 		OutputJSON: output,

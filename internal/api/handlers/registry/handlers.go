@@ -178,22 +178,47 @@ func (h *Handler) HandleServeStatic(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleGetCacheStats returns comprehensive cache statistics
+// This endpoint provides public cache metrics for monitoring and debugging
 func (h *Handler) HandleGetCacheStats(w http.ResponseWriter, r *http.Request) {
-	// This would typically be done through a monitoring service
-	// For now, return basic cache status
 	stats := map[string]interface{}{
+		"cache_enabled":      h.cacheService != nil,
 		"redis_enabled":      h.cacheService != nil && h.cacheService.IsRedisCacheEnabled(),
 		"cdn_enabled":        h.cdnService != nil && h.cdnService.IsCDNEnabled(),
 		"edge_cache_enabled": h.edgeCache != nil,
 	}
 
-	// Get cache service stats if available
+	// Get comprehensive cache service stats if available
 	if h.cacheService != nil {
+		// Memory cache stats (L1)
 		if memStats := h.cacheService.GetMemoryStats(); memStats != nil {
 			stats["memory_cache"] = map[string]interface{}{
-				"hits":   memStats.Hits,
-				"misses": memStats.Misses,
-				"ratio":  memStats.Ratio,
+				"layer":        "L1",
+				"type":         "memory",
+				"hits":         memStats.Hits,
+				"misses":       memStats.Misses,
+				"hit_ratio":    memStats.Ratio,
+				"size_bytes":   memStats.SizeBytes,
+				"evictions":    memStats.Evictions,
+			}
+		}
+
+		// Disk cache stats (L2)
+		if diskStats, err := h.cacheService.GetDiskStats(); err == nil && diskStats != nil {
+			var hitRatio float64
+			if diskStats.TotalHits > 0 {
+				totalLookups := diskStats.TotalEntries + diskStats.TotalHits // Approximation
+				if totalLookups > 0 {
+					hitRatio = float64(diskStats.TotalHits) / float64(totalLookups)
+				}
+			}
+			stats["disk_cache"] = map[string]interface{}{
+				"layer":           "L2",
+				"type":            "disk",
+				"total_entries":   diskStats.TotalEntries,
+				"total_size_bytes": diskStats.TotalSizeBytes,
+				"total_hits":      diskStats.TotalHits,
+				"hit_ratio":       hitRatio,
+				"expired_entries": diskStats.ExpiredEntries,
 			}
 		}
 	}
