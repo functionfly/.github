@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Zap, Github, Chrome } from "lucide-react";
+import { Zap, Github, Chrome, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/pages/LandingPage/components/Footer";
@@ -9,22 +9,87 @@ import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
 import { toast } from "sonner";
 
-async function handleSocialLogin(provider: "google" | "github") {
+// OAuth Provider type
+interface OAuthProvider {
+  id: string;
+  name: string;
+  clientId: string;
+}
+
+// Fetch available OAuth providers
+async function fetchOAuthProviders(): Promise<OAuthProvider[]> {
+  try {
+    const response = await fetch(`/v1/auth/oauth/providers`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data.providers || [];
+  } catch {
+    return [];
+  }
+}
+
+async function handleSocialLogin(provider: string) {
   try {
     const response = await fetch(`/v1/auth/oauth/url?provider=${provider}`);
     if (!response.ok) throw new Error(`Failed to get OAuth URL: ${response.statusText}`);
     const data = await response.json();
-    window.location.href = data.url;
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      console.error("No OAuth URL returned:", data);
+    }
   } catch (error) {
     console.error("Social login failed:", error);
     toast.error(`Social login with ${provider} is not yet configured. Please check the backend OAuth settings.`);
   }
 }
 
+// OAuth Button component
+function OAuthButton({ provider }: { provider: OAuthProvider }) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleClick = async () => {
+    setIsLoading(true);
+    await handleSocialLogin(provider.id);
+    setIsLoading(false);
+  };
+
+  const icon = provider.id === "github" ? (
+    <Github className="w-4 h-4" />
+  ) : provider.id === "google" ? (
+    <Chrome className="w-4 h-4" />
+  ) : null;
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="oauth-button w-full gap-2"
+      onClick={handleClick}
+      disabled={isLoading}
+    >
+      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : icon}
+      {provider.name}
+    </Button>
+  );
+}
+
 export function AuthPage() {
   const location = useLocation();
   const isLogin = location.pathname === "/login";
   const [activeTab, setActiveTab] = useState<"login" | "signup">(isLogin ? "login" : "signup");
+  const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
+  const [isLoadingProviders, setIsLoadingProviders] = useState(true);
+
+  // Fetch OAuth providers on mount
+  useEffect(() => {
+    const loadProviders = async () => {
+      const providers = await fetchOAuthProviders();
+      setOauthProviders(providers);
+      setIsLoadingProviders(false);
+    };
+    loadProviders();
+  }, []);
 
   return (
     <div className="auth-page min-h-screen bg-bg-primary flex flex-col">
@@ -110,27 +175,45 @@ export function AuthPage() {
             </div>
           </div>
 
-          {/* OAuth Buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="oauth-button w-full gap-2"
-              onClick={() => handleSocialLogin("github")}
-            >
-              <Github className="w-4 h-4" />
-              GitHub
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="oauth-button w-full gap-2"
-              onClick={() => handleSocialLogin("google")}
-            >
-              <Chrome className="w-4 h-4" />
-              Google
-            </Button>
-          </div>
+          {/* OAuth Buttons - Show only configured providers */}
+          {oauthProviders.length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              {oauthProviders.map((provider) => (
+                <OAuthButton key={provider.id} provider={provider} />
+              ))}
+            </div>
+          )}
+          
+          {/* Fallback: Show static buttons if providers fail to load */}
+          {oauthProviders.length === 0 && !isLoadingProviders && (
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="oauth-button w-full gap-2"
+                onClick={() => handleSocialLogin("github")}
+              >
+                <Github className="w-4 h-4" />
+                GitHub
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="oauth-button w-full gap-2"
+                onClick={() => handleSocialLogin("google")}
+              >
+                <Chrome className="w-4 h-4" />
+                Google
+              </Button>
+            </div>
+          )}
+
+          {/* Loading state */}
+          {isLoadingProviders && (
+            <div className="flex justify-center py-2">
+              <Loader2 className="w-4 h-4 animate-spin text-text-muted" />
+            </div>
+          )}
         </div>
       </div>
 
