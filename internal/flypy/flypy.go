@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/flypy/artifact"
 	"github.com/functionfly/functionfly/internal/flypy/backend"
@@ -15,6 +16,7 @@ import (
 	"github.com/functionfly/functionfly/internal/flypy/parser"
 	"github.com/functionfly/functionfly/internal/flypy/restrictions"
 	"github.com/functionfly/functionfly/internal/flypy/verifier"
+	"github.com/sirupsen/logrus"
 )
 
 // Config holds FlyPy configuration options
@@ -36,6 +38,13 @@ type Config struct {
 
 	// Version specifies the function version (default: 1.0.0)
 	Version string
+
+	// CompileTimeout is the maximum time allowed for the full compilation pipeline.
+	// Defaults to 5 minutes if zero.
+	CompileTimeout time.Duration
+
+	// Logger is the structured logger to use. Defaults to logrus.StandardLogger().
+	Logger *logrus.Logger
 }
 
 // ExecutionMode defines how the function will be executed
@@ -53,6 +62,9 @@ const (
 	// CompatibleMode allows some non-deterministic operations (with warnings)
 	// Uses MicroPython fallback for full Python compatibility
 	CompatibleMode ExecutionMode = "compatible"
+
+	// defaultCompileTimeout is used when Config.CompileTimeout is zero.
+	defaultCompileTimeout = 5 * time.Minute
 )
 
 // Result contains the result of a FlyPy compilation
@@ -88,6 +100,7 @@ type DeterminismProof struct {
 // Compiler is the main FlyPy compiler
 type Compiler struct {
 	config *Config
+	log    *logrus.Logger
 }
 
 // NewCompiler creates a new FlyPy compiler with the given configuration
@@ -98,8 +111,18 @@ func NewCompiler(config *Config) *Compiler {
 	if config.TargetWasm == "" {
 		config.TargetWasm = "wasm32-unknown-unknown"
 	}
+	if config.CompileTimeout == 0 {
+		config.CompileTimeout = defaultCompileTimeout
+	}
+
+	log := config.Logger
+	if log == nil {
+		log = logrus.StandardLogger()
+	}
+
 	return &Compiler{
 		config: config,
+		log:    log,
 	}
 }
 
@@ -112,24 +135,47 @@ func NewCompilerWithDefaults() *Compiler {
 	})
 }
 
-// Compile compiles Python source code to a deterministic Wasm artifact
+// Compile compiles Python source code to a deterministic Wasm artifact.
+// It enforces the CompileTimeout from Config to prevent runaway compilations.
 func (c *Compiler) Compile(ctx context.Context, source string, name string) (*Result, error) {
+	// Apply compile timeout
+	compileCtx, cancel := context.WithTimeout(ctx, c.config.CompileTimeout)
+	defer cancel()
+
+	return c.compile(compileCtx, source, name)
+}
+
+// compile is the internal implementation of Compile with a pre-configured context.
+func (c *Compiler) compile(ctx context.Context, source string, name string) (*Result, error) {
+	log := c.log.WithFields(logrus.Fields{
+		"function": name,
+		"mode":     string(c.config.Mode),
+	})
+
 	if c.config.Verbose {
-		fmt.Println("🔨 Compiling", name, "to deterministic Wasm...")
+		log.Info("Starting compilation")
 	}
 
 	// Phase 1: Parse Python source to AST
 	if c.config.Verbose {
-		fmt.Println("✓ Parsing Python AST")
+		log.Info("Phase 1: Parsing Python AST")
 	}
 	pythonAST, err := parser.ParsePython(ctx, source)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Python: %w", err)
 	}
 
+	// Phase 1.5: Pre-check that a handler function exists
+	if c.config.Verbose {
+		log.Info("Phase 1.5: Validating handler function")
+	}
+	if err := validateHandlerExists(pythonAST); err != nil {
+		return nil, err
+	}
+
 	// Phase 2: Enforce restricted subset (mode-aware)
 	if c.config.Verbose {
-		fmt.Println("✓ Enforcing restricted subset")
+		log.Info("Phase 2: Enforcing restricted subset")
 	}
 	restrictionErrors := restrictions.EnforceWithMode(pythonAST, restrictions.ExecutionMode(c.config.Mode))
 	if len(restrictionErrors) > 0 {
@@ -138,7 +184,7 @@ func (c *Compiler) Compile(ctx context.Context, source string, name string) (*Re
 
 	// Phase 3: Generate IR
 	if c.config.Verbose {
-		fmt.Println("✓ Generating deterministic IR")
+		log.Info("Phase 3: Generating deterministic IR")
 	}
 	irModule, err := ir.Generate(pythonAST, name)
 	if err != nil {
@@ -147,7 +193,7 @@ func (c *Compiler) Compile(ctx context.Context, source string, name string) (*Re
 
 	// Phase 4: Verify determinism
 	if c.config.Verbose {
-		fmt.Println("✓ Verifying determinism")
+		log.Info("Phase 4: Verifying determinism")
 	}
 	verificationErrors := verifier.Verify(irModule)
 	if len(verificationErrors) > 0 {
@@ -156,7 +202,7 @@ func (c *Compiler) Compile(ctx context.Context, source string, name string) (*Re
 
 	// Phase 4.5: Analyze side effects
 	if c.config.Verbose {
-		fmt.Println("✓ Analyzing side effects")
+		log.Info("Phase 4.5: Analyzing side effects")
 	}
 	sideEffectAnalyzer := verifier.NewSideEffectAnalyzer(irModule)
 	sideEffects := sideEffectAnalyzer.Analyze()
@@ -172,25 +218,25 @@ func (c *Compiler) Compile(ctx context.Context, source string, name string) (*Re
 
 	// Phase 5: Generate Rust code (mode-aware)
 	if c.config.Verbose {
-		fmt.Println("✓ Generating Rust code")
+		log.Info("Phase 5: Generating Rust code")
 	}
 	rustCode, err := backend.GenerateRustWithMode(irModule, string(c.config.Mode))
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate Rust: %w", err)
 	}
 
-	// Phase 6: Compile to Wasm
+	// Phase 6: Compile to Wasm (with context for cancellation)
 	if c.config.Verbose {
-		fmt.Println("✓ Compiling to Wasm")
+		log.Info("Phase 6: Compiling to Wasm")
 	}
-	wasmBytes, err := compiler.CompileRustWithMode(rustCode, c.config.TargetWasm, string(c.config.Mode))
+	wasmBytes, err := compiler.CompileRustWithModeCtx(ctx, rustCode, c.config.TargetWasm, string(c.config.Mode))
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile Wasm: %w", err)
 	}
 
 	// Phase 7: Build artifact bundle
 	if c.config.Verbose {
-		fmt.Println("✓ Building artifact bundle")
+		log.Info("Phase 7: Building artifact bundle")
 	}
 	version := c.config.Version
 	if version == "" {
@@ -202,7 +248,7 @@ func (c *Compiler) Compile(ctx context.Context, source string, name string) (*Re
 		IRModule:      irModule,
 		Name:          name,
 		Version:       version,
-		SignKey:       c.config.SignKey,
+		SignKey:        c.config.SignKey,
 		Deterministic: true,
 	})
 	if err != nil {
@@ -215,7 +261,7 @@ func (c *Compiler) Compile(ctx context.Context, source string, name string) (*Re
 	}
 
 	if c.config.Verbose {
-		fmt.Println("✅ Build complete:", c.config.OutputDir)
+		log.WithField("output_dir", c.config.OutputDir).Info("Build complete")
 	}
 
 	return &Result{
@@ -228,6 +274,18 @@ func (c *Compiler) Compile(ctx context.Context, source string, name string) (*Re
 		SideEffects:       sideEffects,
 		SideEffectSummary: sideEffectAnalyzer.GetSideEffectSummary(),
 	}, nil
+}
+
+// validateHandlerExists checks that the parsed AST contains a function named "handler".
+// This provides an early, clear error before the full pipeline runs.
+func validateHandlerExists(ast *parser.PythonAST) error {
+	functions := parser.GetFunctions(ast)
+	for _, fn := range functions {
+		if parser.GetFunctionName(fn) == "handler" {
+			return nil
+		}
+	}
+	return fmt.Errorf("no 'handler' function found: FlyPy requires a top-level function named 'handler(event)'")
 }
 
 // writeOutput writes the artifact bundle to the output directory
@@ -278,9 +336,10 @@ func (c *Compiler) writeOutput(artifact *artifact.Artifact) error {
 	return nil
 }
 
-// GetVersion returns the current FlyPy version
+// GetVersion returns the current FlyPy version.
+// The version is set at build time via ldflags; falls back to "dev".
 func GetVersion() string {
-	return "1.0.0"
+	return Version
 }
 
 // SupportsLanguage checks if a language is supported for deterministic compilation

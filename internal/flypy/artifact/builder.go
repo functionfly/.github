@@ -56,8 +56,14 @@ type CapabilityMap struct {
 	Restrictions map[string]interface{} `json:"restrictions,omitempty"`
 }
 
-// Build creates an artifact bundle from the input
+// Build creates an artifact bundle from the input.
+// Returns an error if the IR module contains no functions.
 func Build(input BuildInput) (*Artifact, error) {
+	// Guard: require at least one function in the IR module
+	if input.IRModule == nil || len(input.IRModule.Functions) == 0 {
+		return nil, fmt.Errorf("IR module contains no functions: a 'handler' function is required")
+	}
+
 	// Generate manifest
 	manifest := generateManifest(input)
 

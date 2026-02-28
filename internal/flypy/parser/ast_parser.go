@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+// MaxSourceSize is the maximum allowed Python source code size in bytes (512 KB).
+// Submissions larger than this are rejected before spawning a subprocess.
+const MaxSourceSize = 512 * 1024
+
 // PythonAST represents a simplified Python AST for processing
 type PythonAST struct {
 	Module *ModuleNode `json:"module"`
@@ -18,9 +22,15 @@ type ModuleNode struct {
 	Body []interface{} `json:"body"`
 }
 
-// ParsePython parses Python source code and returns an AST
-// It uses Python's ast module via subprocess for reliable parsing
+// ParsePython parses Python source code and returns an AST.
+// It uses Python's ast module via subprocess for reliable parsing.
+// Returns an error if the source exceeds MaxSourceSize bytes.
 func ParsePython(ctx context.Context, source string) (*PythonAST, error) {
+	// Reject oversized source to prevent resource exhaustion
+	if len(source) > MaxSourceSize {
+		return nil, fmt.Errorf("source code too large: %d bytes (max %d bytes)", len(source), MaxSourceSize)
+	}
+
 	cmd := exec.CommandContext(ctx, "python3", "-c", `
 import ast
 import json
