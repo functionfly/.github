@@ -27,6 +27,14 @@ pub struct NodeSpecs {
     pub ram_gb: usize,
     pub storage_gb: usize,
     pub bandwidth_gbps: f64,
+    /// Maximum number of concurrent Wasm function instances on this node.
+    pub max_concurrent_wasm: usize,
+    /// Maximum memory per individual function instance in MB.
+    pub max_memory_per_fn_mb: usize,
+    /// AOT compilation cache budget in MB.
+    pub aot_cache_mb: usize,
+    /// Whether this tier supports Firecracker MicroVM execution.
+    pub supports_firecracker: bool,
 }
 
 impl NodeSpecs {
@@ -39,6 +47,10 @@ impl NodeSpecs {
                 ram_gb: 4,
                 storage_gb: 75,
                 bandwidth_gbps: 0.2,
+                max_concurrent_wasm: 200,
+                max_memory_per_fn_mb: 64,
+                aot_cache_mb: 256,
+                supports_firecracker: false,
             },
             BudgetTier::Low => NodeSpecs {
                 monthly_cost: 15.0,
@@ -46,6 +58,10 @@ impl NodeSpecs {
                 ram_gb: 8,
                 storage_gb: 150,
                 bandwidth_gbps: 0.4,
+                max_concurrent_wasm: 400,
+                max_memory_per_fn_mb: 128,
+                aot_cache_mb: 512,
+                supports_firecracker: false,
             },
             BudgetTier::Medium => NodeSpecs {
                 monthly_cost: 35.0,
@@ -53,6 +69,10 @@ impl NodeSpecs {
                 ram_gb: 16,
                 storage_gb: 300,
                 bandwidth_gbps: 1.0,
+                max_concurrent_wasm: 800,
+                max_memory_per_fn_mb: 256,
+                aot_cache_mb: 1024,
+                supports_firecracker: true,
             },
             BudgetTier::High => NodeSpecs {
                 monthly_cost: 75.0,
@@ -60,6 +80,10 @@ impl NodeSpecs {
                 ram_gb: 32,
                 storage_gb: 500,
                 bandwidth_gbps: 2.0,
+                max_concurrent_wasm: 2000,
+                max_memory_per_fn_mb: 512,
+                aot_cache_mb: 2048,
+                supports_firecracker: true,
             },
         }
     }

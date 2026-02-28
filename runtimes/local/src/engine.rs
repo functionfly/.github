@@ -2,6 +2,7 @@
 
 use anyhow::Context;
 use clap::Parser;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
@@ -19,6 +20,11 @@ use crate::pool::InstancePool;
 use crate::python::PythonRuntime;
 use crate::wasi::{WasiContext, WasiLinker};
 
+// serde_json is used in the PythonWasm execution branch to build the augmented
+// input payload that carries the Python source code to the CPython-WASM binary.
+#[allow(unused_imports)]
+use serde_json;
+
 /// Runtime type for WASM modules
 #[derive(Debug, Clone, PartialEq)]
 pub enum RuntimeType {
@@ -26,6 +32,8 @@ pub enum RuntimeType {
     Wasm,
     /// Python WASM module using RustPython
     Python,
+    /// CPython compiled to WASM (full stdlib, no C extensions)
+    PythonWasm,
     /// CPython in Firecracker MicroVM (Enterprise tier only)
     PythonMicroVM,
 }
@@ -36,6 +44,7 @@ impl RuntimeType {
         match s {
             "wasm" => Some(RuntimeType::Wasm),
             "python" => Some(RuntimeType::Python),
+            "python-wasm" => Some(RuntimeType::PythonWasm),
             "python-microvm" => Some(RuntimeType::PythonMicroVM),
             _ => None,
         }
@@ -51,6 +60,7 @@ impl RuntimeType {
         match self {
             RuntimeType::Wasm => "WebAssembly",
             RuntimeType::Python => "RustPython",
+            RuntimeType::PythonWasm => "CPython-WASM",
             RuntimeType::PythonMicroVM => "CPython (MicroVM)",
         }
     }
@@ -111,6 +121,16 @@ impl SharedState {
     }
 }
 
+/// In-memory AOT compilation cache entry.
+struct AotCacheEntry {
+    /// Serialized compiled module bytes.
+    compiled: Vec<u8>,
+    /// Approximate size in bytes (for eviction accounting).
+    size: usize,
+    /// Insertion order counter (used for LRU eviction).
+    inserted_at: u64,
+}
+
 /// Wasm engine for executing functions
 pub struct WasmEngine {
     engine: Engine,
@@ -120,6 +140,10 @@ pub struct WasmEngine {
     logger: StructuredLogger,
     orchestrator_client: Option<Arc<OrchestratorClient>>,
     security_monitor: Arc<crate::security::SecurityMonitor>,
+    /// AOT compilation cache: wasm_hash → compiled bytes.
+    aot_cache: Arc<std::sync::RwLock<HashMap<String, AotCacheEntry>>>,
+    /// Monotonic counter for LRU eviction ordering.
+    aot_counter: Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl WasmEngine {
@@ -141,6 +165,21 @@ impl WasmEngine {
         let engine = Engine::new(&wasm_config)
             .context("Failed to create Wasmtime engine")?;
 
+        // Start epoch ticker thread: increments the epoch counter every 1ms so
+        // that epoch_deadline_trap() can enforce wall-clock timeouts.
+        {
+            let engine_clone = engine.clone();
+            std::thread::Builder::new()
+                .name("epoch-ticker".to_string())
+                .spawn(move || {
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_millis(1));
+                        engine_clone.increment_epoch();
+                    }
+                })
+                .context("Failed to spawn epoch ticker thread")?;
+        }
+
         // Create WASI linker if enabled
         let wasi_linker = if config.wasi_enabled {
             Some(Arc::new(WasiLinker::new(&engine, &config, kv_store.clone(), logger.clone(), security_monitor.clone())?))
@@ -156,6 +195,8 @@ impl WasmEngine {
             logger,
             orchestrator_client,
             security_monitor,
+            aot_cache: Arc::new(std::sync::RwLock::new(HashMap::new())),
+            aot_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         })
     }
 
@@ -188,18 +229,115 @@ impl WasmEngine {
                 .await
                 .context("Failed to execute Python in blocking task")?
             }
+            RuntimeType::PythonWasm => {
+                // Phase 2: Execute Python via CPython compiled to WASM.
+                // The CPython binary is loaded as a standard Wasm module; the
+                // Python source code is passed via stdin (WASI).
+                let cpython_wasm_path = config.cpython_wasm_path.clone();
+                let input = input.to_string();
+                let engine = self.engine.clone();
+                let config = config.clone();
+                let wasi_linker = self.wasi_linker.clone();
+                let python_source = wasm_bytes.to_vec();
+                let aot_cache = self.aot_cache.clone();
+                let aot_counter = self.aot_counter.clone();
+
+                tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
+                    let cpython_bytes = std::fs::read(&cpython_wasm_path)
+                        .with_context(|| format!("Failed to read CPython-WASM binary: {}", cpython_wasm_path))?;
+
+                    // Use AOT cache for the CPython binary (it never changes)
+                    let cpython_hash = {
+                        use std::collections::hash_map::DefaultHasher;
+                        use std::hash::{Hash, Hasher};
+                        let mut h = DefaultHasher::new();
+                        cpython_bytes.hash(&mut h);
+                        format!("{:016x}", h.finish())
+                    };
+
+                    let precompiled = if config.aot_cache_enabled {
+                        if let Ok(cache) = aot_cache.read() {
+                            cache.get(&cpython_hash).map(|e| {
+                                unsafe { Module::deserialize(&engine, &e.compiled) }.ok()
+                            }).flatten()
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
+                    if let Some(ref linker) = wasi_linker {
+                        // Inject Python source as a WASI env var so CPython can find it
+                        let python_source_str = String::from_utf8_lossy(&python_source).to_string();
+                        let augmented_input = format!(
+                            "{{\"__python_source__\":{},\"input\":{}}}",
+                            serde_json::to_string(&python_source_str).unwrap_or_default(),
+                            input
+                        );
+                        execute_wasi_sync_inner(&engine, linker, &cpython_bytes, &augmented_input, &config, precompiled)
+                    } else {
+                        Err(anyhow::anyhow!("WASI linker not available for CPython-WASM execution"))
+                    }
+                })
+                .await
+                .context("Failed to execute CPython-WASM in blocking task")?
+            }
             RuntimeType::Wasm => {
-                // Execute standard WASM module in a blocking task to avoid runtime conflicts
+                // Execute standard WASM module in a blocking task to avoid runtime conflicts.
+                // Uses the AOT cache to skip re-compilation on warm starts.
                 let wasm_bytes = wasm_bytes.to_vec();
                 let input = input.to_string();
                 let engine = self.engine.clone();
                 let config = config.clone();
                 let wasi_linker = self.wasi_linker.clone();
+                let aot_cache = self.aot_cache.clone();
+                let aot_counter_clone = self.aot_counter.clone();
 
                 tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
                     if let Some(ref linker) = wasi_linker {
-                        // Execute with WASI support synchronously
-                        execute_wasi_sync(&engine, linker, &wasm_bytes, &input, &config)
+                        // Compute hash for AOT cache lookup
+                        let wasm_hash = {
+                            use std::collections::hash_map::DefaultHasher;
+                            use std::hash::{Hash, Hasher};
+                            let mut h = DefaultHasher::new();
+                            wasm_bytes.hash(&mut h);
+                            format!("{:016x}", h.finish())
+                        };
+
+                        // Try AOT cache
+                        let precompiled = if config.aot_cache_enabled {
+                            if let Ok(cache) = aot_cache.read() {
+                                cache.get(&wasm_hash).map(|e| {
+                                    unsafe { Module::deserialize(&engine, &e.compiled) }.ok()
+                                }).flatten()
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+
+                        // If not cached, compile and store
+                        let precompiled = if precompiled.is_none() && config.aot_cache_enabled {
+                            match Module::new(&engine, &wasm_bytes) {
+                                Ok(module) => {
+                                    if let Ok(compiled) = module.serialize() {
+                                        let size = compiled.len();
+                                        let counter = aot_counter_clone.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                        if let Ok(mut cache) = aot_cache.write() {
+                                            cache.insert(wasm_hash, AotCacheEntry { compiled, size, inserted_at: counter });
+                                        }
+                                    }
+                                    Some(module)
+                                }
+                                Err(_) => None,
+                            }
+                        } else {
+                            precompiled
+                        };
+
+                        execute_wasi_sync_inner(&engine, linker, &wasm_bytes, &input, &config, precompiled)
                     } else {
                         // No WASI linker available - this shouldn't happen in normal operation
                         Err(anyhow::anyhow!("WASI linker not available for WASM execution"))
@@ -307,12 +445,153 @@ impl WasmEngine {
             // For Python code, check if we should use MicroVM based on tier
             if self.config.supports_microvm() && self.orchestrator_client.is_some() {
                 RuntimeType::PythonMicroVM
+            } else if self.config.supports_cpython_wasm() {
+                // Phase 2: CPython compiled to WASM (full stdlib, no C extensions)
+                RuntimeType::PythonWasm
             } else {
                 RuntimeType::Python
             }
         } else {
             RuntimeType::Wasm
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // AOT compilation cache (P1.1)
+    // -------------------------------------------------------------------------
+
+    /// Compile a Wasm binary and store the result in the AOT cache.
+    ///
+    /// Returns the serialized compiled bytes so the caller can persist them to
+    /// the registry database if desired.
+    pub fn compile_and_cache(&self, wasm_bytes: &[u8], hash: &str) -> anyhow::Result<Vec<u8>> {
+        // Compile the module
+        let module = Module::new(&self.engine, wasm_bytes)
+            .context("AOT: failed to compile Wasm module")?;
+
+        // Serialize to portable compiled bytes
+        let compiled = module.serialize()
+            .context("AOT: failed to serialize compiled module")?;
+
+        if self.config.aot_cache_enabled {
+            let size = compiled.len();
+            let counter = self.aot_counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let entry = AotCacheEntry { compiled: compiled.clone(), size, inserted_at: counter };
+
+            let mut cache = self.aot_cache.write()
+                .map_err(|_| anyhow::anyhow!("AOT cache lock poisoned"))?;
+
+            // Evict oldest entries if we exceed the size budget
+            let max_bytes = self.config.aot_cache_size_mb * 1024 * 1024;
+            let current_bytes: usize = cache.values().map(|e| e.size).sum();
+            if current_bytes + size > max_bytes {
+                // Find and remove the oldest entry
+                if let Some(oldest_key) = cache.iter()
+                    .min_by_key(|(_, e)| e.inserted_at)
+                    .map(|(k, _)| k.clone())
+                {
+                    cache.remove(&oldest_key);
+                    tracing::debug!("AOT cache: evicted entry {}", &oldest_key[..8.min(oldest_key.len())]);
+                }
+            }
+
+            cache.insert(hash.to_string(), entry);
+            tracing::debug!("AOT cache: stored compiled module for hash {}", &hash[..8.min(hash.len())]);
+
+            // Optionally persist to disk
+            if !self.config.aot_cache_dir.is_empty() {
+                let dir = std::path::Path::new(&self.config.aot_cache_dir);
+                if let Err(e) = std::fs::create_dir_all(dir) {
+                    tracing::warn!("AOT cache: failed to create cache dir: {}", e);
+                } else {
+                    let path = dir.join(format!("{}.cwasm", hash));
+                    if let Err(e) = std::fs::write(&path, &compiled) {
+                        tracing::warn!("AOT cache: failed to write {}: {}", path.display(), e);
+                    }
+                }
+            }
+        }
+
+        Ok(compiled)
+    }
+
+    /// Load a precompiled module from the AOT cache (memory or disk).
+    ///
+    /// Returns `None` if the hash is not cached.
+    ///
+    /// # Safety
+    /// The compiled bytes must have been produced by `compile_and_cache` on
+    /// the same Wasmtime engine configuration.  Bytes from untrusted sources
+    /// must NOT be passed here.
+    pub fn load_precompiled(&self, hash: &str) -> anyhow::Result<Option<Module>> {
+        // 1. Check in-memory cache
+        if self.config.aot_cache_enabled {
+            if let Ok(cache) = self.aot_cache.read() {
+                if let Some(entry) = cache.get(hash) {
+                    let module = unsafe { Module::deserialize(&self.engine, &entry.compiled) }
+                        .context("AOT: failed to deserialize cached module")?;
+                    tracing::debug!("AOT cache: in-memory hit for hash {}", &hash[..8.min(hash.len())]);
+                    return Ok(Some(module));
+                }
+            }
+
+            // 2. Check disk cache
+            if !self.config.aot_cache_dir.is_empty() {
+                let path = std::path::Path::new(&self.config.aot_cache_dir)
+                    .join(format!("{}.cwasm", hash));
+                if path.exists() {
+                    match std::fs::read(&path) {
+                        Ok(bytes) => {
+                            let module = unsafe { Module::deserialize(&self.engine, &bytes) }
+                                .context("AOT: failed to deserialize disk-cached module")?;
+                            tracing::debug!("AOT cache: disk hit for hash {}", &hash[..8.min(hash.len())]);
+                            // Warm the in-memory cache
+                            let _ = self.compile_and_cache_precompiled(hash, bytes);
+                            return Ok(Some(module));
+                        }
+                        Err(e) => {
+                            tracing::warn!("AOT cache: failed to read disk cache {}: {}", path.display(), e);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Store already-compiled bytes in the in-memory cache (used when loading
+    /// from disk to warm the memory cache).
+    fn compile_and_cache_precompiled(&self, hash: &str, compiled: Vec<u8>) -> anyhow::Result<()> {
+        let size = compiled.len();
+        let counter = self.aot_counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let entry = AotCacheEntry { compiled, size, inserted_at: counter };
+        if let Ok(mut cache) = self.aot_cache.write() {
+            cache.insert(hash.to_string(), entry);
+        }
+        Ok(())
+    }
+
+    /// Get or compile a module, using the AOT cache when available.
+    pub fn get_or_compile_module(&self, wasm_bytes: &[u8]) -> anyhow::Result<Module> {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        // Compute a fast hash of the bytes for cache lookup
+        let mut hasher = DefaultHasher::new();
+        wasm_bytes.hash(&mut hasher);
+        let hash = format!("{:016x}", hasher.finish());
+
+        // Try cache first
+        if let Some(module) = self.load_precompiled(&hash)? {
+            return Ok(module);
+        }
+
+        // Compile and cache
+        let compiled = self.compile_and_cache(wasm_bytes, &hash)?;
+        let module = unsafe { Module::deserialize(&self.engine, &compiled) }
+            .context("AOT: failed to deserialize freshly compiled module")?;
+        Ok(module)
     }
 
     /// Get resource allocation based on budget tier
@@ -332,14 +611,79 @@ impl WasmEngine {
     }
 }
 
-/// Synchronous WASI execution function for use in spawn_blocking
-/// This avoids the "Cannot start a runtime from within a runtime" panic
+// -------------------------------------------------------------------------
+// FunctionMemoryLimiter — enforces Wasm linear memory cap (P1.4)
+// -------------------------------------------------------------------------
+
+/// Wasmtime `ResourceLimiter` that caps the linear memory a Wasm instance
+/// can allocate.  Exceeding the limit causes the memory.grow instruction to
+/// return -1 (out-of-memory) rather than panicking the host.
+///
+/// # Thread-safety note
+///
+/// Wasmtime's `store.limiter()` closure must return `&mut dyn ResourceLimiter`
+/// from the store data `T`.  Because our store data is `WasiP1Ctx` (which we
+/// cannot modify), we use a thread-local to hold the limiter for the duration
+/// of each synchronous execution call.  This is safe because:
+///
+/// 1. `execute_wasi_sync_inner` is always called from `spawn_blocking`, which
+///    runs on a dedicated OS thread.
+/// 2. The thread-local is set before the store is used and cleared after.
+/// 3. Wasmtime only calls the limiter closure while the store is alive.
+struct FunctionMemoryLimiter {
+    max_bytes: usize,
+}
+
+impl wasmtime::ResourceLimiter for FunctionMemoryLimiter {
+    fn memory_growing(
+        &mut self,
+        _current: usize,
+        desired: usize,
+        _maximum: Option<usize>,
+    ) -> anyhow::Result<bool> {
+        if desired > self.max_bytes {
+            tracing::warn!(
+                "FunctionMemoryLimiter: denied memory growth to {} bytes (limit {} bytes)",
+                desired,
+                self.max_bytes
+            );
+            return Ok(false);
+        }
+        Ok(true)
+    }
+
+    fn table_growing(
+        &mut self,
+        _current: u32,
+        _desired: u32,
+        _maximum: Option<u32>,
+    ) -> anyhow::Result<bool> {
+        Ok(true)
+    }
+}
+
+
+/// Synchronous WASI execution function for use in spawn_blocking.
+/// This avoids the "Cannot start a runtime from within a runtime" panic.
 fn execute_wasi_sync(
     engine: &Engine,
     linker: &WasiLinker,
     wasm_bytes: &[u8],
     input: &str,
     config: &Config,
+) -> anyhow::Result<String> {
+    execute_wasi_sync_inner(engine, linker, wasm_bytes, input, config, None)
+}
+
+/// Internal implementation that accepts an optional pre-compiled module
+/// (from the AOT cache) to skip re-compilation on warm starts.
+fn execute_wasi_sync_inner(
+    engine: &Engine,
+    linker: &WasiLinker,
+    wasm_bytes: &[u8],
+    input: &str,
+    config: &Config,
+    precompiled: Option<Module>,
 ) -> anyhow::Result<String> {
     let execution_start = std::time::Instant::now();
 
@@ -352,22 +696,53 @@ fn execute_wasi_sync(
     // Create store with WASI context
     let mut store = Store::new(engine, wasi_ctx.ctx);
 
-    // Set fuel limit for execution (configurable CPU control)
-    let fuel_limit = if config.cpu_fuel_limit > 0 {
+    // --- Calibrated fuel metering (P1.5) ---
+    // Prefer the calibrated fuel budget derived from timeout_ms × fuel_per_ms.
+    // Fall back to the legacy cpu_fuel_limit if the calibrated value is zero.
+    let calibrated_fuel = config.fuel_for_timeout();
+    let fuel_limit = if calibrated_fuel > 0 {
+        calibrated_fuel
+    } else if config.cpu_fuel_limit > 0 {
         config.cpu_fuel_limit
     } else {
-        1_000_000 // Default fallback
+        1_000_000 // absolute fallback
     };
     store.set_fuel(fuel_limit)?;
 
-    // Enable epoch interruption for CPU time limits
-    if config.enable_monitoring {
-        store.set_epoch_deadline(1); // Set initial deadline
-    }
+    // --- Epoch-based wall-clock timeout (P1.5) ---
+    // The epoch ticker thread (started in with_config) increments the epoch
+    // every 1ms.  Setting the deadline to timeout_ms means the store will
+    // trap after approximately timeout_ms milliseconds of wall-clock time.
+    store.set_epoch_deadline(config.timeout_ms);
+    store.epoch_deadline_trap();
 
-    // Compile module
-    let module = Module::new(engine, wasm_bytes)
-        .context("Failed to compile Wasm module")?;
+    // --- Memory limiter (P1.4) ---
+    // Enforce the per-function memory cap at the Wasm level so that a
+    // misbehaving function cannot exhaust host memory.
+    //
+    // Wasmtime's store.limiter() requires the closure to return
+    // `&mut dyn ResourceLimiter` from the store data T.  Since our store data
+    // is WasiP1Ctx (which we cannot modify), we allocate the limiter on the
+    // heap and leak it.  The leaked allocation is tiny (a single usize) and
+    // bounded by the number of concurrent executions, which is already capped
+    // by the instance pool.
+    let max_memory_bytes = (config.memory_mb as usize) * 1024 * 1024;
+    let limiter_ptr: *mut FunctionMemoryLimiter =
+        Box::into_raw(Box::new(FunctionMemoryLimiter { max_bytes: max_memory_bytes }));
+    // SAFETY: limiter_ptr is valid for the lifetime of this function call.
+    // The store is dropped before this function returns, so the pointer is
+    // never used after the allocation would be freed.
+    store.limiter(move |_ctx| unsafe {
+        &mut *limiter_ptr as &mut dyn wasmtime::ResourceLimiter
+    });
+
+    // Compile module (or use pre-compiled AOT module)
+    let module = if let Some(m) = precompiled {
+        m
+    } else {
+        Module::new(engine, wasm_bytes)
+            .context("Failed to compile Wasm module")?
+    };
 
     // Instantiate module with WASI
     let instance = linker.linker().instantiate(&mut store, &module)
@@ -433,6 +808,18 @@ fn execute_wasi_sync(
     // Fall back to stdout/stderr
     let stdout = stdout_pipe.contents();
     let stderr = stderr_pipe.contents();
+
+    // Drop the store explicitly before freeing the limiter so that Wasmtime
+    // cannot call the limiter closure after the allocation is freed.
+    drop(store);
+    drop(instance);
+    drop(module);
+
+    // Free the memory limiter allocation now that the store is gone.
+    // SAFETY: limiter_ptr was created by Box::into_raw above and has not been
+    // freed yet.  The store (which held the only reference via the closure) has
+    // just been dropped.
+    let _ = unsafe { Box::from_raw(limiter_ptr) };
 
     if !stdout.is_empty() {
         Ok(String::from_utf8_lossy(&stdout).to_string())

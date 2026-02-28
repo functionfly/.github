@@ -201,6 +201,45 @@ pub struct Config {
     /// degrading to a different Python runtime.
     #[arg(long, default_value = "true")]
     pub microvm_fallback_allowed: bool,
+
+    /// Enable AOT (Ahead-of-Time) module compilation cache.
+    /// When enabled, Wasm modules are compiled once and the result is cached
+    /// in memory (and optionally on disk) for near-instant subsequent loads.
+    #[arg(long, default_value = "true")]
+    pub aot_cache_enabled: bool,
+
+    /// Directory for persisting AOT-compiled modules to disk.
+    /// Empty string means in-memory cache only (no disk persistence).
+    #[arg(long, default_value = "")]
+    pub aot_cache_dir: String,
+
+    /// Maximum size of the AOT cache in MB.
+    /// Oldest entries are evicted when this limit is reached.
+    #[arg(long, default_value = "512")]
+    pub aot_cache_size_mb: usize,
+
+    /// Fuel units per millisecond of CPU time (calibration constant).
+    /// Used to convert timeout_ms into a fuel budget for Wasmtime's fuel
+    /// metering.  Typical value on modern hardware: ~10_000_000 fuel/ms.
+    #[arg(long, default_value = "10000000")]
+    pub fuel_per_ms: u64,
+
+    /// Use CPython compiled to WASM instead of RustPython for Python functions.
+    /// Provides full stdlib support (minus C extensions) at the cost of a
+    /// larger binary (~8 MB) and slightly higher cold-start time.
+    #[arg(long, default_value = "false")]
+    pub use_cpython_wasm: bool,
+
+    /// Path to the CPython-WASM binary used when use_cpython_wasm is true.
+    #[arg(long, default_value = "./runtimes/cpython.wasm")]
+    pub cpython_wasm_path: String,
+
+    /// Enable persistent daemon mode.
+    /// When true the runtime process stays alive across requests and handles
+    /// multiple functions via its internal instance pool, eliminating the
+    /// per-request process-spawn overhead.
+    #[arg(long, default_value = "false")]
+    pub daemon_mode: bool,
 }
 
 impl Config {
@@ -256,6 +295,17 @@ impl Config {
     pub fn supports_microvm(&self) -> bool {
         self.enterprise_enabled && matches!(self.get_budget_tier(), BudgetTier::High | BudgetTier::Medium)
     }
+
+    /// Check if CPython-WASM is enabled and available
+    pub fn supports_cpython_wasm(&self) -> bool {
+        self.use_cpython_wasm && !self.cpython_wasm_path.is_empty()
+    }
+
+    /// Compute the fuel budget for a given timeout in milliseconds.
+    /// Uses the calibrated fuel_per_ms constant.
+    pub fn fuel_for_timeout(&self) -> u64 {
+        self.timeout_ms.saturating_mul(self.fuel_per_ms)
+    }
 }
 
 impl Default for Config {
@@ -307,6 +357,13 @@ impl Default for Config {
             max_output_bytes: 1024 * 1024,   // 1 MiB
             max_input_bytes: 1024 * 1024,    // 1 MiB
             microvm_fallback_allowed: true,
+            aot_cache_enabled: true,
+            aot_cache_dir: "".to_string(),
+            aot_cache_size_mb: 512,
+            fuel_per_ms: 10_000_000,
+            use_cpython_wasm: false,
+            cpython_wasm_path: "./runtimes/cpython.wasm".to_string(),
+            daemon_mode: false,
         }
     }
 }
@@ -364,6 +421,13 @@ mod tests {
             max_output_bytes: 1024 * 1024,
             max_input_bytes: 1024 * 1024,
             microvm_fallback_allowed: true,
+            aot_cache_enabled: true,
+            aot_cache_dir: "".to_string(),
+            aot_cache_size_mb: 512,
+            fuel_per_ms: 10_000_000,
+            use_cpython_wasm: false,
+            cpython_wasm_path: "./runtimes/cpython.wasm".to_string(),
+            daemon_mode: false,
         };
 
         assert_eq!(config.function_key(), "slugify@1.0.0");
