@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, MoreVertical, Rocket, Edit, Trash2, Eye, Loader2 } from "lucide-react";
+import { Plus, Search, MoreVertical, Rocket, Edit, Trash2, Eye, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +13,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { functionsApi } from "@/api/functions";
 import { toast } from "sonner";
 import type { FunctionConfig } from "@/types";
@@ -21,6 +29,8 @@ export function FunctionsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [functionToDelete, setFunctionToDelete] = useState<FunctionConfig | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["functions"],
@@ -32,9 +42,12 @@ export function FunctionsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["functions"] });
       toast.success("Function deleted successfully");
+      setDeleteDialogOpen(false);
+      setFunctionToDelete(null);
     },
     onError: () => {
       toast.error("Failed to delete function");
+      setDeleteDialogOpen(false);
     },
   });
 
@@ -44,10 +57,20 @@ export function FunctionsPage() {
     fn.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleDelete = (fn: FunctionConfig) => {
-    if (confirm(`Are you sure you want to delete "${fn.name}"?`)) {
-      deleteMutation.mutate(fn.id);
+  const handleDeleteClick = (fn: FunctionConfig) => {
+    setFunctionToDelete(fn);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (functionToDelete) {
+      deleteMutation.mutate(functionToDelete.id);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setFunctionToDelete(null);
   };
 
   if (error) {
@@ -161,7 +184,7 @@ export function FunctionsPage() {
                           <Edit className="w-4 h-4" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-red-400" onClick={() => handleDelete(fn)}>
+                        <DropdownMenuItem className="gap-2 text-red-400" onClick={() => handleDeleteClick(fn)}>
                           <Trash2 className="w-4 h-4" />
                           Delete
                         </DropdownMenuItem>
@@ -194,6 +217,40 @@ export function FunctionsPage() {
           )}
         </Card>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              Delete Function
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{functionToDelete?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDelete}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -10,7 +10,6 @@ const teamMembers = [
     name: "Alex Chen",
     role: "Founder & CEO",
     bio: "Former AWS engineer who witnessed too many serverless failures. Built FunctionFly after losing $50K in a single outage.",
-    image: "/api/placeholder/200/200",
     values: ["Reliability First", "Developer Experience", "Transparency"],
     expertise: "Distributed Systems"
   },
@@ -18,7 +17,6 @@ const teamMembers = [
     name: "Sarah Rodriguez",
     role: "CTO",
     bio: "Ex-Netflix SRE specializing in chaos engineering. Joined after experiencing the Great Netflix Outage of 2021.",
-    image: "/api/placeholder/200/200",
     values: ["Resilience", "Innovation", "Quality"],
     expertise: "Site Reliability Engineering"
   },
@@ -26,7 +24,6 @@ const teamMembers = [
     name: "Marcus Johnson",
     role: "Head of Product",
     bio: "Product leader from Stripe and Twilio. Saw developers struggle with serverless complexity and wanted to fix it.",
-    image: "/api/placeholder/200/200",
     values: ["User-Centric", "Simplicity", "Empowerment"],
     expertise: "Product Strategy"
   },
@@ -34,7 +31,6 @@ const teamMembers = [
     name: "Dr. Emily Zhang",
     role: "VP of Engineering",
     bio: "PhD in Computer Science from MIT. Specializes in fault-tolerant distributed systems and loves making complex things simple.",
-    image: "/api/placeholder/200/200",
     values: ["Excellence", "Learning", "Collaboration"],
     expertise: "Systems Architecture"
   }
@@ -271,7 +267,7 @@ export function TeamPage() {
                 href="mailto:careers@functionfly.com"
                 className="inline-flex items-center px-6 py-3 rounded-lg bg-[#6366f1] hover:bg-[#6366f1]/80 text-white font-medium transition-colors"
               >
-                View Open Positions
+                Email Us About Positions
               </a>
             </CardContent>
           </Card>

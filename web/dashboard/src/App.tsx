@@ -5,6 +5,8 @@ import { Toaster } from "sonner";
 import { useAuthStore } from "@/stores/authStore";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 import { CookieConsentProvider } from "@/components/cookie-consent";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { LandingPage } from "@/pages/LandingPage";
 import { TeamPage } from "@/pages/TeamPage";
 import { PricingPage } from "@/pages/PricingPage";
@@ -36,6 +38,7 @@ import { AdminFunctionsPage } from "@/pages/AdminFunctionsPage";
 import { AdminRegistryPage } from "@/pages/AdminRegistryPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
 import { SecurityPage } from "@/pages/SecurityPage";
+import { TermsPage } from "@/pages/TermsPage";
 import ChangelogPage from "@/pages/ChangelogPage";
 import { FeedbackPage } from "@/pages/FeedbackPage";
 import { FAQPage } from "@/pages/FAQPage";
@@ -135,7 +138,11 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
   // Show loading state while auth is being initialized
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner size="lg" text="Loading..." />
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
@@ -172,6 +179,7 @@ function AppContent() {
       <Route path="/team" element={<TeamPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/security" element={<SecurityPage />} />
+      <Route path="/terms" element={<TermsPage />} />
       <Route path="/changelog" element={<ChangelogPage />} />
       <Route path="/feedback" element={<FeedbackPage />} />
       <Route path="/faq" element={<FAQPage />} />
@@ -301,27 +309,29 @@ function AppContent() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <CookieConsentProvider>
-          <Analytics />
-          <BrowserRouter>
-            <GlobalKeyboardShortcuts />
-            <AppContent />
-          </BrowserRouter>
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border-subtle)",
-                color: "var(--text-primary)",
-              },
-            }}
-          />
-        </CookieConsentProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <CookieConsentProvider>
+            <Analytics />
+            <BrowserRouter>
+              <GlobalKeyboardShortcuts />
+              <AppContent />
+            </BrowserRouter>
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: "var(--bg-secondary)",
+                  border: "1px solid var(--border-subtle)",
+                  color: "var(--text-primary)",
+                },
+              }}
+            />
+          </CookieConsentProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

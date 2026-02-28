@@ -97,8 +97,12 @@ export function FAQPage() {
 
   // Monitor Core Web Vitals
   useWebVitals((metrics) => {
-    // Optional: Send to your analytics service
-    console.log('Web Vitals:', metrics);
+    // In production, send to your analytics service
+    // For now, only log in development
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log('Web Vitals:', metrics);
+    }
   });
 
   const categories = [

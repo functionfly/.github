@@ -270,7 +270,7 @@ export function AdminContentCalendarPage() {
       fetchContentCalendar();
     } catch (error) {
       console.error('Failed to create content:', error);
-      // TODO: Show error toast/notification
+      toast.error('Failed to create content item. Please try again.');
     } finally {
       setCreatingContent(false);
     }
