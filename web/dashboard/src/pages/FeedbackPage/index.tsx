@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MessageSquare, Send, CheckCircle, Star, FileText, AlertCircle, Lightbulb, Heart, HelpCircle, ChevronDown, Upload, X, Clock, File } from 'lucide-react';
 import { toast } from 'sonner';
 import { Footer } from '@/pages/LandingPage/components/Footer';
+import { Navbar } from '@/components/common/Navbar';
 
 export function FeedbackPage() {
   const [feedbackType, setFeedbackType] = useState('');
@@ -228,7 +229,7 @@ export function FeedbackPage() {
         formData.append(`attachment_${index}`, file);
       });
 
-      const response = await fetch('/api/feedback', {
+      const response = await fetch('/v1/feedback', {
         method: 'POST',
         body: formData // Remove Content-Type header, let browser set it with boundary
       });
@@ -272,8 +273,11 @@ export function FeedbackPage() {
 
   return (
     <div className="min-h-screen bg-bg-primary">
+      {/* Navbar */}
+      <Navbar variant="landing" />
+
       {/* Header */}
-      <div className="border-b border-border-subtle">
+      <div className="border-b border-border-subtle pt-16">
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center gap-3 mb-4">
             <MessageSquare className="h-8 w-8 text-text-primary" />

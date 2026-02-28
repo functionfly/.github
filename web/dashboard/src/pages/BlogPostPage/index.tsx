@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Navbar } from '@/components/common/Navbar';
 import { BookOpen, Calendar, ArrowLeft, User, Tag, Loader2, AlertTriangle } from 'lucide-react';
 import { contentApi, BlogPost } from '@/api/content';
+import { Footer } from '@/pages/LandingPage/components/Footer';
 
 const BlogPostPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -135,6 +136,9 @@ const BlogPostPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

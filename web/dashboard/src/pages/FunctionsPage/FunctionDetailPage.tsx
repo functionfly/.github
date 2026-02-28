@@ -151,12 +151,16 @@ export function FunctionDetailPage() {
   }, [id]);
 
   const handleRedeploy = async () => {
+    if (!id) return;
     setIsRedeploying(true);
-    // Simulate redeployment
-    setTimeout(() => {
-      setIsRedeploying(false);
+    try {
+      await apiClient.post(`/v1/functions/${id}/redeploy`);
       toast.success("Function redeployed successfully");
-    }, 2000);
+    } catch (error) {
+      toast.error("Failed to redeploy function. Please try again.");
+    } finally {
+      setIsRedeploying(false);
+    }
   };
 
   const handleDelete = () => {

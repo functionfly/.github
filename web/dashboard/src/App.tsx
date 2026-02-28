@@ -43,6 +43,8 @@ import BlogPage from "@/pages/BlogPage";
 import BlogPostPage from "@/pages/BlogPostPage";
 import AdminContentPage from "@/pages/AdminContentPage";
 import { ContactPage } from "@/pages/ContactPage";
+import { PasswordResetPage } from "@/pages/AuthPage/PasswordResetPage";
+import { NotFoundPage } from "@/pages/NotFoundPage";
 import { GlobalKeyboardShortcuts } from "@/components/common/GlobalKeyboardShortcuts";
 import { Analytics } from "@/components/common/Analytics";
 import { ThemeProvider } from "@/components/common/ThemeProvider";
@@ -78,23 +80,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isOnboardingComplete = useOnboardingStore((state) => state.isOnboardingComplete);
   const hasSkippedOnboarding = useOnboardingStore((state) => state.hasSkippedOnboarding);
 
-  console.log("ProtectedRoute: Checking auth and onboarding state", {
-    isAuthenticated,
-    isOnboardingComplete,
-    hasSkippedOnboarding,
-    userRole: user?.role
-  });
-
   if (!isAuthenticated) {
-    console.log("ProtectedRoute: User not authenticated, redirecting to login");
     return <Navigate to="/login" replace />;
   }
 
   // Check if user is an admin (skip onboarding for admins)
   const isAdmin = user?.role && ["super_admin", "support", "billing_admin", "developer_admin"].includes(user.role);
-  console.log("ProtectedRoute: Admin check", { isAdmin, userRole: user?.role });
   if (isAdmin) {
-    console.log("ProtectedRoute: Admin user detected, skipping onboarding");
     return <>{children}</>;
   }
 
@@ -102,11 +94,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Only redirect to onboarding for completely new users (no steps completed)
   const { completedSteps } = useOnboardingStore.getState();
   if (!isOnboardingComplete && !hasSkippedOnboarding && completedSteps.length === 0) {
-    console.log("ProtectedRoute: New user, redirecting to onboarding");
     return <Navigate to="/onboarding" replace />;
   }
 
-  console.log("ProtectedRoute: Access granted to protected route");
   return <>{children}</>;
 }
 
@@ -145,13 +135,11 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    console.log("AdminRoute: User not authenticated, redirecting to login");
     return <Navigate to="/login" replace />;
   }
 
   const isAdmin = user?.role && ["super_admin", "support", "billing_admin", "developer_admin"].includes(user.role);
   if (!isAdmin) {
-    console.log("AdminRoute: User not admin, redirecting to dashboard", { userRole: user?.role });
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -160,7 +148,6 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  console.log("PublicRoute: Checking auth state", { isAuthenticated, pathname: window.location.pathname });
   return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />;
 }
 
@@ -168,9 +155,7 @@ function AppContent() {
   const initialize = useAuthStore((state) => state.initialize);
 
   useEffect(() => {
-    console.log("AppContent: Initializing auth store");
     initialize();
-    console.log("AppContent: Auth store initialized");
   }, [initialize]);
 
   return (
@@ -235,6 +220,7 @@ function AppContent() {
           </PublicRoute>
         }
       />
+      <Route path="/auth/reset-password" element={<PasswordResetPage />} />
 
       {/* Onboarding Route */}
       <Route
@@ -264,6 +250,7 @@ function AppContent() {
         <Route path="providers" element={<ProvidersPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="state-fabric" element={<StateFabricPage />} />
+        <Route path="state-fabric/new" element={<StateFabricDetailPage />} />
         <Route path="state-fabric/:id" element={<StateFabricDetailPage />} />
         <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
         <Route path="settings" element={<SettingsPage />} />
@@ -294,8 +281,8 @@ function AppContent() {
         </Route>
       </Route>
 
-      {/* Catch all */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* 404 - Not Found */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

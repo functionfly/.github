@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Eye, EyeOff, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -230,9 +230,9 @@ export function LoginForm() {
             Remember me
           </label>
         </div>
-        <a href="#" className="text-sm text-brand-500 hover:underline">
+        <Link to="/auth/reset-password" className="text-sm text-brand-500 hover:underline">
           Forgot password?
-        </a>
+        </Link>
       </div>
 
       <Button

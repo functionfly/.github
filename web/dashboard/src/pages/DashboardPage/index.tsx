@@ -1,4 +1,6 @@
-import { FunctionSquare, Activity, Globe, Zap, Play, X } from "lucide-react";
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { FunctionSquare, Activity, Globe, Zap, Play, X, Loader2 } from "lucide-react";
 import { StatCard } from "@/components/common/StatCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { ProviderIcon } from "@/components/common/ProviderIcon";
@@ -7,58 +9,60 @@ import { Button } from "@/components/ui/button";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-
-const mockStats = [
-  {
-    title: "Active Functions",
-    value: 12,
-    change: { value: 20, label: "from last month" },
-    icon: <FunctionSquare className="w-5 h-5 text-[#6366f1]" />,
-    trend: "up" as const,
-  },
-  {
-    title: "Avg Latency",
-    value: "45ms",
-    change: { value: -12, label: "from last week" },
-    icon: <Zap className="w-5 h-5 text-[#6366f1]" />,
-    trend: "up" as const,
-  },
-  {
-    title: "Uptime",
-    value: "99.9%",
-    change: { value: 0.1, label: "from last month" },
-    icon: <Activity className="w-5 h-5 text-[#6366f1]" />,
-    trend: "neutral" as const,
-  },
-  {
-    title: "Requests This Month",
-    value: "8.2K",
-    change: { value: 34, label: "from last month" },
-    icon: <Globe className="w-5 h-5 text-[#6366f1]" />,
-    trend: "up" as const,
-  },
-];
-
-const mockProviders = [
-  { id: "workers", name: "Cloudflare Workers", status: "online" as const, region: "US-East" },
-  { id: "vercel", name: "Vercel", status: "online" as const, region: "US-East" },
-  { id: "fly", name: "Fly.io", status: "degraded" as const, region: "EU-West" },
-];
-
-const mockActivity = [
-  { id: 1, type: "deploy", message: "Deployed api-handler to Cloudflare", time: "2 minutes ago" },
-  { id: 2, type: "failover", message: "Failover triggered for auth-service", time: "15 minutes ago" },
-  { id: 3, type: "health", message: "Fly.io EU-West recovered", time: "1 hour ago" },
-  { id: 4, type: "deploy", message: "Deployed webhook-handler to Vercel", time: "3 hours ago" },
-];
+import { functionsApi } from "@/api/functions";
+import { providersApi } from "@/api/providers";
 
 export function DashboardPage() {
   const { canResume, completedSteps } = useOnboardingStore();
   const navigate = useNavigate();
 
+  const { data: functionsData, isLoading: functionsLoading } = useQuery({
+    queryKey: ["functions"],
+    queryFn: () => functionsApi.list(),
+  });
+
+  const { data: providers, isLoading: providersLoading } = useQuery({
+    queryKey: ["providers"],
+    queryFn: () => providersApi.getConnectedProviders(),
+  });
+
+  const functions = functionsData?.functions ?? [];
+  const activeFunctions = functions.filter((f) => f.status === "active" || f.status === "online").length;
+
   const handleResumeOnboarding = () => {
     navigate("/onboarding");
   };
+
+  const stats = [
+    {
+      title: "Active Functions",
+      value: functionsLoading ? "—" : activeFunctions,
+      change: { value: 0, label: "total deployed" },
+      icon: <FunctionSquare className="w-5 h-5 text-[#6366f1]" />,
+      trend: "neutral" as const,
+    },
+    {
+      title: "Avg Latency",
+      value: "—",
+      change: { value: 0, label: "no data yet" },
+      icon: <Zap className="w-5 h-5 text-[#6366f1]" />,
+      trend: "neutral" as const,
+    },
+    {
+      title: "Uptime",
+      value: "—",
+      change: { value: 0, label: "no data yet" },
+      icon: <Activity className="w-5 h-5 text-[#6366f1]" />,
+      trend: "neutral" as const,
+    },
+    {
+      title: "Requests This Month",
+      value: "—",
+      change: { value: 0, label: "no data yet" },
+      icon: <Globe className="w-5 h-5 text-[#6366f1]" />,
+      trend: "neutral" as const,
+    },
+  ];
 
   return (
     <div className="relative space-y-6">
@@ -97,7 +101,6 @@ export function DashboardPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  // Mark as dismissed for this session
                   localStorage.setItem('onboarding-banner-dismissed', 'true');
                   window.location.reload();
                 }}
@@ -129,7 +132,7 @@ export function DashboardPage() {
         transition={{ duration: 0.5, delay: 0.1 }}
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
       >
-        {mockStats.map((stat, index) => (
+        {stats.map((stat, index) => (
           <motion.div
             key={stat.title}
             initial={{ opacity: 0, y: 20 }}
@@ -160,33 +163,53 @@ export function DashboardPage() {
               <CardTitle className="text-text-primary text-glow">Provider Status</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {mockProviders.map((provider, index) => (
-                  <motion.div
-                    key={provider.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
-                    className="glass-light hover-lift p-4 rounded-lg border border-white/8 hover:border-brand-500/30 transition-all duration-300"
+              {providersLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
+                </div>
+              ) : !providers || providers.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-text-secondary text-sm">No providers connected yet.</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => navigate("/providers")}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-bg-tertiary flex items-center justify-center">
-                        <ProviderIcon provider={provider.id} size="lg" />
+                    Connect a Provider
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {providers.map((provider, index) => (
+                    <motion.div
+                      key={provider.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
+                      className="glass-light hover-lift p-4 rounded-lg border border-white/8 hover:border-brand-500/30 transition-all duration-300"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-lg bg-bg-tertiary flex items-center justify-center">
+                            <ProviderIcon provider={provider.provider_type || provider.id} size="lg" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-white">{provider.name}</p>
+                            <p className="text-sm text-text-muted">{provider.region || "Global"}</p>
+                          </div>
+                        </div>
+                        <StatusBadge status={(provider.status as any) || "online"} />
                       </div>
-                      <div>
-                        <p className="font-medium text-white">{provider.name}</p>
-                        <p className="text-sm text-text-muted">{provider.region}</p>
-                      </div>
-                    </div>
-                    <StatusBadge status={provider.status} />
-                  </motion.div>
-                ))}
-              </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Recent Activity */}
+        {/* Recent Functions */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -194,26 +217,45 @@ export function DashboardPage() {
         >
           <Card className="glass-card glow hover-lift">
             <CardHeader>
-              <CardTitle className="text-text-primary text-glow">Recent Activity</CardTitle>
+              <CardTitle className="text-text-primary text-glow">Recent Functions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {mockActivity.map((activity, index) => (
-                  <motion.div
-                    key={activity.id}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: 0.5 + index * 0.1 }}
-                    className="flex gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors duration-200"
+              {functionsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
+                </div>
+              ) : functions.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-text-secondary text-sm">No functions deployed yet.</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => navigate("/functions/new")}
                   >
-                    <div className="w-2 h-2 mt-2 rounded-full bg-linear-to-r from-[#6366f1] to-[#8b5cf6] animate-pulse" />
-                    <div>
-                      <p className="text-sm text-text-primary">{activity.message}</p>
-                      <p className="text-xs text-text-muted">{activity.time}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                    Deploy a Function
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {functions.slice(0, 5).map((fn, index) => (
+                    <motion.div
+                      key={fn.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.5, delay: 0.5 + index * 0.1 }}
+                      className="flex gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors duration-200 cursor-pointer"
+                      onClick={() => navigate(`/functions/${fn.id}`)}
+                    >
+                      <div className="w-2 h-2 mt-2 rounded-full bg-linear-to-r from-[#6366f1] to-[#8b5cf6]" />
+                      <div>
+                        <p className="text-sm text-text-primary font-medium">{fn.name}</p>
+                        <p className="text-xs text-text-muted capitalize">{fn.status || "unknown"}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

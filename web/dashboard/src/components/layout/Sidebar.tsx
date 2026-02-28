@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Search,
   Database,
+  FunctionSquare,
 } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ const navigationSections: NavSection[] = [
   {
     title: "Management",
     items: [
+      { path: ROUTES.FUNCTIONS, label: "Functions", icon: FunctionSquare },
       { path: ROUTES.REGISTRY, label: "Registry", icon: Package },
       { path: ROUTES.PROVIDERS, label: "Providers", icon: Cloud },
       { path: ROUTES.STATE_FABRIC, label: "State Fabric", icon: Database }
@@ -75,7 +77,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const user = useAuthStore((state) => state.user);
   const status = useNavigationStatus();
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role && ["super_admin", "support", "billing_admin", "developer_admin"].includes(user.role);
 
   const [mobileSearchQuery, setMobileSearchQuery] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);

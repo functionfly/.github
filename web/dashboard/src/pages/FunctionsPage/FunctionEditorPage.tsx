@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import Editor from "@monaco-editor/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import { ProviderIcon } from "@/components/common/ProviderIcon";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { functionsApi } from "@/api";
 import { apiClient } from "@/api/client";
+import { providersApi } from "@/api/providers";
 import { FunctionConfig, TestFunctionRequest } from "@/types";
 import "@/styles/components.css";
 
@@ -46,12 +48,6 @@ interface DeploymentLog {
   message: string;
 }
 
-const mockProviders = [
-  { id: "workers", name: "Cloudflare Workers", regions: ["global"] },
-  { id: "vercel", name: "Vercel", regions: ["iad1", "sfo1", "dub1"] },
-  { id: "fly", name: "Fly.io", regions: ["lax", "iad", "fra", "sin"] },
-];
-
 const defaultCode = `export default {
   async fetch(request, env, ctx) {
     // Your function code here
@@ -65,6 +61,19 @@ export function FunctionEditorPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = !!id;
+
+  // Fetch real providers from API
+  const { data: connectedProviders } = useQuery({
+    queryKey: ["providers"],
+    queryFn: () => providersApi.getConnectedProviders(),
+  });
+
+  // Map connected providers to the format expected by the editor
+  const providers = (connectedProviders ?? []).map((p) => ({
+    id: p.provider_type || p.id,
+    name: p.name,
+    regions: p.region ? [p.region] : ["global"],
+  }));
 
   const [functionName, setFunctionName] = useState("");
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
@@ -263,8 +272,35 @@ export function FunctionEditorPage() {
     }
   };
 
-  const handleSaveDraft = () => {
-    addLog("info", "Draft saved successfully");
+  const handleSaveDraft = async () => {
+    if (!functionName.trim()) {
+      addLog("error", "Function name is required to save a draft");
+      return;
+    }
+    try {
+      addLog("info", "Saving draft...");
+      if (isEditing && id) {
+        await functionsApi.update(id, {
+          name: functionName,
+          code,
+          providers: selectedProviders,
+          region: selectedRegion,
+          envVars: envVars.map(({ key, value, isSecret }) => ({ key, value, isSecret })),
+        });
+      } else {
+        await functionsApi.create({
+          name: functionName,
+          code,
+          providers: selectedProviders,
+          region: selectedRegion,
+          envVars: envVars.map(({ key, value, isSecret }) => ({ key, value, isSecret })),
+          runtime: "javascript",
+        });
+      }
+      addLog("success", "Draft saved successfully");
+    } catch (error) {
+      addLog("error", `Failed to save draft: ${error}`);
+    }
   };
 
   return (
@@ -341,7 +377,7 @@ export function FunctionEditorPage() {
               <div>
                 <Label>Providers</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {mockProviders.map((provider) => (
+                  {providers.map((provider) => (
                     <button
                       key={provider.id}
                       onClick={() => handleProviderToggle(provider.id)}
@@ -366,7 +402,7 @@ export function FunctionEditorPage() {
                       <SelectValue placeholder="Select a region" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockProviders
+                      {providers
                         .filter(p => selectedProviders.includes(p.id))
                         .flatMap(p => p.regions)
                         .filter((region, index, arr) => arr.indexOf(region) === index)
