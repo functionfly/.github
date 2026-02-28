@@ -183,6 +183,24 @@ pub struct Config {
     /// Maximum package cache size in MB
     #[arg(long, default_value = "1024")]
     pub package_cache_size_mb: usize,
+
+    /// Maximum size of the stdout/stderr capture pipe in bytes.
+    /// Functions that produce output larger than this will have their output
+    /// silently truncated.  Defaults to 1 MiB.
+    #[arg(long, default_value = "1048576")]
+    pub max_output_bytes: usize,
+
+    /// Maximum allowed input size in bytes.
+    /// Requests with a body larger than this are rejected before execution.
+    /// Defaults to 1 MiB (1048576 bytes).
+    #[arg(long, default_value = "1048576")]
+    pub max_input_bytes: usize,
+
+    /// Allow silent fallback from MicroVM to RustPython when the orchestrator
+    /// is unavailable.  When false, execution fails fast instead of silently
+    /// degrading to a different Python runtime.
+    #[arg(long, default_value = "true")]
+    pub microvm_fallback_allowed: bool,
 }
 
 impl Config {
@@ -286,6 +304,9 @@ impl Default for Config {
             package_caching_enabled: false,
             package_cache_dir: "./package-cache".to_string(),
             package_cache_size_mb: 1024,
+            max_output_bytes: 1024 * 1024,   // 1 MiB
+            max_input_bytes: 1024 * 1024,    // 1 MiB
+            microvm_fallback_allowed: true,
         }
     }
 }
@@ -340,6 +361,9 @@ mod tests {
             package_caching_enabled: false,
             package_cache_dir: "./package-cache".to_string(),
             package_cache_size_mb: 1024,
+            max_output_bytes: 1024 * 1024,
+            max_input_bytes: 1024 * 1024,
+            microvm_fallback_allowed: true,
         };
 
         assert_eq!(config.function_key(), "slugify@1.0.0");

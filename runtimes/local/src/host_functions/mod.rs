@@ -72,9 +72,11 @@ impl HostFunctionsLinker {
         // Always add logging function (basic capability)
         logging::add_log_function(self.logger.clone(), linker)?;
 
-        // Add fetch function if fetch capability is declared
+        // Add fetch function if fetch capability is declared.
+        // Pass the full config so the whitelist / strict-whitelist settings are
+        // enforced at the host-function level.
         if capabilities.can_fetch() {
-            fetch::add_fetch_function(linker, self.security_monitor.clone())?;
+            fetch::add_fetch_function(linker, self.security_monitor.clone(), self.config.clone())?;
         }
 
         // Add KV functions if KV capability is declared

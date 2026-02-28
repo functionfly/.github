@@ -1,22 +1,38 @@
 //! HTTP fetch host function implementation
 
+use std::collections::HashSet;
 use std::collections::HashMap;
 use std::sync::Arc;
 use wasmtime_wasi::p1::WasiP1Ctx;
 
 use super::memory_utils;
+use crate::config::Config;
 use crate::security::SecurityMonitor;
 
-/// Add the functionfly.fetch function for HTTP requests
+// Arc is used for the security_monitor parameter type.
+
+/// Add the functionfly.fetch function for HTTP requests.
+///
+/// The `config` parameter is used to enforce the network whitelist
+/// (`network_whitelist` + `strict_network_whitelist`) so that the capability
+/// system's security model is fully applied at the host-function level.
 pub fn add_fetch_function(
     linker: &mut wasmtime::Linker<WasiP1Ctx>,
     security_monitor: Arc<SecurityMonitor>,
+    config: Config,
 ) -> anyhow::Result<()> {
     // functionfly.fetch(method_ptr: i32, method_len: i32, url_ptr: i32, url_len: i32,
     //                   headers_ptr: i32, headers_len: i32, body_ptr: i32, body_len: i32,
     //                   response_ptr: i32, response_len_ptr: i32) -> i32
     // Returns 0 on success, negative values on error
-    let security_monitor_clone = security_monitor.clone();
+    // security_monitor is kept for future use (e.g. recording violations).
+    // Suppress the unused-variable warning by prefixing with _.
+    let _security_monitor = security_monitor;
+    // Build the whitelist set once at registration time so we don't re-parse on
+    // every request.
+    let whitelist: HashSet<String> = config.network_whitelist.iter().cloned().collect();
+    let strict_whitelist = config.strict_network_whitelist;
+
     linker.func_wrap(
         "functionfly",
         "fetch",
@@ -43,11 +59,9 @@ pub fn add_fetch_function(
                 Err(_) => return -2, // Invalid URL
             };
 
-            // For now, we'll implement a basic network check
-            // TODO: Pass function key through execution context for proper per-function whitelisting
-            // Check if the URL is allowed (basic validation)
-            if !is_network_request_allowed(&url) {
-                tracing::warn!("Network request blocked: {}", url);
+            // Enforce network whitelist / basic safety checks.
+            if !is_network_request_allowed(&url, &whitelist, strict_whitelist) {
+                tracing::warn!("Network request blocked by policy: {}", url);
                 return -8; // Network access denied
             }
 
@@ -101,40 +115,82 @@ pub fn add_fetch_function(
     Ok(())
 }
 
-/// Check if a network request is allowed
-fn is_network_request_allowed(url: &str) -> bool {
-    // Parse the URL to extract domain
-    if let Ok(parsed_url) = url::Url::parse(url) {
-        let host = parsed_url.host_str().unwrap_or("");
+/// Check if a network request is allowed.
+///
+/// Enforcement rules (applied in order):
+/// 1. Only `http` and `https` schemes are permitted.
+/// 2. Requests to localhost / private IP ranges are always blocked.
+/// 3. If `strict_whitelist` is `true` and `whitelist` is non-empty, the
+///    request host must match an entry in the whitelist (exact match or
+///    wildcard `*.domain.com` prefix).
+/// 4. If `strict_whitelist` is `false` (or the whitelist is empty), any
+///    public host is allowed.
+fn is_network_request_allowed(url: &str, whitelist: &HashSet<String>, strict_whitelist: bool) -> bool {
+    let parsed_url = match url::Url::parse(url) {
+        Ok(u) => u,
+        Err(_) => return false, // Reject unparseable URLs
+    };
 
-        // Basic security checks
-        // - No localhost/private IPs in production
-        // - No suspicious schemes
-        match parsed_url.scheme() {
-            "http" | "https" => {
-                // Allow common public domains
-                // TODO: Make this configurable via enterprise config
-                let allowed_domains = [
-                    "api.github.com",
-                    "httpbin.org",
-                    "jsonplaceholder.typicode.com",
-                    "api.example.com", // Example for testing
-                ];
-
-                // Check if host matches allowed domains or is a reasonable public domain
-                allowed_domains.contains(&host) ||
-                (!host.contains("localhost") &&
-                 !host.contains("127.0.0.1") &&
-                 !host.contains("0.0.0.0") &&
-                 !host.starts_with("10.") &&
-                 !host.starts_with("192.168.") &&
-                 !host.starts_with("172."))
-            }
-            _ => false, // Only allow HTTP/HTTPS
-        }
-    } else {
-        false // Invalid URL
+    // Only allow HTTP/HTTPS
+    match parsed_url.scheme() {
+        "http" | "https" => {}
+        _ => return false,
     }
+
+    let host = parsed_url.host_str().unwrap_or("");
+
+    // Always block localhost and private IP ranges regardless of whitelist.
+    if host.eq_ignore_ascii_case("localhost")
+        || host == "127.0.0.1"
+        || host == "::1"
+        || host == "0.0.0.0"
+        || host.starts_with("10.")
+        || host.starts_with("192.168.")
+        // RFC 1918 172.16.0.0/12
+        || is_rfc1918_172(host)
+        || host.ends_with(".local")
+        || host.ends_with(".internal")
+    {
+        tracing::warn!("Blocked request to private/loopback address: {}", host);
+        return false;
+    }
+
+    // If strict whitelist enforcement is enabled and the whitelist is non-empty,
+    // the host must match an entry.
+    if strict_whitelist && !whitelist.is_empty() {
+        return is_host_in_whitelist(host, whitelist);
+    }
+
+    // Default: allow any public host.
+    true
+}
+
+/// Returns true if the host falls in the RFC 1918 172.16.0.0/12 range.
+fn is_rfc1918_172(host: &str) -> bool {
+    if let Some(rest) = host.strip_prefix("172.") {
+        if let Some(second_octet_str) = rest.split('.').next() {
+            if let Ok(second_octet) = second_octet_str.parse::<u8>() {
+                return (16..=31).contains(&second_octet);
+            }
+        }
+    }
+    false
+}
+
+/// Check whether `host` matches any entry in `whitelist`.
+/// Supports exact matches and wildcard patterns of the form `*.domain.com`.
+fn is_host_in_whitelist(host: &str, whitelist: &HashSet<String>) -> bool {
+    if whitelist.contains(host) {
+        return true;
+    }
+    for pattern in whitelist {
+        if let Some(suffix) = pattern.strip_prefix("*.") {
+            if host.ends_with(suffix) && host.len() > suffix.len() {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 /// Make an HTTP request

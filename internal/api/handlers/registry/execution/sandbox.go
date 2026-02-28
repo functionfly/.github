@@ -3,6 +3,8 @@ package execution
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -24,15 +26,22 @@ import (
 // SandboxExecutor handles execution of WASM modules in a sandboxed environment
 // It communicates with the local runtime via HTTP
 type SandboxExecutor struct {
-	runtimePath string
-	tempDir     string
-	runtimePort int
-	runtimeCmd  *exec.Cmd
-	httpClient  *http.Client
-	runtimeMu   sync.Mutex
-	isRunning   bool
-	wasmPath    string
-	fnVersion   *storage.RegistryFunctionVersion
+	runtimePath  string
+	tempDir      string
+	runtimePort  int
+	runtimeCmd   *exec.Cmd
+	httpClient   *http.Client
+	runtimeMu    sync.Mutex
+	isRunning    bool
+	wasmPath     string
+	wasmHash     string // SHA-256 hash of the loaded WASM binary
+	fnVersion    *storage.RegistryFunctionVersion
+}
+
+// hashWasmBinary computes a hex-encoded SHA-256 hash of the given WASM bytes.
+func hashWasmBinary(data []byte) string {
+	h := sha256.Sum256(data)
+	return hex.EncodeToString(h[:])
 }
 
 // NewSandboxExecutor creates a new sandbox executor
@@ -125,28 +134,28 @@ func (se *SandboxExecutor) ExecuteFunctionWithLimits(fnVersion *storage.Registry
 		return nil, fmt.Errorf("function version has no WASM binary")
 	}
 
-	// Create temporary WASM file
-	wasmFile, err := os.CreateTemp(se.tempDir, "function-*.wasm")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create WASM temp file: %w", err)
-	}
-	wasmPath := wasmFile.Name()
-	defer os.Remove(wasmPath)
+	// Compute hash of the incoming WASM binary so we can detect whether the
+	// runtime already has the correct module loaded without relying on a
+	// temp-file path (which changes on every call).
+	incomingHash := hashWasmBinary(fnVersion.WasmBinary)
 
-	// Write WASM binary to file
-	if _, err := wasmFile.Write(fnVersion.WasmBinary); err != nil {
-		wasmFile.Close()
-		return nil, fmt.Errorf("failed to write WASM binary: %w", err)
-	}
-	wasmFile.Close()
-
-	// Check if we need to restart the runtime with a different WASM file
 	se.runtimeMu.Lock()
-	needsRestart := !se.isRunning || se.wasmPath != wasmPath || se.fnVersion == nil || se.fnVersion.FunctionID != fnVersion.FunctionID || se.fnVersion.Version != fnVersion.Version
+	needsRestart := !se.isRunning || se.wasmHash != incomingHash
+	currentWasmPath := se.wasmPath
 	se.runtimeMu.Unlock()
 
+	var wasmPath string
 	if needsRestart {
+		// Write the WASM binary to a stable, deterministic path inside tempDir
+		// so the same file is reused across calls for the same binary.
+		wasmPath = filepath.Join(se.tempDir, "function-"+incomingHash+".wasm")
+		if err := os.WriteFile(wasmPath, fnVersion.WasmBinary, 0600); err != nil {
+			return nil, fmt.Errorf("failed to write WASM binary: %w", err)
+		}
 		se.stopRuntime()
+	} else {
+		// Reuse the already-loaded WASM file path.
+		wasmPath = currentWasmPath
 	}
 
 	// Ensure runtime is running with the correct WASM file
@@ -176,7 +185,15 @@ func (se *SandboxExecutor) ensureRuntimeRunning(ctx context.Context, wasmPath st
 	se.runtimeMu.Lock()
 	defer se.runtimeMu.Unlock()
 
-	if se.isRunning && se.wasmPath == wasmPath {
+	// Compute the hash of the WASM file on disk to compare with the currently
+	// loaded hash.  This avoids restarting the runtime when the same binary is
+	// passed in via a different temp-file path.
+	incomingFileHash := ""
+	if data, err := os.ReadFile(wasmPath); err == nil {
+		incomingFileHash = hashWasmBinary(data)
+	}
+
+	if se.isRunning && se.wasmHash != "" && se.wasmHash == incomingFileHash {
 		return nil
 	}
 
@@ -278,9 +295,13 @@ func (se *SandboxExecutor) ensureRuntimeRunning(ctx context.Context, wasmPath st
 
 	se.isRunning = true
 	se.wasmPath = wasmPath
+	se.wasmHash = incomingFileHash
 	se.fnVersion = fnVersion
 
-	logrus.WithField("port", port).Info("Local runtime HTTP server is ready")
+	logrus.WithFields(logrus.Fields{
+		"port":      port,
+		"wasm_hash": incomingFileHash[:8], // log first 8 chars for brevity
+	}).Info("Local runtime HTTP server is ready")
 	return nil
 }
 

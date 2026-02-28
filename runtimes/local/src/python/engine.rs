@@ -247,6 +247,9 @@ mod tests {
             package_caching_enabled: false,
             package_cache_dir: "./package-cache".to_string(),
             package_cache_size_mb: 1024,
+            max_output_bytes: 1024 * 1024,
+            max_input_bytes: 1024 * 1024,
+            microvm_fallback_allowed: true,
         };
 
         let engine = PythonEngine::new(config);

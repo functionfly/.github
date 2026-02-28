@@ -103,6 +103,23 @@ pub async fn execute_function(
 
     let start = std::time::Instant::now();
     let input = payload.input.unwrap_or_default();
+
+    // Reject inputs that exceed the configured maximum size before doing any
+    // WASM work.  This prevents memory pressure from oversized payloads.
+    if state.config.max_input_bytes > 0 && input.len() > state.config.max_input_bytes {
+        return ErrorResponse {
+            error: format!(
+                "Input size {} bytes exceeds maximum allowed size of {} bytes",
+                input.len(),
+                state.config.max_input_bytes
+            ),
+            correlation_id: Some(correlation_id.to_string()),
+            recovery_suggestions: vec![
+                "Reduce the size of the input payload".to_string(),
+                format!("Maximum allowed input size is {} bytes", state.config.max_input_bytes),
+            ],
+        }.into_response();
+    }
     let instance_id = Uuid::new_v4().to_string();
 
     // Check cache for deterministic functions

@@ -21,24 +21,29 @@ use crate::config::Config;
 use crate::host_functions::HostFunctionsLinker;
 use crate::kv::SharedKVStore;
 
-/// Custom monotonic clock that denies access to time functions
+/// Custom monotonic clock that denies access to real time.
+///
+/// Instead of panicking (which would crash the entire runtime process), we
+/// return a fixed epoch value of 0.  This keeps the WASM guest alive but
+/// prevents it from observing real wall-clock or monotonic time, satisfying
+/// the determinism requirement without bringing down the server.
 pub struct DisabledMonotonicClock;
 
 impl HostMonotonicClock for DisabledMonotonicClock {
     fn resolution(&self) -> u64 {
-        // Time access is disabled - trap the WebAssembly module
-        tracing::error!("DisabledMonotonicClock::resolution() called - time access is disabled, trapping WebAssembly module");
-        panic!("Time access denied: WebAssembly module attempted to access system time functions")
+        // Return 1 ns resolution but always report time as 0.
+        tracing::warn!("DisabledMonotonicClock::resolution() called - returning stub value (time access disabled)");
+        1
     }
 
     fn now(&self) -> u64 {
-        // Time access is disabled - trap the WebAssembly module
-        tracing::error!("DisabledMonotonicClock::now() called - time access is disabled, trapping WebAssembly module");
-        panic!("Time access denied: WebAssembly module attempted to access system time functions")
+        // Always return epoch 0 so the guest cannot observe real time.
+        tracing::warn!("DisabledMonotonicClock::now() called - returning 0 (time access disabled)");
+        0
     }
 }
 
-/// Custom wall clock that denies access to time functions
+/// Custom wall clock that denies access to real time.
 pub struct DisabledWallClock;
 
 /// Custom WASI context that includes FunctionFly-specific data
@@ -49,15 +54,15 @@ pub struct FunctionFlyWasiCtx {
 
 impl HostWallClock for DisabledWallClock {
     fn resolution(&self) -> Duration {
-        // Time access is disabled - trap the WebAssembly module
-        tracing::error!("DisabledWallClock::resolution() called - time access is disabled, trapping WebAssembly module");
-        panic!("Time access denied: WebAssembly module attempted to access system time functions")
+        // Return 1 ns resolution but always report time as epoch 0.
+        tracing::warn!("DisabledWallClock::resolution() called - returning stub value (time access disabled)");
+        Duration::from_nanos(1)
     }
 
     fn now(&self) -> Duration {
-        // Time access is disabled - trap the WebAssembly module
-        tracing::error!("DisabledWallClock::now() called - time access is disabled, trapping WebAssembly module");
-        panic!("Time access denied: WebAssembly module attempted to access system time functions")
+        // Always return epoch 0 so the guest cannot observe real wall-clock time.
+        tracing::warn!("DisabledWallClock::now() called - returning epoch 0 (time access disabled)");
+        Duration::ZERO
     }
 }
 
@@ -82,9 +87,15 @@ impl WasiContext {
 
     /// Create a new WASI context with input data for stdin
     pub fn new_with_input(config: &Config, function_key: String, input: &str) -> anyhow::Result<Self> {
-        // Create pipes for capturing stdout and stderr, and input for stdin
-        let stdout_pipe = MemoryOutputPipe::new(65536); // 64KB capacity
-        let stderr_pipe = MemoryOutputPipe::new(65536); // 64KB capacity
+        // Use the configurable output pipe capacity (default 1 MiB).
+        // This prevents silent truncation of large function outputs.
+        let pipe_capacity = if config.max_output_bytes > 0 {
+            config.max_output_bytes
+        } else {
+            1024 * 1024 // 1 MiB fallback
+        };
+        let stdout_pipe = MemoryOutputPipe::new(pipe_capacity);
+        let stderr_pipe = MemoryOutputPipe::new(pipe_capacity);
         let input_pipe = MemoryInputPipe::new(input.as_bytes().to_vec()); // Input pipe with data
 
         let mut builder = WasiCtxBuilder::new();
@@ -473,6 +484,9 @@ mod tests {
             package_caching_enabled: false,
             package_cache_dir: "./package-cache".to_string(),
             package_cache_size_mb: 1024,
+            max_output_bytes: 1024 * 1024,
+            max_input_bytes: 1024 * 1024,
+            microvm_fallback_allowed: true,
         };
         let ctx = WasiContext::new(&config, "test@1.0.0".to_string());
         assert!(ctx.is_ok());
@@ -524,6 +538,9 @@ mod tests {
             package_caching_enabled: false,
             package_cache_dir: "./package-cache".to_string(),
             package_cache_size_mb: 1024,
+            max_output_bytes: 1024 * 1024,
+            max_input_bytes: 1024 * 1024,
+            microvm_fallback_allowed: true,
         };
 
         let ctx = WasiContext::new(&config, "test@1.0.0".to_string());
@@ -578,6 +595,9 @@ mod tests {
             package_caching_enabled: false,
             package_cache_dir: "./package-cache".to_string(),
             package_cache_size_mb: 1024,
+            max_output_bytes: 1024 * 1024,
+            max_input_bytes: 1024 * 1024,
+            microvm_fallback_allowed: true,
         };
         let kv_store = Some(Arc::new(RwLock::new(crate::kv::KVStore::new(1000))));
         let logger = crate::logging::init_structured_logging(false);
@@ -634,6 +654,9 @@ mod tests {
             package_caching_enabled: false,
             package_cache_dir: "./package-cache".to_string(),
             package_cache_size_mb: 1024,
+            max_output_bytes: 1024 * 1024,
+            max_input_bytes: 1024 * 1024,
+            microvm_fallback_allowed: true,
         };
         let kv_store = Some(Arc::new(RwLock::new(crate::kv::KVStore::new(1000))));
         let logger = crate::logging::init_structured_logging(false);

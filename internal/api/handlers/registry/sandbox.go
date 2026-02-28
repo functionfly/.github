@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
@@ -460,25 +461,38 @@ func (ir *inputReader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
-// safeBuffer is a thread-safe buffer for capturing output
+// safeBuffer is a thread-safe buffer for capturing output.
+// It is safe for concurrent use: Write may be called from the OS pipe reader
+// goroutine while String/Bytes/Len are called from the main goroutine.
 type safeBuffer struct {
+	mu   sync.Mutex
 	data []byte
 }
 
 func (sb *safeBuffer) Write(p []byte) (n int, err error) {
+	sb.mu.Lock()
+	defer sb.mu.Unlock()
 	sb.data = append(sb.data, p...)
 	return len(p), nil
 }
 
 func (sb *safeBuffer) Bytes() []byte {
-	return sb.data
+	sb.mu.Lock()
+	defer sb.mu.Unlock()
+	cp := make([]byte, len(sb.data))
+	copy(cp, sb.data)
+	return cp
 }
 
 func (sb *safeBuffer) String() string {
+	sb.mu.Lock()
+	defer sb.mu.Unlock()
 	return string(sb.data)
 }
 
 func (sb *safeBuffer) Len() int {
+	sb.mu.Lock()
+	defer sb.mu.Unlock()
 	return len(sb.data)
 }
 

@@ -214,8 +214,17 @@ impl WasmEngine {
                     Some(client) => {
                         // Check if orchestrator is available
                         if !client.ping().await {
-                            warn!("MicroVM orchestrator is not available, falling back to RustPython");
-                            // Fall back to RustPython runtime
+                            if !config.microvm_fallback_allowed {
+                                return Err(anyhow::anyhow!(
+                                    "MicroVM orchestrator is not available and fallback is disabled \
+                                     (microvm_fallback_allowed=false). Set --microvm-fallback-allowed \
+                                     to allow degraded execution via RustPython."
+                                ));
+                            }
+                            warn!(
+                                "MicroVM orchestrator is not available, falling back to RustPython \
+                                 (microvm_fallback_allowed=true)"
+                            );
                             let python_config = crate::python::runtime::PythonConfig::from(config.clone());
                             let runtime = crate::python::runtime::PythonRuntime::new(python_config)?;
                             let python_code = String::from_utf8_lossy(&wasm_bytes);
@@ -249,8 +258,18 @@ impl WasmEngine {
                                     }
                                 }
                                 Err(e) => {
-                                    warn!("MicroVM execution failed, falling back to RustPython: {}", e);
-                                    // Fall back to RustPython runtime
+                                    if !config.microvm_fallback_allowed {
+                                        return Err(anyhow::anyhow!(
+                                            "MicroVM execution failed and fallback is disabled \
+                                             (microvm_fallback_allowed=false): {}",
+                                            e
+                                        ));
+                                    }
+                                    warn!(
+                                        "MicroVM execution failed, falling back to RustPython \
+                                         (microvm_fallback_allowed=true): {}",
+                                        e
+                                    );
                                     let python_config = crate::python::runtime::PythonConfig::from(config.clone());
                                     let runtime = crate::python::runtime::PythonRuntime::new(python_config)?;
                                     let python_code = String::from_utf8_lossy(&wasm_bytes);
@@ -260,8 +279,17 @@ impl WasmEngine {
                         }
                     }
                     None => {
-                        warn!("MicroVM runtime requested but orchestrator not configured, falling back to RustPython");
-                        // Fall back to RustPython runtime
+                        if !config.microvm_fallback_allowed {
+                            return Err(anyhow::anyhow!(
+                                "MicroVM runtime requested but orchestrator is not configured, \
+                                 and fallback is disabled (microvm_fallback_allowed=false). \
+                                 Configure --orchestrator-url or set --microvm-fallback-allowed."
+                            ));
+                        }
+                        warn!(
+                            "MicroVM runtime requested but orchestrator not configured, \
+                             falling back to RustPython (microvm_fallback_allowed=true)"
+                        );
                         let python_config = crate::python::runtime::PythonConfig::from(config.clone());
                         let runtime = crate::python::runtime::PythonRuntime::new(python_config)?;
                         let python_code = String::from_utf8_lossy(&wasm_bytes);
@@ -716,6 +744,9 @@ mod tests {
             package_caching_enabled: false,
             package_cache_dir: "./package-cache".to_string(),
             package_cache_size_mb: 1024,
+            max_output_bytes: 1024 * 1024,
+            max_input_bytes: 1024 * 1024,
+            microvm_fallback_allowed: true,
         };
         let logger = crate::logging::init_structured_logging(false);
         let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
@@ -770,6 +801,9 @@ mod tests {
             package_caching_enabled: false,
             package_cache_dir: "./package-cache".to_string(),
             package_cache_size_mb: 1024,
+            max_output_bytes: 1024 * 1024,
+            max_input_bytes: 1024 * 1024,
+            microvm_fallback_allowed: true,
         };
         let logger = crate::logging::init_structured_logging(false);
         let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
@@ -826,6 +860,9 @@ mod tests {
                 package_caching_enabled: false,
                 package_cache_dir: "./package-cache".to_string(),
                 package_cache_size_mb: 1024,
+                max_output_bytes: 1024 * 1024,
+                max_input_bytes: 1024 * 1024,
+                microvm_fallback_allowed: true,
             };
             let logger = crate::logging::init_structured_logging(false);
             let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
@@ -891,6 +928,9 @@ mod tests {
             package_caching_enabled: false,
             package_cache_dir: "./package-cache".to_string(),
             package_cache_size_mb: 1024,
+            max_output_bytes: 1024 * 1024,
+            max_input_bytes: 1024 * 1024,
+            microvm_fallback_allowed: true,
         };
 
         let rt = Runtime::new().unwrap();
