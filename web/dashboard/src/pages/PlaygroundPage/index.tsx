@@ -1,158 +1,113 @@
-import { useState, useEffect } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Copy, Check, Play, ExternalLink, ArrowLeft } from "lucide-react";
-import { Navbar } from "@/components/common/Navbar";
-import { Footer } from "@/pages/LandingPage/components";
-import { ManifestInputForm } from "@/components/common/ManifestInputForm";
-import { LoadingSpinner } from "@/components/common/LoadingSpinner";
-import { ErrorMessage } from "@/components/common/ErrorMessage";
+import { useEffect, useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import { Navbar } from '@/components/common/Navbar';
+import { Footer } from '@/pages/LandingPage/components';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
 
-interface FunctionInfo {
-  author: string;
-  name: string;
-  version: string;
-  title?: string;
-  description?: string;
-  runtime: string;
-  manifest?: any;
-}
+import { usePlaygroundStore, FunctionInfo } from './store/playgroundStore';
+import { usePlaygroundKeyboard } from './hooks/usePlaygroundKeyboard';
+import { useResizablePanels } from './hooks/useResizablePanels';
 
-interface ExecutionResponse {
-  ok: boolean;
-  data?: any;
-  cached: boolean;
-  duration_ms: number;
-  version: string;
-  execution_id?: string;
-  error?: {
-    code: string;
-    message: string;
-  };
-}
+import { PlaygroundHeader } from './components/PlaygroundHeader';
+import { PlaygroundToolbar } from './components/PlaygroundToolbar';
+import { PlaygroundInputPanel } from './components/PlaygroundInputPanel';
+import { PlaygroundOutputPanel } from './components/PlaygroundOutputPanel';
+import { PlaygroundSidebar } from './components/PlaygroundSidebar';
+import { PlaygroundStatusBar } from './components/PlaygroundStatusBar';
 
 export function PlaygroundPage() {
   const { author, name } = useParams<{ author: string; name: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [inputValue, setInputValue] = useState<any>({});
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [executionResult, setExecutionResult] = useState<ExecutionResponse | null>(null);
-  const [shareableLink, setShareableLink] = useState<string | null>(null);
-  const [copiedLink, setCopiedLink] = useState(false);
+  const [searchParams] = useSearchParams();
 
-  // Get input from URL params
-  useEffect(() => {
-    const inputParam = searchParams.get('input');
-    if (inputParam) {
-      try {
-        // Try to decode as base64url first, then as regular JSON
-        let decodedInput;
-        try {
-          decodedInput = JSON.parse(atob(inputParam.replace(/-/g, '+').replace(/_/g, '/')));
-        } catch {
-          decodedInput = JSON.parse(decodeURIComponent(inputParam));
-        }
-        setInputValue(decodedInput);
-      } catch (error) {
-        console.warn('Failed to parse input from URL:', error);
-      }
-    }
-  }, [searchParams]);
+  const {
+    setFunctionInfo,
+    setInputValue,
+    setInputJson,
+    sidebarOpen,
+    executionHistory,
+    loadFromHistory,
+  } = usePlaygroundStore();
 
+  // History navigation state
+  const historyIndexRef = useRef(-1);
+  const [, forceUpdate] = useState(0);
+
+  // Fetch function info
   const { data: functionInfo, isLoading, error } = useQuery<FunctionInfo>({
-    queryKey: ["function", author, name],
+    queryKey: ['function', author, name],
     queryFn: async () => {
       const response = await fetch(
         `/v1/registry/functions/${author}/${name}?expand=manifest`
       );
-      if (!response.ok) {
-        throw new Error("Failed to fetch function");
-      }
+      if (!response.ok) throw new Error('Failed to fetch function');
       return response.json();
     },
     enabled: !!author && !!name,
   });
 
-  const handleExecute = async () => {
-    if (!functionInfo) return;
+  // Sync function info into store
+  useEffect(() => {
+    if (functionInfo) {
+      setFunctionInfo(functionInfo);
+    }
+  }, [functionInfo, setFunctionInfo]);
 
-    setIsExecuting(true);
-    setExecutionResult(null);
-    setShareableLink(null);
-
-    try {
-      const response = await fetch(`/v1/fx/${functionInfo.author}/${functionInfo.name}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Playground': '1', // Playground marker
-        },
-        body: JSON.stringify(inputValue),
-      });
-
-      const result: ExecutionResponse = await response.json();
-      setExecutionResult(result);
-
-      // If successful and has execution_id, create shareable link
-      if (result.ok && result.execution_id) {
-        const shareLink = `${window.location.origin}/replay/${result.execution_id}`;
-        setShareableLink(shareLink);
+  // Parse input from URL params
+  useEffect(() => {
+    const inputParam = searchParams.get('input');
+    if (inputParam) {
+      try {
+        let decoded: unknown;
+        try {
+          decoded = JSON.parse(atob(inputParam.replace(/-/g, '+').replace(/_/g, '/')));
+        } catch {
+          decoded = JSON.parse(decodeURIComponent(inputParam));
+        }
+        setInputValue(decoded);
+        setInputJson(JSON.stringify(decoded, null, 2));
+      } catch {
+        // ignore invalid input param
       }
-    } catch (error) {
-      setExecutionResult({
-        ok: false,
-        cached: false,
-        duration_ms: 0,
-        version: functionInfo.version,
-        error: {
-          code: 'NETWORK_ERROR',
-          message: 'Failed to execute function',
-        },
-      });
-    } finally {
-      setIsExecuting(false);
     }
-  };
+  }, [searchParams, setInputValue, setInputJson]);
 
-  const handleCopyShareableLink = async () => {
-    if (!shareableLink) return;
+  // History navigation
+  const handleNavigateHistory = (direction: 'prev' | 'next') => {
+    const history = executionHistory;
+    if (history.length === 0) return;
 
-    try {
-      await navigator.clipboard.writeText(shareableLink);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    } catch (error) {
-      console.error('Failed to copy link:', error);
+    if (direction === 'prev') {
+      historyIndexRef.current = Math.min(
+        historyIndexRef.current + 1,
+        history.length - 1
+      );
+    } else {
+      historyIndexRef.current = Math.max(historyIndexRef.current - 1, -1);
     }
-  };
 
-  const createShareableInputLink = () => {
-    if (!functionInfo) return '';
-
-    // Encode input as base64url for URL safety
-    const inputJson = JSON.stringify(inputValue);
-    const encodedInput = btoa(inputJson).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-    const baseUrl = `${window.location.origin}/run/${functionInfo.author}/${functionInfo.name}`;
-
-    return `${baseUrl}?input=${encodedInput}`;
-  };
-
-  const handleCopyInputLink = async () => {
-    const link = createShareableInputLink();
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    } catch (error) {
-      console.error('Failed to copy link:', error);
+    if (historyIndexRef.current >= 0) {
+      loadFromHistory(history[historyIndexRef.current]);
     }
+    forceUpdate((n) => n + 1);
   };
+
+  // Keyboard shortcuts
+  usePlaygroundKeyboard({
+    author: author || '',
+    name: name || '',
+    onNavigateHistory: handleNavigateHistory,
+  });
+
+  // Resizable panels
+  const { sizes, containerRef, handleMouseDown, resetToEqual } = useResizablePanels();
+
+  // ─── Loading / Error states ────────────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -201,211 +156,79 @@ export function PlaygroundPage() {
     );
   }
 
+  // ─── Main IDE layout ───────────────────────────────────────────────────────
+
   return (
     <div className="min-h-screen flex flex-col bg-bg-primary">
       <Navbar variant="landing" />
-      <main className="flex-1 pt-16">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          {/* Back button */}
-          <div className="mb-6">
-            <Link to={`/fx/${functionInfo.author}/${functionInfo.name}`}>
-              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-                <ArrowLeft className="w-4 h-4" />
-                Back to {functionInfo.title || functionInfo.name}
-              </Button>
-            </Link>
-          </div>
 
+      <main className="flex-1 pt-16 flex flex-col overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="flex flex-col h-[calc(100vh-4rem)]"
+        >
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-              <Link to={`/fx/${functionInfo.author}/${functionInfo.name}`} className="hover:underline">
-                {functionInfo.author}/{functionInfo.name}
-              </Link>
-              <span>/</span>
-              <span>Playground</span>
-              <Badge variant="secondary">{functionInfo.version}</Badge>
+          <PlaygroundHeader functionInfo={functionInfo} />
+
+          {/* Toolbar */}
+          <PlaygroundToolbar author={functionInfo.author} name={functionInfo.name} />
+
+          {/* Main panels area */}
+          <div
+            ref={containerRef}
+            className="flex flex-1 overflow-hidden"
+          >
+            {/* Input panel */}
+            <div
+              className="flex flex-col overflow-hidden border-r border-border-subtle"
+              style={{ width: `${sizes.input}%` }}
+            >
+              <PlaygroundInputPanel className="h-full" />
             </div>
 
-          <h1 className="text-4xl font-bold mb-2">
-            {functionInfo.title || `${functionInfo.author}/${functionInfo.name}`} Playground
-          </h1>
+            {/* Resize handle */}
+            <div
+              className="w-1 bg-border-subtle hover:bg-indigo-500/50 cursor-col-resize transition-colors shrink-0 relative group"
+              onMouseDown={handleMouseDown}
+              onDoubleClick={resetToEqual}
+              title="Drag to resize · Double-click to reset"
+            >
+              <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-indigo-500/10" />
+            </div>
 
-          {functionInfo.description && (
-            <p className="text-xl text-muted-foreground">
-              {functionInfo.description}
-            </p>
-          )}
-        </div>
+            {/* Output panel */}
+            <div
+              className="flex flex-col overflow-hidden"
+              style={{
+                width: sidebarOpen
+                  ? `calc(${sizes.output}% - 280px)`
+                  : `${sizes.output}%`,
+              }}
+            >
+              <PlaygroundOutputPanel className="h-full" />
+            </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Input Section */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Input</CardTitle>
-                <CardDescription>
-                  Configure the function parameters
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {functionInfo.manifest?.input ? (
-                  <ManifestInputForm
-                    inputSpec={functionInfo.manifest.input}
-                    value={inputValue}
-                    onChange={setInputValue}
-                  />
-                ) : (
-                  <Textarea
-                    value={typeof inputValue === 'string' ? inputValue : JSON.stringify(inputValue, null, 2)}
-                    onChange={(e) => {
-                      try {
-                        setInputValue(JSON.parse(e.target.value));
-                      } catch {
-                        setInputValue(e.target.value);
-                      }
-                    }}
-                    placeholder="Enter input as JSON..."
-                    className="font-mono"
-                    rows={8}
-                  />
-                )}
-
-                <div className="flex gap-2 mt-4">
-                  <Button
-                    onClick={handleExecute}
-                    disabled={isExecuting}
-                    className="flex items-center gap-2"
-                  >
-                    {isExecuting ? (
-                      <LoadingSpinner size="sm" />
-                    ) : (
-                      <Play className="h-4 w-4" />
-                    )}
-                    {isExecuting ? 'Running...' : 'Run'}
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={handleCopyInputLink}
-                    className="flex items-center gap-2"
-                  >
-                    {copiedLink ? (
-                      <Check className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                    Copy Link
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Sidebar */}
+            {sidebarOpen && (
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 280, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="shrink-0 overflow-hidden"
+                style={{ width: 280 }}
+              >
+                <PlaygroundSidebar className="h-full w-full" />
+              </motion.div>
+            )}
           </div>
 
-          {/* Output Section */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Output</CardTitle>
-                <CardDescription>
-                  Function execution results
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {executionResult ? (
-                  <div className="space-y-4">
-                    {/* Status */}
-                    <div className="flex items-center gap-2">
-                      <Badge variant={executionResult.ok ? "default" : "destructive"}>
-                        {executionResult.ok ? "Success" : "Error"}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {executionResult.duration_ms}ms
-                      </span>
-                      {executionResult.cached && (
-                        <Badge variant="secondary">Cached</Badge>
-                      )}
-                    </div>
-
-                    {/* Result */}
-                    {executionResult.ok ? (
-                      <div>
-                        <Label className="text-sm font-medium">Result</Label>
-                        <Textarea
-                          value={JSON.stringify(executionResult.data, null, 2)}
-                          readOnly
-                          className="font-mono mt-1"
-                          rows={8}
-                        />
-                      </div>
-                    ) : (
-                      <div>
-                        <Label className="text-sm font-medium text-red-600">Error</Label>
-                        <div className="mt-1 p-3 bg-red-50 border border-red-200 rounded-md">
-                          <div className="font-medium text-red-800">
-                            {executionResult.error?.code || 'execution_failed'}
-                          </div>
-                          <div className="text-red-700 mt-1">
-                            {executionResult.error?.message || executionResult.error?.code || 'Execution failed (no details)'}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Share Link */}
-                    {shareableLink && (
-                      <div>
-                        <Label className="text-sm font-medium">Share Result</Label>
-                        <div className="flex gap-2 mt-1">
-                          <Input
-                            value={shareableLink}
-                            readOnly
-                            className="font-mono text-sm"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleCopyShareableLink}
-                            className="flex items-center gap-2"
-                          >
-                            {copiedLink ? (
-                              <Check className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                            Copy
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            asChild
-                          >
-                            <a
-                              href={shareableLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                              Open
-                            </a>
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center text-muted-foreground py-8">
-                    Run the function to see results here
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-        </div>
+          {/* Status bar */}
+          <PlaygroundStatusBar />
+        </motion.div>
       </main>
-      <Footer />
     </div>
   );
 }
