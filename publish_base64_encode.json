@@ -2,12 +2,46 @@
   "author": "functionfly",
   "name": "base64-encode",
   "version": "1.0.0",
+  "trust_level": "high",
+  "description": "Encode a string to Base64. Optional URL-safe encoding.",
+  "tags": ["base64", "encode", "encoding", "text"],
+  "visibility": "public",
+  "pricing": { "type": "free" },
+  "source_hash": "765b0b05c57f8a9d673a1424edf0aeb82d71baa6b8c7a81ccd1cdac002364753",
   "manifest": {
     "name": "base64-encode",
     "version": "1.0.0",
     "runtime": "python3.11",
+    "title": "Base64 Encode",
     "description": "Encode a string to Base64. Optional URL-safe encoding.",
-    "handler": "handler"
+    "handler": "handler",
+    "timeout_ms": 5000,
+    "memory_mb": 128,
+    "deterministic": true,
+    "cache_ttl": 86400,
+    "side_effects": "none",
+    "idempotent": true,
+    "public": true,
+    "category": "encoding",
+    "tags": ["base64", "encode", "encoding", "text"],
+    "capabilities": [],
+    "input": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "Text to encode" },
+        "url_safe": { "type": "boolean", "description": "Use URL-safe Base64 alphabet (default: false)" }
+      },
+      "example": { "text": "Hello World", "url_safe": false }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "ok": { "type": "boolean" },
+        "encoded": { "type": "string", "description": "Base64-encoded string" },
+        "error": { "type": "string", "description": "Error message if ok is false" }
+      },
+      "example": { "ok": true, "encoded": "SGVsbG8gV29ybGQ=" }
+    }
   },
   "source": {
     "code": "import base64\n\ndef handler(event):\n    if isinstance(event, dict):\n        text = event.get(\"text\", event.get(\"data\", \"\"))\n        url_safe = event.get(\"url_safe\", False)\n    else:\n        text = str(event) if event is not None else \"\"\n        url_safe = False\n\n    if text is None:\n        return {\"ok\": False, \"error\": \"Input 'text' is required\"}\n\n    try:\n        if isinstance(text, str):\n            data = text.encode(\"utf-8\")\n        else:\n            data = text\n        if url_safe:\n            encoded = base64.urlsafe_b64encode(data).decode(\"ascii\").rstrip(\"=\")\n        else:\n            encoded = base64.b64encode(data).decode(\"ascii\")\n        return {\"ok\": True, \"encoded\": encoded}\n    except Exception as e:\n        return {\"ok\": False, \"error\": str(e)}\n",

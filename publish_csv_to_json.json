@@ -2,21 +2,55 @@
   "author": "functionfly",
   "name": "csv-to-json",
   "version": "1.0.3",
+  "trust_level": "high",
+  "description": "Convert CSV string to JSON array of objects",
+  "tags": ["csv", "json", "convert", "data", "formatting"],
+  "visibility": "public",
+  "pricing": { "type": "free" },
+  "source_hash": "b34ed6ac6442a5f95a939b5946a608a13210d154b0add3499ffc14ae512e6b29",
   "manifest": {
     "name": "csv-to-json",
     "version": "1.0.3",
     "runtime": "python3.11",
+    "title": "CSV to JSON",
     "description": "Convert CSV string to JSON array of objects",
-    "handler": "handler"
+    "handler": "handler",
+    "timeout_ms": 10000,
+    "memory_mb": 128,
+    "deterministic": true,
+    "cache_ttl": 86400,
+    "side_effects": "none",
+    "idempotent": true,
+    "public": true,
+    "category": "data-formatting",
+    "tags": ["csv", "json", "convert", "data", "formatting"],
+    "capabilities": [],
+    "input": {
+      "type": "object",
+      "properties": {
+        "csv": { "type": "string", "description": "CSV string to convert" },
+        "delimiter": { "type": "string", "description": "Delimiter character (default: ,)" },
+        "has_header": { "type": "boolean", "description": "Whether first row is header (default: true)" },
+        "skip_blank_lines": { "type": "boolean", "description": "Skip blank lines (default: true)" },
+        "trim_fields": { "type": "boolean", "description": "Trim whitespace from fields (default: true)" },
+        "null_value": { "type": "string", "description": "Value to interpret as null (default: empty string)" }
+      },
+      "example": { "csv": "name,age\nAlice,30\nBob,25", "delimiter": ",", "has_header": true }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "ok": { "type": "boolean" },
+        "data": { "type": "array", "description": "JSON array of objects" },
+        "row_count": { "type": "integer", "description": "Number of data rows" },
+        "column_count": { "type": "integer", "description": "Number of columns" },
+        "error": { "type": "string", "description": "Error message if ok is false" }
+      },
+      "example": { "ok": true, "data": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}], "row_count": 2, "column_count": 2 }
+    }
   },
   "source": {
     "code": "import json\nimport csv\nimport io\n\n\ndef handler(event):\n    \"\"\"\n    Convert CSV string to JSON array.\n\n    Input:\n        - csv: CSV string (required)\n        - delimiter: Optional delimiter character (default: comma)\n        - has_header: Whether first row is header (default: true)\n        - skip_blank_lines: Skip blank lines (default: true)\n        - trim_fields: Trim whitespace from fields (default: true)\n        - null_value: Value to interpret as null (default: empty string)\n\n    Returns:\n        - data: JSON array of objects\n        - row_count: Number of data rows\n        - column_count: Number of columns\n    \"\"\"\n    # Parse input\n    if isinstance(event, dict):\n        csv_string = event.get(\"csv\", \"\")\n        delimiter = event.get(\"delimiter\", \",\")\n        has_header = event.get(\"has_header\", True)\n        skip_blank_lines = event.get(\"skip_blank_lines\", True)\n        trim_fields = event.get(\"trim_fields\", True)\n        null_value = event.get(\"null_value\", \"\")\n    else:\n        # Try parsing as JSON if string\n        try:\n            parsed = json.loads(str(event))\n            if isinstance(parsed, dict):\n                csv_string = parsed.get(\"csv\", \"\")\n                delimiter = parsed.get(\"delimiter\", \",\")\n                has_header = parsed.get(\"has_header\", True)\n                skip_blank_lines = parsed.get(\"skip_blank_lines\", True)\n                trim_fields = parsed.get(\"trim_fields\", True)\n                null_value = parsed.get(\"null_value\", \"\")\n            else:\n                csv_string = str(parsed)\n                delimiter = \",\"\n                has_header = True\n                skip_blank_lines = True\n                trim_fields = True\n                null_value = \"\"\n        except:\n            csv_string = str(event)\n            delimiter = \",\"\n            has_header = True\n            skip_blank_lines = True\n            trim_fields = True\n            null_value = \"\"\n\n    # Validate input\n    if not csv_string or not csv_string.strip():\n        return {\n            \"ok\": False,\n            \"error\": \"Input 'csv' is required and cannot be empty\"\n        }\n\n    try:\n        input_stream = io.StringIO(csv_string)\n        reader = csv.reader(input_stream, delimiter=delimiter)\n\n        rows = list(reader)\n\n        if len(rows) == 0:\n            return {\n                \"ok\": True,\n                \"data\": [],\n                \"row_count\": 0,\n                \"column_count\": 0\n            }\n\n        # Handle blank lines\n        if skip_blank_lines:\n            rows = [row for row in rows if any(cell.strip() for cell in row)]\n\n        if len(rows) == 0:\n            return {\n                \"ok\": True,\n                \"data\": [],\n                \"row_count\": 0,\n                \"column_count\": 0\n            }\n\n        # Determine columns\n        if has_header:\n            columns = rows[0]\n            data_rows = rows[1:]\n        else:\n            # Use column names like col_0, col_1, etc.\n            columns = [f\"col_{i}\" for i in range(len(rows[0]))]\n            data_rows = rows\n\n        # Trim fields if requested\n        if trim_fields:\n            columns = [col.strip() for col in columns]\n            data_rows = [[cell.strip() for cell in row] for row in data_rows]\n\n        # Convert to JSON objects\n        data = []\n        for row in data_rows:\n            obj = {}\n            for i, col in enumerate(columns):\n                if i < len(row):\n                    value = row[i]\n                    # Convert null values\n                    if value == null_value or (not value and null_value == \"\"):\n                        obj[col] = None\n                    else:\n                        # Try to convert numbers\n                        if value:\n                            # Try integer\n                            try:\n                                obj[col] = int(value)\n                                continue\n                            except ValueError:\n                                pass\n                            # Try float\n                            try:\n                                obj[col] = float(value)\n                                continue\n                            except ValueError:\n                                pass\n                            # Try boolean\n                            if value.lower() in ('true', 'false'):\n                                obj[col] = value.lower() == 'true'\n                                continue\n                            # Keep as string\n                            obj[col] = value\n                        else:\n                            obj[col] = None\n                else:\n                    obj[col] = None\n            data.append(obj)\n\n        return {\n            \"ok\": True,\n            \"data\": data,\n            \"row_count\": len(data),\n            \"column_count\": len(columns)\n        }\n\n    except Exception as e:\n        return {\n            \"ok\": False,\n            \"error\": f\"Failed to parse CSV: {str(e)}\"\n        }\n",
     "runtime": "python3.11"
-  },
-  "description": "Convert CSV string to JSON array of objects",
-  "tags": ["csv", "json", "convert", "data", "formatting"],
-  "visibility": "public",
-  "pricing": {
-    "type": "free"
   }
 }

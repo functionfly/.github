@@ -1,0 +1,52 @@
+{
+  "author": "functionfly",
+  "name": "number-format",
+  "version": "1.0.0",
+  "trust_level": "high",
+  "description": "Format numbers with locale-style separators for thousands and decimals.",
+  "tags": ["number", "format", "locale", "formatting"],
+  "visibility": "public",
+  "pricing": { "type": "free" },
+  "source_hash": "d76d88113ae0cb21289975c2694297a2251394eefc6f19691373beeea4281e9e",
+  "manifest": {
+    "name": "number-format",
+    "version": "1.0.0",
+    "runtime": "python3.11",
+    "title": "Number Format",
+    "description": "Format numbers with locale-style separators for thousands and decimals.",
+    "handler": "handler",
+    "timeout_ms": 5000,
+    "memory_mb": 128,
+    "deterministic": true,
+    "cache_ttl": 86400,
+    "side_effects": "none",
+    "idempotent": true,
+    "public": true,
+    "category": "formatting",
+    "tags": ["number", "format", "locale", "formatting"],
+    "capabilities": [],
+    "input": {
+      "type": "object",
+      "properties": {
+        "number": { "type": "number", "description": "Number to format" },
+        "decimal_places": { "type": "integer", "description": "Number of decimal places (default: 2)" },
+        "thousands_separator": { "type": "string", "description": "Thousands separator character (default: ,)" },
+        "decimal_separator": { "type": "string", "description": "Decimal separator character (default: .)" }
+      },
+      "example": { "number": 1234567.89, "decimal_places": 2, "thousands_separator": ",", "decimal_separator": "." }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "ok": { "type": "boolean" },
+        "result": { "type": "string", "description": "Formatted number string" },
+        "error": { "type": "string", "description": "Error message if ok is false" }
+      },
+      "example": { "ok": true, "result": "1,234,567.89" }
+    }
+  },
+  "source": {
+    "code": "def handler(event):\n    try:\n        if isinstance(event, dict):\n            number = event.get(\"number\")\n            decimal_places = event.get(\"decimal_places\", 2)\n            thousands_separator = event.get(\"thousands_separator\", \",\")\n            decimal_separator = event.get(\"decimal_separator\", \".\")\n        else:\n            return {\"ok\": False, \"error\": \"Missing required field: number\"}\n\n        if number is None:\n            return {\"ok\": False, \"error\": \"Missing required field: number\"}\n\n        try:\n            number = float(number)\n        except (TypeError, ValueError):\n            return {\"ok\": False, \"error\": \"number must be a numeric value\"}\n\n        try:\n            decimal_places = int(decimal_places)\n            if decimal_places < 0:\n                decimal_places = 0\n        except (TypeError, ValueError):\n            return {\"ok\": False, \"error\": \"decimal_places must be an integer\"}\n\n        if not isinstance(thousands_separator, str):\n            thousands_separator = str(thousands_separator)\n        if not isinstance(decimal_separator, str):\n            decimal_separator = str(decimal_separator)\n\n        # Format with fixed decimal places\n        formatted = f\"{number:,.{decimal_places}f}\"\n\n        # Replace default separators with custom ones\n        # Default format uses ',' for thousands and '.' for decimal\n        # We need to swap them if custom separators differ\n        if thousands_separator != \",\" or decimal_separator != \".\":\n            # Use a placeholder to avoid collision\n            formatted = formatted.replace(\",\", \"\\x00\")\n            formatted = formatted.replace(\".\", decimal_separator)\n            formatted = formatted.replace(\"\\x00\", thousands_separator)\n\n        return {\"ok\": True, \"result\": formatted}\n    except Exception as e:\n        return {\"ok\": False, \"error\": str(e)}\n",
+    "runtime": "python3.11"
+  }
+}

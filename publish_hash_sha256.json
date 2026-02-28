@@ -1,0 +1,49 @@
+{
+  "author": "functionfly",
+  "name": "hash-sha256",
+  "version": "1.0.0",
+  "trust_level": "high",
+  "description": "Compute the SHA-256 hash of a string.",
+  "tags": ["hash", "sha256", "crypto", "security"],
+  "visibility": "public",
+  "pricing": { "type": "free" },
+  "source_hash": "cfddf44566f4b9e97824e631de6b4259c7ae90015bb66cc71433ed6475e79452",
+  "manifest": {
+    "name": "hash-sha256",
+    "version": "1.0.0",
+    "runtime": "python3.11",
+    "title": "Hash SHA-256",
+    "description": "Compute the SHA-256 hash of a string.",
+    "handler": "handler",
+    "timeout_ms": 5000,
+    "memory_mb": 128,
+    "deterministic": true,
+    "cache_ttl": 86400,
+    "side_effects": "none",
+    "idempotent": true,
+    "public": true,
+    "category": "crypto",
+    "tags": ["hash", "sha256", "crypto", "security"],
+    "capabilities": [],
+    "input": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "String to hash" }
+      },
+      "example": { "text": "hello world" }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "ok": { "type": "boolean" },
+        "hash": { "type": "string", "description": "SHA-256 hex digest" },
+        "error": { "type": "string", "description": "Error message if ok is false" }
+      },
+      "example": { "ok": true, "hash": "b94d27b9934d3e08a52e52d7da7dabfac484efe04294e576f4b7b5b9b9b9b9b9" }
+    }
+  },
+  "source": {
+    "code": "import hashlib\n\n\ndef handler(event):\n    try:\n        if isinstance(event, dict):\n            text = event.get(\"text\", \"\")\n        else:\n            text = str(event) if event is not None else \"\"\n\n        if text is None or (isinstance(text, str) and not text and text != \"\"):\n            return {\"ok\": False, \"error\": \"Missing required field: text\"}\n\n        if not isinstance(text, str):\n            text = str(text)\n\n        hash_hex = hashlib.sha256(text.encode(\"utf-8\")).hexdigest()\n        return {\"ok\": True, \"hash\": hash_hex}\n    except Exception as e:\n        return {\"ok\": False, \"error\": str(e)}\n",
+    "runtime": "python3.11"
+  }
+}
