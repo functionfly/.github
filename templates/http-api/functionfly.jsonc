@@ -1,0 +1,8 @@
+{
+  "name": "http-api",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "entry": "main.py",
+  "memory_mb": 256,
+  "timeout_ms": 10000
+}
