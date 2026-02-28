@@ -17,10 +17,10 @@ import (
 	"github.com/functionfly/functionfly/internal/flypy/parser"
 )
 
-// CompilePython compiles Python source code to WebAssembly
-// This is the main entry point for Python-to-WASM compilation
+// CompilePython compiles Python source code to WebAssembly.
+// This is the main entry point for Python-to-WASM compilation.
 func CompilePython(pythonSource string, mode string) ([]byte, error) {
-	// Step 1: Parse Python to AST
+	// Step 1: Parse Python to AST (30-second timeout for parsing)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -29,22 +29,10 @@ func CompilePython(pythonSource string, mode string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to parse Python: %w", err)
 	}
 
-	// Debug: log AST
-	fmt.Printf("DEBUG: Python AST: %+v\n", pythonAST)
-
 	// Step 2: Generate IR from AST
 	irModule, err := ir.Generate(pythonAST, "function")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate IR: %w", err)
-	}
-
-	// Debug: log IR
-	fmt.Printf("DEBUG: IR Module has %d functions\n", len(irModule.Functions))
-	for i, fn := range irModule.Functions {
-		fmt.Printf("DEBUG: Function %d: %s, params: %v, body ops: %d\n", i, fn.Name, fn.Parameters, len(fn.Body))
-		for j, op := range fn.Body {
-			fmt.Printf("DEBUG:   Op %d: type=%s, result=%s\n", j, op.Type, op.Result)
-		}
 	}
 
 	// Step 3: Generate Rust code from IR with the appropriate mode
@@ -52,9 +40,6 @@ func CompilePython(pythonSource string, mode string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate Rust: %w", err)
 	}
-
-	// Debug: log generated Rust code
-	fmt.Printf("DEBUG: Generated Rust code:\n%s\n", string(rustCode))
 
 	// Step 4: Compile Rust to WASM
 	return CompileRustWithMode(rustCode, "wasm32-wasip1", mode)
@@ -97,13 +82,22 @@ panic = "abort"
 	return baseToml
 }
 
-// CompileRust compiles Rust source code to Wasm using WASI target
+// CompileRust compiles Rust source code to Wasm using WASI target.
 func CompileRust(source string, target string) ([]byte, error) {
 	return CompileRustWithMode(source, target, "deterministic")
 }
 
-// CompileRustWithMode compiles Rust source code to Wasm with specified mode
+// CompileRustWithMode compiles Rust source code to Wasm with specified mode.
+// It uses context.Background() internally; use CompileRustWithModeCtx for
+// cancellation/timeout support.
 func CompileRustWithMode(source string, target string, mode string) ([]byte, error) {
+	return CompileRustWithModeCtx(context.Background(), source, target, mode)
+}
+
+// CompileRustWithModeCtx compiles Rust source code to Wasm with context support.
+// The context is propagated to the cargo subprocess so cancellation and timeouts
+// are properly honored, preventing orphaned build processes.
+func CompileRustWithModeCtx(ctx context.Context, source string, target string, mode string) ([]byte, error) {
 	// Create a temporary directory for the Rust project
 	tempDir, err := os.MkdirTemp("", "flypy-rust-*")
 	if err != nil {
@@ -130,7 +124,7 @@ func CompileRustWithMode(source string, target string, mode string) ([]byte, err
 
 	// Use WASI target for compilation (wasm32-wasip1)
 	wasiTarget := "wasm32-wasip1"
-	wasmBytes, err := compileWithCargoWASI(tempDir, wasiTarget)
+	wasmBytes, err := compileWithCargoWASI(ctx, tempDir, wasiTarget)
 	if err == nil {
 		// Validate exports after successful compilation
 		if err := ValidateEntryPoints(wasmBytes); err != nil {
@@ -140,7 +134,7 @@ func CompileRustWithMode(source string, target string, mode string) ([]byte, err
 	}
 
 	// Fallback: try standard wasm32-unknown-unknown target
-	wasmBytes, err = compileWithCargo(tempDir, "wasm32-unknown-unknown")
+	wasmBytes, err = compileWithCargo(ctx, tempDir, "wasm32-unknown-unknown")
 	if err == nil {
 		// Validate exports after successful compilation
 		if err := ValidateEntryPoints(wasmBytes); err != nil {
@@ -150,17 +144,22 @@ func CompileRustWithMode(source string, target string, mode string) ([]byte, err
 	}
 
 	// No fallback - compilation must succeed
-	return nil, fmt.Errorf("failed to compile WASM module: both WASI and standard compilation failed: %v", err)
+	// Note: we do NOT include the cargo output in the error to avoid leaking
+	// generated source code into logs.
+	return nil, fmt.Errorf("failed to compile WASM module: both WASI and standard compilation failed")
 }
 
-func compileWithCargoWASI(tempDir string, target string) ([]byte, error) {
-	cmd := exec.Command("cargo", "build", "--release", "--target", target)
+func compileWithCargoWASI(ctx context.Context, tempDir string, target string) ([]byte, error) {
+	// Use CommandContext so the process is killed if ctx is cancelled/timed out
+	cmd := exec.CommandContext(ctx, "cargo", "build", "--release", "--target", target)
 	cmd.Dir = tempDir
 	cmd.Env = append(os.Environ(), "RUSTFLAGS=-C target-feature=-crt-static")
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("cargo build for WASI failed: %w\n%s", err, string(output))
+		// Do not include output (which may contain generated source) in the error message
+		_ = output
+		return nil, fmt.Errorf("cargo build for WASI failed: %w", err)
 	}
 
 	// Find the Wasm file in WASI target directory
@@ -169,32 +168,34 @@ func compileWithCargoWASI(tempDir string, target string) ([]byte, error) {
 		// Try with .wasm extension in different location
 		wasmPath = filepath.Join(tempDir, "target", target, "release", "deps", "flypy_function.wasm")
 		if _, err := os.Stat(wasmPath); os.IsNotExist(err) {
-			return nil, fmt.Errorf("Wasm file not found at %s", wasmPath)
+			return nil, fmt.Errorf("Wasm file not found after WASI build")
 		}
 	}
 
 	return os.ReadFile(wasmPath)
 }
 
-func compileWithCargo(tempDir string, target string) ([]byte, error) {
-	// Set target if specified
+func compileWithCargo(ctx context.Context, tempDir string, target string) ([]byte, error) {
+	// Use CommandContext so the process is killed if ctx is cancelled/timed out
 	var cmd *exec.Cmd
 	if target != "" {
-		cmd = exec.Command("cargo", "build", "--release", "--target", target)
+		cmd = exec.CommandContext(ctx, "cargo", "build", "--release", "--target", target)
 	} else {
-		cmd = exec.Command("cargo", "build", "--release")
+		cmd = exec.CommandContext(ctx, "cargo", "build", "--release")
 	}
 
 	cmd.Dir = tempDir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("cargo build failed: %w\n%s", err, string(output))
+		// Do not include output (which may contain generated source) in the error message
+		_ = output
+		return nil, fmt.Errorf("cargo build failed: %w", err)
 	}
 
 	// Find the Wasm file
 	wasmPath := filepath.Join(tempDir, "target", target, "release", "flypy_function.wasm")
 	if _, err := os.Stat(wasmPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("Wasm file not found at %s", wasmPath)
+		return nil, fmt.Errorf("Wasm file not found after standard build")
 	}
 
 	return os.ReadFile(wasmPath)

@@ -55,6 +55,13 @@ func (r *LocalRuntime) Start(ctx context.Context) error {
 	r.server = &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", r.config.Host, r.config.Port),
 		Handler: mux,
+
+		// Production-safe timeouts to prevent slow-client attacks
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1 MB
 	}
 
 	// Start server in a goroutine

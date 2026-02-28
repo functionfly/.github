@@ -212,7 +212,8 @@ func GetAllowedModules(mode ExecutionMode) map[string]bool {
 	}
 }
 
-// Enforce checks the Python AST for restriction violations (backward compatible)
+// Enforce checks the Python AST for restriction violations.
+// It delegates to EnforceWithMode with ModeDeterministic.
 func Enforce(ast *parser.PythonAST) []CompileError {
 	return EnforceWithMode(ast, ModeDeterministic)
 }
@@ -241,10 +242,6 @@ func EnforceWithMode(ast *parser.PythonAST, mode ExecutionMode) []CompileError {
 	}
 
 	return errors
-}
-
-func checkFunctionDef(fn map[string]interface{}, errors *[]CompileError) {
-	checkFunctionDefWithMode(fn, errors, ModeDeterministic)
 }
 
 func checkFunctionDefWithMode(fn map[string]interface{}, errors *[]CompileError, mode ExecutionMode) {
@@ -389,86 +386,6 @@ func checkStatementWithMode(stmt map[string]interface{}, errors *[]CompileError,
 	}
 }
 
-func checkStatement(stmt map[string]interface{}, errors *[]CompileError) {
-	// Check for forbidden builtins in calls
-	if parser.IsCall(stmt) {
-		funcName := parser.GetCallFunc(stmt)
-		if ForbiddenBuiltins[funcName] {
-			*errors = append(*errors, CompileError{
-				Type:    ForbiddenBuiltin,
-				Message: fmt.Sprintf("builtin function '%s' is not allowed in deterministic mode", funcName),
-				Line:    0,
-			})
-		}
-	}
-
-	// Check for expression statements
-	if parser.IsExpr(stmt) {
-		if value, ok := stmt["value"].(map[string]interface{}); ok {
-			checkExpression(value, errors)
-		}
-	}
-
-	// Check for assignments
-	if parser.IsAssign(stmt) {
-		value := parser.GetAssignValue(stmt)
-		if valueMap, ok := value.(map[string]interface{}); ok {
-			checkExpression(valueMap, errors)
-		}
-	}
-
-	// Check for return statements
-	if parser.IsReturn(stmt) {
-		value := parser.GetReturnValue(stmt)
-		if value != nil {
-			if valueMap, ok := value.(map[string]interface{}); ok {
-				checkExpression(valueMap, errors)
-			}
-		}
-	}
-
-	// Check for if statements
-	if parser.IsIf(stmt) {
-		test := parser.GetIfTest(stmt)
-		if testMap, ok := test.(map[string]interface{}); ok {
-			checkExpression(testMap, errors)
-		}
-
-		// Check if body
-		for _, ifStmt := range parser.GetIfBody(stmt) {
-			if ifStmtMap, ok := ifStmt.(map[string]interface{}); ok {
-				checkStatement(ifStmtMap, errors)
-			}
-		}
-
-		// Check else body
-		for _, elseStmt := range parser.GetIfOrelse(stmt) {
-			if elseStmtMap, ok := elseStmt.(map[string]interface{}); ok {
-				checkStatement(elseStmtMap, errors)
-			}
-		}
-	}
-
-	// Check for for loops
-	if parser.IsFor(stmt) {
-		// For loops can be problematic for determinism with iterators
-		*errors = append(*errors, CompileError{
-			Type:    ForbiddenFeature,
-			Message: "for loops are not fully supported in deterministic mode",
-			Line:    0,
-		})
-	}
-
-	// Check for while loops
-	if parser.IsWhile(stmt) {
-		*errors = append(*errors, CompileError{
-			Type:    ForbiddenFeature,
-			Message: "while loops are not supported in deterministic mode",
-			Line:    0,
-		})
-	}
-}
-
 func checkExpression(expr map[string]interface{}, errors *[]CompileError) {
 	checkExpressionWithMode(expr, errors, ModeDeterministic)
 }
@@ -542,10 +459,6 @@ func checkExpressionWithMode(expr map[string]interface{}, errors *[]CompileError
 func isImport(stmt map[string]interface{}) bool {
 	nodeType := parser.GetNodeType(stmt)
 	return nodeType == "Import" || nodeType == "ImportFrom"
-}
-
-func checkImport(stmt map[string]interface{}, errors *[]CompileError) {
-	checkImportWithMode(stmt, errors, DeterministicModules, ModeDeterministic)
 }
 
 func checkImportWithMode(stmt map[string]interface{}, errors *[]CompileError, allowedModules map[string]bool, mode ExecutionMode) {

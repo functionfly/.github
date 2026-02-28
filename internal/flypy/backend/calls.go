@@ -35,8 +35,39 @@ func handleError(operation string, err error) string {
 	return fmt.Sprintf("    // Error: %s - %v", operation, err)
 }
 
-// movedVariables is declared in operations.go and tracks variable renames/moves during code generation
-// This should be thread-local or passed as a parameter in production
+// generateCall is the CodegenContext-aware version of GenerateCall.
+// It uses ctx.generateValue for proper parameter scoping.
+func (ctx *CodegenContext) generateCall(op ir.Operation) string {
+	if op.Value == nil {
+		log.Printf("generateCall: operation value is nil")
+		return "    // Error: invalid operation - no value"
+	}
+
+	callMap, ok := op.Value.(map[string]interface{})
+	if !ok {
+		log.Printf("generateCall: operation value is not a map: %T", op.Value)
+		return "    // Error: invalid operation - expected map"
+	}
+
+	fn, ok := callMap["func"].(string)
+	if !ok {
+		log.Printf("generateCall: function name not found in call map")
+		return "    // Error: invalid operation - no function name"
+	}
+
+	args, ok := callMap["args"].([]ir.Value)
+	if !ok {
+		log.Printf("generateCall: args not found or invalid for function %s", fn)
+		return fmt.Sprintf("    // Error: invalid arguments for %s()", fn)
+	}
+
+	argStrs := make([]string, 0, len(args))
+	for _, arg := range args {
+		argStrs = append(argStrs, ctx.generateValue(arg))
+	}
+
+	return generateCallSwitch(fn, argStrs)
+}
 
 // GenerateCall generates Rust code for function calls from Python IR operations.
 // It handles built-in Python functions like len(), abs(), str(), etc., and delegates
@@ -49,34 +80,13 @@ func handleError(operation string, err error) string {
 //   - A string containing the equivalent Rust code for the function call
 //   - Error comments in the generated code if the operation is invalid
 func GenerateCall(op ir.Operation) string {
-	if op.Value == nil {
-		log.Printf("GenerateCall: operation value is nil")
-		return "    // Error: invalid operation - no value"
-	}
+	ctx := newCodegenContext()
+	return ctx.generateCall(op)
+}
 
-	callMap, ok := op.Value.(map[string]interface{})
-	if !ok {
-		log.Printf("GenerateCall: operation value is not a map: %T", op.Value)
-		return "    // Error: invalid operation - expected map"
-	}
-
-	fn, ok := callMap["func"].(string)
-	if !ok {
-		log.Printf("GenerateCall: function name not found in call map")
-		return "    // Error: invalid operation - no function name"
-	}
-
-	args, ok := callMap["args"].([]ir.Value)
-	if !ok {
-		log.Printf("GenerateCall: args not found or invalid for function %s", fn)
-		return fmt.Sprintf("    // Error: invalid arguments for %s()", fn)
-	}
-
-	argStrs := make([]string, 0)
-	for _, arg := range args {
-		argStrs = append(argStrs, GenerateValue(arg))
-	}
-
+// generateCallSwitch contains the actual switch logic for built-in function calls.
+// Extracted to avoid duplication between GenerateCall and generateCall.
+func generateCallSwitch(fn string, argStrs []string) string {
 	// Generate Rust-equivalent calls
 	switch fn {
 	case "len":
@@ -98,14 +108,14 @@ func GenerateCall(op ir.Operation) string {
 		if len(argStrs) == 0 {
 			return handleError("min", ErrInvalidArguments)
 		}
-		// Find the minimum element in the iterable
-		return fmt.Sprintf("    %s.iter().min().unwrap_or(&%s[0]).clone()", argStrs[0], argStrs[0])
+		// Use unwrap_or_default() to avoid panic on empty slices
+		return fmt.Sprintf("    %s.iter().min().cloned().unwrap_or_default()", argStrs[0])
 	case "max":
 		if len(argStrs) == 0 {
 			return handleError("max", ErrInvalidArguments)
 		}
-		// Find the maximum element in the iterable
-		return fmt.Sprintf("    %s.iter().max().unwrap_or(&%s[0]).clone()", argStrs[0], argStrs[0])
+		// Use unwrap_or_default() to avoid panic on empty slices
+		return fmt.Sprintf("    %s.iter().max().cloned().unwrap_or_default()", argStrs[0])
 	case "sum":
 		if len(argStrs) == 0 {
 			return handleError("sum", ErrInvalidArguments)
@@ -115,7 +125,7 @@ func GenerateCall(op ir.Operation) string {
 		if len(argStrs) == 0 {
 			return handleError("str", ErrInvalidArguments)
 		}
-		// Exception variables are already rewritten to "exception".to_string() in GenerateValue.
+		// Exception variables are already rewritten to "exception".to_string() in generateValue.
 		// Avoid double-wrapping with format! so output is the string, not the literal.
 		if argStrs[0] == "\"exception\".to_string()" {
 			return "    \"exception\".to_string()"
@@ -153,13 +163,14 @@ func GenerateCall(op ir.Operation) string {
 		}
 		return fmt.Sprintf("    re_sub(%s, %s, %s)", argStrs[0], argStrs[1], argStrs[2])
 	case "re.compile":
-		// re.compile(pattern)
+		// re.compile(pattern) - use a safe fallback that won't panic
 		if len(argStrs) == 0 {
 			return handleError("re.compile", ErrInvalidArguments)
 		}
-		return fmt.Sprintf("    Regex::new(%s).unwrap_or_else(|e| { eprintln!(\"Regex compile error: {{}}\", e); Regex::new(\"\") })", argStrs[0])
+		// Use a safe pattern: if the regex fails to compile, fall back to a pattern that matches nothing
+		return fmt.Sprintf("    Regex::new(%s).unwrap_or_else(|e| { eprintln!(\"Regex compile error: {}\", e); Regex::new(\"(?!)\").unwrap() })", argStrs[0])
 	default:
-		log.Printf("GenerateCall: unknown function %s with args %v", fn, argStrs)
+		log.Printf("generateCall: unknown function %s with args %v", fn, argStrs)
 		return fmt.Sprintf("    // Error: unknown function %s(%s)", fn, strings.Join(argStrs, ", "))
 	}
 }

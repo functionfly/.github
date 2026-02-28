@@ -18,7 +18,9 @@ func isExceptionVariable(name string) bool {
 	return exceptionVarNames[name]
 }
 
-func GenerateValue(val ir.Value) string {
+// generateValue is the CodegenContext-aware value generator.
+// It uses ctx.prefixParameter for proper scoping without global state.
+func (ctx *CodegenContext) generateValue(val ir.Value) string {
 	switch val.Kind {
 	case ir.Literal:
 		switch val.Type {
@@ -48,36 +50,48 @@ func GenerateValue(val ir.Value) string {
 			if isExceptionVariable(str) {
 				return "\"exception\".to_string()"
 			}
-			return prefixParameter(str)
+			return ctx.prefixParameter(str)
 		}
 		// Attribute access (obj.attr)
 		if attrMap, ok := val.Value.(map[string]interface{}); ok {
 			if attr, ok := attrMap["attr"].(string); ok {
 				if value, ok := attrMap["value"].(ir.Value); ok {
-					return fmt.Sprintf("%s.%s", GenerateValue(value), attr)
+					return fmt.Sprintf("%s.%s", ctx.generateValue(value), attr)
 				}
 			}
 		}
 		return fmt.Sprintf("%v", val.Value)
 	case ir.BinOp:
 		if binOpVal, ok := val.Value.(map[string]interface{}); ok {
-			left := GenerateValue(binOpVal["left"].(ir.Value))
-			right := GenerateValue(binOpVal["right"].(ir.Value))
-			op := binOpVal["op"].(string)
+			leftVal, leftOk := binOpVal["left"].(ir.Value)
+			rightVal, rightOk := binOpVal["right"].(ir.Value)
+			op, opOk := binOpVal["op"].(string)
+			if !leftOk || !rightOk || !opOk {
+				return "/* binop: malformed IR */"
+			}
+			left := ctx.generateValue(leftVal)
+			right := ctx.generateValue(rightVal)
 			return fmt.Sprintf("(%s %s %s)", left, PyOpToRustOp(op), right)
 		}
 		return "0"
 	case ir.Compare:
 		if compVal, ok := val.Value.(map[string]interface{}); ok {
-			left := GenerateValue(compVal["left"].(ir.Value))
-			ops := compVal["ops"].([]string)
-			comparators := compVal["comparators"].([]ir.Value)
+			leftVal, leftOk := compVal["left"].(ir.Value)
+			ops, opsOk := compVal["ops"].([]string)
+			comparators, compOk := compVal["comparators"].([]ir.Value)
+			if !leftOk || !opsOk || !compOk {
+				return "/* compare: malformed IR */"
+			}
+			left := ctx.generateValue(leftVal)
 
 			// Handle chained comparisons: a < b < c becomes (a < b) && (b < c)
 			var parts []string
 			prevLeft := left
 			for i, op := range ops {
-				right := GenerateValue(comparators[i])
+				if i >= len(comparators) {
+					break
+				}
+				right := ctx.generateValue(comparators[i])
 				// Handle "In" and "NotIn" operators specially
 				switch op {
 				case "In":
@@ -100,8 +114,11 @@ func GenerateValue(val ir.Value) string {
 		return "false"
 	case ir.BoolOp:
 		if boolVal, ok := val.Value.(map[string]interface{}); ok {
-			op := boolVal["op"].(string)
-			values := boolVal["values"].([]ir.Value)
+			op, opOk := boolVal["op"].(string)
+			values, valOk := boolVal["values"].([]ir.Value)
+			if !opOk || !valOk {
+				return "/* boolop: malformed IR */"
+			}
 
 			rustOp := "&&"
 			if op == "Or" {
@@ -110,23 +127,27 @@ func GenerateValue(val ir.Value) string {
 
 			var parts []string
 			for _, v := range values {
-				parts = append(parts, GenerateValue(v))
+				parts = append(parts, ctx.generateValue(v))
 			}
 			return "(" + strings.Join(parts, fmt.Sprintf(" %s ", rustOp)) + ")"
 		}
 		return "false"
 	case ir.UnaryOp:
 		if unaryVal, ok := val.Value.(map[string]interface{}); ok {
-			op := unaryVal["op"].(string)
-			operand := GenerateValue(unaryVal["operand"].(ir.Value))
+			op, opOk := unaryVal["op"].(string)
+			operandVal, operandOk := unaryVal["operand"].(ir.Value)
+			if !opOk || !operandOk {
+				return "/* unaryop: malformed IR */"
+			}
+			operand := ctx.generateValue(operandVal)
 
 			switch op {
 			case "Not":
 				// For serde_json::Value, we need to check if it's null or empty
 				// Check if the operand is a simple variable reference (could be serde_json::Value)
-				if isSimpleReference(unaryVal["operand"].(ir.Value)) {
+				if isSimpleReference(operandVal) {
 					// Generate a check for null or empty (for arrays/objects)
-					return fmt.Sprintf("(%s.is_null() || (%s.is_array() && %s.as_array().unwrap().is_empty()))", operand, operand, operand)
+					return fmt.Sprintf("(%s.is_null() || (%s.is_array() && %s.as_array().unwrap_or(&vec![]).is_empty()))", operand, operand, operand)
 				}
 				// Check if operand is a string operation (like .strip()) that returns a string
 				// In Python, "not string" checks if string is empty
@@ -145,31 +166,41 @@ func GenerateValue(val ir.Value) string {
 		return "false"
 	case ir.Subscript:
 		if subVal, ok := val.Value.(map[string]interface{}); ok {
-			value := GenerateValue(subVal["value"].(ir.Value))
-			indexVal := subVal["index"].(ir.Value)
+			valueVal, valueOk := subVal["value"].(ir.Value)
+			indexVal, indexOk := subVal["index"].(ir.Value)
+			if !valueOk || !indexOk {
+				return "/* subscript: malformed IR */"
+			}
+			value := ctx.generateValue(valueVal)
 
 			// Check if this is a slice operation
 			if indexVal.Kind == ir.Slice {
-				return GenerateSlice(value, indexVal)
+				return ctx.generateSlice(value, indexVal)
 			}
 
 			// Regular subscript (single index)
-			index := GenerateValue(indexVal)
+			index := ctx.generateValue(indexVal)
 			// For serde_json::Value, we need to clone the result
 			return fmt.Sprintf("%s[%s].clone()", value, index)
 		}
 		return "/* subscript */"
 	case ir.Dict:
 		if dictVal, ok := val.Value.(map[string]interface{}); ok {
-			keys := dictVal["keys"].([]ir.Value)
-			values := dictVal["values"].([]ir.Value)
+			keys, keysOk := dictVal["keys"].([]ir.Value)
+			values, valuesOk := dictVal["values"].([]ir.Value)
+			if !keysOk || !valuesOk {
+				return "/* dict: malformed IR */"
+			}
 
 			var entries []string
 			for i, k := range keys {
+				if i >= len(values) {
+					break
+				}
 				// For dict keys, we need to extract the raw string value for json! macro
-				keyStr := generateDictKey(k)
+				keyStr := ctx.generateDictKey(k)
 				// For dict values, we need to generate the value without .to_string() for json! macro
-				valueStr := generateDictValue(values[i])
+				valueStr := ctx.generateDictValue(values[i])
 				entries = append(entries, fmt.Sprintf("%s: %s", keyStr, valueStr))
 			}
 			// Check what type of return this is
@@ -195,23 +226,29 @@ func GenerateValue(val ir.Value) string {
 		return "json!({}).to_string()"
 	case ir.List:
 		if listVal, ok := val.Value.(map[string]interface{}); ok {
-			elements := listVal["elements"].([]ir.Value)
+			elements, ok := listVal["elements"].([]ir.Value)
+			if !ok {
+				return "vec![]"
+			}
 
 			var elts []string
 			for _, e := range elements {
-				elts = append(elts, GenerateValue(e))
+				elts = append(elts, ctx.generateValue(e))
 			}
 			return "vec![" + strings.Join(elts, ", ") + "]"
 		}
 		return "vec![]"
 	case ir.Call:
 		if callVal, ok := val.Value.(map[string]interface{}); ok {
-			fn := callVal["func"].(string)
-			args := callVal["args"].([]ir.Value)
+			fn, fnOk := callVal["func"].(string)
+			args, argsOk := callVal["args"].([]ir.Value)
+			if !fnOk || !argsOk {
+				return "/* call: malformed IR */"
+			}
 
-			argStrs := make([]string, 0)
+			argStrs := make([]string, 0, len(args))
 			for _, arg := range args {
-				argStrs = append(argStrs, GenerateValue(arg))
+				argStrs = append(argStrs, ctx.generateValue(arg))
 			}
 
 			// Handle built-in functions
@@ -303,20 +340,23 @@ func GenerateValue(val ir.Value) string {
 	case ir.ModuleCall:
 		// Handle module function calls like csv.reader, json.loads, etc.
 		if moduleVal, ok := val.Value.(map[string]interface{}); ok {
-			module := moduleVal["module"].(string)
-			fn := moduleVal["func"].(string)
-			args := moduleVal["args"].([]ir.Value)
+			module, moduleOk := moduleVal["module"].(string)
+			fn, fnOk := moduleVal["func"].(string)
+			args, argsOk := moduleVal["args"].([]ir.Value)
+			if !moduleOk || !fnOk || !argsOk {
+				return "/* module_call: malformed IR */"
+			}
 
-			argStrs := make([]string, 0)
+			argStrs := make([]string, 0, len(args))
 			for _, arg := range args {
-				argStrs = append(argStrs, GenerateValue(arg))
+				argStrs = append(argStrs, ctx.generateValue(arg))
 			}
 
 			// Extract kwargs if present
 			kwargs := make(map[string]string)
 			if kw, ok := moduleVal["kwargs"].(map[string]ir.Value); ok {
 				for k, v := range kw {
-					kwargs[k] = GenerateValue(v)
+					kwargs[k] = ctx.generateValue(v)
 				}
 			}
 
@@ -326,13 +366,17 @@ func GenerateValue(val ir.Value) string {
 	case ir.MethodCall:
 		// Handle method calls like output.getvalue(), list.append(), etc.
 		if methodVal, ok := val.Value.(map[string]interface{}); ok {
-			receiver := GenerateValue(methodVal["receiver"].(ir.Value))
-			method := methodVal["method"].(string)
-			args := methodVal["args"].([]ir.Value)
+			receiverVal, receiverOk := methodVal["receiver"].(ir.Value)
+			method, methodOk := methodVal["method"].(string)
+			args, argsOk := methodVal["args"].([]ir.Value)
+			if !receiverOk || !methodOk || !argsOk {
+				return "/* method_call: malformed IR */"
+			}
+			receiver := ctx.generateValue(receiverVal)
 
-			argStrs := make([]string, 0)
+			argStrs := make([]string, 0, len(args))
 			for _, arg := range args {
-				argStrs = append(argStrs, GenerateValue(arg))
+				argStrs = append(argStrs, ctx.generateValue(arg))
 			}
 
 			return GenerateMethodCall(receiver, method, argStrs)
@@ -341,21 +385,35 @@ func GenerateValue(val ir.Value) string {
 	case ir.ListComp:
 		// Handle list comprehensions: [x*2 for x in items if x > 0]
 		if compVal, ok := val.Value.(map[string]interface{}); ok {
-			element := GenerateValue(compVal["element"].(ir.Value))
-			generators := compVal["generators"].([]map[string]interface{})
-
-			return GenerateListComp(element, generators)
+			elementVal, elementOk := compVal["element"].(ir.Value)
+			generators, genOk := compVal["generators"].([]map[string]interface{})
+			if !elementOk || !genOk {
+				return "/* list_comp: malformed IR */"
+			}
+			element := ctx.generateValue(elementVal)
+			return ctx.generateListComp(element, generators)
 		}
 		return "/* list_comp */"
 	case ir.FString:
 		if fstrVal, ok := val.Value.(map[string]interface{}); ok {
-			parts := fstrVal["parts"].([]ir.Value)
-			return GenerateFString(parts)
+			parts, ok := fstrVal["parts"].([]ir.Value)
+			if !ok {
+				return "String::new()"
+			}
+			return ctx.generateFString(parts)
 		}
 		return "String::new()"
 	default:
 		return fmt.Sprintf("/* unknown value kind: %d */", val.Kind)
 	}
+}
+
+// GenerateValue is the public backward-compatible wrapper.
+// It creates a temporary context with no parameter scoping.
+// Prefer using ctx.generateValue() when a CodegenContext is available.
+func GenerateValue(val ir.Value) string {
+	ctx := newCodegenContext()
+	return ctx.generateValue(val)
 }
 
 // generateManualJson constructs JSON string manually to avoid type inference issues
@@ -383,10 +441,10 @@ func generateManualJson(entries []string) string {
 	return fmt.Sprintf("(%s).to_string()", jsonStr)
 }
 
-// GenerateListComp generates Rust code for list comprehensions
+// generateListComp generates Rust code for list comprehensions.
 // Python: [x*2 for x in items if x > 0]
 // Rust: items.iter().filter(|x| **x > 0).map(|x| x * 2).collect::<Vec<_>>()
-func GenerateListComp(element string, generators []map[string]interface{}) string {
+func (ctx *CodegenContext) generateListComp(element string, generators []map[string]interface{}) string {
 	if len(generators) == 0 {
 		return "vec![]"
 	}
@@ -394,7 +452,11 @@ func GenerateListComp(element string, generators []map[string]interface{}) strin
 	// For simple single-generator comprehensions
 	gen := generators[0]
 	target, _ := gen["target"].(string)
-	iterator := GenerateValue(gen["iterator"].(ir.Value))
+	iteratorVal, ok := gen["iterator"].(ir.Value)
+	if !ok {
+		return "vec![]"
+	}
+	iterator := ctx.generateValue(iteratorVal)
 	conditions, _ := gen["conditions"].([]ir.Value)
 
 	var builder strings.Builder
@@ -405,7 +467,7 @@ func GenerateListComp(element string, generators []map[string]interface{}) strin
 	// Add filter conditions
 	if len(conditions) > 0 {
 		for _, cond := range conditions {
-			condStr := GenerateValue(cond)
+			condStr := ctx.generateValue(cond)
 			// Replace target references in condition with closure parameter
 			condStr = strings.ReplaceAll(condStr, target, fmt.Sprintf("*%s", target))
 			builder.WriteString(fmt.Sprintf(".filter(|%s| %s)", target, condStr))
@@ -420,10 +482,16 @@ func GenerateListComp(element string, generators []map[string]interface{}) strin
 	return builder.String()
 }
 
-// GenerateSlice generates Rust code for slice operations
+// GenerateListComp is the public backward-compatible wrapper.
+func GenerateListComp(element string, generators []map[string]interface{}) string {
+	ctx := newCodegenContext()
+	return ctx.generateListComp(element, generators)
+}
+
+// generateSlice generates Rust code for slice operations.
 // Python: arr[1:3], arr[:5], arr[2:], arr[::2]
 // Rust: arr[1..3].to_vec(), arr[..5].to_vec(), arr[2..].to_vec(), arr.iter().step_by(2).cloned().collect()
-func GenerateSlice(value string, sliceVal ir.Value) string {
+func (ctx *CodegenContext) generateSlice(value string, sliceVal ir.Value) string {
 	// Slice value contains lower, upper, step info
 	if sliceMap, ok := sliceVal.Value.(map[string]interface{}); ok {
 		lower := ""
@@ -432,17 +500,17 @@ func GenerateSlice(value string, sliceVal ir.Value) string {
 
 		if l, ok := sliceMap["lower"]; ok && l != nil {
 			if lv, ok := l.(ir.Value); ok {
-				lower = GenerateValue(lv)
+				lower = ctx.generateValue(lv)
 			}
 		}
 		if u, ok := sliceMap["upper"]; ok && u != nil {
 			if uv, ok := u.(ir.Value); ok {
-				upper = GenerateValue(uv)
+				upper = ctx.generateValue(uv)
 			}
 		}
 		if s, ok := sliceMap["step"]; ok && s != nil {
 			if sv, ok := s.(ir.Value); ok {
-				step = GenerateValue(sv)
+				step = ctx.generateValue(sv)
 			}
 		}
 
@@ -477,7 +545,13 @@ func GenerateSlice(value string, sliceVal ir.Value) string {
 	return fmt.Sprintf("%s.clone()", value)
 }
 
-// extractTypeName extracts the type name from an IR Value for isinstance checks
+// GenerateSlice is the public backward-compatible wrapper.
+func GenerateSlice(value string, sliceVal ir.Value) string {
+	ctx := newCodegenContext()
+	return ctx.generateSlice(value, sliceVal)
+}
+
+// extractTypeName extracts the type name from an IR Value for isinstance checks.
 // The argument is typically a Reference to a type like 'list', 'dict', 'str', etc.
 func extractTypeName(val ir.Value) string {
 	// If it's a Reference, the Value is the type name string
@@ -495,8 +569,8 @@ func extractTypeName(val ir.Value) string {
 	return "unknown"
 }
 
-// GenerateFString generates Rust format!() for Python f-strings
-func GenerateFString(parts []ir.Value) string {
+// generateFString generates Rust format!() for Python f-strings.
+func (ctx *CodegenContext) generateFString(parts []ir.Value) string {
 	var formatStr strings.Builder
 	var args []string
 
@@ -509,8 +583,8 @@ func GenerateFString(parts []ir.Value) string {
 			formatStr.WriteString(s)
 		} else {
 			formatStr.WriteString("{}")
-			arg := GenerateValue(part)
-			// Exception variables are already rewritten by GenerateValue (Reference case).
+			arg := ctx.generateValue(part)
+			// Exception variables are already rewritten by generateValue (Reference case).
 			// Do not replace substrings: that would corrupt names like "value" or "result".
 			args = append(args, arg)
 		}
@@ -520,6 +594,12 @@ func GenerateFString(parts []ir.Value) string {
 		return fmt.Sprintf("\"%s\".to_string()", formatStr.String())
 	}
 	return fmt.Sprintf("format!(\"%s\", %s)", formatStr.String(), strings.Join(args, ", "))
+}
+
+// GenerateFString is the public backward-compatible wrapper.
+func GenerateFString(parts []ir.Value) string {
+	ctx := newCodegenContext()
+	return ctx.generateFString(parts)
 }
 
 // isSimpleReference checks if a value is a simple variable reference (not a complex expression)
@@ -533,9 +613,9 @@ func isSimpleReference(val ir.Value) bool {
 	return false
 }
 
-// generateDictKey generates a key for the json! macro
-// For string literals, we need just the string value without .to_string()
-func generateDictKey(k ir.Value) string {
+// generateDictKey generates a key for the json! macro.
+// For string literals, we need just the string value without .to_string().
+func (ctx *CodegenContext) generateDictKey(k ir.Value) string {
 	// If it's a string literal, extract the raw string value
 	if k.Kind == ir.Literal && k.Type == ir.IRTypeString {
 		if str, ok := k.Value.(string); ok {
@@ -543,12 +623,12 @@ func generateDictKey(k ir.Value) string {
 		}
 	}
 	// For other types, use the full value generation
-	return GenerateValue(k)
+	return ctx.generateValue(k)
 }
 
-// generateDictValue generates a value for the json! macro
-// For string literals, we need just the string value without .to_string()
-func generateDictValue(v ir.Value) string {
+// generateDictValue generates a value for the json! macro.
+// For string literals, we need just the string value without .to_string().
+func (ctx *CodegenContext) generateDictValue(v ir.Value) string {
 	// If it's a list literal that's empty, use serde_json::Value::Array
 	if v.Kind == ir.List && v.Value != nil {
 		if listVal, ok := v.Value.(map[string]interface{}); ok {
@@ -564,5 +644,6 @@ func generateDictValue(v ir.Value) string {
 		}
 	}
 	// For other types, use the full value generation
-	return GenerateValue(v)
+	return ctx.generateValue(v)
 }
+

@@ -8,53 +8,63 @@ import (
 	"github.com/functionfly/functionfly/internal/flypy/ir"
 )
 
-// parameterNames holds the names of function parameters for proper scoping
-var parameterNames map[string]bool
+// CodegenContext holds all mutable state for a single code generation pass.
+// Using a struct instead of package-level globals eliminates race conditions
+// when multiple compilations run concurrently.
+type CodegenContext struct {
+	// parameterNames is the set of function parameter names for proper scoping
+	parameterNames map[string]bool
 
-// movedVariables tracks variables that have been moved into other variables
-// key: original variable name, value: new variable name to use
-var movedVariables map[string]string
+	// movedVariables tracks variables that have been moved into other variables
+	// key: original variable name, value: new variable name to use
+	movedVariables map[string]string
 
-// declaredVariables tracks variables that have already been declared with `let`
-// so subsequent assignments use reassignment instead of new declarations
-var declaredVariables map[string]bool
+	// declaredVariables tracks variables that have already been declared with `let`
+	// so subsequent assignments use reassignment instead of new declarations
+	declaredVariables map[string]bool
 
-// hoistedVariableNames tracks variables that have been hoisted (parameters that are reassigned)
-// These should NOT be prefixed with "input." because they have local mutable copies
-var hoistedVariableNames map[string]bool
+	// hoistedVariableNames tracks variables that have been hoisted (parameters that are reassigned)
+	// These should NOT be prefixed with "input." because they have local mutable copies
+	hoistedVariableNames map[string]bool
+}
+
+// newCodegenContext creates a fresh CodegenContext for a compilation pass.
+func newCodegenContext() *CodegenContext {
+	return &CodegenContext{
+		parameterNames:       make(map[string]bool),
+		movedVariables:       make(map[string]string),
+		declaredVariables:    make(map[string]bool),
+		hoistedVariableNames: make(map[string]bool),
+	}
+}
 
 // prefixParameter adds "input." prefix to variable names that are function parameters
-// but NOT to hoisted variables (which have local mutable copies)
-func prefixParameter(name string) string {
+// but NOT to hoisted variables (which have local mutable copies).
+func (ctx *CodegenContext) prefixParameter(name string) string {
 	// If this variable has been hoisted (reassigned), use the local mutable copy
-	if hoistedVariableNames != nil && hoistedVariableNames[name] {
+	if ctx.hoistedVariableNames[name] {
 		return name
 	}
 	// If it's a function parameter, prefix with input.
-	if parameterNames != nil && parameterNames[name] {
+	if ctx.parameterNames[name] {
 		return "input." + name
 	}
 	return name
 }
 
+// GenerateFunctionBody generates the Rust function body for an IR function.
+// It creates a fresh CodegenContext per call, making it safe for concurrent use.
 func GenerateFunctionBody(fn *ir.Function) string {
-	var body strings.Builder
+	ctx := newCodegenContext()
 
 	// Initialize parameter names set for proper scoping
-	parameterNames = make(map[string]bool)
 	for _, param := range fn.Parameters {
-		parameterNames[param.Name] = true
+		ctx.parameterNames[param.Name] = true
 	}
-
-	// Initialize moved variables tracking
-	movedVariables = make(map[string]string)
-
-	// Initialize declared variables tracking
-	declaredVariables = make(map[string]bool)
 
 	// Mark parameters as declared so they use reassignment instead of new declarations
 	for _, param := range fn.Parameters {
-		declaredVariables[param.Name] = true
+		ctx.declaredVariables[param.Name] = true
 	}
 
 	// Collect all variables that need to be hoisted (parameters that are reassigned)
@@ -62,10 +72,11 @@ func GenerateFunctionBody(fn *ir.Function) string {
 	hoistedParams := collectReassignedParams(fn.Body, fn.Parameters)
 
 	// Initialize hoisted variable names tracking - these should NOT use input. prefix
-	hoistedVariableNames = make(map[string]bool)
 	for _, varName := range hoistedParams {
-		hoistedVariableNames[varName] = true
+		ctx.hoistedVariableNames[varName] = true
 	}
+
+	var body strings.Builder
 
 	// The user-defined handler function (called by the WASI entry point)
 	body.WriteString("fn handler_func(input: Input) -> Output {\n")
@@ -76,11 +87,10 @@ func GenerateFunctionBody(fn *ir.Function) string {
 	}
 
 	for _, op := range fn.Body {
-		body.WriteString(GenerateOperationWithIndent(op, 1))
+		body.WriteString(ctx.generateOperationWithIndent(op, 1))
 	}
 
 	// Don't add default return - functions should have explicit returns
-	// body.WriteString("    Output { result: \"{}\".to_string() }\n")
 	body.WriteString("}\n")
 
 	return body.String()
@@ -117,16 +127,17 @@ func containsReturn(op ir.Operation) bool {
 	return false
 }
 
-// GenerateOperationWithIndent generates Rust code with proper indentation for nested blocks
-func GenerateOperationWithIndent(op ir.Operation, indent int) string {
+// generateOperationWithIndent generates Rust code with proper indentation for nested blocks.
+// This is a method on CodegenContext to avoid global state.
+func (ctx *CodegenContext) generateOperationWithIndent(op ir.Operation, indent int) string {
 	indentStr := strings.Repeat("    ", indent)
 
 	switch op.Type {
 	case "assign":
-		value := GenerateValue(op.Operands[0])
+		value := ctx.generateValue(op.Operands[0])
 
 		// Check if this variable was already declared - if so, use reassignment
-		if declaredVariables[op.Result] {
+		if ctx.declaredVariables[op.Result] {
 			// For reassignments from input.*, check if we should extract strings
 			if strings.HasPrefix(value, "input.") && !strings.Contains(value, "(") && shouldExtractString(op.Result) {
 				return fmt.Sprintf("%s%s = %s.as_str().unwrap_or(\"\").to_string();\n", indentStr, op.Result, value)
@@ -152,7 +163,7 @@ func GenerateOperationWithIndent(op ir.Operation, indent int) string {
 		}
 
 		// Mark this variable as declared
-		declaredVariables[op.Result] = true
+		ctx.declaredVariables[op.Result] = true
 
 		// Check if the value is a CsvDictWriter - if so, make it mutable
 		// and track that the StringIO argument has been moved
@@ -166,7 +177,7 @@ func GenerateOperationWithIndent(op ir.Operation, indent int) string {
 				if end > 0 {
 					stringIOVar := strings.TrimSpace(value[start : start+end])
 					// Track that this variable is now accessed through the writer
-					movedVariables[stringIOVar] = op.Result
+					ctx.movedVariables[stringIOVar] = op.Result
 				}
 			}
 			return fmt.Sprintf("%slet mut %s = %s;\n", indentStr, op.Result, value)
@@ -191,34 +202,34 @@ func GenerateOperationWithIndent(op ir.Operation, indent int) string {
 	case "assign_subscript":
 		// arr[index] = value or dict[key] = value
 		if len(op.Operands) >= 3 {
-			target := GenerateValue(op.Operands[0])
-			index := GenerateValue(op.Operands[1])
-			value := GenerateValue(op.Operands[2])
+			target := ctx.generateValue(op.Operands[0])
+			index := ctx.generateValue(op.Operands[1])
+			value := ctx.generateValue(op.Operands[2])
 			// For JSON objects, use the insert method
 			return fmt.Sprintf("%sif let Some(map) = %s.as_object_mut() {\n%s    map.insert(%s.to_string(), %s.into());\n%s}\n", indentStr, target, indentStr, index, value, indentStr)
 		}
 		return fmt.Sprintf("%s// assign_subscript (missing operands)\n", indentStr)
 	case "return":
 		if len(op.Operands) > 0 {
-			return fmt.Sprintf("%sreturn Output { result: %s };\n", indentStr, GenerateValue(op.Operands[0]))
+			return fmt.Sprintf("%sreturn Output { result: %s };\n", indentStr, ctx.generateValue(op.Operands[0]))
 		}
 		return fmt.Sprintf("%sreturn Output { result: String::new() };\n", indentStr)
 	case "expr":
 		// Expression statement (for side effects)
 		if op.Value != nil {
 			if val, ok := op.Value.(ir.Value); ok {
-				return fmt.Sprintf("%s%s;\n", indentStr, GenerateValue(val))
+				return fmt.Sprintf("%s%s;\n", indentStr, ctx.generateValue(val))
 			}
 		}
 		return fmt.Sprintf("%s// expr\n", indentStr)
 	case "if":
-		return GenerateIfStatement(op, indent)
+		return ctx.generateIfStatement(op, indent)
 	case "for":
-		return GenerateForLoop(op, indent)
+		return ctx.generateForLoop(op, indent)
 	case "while":
-		return GenerateWhileLoop(op, indent)
+		return ctx.generateWhileLoop(op, indent)
 	case "call":
-		return GenerateCall(op)
+		return ctx.generateCall(op)
 	case "break":
 		return fmt.Sprintf("%sbreak;\n", indentStr)
 	case "continue":
@@ -227,15 +238,15 @@ func GenerateOperationWithIndent(op ir.Operation, indent int) string {
 		// Augmented assignment: x += 1, x -= 1, etc.
 		if len(op.Operands) > 0 {
 			rustOp := PyAugOpToRustOp(op.Module) // Module field holds the operator
-			return fmt.Sprintf("%s%s %s= %s;\n", indentStr, op.Result, rustOp, GenerateValue(op.Operands[0]))
+			return fmt.Sprintf("%s%s %s= %s;\n", indentStr, op.Result, rustOp, ctx.generateValue(op.Operands[0]))
 		}
 		return fmt.Sprintf("%s// aug_assign\n", indentStr)
 	case "try":
-		return GenerateTryBlock(op, indent)
+		return ctx.generateTryBlock(op, indent)
 	case "raise":
 		// Raise exception - in Rust we use panic! or Result types
 		if len(op.Operands) > 0 && op.Operands[0].Value != nil {
-			return fmt.Sprintf("%sreturn Err(format!(\"{:?}\", %s));\n", indentStr, GenerateValue(op.Operands[0]))
+			return fmt.Sprintf("%sreturn Err(format!(\"{:?}\", %s));\n", indentStr, ctx.generateValue(op.Operands[0]))
 		}
 		return fmt.Sprintf("%sreturn Err(\"exception raised\".to_string());\n", indentStr)
 	default:
@@ -243,9 +254,9 @@ func GenerateOperationWithIndent(op ir.Operation, indent int) string {
 	}
 }
 
-// GenerateIfStatement generates Rust if/else statements
-// Handles variable hoisting for variables assigned in both branches
-func GenerateIfStatement(op ir.Operation, indent int) string {
+// generateIfStatement generates Rust if/else statements.
+// Handles variable hoisting for variables assigned in both branches.
+func (ctx *CodegenContext) generateIfStatement(op ir.Operation, indent int) string {
 	var result strings.Builder
 	indentStr := strings.Repeat("    ", indent)
 
@@ -271,23 +282,23 @@ func GenerateIfStatement(op ir.Operation, indent int) string {
 			result.WriteString(fmt.Sprintf("%slet mut %s;\n", indentStr, varName))
 		}
 		// Mark this variable as declared so subsequent assignments use = instead of let
-		declaredVariables[varName] = true
+		ctx.declaredVariables[varName] = true
 	}
 
 	// Generate if condition
-	condStr := GenerateValue(op.Condition)
+	condStr := ctx.generateValue(op.Condition)
 	result.WriteString(fmt.Sprintf("%sif %s {\n", indentStr, condStr))
 
 	// Generate if body (with hoisted variable assignment instead of declaration)
 	for _, bodyOp := range op.Body {
-		result.WriteString(GenerateOperationWithIndentHoisted(bodyOp, indent+1, hoistedVars))
+		result.WriteString(ctx.generateOperationWithIndentHoisted(bodyOp, indent+1, hoistedVars))
 	}
 
 	// Generate else if present
 	if op.HasElse && len(op.ElseBody) > 0 {
 		result.WriteString(fmt.Sprintf("%s} else {\n", indentStr))
 		for _, elseOp := range op.ElseBody {
-			result.WriteString(GenerateOperationWithIndentHoisted(elseOp, indent+1, hoistedVars))
+			result.WriteString(ctx.generateOperationWithIndentHoisted(elseOp, indent+1, hoistedVars))
 		}
 	}
 
@@ -295,10 +306,10 @@ func GenerateIfStatement(op ir.Operation, indent int) string {
 	return result.String()
 }
 
-// collectHoistedVariables finds variables that are assigned in both if and else branches
-// It also recursively handles nested if-elif-else chains
-// Also handles cases where else branch returns early (variable only assigned in if branch)
-// Only hoists variables that are likely to be JSON values or need special handling
+// collectHoistedVariables finds variables that are assigned in both if and else branches.
+// It also recursively handles nested if-elif-else chains.
+// Also handles cases where else branch returns early (variable only assigned in if branch).
+// Only hoists variables that are likely to be JSON values or need special handling.
 func collectHoistedVariables(ifBody, elseBody []ir.Operation) []string {
 	ifVars := collectAssignedVars(ifBody)
 	elseVars := collectAssignedVars(elseBody)
@@ -449,8 +460,8 @@ func collectAssignedVars(ops []ir.Operation) map[string]bool {
 	return vars
 }
 
-// collectReassignedParams finds parameters that are reassigned in the function body
-// These need to be hoisted with let mut declarations at function level
+// collectReassignedParams finds parameters that are reassigned in the function body.
+// These need to be hoisted with let mut declarations at function level.
 func collectReassignedParams(ops []ir.Operation, params []ir.Parameter) []string {
 	// Create a set of parameter names
 	paramNames := make(map[string]bool)
@@ -509,15 +520,15 @@ func wrapRHSForJsonVar(value string) string {
 	return value
 }
 
-// GenerateOperationWithIndentHoisted generates Rust code with proper indentation,
-// converting let bindings to assignments for hoisted variables
-func GenerateOperationWithIndentHoisted(op ir.Operation, indent int, hoistedVars []string) string {
+// generateOperationWithIndentHoisted generates Rust code with proper indentation,
+// converting let bindings to assignments for hoisted variables.
+func (ctx *CodegenContext) generateOperationWithIndentHoisted(op ir.Operation, indent int, hoistedVars []string) string {
 	indentStr := strings.Repeat("    ", indent)
 
 	// Check if this is an assignment to a hoisted variable
 	if op.Type == "assign" && isHoisted(op.Result, hoistedVars) {
 		// Generate assignment instead of let binding, but handle JSON values properly
-		value := GenerateValue(op.Operands[0])
+		value := ctx.generateValue(op.Operands[0])
 		// For reassignments from input.*, check if we should extract strings
 		if strings.HasPrefix(value, "input.") && !strings.Contains(value, "(") && shouldExtractString(op.Result) {
 			return fmt.Sprintf("%s%s = %s.as_str().unwrap_or(\"\").to_string();\n", indentStr, op.Result, value)
@@ -535,32 +546,32 @@ func GenerateOperationWithIndentHoisted(op ir.Operation, indent int, hoistedVars
 
 	// For nested if statements, pass hoisted vars down
 	if op.Type == "if" {
-		return GenerateIfStatementHoisted(op, indent, hoistedVars)
+		return ctx.generateIfStatementHoisted(op, indent, hoistedVars)
 	}
 
 	// For other operations, use the standard generator
-	return GenerateOperationWithIndent(op, indent)
+	return ctx.generateOperationWithIndent(op, indent)
 }
 
-// GenerateIfStatementHoisted generates if statements with hoisted variable tracking
-func GenerateIfStatementHoisted(op ir.Operation, indent int, parentHoistedVars []string) string {
+// generateIfStatementHoisted generates if statements with hoisted variable tracking.
+func (ctx *CodegenContext) generateIfStatementHoisted(op ir.Operation, indent int, parentHoistedVars []string) string {
 	var result strings.Builder
 	indentStr := strings.Repeat("    ", indent)
 
 	// Generate if condition
-	condStr := GenerateValue(op.Condition)
+	condStr := ctx.generateValue(op.Condition)
 	result.WriteString(fmt.Sprintf("%sif %s {\n", indentStr, condStr))
 
 	// Generate if body (with hoisted variable assignment instead of declaration)
 	for _, bodyOp := range op.Body {
-		result.WriteString(GenerateOperationWithIndentHoisted(bodyOp, indent+1, parentHoistedVars))
+		result.WriteString(ctx.generateOperationWithIndentHoisted(bodyOp, indent+1, parentHoistedVars))
 	}
 
 	// Generate else if present
 	if op.HasElse && len(op.ElseBody) > 0 {
 		result.WriteString(fmt.Sprintf("%s} else {\n", indentStr))
 		for _, elseOp := range op.ElseBody {
-			result.WriteString(GenerateOperationWithIndentHoisted(elseOp, indent+1, parentHoistedVars))
+			result.WriteString(ctx.generateOperationWithIndentHoisted(elseOp, indent+1, parentHoistedVars))
 		}
 	}
 
@@ -592,8 +603,8 @@ func shouldExtractString(varName string) bool {
 		varName == "value" // common temporary variable
 }
 
-// GenerateForLoop generates Rust for loops
-func GenerateForLoop(op ir.Operation, indent int) string {
+// generateForLoop generates Rust for loops.
+func (ctx *CodegenContext) generateForLoop(op ir.Operation, indent int) string {
 	var result strings.Builder
 	indentStr := strings.Repeat("    ", indent)
 
@@ -610,47 +621,56 @@ func GenerateForLoop(op ir.Operation, indent int) string {
 
 	// Generate for loop header
 	// For serde_json::Value iterators, we need to use as_array().unwrap().iter()
-	iterStr := GenerateValue(op.Iterator)
+	iterStr := ctx.generateValue(op.Iterator)
 	// Check if the iterator is a variable that could be a serde_json::Value
 	if isJsonValueVariable(iterStr) {
-		iterStr = fmt.Sprintf("%s.as_array().unwrap().iter()", iterStr)
+		iterStr = fmt.Sprintf("%s.as_array().unwrap_or(&vec![]).iter()", iterStr)
 	}
 	result.WriteString(fmt.Sprintf("%sfor %s in %s {\n", indentStr, targetStr, iterStr))
 
 	// Generate for body
 	for _, bodyOp := range op.Body {
-		result.WriteString(GenerateOperationWithIndent(bodyOp, indent+1))
+		result.WriteString(ctx.generateOperationWithIndent(bodyOp, indent+1))
 	}
 
 	result.WriteString(fmt.Sprintf("%s}\n", indentStr))
 	return result.String()
 }
 
-// GenerateWhileLoop generates Rust while loops
-func GenerateWhileLoop(op ir.Operation, indent int) string {
+// generateWhileLoop generates Rust while loops.
+func (ctx *CodegenContext) generateWhileLoop(op ir.Operation, indent int) string {
 	var result strings.Builder
 	indentStr := strings.Repeat("    ", indent)
 
 	// Generate while loop header
-	condStr := GenerateValue(op.Condition)
+	condStr := ctx.generateValue(op.Condition)
 	result.WriteString(fmt.Sprintf("%swhile %s {\n", indentStr, condStr))
 
 	// Generate while body
 	for _, bodyOp := range op.Body {
-		result.WriteString(GenerateOperationWithIndent(bodyOp, indent+1))
+		result.WriteString(ctx.generateOperationWithIndent(bodyOp, indent+1))
 	}
 
 	result.WriteString(fmt.Sprintf("%s}\n", indentStr))
 	return result.String()
 }
 
+// GenerateOperation generates Rust code for a single operation (public wrapper).
 func GenerateOperation(op ir.Operation) string {
-	return GenerateOperationWithIndent(op, 1)
+	ctx := newCodegenContext()
+	return ctx.generateOperationWithIndent(op, 1)
 }
 
-// GenerateTryBlock generates Rust code for try/except blocks
-// For deterministic code, we convert try/except to Result/Option patterns
-func GenerateTryBlock(op ir.Operation, indent int) string {
+// GenerateOperationWithIndent is the public wrapper for backward compatibility.
+// New code should prefer using a CodegenContext directly.
+func GenerateOperationWithIndent(op ir.Operation, indent int) string {
+	ctx := newCodegenContext()
+	return ctx.generateOperationWithIndent(op, indent)
+}
+
+// generateTryBlock generates Rust code for try/except blocks.
+// For deterministic code, we convert try/except to Result/Option patterns.
+func (ctx *CodegenContext) generateTryBlock(op ir.Operation, indent int) string {
 	var result strings.Builder
 	indentStr := strings.Repeat("    ", indent)
 
@@ -665,20 +685,20 @@ func GenerateTryBlock(op ir.Operation, indent int) string {
 			// This continue follows some operation - wrap the previous operation in success check
 			if i == 1 { // pattern: operation; continue
 				prevOp := bodyOps[0]
-				if prevOp.Type == "assign" && strings.Contains(GenerateValue(prevOp.Operands[0]), "parse::<") {
+				if prevOp.Type == "assign" && strings.Contains(ctx.generateValue(prevOp.Operands[0]), "parse::<") {
 					// This is a parsing assignment followed by continue
 					// Generate as: if let Ok(val) = parse_expr { assign; continue; }
 					// But for now, just generate both and accept the unreachable warning
-					result.WriteString(GenerateOperationWithIndent(prevOp, indent))
-					result.WriteString(GenerateOperationWithIndent(bodyOp, indent))
+					result.WriteString(ctx.generateOperationWithIndent(prevOp, indent))
+					result.WriteString(ctx.generateOperationWithIndent(bodyOp, indent))
 				} else {
-					result.WriteString(GenerateOperationWithIndent(bodyOp, indent))
+					result.WriteString(ctx.generateOperationWithIndent(bodyOp, indent))
 				}
 			} else {
-				result.WriteString(GenerateOperationWithIndent(bodyOp, indent))
+				result.WriteString(ctx.generateOperationWithIndent(bodyOp, indent))
 			}
 		} else {
-			result.WriteString(GenerateOperationWithIndent(bodyOp, indent))
+			result.WriteString(ctx.generateOperationWithIndent(bodyOp, indent))
 		}
 	}
 
@@ -690,7 +710,7 @@ func GenerateTryBlock(op ir.Operation, indent int) string {
 	if len(op.FinallyBody) > 0 {
 		result.WriteString(fmt.Sprintf("%s// finally\n", indentStr))
 		for _, fOp := range op.FinallyBody {
-			result.WriteString(GenerateOperationWithIndent(fOp, indent))
+			result.WriteString(ctx.generateOperationWithIndent(fOp, indent))
 		}
 	}
 
