@@ -45,6 +45,7 @@ Go from idea → global API in under 60 seconds.
 		NewRollbackCmd(),
 		NewEnvCmd(),
 		NewSecretsCmd(),
+		NewScheduleCmd(),
 		NewCompletionCmd(root),
 	)
 

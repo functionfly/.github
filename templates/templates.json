@@ -1,0 +1,58 @@
+{
+  "templates": [
+    {
+      "id": "hello-world",
+      "name": "Hello World",
+      "description": "A simple function that returns a greeting. Perfect for getting started.",
+      "category": "getting-started",
+      "runtime": "python3.11",
+      "files": ["functionfly.jsonc", "main.py"]
+    },
+    {
+      "id": "http-api",
+      "name": "REST API",
+      "description": "A complete RESTful API with CRUD operations for user management.",
+      "category": "api",
+      "runtime": "python3.11",
+      "files": ["functionfly.jsonc", "main.py"]
+    },
+    {
+      "id": "cron-job",
+      "name": "Scheduled Job",
+      "description": "A function that runs on a schedule. Use for periodic tasks like cleanup or reports.",
+      "category": "automation",
+      "runtime": "python3.11",
+      "files": ["functionfly.jsonc", "main.py"]
+    },
+    {
+      "id": "webhook",
+      "name": "Webhook Handler",
+      "description": "Handle incoming webhooks from GitHub, Stripe, Slack, and other services.",
+      "category": "integrations",
+      "runtime": "python3.11",
+      "files": ["functionfly.jsonc", "main.py"]
+    }
+  ],
+  "categories": [
+    {
+      "id": "getting-started",
+      "name": "Getting Started",
+      "description": "Simple templates to help you get started"
+    },
+    {
+      "id": "api",
+      "name": "API & HTTP",
+      "description": "RESTful API and HTTP handling templates"
+    },
+    {
+      "id": "automation",
+      "name": "Automation",
+      "description": "Scheduled tasks and automation templates"
+    },
+    {
+      "id": "integrations",
+      "name": "Integrations",
+      "description": "Third-party service integrations"
+    }
+  ]
+}

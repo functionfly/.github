@@ -129,6 +129,17 @@ type EnvironmentVariable struct {
 	IsSecret bool   `json:"is_secret" db:"is_secret"`
 }
 
+// ScheduleConfig represents a function schedule configuration
+type ScheduleConfig struct {
+	ID        int64     `json:"id" db:"-"`
+	Cron      string    `json:"cron" db:"cron"`
+	Timezone  string    `json:"timezone" db:"timezone"`
+	Enabled   bool      `json:"enabled" db:"enabled"`
+	LastRun   time.Time `json:"last_run" db:"last_run"`
+	NextRun   time.Time `json:"next_run" db:"next_run"`
+	RunOnDeploy bool   `json:"run_on_deploy" db:"run_on_deploy"`
+}
+
 // FunctionConfig represents a user-created function configuration
 type FunctionConfig struct {
 	ID                uuid.UUID              `json:"id" db:"id"`
@@ -141,6 +152,7 @@ type FunctionConfig struct {
 	EnvVars           []EnvironmentVariable  `json:"env_vars" db:"env_vars"`
 	Version           string                 `json:"version" db:"version"`
 	Status            string                 `json:"status" db:"status"` // "draft", "deploying", "deployed", "failed"
+	Schedule          *ScheduleConfig        `json:"schedule,omitempty" db:"schedule"` // Cron schedule configuration
 	PlaygroundEnabled bool                   `json:"playground_enabled" db:"playground_enabled"`
 	PlaygroundConfig  map[string]interface{} `json:"playground_config" db:"playground_config"`
 	Capabilities      []string               `json:"capabilities" db:"capabilities"` // Declared capabilities for sandbox enforcement

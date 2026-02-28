@@ -1,0 +1,9 @@
+{
+  "name": "cron-job",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "entry": "main.py",
+  "memory_mb": 128,
+  "timeout_ms": 30000,
+  "schedule": "0 * * * *"
+}
