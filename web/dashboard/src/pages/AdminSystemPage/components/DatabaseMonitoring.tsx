@@ -286,7 +286,7 @@ export function DatabaseMonitoring() {
           <CardTitle>Query Performance Trends</CardTitle>
         </CardHeader>
         <CardContent className="card-content">
-          <div className="h-48 flex items-center justify-center border border-dashed border-white/8 rounded-lg">
+          <div className="h-48 flex items-center justify-center border border-dashed border-border-default rounded-lg">
             <div className="text-center">
               <BarChart3 className="w-12 h-12 text-text-secondary mx-auto mb-3" />
               <p className="text-text-secondary">Performance chart visualization</p>

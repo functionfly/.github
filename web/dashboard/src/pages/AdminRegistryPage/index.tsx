@@ -370,7 +370,7 @@ export function AdminRegistryPage() {
         <StatCard
           title="Total Functions"
           value={stats.total_functions}
-          icon={<Code className="w-5 h-5 text-[#6366f1]" />}
+          icon={<Code className="w-5 h-5 text-brand-500" />}
           trend="neutral"
           change={{ value: 0, label: "in registry" }}
         />
@@ -416,7 +416,7 @@ export function AdminRegistryPage() {
               <SelectTrigger className="w-full sm:w-[150px] bg-bg-secondary border-border-default text-text-primary">
                 <SelectValue placeholder="Visibility" />
               </SelectTrigger>
-              <SelectContent className="bg-bg-tertiary border-white/8">
+              <SelectContent className="bg-bg-tertiary border-border-default">
                 <SelectItem value="all">All Visibility</SelectItem>
                 <SelectItem value="public">Public</SelectItem>
                 <SelectItem value="private">Private</SelectItem>
@@ -427,7 +427,7 @@ export function AdminRegistryPage() {
               <SelectTrigger className="w-full sm:w-[180px] bg-bg-secondary border-border-default text-text-primary">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
-              <SelectContent className="bg-bg-tertiary border-white/8">
+              <SelectContent className="bg-bg-tertiary border-border-default">
                 {categories.map((cat) => (
                   <SelectItem key={cat} value={cat}>
                     {cat}
@@ -439,7 +439,7 @@ export function AdminRegistryPage() {
               <SelectTrigger className="w-full sm:w-[150px] bg-bg-secondary border-border-default text-text-primary">
                 <SelectValue placeholder="Flag Status" />
               </SelectTrigger>
-              <SelectContent className="bg-bg-tertiary border-white/8">
+              <SelectContent className="bg-bg-tertiary border-border-default">
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="flagged">Flagged</SelectItem>
                 <SelectItem value="unflagged">Unflagged</SelectItem>
@@ -480,13 +480,13 @@ export function AdminRegistryPage() {
               {filteredFunctions.map((fn) => (
                 <div
                   key={fn.id}
-                  className={`flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-white/8 hover:bg-bg-hover transition-colors ${
+                  className={`flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-default hover:bg-bg-hover transition-colors ${
                     fn.is_flagged ? "border-red-500/30" : ""
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-[#6366f1]/10 flex items-center justify-center">
-                      <Code className="w-5 h-5 text-[#6366f1]" />
+                    <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center">
+                      <Code className="w-5 h-5 text-brand-500" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -529,7 +529,7 @@ export function AdminRegistryPage() {
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-bg-tertiary border-white/8">
+                      <DropdownMenuContent className="bg-bg-tertiary border-border-default">
                         <DropdownMenuItem
                           className="text-text-primary hover:bg-bg-hover"
                           onClick={() => handleViewDetails(fn)}
@@ -556,7 +556,7 @@ export function AdminRegistryPage() {
                                   handleVisibilityChange(fn, v);
                                 }}
                                 className={`px-2 py-1 text-xs hover:bg-white/10 ${
-                                  fn.visibility === v ? "text-[#6366f1]" : "text-text-muted"
+                                  fn.visibility === v ? "text-brand-500" : "text-text-muted"
                                 }`}
                               >
                                 {v}
@@ -606,13 +606,13 @@ export function AdminRegistryPage() {
 
       {/* Function Details Dialog */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="bg-bg-tertiary border-white/8 max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="registry-function-details-desc">
+        <DialogContent className="bg-bg-tertiary border-border-default max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="registry-function-details-desc">
           <DialogDescription id="registry-function-details-desc" className="sr-only">
             View details and versions for this registry function.
           </DialogDescription>
           <DialogHeader>
             <DialogTitle className="text-text-primary flex items-center gap-2">
-              <Code className="w-5 h-5 text-[#6366f1]" />
+              <Code className="w-5 h-5 text-brand-500" />
               {selectedFunction?.name}
             </DialogTitle>
           </DialogHeader>
@@ -725,7 +725,7 @@ export function AdminRegistryPage() {
                     {functionDetails.versions.map((version) => (
                       <div
                         key={version.id}
-                        className="p-4 bg-bg-secondary rounded-lg border border-white/8"
+                        className="p-4 bg-bg-secondary rounded-lg border border-border-default"
                       >
                         <div className="flex justify-between items-start">
                           <div>
@@ -778,13 +778,13 @@ export function AdminRegistryPage() {
 
       {/* Edit Function Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="bg-bg-tertiary border-white/8 max-w-lg" aria-describedby="registry-edit-desc">
+        <DialogContent className="bg-bg-tertiary border-border-default max-w-lg" aria-describedby="registry-edit-desc">
           <DialogDescription id="registry-edit-desc" className="sr-only">
             Edit registry function title, description, category, visibility, and pricing.
           </DialogDescription>
           <DialogHeader>
             <DialogTitle className="text-text-primary flex items-center gap-2">
-              <Pencil className="w-5 h-5 text-[#6366f1]" />
+              <Pencil className="w-5 h-5 text-brand-500" />
               Edit Registry Function
             </DialogTitle>
           </DialogHeader>
@@ -843,7 +843,7 @@ export function AdminRegistryPage() {
                   <SelectTrigger className="bg-bg-secondary border-border-default text-text-primary">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
-                  <SelectContent className="bg-bg-tertiary border-white/8">
+                  <SelectContent className="bg-bg-tertiary border-border-default">
                     <SelectItem value="Uncategorized">Uncategorized</SelectItem>
                     {categories.filter((c) => c !== "All Categories").map((cat) => (
                       <SelectItem key={cat} value={cat}>
@@ -864,7 +864,7 @@ export function AdminRegistryPage() {
                   <SelectTrigger className="bg-bg-secondary border-border-default text-text-primary">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-bg-tertiary border-white/8">
+                  <SelectContent className="bg-bg-tertiary border-border-default">
                     <SelectItem value="public">Public</SelectItem>
                     <SelectItem value="private">Private</SelectItem>
                     <SelectItem value="unlisted">Unlisted</SelectItem>
@@ -895,7 +895,7 @@ export function AdminRegistryPage() {
             <Button
               onClick={handleSaveEdit}
               disabled={updateFunctionMutation.isPending || !functionToEdit}
-              className="bg-[#6366f1] hover:bg-[#5855eb]"
+              className="bg-brand-500 hover:bg-brand-600 text-white"
             >
               {updateFunctionMutation.isPending ? (
                 <>
@@ -912,7 +912,7 @@ export function AdminRegistryPage() {
 
       {/* Flag Dialog */}
       <Dialog open={isFlagDialogOpen} onOpenChange={setIsFlagDialogOpen}>
-        <DialogContent className="bg-bg-tertiary border-white/8" aria-describedby="registry-flag-desc">
+        <DialogContent className="bg-bg-tertiary border-border-default" aria-describedby="registry-flag-desc">
           <DialogDescription id="registry-flag-desc" className="sr-only">
             Flag or unflag this function for review.
           </DialogDescription>
@@ -963,13 +963,13 @@ export function AdminRegistryPage() {
 
       {/* Pricing Dialog */}
       <Dialog open={isPricingDialogOpen} onOpenChange={setIsPricingDialogOpen}>
-        <DialogContent className="bg-bg-tertiary border-white/8" aria-describedby="registry-pricing-desc">
+        <DialogContent className="bg-bg-tertiary border-border-default" aria-describedby="registry-pricing-desc">
           <DialogDescription id="registry-pricing-desc" className="sr-only">
             Set price per call for this registry function.
           </DialogDescription>
           <DialogHeader>
             <DialogTitle className="text-text-primary flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-[#6366f1]" />
+              <DollarSign className="w-5 h-5 text-brand-500" />
               Set Pricing
             </DialogTitle>
           </DialogHeader>
@@ -1004,7 +1004,7 @@ export function AdminRegistryPage() {
             <Button
               onClick={handleUpdatePricing}
               disabled={updatePricingMutation.isPending || !newPrice}
-              className="bg-[#6366f1] hover:bg-[#5855eb]"
+              className="bg-brand-500 hover:bg-brand-600 text-white"
             >
               {updatePricingMutation.isPending ? "Updating..." : "Update Pricing"}
             </Button>
@@ -1014,7 +1014,7 @@ export function AdminRegistryPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="bg-bg-tertiary border-white/8" aria-describedby="registry-delete-desc">
+        <DialogContent className="bg-bg-tertiary border-border-default" aria-describedby="registry-delete-desc">
           <DialogDescription id="registry-delete-desc" className="sr-only">
             Confirm permanent deletion of this registry function.
           </DialogDescription>

@@ -163,7 +163,7 @@ export function AnalyticsManagement() {
           {settings?.services && settings.services.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {settings.services.map((service, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border border-white/8 rounded-lg">
+                <div key={index} className="flex items-center justify-between p-4 border border-border-default rounded-lg">
                   <div className="flex items-center gap-3">
                     {getServiceStatusIcon(service.status)}
                     <div>
@@ -271,7 +271,7 @@ export function AnalyticsManagement() {
           </div>
 
           {/* Save Button */}
-          <div className="flex justify-end pt-4 border-t border-white/8">
+          <div className="flex justify-end pt-4 border-t border-border-default">
             <Button
               onClick={handleSave}
               disabled={saving}

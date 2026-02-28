@@ -1,0 +1,288 @@
+/* ==========================================================================
+   FunctionFly Admin Dashboard Styles
+   Theme-aware admin UI components
+   ========================================================================== */
+
+/* ==========================================================================
+   Admin Layout
+   ========================================================================== */
+
+.admin-page {
+  min-height: 100%;
+}
+
+/* ==========================================================================
+   Admin Cards - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .glass-card {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .glass-card:hover {
+  background: rgba(255, 255, 255, 1) !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ==========================================================================
+   Admin Stat Cards - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-theme="light"] .hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ==========================================================================
+   Admin Tables - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .divide-y > * {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .border-border-subtle {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ==========================================================================
+   Admin Badges - Light Mode
+   ========================================================================== */
+
+/* Ensure badge text is readable in light mode */
+[data-theme="light"] .bg-emerald-500\/10 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+}
+
+[data-theme="light"] .bg-red-500\/10 {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+[data-theme="light"] .bg-blue-500\/10 {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+[data-theme="light"] .bg-purple-500\/10 {
+  background-color: rgba(168, 85, 247, 0.1) !important;
+}
+
+[data-theme="light"] .bg-amber-500\/10 {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+}
+
+[data-theme="light"] .bg-slate-500\/10 {
+  background-color: rgba(100, 116, 139, 0.1) !important;
+}
+
+[data-theme="light"] .bg-violet-500\/10 {
+  background-color: rgba(139, 92, 246, 0.1) !important;
+}
+
+[data-theme="light"] .bg-cyan-500\/10 {
+  background-color: rgba(6, 182, 212, 0.1) !important;
+}
+
+[data-theme="light"] .bg-teal-500\/10 {
+  background-color: rgba(20, 184, 166, 0.1) !important;
+}
+
+[data-theme="light"] .bg-pink-500\/10 {
+  background-color: rgba(236, 72, 153, 0.1) !important;
+}
+
+[data-theme="light"] .bg-orange-500\/10 {
+  background-color: rgba(249, 115, 22, 0.1) !important;
+}
+
+[data-theme="light"] .bg-indigo-500\/10 {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+}
+
+/* ==========================================================================
+   Admin Dialogs - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .bg-bg-tertiary {
+  background-color: #f8f9fa !important;
+}
+
+[data-theme="light"] .border-border-default {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ==========================================================================
+   Admin Tabs - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] [data-state="active"].data-\[state\=active\]\:bg-brand-500 {
+  background-color: #6366f1 !important;
+  color: white !important;
+}
+
+/* ==========================================================================
+   Admin Sidebar - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .bg-bg-primary {
+  background-color: #fafafa !important;
+}
+
+[data-theme="light"] .border-border-subtle {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ==========================================================================
+   Admin Charts - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .recharts-cartesian-grid-horizontal line,
+[data-theme="light"] .recharts-cartesian-grid-vertical line {
+  stroke: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .recharts-text {
+  fill: #52525f !important;
+}
+
+/* ==========================================================================
+   Admin Status Indicators
+   ========================================================================== */
+
+.admin-status-healthy {
+  color: #10b981;
+}
+
+.admin-status-degraded {
+  color: #f59e0b;
+}
+
+.admin-status-down {
+  color: #ef4444;
+}
+
+[data-theme="light"] .admin-status-healthy {
+  color: #059669;
+}
+
+[data-theme="light"] .admin-status-degraded {
+  color: #d97706;
+}
+
+[data-theme="light"] .admin-status-down {
+  color: #dc2626;
+}
+
+/* ==========================================================================
+   Admin Hover States - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .hover\:bg-bg-hover:hover {
+  background-color: #f0f0f5 !important;
+}
+
+[data-theme="light"] .hover\:bg-white\/5:hover {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+/* ==========================================================================
+   Admin Skeleton Loading - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ==========================================================================
+   Admin Code/Pre blocks - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] pre.text-text-primary {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #1a1a2e !important;
+}
+
+/* ==========================================================================
+   Admin Dropdown Menus - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .bg-bg-tertiary {
+  background-color: #ffffff !important;
+}
+
+[data-theme="light"] [role="menuitem"]:hover,
+[data-theme="light"] [data-highlighted] {
+  background-color: #f0f0f5 !important;
+}
+
+/* ==========================================================================
+   Admin Input Fields - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .bg-bg-secondary {
+  background-color: #ffffff !important;
+}
+
+[data-theme="light"] input.bg-bg-secondary,
+[data-theme="light"] .bg-bg-secondary input {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #1a1a2e !important;
+}
+
+/* ==========================================================================
+   Admin Select Triggers - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] [role="combobox"] {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #1a1a2e !important;
+}
+
+/* ==========================================================================
+   Admin Progress Bars - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .bg-brand-500 {
+  background-color: #6366f1 !important;
+}
+
+/* ==========================================================================
+   Admin System Health - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ==========================================================================
+   Admin Feedback Page - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .hover\:bg-white\/5:hover {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+/* ==========================================================================
+   Admin Newsletter Page - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .border.rounded-lg {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ==========================================================================
+   Admin Redirect Page - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .text-muted-foreground {
+  color: #52525f !important;
+}

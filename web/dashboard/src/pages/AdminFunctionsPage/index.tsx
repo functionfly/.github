@@ -71,11 +71,11 @@ export type AdminFunctionListItem =
     });
 
 const statusColors: Record<string, string> = {
-  draft: "bg-gray-500/10 text-text-secondary",
-  deploying: "bg-yellow-500/10 text-yellow-400",
-  deployed: "bg-emerald-500/10 text-emerald-400",
-  failed: "bg-red-500/10 text-red-400",
-  published: "bg-emerald-500/10 text-emerald-400",
+  draft: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
+  deploying: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  deployed: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  failed: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+  published: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
 };
 
 const statusIcons: Record<string, React.ReactNode> = {
@@ -242,25 +242,26 @@ export function AdminFunctionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/admin')}
-          className="text-text-muted hover:text-text-primary hover:bg-bg-hover"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Dashboard
-        </Button>
-        <div className="flex-1 text-center">
-          <h1 className="text-2xl font-bold text-text-primary">Functions</h1>
-          <p className="text-text-secondary">
-            Manage all functions across all tenants
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/admin')}
+            className="text-text-muted hover:text-text-primary hover:bg-bg-hover"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-text-primary">Functions</h1>
+            <p className="text-sm text-text-secondary">Manage all functions across all tenants</p>
+          </div>
         </div>
         <Button
           onClick={() => refetch()}
           variant="outline"
-          className="border-border-subtle hover:bg-bg-hover"
+          size="sm"
+          className="border-border-default hover:bg-bg-hover text-text-secondary"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
@@ -272,7 +273,7 @@ export function AdminFunctionsPage() {
         <StatCard
           title="Total Functions"
           value={stats.total}
-          icon={<Code className="w-5 h-5 text-[#6366f1]" />}
+          icon={<Code className="w-5 h-5 text-brand-500" />}
           trend="neutral"
           change={{ value: 0, label: "total" }}
         />
@@ -365,8 +366,8 @@ export function AdminFunctionsPage() {
                   className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-subtle hover:bg-bg-hover transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-[#6366f1]/10 flex items-center justify-center">
-                      <Code className="w-5 h-5 text-[#6366f1]" />
+                    <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center">
+                      <Code className="w-5 h-5 text-brand-500" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -464,7 +465,7 @@ export function AdminFunctionsPage() {
 
       {/* Function Details Dialog */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="bg-bg-tertiary border-border-subtle max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-bg-tertiary border-border-default max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-text-primary flex items-center gap-2">
               <Code className="w-5 h-5 text-[#6366f1]" />
@@ -639,10 +640,10 @@ export function AdminFunctionsPage() {
                           <Badge
                             className={
                               deployment.status === "success"
-                                ? "bg-emerald-500/10 text-emerald-400"
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                                 : deployment.status === "failed"
-                                ? "bg-red-500/10 text-red-400"
-                                : "bg-yellow-500/10 text-yellow-400"
+                                ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
+                                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                             }
                           >
                             {deployment.status}
@@ -683,7 +684,7 @@ export function AdminFunctionsPage() {
                           log.level === "error"
                             ? "bg-red-500/5 border-red-500/20"
                             : log.level === "warn"
-                            ? "bg-yellow-500/5 border-yellow-500/20"
+                            ? "bg-amber-500/5 border-amber-500/20"
                             : "bg-bg-secondary border-border-subtle"
                         }`}
                       >
@@ -692,10 +693,10 @@ export function AdminFunctionsPage() {
                             variant="outline"
                             className={
                               log.level === "error"
-                                ? "text-red-400 border-red-400/30"
+                                ? "text-red-600 dark:text-red-400 border-red-500/30"
                                 : log.level === "warn"
-                                ? "text-yellow-400 border-yellow-400/30"
-                                : "text-blue-400 border-blue-400/30"
+                                ? "text-amber-600 dark:text-amber-400 border-amber-500/30"
+                                : "text-blue-600 dark:text-blue-400 border-blue-500/30"
                             }
                           >
                             {log.level}
@@ -726,10 +727,10 @@ export function AdminFunctionsPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="bg-bg-tertiary border-border-subtle">
+        <DialogContent className="bg-bg-tertiary border-border-default">
           <DialogHeader>
             <DialogTitle className="text-text-primary flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-400" />
+              <AlertTriangle className="w-5 h-5 text-red-500" />
               Delete Function
             </DialogTitle>
           </DialogHeader>
@@ -742,7 +743,7 @@ export function AdminFunctionsPage() {
             <Button
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
-              className="border-border-subtle text-text-primary hover:bg-bg-hover"
+              className="border-border-default text-text-primary hover:bg-bg-hover"
             >
               Cancel
             </Button>
@@ -750,7 +751,7 @@ export function AdminFunctionsPage() {
               variant="destructive"
               onClick={confirmDelete}
               disabled={deleteFunctionMutation.isPending}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               {deleteFunctionMutation.isPending ? "Deleting..." : "Delete"}
             </Button>
