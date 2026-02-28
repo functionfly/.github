@@ -16,6 +16,9 @@ use crate::security::SecurityMonitor;
 /// The `config` parameter is used to enforce the network whitelist
 /// (`network_whitelist` + `strict_network_whitelist`) so that the capability
 /// system's security model is fully applied at the host-function level.
+///
+/// A single `reqwest::blocking::Client` is created at registration time and
+/// reused across all requests, enabling connection pooling and keep-alive.
 pub fn add_fetch_function(
     linker: &mut wasmtime::Linker<WasiP1Ctx>,
     security_monitor: Arc<SecurityMonitor>,
@@ -32,6 +35,19 @@ pub fn add_fetch_function(
     // every request.
     let whitelist: HashSet<String> = config.network_whitelist.iter().cloned().collect();
     let strict_whitelist = config.strict_network_whitelist;
+
+    // Create a single HTTP client at registration time for connection pooling.
+    // NOTE: make_http_request() runs inside tokio::task::spawn_blocking, so using
+    // reqwest::blocking is acceptable. However, the blocking thread pool should be
+    // sized appropriately (tokio default: 512 threads) to handle concurrent fetch
+    // calls. For very high concurrency, consider switching to an async client with
+    // a dedicated tokio runtime.
+    let http_client = Arc::new(
+        reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .unwrap_or_else(|_| reqwest::blocking::Client::new()),
+    );
 
     linker.func_wrap(
         "functionfly",
@@ -95,8 +111,8 @@ pub fn add_fetch_function(
                 HashMap::new()
             };
 
-            // Make HTTP request
-            let result = make_http_request(&method, &url, &headers, body.as_deref());
+            // Make HTTP request using the shared client (connection pooling).
+            let result = make_http_request(&http_client, &method, &url, &headers, body.as_deref());
 
             match result {
                 Ok(response_body) => {
@@ -193,16 +209,17 @@ fn is_host_in_whitelist(host: &str, whitelist: &HashSet<String>) -> bool {
     false
 }
 
-/// Make an HTTP request
+/// Make an HTTP request using the provided shared client.
+///
+/// The client is created once at linker registration time (see `add_fetch_function`)
+/// to enable connection pooling and keep-alive reuse across requests.
 fn make_http_request(
+    client: &reqwest::blocking::Client,
     method: &str,
     url: &str,
     headers: &HashMap<String, String>,
     body: Option<&str>,
 ) -> anyhow::Result<String> {
-    // Create blocking HTTP client
-    let client = reqwest::blocking::Client::new();
-
     // Build the request
     let mut request_builder = match method.to_uppercase().as_str() {
         "GET" => client.get(url),

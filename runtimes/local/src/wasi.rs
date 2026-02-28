@@ -487,6 +487,7 @@ mod tests {
             max_output_bytes: 1024 * 1024,
             max_input_bytes: 1024 * 1024,
             microvm_fallback_allowed: true,
+            cors_allow_origin: "*".to_string(),
         };
         let ctx = WasiContext::new(&config, "test@1.0.0".to_string());
         assert!(ctx.is_ok());
@@ -541,6 +542,7 @@ mod tests {
             max_output_bytes: 1024 * 1024,
             max_input_bytes: 1024 * 1024,
             microvm_fallback_allowed: true,
+            cors_allow_origin: "*".to_string(),
         };
 
         let ctx = WasiContext::new(&config, "test@1.0.0".to_string());
@@ -598,6 +600,7 @@ mod tests {
             max_output_bytes: 1024 * 1024,
             max_input_bytes: 1024 * 1024,
             microvm_fallback_allowed: true,
+            cors_allow_origin: "*".to_string(),
         };
         let kv_store = Some(Arc::new(RwLock::new(crate::kv::KVStore::new(1000))));
         let logger = crate::logging::init_structured_logging(false);
@@ -657,6 +660,7 @@ mod tests {
             max_output_bytes: 1024 * 1024,
             max_input_bytes: 1024 * 1024,
             microvm_fallback_allowed: true,
+            cors_allow_origin: "*".to_string(),
         };
         let kv_store = Some(Arc::new(RwLock::new(crate::kv::KVStore::new(1000))));
         let logger = crate::logging::init_structured_logging(false);

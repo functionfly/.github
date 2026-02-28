@@ -3,6 +3,14 @@
 //! This module provides a simple in-memory key-value store that functions can use
 //! when they declare the "kv" capability. The store supports basic get/set operations
 //! with optional TTL (time-to-live) for automatic expiration.
+//!
+//! ## Expiry cleanup strategy
+//!
+//! Previously `cleanup_expired()` was called on every `get()` and `set()`, making
+//! each operation O(n) in the number of entries. The store now uses a background
+//! task (started via `KVStore::start_background_cleanup`) that runs every 30 seconds
+//! to remove expired entries. Individual `get()` / `set()` calls still check
+//! expiry for the specific key they touch, but no longer scan the entire store.
 
 use anyhow::Result;
 use std::collections::{HashMap, VecDeque};
@@ -38,11 +46,12 @@ impl KVStore {
         }
     }
 
-    /// Get a value by key, returning None if not found or expired
+    /// Get a value by key, returning None if not found or expired.
+    ///
+    /// Only checks expiry for the requested key — does not scan the entire store.
+    /// Full expired-entry cleanup is handled by the background task started via
+    /// `SharedKVStore::start_background_cleanup`.
     pub fn get(&mut self, key: &str) -> Option<String> {
-        // Clean up expired entries while we're at it
-        self.cleanup_expired();
-
         if let Some(entry) = self.store.get_mut(key) {
             // Check if expired
             if let Some(expires_at) = entry.expires_at {
@@ -66,11 +75,11 @@ impl KVStore {
         }
     }
 
-    /// Set a value by key with optional TTL in seconds
+    /// Set a value by key with optional TTL in seconds.
+    ///
+    /// Does not scan the entire store for expired entries on every call.
+    /// Expired-entry cleanup is handled by the background task.
     pub fn set(&mut self, key: String, value: String, ttl_seconds: Option<u64>) -> Result<()> {
-        // Clean up expired entries first
-        self.cleanup_expired();
-
         // Check if we're at capacity and need to evict
         if self.store.len() >= self.max_entries && !self.store.contains_key(&key) {
             // LRU eviction: remove the least recently used entry
@@ -181,6 +190,29 @@ impl KVStore {
 
 /// Thread-safe wrapper for KVStore
 pub type SharedKVStore = Arc<RwLock<KVStore>>;
+
+/// Start a background task that periodically removes expired KV entries.
+///
+/// This replaces the previous approach of calling `cleanup_expired()` on every
+/// `get()` and `set()` (which was O(n) per operation). The background task runs
+/// every 30 seconds and is the only place that scans the full store.
+///
+/// Returns the `JoinHandle` so the caller can abort the task on shutdown.
+pub fn start_background_cleanup(store: SharedKVStore) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
+        loop {
+            interval.tick().await;
+            let mut kv = store.write().await;
+            let before = kv.store.len();
+            kv.cleanup_expired();
+            let after = kv.store.len();
+            if before != after {
+                tracing::debug!("KV background cleanup: removed {} expired entries", before - after);
+            }
+        }
+    })
+}
 
 /// Statistics about the KV store
 #[derive(Debug, Clone)]

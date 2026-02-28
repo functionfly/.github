@@ -35,6 +35,7 @@ url = "2.5.8"  # For URL parsing and validation
 regex = "1.12.3"  # For security pattern matching
 tempfile = "3.25.0"  # For temporary directory creation in tests
 wat = "1.245.1"  # WAT to WASM compilation (wrapper generator)
+prometheus = { version = "0.13", features = ["process"] }  # Prometheus metrics export
 
 [dev-dependencies]
 

@@ -250,6 +250,7 @@ mod tests {
             max_output_bytes: 1024 * 1024,
             max_input_bytes: 1024 * 1024,
             microvm_fallback_allowed: true,
+            cors_allow_origin: "*".to_string(),
         };
 
         let engine = PythonEngine::new(config);

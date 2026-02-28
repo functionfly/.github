@@ -1,4 +1,21 @@
 //! Instance pool for reusing warm Wasm instances with memory optimization.
+//!
+//! ## Important limitation
+//!
+//! `InstancePool` currently tracks *metadata* about pooled instances (memory
+//! usage, reuse count, last-used time) but does **not** store the actual
+//! `wasmtime::Instance` or `wasmtime::Store` objects. This means the pool
+//! does not provide true warm-instance reuse — each execution still creates a
+//! fresh `Store` and instantiates the module from scratch.
+//!
+//! The primary performance benefit today comes from the compiled `Module` cache
+//! in `WasmEngine` (see `engine.rs`), which avoids the expensive compilation
+//! step. True instance pooling would require storing pre-instantiated
+//! `Store<WasiP1Ctx>` + `Instance` pairs, which is complex because WASI state
+//! (stdin/stdout pipes, environment variables) must be reset between executions.
+//!
+//! The pool is retained for its memory-pressure tracking, LRU eviction logic,
+//! and as a foundation for future true instance pooling.
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
@@ -88,38 +105,67 @@ impl InstancePool {
         self
     }
 
-    /// Start background pruning task
-    pub fn start_background_pruning(&mut self) {
-        let pool = Arc::new(RwLock::new(self.clone()));
-        let pruning_task = tokio::spawn(async move {
+    /// Start background pruning task.
+    ///
+    /// The pool must already be wrapped in `Arc<RwLock<InstancePool>>` before
+    /// calling this method. Pass the shared reference so the pruning task
+    /// operates on the *same* pool instance that is used by the server, not a
+    /// detached clone.
+    ///
+    /// # Previous bug
+    /// The old implementation called `self.clone()` and wrapped the clone in a
+    /// new `Arc<RwLock<...>>`. The spawned task then pruned that detached clone
+    /// while the server continued using the original `self` — meaning the pool
+    /// was never actually pruned in production.
+    pub fn start_background_pruning_shared(shared_pool: Arc<RwLock<InstancePool>>) -> tokio::task::JoinHandle<()> {
+        tokio::spawn(async move {
             let mut interval = interval(TokioDuration::from_secs(60)); // Prune every minute
 
             loop {
                 interval.tick().await;
-                let mut pool_guard = pool.write().await;
+                let mut pool_guard = shared_pool.write().await;
 
-        // Extract logger reference to avoid borrow checker issues
-        let logger_option = pool_guard.logger.clone();
+                // Extract logger reference to avoid borrow checker issues
+                let logger_option = pool_guard.logger.clone();
 
-        if let Some(logger) = logger_option {
-            let correlation_id = logger.generate_correlation_id().await;
-            let pruned = pool_guard.prune_with_memory_optimization(&correlation_id).await;
-            if pruned > 0 {
-                let stats = pool_guard.stats();
-                logger.log_pool_stats(
-                    &correlation_id,
-                    stats.total_instances,
-                    stats.functions_in_pool,
-                    pruned,
-                );
+                if let Some(logger) = logger_option {
+                    let correlation_id = logger.generate_correlation_id().await;
+                    let pruned = pool_guard.prune_with_memory_optimization(&correlation_id).await;
+                    if pruned > 0 {
+                        let stats = pool_guard.stats();
+                        logger.log_pool_stats(
+                            &correlation_id,
+                            stats.total_instances,
+                            stats.functions_in_pool,
+                            pruned,
+                        );
+                    }
+                } else {
+                    let _ = pool_guard.prune_with_memory_optimization_simple().await;
+                }
             }
-        } else {
-            let _ = pool_guard.prune_with_memory_optimization_simple().await;
-        }
+        })
+    }
+
+    /// Legacy method kept for backward compatibility.
+    ///
+    /// Prefer `start_background_pruning_shared` which operates on the actual
+    /// shared pool rather than a detached clone.
+    #[deprecated(note = "Use start_background_pruning_shared with the shared Arc<RwLock<InstancePool>> instead")]
+    pub fn start_background_pruning(&mut self) {
+        // This implementation clones self into a new Arc — the pruning task
+        // will operate on that clone, NOT on the pool used by the server.
+        // This is kept only for backward compatibility; new code should use
+        // start_background_pruning_shared.
+        let pool = Arc::new(RwLock::new(self.clone()));
+        let pruning_task = tokio::spawn(async move {
+            let mut interval = interval(TokioDuration::from_secs(60));
+            loop {
+                interval.tick().await;
+                let mut pool_guard = pool.write().await;
+                let _ = pool_guard.prune_with_memory_optimization_simple().await;
             }
         });
-
-        // Store the task handle for proper lifecycle management
         self._pruning_task = Some(Arc::new(pruning_task));
     }
 

@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 
@@ -206,6 +206,16 @@ impl ResourceMonitor {
         }
     }
 
+    /// Get the total number of currently executing functions across all tracked functions.
+    ///
+    /// This sums `current_concurrent` from all per-function `FunctionLimits` entries,
+    /// providing an accurate real-time concurrent execution count (as opposed to
+    /// `functions_served` which is a lifetime total).
+    pub async fn get_total_concurrent(&self) -> usize {
+        let limits = self.function_limits.read().await;
+        limits.values().map(|l| l.current_concurrent).sum()
+    }
+
     /// Get current resource statistics
     pub async fn get_stats(&self) -> ResourceStats {
         let mut stats = self.stats.read().await.clone();
@@ -259,13 +269,24 @@ impl ResourceMonitor {
         }
     }
 
-    /// Clean up old metrics to prevent memory bloat
+    /// Clean up old metrics to prevent memory bloat.
+    ///
+    /// Removes metrics whose Unix timestamp (`m.timestamp`) is older than 1 hour.
+    /// Previously this used `Instant` arithmetic which is semantically incorrect
+    /// because `Instant` represents a monotonic clock value, not an absolute time.
+    /// We now compare against `SystemTime` (Unix epoch) consistently.
     pub async fn cleanup(&self) {
         let mut metrics = self.metrics.write().await;
-        let current_time = Instant::now();
 
-        // Remove metrics older than 1 hour
-        metrics.retain(|m| current_time.duration_since(Instant::now() - Duration::from_secs(m.timestamp as u64)) < Duration::from_secs(3600));
+        // Calculate the cutoff as a Unix timestamp (seconds since epoch).
+        let one_hour_ago = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+            .saturating_sub(3600);
+
+        // Retain only metrics recorded within the last hour.
+        metrics.retain(|m| m.timestamp >= one_hour_ago);
     }
 }
 

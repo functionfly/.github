@@ -17,9 +17,17 @@ pub struct PythonRuntime {
 }
 
 impl PythonRuntime {
-    /// Create a new Python runtime
+    /// Create a new Python runtime.
+    ///
+    /// Note: `self.interpreter` is stored for potential future reuse, but
+    /// `execute_sync` / `execute` currently create a fresh interpreter per
+    /// invocation for isolation (each call gets a clean global scope with no
+    /// state leakage between executions). RustPython's `Interpreter` is not
+    /// `Send`, so it cannot be shared across threads without additional
+    /// synchronisation. If single-threaded reuse is desired in the future,
+    /// `execute_sync` can be updated to call `self.interpreter.enter(...)`.
     pub fn new(config: PythonConfig) -> anyhow::Result<Self> {
-        // Create a new RustPython interpreter
+        // Create a new RustPython interpreter (stored for potential future reuse)
         let interpreter = Arc::new(vm::Interpreter::without_stdlib(Default::default()));
 
         Ok(Self {
@@ -28,28 +36,50 @@ impl PythonRuntime {
         })
     }
 
-    /// Check if the given bytes contain Python code
+    /// Check if the given bytes contain Python source code.
     ///
-    /// This first checks if the bytes are a valid WASM binary (by checking magic bytes),
-    /// and only then checks for Python keywords. This prevents false positives from
-    /// FlyPy-generated WASM which contains embedded Python-like strings.
+    /// Detection strategy (in order):
+    /// 1. Reject WASM binaries immediately via magic bytes (`\0asm`).
+    /// 2. Require the content to be valid UTF-8 text.
+    /// 3. Count how many Python-specific patterns are present and require at
+    ///    least 2 matches to reduce false positives from non-Python text that
+    ///    happens to contain a single keyword.
+    ///
+    /// Recognised patterns:
+    /// - `def ` / `async def ` — function definitions
+    /// - `import ` / `from ` — module imports
+    /// - `class ` — class definitions
+    /// - `print(` — built-in print call
+    /// - `return ` — return statement
+    /// - `#!` shebang (e.g. `#!/usr/bin/env python`)
+    /// - `handler(` — FunctionFly handler convention
     pub fn is_python_code(code_bytes: &[u8]) -> bool {
-        // Check for WASM magic bytes first: 0x00 0x61 0x73 0x6D ("\0asm")
-        // If it's a valid WASM binary, it's NOT Python source code
-        if code_bytes.len() >= 4 {
-            let magic = &code_bytes[0..4];
-            if magic == [0x00, 0x61, 0x73, 0x6D] {
-                // This is a WASM binary, not Python source code
-                return false;
-            }
+        // 1. Reject WASM binaries: magic bytes 0x00 0x61 0x73 0x6D ("\0asm")
+        if code_bytes.len() >= 4 && &code_bytes[0..4] == [0x00, 0x61, 0x73, 0x6D] {
+            return false;
         }
 
-        // Simple check for Python code - look for common Python keywords
-        let code = String::from_utf8_lossy(code_bytes);
-        code.contains("def ") ||
-        code.contains("import ") ||
-        code.contains("print(") ||
-        code.contains("return ")
+        // 2. Must be valid UTF-8 text
+        let code = match std::str::from_utf8(code_bytes) {
+            Ok(s) => s,
+            Err(_) => return false, // Binary data that isn't WASM — not Python
+        };
+
+        // 3. Count Python-specific pattern matches; require at least 2.
+        let patterns: &[&str] = &[
+            "def ",
+            "async def ",
+            "import ",
+            "from ",
+            "class ",
+            "print(",
+            "return ",
+            "#!",
+            "handler(",
+        ];
+
+        let match_count = patterns.iter().filter(|&&p| code.contains(p)).count();
+        match_count >= 2
     }
 
     /// Execute Python code using the RustPython VM (synchronous version for blocking tasks)

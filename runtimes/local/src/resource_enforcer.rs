@@ -183,7 +183,13 @@ impl ResourceEnforcer {
         }
     }
 
-    /// Check global resource limits
+    /// Check global resource limits.
+    ///
+    /// Previously this compared `functions_served` (total unique functions ever
+    /// seen, a monotonically increasing counter) against `max_concurrent_functions`,
+    /// which would always eventually trigger a false block. We now sum the actual
+    /// `current_concurrent` values from per-function tracking to get a real
+    /// concurrent execution count.
     async fn check_global_limits(&self) -> Option<String> {
         let report = self.monitor.generate_report().await;
         let global_limits = self.global_limits.read().await;
@@ -196,11 +202,14 @@ impl ResourceEnforcer {
             ));
         }
 
-        // Check concurrent function limit (approximate with functions served)
-        if report.stats.functions_served > global_limits.max_concurrent_functions {
+        // Check actual concurrent execution count (sum of per-function current_concurrent).
+        // This replaces the incorrect use of `functions_served` which is a lifetime total,
+        // not a concurrent count.
+        let actual_concurrent = self.monitor.get_total_concurrent().await;
+        if actual_concurrent > global_limits.max_concurrent_functions {
             return Some(format!(
                 "Global concurrent functions limit exceeded: {} > {}",
-                report.stats.functions_served, global_limits.max_concurrent_functions
+                actual_concurrent, global_limits.max_concurrent_functions
             ));
         }
 

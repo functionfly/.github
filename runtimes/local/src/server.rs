@@ -15,7 +15,7 @@ use tower_http::trace::TraceLayer;
 use crate::cache::ResultCache;
 use crate::config::Config;
 use crate::engine::{SharedState, WasmEngine};
-use crate::handlers::{execute_function, health_check, ready_check, monitoring_stats, budget_analysis, security_status, kv_status, webhook_status, orchestrator_status, AppState};
+use crate::handlers::{execute_function, health_check, ready_check, monitoring_stats, budget_analysis, security_status, kv_status, webhook_status, orchestrator_status, prometheus_metrics, AppState};
 use crate::kv::SharedKVStore;
 use crate::logging::{CorrelationId, StructuredLogger};
 use crate::monitoring::ResourceMonitor;
@@ -33,14 +33,33 @@ pub async fn run_server(
     logger: Arc<StructuredLogger>,
     startup_correlation_id: CorrelationId,
 ) -> Result<()> {
-    // Build CORS layer
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    // Build CORS layer - configurable via cors_allow_origin config field.
+    // Defaults to Any (allow all) for local development convenience.
+    // In production, set cors_allow_origin to a specific origin (e.g. "https://app.example.com").
+    // When a specific origin is set, it is passed as a HeaderValue to allow_origin().
+    let cors = if config.cors_allow_origin.is_empty() || config.cors_allow_origin == "*" {
+        CorsLayer::new()
+            .allow_origin(Any)
+            .allow_methods(Any)
+            .allow_headers(Any)
+    } else {
+        // Parse the configured origin; fall back to Any if invalid.
+        let origin_header = config.cors_allow_origin.parse::<axum::http::HeaderValue>()
+            .unwrap_or_else(|_| {
+                tracing::warn!("Invalid CORS origin '{}', falling back to Any (*)", config.cors_allow_origin);
+                "*".parse().unwrap()
+            });
+        CorsLayer::new()
+            .allow_origin(origin_header)
+            .allow_methods(Any)
+            .allow_headers(Any)
+    };
 
-    // Create KV store
+    // Create KV store and start background cleanup task.
+    // The background task removes expired entries every 30 seconds, replacing
+    // the previous O(n) per-operation cleanup.
     let kv_store: SharedKVStore = Arc::new(RwLock::new(crate::kv::KVStore::new(10000))); // Max 10k entries
+    let _kv_cleanup_handle = crate::kv::start_background_cleanup(kv_store.clone());
 
     // Create orchestrator client for Enterprise tier
     let orchestrator_client = if config.enterprise_enabled {
@@ -52,10 +71,25 @@ pub async fn run_server(
         None
     };
 
-    // Create security monitor
+    // Create security monitor (single instance shared across all components)
     let security_monitor = Arc::new(SecurityMonitor::new());
 
+    // Register security profiles before creating the engine
+    if config.hardened_security {
+        security_monitor.register_profile(
+            format!("{}@{}", config.function, config.version),
+            SecurityMonitor::create_hardened_profile(),
+        ).await;
+    } else {
+        security_monitor.register_profile(
+            format!("{}@{}", config.function, config.version),
+            SecurityMonitor::create_standard_profile(),
+        ).await;
+    }
+
     // Create Wasm engine with KV store and orchestrator client
+    // Pass the same security_monitor so violations recorded by the engine
+    // are visible to the handler's should_block_function() check.
     let engine = WasmEngine::with_config(
         config.clone(),
         Some(kv_store.clone()),
@@ -68,26 +102,13 @@ pub async fn run_server(
     let pool = InstancePool::new(10, 60);
 
     // Create shared state (includes Python engine if configured)
+    // Pass the same security_monitor to ensure consistent violation tracking.
     let shared_state = SharedState::new(pool, config.clone(), (*logger).clone(), security_monitor.clone());
 
-    // Update shared state with orchestrator client if needed
-    // Note: SharedState::new already handles orchestrator client initialization
-
-    // Create security monitor
-    let security_monitor = Arc::new(SecurityMonitor::new());
-
-    // Register security profiles
-    if config.hardened_security {
-        security_monitor.register_profile(
-            format!("{}@{}", config.function, config.version),
-            SecurityMonitor::create_hardened_profile(),
-        ).await;
-    } else {
-        security_monitor.register_profile(
-            format!("{}@{}", config.function, config.version),
-            SecurityMonitor::create_standard_profile(),
-        ).await;
-    }
+    // Start background pool pruning on the *shared* pool reference so the
+    // pruning task operates on the same pool used by the server (fix for the
+    // detached-clone bug in the old start_background_pruning() method).
+    let _pool_pruning_handle = InstancePool::start_background_pruning_shared(shared_state.pool.clone());
 
     // Create package manager for Enterprise tier
     let package_manager = if config.enterprise_enabled && config.package_caching_enabled {
@@ -147,6 +168,8 @@ pub async fn run_server(
         .route("/kv", get(kv_status))
         .route("/webhook", get(webhook_status))
         .route("/orchestrator", get(orchestrator_status))
+        // Prometheus metrics endpoint for unified observability with the Go backend
+        .route("/metrics", get(prometheus_metrics))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(app_state);

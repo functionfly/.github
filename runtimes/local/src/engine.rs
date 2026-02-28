@@ -2,6 +2,9 @@
 
 use anyhow::Context;
 use clap::Parser;
+use lru::LruCache;
+use sha2::{Digest, Sha256};
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
@@ -18,6 +21,18 @@ use crate::orchestrator_client::{OrchestratorClient, MicroVMExecutionRequest};
 use crate::pool::InstancePool;
 use crate::python::PythonRuntime;
 use crate::wasi::{WasiContext, WasiLinker};
+
+/// Thread-safe cache for compiled Wasmtime `Module` objects.
+///
+/// Compiling a WASM module from bytes is expensive (tens–hundreds of ms for
+/// non-trivial modules). Caching the compiled `Module` keyed by a SHA-256 hash
+/// of the WASM bytes avoids recompilation on every invocation.
+///
+/// `Module` is `Clone` and safe to share across threads.
+type ModuleCache = Arc<std::sync::Mutex<LruCache<String, Module>>>;
+
+/// Maximum number of compiled modules to keep in the cache.
+const MODULE_CACHE_CAPACITY: usize = 64;
 
 /// Runtime type for WASM modules
 #[derive(Debug, Clone, PartialEq)]
@@ -120,6 +135,10 @@ pub struct WasmEngine {
     logger: StructuredLogger,
     orchestrator_client: Option<Arc<OrchestratorClient>>,
     security_monitor: Arc<crate::security::SecurityMonitor>,
+    /// LRU cache of compiled `Module` objects keyed by SHA-256 hash of WASM bytes.
+    /// Avoids recompiling the same module on every invocation (compilation is
+    /// expensive: tens–hundreds of ms for non-trivial modules).
+    module_cache: ModuleCache,
 }
 
 impl WasmEngine {
@@ -148,6 +167,11 @@ impl WasmEngine {
             None
         };
 
+        // Create module cache for compiled WASM modules
+        let module_cache = Arc::new(std::sync::Mutex::new(
+            LruCache::new(NonZeroUsize::new(MODULE_CACHE_CAPACITY).unwrap()),
+        ));
+
         Ok(Self {
             engine,
             config,
@@ -156,7 +180,46 @@ impl WasmEngine {
             logger,
             orchestrator_client,
             security_monitor,
+            module_cache,
         })
+    }
+
+    /// Compute a SHA-256 hash of WASM bytes for use as a module cache key.
+    fn wasm_hash(wasm_bytes: &[u8]) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(wasm_bytes);
+        hex::encode(hasher.finalize())
+    }
+
+    /// Get or compile a `Module` from the cache.
+    ///
+    /// On a cache miss the module is compiled and inserted into the LRU cache.
+    /// On a cache hit the pre-compiled `Module` is cloned (cheap — it's an
+    /// `Arc` internally) and returned immediately.
+    fn get_or_compile_module(&self, wasm_bytes: &[u8]) -> anyhow::Result<Module> {
+        let key = Self::wasm_hash(wasm_bytes);
+
+        // Check cache first (lock is held only briefly)
+        {
+            let mut cache = self.module_cache.lock().unwrap();
+            if let Some(module) = cache.get(&key) {
+                tracing::debug!("Module cache hit for key {}", &key[..16]);
+                return Ok(module.clone());
+            }
+        }
+
+        // Cache miss — compile the module (expensive)
+        tracing::debug!("Module cache miss for key {}, compiling…", &key[..16]);
+        let module = Module::new(&self.engine, wasm_bytes)
+            .context("Failed to compile Wasm module")?;
+
+        // Insert into cache
+        {
+            let mut cache = self.module_cache.lock().unwrap();
+            cache.put(key, module.clone());
+        }
+
+        Ok(module)
     }
 
     /// Get the underlying Wasmtime engine
@@ -195,11 +258,13 @@ impl WasmEngine {
                 let engine = self.engine.clone();
                 let config = config.clone();
                 let wasi_linker = self.wasi_linker.clone();
+                // Pass the module cache so compiled modules are reused across calls
+                let module_cache = self.module_cache.clone();
 
                 tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
                     if let Some(ref linker) = wasi_linker {
-                        // Execute with WASI support synchronously
-                        execute_wasi_sync(&engine, linker, &wasm_bytes, &input, &config)
+                        // Execute with WASI support synchronously (uses module cache)
+                        execute_wasi_sync(&engine, linker, &wasm_bytes, &input, &config, &module_cache)
                     } else {
                         // No WASI linker available - this shouldn't happen in normal operation
                         Err(anyhow::anyhow!("WASI linker not available for WASM execution"))
@@ -332,14 +397,18 @@ impl WasmEngine {
     }
 }
 
-/// Synchronous WASI execution function for use in spawn_blocking
-/// This avoids the "Cannot start a runtime from within a runtime" panic
+/// Synchronous WASI execution function for use in spawn_blocking.
+///
+/// This avoids the "Cannot start a runtime from within a runtime" panic.
+/// The `module_cache` parameter is used to avoid recompiling the same WASM
+/// module on every invocation (compilation is expensive).
 fn execute_wasi_sync(
     engine: &Engine,
     linker: &WasiLinker,
     wasm_bytes: &[u8],
     input: &str,
     config: &Config,
+    module_cache: &ModuleCache,
 ) -> anyhow::Result<String> {
     let execution_start = std::time::Instant::now();
 
@@ -365,9 +434,27 @@ fn execute_wasi_sync(
         store.set_epoch_deadline(1); // Set initial deadline
     }
 
-    // Compile module
-    let module = Module::new(engine, wasm_bytes)
-        .context("Failed to compile Wasm module")?;
+    // Get or compile module (uses LRU cache to avoid recompilation)
+    let wasm_key = {
+        let mut hasher = Sha256::new();
+        hasher.update(wasm_bytes);
+        hex::encode(hasher.finalize())
+    };
+    let module = {
+        let mut cache = module_cache.lock().unwrap();
+        if let Some(m) = cache.get(&wasm_key) {
+            tracing::debug!("Module cache hit for key {}", &wasm_key[..16]);
+            m.clone()
+        } else {
+            drop(cache); // Release lock before expensive compilation
+            tracing::debug!("Module cache miss for key {}, compiling…", &wasm_key[..16]);
+            let m = Module::new(engine, wasm_bytes)
+                .context("Failed to compile Wasm module")?;
+            let mut cache = module_cache.lock().unwrap();
+            cache.put(wasm_key, m.clone());
+            m
+        }
+    };
 
     // Instantiate module with WASI
     let instance = linker.linker().instantiate(&mut store, &module)
@@ -747,6 +834,7 @@ mod tests {
             max_output_bytes: 1024 * 1024,
             max_input_bytes: 1024 * 1024,
             microvm_fallback_allowed: true,
+            cors_allow_origin: "*".to_string(),
         };
         let logger = crate::logging::init_structured_logging(false);
         let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
@@ -804,6 +892,7 @@ mod tests {
             max_output_bytes: 1024 * 1024,
             max_input_bytes: 1024 * 1024,
             microvm_fallback_allowed: true,
+            cors_allow_origin: "*".to_string(),
         };
         let logger = crate::logging::init_structured_logging(false);
         let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
@@ -863,6 +952,7 @@ mod tests {
                 max_output_bytes: 1024 * 1024,
                 max_input_bytes: 1024 * 1024,
                 microvm_fallback_allowed: true,
+            cors_allow_origin: "*".to_string(),
             };
             let logger = crate::logging::init_structured_logging(false);
             let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
@@ -931,6 +1021,7 @@ mod tests {
             max_output_bytes: 1024 * 1024,
             max_input_bytes: 1024 * 1024,
             microvm_fallback_allowed: true,
+            cors_allow_origin: "*".to_string(),
         };
 
         let rt = Runtime::new().unwrap();

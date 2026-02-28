@@ -201,6 +201,12 @@ pub struct Config {
     /// degrading to a different Python runtime.
     #[arg(long, default_value = "true")]
     pub microvm_fallback_allowed: bool,
+
+    /// CORS allowed origin for the HTTP server.
+    /// Use "*" or leave empty to allow all origins (default, suitable for local dev).
+    /// Set to a specific origin (e.g. "https://app.example.com") for production.
+    #[arg(long, default_value = "*")]
+    pub cors_allow_origin: String,
 }
 
 impl Config {
@@ -307,6 +313,7 @@ impl Default for Config {
             max_output_bytes: 1024 * 1024,   // 1 MiB
             max_input_bytes: 1024 * 1024,    // 1 MiB
             microvm_fallback_allowed: true,
+            cors_allow_origin: "*".to_string(),
         }
     }
 }
@@ -317,53 +324,12 @@ mod tests {
 
     #[test]
     fn test_function_key() {
+        // Use Config::default() and override only the fields under test.
+        // This avoids brittle tests that break when new fields are added.
         let config = Config {
-            port: 8787,
             function: "slugify".to_string(),
             version: "1.0.0".to_string(),
-            wasm: None,
-            runtime: "nodejs".to_string(),
-            memory_mb: 128,
-            timeout_ms: 5000,
-            deterministic: false,
-            cache_ttl: 3600,
-            verbose: false,
-            wasi_enabled: true,
-            cpu_fuel_limit: 1000000,
-            max_cpu_time_ms: 5000,
-            enable_monitoring: true,
-            hardened_security: true,
-            max_concurrent_per_function: 10,
-            memory_overhead_percent: 10,
-            wasi_dirs: Vec::new(),
-            wasi_env: Vec::new(),
-            wasi_args: Vec::new(),
-            wasi_allow_network: false,
-            wasi_allow_time: true,
-            python_runtime: "rustpython-0.4".to_string(),
-            capabilities: "".to_string(),
-            python_packages: Vec::new(),
-            python_debug: false,
-            smtp_host: "localhost".to_string(),
-            smtp_port: 587,
-            smtp_username: None,
-            smtp_password: None,
-            storage_base_dir: "./storage".to_string(),
-            ai_models_dir: "./models".to_string(),
-            external_api_rate_limit: 60,
-            external_api_timeout_secs: 30,
-            orchestrator_url: "http://localhost:8080".to_string(),
-            orchestrator_timeout_secs: 60,
-            enterprise_enabled: false,
-            tier: "ultra-low".to_string(),
-            network_whitelist: Vec::new(),
-            strict_network_whitelist: false,
-            package_caching_enabled: false,
-            package_cache_dir: "./package-cache".to_string(),
-            package_cache_size_mb: 1024,
-            max_output_bytes: 1024 * 1024,
-            max_input_bytes: 1024 * 1024,
-            microvm_fallback_allowed: true,
+            ..Config::default()
         };
 
         assert_eq!(config.function_key(), "slugify@1.0.0");
