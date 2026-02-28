@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,8 +9,9 @@ import { FormError } from "@/components/ui/form-error";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { OTPInput } from './OTPInput';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
-import { ArrowLeft, Mail } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle, AlertCircle, Lock, Eye, EyeOff } from 'lucide-react';
 import { usersApi } from '@/api/users';
+import { cn } from '@/lib/utils';
 
 const emailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -31,13 +32,40 @@ const passwordSchema = z.object({
 type EmailFormData = z.infer<typeof emailSchema>;
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
+// Password requirements component
+function PasswordRequirements({ password }: { password: string }) {
+  const requirements = [
+    { key: 'length', label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
+    { key: 'uppercase', label: 'One uppercase letter', test: (p: string) => /[A-Z]/.test(p) },
+    { key: 'lowercase', label: 'One lowercase letter', test: (p: string) => /[a-z]/.test(p) },
+    { key: 'number', label: 'One number', test: (p: string) => /[0-9]/.test(p) },
+  ];
+
+  return (
+    <div className="mt-2 space-y-1">
+      {requirements.map((req) => {
+        const passed = req.test(password);
+        return (
+          <div key={req.key} className={cn(
+            "flex items-center gap-2 text-xs transition-colors",
+            passed ? "text-green-500" : "text-text-muted"
+          )}>
+            {passed ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+            <span>{req.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 interface PasswordResetFlowProps {
   onBack: () => void;
   onComplete: () => void;
 }
 
 export function PasswordResetFlow({ onBack, onComplete }: PasswordResetFlowProps) {
-  const [step, setStep] = useState<'email' | 'otp' | 'password'>('email');
+  const [step, setStep] = useState<'email' | 'otp' | 'password' | 'success'>('email');
   const [email, setEmail] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +82,8 @@ export function PasswordResetFlow({ onBack, onComplete }: PasswordResetFlowProps
   const passwordForm = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
   });
+
+  const passwordValue = passwordForm.watch('password', '');
 
   const handleEmailSubmit = async (data: EmailFormData) => {
     setIsLoading(true);
@@ -92,7 +122,7 @@ export function PasswordResetFlow({ onBack, onComplete }: PasswordResetFlowProps
 
     try {
       await usersApi.confirmPasswordReset(resetToken, data.password);
-      onComplete();
+      setStep('success');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reset password. Please try again.');
     } finally {
@@ -202,6 +232,9 @@ export function PasswordResetFlow({ onBack, onComplete }: PasswordResetFlowProps
               {...passwordForm.register('password')}
               className={passwordForm.formState.errors.password ? 'border-red-500' : ''}
             />
+            {passwordValue && (
+              <PasswordRequirements password={passwordValue} />
+            )}
             {passwordForm.formState.errors.password && (
               <p className="text-xs text-red-600 dark:text-red-400">
                 {passwordForm.formState.errors.password.message}
@@ -237,6 +270,22 @@ export function PasswordResetFlow({ onBack, onComplete }: PasswordResetFlowProps
             )}
           </Button>
         </form>
+      )}
+
+      {/* Success Step */}
+      {step === 'success' && (
+        <div className="text-center py-6">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <h3 className="text-lg font-semibold">Password Reset Complete!</h3>
+          <p className="text-sm text-text-muted mt-2 mb-6">
+            Your password has been successfully updated. You can now sign in with your new password.
+          </p>
+          <Button onClick={onBack} className="w-full">
+            Go to Login
+          </Button>
+        </div>
       )}
     </div>
   );

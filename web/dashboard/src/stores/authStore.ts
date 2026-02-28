@@ -16,6 +16,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  mfaRequired: boolean;
 
   // Actions
   login: (data: LoginRequest) => Promise<void>;
@@ -24,6 +25,7 @@ interface AuthState {
   clearError: () => void;
   initialize: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  verifyMFA: (code: string) => Promise<void>;
 }
 
 // Create the store
@@ -35,6 +37,7 @@ const authStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      mfaRequired: false,
 
       initialize: async () => {
         const jwtToken = localStorage.getItem("sb-access-token");
@@ -156,6 +159,20 @@ const authStore = create<AuthState>()(
           }
 
           const authData = await response.json();
+
+          // Check if MFA is required
+          if (authData.mfaRequired) {
+            // Store temp token for MFA verification
+            if (authData.tempToken) {
+              localStorage.setItem('sb-mfa-temp-token', authData.tempToken);
+            }
+            set({ 
+              mfaRequired: true,
+              isLoading: false,
+              error: null,
+            });
+            throw new Error('MFA_REQUIRED');
+          }
 
           if (!authData.token) {
             throw new Error('Authentication response missing token');
@@ -298,6 +315,48 @@ const authStore = create<AuthState>()(
       },
 
       clearError: () => set({ error: null }),
+
+      verifyMFA: async (code: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const token = localStorage.getItem('sb-access-token');
+          const response = await fetch(`${import.meta.env.VITE_NEON_AUTH_URL}/mfa/verify`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ code }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'MFA verification failed' }));
+            throw new Error(errorData.message || 'Invalid code. Please try again.');
+          }
+
+          const authData = await response.json();
+          
+          // Update session with new token if provided
+          if (authData.token) {
+            localStorage.setItem('sb-access-token', authData.token);
+          }
+
+          set({ 
+            mfaRequired: false,
+            isLoading: false,
+          });
+          
+          // Reload API client token cache
+          apiClient.reloadToken();
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "MFA verification failed";
+          set({
+            error: errorMessage,
+            isLoading: false,
+          });
+          throw error;
+        }
+      },
     }),
     {
       name: "auth-storage",
