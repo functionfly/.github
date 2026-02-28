@@ -31,6 +31,64 @@ export const ROUTES = {
   ADMIN_STATE_FABRIC: "/admin/state-fabric",
 } as const;
 
+// ============================================================================
+// Dynamic Route Builder Functions
+// ============================================================================
+
+/**
+ * Builder functions for dynamic routes
+ * Use these to generate URLs with parameters safely
+ */
+export const ROUTE_BUILDERS = {
+  // Function routes
+  function: (author: string, name: string) => `/fx/${author}/${name}`,
+  functionWithVersion: (author: string, name: string, version: string) =>
+    `/fx/${author}/${name}@${version}`,
+
+  // Playground/Run routes
+  playground: (author: string, name: string) => `/run/${author}/${name}`,
+  playgroundWithVersion: (author: string, name: string, version: string) =>
+    `/run/${author}/${name}@${version}`,
+
+  // Execution replay
+  replay: (execId: string) => `/replay/${execId}`,
+
+  // User profile
+  userProfile: (username: string) => `/u/${username}`,
+
+  // Blog posts
+  blogPost: (slug: string) => `/blog/${slug}`,
+
+  // Documentation
+  docs: (slug?: string) => (slug ? `/docs/${slug}` : '/docs'),
+  docsApi: (endpoint?: string) =>
+    endpoint ? `/docs/api/${endpoint}` : '/docs/api',
+
+  // Registry search
+  registrySearch: (query: string, page = 1) =>
+    `/registry?q=${encodeURIComponent(query)}&page=${page}`,
+
+  // Function details/edit
+  functionEdit: (author: string, name: string) =>
+    `/functions/${author}/${name}`,
+  functionSettings: (author: string, name: string) =>
+    `/functions/${author}/${name}/settings`,
+  functionLogs: (author: string, name: string) =>
+    `/functions/${author}/${name}/logs`,
+
+  // User dashboard sections
+  userFunctions: (username: string) => `/dashboard/${username}/functions`,
+  userSettings: (username: string) => `/dashboard/${username}/settings`,
+
+  // Admin dynamic routes
+  adminTenant: (tenantId: string) => `/admin/tenants/${tenantId}`,
+  adminUser: (userId: string) => `/admin/users/${userId}`,
+  adminFunction: (functionId: string) => `/admin/functions/${functionId}`,
+} as const;
+
+// Type for route builder function
+export type RouteBuilder = typeof ROUTE_BUILDERS;
+
 export const PROVIDERS = {
   CLOUDFLARE: {
     id: "workers",
