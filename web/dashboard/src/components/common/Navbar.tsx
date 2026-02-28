@@ -25,7 +25,6 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
   const user = useAuthStore((state) => state.user);
   const theme = useThemeStore((state) => state.theme);
 
-  console.log("Navbar: Auth state", { isAuthenticated, user: user?.email });
 
   const status = useNavigationStatus();
 
