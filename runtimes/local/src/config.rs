@@ -224,15 +224,21 @@ pub struct Config {
     #[arg(long, default_value = "512")]
     pub aot_cache_size_mb: usize,
 
+    /// Maximum number of compiled modules to keep in the in-memory LRU cache.
+    #[arg(long, default_value = "64")]
+    pub aot_cache_memory_capacity: usize,
+
     /// Fuel units per millisecond of CPU time (calibration constant).
     /// Used to convert timeout_ms into a fuel budget for Wasmtime's fuel
     /// metering.  Typical value on modern hardware: ~10_000_000 fuel/ms.
     #[arg(long, default_value = "10000000")]
     pub fuel_per_ms: u64,
 
+    /// CPU time limit in milliseconds (0 = use cpu_fuel_limit). When set, overrides fuel via fuel_per_ms.
+    #[arg(long, default_value = "0")]
+    pub cpu_ms_limit: u64,
+
     /// Use CPython compiled to WASM instead of RustPython for Python functions.
-    /// Provides full stdlib support (minus C extensions) at the cost of a
-    /// larger binary (~8 MB) and slightly higher cold-start time.
     #[arg(long, default_value = "false")]
     pub use_cpython_wasm: bool,
 
@@ -241,11 +247,32 @@ pub struct Config {
     pub cpython_wasm_path: String,
 
     /// Enable persistent daemon mode.
-    /// When true the runtime process stays alive across requests and handles
-    /// multiple functions via its internal instance pool, eliminating the
-    /// per-request process-spawn overhead.
     #[arg(long, default_value = "false")]
     pub daemon_mode: bool,
+
+    /// Enable YARA scanning of WASM artifacts before execution.
+    #[arg(long, default_value = "false")]
+    pub yara_scan_enabled: bool,
+
+    /// URL of the YARA service.
+    #[arg(long, default_value = "http://localhost:5000")]
+    pub yara_service_url: String,
+
+    /// YARA scanner timeout in seconds.
+    #[arg(long, default_value = "5")]
+    pub yara_timeout_secs: u64,
+
+    /// If true, allow execution when the YARA service is unreachable (fail-open).
+    #[arg(long, default_value = "true")]
+    pub yara_fail_open: bool,
+
+    /// Maximum number of concurrent Python (RustPython) runtimes.
+    #[arg(long, default_value = "8")]
+    pub python_pool_max_concurrent: usize,
+
+    /// Maximum number of idle Python runtimes to keep warm in the pool.
+    #[arg(long, default_value = "4")]
+    pub python_pool_max_idle: usize,
 }
 
 impl Config {
@@ -367,10 +394,18 @@ impl Default for Config {
             aot_cache_enabled: true,
             aot_cache_dir: "".to_string(),
             aot_cache_size_mb: 512,
+            aot_cache_memory_capacity: 64,
             fuel_per_ms: 10_000_000,
+            cpu_ms_limit: 0,
             use_cpython_wasm: false,
             cpython_wasm_path: "./runtimes/cpython.wasm".to_string(),
             daemon_mode: false,
+            yara_scan_enabled: false,
+            yara_service_url: "http://localhost:5000".to_string(),
+            yara_timeout_secs: 5,
+            yara_fail_open: true,
+            python_pool_max_concurrent: 8,
+            python_pool_max_idle: 4,
         }
     }
 }

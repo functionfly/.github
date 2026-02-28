@@ -155,6 +155,7 @@ pub struct WasmEngine {
     logger: StructuredLogger,
     orchestrator_client: Option<Arc<OrchestratorClient>>,
     security_monitor: Arc<crate::security::SecurityMonitor>,
+
     /// LRU cache of compiled `Module` objects keyed by SHA-256 hash of WASM bytes.
     /// Avoids recompiling the same module on every invocation (compilation is
     /// expensive: tens–hundreds of ms for non-trivial modules).
@@ -173,7 +174,13 @@ impl WasmEngine {
     }
 
     /// Create engine with explicit config
-    pub fn with_config(config: Config, kv_store: Option<SharedKVStore>, logger: StructuredLogger, orchestrator_client: Option<Arc<OrchestratorClient>>, security_monitor: Arc<crate::security::SecurityMonitor>) -> anyhow::Result<Self> {
+    pub fn with_config(
+        config: Config,
+        kv_store: Option<SharedKVStore>,
+        logger: StructuredLogger,
+        orchestrator_client: Option<Arc<OrchestratorClient>>,
+        security_monitor: Arc<crate::security::SecurityMonitor>,
+    ) -> anyhow::Result<Self> {
         // Configure Wasmtime
         let mut wasm_config = wasmtime::Config::new();
         wasm_config
@@ -317,6 +324,7 @@ impl WasmEngine {
             }
             RuntimeType::Wasm => {
                 // Execute standard WASM module in a blocking task to avoid runtime conflicts.
+
                 // Uses the AOT cache to skip re-compilation on warm starts.
                 let wasm_bytes = wasm_bytes.to_vec();
                 let input = input.to_string();
@@ -326,7 +334,10 @@ impl WasmEngine {
                 let aot_cache = self.aot_cache.clone();
                 let aot_counter_clone = self.aot_counter.clone();
 
-                tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
+                let timeout_ms = config.timeout_ms;
+                let timeout_duration = std::time::Duration::from_millis(timeout_ms);
+
+                let blocking_task = tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
                     if let Some(ref linker) = wasi_linker {
                         // Compute hash for AOT cache lookup
                         let wasm_hash = {
@@ -374,9 +385,15 @@ impl WasmEngine {
                         // No WASI linker available - this shouldn't happen in normal operation
                         Err(anyhow::anyhow!("WASI linker not available for WASM execution"))
                     }
-                })
-                .await
-                .context("Failed to execute WASM in blocking task")?
+                });
+
+                tokio::time::timeout(timeout_duration, blocking_task)
+                    .await
+                    .map_err(|_| anyhow::anyhow!(
+                        "WASM execution timed out after {}ms (wall-clock)",
+                        timeout_ms
+                    ))?
+                    .context("Failed to execute WASM in blocking task")?
             }
             RuntimeType::PythonMicroVM => {
                 // Execute in MicroVM using the orchestrator
@@ -694,13 +711,8 @@ impl wasmtime::ResourceLimiter for FunctionMemoryLimiter {
     }
 }
 
-
 /// Synchronous WASI execution function for use in spawn_blocking.
-/// This avoids the "Cannot start a runtime from within a runtime" panic.
 /// Accepts an optional pre-compiled module (from the AOT cache) to skip re-compilation.
-
-/// Internal implementation that accepts an optional pre-compiled module
-/// (from the AOT cache) to skip re-compilation on warm starts.
 fn execute_wasi_sync_inner(
     engine: &Engine,
     linker: &WasiLinker,
@@ -720,12 +732,11 @@ fn execute_wasi_sync_inner(
     // Create store with WASI context
     let mut store = Store::new(engine, wasi_ctx.ctx);
 
-    // --- Calibrated fuel metering (P1.5) ---
-    // Prefer the calibrated fuel budget derived from timeout_ms × fuel_per_ms.
-    // Fall back to the legacy cpu_fuel_limit if the calibrated value is zero.
-    let calibrated_fuel = config.fuel_for_timeout();
-    let fuel_limit = if calibrated_fuel > 0 {
-        calibrated_fuel
+    // Calibrated fuel metering: prefer timeout_ms × fuel_per_ms, else cpu_ms_limit × fuel_per_ms, else cpu_fuel_limit.
+    let fuel_limit = if config.fuel_for_timeout() > 0 {
+        config.fuel_for_timeout()
+    } else if config.cpu_ms_limit > 0 && config.fuel_per_ms > 0 {
+        config.cpu_ms_limit.saturating_mul(config.fuel_per_ms)
     } else if config.cpu_fuel_limit > 0 {
         config.cpu_fuel_limit
     } else {
@@ -739,10 +750,6 @@ fn execute_wasi_sync_inner(
     // trap after approximately timeout_ms milliseconds of wall-clock time.
     store.set_epoch_deadline(config.timeout_ms);
     store.epoch_deadline_trap();
-
-    // --- Memory limiter (P1.4) ---
-    // Note: store.limiter() requires a Send + Sync closure; using a raw pointer here is not
-    // accepted by the type checker. Memory is still bounded by the instance pool and host.
 
     // Compile module (or use pre-compiled AOT module)
     let module = if let Some(m) = precompiled {
@@ -813,14 +820,37 @@ fn execute_wasi_sync_inner(
         }
     }
 
-    // Fall back to stdout/stderr
+    // Fall back to stdout/stderr.
+    // Phase 2.2: detect truncation and return an explicit error instead of silently
+    // dropping bytes.  `MemoryOutputPipe` stops accepting bytes once its capacity is
+    // reached; we detect this by comparing the pipe's byte count to the configured
+    // limit.
     let stdout = stdout_pipe.contents();
     let stderr = stderr_pipe.contents();
 
     drop(store);
     drop(instance);
     drop(module);
-    // Limiter was boxed and moved into the closure; it is intentionally not freed (one per execution).
+
+    let pipe_capacity = if config.max_output_bytes > 0 {
+        config.max_output_bytes
+    } else {
+        1024 * 1024
+    };
+    if stdout.len() >= pipe_capacity {
+        return Err(anyhow::anyhow!(
+            "Function output was truncated: stdout reached the {} byte limit. \
+             Increase --max-output-bytes to capture more output.",
+            pipe_capacity
+        ));
+    }
+    if stderr.len() >= pipe_capacity {
+        return Err(anyhow::anyhow!(
+            "Function output was truncated: stderr reached the {} byte limit. \
+             Increase --max-output-bytes to capture more output.",
+            pipe_capacity
+        ));
+    }
 
     if !stdout.is_empty() {
         Ok(String::from_utf8_lossy(&stdout).to_string())
@@ -1086,17 +1116,21 @@ mod tests {
     use super::*;
     use tokio::runtime::Runtime;
 
+    /// Helper: create a `WasmEngine` from a `Config`.
+    fn make_engine(config: Config) -> WasmEngine {
+        let logger = crate::logging::init_structured_logging(false);
+        let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
+        WasmEngine::with_config(config, None, logger, None, security_monitor).unwrap()
+    }
+
     #[test]
     fn test_wasm_engine_creation_without_wasi() {
         let config = Config {
             wasi_enabled: false,
             ..Config::default()
         };
-        let logger = crate::logging::init_structured_logging(false);
-        let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
-        let engine = WasmEngine::with_config(config, None, logger, None, security_monitor);
-        assert!(engine.is_ok());
-        assert!(engine.unwrap().wasi_linker.is_none());
+        let engine = make_engine(config);
+        assert!(engine.wasi_linker.is_none());
     }
 
     #[test]
@@ -1105,11 +1139,8 @@ mod tests {
             wasi_enabled: true,
             ..Config::default()
         };
-        let logger = crate::logging::init_structured_logging(false);
-        let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
-        let engine = WasmEngine::with_config(config, None, logger, None, security_monitor);
-        assert!(engine.is_ok());
-        assert!(engine.unwrap().wasi_linker.is_some());
+        let engine = make_engine(config);
+        assert!(engine.wasi_linker.is_some());
     }
 
     #[test]
@@ -1120,20 +1151,14 @@ mod tests {
                 wasi_enabled: false,
                 ..Config::default()
             };
-            let logger = crate::logging::init_structured_logging(false);
-            let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
-
-            // Create a simple WebAssembly module that just returns
-            // This is a minimal valid WebAssembly module
             let wasm_bytes = wat::parse_str(r#"
                 (module
                     (func (export "main"))
                 )
             "#).unwrap();
 
-            let engine = WasmEngine::with_config(config.clone(), None, logger, None, security_monitor).unwrap();
+            let engine = make_engine(config.clone());
             let result = engine.execute(&wasm_bytes, "test", &config).await;
-            // Should succeed even with a minimal module
             assert!(result.is_ok());
         });
     }
@@ -1148,11 +1173,6 @@ mod tests {
 
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
-            let logger = crate::logging::init_structured_logging(false);
-            let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
-
-            // Create a WebAssembly module with a handler function that expects (i32, i32) parameters
-            // The handler function will return the length of the input string
             let wasm_bytes = wat::parse_str(r#"
                 (module
                     (import "wasi_snapshot_preview1" "proc_exit" (func $__wasi_proc_exit (param i32)))
@@ -1164,15 +1184,10 @@ mod tests {
                 )
             "#).unwrap();
 
-            let engine = WasmEngine::with_config(config.clone(), None, logger, None, security_monitor).unwrap();
+            let engine = make_engine(config.clone());
             let test_input = "hello world";
             let result = engine.execute(&wasm_bytes, test_input, &config).await;
-
-            // The handler should return the length of the input string
             assert!(result.is_ok());
-            // We can't easily verify the exact output since it's captured via stdout,
-            // but the important thing is that the function executed without error
-            // and received the correct parameters
         });
     }
 }

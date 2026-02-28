@@ -74,6 +74,7 @@ pub async fn run_server(
     // Create security monitor (single instance shared across all components)
     let security_monitor = Arc::new(SecurityMonitor::new());
 
+
     // Register security profiles before creating the engine
     if config.hardened_security {
         security_monitor.register_profile(
