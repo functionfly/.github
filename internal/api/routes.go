@@ -19,6 +19,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/playground"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
 	registryhandler "github.com/functionfly/functionfly/internal/api/handlers/registry"
+	drehandler "github.com/functionfly/functionfly/internal/api/handlers/registry/dre"
 	"github.com/functionfly/functionfly/internal/api/handlers/security"
 	"github.com/functionfly/functionfly/internal/api/handlers/state"
 	"github.com/functionfly/functionfly/internal/api/handlers/statefabric"
@@ -453,6 +454,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Registry replay routes (public)
 	api.HandleFunc("/registry/replay/{execId}", registryHandler.HandleGetReplay).Methods("GET")
+
+	// DRE 2.0 routes (public — certificates and passports are public artifacts)
+	dreHandler := drehandler.NewHandler(registryRepo)
+	api.HandleFunc("/registry/{author}/{name}/cert/{cert_id}", dreHandler.HandleGetCertificate).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/{author}/{name}/certs", dreHandler.HandleListCertificates).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/{author}/{name}/replay/{execution_id}", dreHandler.HandleReplay).Methods("POST", "OPTIONS")
+	api.HandleFunc("/registry/{author}/{name}/passport", dreHandler.HandleGetPassport).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/{author}/{name}/diverge", dreHandler.HandleDivergenceSimulation).Methods("POST", "OPTIONS")
 
 	// Execution security routes (public)
 	executionSecurityMW.CreateExecutionSecurityRoutes(api)

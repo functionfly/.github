@@ -170,6 +170,14 @@ type RegistryFunctionRating struct {
 	TrustUpdatedAt    *time.Time `json:"trust_updated_at" gorm:"type:timestamp"`
 	UpdatedAt         time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 
+	// DRE v2 sub-scores (added by migration 0004_dre_v2)
+	DeterminismScore           float64    `json:"determinism_score" gorm:"default:0"`
+	ReplayIntegrityScore       float64    `json:"replay_integrity_score" gorm:"default:0"`
+	PerformanceStabilityScore  float64    `json:"performance_stability_score" gorm:"default:0"`
+	DriftScore                 float64    `json:"drift_score" gorm:"default:1"`
+	TrustScoreV2               float64    `json:"trust_score_v2" gorm:"default:0"`
+	TrustV2UpdatedAt           *time.Time `json:"trust_v2_updated_at" gorm:"type:timestamp"`
+
 	// Relationships
 	Function *RegistryFunction `json:"function,omitempty" gorm:"foreignKey:FunctionID;references:ID"`
 }
@@ -268,4 +276,139 @@ type RegistryFunctionVerificationStatus struct {
 
 	// Relationships
 	FunctionVersion *RegistryFunctionVersion `json:"function_version,omitempty" gorm:"foreignKey:FunctionVersionID;references:ID"`
+}
+
+// ============================================
+// DRE 2.0 Models
+// ============================================
+
+// MEGRecord represents a Merkle Execution Graph record for a single execution.
+// One record is created per execution (for deterministic functions).
+type MEGRecord struct {
+	ID          uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ExecutionID uuid.UUID `json:"execution_id" gorm:"type:uuid;not null;index"`
+	FunctionID  uuid.UUID `json:"function_id" gorm:"type:uuid;not null;index"`
+	Version     string    `json:"version" gorm:"not null"`
+
+	// MEG component hashes (DRE/1.0 leaf ordering — fixed forever)
+	ExecutionRootHash string `json:"execution_root_hash" gorm:"not null;index"`
+	InputHash         string `json:"input_hash" gorm:"not null"`
+	EnvironmentHash   string `json:"environment_hash" gorm:"not null"`
+	DependencyHash    string `json:"dependency_hash" gorm:"not null"`
+	TraceHash         string `json:"trace_hash"`         // empty in lite tier
+	ResourceHash      string `json:"resource_hash" gorm:"not null"`
+	OutputHash        string `json:"output_hash" gorm:"not null"`
+	MetadataHash      string `json:"metadata_hash" gorm:"not null"`
+
+	// Capsule descriptor
+	CapsuleDescriptorHash string `json:"capsule_descriptor_hash" gorm:"not null"`
+	DeterminismTier       string `json:"determinism_tier" gorm:"not null;default:'full'"` // "full"|"lite"
+	ProtocolVersion       string `json:"protocol_version" gorm:"not null;default:'dre/1.0'"`
+
+	// Replay verification state
+	ReplayRootHash   string     `json:"replay_root_hash"`
+	ReplayVerifiedAt *time.Time `json:"replay_verified_at"`
+	ReplayNodeID     string     `json:"replay_node_id"`
+
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+}
+
+// TableName returns the database table name for MEGRecord.
+func (MEGRecord) TableName() string { return "execution_meg_records" }
+
+// ExecutionCertificate represents a stored FXCERT execution certificate.
+type ExecutionCertificate struct {
+	ID            uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	CertificateID string          `json:"certificate_id" gorm:"not null;uniqueIndex"` // "fxc_01H..."
+	ExecutionID   uuid.UUID       `json:"execution_id" gorm:"type:uuid;not null;index"`
+	MEGRecordID   uuid.UUID       `json:"meg_record_id" gorm:"type:uuid;not null"`
+	FunctionID    uuid.UUID       `json:"function_id" gorm:"type:uuid;not null;index"`
+
+	CertLevel          string          `json:"cert_level" gorm:"not null;default:'standard'"` // "lite"|"standard"|"legal_grade"
+	CertJSON           json.RawMessage `json:"cert_json" gorm:"type:jsonb;not null"`
+	ExecutionRootHash  string          `json:"execution_root_hash" gorm:"not null;index"`
+	CertificateHash    string          `json:"certificate_hash" gorm:"not null"`
+
+	// Signatures
+	NodeSignature     string `json:"node_signature"`
+	PlatformSignature string `json:"platform_signature"`
+
+	// Blockchain anchoring (optional)
+	Anchored          bool       `json:"anchored" gorm:"default:false"`
+	AnchorChain       string     `json:"anchor_chain"`
+	AnchorBlockNumber int64      `json:"anchor_block_number"`
+	AnchorTxHash      string     `json:"anchor_tx_hash"`
+	AnchorMerkleRoot  string     `json:"anchor_merkle_root"`
+	AnchoredAt        *time.Time `json:"anchored_at"`
+
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+}
+
+// TableName returns the database table name for ExecutionCertificate.
+func (ExecutionCertificate) TableName() string { return "execution_certificates" }
+
+// DriftReportRecord represents a stored drift report when replay diverges.
+type DriftReportRecord struct {
+	ID          uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ExecutionID uuid.UUID       `json:"execution_id" gorm:"type:uuid;not null;index"`
+	FunctionID  uuid.UUID       `json:"function_id" gorm:"type:uuid;not null;index"`
+	Version     string          `json:"version" gorm:"not null"`
+
+	OriginalRootHash string          `json:"original_root_hash" gorm:"not null"`
+	ReplayRootHash   string          `json:"replay_root_hash" gorm:"not null"`
+	DriftCategory    string          `json:"drift_category" gorm:"not null"` // capsule.DriftCategory
+	ComponentDiff    json.RawMessage `json:"component_diff" gorm:"type:jsonb"`
+	TrustPenalty     float64         `json:"trust_penalty" gorm:"default:0"`
+
+	DetectedAt time.Time `json:"detected_at" gorm:"autoCreateTime;index"`
+}
+
+// TableName returns the database table name for DriftReportRecord.
+func (DriftReportRecord) TableName() string { return "drift_reports" }
+
+// ExecutionPassport represents the per-function aggregate of DRE statistics.
+// It is the public-facing "determinism passport" shown on the marketplace.
+type ExecutionPassport struct {
+	ID         uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID uuid.UUID `json:"function_id" gorm:"type:uuid;not null;uniqueIndex"`
+
+	// Determinism statistics
+	DeterministicReliability float64 `json:"deterministic_reliability" gorm:"default:0"` // 0.0-1.0
+	ReplayDriftIncidents     int     `json:"replay_drift_incidents" gorm:"default:0"`
+	VerifiedExecutionsTotal  int64   `json:"verified_executions_total" gorm:"default:0"`
+	TotalExecutions          int64   `json:"total_executions" gorm:"default:0"`
+
+	// DRE sub-scores (feed into TrustScore v2)
+	DeterminismScore           float64 `json:"determinism_score" gorm:"default:0"`
+	ReplayIntegrityScore       float64 `json:"replay_integrity_score" gorm:"default:0"`
+	PerformanceStabilityScore  float64 `json:"performance_stability_score" gorm:"default:0"`
+	DriftScore                 float64 `json:"drift_score" gorm:"default:1"` // 1.0 = no drift
+
+	// Capsule version history
+	CapsuleVersionsUsed json.RawMessage `json:"capsule_versions_used" gorm:"type:jsonb"`
+
+	// Metadata
+	LastVerifiedAt *time.Time `json:"last_verified_at"`
+	UpdatedAt      time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+// TableName returns the database table name for ExecutionPassport.
+func (ExecutionPassport) TableName() string { return "function_execution_passports" }
+
+// PassportUpdate contains the fields to update in an ExecutionPassport.
+type PassportUpdate struct {
+	IncrementVerified    bool
+	IncrementTotal       bool
+	IncrementDrift       bool
+	TrustPenalty         float64
+	CapsuleDescriptorHash string
+	LastVerifiedAt       *time.Time
+}
+
+// DREScores contains the 4 DRE sub-scores used in TrustScore v2 calculation.
+type DREScores struct {
+	DeterminismScore          float64 `json:"determinism_score"`
+	ReplayIntegrityScore      float64 `json:"replay_integrity_score"`
+	PerformanceStabilityScore float64 `json:"performance_stability_score"`
+	DriftScore                float64 `json:"drift_score"`
 }
