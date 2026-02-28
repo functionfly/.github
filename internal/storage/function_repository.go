@@ -487,3 +487,226 @@ func (r *FunctionRepository) GetFunctionLogs(ctx context.Context, functionID *uu
 
 	return logs, nil
 }
+
+// UsageByDay is a single day's usage count for dashboard
+type UsageByDay struct {
+	Time  string `json:"time"`  // date as YYYY-MM-DD or formatted for display
+	Value int64  `json:"value"`
+}
+
+// GetUsageByDay returns daily log counts for the tenant's functions (last N days).
+func (r *FunctionRepository) GetUsageByDay(ctx context.Context, tenantID uuid.UUID, days int) ([]UsageByDay, error) {
+	if days <= 0 {
+		days = 14
+	}
+	since := time.Now().AddDate(0, 0, -days)
+
+	query := `
+		SELECT date_trunc('day', fl.timestamp)::date AS day, COUNT(*)::bigint
+		FROM function_logs fl
+		INNER JOIN functions f ON f.id = fl.function_id
+		WHERE f.tenant_id = $1 AND fl.timestamp >= $2
+		GROUP BY date_trunc('day', fl.timestamp)::date
+		ORDER BY day`
+	rows, err := r.db.QueryContext(ctx, query, tenantID, since)
+	if err != nil {
+		return nil, fmt.Errorf("get usage by day: %w", err)
+	}
+	defer rows.Close()
+
+	var result []UsageByDay
+	for rows.Next() {
+		var day time.Time
+		var count int64
+		if err := rows.Scan(&day, &count); err != nil {
+			return nil, fmt.Errorf("scan usage row: %w", err)
+		}
+		result = append(result, UsageByDay{Time: day.Format("2006-01-02"), Value: count})
+	}
+	return result, rows.Err()
+}
+
+// ExecutionRateByHour is one hour's execution count for dashboard
+type ExecutionRateByHour struct {
+	Time string `json:"time"`
+	Rate int64  `json:"rate"`
+}
+
+// GetExecutionRateByHour returns hourly log counts for the tenant's functions (last N hours).
+func (r *FunctionRepository) GetExecutionRateByHour(ctx context.Context, tenantID uuid.UUID, hours int) ([]ExecutionRateByHour, error) {
+	if hours <= 0 {
+		hours = 24
+	}
+	since := time.Now().Add(-time.Duration(hours) * time.Hour)
+
+	query := `
+		SELECT date_trunc('hour', fl.timestamp) AS hour, COUNT(*)::bigint
+		FROM function_logs fl
+		INNER JOIN functions f ON f.id = fl.function_id
+		WHERE f.tenant_id = $1 AND fl.timestamp >= $2
+		GROUP BY date_trunc('hour', fl.timestamp)
+		ORDER BY hour`
+	rows, err := r.db.QueryContext(ctx, query, tenantID, since)
+	if err != nil {
+		return nil, fmt.Errorf("get execution rate by hour: %w", err)
+	}
+	defer rows.Close()
+
+	var result []ExecutionRateByHour
+	for rows.Next() {
+		var hour time.Time
+		var count int64
+		if err := rows.Scan(&hour, &count); err != nil {
+			return nil, fmt.Errorf("scan execution rate row: %w", err)
+		}
+		result = append(result, ExecutionRateByHour{
+			Time: hour.Format("15:04"),
+			Rate: count,
+		})
+	}
+	return result, rows.Err()
+}
+
+// DashboardActivityItem represents one item in the dashboard activity feed (log or deployment).
+type DashboardActivityItem struct {
+	ID          string    `json:"id"`
+	Type        string    `json:"type"`        // "deployment", "success", "error", "info", "invocation", "timeout"
+	Title       string    `json:"title"`
+	Description string    `json:"description,omitempty"`
+	Timestamp   time.Time `json:"timestamp"`
+	FunctionID  string    `json:"function_id,omitempty"`
+	FunctionName string   `json:"function_name,omitempty"`
+}
+
+// GetRecentActivityForTenant returns merged recent deployments and logs for the tenant, sorted by time desc.
+func (r *FunctionRepository) GetRecentActivityForTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]DashboardActivityItem, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+
+	// Recent deployments: id, function_id, status, created_at; join functions for name
+	deployQuery := `
+		SELECT fd.id::text, fd.function_id::text, f.name, fd.status, fd.created_at
+		FROM function_deployments fd
+		INNER JOIN functions f ON f.id = fd.function_id
+		WHERE f.tenant_id = $1
+		ORDER BY fd.created_at DESC
+		LIMIT $2`
+	deployRows, err := r.db.QueryContext(ctx, deployQuery, tenantID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("get recent deployments: %w", err)
+	}
+	defer deployRows.Close()
+
+	var items []DashboardActivityItem
+	for deployRows.Next() {
+		var id, fnID, fnName, status string
+		var ts time.Time
+		if err := deployRows.Scan(&id, &fnID, &fnName, &status, &ts); err != nil {
+			return nil, fmt.Errorf("scan deployment row: %w", err)
+		}
+		title := "Deployment " + status
+		if status == "success" {
+			title = "Deployment completed"
+		} else if status == "failed" {
+			title = "Deployment failed"
+		}
+		items = append(items, DashboardActivityItem{
+			ID:           id,
+			Type:         mapDeploymentStatusToActivityType(status),
+			Title:        title,
+			Timestamp:    ts,
+			FunctionID:   fnID,
+			FunctionName: fnName,
+		})
+	}
+	if err := deployRows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Recent logs: id, function_id, level, message, timestamp; join functions for name
+	logQuery := `
+		SELECT fl.id::text, fl.function_id, f.name, fl.level, fl.message, fl.timestamp
+		FROM function_logs fl
+		INNER JOIN functions f ON f.id = fl.function_id
+		WHERE f.tenant_id = $1
+		ORDER BY fl.timestamp DESC
+		LIMIT $2`
+	logRows, err := r.db.QueryContext(ctx, logQuery, tenantID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("get recent logs: %w", err)
+	}
+	defer logRows.Close()
+
+	for logRows.Next() {
+		var id, level, message string
+		var fnID *uuid.UUID
+		var fnName *string
+		var ts time.Time
+		if err := logRows.Scan(&id, &fnID, &fnName, &level, &message, &ts); err != nil {
+			return nil, fmt.Errorf("scan log row: %w", err)
+		}
+		fnIDStr := ""
+		if fnID != nil {
+			fnIDStr = fnID.String()
+		}
+		fnNameStr := ""
+		if fnName != nil {
+			fnNameStr = *fnName
+		}
+		items = append(items, DashboardActivityItem{
+			ID:           id,
+			Type:         mapLogLevelToActivityType(level),
+			Title:        message,
+			Description:  message,
+			Timestamp:    ts,
+			FunctionID:   fnIDStr,
+			FunctionName: fnNameStr,
+		})
+	}
+	if err := logRows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Sort by timestamp desc and take up to limit
+	return sortDashboardActivitiesByTime(items, limit), nil
+}
+
+func mapDeploymentStatusToActivityType(status string) string {
+	switch status {
+	case "success":
+		return "success"
+	case "failed":
+		return "error"
+	case "deploying", "pending":
+		return "deploy"
+	default:
+		return "info"
+	}
+}
+
+func mapLogLevelToActivityType(level string) string {
+	switch level {
+	case "error":
+		return "error"
+	case "warn", "warning":
+		return "timeout"
+	default:
+		return "invocation"
+	}
+}
+
+func sortDashboardActivitiesByTime(items []DashboardActivityItem, limit int) []DashboardActivityItem {
+	// Sort by timestamp descending
+	for i := 0; i < len(items); i++ {
+		for j := i + 1; j < len(items); j++ {
+			if items[j].Timestamp.After(items[i].Timestamp) {
+				items[i], items[j] = items[j], items[i]
+			}
+		}
+	}
+	if len(items) > limit {
+		return items[:limit]
+	}
+	return items
+}

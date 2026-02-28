@@ -11,6 +11,7 @@ import (
 	authHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/auth"
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
+	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
@@ -105,6 +106,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Initialize providers handler
 	providersHandler := providers.NewHandler(s.repo)
+
+	// Initialize dashboard handler (tenant-scoped metrics and activity)
+	dashboardHandler := dashboard.NewHandler(s.repo)
 
 	// Initialize state handler
 	stateRepo := staterepo.NewStateRepository(s.postgresDB.GORM)
@@ -463,6 +467,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/registry/{author}/{name}/passport", dreHandler.HandleGetPassport).Methods("GET", "OPTIONS")
 	api.HandleFunc("/registry/{author}/{name}/diverge", dreHandler.HandleDivergenceSimulation).Methods("POST", "OPTIONS")
 
+	// Execution Explorer routes (public — execution hashes are public artifacts)
+	api.HandleFunc("/registry/{author}/{name}/executions", dreHandler.HandleListExecutions).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/{author}/{name}/executions/{execution_id}", dreHandler.HandleGetExecution).Methods("GET", "OPTIONS")
+
 	// Execution security routes (public)
 	executionSecurityMW.CreateExecutionSecurityRoutes(api)
 
@@ -520,6 +528,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/functions/deployments/{deploymentId}", authMiddleware.RequireAuth(functionsHandler.HandleGetFunctionDeployment)).Methods("GET")
 	protected.HandleFunc("/functions/deploy", authMiddleware.RequireAuth(functionsHandler.HandleDeployFunction)).Methods("POST")
 	protected.HandleFunc("/functions/test", authMiddleware.RequireAuth(functionsHandler.HandleTestFunction)).Methods("POST")
+
+	// Dashboard routes (protected, tenant-scoped)
+	protected.HandleFunc("/dashboard/usage", authMiddleware.RequireAuth(dashboardHandler.HandleGetUsage)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/dashboard/execution-rate", authMiddleware.RequireAuth(dashboardHandler.HandleGetExecutionRate)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/dashboard/activity", authMiddleware.RequireAuth(dashboardHandler.HandleGetActivity)).Methods("GET", "OPTIONS")
 
 	// StateFabric routes (protected)
 	protected.HandleFunc("/state", authMiddleware.RequireAuth(stateHandler.HandleListStates)).Methods("GET")

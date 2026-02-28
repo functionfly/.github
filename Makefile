@@ -163,6 +163,20 @@ setup: ## Setup initial data (tenant, user)
 		go run ./cmd/setup; \
 	fi
 
+seed-blog: ## Seed default blog post (State Fabric) into DB. Uses DB_* from env or defaults (load .env first if needed).
+	@test -f scripts/seed-blog-post-state-fabric.sql || (echo "Missing scripts/seed-blog-post-state-fabric.sql"; exit 1)
+	@PGPASSWORD=$${DB_PASSWORD:-postgres} psql -h $${DB_HOST:-localhost} -p $${DB_PORT:-5432} -U $${DB_USER:-postgres} -d $${DB_NAME:-functionfly} -f scripts/seed-blog-post-state-fabric.sql
+
+seed-blog-docker: ## Seed blog post using Docker Postgres (port 5434). Use if your app runs with docker compose and DB_PORT=5434.
+	@test -f scripts/seed-blog-post-state-fabric.sql || (echo "Missing scripts/seed-blog-post-state-fabric.sql"; exit 1)
+	@PGPASSWORD=$${DB_PASSWORD:-postgres} psql -h $${DB_HOST:-localhost} -p 5434 -U $${DB_USER:-postgres} -d $${DB_NAME:-functionfly} -f scripts/seed-blog-post-state-fabric.sql
+
+update-blog-from-md: ## Update State Fabric blog post content from content/blog/introducing-state-fabric.md. Run after seed-blog. Uses DB_* from env.
+	@./scripts/update-blog-post-from-markdown.sh
+
+update-blog-from-md-docker: ## Same as update-blog-from-md but for Docker Postgres (port 5434).
+	@DB_PORT=5434 ./scripts/update-blog-post-from-markdown.sh
+
 fmt: ## Format Go code
 	go fmt ./...
 

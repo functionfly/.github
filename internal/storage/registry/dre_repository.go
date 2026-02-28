@@ -45,6 +45,56 @@ func (r *RegistryRepository) UpdateMEGReplayResult(megID uuid.UUID, replayRootHa
 	return nil
 }
 
+// MEGRecordFilters provides filtering options for MEG record queries
+type MEGRecordFilters struct {
+	Version      string
+	From         *time.Time
+	To           *time.Time
+	VerifiedOnly bool
+}
+
+// GetMEGRecordsByFunctionID retrieves paginated MEG records for a function with optional filters
+func (r *RegistryRepository) GetMEGRecordsByFunctionID(
+	functionID uuid.UUID,
+	limit, offset int,
+	filters MEGRecordFilters,
+) ([]*MEGRecord, int64, error) {
+	var records []*MEGRecord
+	var total int64
+
+	// Build query with filters
+	query := r.db.Model(&MEGRecord{}).Where("function_id = ?", functionID)
+
+	if filters.Version != "" {
+		query = query.Where("version = ?", filters.Version)
+	}
+	if filters.From != nil {
+		query = query.Where("created_at >= ?", *filters.From)
+	}
+	if filters.To != nil {
+		query = query.Where("created_at <= ?", *filters.To)
+	}
+	if filters.VerifiedOnly {
+		query = query.Where("replay_verified_at IS NOT NULL")
+	}
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("dre: count meg records: %w", err)
+	}
+
+	// Get paginated records
+	err := query.Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&records).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("dre: get meg records by function id: %w", err)
+	}
+
+	return records, total, nil
+}
+
 // StoreCertificate persists an FXCERT execution certificate.
 func (r *RegistryRepository) StoreCertificate(cert *ExecutionCertificate) error {
 	if err := r.db.Create(cert).Error; err != nil {

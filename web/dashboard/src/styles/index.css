@@ -4,6 +4,7 @@
    ========================================================================== */
 
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* Import all style modules (use @/ so Vite resolves from src/ and Tailwind plugin can resolve) */
 @import '@/styles/themes.css';

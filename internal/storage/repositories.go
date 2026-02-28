@@ -760,6 +760,19 @@ func (db *PostgresDB) GetFunctionLogs(ctx context.Context, functionID *uuid.UUID
 	return db.functionRepository.GetFunctionLogs(ctx, functionID, deploymentID, limit, since, level)
 }
 
+// Dashboard aggregations
+func (db *PostgresDB) GetUsageByDay(ctx context.Context, tenantID uuid.UUID, days int) ([]UsageByDay, error) {
+	return db.functionRepository.GetUsageByDay(ctx, tenantID, days)
+}
+
+func (db *PostgresDB) GetExecutionRateByHour(ctx context.Context, tenantID uuid.UUID, hours int) ([]ExecutionRateByHour, error) {
+	return db.functionRepository.GetExecutionRateByHour(ctx, tenantID, hours)
+}
+
+func (db *PostgresDB) GetRecentActivityForTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]DashboardActivityItem, error) {
+	return db.functionRepository.GetRecentActivityForTenant(ctx, tenantID, limit)
+}
+
 // Team operations
 func (db *PostgresDB) CreateTeam(team *Team) error {
 	return db.teamRepository.CreateTeam(team)

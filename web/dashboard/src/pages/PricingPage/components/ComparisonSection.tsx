@@ -39,7 +39,7 @@ export function ComparisonSection({ onPlanSelect }: ComparisonSectionProps) {
       initial={{ opacity: 0, y: 40 }}
       animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
-      className="mb-20"
+      className="pricing-comparison-section mb-20"
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -58,7 +58,7 @@ export function ComparisonSection({ onPlanSelect }: ComparisonSectionProps) {
         animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
         transition={{ duration: 0.6, delay: 0.4 }}
       >
-        <Card className="border-white/8 bg-white/5 overflow-hidden">
+        <Card className="pricing-comparison-table border-white/8 bg-white/5 overflow-hidden">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full">

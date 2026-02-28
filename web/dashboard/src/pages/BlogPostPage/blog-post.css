@@ -1,0 +1,38 @@
+/* Prism.js syntax highlighting for blog code blocks */
+@import "prismjs/themes/prism-tomorrow.min.css";
+
+/* Scoped overrides so Prism fits our card (light/dark) */
+.blog-post-prose pre[class*="language-"] {
+  margin: 1.25em 0;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  background: var(--color-bg-tertiary, #1a1a25) !important;
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+}
+
+[data-theme="light"] .blog-post-prose pre[class*="language-"] {
+  background: var(--color-bg-tertiary-light, #f1f3f4) !important;
+  border-color: var(--border-subtle-light, rgba(0,0,0,0.08));
+}
+
+.blog-post-prose code[class*="language-"] {
+  font-size: inherit;
+  background: transparent;
+  padding: 0;
+}
+
+.blog-post-prose :not(pre) > code {
+  padding: 0.2em 0.4em;
+  border-radius: 0.375rem;
+  font-size: 0.875em;
+  background: var(--color-bg-tertiary, #1a1a25);
+  border: 1px solid var(--border-subtle);
+}
+
+[data-theme="light"] .blog-post-prose :not(pre) > code {
+  background: var(--color-bg-tertiary-light, #f1f3f4);
+  border-color: var(--border-subtle-light);
+}

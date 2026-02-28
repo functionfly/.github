@@ -387,6 +387,29 @@ body {
   border-color: var(--border-subtle);
 }
 
+/* Blog post article prose - smooth reading */
+.blog-post-prose {
+  --tw-prose-body: var(--text-primary);
+  --tw-prose-headings: var(--text-primary);
+  --tw-prose-links: var(--color-brand-500);
+  --tw-prose-quotes: var(--text-secondary);
+  --tw-prose-code: var(--text-primary);
+}
+.blog-post-prose p + p {
+  margin-top: 1.25em;
+}
+.blog-post-prose ul, .blog-post-prose ol {
+  padding-left: 1.5em;
+  margin-top: 0.75em;
+  margin-bottom: 1em;
+}
+.blog-post-prose li {
+  margin-top: 0.35em;
+}
+.blog-post-prose li::marker {
+  color: var(--color-brand-500);
+}
+
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *,

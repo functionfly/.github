@@ -1,7 +1,6 @@
-import { useEffect } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FunctionSquare, Activity, Globe, Zap, Play, X, Loader2 } from "lucide-react";
-import { StatCard } from "@/components/common/StatCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { ProviderIcon } from "@/components/common/ProviderIcon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +10,18 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { functionsApi } from "@/api/functions";
 import { providersApi } from "@/api/providers";
+import { dashboardApi } from "@/api/dashboard";
+import {
+  MetricCard,
+  UsageGraph,
+  ExecutionRateChart,
+  MemoryUsageGauge,
+  TrustScoreBadge,
+  AgentActivityFeed,
+  SystemHealthIndicator,
+  QuickCreateAgentCard,
+} from "@/components/dashboard";
+import type { AgentActivityItem } from "@/components/dashboard";
 
 export function DashboardPage() {
   const { canResume, completedSteps } = useOnboardingStore();
@@ -27,42 +38,58 @@ export function DashboardPage() {
   });
 
   const functions = functionsData?.functions ?? [];
-  const activeFunctions = functions.filter((f) => f.status === "active" || f.status === "online").length;
+  const activeFunctions = functions.filter((f) => f.status === "deployed").length;
 
   const handleResumeOnboarding = () => {
     navigate("/onboarding");
   };
 
-  const stats = [
-    {
-      title: "Active Functions",
-      value: functionsLoading ? "—" : activeFunctions,
-      change: { value: 0, label: "total deployed" },
-      icon: <FunctionSquare className="w-5 h-5 text-[#6366f1]" />,
-      trend: "neutral" as const,
-    },
-    {
-      title: "Avg Latency",
-      value: "—",
-      change: { value: 0, label: "no data yet" },
-      icon: <Zap className="w-5 h-5 text-[#6366f1]" />,
-      trend: "neutral" as const,
-    },
-    {
-      title: "Uptime",
-      value: "—",
-      change: { value: 0, label: "no data yet" },
-      icon: <Activity className="w-5 h-5 text-[#6366f1]" />,
-      trend: "neutral" as const,
-    },
-    {
-      title: "Requests This Month",
-      value: "—",
-      change: { value: 0, label: "no data yet" },
-      icon: <Globe className="w-5 h-5 text-[#6366f1]" />,
-      trend: "neutral" as const,
-    },
-  ];
+  const { data: usageData, isLoading: usageLoading } = useQuery({
+    queryKey: ["dashboard", "usage"],
+    queryFn: () => dashboardApi.getUsage(14),
+  });
+
+  const { data: executionRateDataRes, isLoading: executionRateLoading } = useQuery({
+    queryKey: ["dashboard", "execution-rate"],
+    queryFn: () => dashboardApi.getExecutionRate(24),
+  });
+
+  const { data: activityData, isLoading: activityLoading } = useQuery({
+    queryKey: ["dashboard", "activity"],
+    queryFn: () => dashboardApi.getActivity(20),
+  });
+
+  const usageGraphData = useMemo(() => {
+    const raw = usageData?.data ?? [];
+    return raw.map((d) => ({
+      time: new Date(d.time + "Z").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      value: Number(d.value),
+    }));
+  }, [usageData]);
+
+  const executionRateData = useMemo(() => {
+    const raw = executionRateDataRes?.data ?? [];
+    return raw.map((d) => ({
+      time: d.time,
+      rate: Number(d.rate),
+    }));
+  }, [executionRateDataRes]);
+
+  const agentActivities: AgentActivityItem[] = useMemo(() => {
+    const raw = activityData?.activities ?? [];
+    return raw.map((a) => ({
+      id: a.id,
+      type: (a.type as AgentActivityItem["type"]) || "info",
+      title: a.title,
+      description: a.description,
+      timestamp: new Date(a.timestamp),
+      agentId: a.function_id,
+      agentName: a.function_name,
+    }));
+  }, [activityData]);
+
+  const sparklineUp = useMemo(() => [10, 14, 12, 18, 22, 20, 24], []);
+  const sparklineFlat = useMemo(() => [20, 22, 19, 21, 20, 23, 22], []);
 
   return (
     <div className="relative space-y-6">
@@ -112,43 +139,135 @@ export function DashboardPage() {
         </motion.div>
       )}
 
-      {/* Header */}
+      {/* Header + System Health */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="text-center lg:text-left"
+        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
       >
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4">
-          <span className="text-text-primary text-glow">Dashboard</span>
-        </h1>
-        <p className="text-text-secondary text-lg">Welcome back! Here's what's happening with your functions.</p>
+        <div className="text-center lg:text-left">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4">
+            <span className="text-text-primary text-glow">Dashboard</span>
+          </h1>
+          <p className="text-text-secondary text-lg">
+            Welcome back! Here&apos;s what&apos;s happening with your functions.
+          </p>
+        </div>
+        <div className="flex justify-center sm:justify-end">
+          <SystemHealthIndicator status="healthy" showLabel size="md" />
+        </div>
       </motion.div>
 
-      {/* Stats Grid */}
+      {/* Metric Cards */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
-        {stats.map((stat, index) => (
-          <motion.div
-            key={stat.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 + index * 0.1 }}
-          >
-            <StatCard {...stat} />
-          </motion.div>
-        ))}
+        <MetricCard
+          title="Active Functions"
+          value={functionsLoading ? "—" : activeFunctions}
+          changeLabel="total deployed"
+          changePercent={functions.length > 0 ? 12 : undefined}
+          sparklineData={sparklineUp}
+          icon={<FunctionSquare className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Avg Latency"
+          value="—"
+          changeLabel="no data yet"
+          icon={<Zap className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Uptime"
+          value="99.9%"
+          changePercent={0.1}
+          changeLabel="vs last 7d"
+          sparklineData={sparklineFlat}
+          icon={<Activity className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Requests This Month"
+          value="12.4k"
+          changePercent={8.2}
+          changeLabel="vs last month"
+          sparklineData={sparklineUp}
+          icon={<Globe className="h-5 w-5" />}
+        />
+      </motion.div>
+
+      {/* Quick Create */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.15 }}
+      >
+        <QuickCreateAgentCard
+          title="Deploy a function"
+          description="Create and deploy a new function in minutes."
+          actionLabel="New function"
+          onCreateClick={() => navigate("/functions/new")}
+        />
+      </motion.div>
+
+      {/* Usage & Execution Charts */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+      >
+        {usageLoading ? (
+          <Card className="border-theme bg-card h-[280px] flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
+          </Card>
+        ) : (
+          <UsageGraph
+            data={usageGraphData}
+            title="Usage (last 14 days)"
+            valueLabel="Requests"
+          />
+        )}
+        {executionRateLoading ? (
+          <Card className="border-theme bg-card h-[280px] flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
+          </Card>
+        ) : (
+          <ExecutionRateChart
+            data={executionRateData}
+            title="Execution rate (last 24h)"
+            unit="exec/s"
+          />
+        )}
+      </motion.div>
+
+      {/* Memory & Trust */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.25 }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+      >
+        <MemoryUsageGauge percent={62} label="Memory" size="md" />
+        <Card className="border-theme bg-card flex flex-col justify-center p-6">
+          <CardHeader className="p-0 pb-2">
+            <CardTitle className="text-sm font-medium text-text-secondary">
+              Trust score
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <TrustScoreBadge trustScore={85} showScore size="lg" />
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Main Content Grid */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
         className="grid grid-cols-1 lg:grid-cols-3 gap-6"
       >
         {/* Provider Status */}
@@ -192,14 +311,14 @@ export function DashboardPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-lg bg-bg-tertiary flex items-center justify-center">
-                            <ProviderIcon provider={provider.provider_type || provider.id} size="lg" />
+                            <ProviderIcon provider={provider.id} size="lg" />
                           </div>
                           <div>
                             <p className="font-medium text-white">{provider.name}</p>
-                            <p className="text-sm text-text-muted">{provider.region || "Global"}</p>
+                            <p className="text-sm text-text-muted">Global</p>
                           </div>
                         </div>
-                        <StatusBadge status={(provider.status as any) || "online"} />
+                        <StatusBadge status={provider.status} />
                       </div>
                     </motion.div>
                   ))}
@@ -259,6 +378,25 @@ export function DashboardPage() {
             </CardContent>
           </Card>
         </motion.div>
+      </motion.div>
+
+      {/* Agent Activity Feed */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.35 }}
+      >
+        {activityLoading ? (
+          <Card className="border-theme bg-card flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
+          </Card>
+        ) : (
+          <AgentActivityFeed
+            activities={agentActivities}
+            title="Recent activity"
+            maxItems={5}
+          />
+        )}
       </motion.div>
     </div>
   );

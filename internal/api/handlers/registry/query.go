@@ -36,7 +36,9 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	info := fn.ToInfo(fnVersion)
+	// Include rating for trust_score and trust_level on function profile
+	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+	info := fn.ToInfoWithRating(fnVersion, rating)
 
 	// Expand manifest if requested
 	if r.URL.Query().Get("expand") == "manifest" {

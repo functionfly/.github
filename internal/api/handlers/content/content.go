@@ -116,15 +116,15 @@ func (h *Handler) HandleGetChangelogEntry(w http.ResponseWriter, r *http.Request
 // HandleCreateChangelogEntry creates a new changelog entry
 func (h *Handler) HandleCreateChangelogEntry(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Version     string                       `json:"version"`
-		Date        time.Time                    `json:"date"`
-		Type        string                       `json:"type"`
-		Title       string                       `json:"title"`
-		Description string                       `json:"description"`
-		ReleaseURL  *string                      `json:"release_url,omitempty"`
-		GitHubID    *string                      `json:"github_id,omitempty"`
-		IsPublished bool                         `json:"is_published"`
-		Changes     []storage.ChangelogChange    `json:"changes"`
+		Version     string                    `json:"version"`
+		Date        time.Time                 `json:"date"`
+		Type        string                    `json:"type"`
+		Title       string                    `json:"title"`
+		Description string                    `json:"description"`
+		ReleaseURL  *string                   `json:"release_url,omitempty"`
+		GitHubID    *string                   `json:"github_id,omitempty"`
+		IsPublished bool                      `json:"is_published"`
+		Changes     []storage.ChangelogChange `json:"changes"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -376,9 +376,9 @@ func (h *Handler) HandleListBlogPosts(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"posts":   posts,
-		"limit":   limit,
-		"offset":  offset,
+		"posts":  posts,
+		"limit":  limit,
+		"offset": offset,
 	})
 }
 
@@ -436,15 +436,15 @@ func (h *Handler) HandleGetBlogPostBySlug(w http.ResponseWriter, r *http.Request
 // HandleCreateBlogPost creates a new blog post
 func (h *Handler) HandleCreateBlogPost(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Title         string    `json:"title"`
-		Slug          string    `json:"slug"`
-		Content       string    `json:"content"`
-		Excerpt       string    `json:"excerpt"`
-		Author        string    `json:"author"`
-		Tags          []string  `json:"tags"`
-		FeaturedImage *string   `json:"featured_image,omitempty"`
-		SanityID      *string   `json:"sanity_id,omitempty"`
-		IsPublished   bool      `json:"is_published"`
+		Title         string     `json:"title"`
+		Slug          string     `json:"slug"`
+		Content       string     `json:"content"`
+		Excerpt       string     `json:"excerpt"`
+		Author        string     `json:"author"`
+		Tags          []string   `json:"tags"`
+		FeaturedImage *string    `json:"featured_image,omitempty"`
+		SanityID      *string    `json:"sanity_id,omitempty"`
+		IsPublished   bool       `json:"is_published"`
 		PublishedAt   *time.Time `json:"published_at,omitempty"`
 	}
 
@@ -570,7 +570,7 @@ func (h *Handler) HandleGetPublishedChangelogEntries(w http.ResponseWriter, r *h
 func (h *Handler) HandleGetPublishedBlogPosts(w http.ResponseWriter, r *http.Request) {
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
-	_ = r.URL.Query().Get("tags") // tags parameter (not used in mock)
+	tagStr := r.URL.Query().Get("tags")
 
 	limit := 10 // default for frontend
 	if limitStr != "" {
@@ -586,28 +586,28 @@ func (h *Handler) HandleGetPublishedBlogPosts(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	// TEMPORARY: Return mock data to test routing
-	mockPosts := []map[string]interface{}{
-		{
-			"id": "mock-post-1",
-			"title": "Test Blog Post 1",
-			"slug": "test-blog-post-1",
-			"content": "This is a test blog post content.",
-			"excerpt": "Test excerpt",
-			"author": "Test Author",
-			"tags": []string{"test", "blog"},
-			"featured_image": nil,
-			"sanity_id": nil,
-			"is_published": true,
-			"published_at": "2026-02-21T22:05:00Z",
-			"created_at": "2026-02-21T22:05:00Z",
-			"updated_at": "2026-02-21T22:05:00Z",
-		},
+	var tagFilter []string
+	if tagStr != "" {
+		for _, t := range strings.Split(tagStr, ",") {
+			if s := strings.TrimSpace(t); s != "" {
+				tagFilter = append(tagFilter, s)
+			}
+		}
+	}
+
+	posts, err := h.repo.ListBlogPosts(limit, offset, true, tagFilter)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list published blog posts")
+		http.Error(w, "Failed to load blog posts", http.StatusInternalServerError)
+		return
+	}
+	if posts == nil {
+		posts = []*storage.BlogPost{}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"posts":  mockPosts,
+		"posts":  posts,
 		"limit":  limit,
 		"offset": offset,
 	})

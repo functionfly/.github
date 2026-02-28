@@ -589,6 +589,32 @@
   color: #0f0f1a !important;
 }
 
+/* Function profile card - light background and dark text in light mode */
+[data-theme="light"] .function-profile-card {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .function-profile-card [class*="CardTitle"],
+[data-theme="light"] .function-profile-card [class*="CardDescription"] {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .function-profile-card .text-muted-foreground {
+  color: #4b5563 !important;
+}
+
+[data-theme="light"] .function-profile-card a {
+  color: #4f46e5 !important;
+}
+
+[data-theme="light"] .function-profile-card [class*="Badge"] {
+  background-color: #f5f5f7 !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #0f0f1a !important;
+}
+
 [data-theme="light"] .function-stat-card .text-2xl {
   color: #0f0f1a !important;
 }
@@ -624,6 +650,29 @@
 /* Muted text (e.g. stat labels, descriptions) - better contrast in light mode */
 [data-theme="light"] .text-muted-foreground {
   color: #4b5563 !important;
+}
+
+/* Function page markdown prose - dark text in light mode (don't use prose-invert) */
+[data-theme="light"] .function-page-prose {
+  --tw-prose-body: #0f0f1a;
+  --tw-prose-headings: #0f0f1a;
+  --tw-prose-links: #4f46e5;
+  --tw-prose-bold: #0f0f1a;
+  --tw-prose-counters: #4b5563;
+  --tw-prose-bullets: #4b5563;
+  --tw-prose-quotes: #374151;
+  --tw-prose-quote-borders: #6366f1;
+  --tw-prose-code: #0f0f1a;
+  --tw-prose-pre-code: #0f0f1a;
+  --tw-prose-pre-bg: #f5f5f7;
+  --tw-prose-th-borders: rgba(0, 0, 0, 0.12);
+  --tw-prose-td-borders: rgba(0, 0, 0, 0.08);
+  color: #0f0f1a;
+}
+
+[data-theme="light"] .function-page-prose pre {
+  background-color: #f5f5f7 !important;
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 /* ==========================================================================
@@ -1277,6 +1326,214 @@
   border-color: #6366f1 !important;
   color: #4f46e5 !important;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15) !important;
+}
+
+/* Full Pricing Page - light mode contrast fixes */
+[data-theme="light"] .pricing-page.min-h-screen.bg-gradient-to-br {
+  background: linear-gradient(135deg, #eef2ff 0%, #e8ecff 40%, #f5f3ff 100%) !important;
+}
+
+[data-theme="light"] .pricing-page nav a,
+[data-theme="light"] .pricing-page nav span,
+[data-theme="light"] .pricing-page nav h1 {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .pricing-page nav h1.bg-clip-text.text-transparent {
+  background: linear-gradient(to right, #1e1b4b, #4f46e5) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+[data-theme="light"] .pricing-page h1 .bg-clip-text.text-transparent:first-of-type {
+  color: #1e1b4b !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: #1e1b4b !important;
+}
+
+[data-theme="light"] .pricing-page .text-text-secondary {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .pricing-page .rounded-full.border-green-500\/20,
+[data-theme="light"] .pricing-page .rounded-full.border-green-500\/20 * {
+  color: #166534 !important;
+}
+
+[data-theme="light"] .pricing-page .flex.items-center.justify-center.gap-2.text-sm span {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-plan-card {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(30, 27, 75, 0.14) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-plan-card h3 {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-plan-card .text-5xl,
+[data-theme="light"] .pricing-page .pricing-plan-card .text-6xl {
+  color: #1e1b4b !important;
+  -webkit-text-fill-color: #1e1b4b !important;
+  background: none !important;
+  background-clip: unset !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-plan-card p.text-green-400,
+[data-theme="light"] .pricing-page .pricing-plan-card .text-green-400 {
+  color: #15803d !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-plan-card p.text-text-secondary,
+[data-theme="light"] .pricing-page .pricing-plan-card span.text-text-secondary {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-plan-card li span {
+  color: #334155 !important;
+}
+
+/* Powerful Features section - light mode */
+[data-theme="light"] .pricing-page .pricing-feature-carousel h2,
+[data-theme="light"] .pricing-page .pricing-feature-carousel h3 {
+  color: #1e1b4b !important;
+}
+
+/* Compare Plans section - light mode */
+[data-theme="light"] .pricing-page .pricing-comparison-section h2 {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-comparison-section .pricing-comparison-table {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(30, 27, 75, 0.14) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-comparison-section .pricing-comparison-table th {
+  color: #1e1b4b !important;
+  border-color: rgba(30, 27, 75, 0.12) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-comparison-section .pricing-comparison-table td {
+  color: #334155 !important;
+  border-color: rgba(30, 27, 75, 0.08) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-comparison-section .pricing-comparison-table td span.text-text-secondary {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-comparison-section .pricing-comparison-table tr {
+  border-color: rgba(30, 27, 75, 0.08) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-comparison-section .pricing-comparison-table .text-emerald-400 {
+  color: #059669 !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-comparison-section .pricing-comparison-table .text-red-400 {
+  color: #dc2626 !important;
+}
+
+/* FAQ section - light mode (question titles must be dark for contrast) */
+[data-theme="light"] .pricing-page .pricing-faq-section h2 {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-faq-section .pricing-faq-card {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(30, 27, 75, 0.14) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-faq-section .pricing-faq-card h3 {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-faq-section .pricing-faq-card p {
+  color: #475569 !important;
+}
+
+/* State Fabric pricing section - light mode */
+[data-theme="light"] .pricing-page .pricing-state-fabric-section h2 {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-card {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(30, 27, 75, 0.14) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-card h3,
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-card .text-4xl,
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-card .text-3xl,
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-card .pricing-state-fabric-price {
+  color: #1e1b4b !important;
+}
+
+/* Most Popular badge – ensure visible in light mode */
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-badge span {
+  background: linear-gradient(to right, #6366f1, #8b5cf6) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-card p,
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-card span.text-text-secondary,
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-card li span {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-card .text-text-secondary\/80 {
+  color: #64748b !important;
+}
+
+/* State Fabric comparison table - light mode */
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-comparison {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(30, 27, 75, 0.14) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-comparison th,
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-comparison td {
+  color: #334155 !important;
+  border-color: rgba(30, 27, 75, 0.08) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-comparison tr {
+  border-color: rgba(30, 27, 75, 0.08) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-comparison .text-emerald-400 {
+  color: #059669 !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-state-fabric-section h3.text-xl {
+  color: #1e1b4b !important;
+}
+
+/* State Fabric add-on cards - light mode */
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-addon {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(30, 27, 75, 0.14) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-addon h4,
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-addon .pricing-state-fabric-price {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-state-fabric-section .pricing-state-fabric-addon p {
+  color: #475569 !important;
 }
 
 /* Interactive Demo Section enhancements for light mode */

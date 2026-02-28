@@ -78,7 +78,7 @@ export function PricingCTASection() {
             }}
             secondaryButton={{
               text: "View Pricing Details",
-              href: "/pricing"
+              href: "/pricing#state-fabric"
             }}
           />
         </FadeInOnScroll>

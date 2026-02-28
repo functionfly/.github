@@ -318,6 +318,179 @@ func (h *Handler) HandleDivergenceSimulation(w http.ResponseWriter, r *http.Requ
 	})
 }
 
+// HandleListExecutions lists MEG records (executions) for a function with pagination and filters.
+//
+// GET /registry/{author}/{name}/executions
+func (h *Handler) HandleListExecutions(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+
+	// Get function
+	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "function not found")
+		return
+	}
+
+	// Parse pagination params
+	limit := 20
+	offset := 0
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && v > 0 && v <= 100 {
+			limit = v
+		}
+	}
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if v, err := strconv.Atoi(o); err == nil && v >= 0 {
+			offset = v
+		}
+	}
+
+	// Parse filters
+	filters := registry.MEGRecordFilters{
+		Version:      r.URL.Query().Get("version"),
+		VerifiedOnly: r.URL.Query().Get("verified_only") == "true",
+	}
+
+	// Parse date filters
+	if fromStr := r.URL.Query().Get("from"); fromStr != "" {
+		if from, err := time.Parse(time.RFC3339, fromStr); err == nil {
+			filters.From = &from
+		}
+	}
+	if toStr := r.URL.Query().Get("to"); toStr != "" {
+		if to, err := time.Parse(time.RFC3339, toStr); err == nil {
+			filters.To = &to
+		}
+	}
+
+	// Get MEG records
+	records, total, err := h.Repo.GetMEGRecordsByFunctionID(fn.ID, limit, offset, filters)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to list executions: %v", err))
+		return
+	}
+
+	// Build response
+	executions := make([]map[string]interface{}, len(records))
+	for i, rec := range records {
+		executions[i] = map[string]interface{}{
+			"execution_id":        rec.ExecutionID.String(),
+			"execution_root_hash": rec.ExecutionRootHash,
+			"version":             rec.Version,
+			"created_at":          rec.CreatedAt,
+			"replay_verified":     rec.ReplayVerifiedAt != nil,
+			"roots_match":         rec.ReplayRootHash != "" && rec.ReplayRootHash == rec.ExecutionRootHash,
+			"determinism_tier":    rec.DeterminismTier,
+			"protocol_version":    rec.ProtocolVersion,
+			"component_hashes": map[string]string{
+				"input":       rec.InputHash,
+				"output":      rec.OutputHash,
+				"environment": rec.EnvironmentHash,
+				"dependency":  rec.DependencyHash,
+				"trace":       rec.TraceHash,
+				"resource":    rec.ResourceHash,
+				"metadata":    rec.MetadataHash,
+			},
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"function":   fmt.Sprintf("fx://%s/%s", author, name),
+		"executions": executions,
+		"total":      total,
+		"limit":      limit,
+		"offset":     offset,
+	})
+}
+
+// HandleGetExecution returns detailed information about a specific execution.
+//
+// GET /registry/{author}/{name}/executions/{execution_id}
+func (h *Handler) HandleGetExecution(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+	executionIDStr := vars["execution_id"]
+
+	// Get function
+	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "function not found")
+		return
+	}
+
+	// Parse execution ID
+	executionID, err := uuid.Parse(executionIDStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid execution_id")
+		return
+	}
+
+	// Get MEG record
+	rec, err := h.Repo.GetMEGByExecutionID(executionID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get execution: %v", err))
+		return
+	}
+	if rec == nil {
+		writeError(w, http.StatusNotFound, "execution not found")
+		return
+	}
+
+	// Verify this execution belongs to the requested function
+	if rec.FunctionID != fn.ID {
+		writeError(w, http.StatusNotFound, "execution not found for this function")
+		return
+	}
+
+	// Get associated certificate if available
+	certs, err := h.Repo.GetCertificatesByFunctionID(fn.ID, 1, 0)
+	var certInfo map[string]interface{}
+	if err == nil && len(certs) > 0 {
+		for _, cert := range certs {
+			if cert.ExecutionID == executionID {
+				certInfo = map[string]interface{}{
+					"certificate_id":     cert.CertificateID,
+					"cert_level":         cert.CertLevel,
+					"certificate_hash":   cert.CertificateHash,
+					"created_at":         cert.CreatedAt,
+					"anchored":           cert.Anchored,
+				}
+				break
+			}
+		}
+	}
+
+	response := map[string]interface{}{
+		"execution": map[string]interface{}{
+			"execution_id":        rec.ExecutionID.String(),
+			"execution_root_hash": rec.ExecutionRootHash,
+			"version":             rec.Version,
+			"created_at":          rec.CreatedAt,
+			"determinism_tier":    rec.DeterminismTier,
+			"protocol_version":    rec.ProtocolVersion,
+			"replay_verified_at":  rec.ReplayVerifiedAt,
+			"replay_root_hash":    rec.ReplayRootHash,
+			"replay_node_id":      rec.ReplayNodeID,
+			"roots_match":         rec.ReplayRootHash != "" && rec.ReplayRootHash == rec.ExecutionRootHash,
+			"component_hashes": map[string]string{
+				"input":       rec.InputHash,
+				"output":      rec.OutputHash,
+				"environment": rec.EnvironmentHash,
+				"dependency":  rec.DependencyHash,
+				"trace":       rec.TraceHash,
+				"resource":    rec.ResourceHash,
+				"metadata":    rec.MetadataHash,
+			},
+			"certificate": certInfo,
+		},
+	}
+
+	writeJSON(w, http.StatusOK, response)
+}
+
 // writeJSON writes a JSON response with the given status code.
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
@@ -328,7 +501,7 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 // writeError writes a JSON error response.
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]interface{}{
-		"error":   message,
-		"status":  status,
+		"error":  message,
+		"status": status,
 	})
 }

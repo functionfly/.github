@@ -90,7 +90,7 @@ export function FeatureCarousel() {
       initial={{ opacity: 0, y: 40 }}
       animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
-      className="mb-20"
+      className="pricing-feature-carousel mb-20"
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}

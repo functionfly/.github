@@ -248,6 +248,11 @@ type Repository interface {
 	CreateFunctionLog(ctx context.Context, log *FunctionLog) error
 	GetFunctionLogs(ctx context.Context, functionID *uuid.UUID, deploymentID *uuid.UUID, limit int, since *time.Time, level *string) ([]*FunctionLog, error)
 
+	// Dashboard aggregations (tenant-scoped)
+	GetUsageByDay(ctx context.Context, tenantID uuid.UUID, days int) ([]UsageByDay, error)
+	GetExecutionRateByHour(ctx context.Context, tenantID uuid.UUID, hours int) ([]ExecutionRateByHour, error)
+	GetRecentActivityForTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]DashboardActivityItem, error)
+
 	// Incident operations
 	CreateIncident(ctx context.Context, incident *Incident) (*Incident, error)
 	GetIncidentByID(ctx context.Context, incidentID uuid.UUID) (*Incident, error)

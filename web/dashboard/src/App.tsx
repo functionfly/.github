@@ -49,6 +49,7 @@ import { GlobalKeyboardShortcuts } from "@/components/common/GlobalKeyboardShort
 import { Analytics } from "@/components/common/Analytics";
 import { ThemeProvider } from "@/components/common/ThemeProvider";
 import FunctionPage from "@/pages/FunctionPage";
+import ExecutionExplorerPage from "@/pages/ExecutionExplorerPage";
 import { PlaygroundPage } from "@/pages/PlaygroundPage";
 import { ReplayPage } from "@/pages/ReplayPage";
 import { StateFabricPage } from "@/pages/StateFabricPage";
@@ -186,6 +187,7 @@ function AppContent() {
       {/* Registry Playground Routes (Public) */}
       <Route path="/fx/:author/:name" element={<FunctionPage />} />
       <Route path="/run/:author/:name" element={<PlaygroundPage />} />
+      <Route path="/registry/:author/:name/executions" element={<ExecutionExplorerPage />} />
       <Route path="/run/:appSlug/:functionName" element={<PlaygroundPage />} />
       <Route path="/replay/:execId" element={<ReplayPage />} />
       <Route

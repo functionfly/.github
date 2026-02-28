@@ -31,12 +31,17 @@ import {
   Code2,
   BookOpen,
   BarChart3,
+  Lock,
+  User,
+  Layers,
+  ExternalLink,
 } from "lucide-react";
 import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/pages/LandingPage/components";
 import { CodeBlock } from "@/components/common/CodeBlock";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
+import { TrustScoreBadge, TrustLevel } from "@/components/common/TrustScoreBadge";
 import { useState } from "react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -69,6 +74,13 @@ interface FunctionInfo {
   popularity_score?: number;
   readme?: string;
   documentation_url?: string;
+  /** Trust score 0–100 from ratings (included when rating exists) */
+  trust_score?: number;
+  trust_level?: string;
+  /** Declared capabilities for sandbox / integrity */
+  capabilities?: string[];
+  /** Version integrity hash (displayed as ExecutionRootHash badge) */
+  source_hash?: string;
 }
 
 export default function FunctionPage() {
@@ -232,9 +244,9 @@ print(result)`,
 
   const codeExamples = generateCodeExamples(functionInfo);
 
-  // Markdown renderer component
+  // Markdown renderer component (theme-aware: light mode = dark text, dark mode = inverted)
   const MarkdownRenderer = ({ content }: { content: string }) => (
-    <div className="prose prose-invert prose-sm max-w-none">
+    <div className="function-page-prose prose prose-sm max-w-none prose-invert">
       <ReactMarkdown
         components={{
           code({ node, inline, className, children, ...props }: any) {
@@ -334,6 +346,77 @@ print(result)`,
                   {functionInfo.runtime}
                 </Badge>
               </div>
+
+              {/* Function profile: Owner, Trust Score, ExecutionRootHash, Capabilities (description & version live in hero/breadcrumb only) */}
+              <Card className="function-profile-card mb-8 bg-bg-primary/60 border-border-subtle">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-brand-500" />
+                    Function profile
+                  </CardTitle>
+                  <CardDescription>Identity, integrity, and capabilities for this function</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Owner</p>
+                    <Link to={`/registry?author=${functionInfo.author}`} className="text-sm font-medium text-brand-500 hover:underline flex items-center gap-1">
+                      <User className="w-4 h-4" />
+                      {functionInfo.author}
+                    </Link>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Trust score</p>
+                    {functionInfo.trust_score != null ? (
+                      <TrustScoreBadge
+                        trustScore={functionInfo.trust_score}
+                        trustLevel={functionInfo.trust_level as TrustLevel}
+                        showScore
+                        size="sm"
+                      />
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Execution root hash</p>
+                    {functionInfo.source_hash ? (
+                      <Link
+                        to={`/registry/${functionInfo.author}/${functionInfo.name}/executions`}
+                        className="inline-flex items-center"
+                      >
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-xs gap-1 max-w-full truncate hover:bg-brand-500/10 hover:border-brand-500/30 transition-colors cursor-pointer"
+                          title={`${functionInfo.source_hash} - Click to explore all executions`}
+                        >
+                          <Lock className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{functionInfo.source_hash}</span>
+                          <ExternalLink className="w-3 h-3 shrink-0 ml-1" />
+                        </Badge>
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        Not available
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Capabilities</p>
+                    {functionInfo.capabilities && functionInfo.capabilities.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {functionInfo.capabilities.map((cap) => (
+                          <Badge key={cap} variant="outline" className="text-xs">
+                            {cap}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">None declared</span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Stats Cards with Animation */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 function-page-hero-stats">
@@ -533,3 +616,4 @@ print(result)`,
     </div>
   );
 }
+

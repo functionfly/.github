@@ -12,6 +12,7 @@ import { useWindowSize } from "react-use";
 import toast, { Toaster } from "react-hot-toast";
 import { useCardGestures, useScrollAnimation } from "./hooks";
 import { ComparisonSection } from "./components/ComparisonSection";
+import { StateFabricPricingSection } from "./components/StateFabricPricingSection";
 import { WhyChooseUsSection } from "./components/WhyChooseUsSection";
 import { FAQSection } from "./components/FAQSection";
 import { CTASection } from "./components/CTASection";
@@ -78,7 +79,7 @@ export function PricingPage() {
       {/* Structured Data */}
       <PricingPageStructuredData />
 
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
+      <div className="pricing-page min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
         {/* Background decorative elements */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(99,102,241,0.08),transparent_50%)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(139,92,246,0.08),transparent_50%)] pointer-events-none" />
@@ -187,7 +188,7 @@ export function PricingPage() {
                 >
                   <Card
                     className={cn(
-                      "h-full relative overflow-hidden transition-all duration-300 group cursor-pointer",
+                      "pricing-plan-card h-full relative overflow-hidden transition-all duration-300 group cursor-pointer",
                       "bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-sm",
                       "border border-white/10 hover:border-white/20",
                       "hover:shadow-2xl hover:shadow-[#6366f1]/10",
@@ -349,6 +350,9 @@ export function PricingPage() {
             })}
             </div>
           </motion.div>
+
+          {/* State Fabric pricing – separate section for easy management */}
+          <StateFabricPricingSection />
 
           {/* Additional Sections */}
           <FeatureCarousel />
