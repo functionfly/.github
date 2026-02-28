@@ -400,7 +400,7 @@ export function AdminNewsletterPage() {
             <CardContent>
               <div className="space-y-4">
                 {filteredSubscribers.map((subscriber) => (
-                  <div key={subscriber._id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div key={subscriber._id} className="flex items-center justify-between p-4 border border-border-subtle rounded-lg hover:bg-bg-hover transition-colors">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
                         <div>
@@ -453,7 +453,7 @@ export function AdminNewsletterPage() {
             <CardContent>
               <div className="space-y-4">
                 {filteredCampaigns.map((campaign) => (
-                  <div key={campaign._id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div key={campaign._id} className="flex items-center justify-between p-4 border border-border-subtle rounded-lg hover:bg-bg-hover transition-colors">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
                         <div>

@@ -36,12 +36,12 @@ export function AdminSystemPage() {
   };
 
   const getHealthStatusColor = (status: string, healthy: boolean) => {
-    if (!healthy) return "text-red-400";
+    if (!healthy) return "text-red-600 dark:text-red-400";
     switch (status) {
       case "ok":
-        return "text-emerald-400";
+        return "text-emerald-600 dark:text-emerald-400";
       case "degraded":
-        return "text-amber-400";
+        return "text-amber-600 dark:text-amber-400";
       default:
         return "text-text-secondary";
     }
@@ -50,28 +50,28 @@ export function AdminSystemPage() {
   const getIncidentSeverityColor = (severity: string) => {
     switch (severity) {
       case "critical":
-        return "bg-red-500/10 text-red-400 border-red-500/20";
+        return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
       case "high":
-        return "bg-orange-500/10 text-orange-400 border-orange-500/20";
+        return "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20";
       case "medium":
-        return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
       case "low":
-        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+        return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
       default:
-        return "bg-gray-500/10 text-text-secondary border-gray-500/20";
+        return "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20";
     }
   };
 
   const getIncidentStatusColor = (status: string) => {
     switch (status) {
       case "resolved":
-        return "bg-emerald-500/10 text-emerald-400";
+        return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
       case "investigating":
-        return "bg-blue-500/10 text-blue-400";
+        return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
       case "monitoring":
-        return "bg-amber-500/10 text-amber-400";
+        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
       default:
-        return "bg-gray-500/10 text-text-secondary";
+        return "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20";
     }
   };
 
@@ -79,29 +79,32 @@ export function AdminSystemPage() {
     <SectionErrorBoundary sectionTitle="System Health Page">
       <div className="space-y-6">
         {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/admin')}
-          className="text-text-muted hover:text-text-primary hover:bg-bg-hover"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Dashboard
-        </Button>
-        <div className="flex-1 text-center">
-          <h1 className="text-2xl font-bold text-text-primary">System Health</h1>
-          <p className="text-text-secondary">Monitor system performance and health status</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/admin')}
+              className="text-text-muted hover:text-text-primary hover:bg-bg-hover"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-text-primary">System Health</h1>
+              <p className="text-sm text-text-secondary">Monitor system performance and health status</p>
+            </div>
+          </div>
+          <Button
+            onClick={handleRefreshHealth}
+            disabled={isRefreshing}
+            variant="outline"
+            size="sm"
+            className="border-border-default hover:bg-bg-hover text-text-secondary"
+          >
+            <Activity className="w-4 h-4 mr-2" />
+            {isRefreshing ? "Refreshing..." : "Refresh"}
+          </Button>
         </div>
-        <Button
-          onClick={handleRefreshHealth}
-          disabled={isRefreshing}
-          variant="outline"
-          className="border-border-subtle hover:bg-bg-hover"
-        >
-          <Activity className="w-4 h-4 mr-2" />
-          {isRefreshing ? "Refreshing..." : "Refresh"}
-        </Button>
-      </div>
 
       {/* Overall Status */}
       {healthLoading ? (
@@ -244,7 +247,7 @@ export function AdminSystemPage() {
               </div>
               <Progress value={45} className="h-2" />
             </div>
-            <div className="pt-2 border-t border-white/8">
+            <div className="pt-2 border-t border-border-subtle">
               <div className="flex justify-between text-sm">
                 <span className="text-text-secondary">Active Connections</span>
                 <span className="text-text-primary">89</span>

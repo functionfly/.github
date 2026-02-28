@@ -13,13 +13,24 @@ import {
   Search,
   Database,
   FunctionSquare,
+  Shield,
+  Users,
+  Building2,
+  CreditCard,
+  FileText,
+  Mail,
+  Calendar,
+  MessageSquare,
+  Code,
+  Layers,
+  RotateCcw,
+  Wrench,
 } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/constants";
-import { Shield } from "lucide-react";
 import { useNavigationStatus } from "@/hooks/useNavigationStatus";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation";
@@ -105,19 +116,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const adminSection: NavSection | null = isAdmin ? {
     title: "Admin",
     items: [
-      { path: ROUTES.ADMIN_TENANTS, label: "Tenants", icon: Shield },
-      { path: ROUTES.ADMIN_USERS, label: "Users", icon: Shield },
-      { path: ROUTES.ADMIN_BILLING, label: "Billing", icon: Shield },
+      { path: ROUTES.ADMIN_TENANTS, label: "Tenants", icon: Building2 },
+      { path: ROUTES.ADMIN_USERS, label: "Users", icon: Users },
+      { path: ROUTES.ADMIN_BILLING, label: "Billing", icon: CreditCard },
       { path: ROUTES.ADMIN_AUDIT, label: "Audit Log", icon: Shield },
-      { path: ROUTES.ADMIN_SYSTEM, label: "System", icon: Shield },
-      // Blog & Content Management
-      { path: ROUTES.ADMIN_CONTENT, label: "Content", icon: Shield },
-      { path: ROUTES.ADMIN_REDIRECTS, label: "Redirects", icon: Shield },
-      { path: ROUTES.ADMIN_NEWSLETTER, label: "Newsletter", icon: Shield },
-      { path: ROUTES.ADMIN_CONTENT_CALENDAR, label: "Content Calendar", icon: Shield },
-      { path: ROUTES.ADMIN_FEEDBACK, label: "Feedback", icon: Shield },
-      // State Fabric Admin
-      { path: ROUTES.ADMIN_STATE_FABRIC, label: "State Fabric", icon: Database },
+      { path: ROUTES.ADMIN_SYSTEM, label: "System", icon: Wrench },
+      { path: ROUTES.ADMIN_CONTENT, label: "Content", icon: FileText },
+      { path: ROUTES.ADMIN_REDIRECTS, label: "Redirects", icon: RotateCcw },
+      { path: ROUTES.ADMIN_NEWSLETTER, label: "Newsletter", icon: Mail },
+      { path: ROUTES.ADMIN_CONTENT_CALENDAR, label: "Content Calendar", icon: Calendar },
+      { path: ROUTES.ADMIN_FEEDBACK, label: "Feedback", icon: MessageSquare },
+      { path: ROUTES.ADMIN_FUNCTIONS, label: "Functions", icon: Code },
+      { path: ROUTES.ADMIN_REGISTRY, label: "Registry", icon: Database },
+      { path: ROUTES.ADMIN_STATE_FABRIC, label: "State Fabric", icon: Layers },
     ]
   } : null;
 

@@ -31,7 +31,7 @@
         "@react-spring/web": "^10.0.3",
         "@simplewebauthn/browser": "^13.2.2",
         "@tanstack/react-query": "^5.90.21",
-        "@tanstack/react-table": "^8.21.2",
+        "@tanstack/react-table": "^8.21.3",
         "@types/react-syntax-highlighter": "^15.5.13",
         "@use-gesture/react": "^10.3.1",
         "@vercel/analytics": "^1.6.1",
@@ -54,6 +54,7 @@
         "react": "^19.0.0",
         "react-aws-icons": "^1.2.1",
         "react-confetti": "^6.4.0",
+        "react-day-picker": "^8.10.1",
         "react-dom": "^19.0.0",
         "react-google-recaptcha-v3": "^1.11.0",
         "react-hook-form": "^7.54.2",
@@ -2339,6 +2340,8 @@
     "react-aws-icons": ["react-aws-icons@1.2.1", "", { "peerDependencies": { "prop-types": "*", "react": "*" } }, "sha512-32j+P7ZKbQsreL44fAqKYlg5Cn5d1ivFO/2q7yKcKsgyx0QiFjmQxyb5mp19jBNNk5Ux57tfUvWpEMmRzboxPA=="],
 
     "react-confetti": ["react-confetti@6.4.0", "", { "dependencies": { "tween-functions": "^1.2.0" }, "peerDependencies": { "react": "^16.3.0 || ^17.0.1 || ^18.0.0 || ^19.0.0" } }, "sha512-5MdGUcqxrTU26I2EU7ltkWPwxvucQTuqMm8dUz72z2YMqTD6s9vMcDUysk7n9jnC+lXuCPeJJ7Knf98VEYE9Rg=="],
+
+    "react-day-picker": ["react-day-picker@8.10.1", "", { "peerDependencies": { "date-fns": "^2.28.0 || ^3.0.0", "react": "^16.8.0 || ^17.0.0 || ^18.0.0" } }, "sha512-TMx7fNbhLk15eqcMt+7Z7S2KF7mfTId/XJDjKE8f+IUcFn0l08/kI4FiYTL/0yuOLmEcbR4Fwe3GJf/NiiMnPA=="],
 
     "react-devtools-core": ["react-devtools-core@6.1.5", "", { "dependencies": { "shell-quote": "^1.6.1", "ws": "^7" } }, "sha512-ePrwPfxAnB+7hgnEr8vpKxL9cmnp7F322t8oqcPshbIQQhDKgFDW4tjhF2wjVbdXF9O/nyuy3sQWd9JGpiLPvA=="],
 

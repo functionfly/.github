@@ -176,21 +176,21 @@ export function AdminFeedbackPage() {
   // Status color mapping
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'submitted': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'in-review': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case 'resolved': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'closed': return 'bg-gray-500/10 text-text-secondary border-gray-500/20';
-      default: return 'bg-gray-500/10 text-text-secondary border-gray-500/20';
+      case 'submitted': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20';
+      case 'in-review': return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
+      case 'resolved': return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+      case 'closed': return 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20';
+      default: return 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20';
     }
   };
 
   // Priority color mapping
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'critical': return 'text-red-400';
-      case 'high': return 'text-orange-400';
-      case 'medium': return 'text-amber-400';
-      case 'low': return 'text-green-400';
+      case 'critical': return 'text-red-600 dark:text-red-400';
+      case 'high': return 'text-orange-600 dark:text-orange-400';
+      case 'medium': return 'text-amber-600 dark:text-amber-400';
+      case 'low': return 'text-emerald-600 dark:text-emerald-400';
       default: return 'text-text-secondary';
     }
   };
@@ -374,7 +374,7 @@ export function AdminFeedbackPage() {
             variant="outline"
             onClick={() => handleExport('json')}
             disabled={isLoading}
-            className="text-text-secondary border-white/8 hover:bg-white/5"
+            className="text-text-secondary border-border-default hover:bg-bg-hover"
           >
             <FileText className="w-4 h-4 mr-2" />
             Export JSON

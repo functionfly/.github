@@ -85,12 +85,12 @@ export function AdminTenantsPage() {
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-[#6366f1] hover:bg-[#5855eb]">
+            <Button className="bg-brand-500 hover:bg-brand-600 text-white">
               <Plus className="w-4 h-4 mr-2" />
               Add Tenant
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-bg-tertiary border-white/8">
+          <DialogContent className="bg-bg-tertiary border-border-default">
             <DialogHeader>
               <DialogTitle className="text-text-primary">Create New Tenant</DialogTitle>
             </DialogHeader>
@@ -112,7 +112,7 @@ export function AdminTenantsPage() {
                 <Button
                   onClick={handleCreateTenant}
                   disabled={!newTenantName.trim() || createTenantMutation.isPending}
-                  className="bg-[#6366f1] hover:bg-[#5855eb]"
+                  className="bg-brand-500 hover:bg-brand-600 text-white"
                 >
                   {createTenantMutation.isPending ? "Creating..." : "Create Tenant"}
                 </Button>
@@ -128,21 +128,21 @@ export function AdminTenantsPage() {
           title="Total Tenants"
           value={tenants.length}
           change={{ value: 0, label: "from last month" }}
-          icon={<Users className="w-5 h-5 text-[#6366f1]" />}
+          icon={<Users className="w-5 h-5 text-brand-500" />}
           trend="neutral"
         />
         <StatCard
           title="Active Tenants"
           value={tenants.filter(t => t.status === "active").length}
           change={{ value: 0, label: "from last month" }}
-          icon={<Activity className="w-5 h-5 text-[#6366f1]" />}
+          icon={<Activity className="w-5 h-5 text-brand-500" />}
           trend="neutral"
         />
         <StatCard
           title="Suspended Tenants"
           value={tenants.filter(t => t.status === "suspended").length}
           change={{ value: 0, label: "from last month" }}
-          icon={<DollarSign className="w-5 h-5 text-[#6366f1]" />}
+          icon={<DollarSign className="w-5 h-5 text-brand-500" />}
           trend="neutral"
         />
       </div>
@@ -166,7 +166,7 @@ export function AdminTenantsPage() {
               <SelectTrigger className="w-full sm:w-[180px] bg-bg-secondary border-border-default text-text-primary">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
-              <SelectContent className="bg-bg-tertiary border-white/8">
+              <SelectContent className="bg-bg-tertiary border-border-default">
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="suspended">Suspended</SelectItem>
@@ -196,11 +196,11 @@ export function AdminTenantsPage() {
             {filteredTenants.map((tenant) => (
               <div
                 key={tenant.id}
-                className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-white/8 hover:bg-white/5 transition-colors"
+                className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-default hover:bg-bg-hover transition-colors"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#6366f1]/10 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-[#6366f1]" />
+                  <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-brand-500" />
                   </div>
                   <div>
                     <p className="font-medium text-text-primary">{tenant.name}</p>
@@ -230,7 +230,7 @@ export function AdminTenantsPage() {
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-bg-tertiary border-white/8">
+                    <DropdownMenuContent className="bg-bg-tertiary border-border-default">
                       <DropdownMenuItem className="text-text-primary hover:bg-bg-hover">
                         View Details
                       </DropdownMenuItem>
