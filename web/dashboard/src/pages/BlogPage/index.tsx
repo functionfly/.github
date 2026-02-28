@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/common/Navbar';
-import { BookOpen, Calendar, ArrowRight, User, Tag, Loader2, AlertTriangle, Sparkles, Clock } from 'lucide-react';
+import { BookOpen, Calendar, ArrowRight, User, Tag, Loader2, AlertTriangle, Sparkles, Clock, Bookmark } from 'lucide-react';
 import { contentApi, BlogPost } from '@/api/content';
 import {
   calculateReadingTime,
@@ -16,6 +16,8 @@ import {
   getRemainingPosts,
   getAuthorAvatar
 } from './utils';
+import { SearchBar, FilterBar, FeaturedCarousel, BlogCardSkeleton, FeaturedPostSkeleton, BookmarkButton } from '@/components/blog';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 const BlogPage = () => {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
@@ -23,8 +25,31 @@ const BlogPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  
+  // Enable carousel for multiple featured posts
+  const [useCarousel, setUseCarousel] = useState(false);
+  
+  // Infinite scroll
+  const { sentinelRef, isNearBottom } = useInfiniteScroll({ rootMargin: '200px' });
 
-  const fetchBlogPosts = async (loadMore = false) => {
+  // Extract unique tags from all posts
+  useEffect(() => {
+    const tags = new Set<string>();
+    blogPosts.forEach(post => {
+      post.tags.forEach(tag => tags.add(tag));
+    });
+    setAvailableTags(Array.from(tags).sort());
+    
+    // Enable carousel if there are 2+ posts
+    setUseCarousel(blogPosts.length >= 2);
+  }, [blogPosts]);
+
+  const fetchBlogPosts = async (loadMore = false, search?: string, tags?: string[]) => {
     try {
       if (!loadMore) {
         setLoading(true);
@@ -34,10 +59,23 @@ const BlogPage = () => {
       const result = await contentApi.getPublishedBlogPosts({
         limit: 10,
         offset: loadMore ? offset : 0,
+        tags: tags && tags.length > 0 ? tags : undefined,
       });
 
       // Ensure posts is always an array
-      const posts = result.posts || [];
+      let posts = result.posts || [];
+      
+      // Client-side search filtering (if API doesn't support search)
+      if (search && search.trim()) {
+        const query = search.toLowerCase();
+        posts = posts.filter(post => 
+          post.title.toLowerCase().includes(query) ||
+          post.content.toLowerCase().includes(query) ||
+          post.excerpt?.toLowerCase().includes(query) ||
+          post.author.toLowerCase().includes(query) ||
+          post.tags.some(tag => tag.toLowerCase().includes(query))
+        );
+      }
 
       if (loadMore) {
         setBlogPosts(prev => [...prev, ...posts]);
@@ -57,39 +95,57 @@ const BlogPage = () => {
   };
 
   useEffect(() => {
-    fetchBlogPosts();
+    fetchBlogPosts(false, searchQuery, selectedTags);
   }, []);
 
+  // Handle search
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    fetchBlogPosts(false, query, selectedTags);
+  }, [selectedTags]);
+
+  // Handle tag selection
+  const handleTagSelect = useCallback((tag: string) => {
+    setSelectedTags(prev => {
+      const newTags = prev.includes(tag)
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag];
+      fetchBlogPosts(false, searchQuery, newTags);
+      return newTags;
+    });
+  }, [searchQuery]);
+
+  // Clear all filters
+  const handleClearFilters = useCallback(() => {
+    setSelectedTags([]);
+    setSearchQuery('');
+    fetchBlogPosts(false, '', []);
+  }, []);
+
+  // Infinite scroll load more
+  useEffect(() => {
+    if (isNearBottom && hasMore && !loading) {
+      fetchBlogPosts(true, searchQuery, selectedTags);
+    }
+  }, [isNearBottom, hasMore, loading, searchQuery, selectedTags]);
+
   const loadMore = () => {
-    fetchBlogPosts(true);
+    fetchBlogPosts(true, searchQuery, selectedTags);
   };
 
   if (loading && blogPosts.length === 0) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar variant="landing" />
-        <div className="flex items-center justify-center min-h-[60vh] pt-24">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center"
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="inline-block mb-6"
-            >
-              <BookOpen className="h-12 w-12 text-primary" />
-            </motion.div>
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-lg text-muted-foreground"
-            >
-              Loading amazing insights...
-            </motion.p>
-          </motion.div>
+        <div className="pt-16">
+          <FeaturedPostSkeleton />
+          <div className="container mx-auto px-4 pb-24">
+            <div className="mb-14 text-center">
+              <div className="h-10 w-64 mx-auto bg-muted/50 rounded animate-pulse mb-3" />
+              <div className="h-5 w-96 mx-auto bg-muted/50 rounded animate-pulse" />
+            </div>
+            <BlogCardSkeleton count={6} />
+          </div>
         </div>
       </div>
     );
@@ -147,12 +203,17 @@ const BlogPage = () => {
   const featuredPost = getFeaturedPost(blogPosts);
   const remainingPosts = getRemainingPosts(blogPosts, featuredPost);
 
+  // Show carousel for multiple featured posts or single featured post
+  const showCarousel = useCarousel && blogPosts.length >= 2;
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar variant="landing" />
       <div className="pt-16">
-      {/* Hero Section - Featured Post */}
-      {featuredPost && (
+      {/* Featured Section - Carousel or Single Post */}
+      {showCarousel ? (
+        <FeaturedCarousel posts={blogPosts} />
+      ) : featuredPost ? (
         <section className="pt-10 pb-20">
           <div className="container mx-auto px-4">
             <motion.div
@@ -250,9 +311,9 @@ const BlogPage = () => {
             </motion.div>
           </div>
         </section>
-      )}
+      ) : null}
 
-      {/* Blog Posts Grid */}
+      {/* Blog Posts Grid with Search and Filter */}
       <div className="container mx-auto px-4 pb-24">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -267,6 +328,24 @@ const BlogPage = () => {
             Discover the latest thoughts, tutorials, and updates from our team
           </p>
         </motion.div>
+
+        {/* Search and Filter */}
+        {(availableTags.length > 0 || true) && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.15 }}
+            className="mb-10 flex flex-col items-center gap-6"
+          >
+            <SearchBar onSearch={handleSearch} placeholder="Search articles..." />
+            <FilterBar
+              availableTags={availableTags}
+              selectedTags={selectedTags}
+              onTagSelect={handleTagSelect}
+              onClearAll={handleClearFilters}
+            />
+          </motion.div>
+        )}
 
         {remainingPosts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -341,14 +420,24 @@ const BlogPage = () => {
                       </div>
                     )}
 
-                    {/* Read More Link */}
-                    <Link
-                      to={`/blog/${post.slug}`}
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors duration-200"
-                    >
-                      Read more
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
+                    {/* Actions Row */}
+                    <div className="flex items-center justify-between">
+                      {/* Read More Link */}
+                      <Link
+                        to={`/blog/${post.slug}`}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors duration-200"
+                      >
+                        Read more
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                      
+                      {/* Bookmark Button */}
+                      <BookmarkButton 
+                        postId={post.id} 
+                        postTitle={post.title} 
+                        size="sm" 
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -363,12 +452,25 @@ const BlogPage = () => {
             <div className="inline-flex p-5 rounded-2xl bg-muted/50 mb-6">
               <BookOpen className="h-14 w-14 text-muted-foreground" />
             </div>
-            <h3 className="text-xl font-semibold mb-2">No posts yet</h3>
-            <p className="text-muted-foreground max-w-sm mx-auto">Check back soon for new insights and updates.</p>
+            <h3 className="text-xl font-semibold mb-2">No posts found</h3>
+            <p className="text-muted-foreground max-w-sm mx-auto">
+              {searchQuery || selectedTags.length > 0
+                ? 'Try adjusting your search or filters.'
+                : 'Check back soon for new insights and updates.'}
+            </p>
+            {(searchQuery || selectedTags.length > 0) && (
+              <Button
+                variant="outline"
+                onClick={handleClearFilters}
+                className="mt-4 rounded-full"
+              >
+                Clear filters
+              </Button>
+            )}
           </motion.div>
         )}
 
-        {/* Load More Button */}
+        {/* Load More / Infinite Scroll */}
         {hasMore && remainingPosts.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -376,25 +478,38 @@ const BlogPage = () => {
             transition={{ delay: 0.3 }}
             className="text-center mt-14"
           >
-            <Button
-              onClick={loadMore}
-              variant="outline"
-              size="lg"
-              disabled={loading}
-              className="min-w-[220px] rounded-full border-border/60 bg-muted/30 hover:bg-muted/60 transition-colors duration-200"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                <>
-                  Load More Posts
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </>
-              )}
-            </Button>
+            {/* Sentinel element for infinite scroll */}
+            <div ref={sentinelRef} className="h-4" />
+            
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin text-brand-500" />
+                <span className="text-muted-foreground">Loading more posts...</span>
+              </div>
+            ) : (
+              <Button
+                onClick={loadMore}
+                variant="outline"
+                size="lg"
+                className="min-w-[220px] rounded-full border-border/60 bg-muted/30 hover:bg-muted/60 transition-colors duration-200"
+              >
+                Load More Posts
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            )}
+          </motion.div>
+        )}
+
+        {/* End of content message */}
+        {!hasMore && remainingPosts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center mt-14"
+          >
+            <p className="text-muted-foreground text-sm">
+              You've reached the end! 🎉
+            </p>
           </motion.div>
         )}
 
