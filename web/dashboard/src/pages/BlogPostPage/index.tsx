@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -10,11 +10,13 @@ import { contentApi, BlogPost } from '@/api/content';
 import { Footer } from '@/pages/LandingPage/components/Footer';
 import { calculateReadingTime, formatReadingTime, getAuthorAvatar } from '@/pages/BlogPage/utils';
 import { BlogPostBody } from './BlogPostBody';
+import { ArticleSkeleton, ShareButtons, NewsletterSignup, AuthorBio, RelatedPosts, TableOfContents, BookmarkButton } from '@/components/blog';
 import './blog-post.css';
 
 const BlogPostPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
+  const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +28,16 @@ const BlogPostPage = () => {
         setLoading(true);
         const blogPost = await contentApi.getPublishedBlogPostBySlug(slug);
         setPost(blogPost);
+        
+        // Fetch related posts based on tags
+        if (blogPost.tags && blogPost.tags.length > 0) {
+          const result = await contentApi.getPublishedBlogPosts({
+            limit: 10,
+            tags: blogPost.tags,
+          });
+          // Filter out current post
+          setRelatedPosts(result.posts.filter(p => p.id !== blogPost.id));
+        }
       } catch (err) {
         console.error('Failed to fetch blog post:', err);
         setError('Failed to load blog post');
@@ -42,20 +54,9 @@ const BlogPostPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center"
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
-          >
-            <Loader2 className="h-10 w-10 text-brand-500 mx-auto mb-4" />
-          </motion.div>
-          <p className="text-muted-foreground text-sm font-medium">Loading article...</p>
-        </motion.div>
+      <div className="min-h-screen bg-background">
+        <Navbar variant="landing" />
+        <ArticleSkeleton />
       </div>
     );
   }
@@ -85,6 +86,9 @@ const BlogPostPage = () => {
   }
 
   const readingMinutes = calculateReadingTime(post.content);
+  
+  // Get current URL for sharing
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   return (
     <div className="min-h-screen bg-background">
@@ -171,11 +175,26 @@ const BlogPostPage = () => {
             </motion.div>
           )}
 
+          {/* Share Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="flex justify-center mb-10"
+          >
+            <ShareButtons 
+              url={shareUrl}
+              title={post.title}
+              description={post.excerpt || post.content.substring(0, 150)}
+              size="md"
+            />
+          </motion.div>
+
           {/* Article content - card with refined prose */}
           <motion.article
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            transition={{ duration: 0.5, delay: 0.25 }}
             className="rounded-2xl border border-border/50 bg-card/80 shadow-xl shadow-black/3 dark:shadow-none backdrop-blur-sm overflow-hidden"
           >
             <div className="p-8 sm:p-10 md:p-12">
@@ -186,11 +205,42 @@ const BlogPostPage = () => {
             </div>
           </motion.article>
 
+          {/* Author Bio Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.35 }}
+            className="mt-10"
+          >
+            <AuthorBio
+              name={post.author}
+              bio="Writer and content creator sharing insights on technology and development."
+              postsUrl={`/blog?author=${encodeURIComponent(post.author)}`}
+            />
+          </motion.div>
+
+          {/* Newsletter Subscription */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+            className="mt-10"
+          >
+            <NewsletterSignup />
+          </motion.div>
+
+          {/* Related Posts */}
+          <RelatedPosts
+            posts={relatedPosts}
+            currentPostId={post.id}
+            maxPosts={3}
+          />
+
           {/* Back to Blog - soft pill CTA */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.5 }}
             className="mt-12 text-center"
           >
             <Button
@@ -206,6 +256,9 @@ const BlogPostPage = () => {
             </Button>
           </motion.div>
         </div>
+
+        {/* Table of Contents (Desktop) */}
+        <TableOfContents content={post.content} />
       </div>
 
       <Footer />
