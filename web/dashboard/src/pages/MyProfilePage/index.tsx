@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { User, AtSign, Building2, Save, ExternalLink } from "lucide-react";
+import { User, AtSign, Building2, Save, ExternalLink, FileText } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/stores/authStore";
 import { usersApi, type UpdateProfileRequest } from "@/api/users";
@@ -26,6 +27,7 @@ export function MyProfilePage() {
     name: user?.name ?? "",
     username: user?.username ?? "",
     companyName: user?.companyName ?? "",
+    bio: user?.bio ?? "",
     email: user?.email ?? "",
     avatar: user?.avatar,
     updatedAt: user?.updatedAt ?? "",
@@ -34,6 +36,7 @@ export function MyProfilePage() {
   const [name, setName] = useState(profile.name);
   const [username, setUsername] = useState(profile.username ?? "");
   const [companyName, setCompanyName] = useState(profile.companyName ?? "");
+  const [bio, setBio] = useState(profile.bio ?? "");
 
   // Sync local state when server data arrives
   const [synced, setSynced] = useState(false);
@@ -41,6 +44,7 @@ export function MyProfilePage() {
     setName(serverProfile.name ?? "");
     setUsername(serverProfile.username ?? "");
     setCompanyName(serverProfile.companyName ?? "");
+    setBio(serverProfile.bio ?? "");
     setSynced(true);
   }
 
@@ -62,13 +66,15 @@ export function MyProfilePage() {
       name: name.trim() || undefined,
       username: username.trim() || undefined,
       companyName: companyName.trim() || undefined,
+      bio: bio.trim() || undefined,
     });
   };
 
   const isDirty =
     name !== (profile.name ?? "") ||
     username !== (profile.username ?? "") ||
-    companyName !== (profile.companyName ?? "");
+    companyName !== (profile.companyName ?? "") ||
+    bio !== (profile.bio ?? "");
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -196,6 +202,26 @@ export function MyProfilePage() {
               onChange={(e) => setCompanyName(e.target.value)}
               disabled={isLoading}
             />
+          </div>
+
+          {/* Bio */}
+          <div className="space-y-2">
+            <Label htmlFor="bio" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Bio <span className="text-text-muted text-xs">(optional)</span>
+            </Label>
+            <Textarea
+              id="bio"
+              placeholder="Tell us about yourself, your expertise, or what you're building..."
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              disabled={isLoading}
+              rows={4}
+              maxLength={500}
+            />
+            <p className="text-xs text-text-muted text-right">
+              {bio.length}/500 characters
+            </p>
           </div>
 
           <Button

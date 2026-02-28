@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -478,15 +479,16 @@ export function FunctionEditorPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="isSecret"
                       checked={isNewEnvSecret}
-                      onChange={(e) => setIsNewEnvSecret(e.target.checked)}
-                      className="rounded border-border-subtle"
+                      onCheckedChange={(checked) => setIsNewEnvSecret(checked === true)}
                     />
-                    Mark as secret
-                  </label>
+                    <Label htmlFor="isSecret" className="text-sm cursor-pointer">
+                      Mark as secret
+                    </Label>
+                  </div>
                   <Button
                     size="sm"
                     onClick={addEnvironmentVariable}

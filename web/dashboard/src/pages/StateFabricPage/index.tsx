@@ -9,9 +9,9 @@ import {
   Settings,
   MoreVertical,
   Search,
-  Filter,
-  ArrowUpDown,
   RefreshCw,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   useStateFabrics,
   useDeleteStateFabric,
@@ -82,6 +97,8 @@ export function StateFabricPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [fabricToDelete, setFabricToDelete] = useState<StateFabric | null>(null);
 
   const { data: fabrics, isLoading, error, refetch } = useStateFabrics();
   const deleteFabric = useDeleteStateFabric();
@@ -116,10 +133,22 @@ export function StateFabricPage() {
     navigate(`/state-fabric/${id}/edit`);
   };
 
-  const handleDeleteFabric = async (id: string) => {
-    if (confirm("Are you sure you want to delete this state fabric?")) {
-      await deleteFabric.mutateAsync(id);
+  const handleDeleteClick = (fabric: StateFabric) => {
+    setFabricToDelete(fabric);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (fabricToDelete) {
+      await deleteFabric.mutateAsync(fabricToDelete.id);
+      setDeleteDialogOpen(false);
+      setFabricToDelete(null);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setFabricToDelete(null);
   };
 
   if (isLoading) {
@@ -215,28 +244,30 @@ export function StateFabricPage() {
           />
         </div>
         <div className="flex gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-text-primary text-sm"
-          >
-            <option value="all">All Status</option>
-            <option value="online">Online</option>
-            <option value="degraded">Degraded</option>
-            <option value="offline">Offline</option>
-          </select>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-text-primary text-sm"
-          >
-            <option value="all">All Types</option>
-            <option value="session">Session</option>
-            <option value="catalog">Catalog</option>
-            <option value="cache">Cache</option>
-            <option value="workflow">Workflow</option>
-            <option value="custom">Custom</option>
-          </select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="online">Online</SelectItem>
+              <SelectItem value="degraded">Degraded</SelectItem>
+              <SelectItem value="offline">Offline</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="session">Session</SelectItem>
+              <SelectItem value="catalog">Catalog</SelectItem>
+              <SelectItem value="cache">Cache</SelectItem>
+              <SelectItem value="workflow">Workflow</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="icon" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4" />
           </Button>
@@ -352,7 +383,7 @@ export function StateFabricPage() {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="gap-2 text-red-400"
-                        onClick={() => handleDeleteFabric(fabric.id)}
+                        onClick={() => handleDeleteClick(fabric)}
                       >
                         <Database className="w-4 h-4" />
                         Delete
@@ -383,6 +414,41 @@ export function StateFabricPage() {
           </Button>
         </Card>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              Delete State Fabric
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{fabricToDelete?.name}"? This action cannot be undone.
+              All associated stores and pipelines will be permanently removed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDelete}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteFabric.isPending}
+            >
+              {deleteFabric.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/pages/LandingPage/components/Footer";
 import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
+import { toast } from "sonner";
 
 async function handleSocialLogin(provider: "google" | "github") {
   try {
@@ -16,7 +17,7 @@ async function handleSocialLogin(provider: "google" | "github") {
     window.location.href = data.url;
   } catch (error) {
     console.error("Social login failed:", error);
-    alert(`Social login with ${provider} is not yet configured. Please check the backend OAuth settings.`);
+    toast.error(`Social login with ${provider} is not yet configured. Please check the backend OAuth settings.`);
   }
 }
 
