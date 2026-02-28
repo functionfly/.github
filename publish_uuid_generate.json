@@ -2,12 +2,46 @@
   "author": "functionfly",
   "name": "uuid-generate",
   "version": "1.0.0",
+  "trust_level": "high",
+  "description": "Generate UUID v4 (random) identifiers.",
+  "tags": ["uuid", "generate", "random", "id"],
+  "visibility": "public",
+  "pricing": { "type": "free" },
+  "source_hash": "41bf6529f0100d4201358564e22498532b90bc586ac9f843901bdaf8c3aa1a84",
   "manifest": {
     "name": "uuid-generate",
     "version": "1.0.0",
     "runtime": "python3.11",
+    "title": "UUID Generate",
     "description": "Generate UUID v4 (random) identifiers.",
-    "handler": "handler"
+    "handler": "handler",
+    "timeout_ms": 5000,
+    "memory_mb": 128,
+    "deterministic": false,
+    "cache_ttl": 0,
+    "side_effects": "none",
+    "idempotent": false,
+    "public": true,
+    "category": "utilities",
+    "tags": ["uuid", "generate", "random", "id"],
+    "capabilities": [],
+    "input": {
+      "type": "object",
+      "properties": {
+        "count": { "type": "integer", "description": "Number of UUIDs to generate (1-100, default: 1)" }
+      },
+      "example": { "count": 1 }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "ok": { "type": "boolean" },
+        "uuid": { "type": "string", "description": "Generated UUID (when count=1)" },
+        "uuids": { "type": "array", "items": { "type": "string" }, "description": "Generated UUIDs (when count>1)" },
+        "error": { "type": "string", "description": "Error message if ok is false" }
+      },
+      "example": { "ok": true, "uuid": "550e8400-e29b-41d4-a716-446655440000" }
+    }
   },
   "source": {
     "code": "import uuid\n\ndef handler(event):\n    if isinstance(event, dict):\n        count = event.get(\"count\", 1)\n    else:\n        count = 1\n\n    try:\n        count = int(count)\n        if count < 1:\n            count = 1\n        if count > 100:\n            count = 100\n    except (TypeError, ValueError):\n        count = 1\n\n    try:\n        if count == 1:\n            return {\"ok\": True, \"uuid\": str(uuid.uuid4())}\n        return {\"ok\": True, \"uuids\": [str(uuid.uuid4()) for _ in range(count)]}\n    except Exception as e:\n        return {\"ok\": False, \"error\": str(e)}\n",

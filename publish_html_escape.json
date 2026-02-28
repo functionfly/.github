@@ -1,0 +1,49 @@
+{
+  "author": "functionfly",
+  "name": "html-escape",
+  "version": "1.0.0",
+  "trust_level": "high",
+  "description": "Escape special HTML characters to prevent XSS.",
+  "tags": ["html", "escape", "encoding", "security", "xss"],
+  "visibility": "public",
+  "pricing": { "type": "free" },
+  "source_hash": "49999ce5e32af96eb5c611d8d74d2659668afb698720dc6444bf66f96e035007",
+  "manifest": {
+    "name": "html-escape",
+    "version": "1.0.0",
+    "runtime": "python3.11",
+    "title": "HTML Escape",
+    "description": "Escape special HTML characters to prevent XSS.",
+    "handler": "handler",
+    "timeout_ms": 5000,
+    "memory_mb": 128,
+    "deterministic": true,
+    "cache_ttl": 86400,
+    "side_effects": "none",
+    "idempotent": true,
+    "public": true,
+    "category": "encoding",
+    "tags": ["html", "escape", "encoding", "security", "xss"],
+    "capabilities": [],
+    "input": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "String to HTML-escape" }
+      },
+      "example": { "text": "<script>alert('xss')</script>" }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "ok": { "type": "boolean" },
+        "result": { "type": "string", "description": "HTML-escaped string" },
+        "error": { "type": "string", "description": "Error message if ok is false" }
+      },
+      "example": { "ok": true, "result": "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;" }
+    }
+  },
+  "source": {
+    "code": "import html\n\n\ndef handler(event):\n    try:\n        if isinstance(event, dict):\n            text = event.get(\"text\", \"\")\n        else:\n            text = str(event) if event is not None else \"\"\n\n        if text is None:\n            return {\"ok\": False, \"error\": \"Missing required field: text\"}\n\n        if not isinstance(text, str):\n            text = str(text)\n\n        result = html.escape(text, quote=True)\n        return {\"ok\": True, \"result\": result}\n    except Exception as e:\n        return {\"ok\": False, \"error\": str(e)}\n",
+    "runtime": "python3.11"
+  }
+}
