@@ -14,6 +14,8 @@ import type {
   UpdatePipelineRequest,
   CreateStoreRequest,
   StateFabricMetrics,
+  StateFabricTrigger,
+  CreateTriggerRequest,
 } from "@/types";
 
 // Query keys
@@ -30,6 +32,7 @@ export const stateFabricKeys = {
     [...stateFabricKeys.detail(fabricId), "events", filters] as const,
   snapshots: (fabricId: string) => [...stateFabricKeys.detail(fabricId), "snapshots"] as const,
   replays: (fabricId: string) => [...stateFabricKeys.detail(fabricId), "replays"] as const,
+  triggers: (fabricId?: string) => [...stateFabricKeys.all, "triggers", fabricId] as const,
 };
 
 // List all state fabrics
@@ -309,6 +312,47 @@ export function useCreateReplay(fabricId: string) {
     },
     onError: (error: Error) => {
       toast.error(`Failed to create replay: ${error.message}`);
+    },
+  });
+}
+
+// List triggers for a fabric
+export function useStateFabricTriggers(fabricId?: string) {
+  return useQuery({
+    queryKey: stateFabricKeys.triggers(fabricId),
+    queryFn: () => stateFabricApi.listTriggers({ state: fabricId }),
+    enabled: !!fabricId,
+  });
+}
+
+// Create a trigger
+export function useCreateTrigger() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateTriggerRequest) => stateFabricApi.createTrigger(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stateFabricKeys.triggers() });
+      toast.success("Trigger created successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create trigger: ${error.message}`);
+    },
+  });
+}
+
+// Delete a trigger
+export function useDeleteTrigger() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (triggerId: string) => stateFabricApi.deleteTrigger(triggerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stateFabricKeys.triggers() });
+      toast.success("Trigger deleted successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete trigger: ${error.message}`);
     },
   });
 }

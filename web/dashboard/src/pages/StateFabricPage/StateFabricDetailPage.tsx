@@ -56,6 +56,7 @@ import { PipelineVisualization } from "./components/PipelineVisualization";
 import { StoreConfiguration } from "./components/StoreConfiguration";
 import { StateFabricMetrics as MetricsDashboard } from "./components/StateFabricMetrics";
 import { SnapshotManager } from "./components/SnapshotManager";
+import { TriggerConfiguration } from "./components/TriggerConfiguration";
 import type {
   CreateStateFabricRequest,
   UpdateStateFabricRequest,
@@ -251,6 +252,7 @@ export function StateFabricDetailPage() {
           <TabsTrigger value="pipelines">Pipelines</TabsTrigger>
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="snapshots">Snapshots</TabsTrigger>
+          <TabsTrigger value="triggers">Triggers</TabsTrigger>
           <TabsTrigger value="metrics">Metrics</TabsTrigger>
         </TabsList>
 
@@ -372,6 +374,10 @@ export function StateFabricDetailPage() {
 
         <TabsContent value="snapshots">
           <SnapshotManager fabricId={id || ""} snapshots={snapshots || []} />
+        </TabsContent>
+
+        <TabsContent value="triggers">
+          <TriggerConfiguration fabricId={id || ""} />
         </TabsContent>
 
         <TabsContent value="metrics">

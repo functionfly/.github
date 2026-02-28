@@ -12,6 +12,8 @@ import type {
   UpdatePipelineRequest,
   CreateStoreRequest,
   StateFabricMetrics,
+  StateFabricTrigger,
+  CreateTriggerRequest,
 } from "@/types";
 
 export const stateFabricApi = {
@@ -200,5 +202,29 @@ export const adminStateFabricApi = {
 
   resumeFabric: async (fabricId: string): Promise<void> => {
     await apiClient.post<void>(`/v1/admin/state-fabrics/${fabricId}/resume`, {});
+  },
+
+  // Triggers
+  listTriggers: async (params?: {
+    state?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ triggers: StateFabricTrigger[]; total: number; limit: number; offset: number }> => {
+    const queryParams = new URLSearchParams();
+    if (params?.state) queryParams.append("state", params.state);
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.offset) queryParams.append("offset", params.offset.toString());
+
+    return apiClient.get<{ triggers: StateFabricTrigger[]; total: number; limit: number; offset: number }>(
+      `/v1/triggers?${queryParams.toString()}`
+    );
+  },
+
+  createTrigger: async (data: CreateTriggerRequest): Promise<StateFabricTrigger> => {
+    return apiClient.post<StateFabricTrigger>("/v1/triggers", data);
+  },
+
+  deleteTrigger: async (triggerId: string): Promise<void> => {
+    await apiClient.delete<void>(`/v1/triggers/${triggerId}`);
   },
 };

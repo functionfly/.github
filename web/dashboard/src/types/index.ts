@@ -605,3 +605,33 @@ export interface CreateStoreRequest {
   maxSize: number;
   region: string;
 }
+
+// State Fabric Triggers
+export interface StateFabricTrigger {
+  id: string;
+  tenantId: string;
+  sourceStateId: string;
+  triggerType: string;
+  keyPattern?: string;
+  condition?: Record<string, any>;
+  targetFunctionId?: string;
+  targetFunction?: string;
+  includePrevious: boolean;
+  includeNew: boolean;
+  maxInvocationsPerMinute: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTriggerRequest {
+  triggerType: string;
+  keyPattern?: string;
+  condition?: Record<string, any>;
+  targetFunctionId?: string;
+  targetFunction?: string;
+  includePrevious: boolean;
+  includeNew: boolean;
+  maxInvocationsPerMinute: number;
+  isActive: boolean;
+}
