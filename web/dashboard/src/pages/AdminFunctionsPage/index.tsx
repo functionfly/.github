@@ -71,7 +71,7 @@ export type AdminFunctionListItem =
     });
 
 const statusColors: Record<string, string> = {
-  draft: "bg-gray-500/10 text-gray-400",
+  draft: "bg-gray-500/10 text-text-secondary",
   deploying: "bg-yellow-500/10 text-yellow-400",
   deployed: "bg-emerald-500/10 text-emerald-400",
   failed: "bg-red-500/10 text-red-400",
@@ -293,7 +293,7 @@ export function AdminFunctionsPage() {
         <StatCard
           title="Draft"
           value={stats.draft}
-          icon={<Clock className="w-5 h-5 text-gray-400" />}
+          icon={<Clock className="w-5 h-5 text-text-muted" />}
           trend="neutral"
           change={{ value: 0, label: "not deployed" }}
         />
@@ -388,7 +388,7 @@ export function AdminFunctionsPage() {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <Badge
-                        className={statusColors[fn.status] ?? "bg-gray-500/10 text-gray-400"}
+                        className={statusColors[fn.status] ?? "bg-gray-500/10 text-text-secondary"}
                       >
                         {statusIcons[fn.status]}
                         <span className="ml-1">{fn.status}</span>
@@ -502,7 +502,7 @@ export function AdminFunctionsPage() {
                     <Label className="text-text-muted">Status</Label>
                     <p className="text-text-primary">
                       <Badge
-                        className={statusColors[selectedFunction.status] ?? "bg-gray-500/10 text-gray-400"}
+                        className={statusColors[selectedFunction.status] ?? "bg-gray-500/10 text-text-secondary"}
                       >
                         {selectedFunction.status}
                       </Badge>

@@ -7,6 +7,7 @@ export { providersApi } from "./providers";
 export { securityApi } from "./security";
 export { contentApi, contentAdminApi } from "./content";
 export { getAnalyticsSettings, updateAnalyticsSettings } from "./analytics";
+export { stateFabricApi, adminStateFabricApi } from "./stateFabric";
 export {
   tenantApi,
   auditApi,

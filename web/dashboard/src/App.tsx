@@ -46,12 +46,16 @@ import { ContactPage } from "@/pages/ContactPage";
 import { GlobalKeyboardShortcuts } from "@/components/common/GlobalKeyboardShortcuts";
 import { Analytics } from "@/components/common/Analytics";
 import { ThemeProvider } from "@/components/common/ThemeProvider";
-import { FunctionPage } from "@/pages/FunctionPage";
+import FunctionPage from "@/pages/FunctionPage";
 import { PlaygroundPage } from "@/pages/PlaygroundPage";
 import { ReplayPage } from "@/pages/ReplayPage";
 import { StateFabricPage } from "@/pages/StateFabricPage";
+import { StateFabricDetailPage } from "@/pages/StateFabricPage/StateFabricDetailPage";
+import { AdminStateFabricPage } from "@/pages/AdminStateFabricPage";
 import { StateFabricMarketingPage } from "@/pages/StateFabricMarketingPage";
 import { BrowseFunctionsPage } from "@/pages/BrowseFunctionsPage";
+import RegistryDeployPage from "@/pages/RegistryDeployPage";
+import { DocsPage } from "@/pages/DocsPage";
 
 function RegistryFunctionRedirect() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -183,6 +187,8 @@ function AppContent() {
       <Route path="/feedback" element={<FeedbackPage />} />
       <Route path="/faq" element={<FAQPage />} />
       <Route path="/contact" element={<ContactPage />} />
+      <Route path="/docs" element={<DocsPage />} />
+      <Route path="/docs/:slug" element={<DocsPage />} />
       <Route path="/blog" element={<BlogPage />} />
       <Route path="/blog/:slug" element={<BlogPostPage />} />
       <Route path="/products/state-fabric" element={<StateFabricMarketingPage />} />
@@ -252,11 +258,14 @@ function AppContent() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="functions" element={<FunctionsPage />} />
         <Route path="functions/new" element={<FunctionEditorPage />} />
+        <Route path="functions/deploy" element={<RegistryDeployPage />} />
         <Route path="functions/:id" element={<FunctionDetailPage />} />
         <Route path="functions/:id/edit" element={<FunctionEditorPage />} />
         <Route path="providers" element={<ProvidersPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="state-fabric" element={<StateFabricPage />} />
+        <Route path="state-fabric/:id" element={<StateFabricDetailPage />} />
+        <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
         <Route path="settings" element={<SettingsPage />} />
 
         {/* Admin Routes - use Outlet so only one DashboardLayout (parent) is used */}
@@ -281,6 +290,7 @@ function AppContent() {
           <Route path="feedback" element={<AdminFeedbackPage />} />
           <Route path="functions" element={<AdminFunctionsPage />} />
           <Route path="registry" element={<AdminRegistryPage />} />
+          <Route path="state-fabric" element={<AdminStateFabricPage />} />
         </Route>
       </Route>
 
@@ -301,7 +311,7 @@ function App() {
             <AppContent />
           </BrowserRouter>
           <Toaster
-            position="top-right"
+            position="bottom-right"
             toastOptions={{
               style: {
                 background: "var(--bg-secondary)",

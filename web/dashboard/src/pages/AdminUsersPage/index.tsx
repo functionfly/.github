@@ -168,7 +168,7 @@ export function AdminUsersPage() {
       case "developer_admin":
         return "bg-purple-500/10 text-purple-400";
       default:
-        return "bg-gray-500/10 text-gray-400";
+        return "bg-gray-500/10 text-text-secondary";
     }
   };
 
@@ -197,24 +197,24 @@ export function AdminUsersPage() {
           </DialogTrigger>
           <DialogContent className="bg-bg-tertiary border-white/8">
             <DialogHeader>
-              <DialogTitle className="text-white">Invite New User</DialogTitle>
+              <DialogTitle className="text-text-primary">Invite New User</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="invite-email" className="text-white">Email Address</Label>
+                <Label htmlFor="invite-email" className="text-text-primary">Email Address</Label>
                 <Input
                   id="invite-email"
                   type="email"
                   placeholder="user@example.com"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="bg-bg-secondary border-white/8 text-white"
+                  className="bg-bg-secondary border-border-default text-text-primary"
                 />
               </div>
               <div>
-                <Label htmlFor="invite-role" className="text-white">Role</Label>
+                <Label htmlFor="invite-role" className="text-text-primary">Role</Label>
                 <Select value={inviteRole} onValueChange={setInviteRole}>
-                  <SelectTrigger className="bg-bg-secondary border-white/8 text-white">
+                  <SelectTrigger className="bg-bg-secondary border-border-default text-text-primary">
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent className="bg-bg-tertiary border-white/8">
@@ -245,35 +245,35 @@ export function AdminUsersPage() {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="bg-bg-tertiary border-white/8">
             <DialogHeader>
-              <DialogTitle className="text-white">Edit User</DialogTitle>
+              <DialogTitle className="text-text-primary">Edit User</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="edit-name" className="text-white">Name</Label>
+                <Label htmlFor="edit-name" className="text-text-primary">Name</Label>
                 <Input
                   id="edit-name"
                   type="text"
                   placeholder="User name"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="bg-bg-secondary border-white/8 text-white"
+                  className="bg-bg-secondary border-border-default text-text-primary"
                 />
               </div>
               <div>
-                <Label htmlFor="edit-email" className="text-white">Email Address</Label>
+                <Label htmlFor="edit-email" className="text-text-primary">Email Address</Label>
                 <Input
                   id="edit-email"
                   type="email"
                   placeholder="user@example.com"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
-                  className="bg-bg-secondary border-white/8 text-white"
+                  className="bg-bg-secondary border-border-default text-text-primary"
                 />
               </div>
               <div>
-                <Label htmlFor="edit-role" className="text-white">Role</Label>
+                <Label htmlFor="edit-role" className="text-text-primary">Role</Label>
                 <Select value={editRole} onValueChange={setEditRole}>
-                  <SelectTrigger className="bg-bg-secondary border-white/8 text-white">
+                  <SelectTrigger className="bg-bg-secondary border-border-default text-text-primary">
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent className="bg-bg-tertiary border-white/8">
@@ -286,9 +286,9 @@ export function AdminUsersPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="edit-plan" className="text-white">Plan</Label>
+                <Label htmlFor="edit-plan" className="text-text-primary">Plan</Label>
                 <Select value={editPlan} onValueChange={setEditPlan}>
-                  <SelectTrigger className="bg-bg-secondary border-white/8 text-white">
+                  <SelectTrigger className="bg-bg-secondary border-border-default text-text-primary">
                     <SelectValue placeholder="Select a plan" />
                   </SelectTrigger>
                   <SelectContent className="bg-bg-tertiary border-white/8">
@@ -350,12 +350,12 @@ export function AdminUsersPage() {
                   placeholder="Search users..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-bg-secondary border-white/8 text-white"
+                  className="pl-10 bg-bg-secondary border-border-default text-text-primary"
                 />
               </div>
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-full sm:w-[180px] bg-bg-secondary border-white/8 text-white">
+              <SelectTrigger className="w-full sm:w-[180px] bg-bg-secondary border-border-default text-text-primary">
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent className="bg-bg-tertiary border-white/8">
@@ -414,8 +414,8 @@ export function AdminUsersPage() {
                     <User className="w-5 h-5 text-[#6366f1]" />
                   </div>
                   <div>
-                    <p className="font-medium text-white">{user.name || user.email}</p>
-                    <p className="text-sm text-text-muted">{user.email}</p>
+                    <p className="font-medium text-text-primary">{user.name || user.email}</p>
+                    <p className="text-sm text-text-secondary">{user.email}</p>
                   </div>
                 </div>
 
@@ -426,11 +426,11 @@ export function AdminUsersPage() {
                         {user.role.replace('_', ' ')}
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="border-gray-500/50 text-gray-400">
+                      <Badge variant="outline" className="border-border-default text-text-secondary">
                         Regular User
                       </Badge>
                     )}
-                    <p className="text-xs text-text-muted mt-1">
+                    <p className="text-xs text-text-secondary mt-1">
                       Plan: {user.plan}
                     </p>
                   </div>
@@ -494,7 +494,7 @@ export function AdminUsersPage() {
                         {selectedUser.role.replace('_', ' ')}
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="border-gray-500/50 text-gray-400">
+                      <Badge variant="outline" className="border-border-default text-text-secondary">
                         Regular User
                       </Badge>
                     )}

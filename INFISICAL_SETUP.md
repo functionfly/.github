@@ -64,6 +64,15 @@ For production deployments, create service tokens in the Infisical dashboard:
    - Scope: Read access to all secrets (`*`)
    - Expiration: Set as needed (or never expire for long-running services)
 
+### Optional: Admin Registry AI descriptions (Open Router)
+
+To enable "Generate with AI" for function descriptions in Admin → Registry, add this secret in Infisical for your environment (e.g. `dev`):
+
+- **Key:** `OPENROUTER_API_KEY`
+- **Value:** Your key from [Open Router](https://openrouter.ai) (e.g. `sk-or-v1-...`)
+
+Leave unset if you don't need AI-generated descriptions.
+
 ### 2. Docker Deployment
 
 #### Using Service Tokens

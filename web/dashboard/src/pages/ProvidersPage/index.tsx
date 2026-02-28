@@ -87,19 +87,19 @@ export function ProvidersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Providers</h1>
+          <h1 className="text-2xl font-bold text-text-primary">Providers</h1>
           <p className="text-text-secondary">Connect and manage your edge providers</p>
         </div>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-          <p className="text-red-400">{error}</p>
+        <div className="p-4 bg-error/10 border border-error/20 rounded-lg">
+          <p className="text-error">{error}</p>
           <Button
             variant="ghost"
             size="sm"
-            className="mt-2 text-red-400 hover:text-red-400 hover:bg-red-500/10"
+            className="mt-2 text-error hover:text-error hover:bg-error/10"
             onClick={clearError}
           >
             Dismiss
@@ -125,7 +125,7 @@ export function ProvidersPage() {
                       <ProviderIcon provider={provider.id} size="lg" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-white">{provider.name}</h3>
+                      <h3 className="font-semibold text-text-primary">{provider.name}</h3>
                       <p className="text-sm text-text-muted">
                         {connected ? "Connected" : "Not connected"}
                       </p>
@@ -134,7 +134,7 @@ export function ProvidersPage() {
                   {connected && <StatusBadge status={status} />}
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-white/8">
+                <div className="mt-4 pt-4 border-t border-border-subtle">
                   <p className="text-sm text-text-secondary mb-2">Available regions:</p>
                   <div className="flex flex-wrap gap-2">
                     {provider.regions.slice(0, 4).map((region) => (
@@ -162,7 +162,7 @@ export function ProvidersPage() {
                       </Button>
                       <Button
                         variant="ghost"
-                        className="text-red-400 hover:text-red-400 hover:bg-red-500/10"
+                        className="text-error hover:text-error hover:bg-error/10"
                         onClick={() => handleDisconnect(provider.id)}
                         disabled={disconnecting === provider.id}
                       >
@@ -181,9 +181,9 @@ export function ProvidersPage() {
                           Connect
                         </Button>
                       </DialogTrigger>
-                        <DialogContent className="bg-bg-tertiary border-white/8">
+                        <DialogContent className="bg-bg-tertiary border-border-subtle">
                           <DialogHeader>
-                            <DialogTitle className="text-white">Connect {provider.name}</DialogTitle>
+                            <DialogTitle className="text-text-primary">Connect {provider.name}</DialogTitle>
                             <DialogDescription className="text-text-secondary">
                               Enter your API key to connect {provider.name} to FunctionFly.
                             </DialogDescription>

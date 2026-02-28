@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
@@ -24,33 +25,33 @@ type ProviderValidationRequest struct {
 }
 
 type ProviderValidationResponse struct {
-	IsValid  bool   `json:"is_valid"`
-	Message  string `json:"message,omitempty"`
-	UserID   string `json:"user_id,omitempty"`
-	Email    string `json:"email,omitempty"`
+	IsValid bool   `json:"is_valid"`
+	Message string `json:"message,omitempty"`
+	UserID  string `json:"user_id,omitempty"`
+	Email   string `json:"email,omitempty"`
 }
 
 type CostEstimationRequest struct {
-	Provider        string `json:"provider"`
-	FunctionName    string `json:"function_name"`
-	Runtime         string `json:"runtime"`
-	MemoryMB        int    `json:"memory_mb"`
-	RequestsPerDay  int    `json:"requests_per_day"`
-	ComputeDuration int    `json:"compute_duration_ms"`
+	Provider        string   `json:"provider"`
+	FunctionName    string   `json:"function_name"`
+	Runtime         string   `json:"runtime"`
+	MemoryMB        int      `json:"memory_mb"`
+	RequestsPerDay  int      `json:"requests_per_day"`
+	ComputeDuration int      `json:"compute_duration_ms"`
 	Regions         []string `json:"regions"`
 }
 
 type CostEstimationResponse struct {
-	MonthlyCost  float64               `json:"monthly_cost"`
-	Currency     string                `json:"currency"`
-	Breakdown    map[string]float64    `json:"breakdown"`
+	MonthlyCost  float64                `json:"monthly_cost"`
+	Currency     string                 `json:"currency"`
+	Breakdown    map[string]float64     `json:"breakdown"`
 	ProviderData map[string]interface{} `json:"provider_data,omitempty"`
 }
 
 type TeamInviteRequest struct {
-	Emails    []string `json:"emails"`
-	Role      string   `json:"role"`
-	Message   string   `json:"message,omitempty"`
+	Emails  []string `json:"emails"`
+	Role    string   `json:"role"`
+	Message string   `json:"message,omitempty"`
 }
 
 type TeamInviteResponse struct {
@@ -69,6 +70,46 @@ func NewHandler(repo storage.Repository) *Handler {
 	}
 }
 
+// ListProvidersResponseItem matches the frontend ConnectedProvider shape (token omitted).
+func listProviderFromStorage(p *storage.Provider) map[string]interface{} {
+	status := "pending"
+	switch p.Status {
+	case "active":
+		status = "online"
+	case "inactive":
+		status = "offline"
+	case "error":
+		status = "degraded"
+	}
+	return map[string]interface{}{
+		"id":          p.ID,
+		"name":        p.Provider,
+		"status":      status,
+		"connectedAt": p.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+// HandleListProviders returns the current user's connected providers (no tokens).
+func (h *Handler) HandleListProviders(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	providers, err := h.repo.GetProvidersByUser(claims.UserID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list providers")
+		http.Error(w, "Failed to list providers", http.StatusInternalServerError)
+		return
+	}
+	out := make([]map[string]interface{}, 0, len(providers))
+	for _, p := range providers {
+		out = append(out, listProviderFromStorage(p))
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(out)
+}
+
 // HandleValidateProvider validates a provider API token
 func (h *Handler) HandleValidateProvider(w http.ResponseWriter, r *http.Request) {
 	var req ProviderValidationRequest
@@ -77,9 +118,8 @@ func (h *Handler) HandleValidateProvider(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Get user from context
-	user, ok := r.Context().Value("user").(*storage.User)
-	if !ok {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -95,7 +135,7 @@ func (h *Handler) HandleValidateProvider(w http.ResponseWriter, r *http.Request)
 
 		provider := &storage.Provider{
 			ID:       providerID,
-			UserID:   user.ID,
+			UserID:   claims.UserID,
 			Provider: req.Provider,
 			Token:    req.Token, // Token will be encrypted by the repository layer
 			Status:   "active",
@@ -120,15 +160,14 @@ func (h *Handler) HandleEstimateCost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user from context
-	user, ok := r.Context().Value("user").(*storage.User)
-	if !ok {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	// Check if user has access to this provider
-	provider, err := h.repo.GetProviderByUserAndType(user.ID, req.Provider)
+	provider, err := h.repo.GetProviderByUserAndType(claims.UserID, req.Provider)
 	if err != nil {
 		http.Error(w, "Provider not configured", http.StatusBadRequest)
 		return
@@ -153,9 +192,15 @@ func (h *Handler) HandleCreateTeamInvite(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Get user from context
-	user, ok := r.Context().Value("user").(*storage.User)
-	if !ok {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := h.repo.GetUserByID(claims.UserID)
+	if err != nil || user == nil {
+		logrus.WithError(err).WithField("userID", claims.UserID).Warn("Failed to get user for team invite")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -237,9 +282,8 @@ func (h *Handler) HandleShareProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user from context
-	user, ok := r.Context().Value("user").(*storage.User)
-	if !ok {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -251,9 +295,9 @@ func (h *Handler) HandleShareProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if provider.UserID != user.ID {
+	if provider.UserID != claims.UserID {
 		// Check if user is team admin
-		isAdmin, err := h.repo.IsTeamAdmin(user.ID, req.TeamID)
+		isAdmin, err := h.repo.IsTeamAdmin(claims.UserID, req.TeamID)
 		if err != nil || !isAdmin {
 			http.Error(w, "Unauthorized", http.StatusForbidden)
 			return
@@ -534,7 +578,7 @@ func (h *Handler) estimateCost(req CostEstimationRequest) CostEstimationResponse
 
 	// Calculate bandwidth cost (assuming 1KB per request)
 	bandwidthMB := (requestsPerMonth * 1024) / (1024 * 1024) // Convert to GB
-	bandwidthCost := bandwidthMB * 0.09 // ~$0.09 per GB
+	bandwidthCost := bandwidthMB * 0.09                      // ~$0.09 per GB
 
 	totalCost := baseCosts[req.Provider] + computeCost + storageCost + bandwidthCost
 
@@ -550,9 +594,9 @@ func (h *Handler) estimateCost(req CostEstimationRequest) CostEstimationResponse
 		Currency:    "USD",
 		Breakdown:   breakdown,
 		ProviderData: map[string]interface{}{
-			"requests_per_month": requestsPerMonth,
+			"requests_per_month":     requestsPerMonth,
 			"estimated_bandwidth_gb": bandwidthMB,
-			"regions_count": len(req.Regions),
+			"regions_count":          len(req.Regions),
 		},
 	}
 }

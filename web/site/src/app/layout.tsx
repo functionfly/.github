@@ -55,6 +55,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
         <link rel="canonical" href="https://functionfly.com" />
         <script
           type="application/ld+json"
@@ -64,7 +65,7 @@ export default function RootLayout({
               '@type': 'Organization',
               name: 'FunctionFly',
               url: 'https://functionfly.com',
-              logo: 'https://functionfly.com/logo.png',
+              logo: 'https://functionfly.com/logo/logo-full.svg',
               description: 'Serverless reliability platform with multi-cloud failover for AWS Lambda, Cloudflare Workers, and Vercel Functions.',
               foundingDate: '2024',
               contactPoint: {

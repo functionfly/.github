@@ -33,13 +33,22 @@ TOKEN=""
 if [[ -n "${PUBLISH_USE_LOGIN:-}" ]]; then
   EMAIL="${PUBLISH_EMAIL:-admin@functionfly.local}"
   PASS="${PUBLISH_PASSWORD:-admin123}"
-  RESP=$(curl -s -X POST "$SERVER_URL/v1/auth/login" \
+  LOGIN_RESP=$(curl -s -w "\n%{http_code}" -X POST "$SERVER_URL/v1/auth/login" \
     -H "Content-Type: application/json" \
     -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" 2>/dev/null || true)
-  TOKEN=$(echo "$RESP" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+  HTTP_CODE=$(echo "$LOGIN_RESP" | tail -n1)
+  RESP=$(echo "$LOGIN_RESP" | sed '$d')
+  # Extract token (works with minified or pretty-printed JSON)
+  TOKEN=$(echo "$RESP" | tr -d '\n' | sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
   if [[ -z "$TOKEN" ]]; then
-    echo "Error: Login failed. Check PUBLISH_EMAIL / PUBLISH_PASSWORD or create admin (create-admin)."
-    echo "Response: $RESP"
+    echo "Error: Login failed."
+    if [[ -z "$RESP" ]]; then
+      echo "  No response — is the API running at $SERVER_URL? Try: curl -s $SERVER_URL/health"
+    elif [[ "$HTTP_CODE" = "401" ]] || [[ "$HTTP_CODE" = "403" ]]; then
+      echo "  HTTP $HTTP_CODE — wrong email/password or create admin first: go run ./cmd/create-admin/main.go"
+    else
+      echo "  HTTP $HTTP_CODE — Response: ${RESP:0:300}"
+    fi
     exit 1
   fi
 else

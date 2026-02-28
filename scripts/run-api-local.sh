@@ -16,6 +16,8 @@ export JWT_SECRET="${JWT_SECRET:-functionfly-jwt-secret-key-2026}"
 export SKIP_MIGRATIONS="${SKIP_MIGRATIONS:-true}"
 export REDIS_ADDR="${REDIS_ADDR:-localhost:6379}"
 export DEVELOPMENT="${DEVELOPMENT:-true}"
+# Optional: for Admin Registry "Generate with AI" description (Open Router)
+export OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
 
 echo "Starting API on port $PORT (DB: $DB_HOST:$DB_PORT/$DB_NAME, Redis: $REDIS_ADDR). SKIP_MIGRATIONS=$SKIP_MIGRATIONS"
 exec go run ./cmd/orchestrator-api

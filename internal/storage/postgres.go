@@ -265,12 +265,12 @@ func (db *PostgresDB) initPreparedStatements(ctx context.Context) error {
 	// Define prepared statements with their queries
 	statements := map[string]string{
 		"getUserByEmail": `
-			SELECT id, tenant_id, email, password_hash, role, email_verified, verification_token, verification_expires_at,
+			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
 			       created_at, updated_at
 			FROM users WHERE email = $1`,
 		"getUserByID": `
-			SELECT id, tenant_id, email, password_hash, role, email_verified, verification_token, verification_expires_at,
+			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
 			       created_at, updated_at
 			FROM users WHERE id = $1`,
@@ -429,12 +429,12 @@ func (db *PostgresDB) GetStatementQuery(name string) string {
 func (db *PostgresDB) getStatementQuery(name string) string {
 	queries := map[string]string{
 		"getUserByEmail": `
-			SELECT id, tenant_id, email, password_hash, role, email_verified, verification_token, verification_expires_at,
+			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
 			       created_at, updated_at
 			FROM users WHERE email = $1`,
 		"getUserByID": `
-			SELECT id, tenant_id, email, password_hash, role, email_verified, verification_token, verification_expires_at,
+			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
 			       created_at, updated_at
 			FROM users WHERE id = $1`,

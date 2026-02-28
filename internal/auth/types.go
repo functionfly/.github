@@ -42,6 +42,7 @@ type OAuthCallbackResponse struct {
 type Claims struct {
 	UserID      uuid.UUID `json:"user_id"`
 	Email       string    `json:"email"`
+	Username    string    `json:"username,omitempty"`
 	TenantID    uuid.UUID `json:"tenant_id"`
 	Role        string    `json:"role,omitempty"`        // Platform role (for admin users)
 	Permissions []string  `json:"permissions,omitempty"` // Explicit permissions
@@ -56,11 +57,13 @@ type LoginRequest struct {
 
 // SignupRequest represents a signup request
 type SignupRequest struct {
-	Email          string `json:"email"`
-	Password       string `json:"password"`
+	Email           string `json:"email"`
+	Password        string `json:"password"`
 	ConfirmPassword string `json:"confirmPassword"`
-	TermsAccepted  bool   `json:"termsAccepted"`
-	RecaptchaToken string `json:"recaptchaToken,omitempty"`
+	TermsAccepted   bool   `json:"termsAccepted"`
+	Username        string `json:"username,omitempty"`
+	CompanyName     string `json:"companyName,omitempty"`
+	RecaptchaToken  string `json:"recaptchaToken,omitempty"`
 }
 
 // SignupResponse represents a signup response (no token until verified)
@@ -72,16 +75,18 @@ type SignupResponse struct {
 
 // LoginUser is the safe user subset returned on login (no password, MFA secrets, etc.)
 type LoginUser struct {
-	ID          string                 `json:"id"`
-	TenantID    string                 `json:"tenant_id"`
-	Email       string                 `json:"email"`
-	Name        string                 `json:"name,omitempty"`
-	Avatar      string                 `json:"avatar,omitempty"`
-	Role        string                 `json:"role,omitempty"`
-	EmailVerified bool                 `json:"email_verified"`
-	ProviderData map[string]interface{} `json:"provider_data,omitempty"`
-	CreatedAt   string                 `json:"created_at"`
-	UpdatedAt   string                 `json:"updated_at"`
+	ID            string                 `json:"id"`
+	TenantID      string                 `json:"tenant_id"`
+	Username      string                 `json:"username,omitempty"`
+	Email         string                 `json:"email"`
+	CompanyName   string                 `json:"company_name,omitempty"`
+	Name          string                 `json:"name,omitempty"`
+	Avatar        string                 `json:"avatar,omitempty"`
+	Role          string                 `json:"role,omitempty"`
+	EmailVerified bool                   `json:"email_verified"`
+	ProviderData  map[string]interface{} `json:"provider_data,omitempty"`
+	CreatedAt     string                 `json:"created_at"`
+	UpdatedAt     string                 `json:"updated_at"`
 }
 
 // LoginResponse represents a login response

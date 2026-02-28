@@ -179,8 +179,8 @@ export function AdminFeedbackPage() {
       case 'submitted': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
       case 'in-review': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
       case 'resolved': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'closed': return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
-      default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+      case 'closed': return 'bg-gray-500/10 text-text-secondary border-gray-500/20';
+      default: return 'bg-gray-500/10 text-text-secondary border-gray-500/20';
     }
   };
 
@@ -191,7 +191,7 @@ export function AdminFeedbackPage() {
       case 'high': return 'text-orange-400';
       case 'medium': return 'text-amber-400';
       case 'low': return 'text-green-400';
-      default: return 'text-gray-400';
+      default: return 'text-text-secondary';
     }
   };
 
@@ -201,8 +201,8 @@ export function AdminFeedbackPage() {
       case 'bug': return <AlertTriangle className="w-4 h-4 text-red-400" />;
       case 'feature': return <Activity className="w-4 h-4 text-blue-400" />;
       case 'improvement': return <TrendingUp className="w-4 h-4 text-amber-400" />;
-      case 'general': return <MessageSquare className="w-4 h-4 text-gray-400" />;
-      default: return <MessageSquare className="w-4 h-4 text-gray-400" />;
+      case 'general': return <MessageSquare className="w-4 h-4 text-text-muted" />;
+      default: return <MessageSquare className="w-4 h-4 text-text-muted" />;
     }
   };
 
@@ -461,7 +461,7 @@ export function AdminFeedbackPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2">
                         {getTypeIcon(item.feedback_type)}
-                        <h3 className="font-semibold text-white truncate">{item.subject}</h3>
+                        <h3 className="font-semibold text-text-primary truncate">{item.subject}</h3>
                         <Badge className={`${getStatusColor(item.status)} text-xs`}>
                           {item.status}
                         </Badge>
@@ -491,7 +491,7 @@ export function AdminFeedbackPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => setSelectedFeedback(item)}
-                            className="text-text-secondary hover:text-white"
+                            className="text-text-secondary hover:text-text-primary"
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -538,7 +538,7 @@ export function AdminFeedbackPage() {
                         status === 'in-review' ? 'bg-amber-400' :
                         status === 'resolved' ? 'bg-emerald-400' : 'bg-gray-400'
                       }`} />
-                      <span className="text-sm capitalize text-white">{status.replace('-', ' ')}</span>
+                      <span className="text-sm capitalize text-text-primary">{status.replace('-', ' ')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-text-secondary">{count}</span>
@@ -565,7 +565,7 @@ export function AdminFeedbackPage() {
                   <div key={type} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {getTypeIcon(type)}
-                      <span className="text-sm capitalize text-white">{type}</span>
+                      <span className="text-sm capitalize text-text-primary">{type}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-text-secondary">{count}</span>
@@ -590,7 +590,7 @@ export function AdminFeedbackPage() {
               <CardContent>
                 <div className="space-y-6">
                   <div>
-                    <h4 className="text-sm font-medium text-white mb-3">Daily Submissions (Last 7 Days)</h4>
+                    <h4 className="text-sm font-medium text-text-primary mb-3">Daily Submissions (Last 7 Days)</h4>
                     <div className="flex items-end gap-2 h-32">
                       {stats.trends?.daily.map((day, index) => (
                         <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
@@ -607,7 +607,7 @@ export function AdminFeedbackPage() {
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-medium text-white mb-3">Monthly Growth</h4>
+                    <h4 className="text-sm font-medium text-text-primary mb-3">Monthly Growth</h4>
                     <div className="flex items-end gap-4 h-24">
                       {stats.trends?.monthly.map((month, index) => (
                         <div key={month.month} className="flex-1 flex flex-col items-center gap-1">
@@ -632,7 +632,7 @@ export function AdminFeedbackPage() {
         <Dialog open={!!selectedFeedback} onOpenChange={() => setSelectedFeedback(null)}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
+              <DialogTitle className="flex items-center gap-2 text-text-primary">
                 {getTypeIcon(selectedFeedback.feedback_type)}
                 {selectedFeedback.subject}
               </DialogTitle>
@@ -651,30 +651,30 @@ export function AdminFeedbackPage() {
               </div>
 
               <div>
-                <h4 className="font-medium text-white mb-2">From</h4>
+                <h4 className="font-medium text-text-primary mb-2">From</h4>
                 <p className="text-text-secondary">{selectedFeedback.user_email || 'Anonymous'}</p>
               </div>
 
               <div>
-                <h4 className="font-medium text-white mb-2">Message</h4>
+                <h4 className="font-medium text-text-primary mb-2">Message</h4>
                 <p className="text-text-secondary whitespace-pre-wrap">{selectedFeedback.message}</p>
               </div>
 
               {selectedFeedback.browser_info && (
                 <div>
-                  <h4 className="font-medium text-white mb-2">Browser Info</h4>
+                  <h4 className="font-medium text-text-primary mb-2">Browser Info</h4>
                   <p className="text-text-secondary">{selectedFeedback.browser_info}</p>
                 </div>
               )}
 
               {selectedFeedback.attachments && selectedFeedback.attachments.length > 0 && (
                 <div>
-                  <h4 className="font-medium text-white mb-2">Attachments</h4>
+                  <h4 className="font-medium text-text-primary mb-2">Attachments</h4>
                   <div className="space-y-2">
                     {selectedFeedback.attachments.map((attachment) => (
                       <div key={attachment.id} className="flex items-center gap-2 p-2 bg-white/5 rounded">
                         <FileText className="w-4 h-4 text-text-secondary" />
-                        <span className="text-sm text-white">{attachment.filename}</span>
+                        <span className="text-sm text-text-primary">{attachment.filename}</span>
                         <span className="text-xs text-text-secondary">
                           ({Math.round(attachment.size / 1024)}KB)
                         </span>

@@ -15,10 +15,12 @@ type User struct {
 	ID                    uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	TenantID              uuid.UUID  `json:"tenant_id" gorm:"type:uuid;not null"`
 	Tenant                *Tenant    `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
+	Username              *string    `json:"username,omitempty" gorm:"uniqueIndex;size:255"`
 	Email                 string     `json:"email" gorm:"uniqueIndex;not null"`
 	PasswordHash          string     `json:"password_hash" gorm:"column:password_hash"`
 	Role                  string     `json:"role,omitempty" gorm:"size:50"` // Platform role for admin users
 	EmailVerified         bool       `json:"email_verified" gorm:"default:false"`
+	CompanyName           *string    `json:"company_name,omitempty" gorm:"size:255"`
 	VerificationToken     *string    `json:"verification_token,omitempty"`
 	VerificationExpiresAt *time.Time `json:"verification_expires_at,omitempty"`
 	// Social authentication fields
@@ -701,7 +703,7 @@ type State struct {
 	StorageType string `json:"storage_type" gorm:"not null;default:'keyvalue';size:50"` // "keyvalue" | "document" | "timeseries" | "graph"
 
 	// Retention
-	TTLDays   int `json:"ttl_days" gorm:"not null;default:0"`     // 0 = forever
+	TTLDays   int `json:"ttl_days" gorm:"not null;default:0"` // 0 = forever
 	MaxSizeMB int `json:"max_size_mb" gorm:"not null;default:100"`
 
 	// Versioning
@@ -939,7 +941,7 @@ type StateTrigger struct {
 
 	// Trigger Configuration
 	TriggerType string  `json:"trigger_type" gorm:"not null"` // "on_write" | "on_read" | "on_delete" | "on_condition"
-	KeyPattern  *string `json:"key_pattern,omitempty"`         // Glob pattern for keys
+	KeyPattern  *string `json:"key_pattern,omitempty"`        // Glob pattern for keys
 
 	// Condition (for advanced triggers)
 	Condition JSONMap `json:"condition" gorm:"type:jsonb"`
@@ -1068,18 +1070,18 @@ func (Provider) TableName() string {
 
 // TeamInvite represents a team invitation during onboarding
 type TeamInvite struct {
-	ID         uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TeamID     uuid.UUID `json:"team_id" gorm:"type:uuid;not null;index"`
-	Email      string    `json:"email" gorm:"not null"`
-	Token      string    `json:"token" gorm:"uniqueIndex;not null"`
-	Role       string    `json:"role" gorm:"not null"` // "admin", "member", "viewer"
-	InvitedBy  uuid.UUID `json:"invited_by" gorm:"type:uuid;not null"`
-	Message    string    `json:"message,omitempty"`
-	Status     string    `json:"status" gorm:"default:'pending'"` // "pending", "accepted", "expired", "cancelled"
-	ExpiresAt  time.Time `json:"expires_at" gorm:"not null"`
+	ID         uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TeamID     uuid.UUID  `json:"team_id" gorm:"type:uuid;not null;index"`
+	Email      string     `json:"email" gorm:"not null"`
+	Token      string     `json:"token" gorm:"uniqueIndex;not null"`
+	Role       string     `json:"role" gorm:"not null"` // "admin", "member", "viewer"
+	InvitedBy  uuid.UUID  `json:"invited_by" gorm:"type:uuid;not null"`
+	Message    string     `json:"message,omitempty"`
+	Status     string     `json:"status" gorm:"default:'pending'"` // "pending", "accepted", "expired", "cancelled"
+	ExpiresAt  time.Time  `json:"expires_at" gorm:"not null"`
 	AcceptedAt *time.Time `json:"accepted_at,omitempty"`
-	CreatedAt  time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt  time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	CreatedAt  time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt  time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 func (TeamInvite) TableName() string {

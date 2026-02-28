@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
-  FunctionSquare,
+  Package,
   Cloud,
   BarChart3,
   Settings,
@@ -11,6 +11,7 @@ import {
   X,
   ChevronDown,
   Search,
+  Database,
 } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { Button } from "@/components/ui/button";
@@ -47,8 +48,9 @@ const navigationSections: NavSection[] = [
   {
     title: "Management",
     items: [
-      { path: ROUTES.FUNCTIONS, label: "Functions", icon: FunctionSquare },
-      { path: ROUTES.PROVIDERS, label: "Providers", icon: Cloud }
+      { path: ROUTES.REGISTRY, label: "Registry", icon: Package },
+      { path: ROUTES.PROVIDERS, label: "Providers", icon: Cloud },
+      { path: ROUTES.STATE_FABRIC, label: "State Fabric", icon: Database }
     ]
   },
   {
@@ -89,7 +91,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Get recent items (mock data - would come from user preferences/API)
   const recentItems = [
-    { path: ROUTES.FUNCTIONS, label: "Functions", icon: FunctionSquare },
+    { path: ROUTES.REGISTRY, label: "Registry", icon: Package },
     { path: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutDashboard },
   ];
 
@@ -112,6 +114,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       { path: ROUTES.ADMIN_NEWSLETTER, label: "Newsletter", icon: Shield },
       { path: ROUTES.ADMIN_CONTENT_CALENDAR, label: "Content Calendar", icon: Shield },
       { path: ROUTES.ADMIN_FEEDBACK, label: "Feedback", icon: Shield },
+      // State Fabric Admin
+      { path: ROUTES.ADMIN_STATE_FABRIC, label: "State Fabric", icon: Database },
     ]
   } : null;
 
@@ -332,8 +336,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   // Determine if this item has status indicators
                   const hasStatusIndicator = (() => {
                     switch (item.path) {
-                      case ROUTES.FUNCTIONS:
-                        return status.functions.hasIssues || status.functions.pendingDeployments > 0;
+                      case ROUTES.REGISTRY:
+                        return false;
                       case ROUTES.PROVIDERS:
                         return status.providers.hasOffline;
                       case ROUTES.ANALYTICS:
@@ -347,20 +351,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
                   const getStatusBadge = () => {
                     switch (item.path) {
-                      case ROUTES.FUNCTIONS:
-                        if (status.functions.pendingDeployments > 0) {
-                          return {
-                            count: status.functions.pendingDeployments,
-                            color: "bg-info"
-                          };
-                        }
-                        if (status.functions.hasIssues) {
-                          return {
-                            count: "!",
-                            color: "bg-error"
-                          };
-                        }
-                        break;
+                      case ROUTES.REGISTRY:
+                        return null;
                       case ROUTES.PROVIDERS:
                         if (status.providers.hasOffline) {
                           return {

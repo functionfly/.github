@@ -26,7 +26,7 @@ export function DatabaseMonitoring() {
       case 'error':
         return 'text-red-400';
       default:
-        return 'text-gray-400';
+        return 'text-text-secondary';
     }
   };
 
@@ -41,7 +41,7 @@ export function DatabaseMonitoring() {
       case 'low':
         return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
       default:
-        return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+        return 'bg-gray-500/10 text-text-secondary border-gray-500/20';
     }
   };
 
@@ -50,6 +50,13 @@ export function DatabaseMonitoring() {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  };
+
+  // Safe 0–100 value for Progress (avoids NaN when denominator is 0 or values are undefined)
+  const safeProgress = (num: number, denom: number): number | undefined => {
+    if (denom == null || denom === 0 || typeof num !== 'number' || typeof denom !== 'number') return undefined;
+    const pct = (num / denom) * 100;
+    return Number.isFinite(pct) ? Math.min(100, Math.max(0, pct)) : undefined;
   };
 
   if (isLoading) {
@@ -89,7 +96,7 @@ export function DatabaseMonitoring() {
         <div className="flex items-center gap-4">
           <Database className={`w-6 h-6 ${getStatusColor(dbHealth.status)}`} />
           <div>
-            <h2 className="text-xl font-semibold text-white">Database Monitoring</h2>
+            <h2 className="text-xl font-semibold text-text-primary">Database Monitoring</h2>
             <div className="flex items-center gap-2 mt-1">
               <div className={`w-2 h-2 rounded-full ${
                 dbHealth.status === 'healthy' ? 'bg-emerald-400' :
@@ -123,17 +130,17 @@ export function DatabaseMonitoring() {
               <div className="flex items-center gap-3">
                 <Users className="w-5 h-5 text-blue-400" />
                 <div>
-                  <p className="font-medium text-white">Active Connections</p>
+                  <p className="font-medium text-text-primary">Active Connections</p>
                   <p className="text-sm text-text-secondary">Pool utilization</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xl font-semibold text-white">{dbHealth.connections.active}</p>
+                <p className="text-xl font-semibold text-text-primary">{dbHealth.connections.active}</p>
                 <p className="text-xs text-text-secondary">of {dbHealth.connections.max}</p>
               </div>
             </div>
             <div className="mt-3">
-              <Progress value={(dbHealth.connections.active / dbHealth.connections.max) * 100} className="h-2" />
+              <Progress value={safeProgress(dbHealth.connections.active, dbHealth.connections.max)} className="h-2" />
             </div>
           </CardContent>
         </Card>
@@ -144,12 +151,12 @@ export function DatabaseMonitoring() {
               <div className="flex items-center gap-3">
                 <Zap className="w-5 h-5 text-amber-400" />
                 <div>
-                  <p className="font-medium text-white">Query Throughput</p>
+                  <p className="font-medium text-text-primary">Query Throughput</p>
                   <p className="text-sm text-text-secondary">Queries/min</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xl font-semibold text-white">{dbHealth.performance.throughput.toLocaleString()}</p>
+                <p className="text-xl font-semibold text-text-primary">{dbHealth.performance.throughput.toLocaleString()}</p>
                 <p className="text-xs text-emerald-400">+12%</p>
               </div>
             </div>
@@ -162,12 +169,12 @@ export function DatabaseMonitoring() {
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-purple-400" />
                 <div>
-                  <p className="font-medium text-white">Avg Response Time</p>
+                  <p className="font-medium text-text-primary">Avg Response Time</p>
                   <p className="text-sm text-text-secondary">Query latency</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xl font-semibold text-white">{dbHealth.performance.avgQueryTime}ms</p>
+                <p className="text-xl font-semibold text-text-primary">{dbHealth.performance.avgQueryTime}ms</p>
                 <p className="text-xs text-text-secondary">Slow: {dbHealth.performance.slowQueries}</p>
               </div>
             </div>
@@ -183,12 +190,12 @@ export function DatabaseMonitoring() {
                   dbHealth.replication.status === 'lagging' ? 'text-amber-400' : 'text-red-400'
                 }`} />
                 <div>
-                  <p className="font-medium text-white">Replication Lag</p>
+                  <p className="font-medium text-text-primary">Replication Lag</p>
                   <p className="text-sm text-text-secondary">Sync status</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xl font-semibold text-white">{dbHealth.replication.lag}ms</p>
+                <p className="text-xl font-semibold text-text-primary">{dbHealth.replication.lag}ms</p>
                 <p className={`text-xs capitalize ${getStatusColor(dbHealth.replication.status)}`}>
                   {dbHealth.replication.status}
                 </p>
@@ -208,18 +215,18 @@ export function DatabaseMonitoring() {
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-text-secondary">Database Size</span>
-                <span className="text-white">{dbHealth.storage.used}GB of {dbHealth.storage.total}GB</span>
+                <span className="text-text-primary">{dbHealth.storage.used}GB of {dbHealth.storage.total}GB</span>
               </div>
-              <Progress value={(dbHealth.storage.used / dbHealth.storage.total) * 100} className="h-3" />
+              <Progress value={safeProgress(dbHealth.storage.used, dbHealth.storage.total)} className="h-3" />
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-text-secondary">Growth Rate:</span>
-                <span className="text-white ml-2">+{dbHealth.storage.growthRate}GB/week</span>
+                <span className="text-text-primary ml-2">+{dbHealth.storage.growthRate}GB/week</span>
               </div>
               <div>
                 <span className="text-text-secondary">Days to Full:</span>
-                <span className="text-white ml-2">
+                <span className="text-text-primary ml-2">
                   {Math.round((dbHealth.storage.total - dbHealth.storage.used) / (dbHealth.storage.growthRate / 7))} days
                 </span>
               </div>
@@ -237,7 +244,7 @@ export function DatabaseMonitoring() {
           {alerts.length === 0 ? (
             <div className="text-center py-8">
               <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
-              <p className="text-white font-medium">All Systems Operational</p>
+              <p className="text-text-primary font-medium">All Systems Operational</p>
               <p className="text-text-secondary">No active database alerts</p>
             </div>
           ) : (
@@ -249,7 +256,7 @@ export function DatabaseMonitoring() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium text-white">{alert.title}</h4>
+                          <h4 className="font-medium text-text-primary">{alert.title}</h4>
                           {alert.resolved && (
                             <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">
                               Resolved
@@ -289,25 +296,25 @@ export function DatabaseMonitoring() {
           <div className="mt-4 grid grid-cols-4 gap-4 text-sm">
             <div>
               <span className="text-text-secondary">Peak Connections:</span>
-              <span className="text-white ml-2">
+              <span className="text-text-primary ml-2">
                 {metrics.length > 0 ? Math.max(...metrics.map(m => m.connections)) : 0}
               </span>
             </div>
             <div>
               <span className="text-text-secondary">Avg Response Time:</span>
-              <span className="text-white ml-2">
+              <span className="text-text-primary ml-2">
                 {metrics.length > 0 ? Math.round(metrics.reduce((sum, m) => sum + m.avgResponseTime, 0) / metrics.length) : 0}ms
               </span>
             </div>
             <div>
               <span className="text-text-secondary">Total Queries:</span>
-              <span className="text-white ml-2">
+              <span className="text-text-primary ml-2">
                 {metrics.length > 0 ? metrics.reduce((sum, m) => sum + m.queryCount, 0).toLocaleString() : 0}
               </span>
             </div>
             <div>
               <span className="text-text-secondary">Avg Error Rate:</span>
-              <span className="text-white ml-2">
+              <span className="text-text-primary ml-2">
                 {metrics.length > 0 ? (metrics.reduce((sum, m) => sum + m.errorRate, 0) / metrics.length * 100).toFixed(2) : 0}%
               </span>
             </div>

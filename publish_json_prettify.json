@@ -1,0 +1,16 @@
+{
+  "author": "functionfly",
+  "name": "json-prettify",
+  "version": "1.0.0",
+  "manifest": {
+    "name": "json-prettify",
+    "version": "1.0.0",
+    "runtime": "python3.11",
+    "description": "Pretty-print JSON with indentation.",
+    "handler": "handler"
+  },
+  "source": {
+    "code": "import json\n\ndef handler(event):\n    if isinstance(event, dict):\n        data = event.get(\"data\", event.get(\"json\", event.get(\"text\", event)))\n        indent = event.get(\"indent\", 2)\n    else:\n        data = event\n        indent = 2\n\n    if data is None:\n        return {\"ok\": False, \"error\": \"Input 'data' is required\"}\n\n    try:\n        if isinstance(data, str):\n            obj = json.loads(data)\n        else:\n            obj = data\n        try:\n            indent = int(indent)\n            if indent < 0:\n                indent = 0\n        except (TypeError, ValueError):\n            indent = 2\n        out = json.dumps(obj, indent=indent, ensure_ascii=False)\n        return {\"ok\": True, \"json\": out}\n    except json.JSONDecodeError as e:\n        return {\"ok\": False, \"error\": f\"Invalid JSON: {e!s}\"}\n    except Exception as e:\n        return {\"ok\": False, \"error\": str(e)}\n",
+    "runtime": "python3.11"
+  }
+}

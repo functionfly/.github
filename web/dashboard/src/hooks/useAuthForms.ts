@@ -24,6 +24,8 @@ export function useSignupForm() {
     defaultValues: {
       name: '',
       email: '',
+      username: '',
+      companyName: '',
       inviteCode: '',
       password: '',
       confirmPassword: '',

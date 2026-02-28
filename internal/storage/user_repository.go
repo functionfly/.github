@@ -40,9 +40,9 @@ func (r *UserRepository) CreateUser(email, passwordHash string, tenantID uuid.UU
 	mfaBackupCodesJSON, _ := json.Marshal(user.MFABackupCodes)
 
 	_, err := r.db.Exec(`
-		INSERT INTO users (id, tenant_id, email, password_hash, role, email_verified, verification_token, verification_expires_at, provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
-		user.ID, user.TenantID, user.Email, user.PasswordHash, user.Role, user.EmailVerified, user.VerificationToken, user.VerificationExpiresAt, user.Provider, user.ProviderID, providerDataJSON, user.MFASecret, user.MFAEnabled, mfaBackupCodesJSON, user.MFALastUsed, user.CreatedAt, user.UpdatedAt)
+		INSERT INTO users (id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at, provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+		user.ID, user.TenantID, user.Username, user.Email, user.PasswordHash, user.Role, user.EmailVerified, user.CompanyName, user.VerificationToken, user.VerificationExpiresAt, user.Provider, user.ProviderID, providerDataJSON, user.MFASecret, user.MFAEnabled, mfaBackupCodesJSON, user.MFALastUsed, user.CreatedAt, user.UpdatedAt)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
@@ -71,9 +71,9 @@ func (r *UserRepository) CreateUserWithSocialAuth(email string, tenantID uuid.UU
 	mfaBackupCodesJSON, _ := json.Marshal(user.MFABackupCodes)
 
 	_, err := r.db.Exec(`
-		INSERT INTO users (id, tenant_id, email, password_hash, role, email_verified, verification_token, verification_expires_at, provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
-		user.ID, user.TenantID, user.Email, nil, user.Role, user.EmailVerified, user.VerificationToken, user.VerificationExpiresAt, user.Provider, user.ProviderID, providerDataJSON, user.MFASecret, user.MFAEnabled, mfaBackupCodesJSON, user.MFALastUsed, user.CreatedAt, user.UpdatedAt)
+		INSERT INTO users (id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at, provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+		user.ID, user.TenantID, user.Username, user.Email, nil, user.Role, user.EmailVerified, user.CompanyName, user.VerificationToken, user.VerificationExpiresAt, user.Provider, user.ProviderID, providerDataJSON, user.MFASecret, user.MFAEnabled, mfaBackupCodesJSON, user.MFALastUsed, user.CreatedAt, user.UpdatedAt)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user with social auth: %w", err)
@@ -85,6 +85,8 @@ func (r *UserRepository) CreateUserWithSocialAuth(email string, tenantID uuid.UU
 // GetUserByEmail retrieves a user by email
 func (r *UserRepository) GetUserByEmail(email string) (*User, error) {
 	user := &User{}
+	var username sql.NullString
+	var companyName sql.NullString
 	var role sql.NullString
 	var verificationToken sql.NullString
 	var verificationExpiresAt sql.NullTime
@@ -102,7 +104,7 @@ func (r *UserRepository) GetUserByEmail(email string) (*User, error) {
 		row = r.db.QueryRowContext(context.Background(), r.db.GetStatementQuery("getUserByEmail"), email)
 	}
 	err := row.Scan(
-		&user.ID, &user.TenantID, &user.Email, &user.PasswordHash, &role, &user.EmailVerified,
+		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &user.EmailVerified, &companyName,
 		&verificationToken, &verificationExpiresAt, &provider, &providerID, &providerData,
 		&mfaSecret, &user.MFAEnabled, &mfaBackupCodes, &mfaLastUsed, &user.CreatedAt, &user.UpdatedAt)
 
@@ -113,6 +115,12 @@ func (r *UserRepository) GetUserByEmail(email string) (*User, error) {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
+	if username.Valid {
+		user.Username = &username.String
+	}
+	if companyName.Valid {
+		user.CompanyName = &companyName.String
+	}
 	if role.Valid {
 		user.Role = role.String
 	}
@@ -152,6 +160,8 @@ func (r *UserRepository) GetUserByEmail(email string) (*User, error) {
 // GetUserByVerificationToken retrieves a user by verification token
 func (r *UserRepository) GetUserByVerificationToken(token string) (*User, error) {
 	user := &User{}
+	var username sql.NullString
+	var companyName sql.NullString
 	var role sql.NullString
 	var verificationToken sql.NullString
 	var verificationExpiresAt sql.NullTime
@@ -159,9 +169,9 @@ func (r *UserRepository) GetUserByVerificationToken(token string) (*User, error)
 	var providerID sql.NullString
 	var providerData []byte
 	err := r.db.QueryRow(`
-		SELECT id, tenant_id, email, password_hash, role, email_verified, verification_token, verification_expires_at, provider, provider_id, provider_data, created_at, updated_at
+		SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at, provider, provider_id, provider_data, created_at, updated_at
 		FROM users WHERE verification_token = $1`, token).Scan(
-		&user.ID, &user.TenantID, &user.Email, &user.PasswordHash, &role, &user.EmailVerified,
+		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &user.EmailVerified, &companyName,
 		&verificationToken, &verificationExpiresAt, &provider, &providerID, &providerData, &user.CreatedAt, &user.UpdatedAt)
 
 	if err == sql.ErrNoRows {
@@ -171,6 +181,12 @@ func (r *UserRepository) GetUserByVerificationToken(token string) (*User, error)
 		return nil, fmt.Errorf("failed to get user by verification token: %w", err)
 	}
 
+	if username.Valid {
+		user.Username = &username.String
+	}
+	if companyName.Valid {
+		user.CompanyName = &companyName.String
+	}
 	if role.Valid {
 		user.Role = role.String
 	}
@@ -214,12 +230,20 @@ func (r *UserRepository) UpdateUserEmailVerification(ctx context.Context, userID
 // EmailVerified is taken from the user struct so admins can be created pre-verified and log in immediately.
 func (r *UserRepository) CreateUserWithRole(ctx context.Context, user *User) (*User, error) {
 	query := `
-		INSERT INTO users (id, tenant_id, email, password_hash, role, email_verified, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-		RETURNING id, tenant_id, email, password_hash, role, created_at, updated_at`
+		INSERT INTO users (id, tenant_id, username, email, password_hash, role, email_verified, company_name, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+		RETURNING id, tenant_id, username, email, password_hash, role, company_name, created_at, updated_at`
 
-	err := r.db.QueryRow(query, user.ID, user.TenantID, user.Email, user.PasswordHash, user.Role, user.EmailVerified).Scan(
-		&user.ID, &user.TenantID, &user.Email, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.UpdatedAt)
+	var username sql.NullString
+	var companyName sql.NullString
+	err := r.db.QueryRow(query, user.ID, user.TenantID, user.Username, user.Email, user.PasswordHash, user.Role, user.EmailVerified, user.CompanyName).Scan(
+		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &user.Role, &companyName, &user.CreatedAt, &user.UpdatedAt)
+	if err == nil && username.Valid {
+		user.Username = &username.String
+	}
+	if err == nil && companyName.Valid {
+		user.CompanyName = &companyName.String
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
@@ -231,6 +255,8 @@ func (r *UserRepository) CreateUserWithRole(ctx context.Context, user *User) (*U
 // GetUserByID retrieves a user by ID
 func (r *UserRepository) GetUserByID(userID uuid.UUID) (*User, error) {
 	user := &User{}
+	var username sql.NullString
+	var companyName sql.NullString
 	var role sql.NullString
 	var verificationToken sql.NullString
 	var verificationExpiresAt sql.NullTime
@@ -248,7 +274,7 @@ func (r *UserRepository) GetUserByID(userID uuid.UUID) (*User, error) {
 		row = r.db.QueryRowContext(context.Background(), r.db.GetStatementQuery("getUserByID"), userID)
 	}
 	err := row.Scan(
-		&user.ID, &user.TenantID, &user.Email, &user.PasswordHash, &role, &user.EmailVerified,
+		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &user.EmailVerified, &companyName,
 		&verificationToken, &verificationExpiresAt, &provider, &providerID, &providerData,
 		&mfaSecret, &user.MFAEnabled, &mfaBackupCodes, &mfaLastUsed, &user.CreatedAt, &user.UpdatedAt)
 
@@ -259,6 +285,12 @@ func (r *UserRepository) GetUserByID(userID uuid.UUID) (*User, error) {
 		return nil, fmt.Errorf("failed to get user by ID: %w", err)
 	}
 
+	if username.Valid {
+		user.Username = &username.String
+	}
+	if companyName.Valid {
+		user.CompanyName = &companyName.String
+	}
 	if role.Valid {
 		user.Role = role.String
 	}
@@ -296,7 +328,7 @@ func (r *UserRepository) GetUserByID(userID uuid.UUID) (*User, error) {
 
 // ListUsers lists all users
 func (r *UserRepository) ListUsers() ([]*User, error) {
-	query := `SELECT id, tenant_id, email, password_hash, role, created_at, updated_at FROM users ORDER BY created_at DESC`
+	query := `SELECT id, tenant_id, username, email, password_hash, role, company_name, created_at, updated_at FROM users ORDER BY created_at DESC`
 
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -307,10 +339,18 @@ func (r *UserRepository) ListUsers() ([]*User, error) {
 	var users []*User
 	for rows.Next() {
 		user := &User{}
+		var username sql.NullString
+		var companyName sql.NullString
 		var role sql.NullString
-		err := rows.Scan(&user.ID, &user.TenantID, &user.Email, &user.PasswordHash, &role, &user.CreatedAt, &user.UpdatedAt)
+		err := rows.Scan(&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &companyName, &user.CreatedAt, &user.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		if username.Valid {
+			user.Username = &username.String
+		}
+		if companyName.Valid {
+			user.CompanyName = &companyName.String
 		}
 		if role.Valid {
 			user.Role = role.String
@@ -343,6 +383,18 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 		argIndex++
 	}
 
+	if username, ok := updates["username"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("username = $%d", argIndex))
+		args = append(args, username)
+		argIndex++
+	}
+
+	if companyName, ok := updates["company_name"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("company_name = $%d", argIndex))
+		args = append(args, companyName)
+		argIndex++
+	}
+
 	if role, ok := updates["role"].(string); ok {
 		setParts = append(setParts, fmt.Sprintf("role = $%d", argIndex))
 		args = append(args, role)
@@ -355,14 +407,22 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 
 	setParts = append(setParts, "updated_at = NOW()")
 
-	query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d RETURNING id, tenant_id, email, password_hash, role, created_at, updated_at",
+	query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d RETURNING id, tenant_id, username, email, password_hash, role, company_name, created_at, updated_at",
 		strings.Join(setParts, ", "), argIndex)
 
 	args = append(args, userID)
 
 	updated := &User{}
+	var usernameNull sql.NullString
+	var companyNameNull sql.NullString
 	err = r.db.QueryRow(query, args...).Scan(
-		&updated.ID, &updated.TenantID, &updated.Email, &updated.PasswordHash, &updated.Role, &updated.CreatedAt, &updated.UpdatedAt)
+		&updated.ID, &updated.TenantID, &usernameNull, &updated.Email, &updated.PasswordHash, &updated.Role, &companyNameNull, &updated.CreatedAt, &updated.UpdatedAt)
+	if err == nil && usernameNull.Valid {
+		updated.Username = &usernameNull.String
+	}
+	if err == nil && companyNameNull.Valid {
+		updated.CompanyName = &companyNameNull.String
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to update user: %w", err)
@@ -374,6 +434,8 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 // GetUserBySocialProvider retrieves a user by social provider and provider ID
 func (r *UserRepository) GetUserBySocialProvider(provider, providerID string) (*User, error) {
 	user := &User{}
+	var username sql.NullString
+	var companyName sql.NullString
 	var role sql.NullString
 	var verificationToken sql.NullString
 	var verificationExpiresAt sql.NullTime
@@ -381,9 +443,9 @@ func (r *UserRepository) GetUserBySocialProvider(provider, providerID string) (*
 	var providerIDNull sql.NullString
 	var providerData []byte
 	err := r.db.QueryRow(`
-		SELECT id, tenant_id, email, password_hash, role, email_verified, verification_token, verification_expires_at, provider, provider_id, provider_data, created_at, updated_at
+		SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at, provider, provider_id, provider_data, created_at, updated_at
 		FROM users WHERE provider = $1 AND provider_id = $2`, provider, providerID).Scan(
-		&user.ID, &user.TenantID, &user.Email, &user.PasswordHash, &role, &user.EmailVerified,
+		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &user.EmailVerified, &companyName,
 		&verificationToken, &verificationExpiresAt, &providerNull, &providerIDNull, &providerData, &user.CreatedAt, &user.UpdatedAt)
 
 	if err == sql.ErrNoRows {
@@ -393,6 +455,12 @@ func (r *UserRepository) GetUserBySocialProvider(provider, providerID string) (*
 		return nil, fmt.Errorf("failed to get user by social provider: %w", err)
 	}
 
+	if username.Valid {
+		user.Username = &username.String
+	}
+	if companyName.Valid {
+		user.CompanyName = &companyName.String
+	}
 	if role.Valid {
 		user.Role = role.String
 	}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Shield, Check, X, User, Mail, Key } from "lucide-react";
+import { Eye, EyeOff, Shield, Check, X, User, Mail, Key, AtSign, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -163,6 +163,30 @@ export function SignupForm() {
           )}
         </div>
 
+        {/* Username Field (optional) */}
+        <div className="space-y-2">
+          <Label htmlFor="username" className="flex items-center gap-2 text-text-secondary">
+            <AtSign className="w-4 h-4" />
+            Username <span className="text-text-muted text-xs">(optional)</span>
+          </Label>
+          <Input
+            id="username"
+            type="text"
+            placeholder="johndoe"
+            autoComplete="username"
+            className={cn(
+              errors.username && 'border-error focus:border-error focus:ring-error',
+              !errors.username && watch('username') && 'border-success focus:border-success focus:ring-success'
+            )}
+            {...register('username')}
+          />
+          {errors.username && (
+            <div className="text-xs text-error">
+              {typeof errors.username.message === 'string' ? errors.username.message : 'Invalid username'}
+            </div>
+          )}
+        </div>
+
       <div className="space-y-2">
         <Label htmlFor="email" className={cn(
           'flex items-center gap-2',
@@ -188,6 +212,30 @@ export function SignupForm() {
           </div>
         )}
       </div>
+
+        {/* Company Name Field (optional) */}
+        <div className="space-y-2">
+          <Label htmlFor="companyName" className="flex items-center gap-2 text-text-secondary">
+            <Building2 className="w-4 h-4" />
+            Company name <span className="text-text-muted text-xs">(optional)</span>
+          </Label>
+          <Input
+            id="companyName"
+            type="text"
+            placeholder="Acme Inc"
+            autoComplete="organization"
+            className={cn(
+              errors.companyName && 'border-error focus:border-error focus:ring-error',
+              !errors.companyName && watch('companyName') && 'border-success focus:border-success focus:ring-success'
+            )}
+            {...register('companyName')}
+          />
+          {errors.companyName && (
+            <div className="text-xs text-error">
+              {typeof errors.companyName.message === 'string' ? errors.companyName.message : 'Invalid company name'}
+            </div>
+          )}
+        </div>
 
       {/* Invite Code Field */}
       <div className="space-y-2">

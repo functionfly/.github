@@ -426,6 +426,18 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 		"user": map[string]interface{}{
 			"id":    user.ID,
 			"email": user.Email,
+			"username": func() interface{} {
+				if user.Username != nil && *user.Username != "" {
+					return *user.Username
+				}
+				return nil
+			}(),
+			"company_name": func() interface{} {
+				if user.CompanyName != nil && *user.CompanyName != "" {
+					return *user.CompanyName
+				}
+				return nil
+			}(),
 			"user_metadata": map[string]interface{}{
 				"name":       name,
 				"avatar_url": avatar,
@@ -493,6 +505,12 @@ func (h *Handler) HandleValidateToken(w http.ResponseWriter, r *http.Request) {
 		"mfa_enabled":    user.MFAEnabled,
 		"created_at":     user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		"updated_at":     user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+	if user.Username != nil && *user.Username != "" {
+		safeUser["username"] = *user.Username
+	}
+	if user.CompanyName != nil && *user.CompanyName != "" {
+		safeUser["company_name"] = *user.CompanyName
 	}
 
 	// Include provider display fields if present

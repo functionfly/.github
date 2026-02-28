@@ -57,6 +57,8 @@ const authStore = create<AuthState>()(
             const user: User = {
               id: userData.user.id,
               email: userData.user.email,
+              username: userData.user.username,
+              companyName: userData.user.company_name,
               name: userData.user.name || '',
               avatar: userData.user.avatar || '',
               tenantId: userData.user.tenant_id || 'default',
@@ -165,6 +167,8 @@ const authStore = create<AuthState>()(
           const user: User = {
             id: authData.user.id,
             email: authData.user.email || '',
+            username: authData.user.username,
+            companyName: authData.user.company_name,
             name: authData.user.name || '',
             avatar: authData.user.avatar || '',
             tenantId: authData.user.tenant_id || 'default',
@@ -231,6 +235,8 @@ const authStore = create<AuthState>()(
               password: data.password,
               confirmPassword: data.password,
               name: data.name,
+              username: data.username || undefined,
+              companyName: data.companyName || undefined,
               termsAccepted: true,
             }),
           });

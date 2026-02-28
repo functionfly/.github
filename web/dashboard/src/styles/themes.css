@@ -41,7 +41,7 @@
   /* Light Mode Text - High contrast for readability */
   --color-text-primary-light: #0f0f1a;
   --color-text-secondary-light: #4a4a5a;
-  --color-text-muted-light: #8a8a9a;
+  --color-text-muted-light: #52525f;
   --color-text-accent-light: #4f46e5;
 
   /* --------------------------------------------------------------------------
@@ -315,6 +315,9 @@
   --shadow-glow-success: 0 0 20px rgba(16, 185, 129, 0.4);
   --shadow-glow-error: 0 0 20px rgba(239, 68, 68, 0.4);
   --shadow-glow-warning: 0 0 20px rgba(245, 158, 11, 0.4);
+
+  /* Code block line numbers (dark mode default) */
+  --code-line-number: #6b7280;
 }
 
 /* ==========================================================================
@@ -522,6 +525,9 @@
   --ring: var(--color-border-focus-light);
   --ring-offset: var(--color-bg-primary-light);
 
+  /* Code block line numbers - darker in light mode for contrast */
+  --code-line-number: #4b5563;
+
   /* Shadows - Soft Elevated */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.08);
@@ -551,7 +557,73 @@
 }
 
 [data-theme="light"] .text-text-muted {
-  color: #6a6a7a !important;
+  color: #52525f !important;
+}
+
+/* Code Examples card - description must be readable on light background */
+[data-theme="light"] .code-examples-card .code-examples-description,
+[data-theme="light"] .code-examples-card .text-text-secondary {
+  color: #374151 !important;
+}
+
+/* Code Examples tabs - active tab clearly visible in light mode */
+[data-theme="light"] .code-examples-tabs-list {
+  background-color: #f1f5f9 !important;
+}
+
+[data-theme="light"] .code-examples-tabs [data-state="active"] {
+  background-color: #ffffff !important;
+  color: #0f0f1a !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .code-examples-tabs [data-state="inactive"] {
+  color: #4b5563 !important;
+}
+
+/* Function page stat boxes - light in light mode (no dark boxes) */
+[data-theme="light"] .function-stat-card {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .function-stat-card .text-2xl {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .function-stat-card:hover {
+  border-color: rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Code block - line numbers and copy button visible in light mode */
+[data-theme="light"] .functionfly-code-block .code-block-header {
+  background-color: #f1f5f9 !important;
+  border-bottom-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .functionfly-code-block .code-block-header,
+[data-theme="light"] .functionfly-code-block .code-block-copy-btn,
+[data-theme="light"] .functionfly-code-block .code-block-icon,
+[data-theme="light"] .functionfly-code-block .code-block-lang {
+  color: #374151 !important;
+}
+
+[data-theme="light"] .functionfly-code-block .code-block-copy-btn {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+}
+
+[data-theme="light"] .functionfly-code-block .code-block-copy-btn:hover {
+  color: #0f0f1a !important;
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Muted text (e.g. stat labels, descriptions) - better contrast in light mode */
+[data-theme="light"] .text-muted-foreground {
+  color: #4b5563 !important;
 }
 
 /* ==========================================================================
@@ -598,7 +670,7 @@
 
 [data-theme="light"] .bg-button-outline:hover,
 [data-theme="light"] .hover\:bg-button-outline-hover:hover {
-  background-color: var(--color-bg-hover) !important;
+  background-color: var(--color-bg-hover-light) !important;
 }
 
 [data-theme="light"] .border-border-default {
@@ -616,6 +688,16 @@
 
 [data-theme="light"] .border-border-subtle {
   border-color: var(--border-subtle) !important;
+}
+
+/* Light mode: force all hover/focus backgrounds to use light token (dropdowns, cards, buttons) */
+[data-theme="light"] .bg-bg-hover,
+[data-theme="light"] .hover\:bg-bg-hover:hover,
+[data-theme="light"] .focus\:bg-hover:focus,
+[data-theme="light"] .focus\:bg-bg-hover:focus,
+[data-theme="light"] [data-state="open"].focus\:bg-hover,
+[data-theme="light"] [data-state="open"].focus\:bg-bg-hover {
+  background-color: var(--color-bg-hover-light) !important;
 }
 
 /* ==========================================================================

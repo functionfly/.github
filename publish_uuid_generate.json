@@ -1,0 +1,16 @@
+{
+  "author": "functionfly",
+  "name": "uuid-generate",
+  "version": "1.0.0",
+  "manifest": {
+    "name": "uuid-generate",
+    "version": "1.0.0",
+    "runtime": "python3.11",
+    "description": "Generate UUID v4 (random) identifiers.",
+    "handler": "handler"
+  },
+  "source": {
+    "code": "import uuid\n\ndef handler(event):\n    if isinstance(event, dict):\n        count = event.get(\"count\", 1)\n    else:\n        count = 1\n\n    try:\n        count = int(count)\n        if count < 1:\n            count = 1\n        if count > 100:\n            count = 100\n    except (TypeError, ValueError):\n        count = 1\n\n    try:\n        if count == 1:\n            return {\"ok\": True, \"uuid\": str(uuid.uuid4())}\n        return {\"ok\": True, \"uuids\": [str(uuid.uuid4()) for _ in range(count)]}\n    except Exception as e:\n        return {\"ok\": False, \"error\": str(e)}\n",
+    "runtime": "python3.11"
+  }
+}

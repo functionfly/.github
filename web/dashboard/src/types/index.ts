@@ -1,6 +1,8 @@
 export interface User {
   id: string;
   email: string;
+  username?: string;
+  companyName?: string;
   name: string;
   avatar?: string; // Profile picture URL from social providers
   tenantId: string;
@@ -87,6 +89,8 @@ export interface SignupRequest {
   password: string;
   confirmPassword: string;
   termsAccepted: boolean;
+  username?: string;
+  companyName?: string;
   recaptchaToken?: string;
 }
 
@@ -411,4 +415,155 @@ export interface TestFunctionResponse {
   error?: string;
   executionTimeMs: number;
   logs: FunctionLog[];
+}
+
+// State Fabric Types
+
+export interface StateFabric {
+  id: string;
+  name: string;
+  description: string;
+  status: "online" | "offline" | "degraded" | "pending";
+  type: "session" | "catalog" | "cache" | "workflow" | "custom";
+  tenantId: string;
+  stores: StateFabricStore[];
+  pipelines: Pipeline[];
+  throughput: number;
+  latency: number;
+  lastUpdated: string;
+  createdAt: string;
+  updatedAt: string;
+  settings: StateFabricSettings;
+  metrics: StateFabricMetrics;
+}
+
+export interface StateFabricStore {
+  id: string;
+  name: string;
+  type: "memory" | "persistent" | "cache" | "queue";
+  status: "active" | "inactive" | "error";
+  size: number;
+  maxSize: number;
+  region: string;
+  provider: string;
+  throughput: number;
+  latency: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Pipeline {
+  id: string;
+  name: string;
+  description: string;
+  status: "active" | "paused" | "error" | "draft";
+  steps: PipelineStep[];
+  inputSchema?: Record<string, any>;
+  outputSchema?: Record<string, any>;
+  throughput: number;
+  errorRate: number;
+  lastExecutedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PipelineStep {
+  id: string;
+  name: string;
+  type: "transform" | "filter" | "aggregate" | "enrich" | "custom";
+  config: Record<string, any>;
+  order: number;
+  enabled: boolean;
+  timeoutMs: number;
+  retryCount: number;
+}
+
+export interface EventLog {
+  id: string;
+  fabricId: string;
+  storeId?: string;
+  eventType: "create" | "update" | "delete" | "snapshot" | "sync";
+  payload: Record<string, any>;
+  timestamp: string;
+  sequenceNumber: number;
+  correlationId?: string;
+}
+
+export interface Snapshot {
+  id: string;
+  fabricId: string;
+  storeId?: string;
+  name: string;
+  description?: string;
+  state: Record<string, any>;
+  eventCount: number;
+  sizeBytes: number;
+  createdAt: string;
+  expiresAt?: string;
+}
+
+export interface ReplaySession {
+  id: string;
+  fabricId: string;
+  snapshotId?: string;
+  startEventId?: string;
+  endEventId?: string;
+  status: "pending" | "running" | "completed" | "failed";
+  progress: number;
+  eventsReplayed: number;
+  startedAt: string;
+  completedAt?: string;
+  error?: string;
+}
+
+export interface StateFabricSettings {
+  autoSnapshot: boolean;
+  snapshotIntervalMinutes: number;
+  retentionDays: number;
+  enableReplication: boolean;
+  regions: string[];
+  conflictResolution: "last-write-wins" | "first-write-wins" | "manual";
+}
+
+export interface StateFabricMetrics {
+  totalOperations: number;
+  operationsPerSecond: number;
+  averageLatency: number;
+  errorRate: number;
+  cacheHitRate?: number;
+  storageUsed: number;
+  lastCalculatedAt: string;
+}
+
+export interface CreateStateFabricRequest {
+  name: string;
+  description: string;
+  type: StateFabric["type"];
+  settings?: Partial<StateFabricSettings>;
+}
+
+export interface UpdateStateFabricRequest {
+  name?: string;
+  description?: string;
+  settings?: Partial<StateFabricSettings>;
+}
+
+export interface CreatePipelineRequest {
+  name: string;
+  description: string;
+  steps: Omit<PipelineStep, "id">[];
+}
+
+export interface UpdatePipelineRequest {
+  name?: string;
+  description?: string;
+  steps?: PipelineStep[];
+  status?: Pipeline["status"];
+}
+
+export interface CreateStoreRequest {
+  name: string;
+  type: StateFabricStore["type"];
+  maxSize: number;
+  region: string;
 }

@@ -525,7 +525,7 @@ func (a *AuthRateLimiter) Limit(next http.HandlerFunc) http.HandlerFunc {
 			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(a.limiter.window.Seconds())))
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusTooManyRequests)
-			_ = fmt.Fprintf(w, `{"message":"Too many requests. Please wait before trying again."}`)
+			_, _ = fmt.Fprintf(w, `{"message":"Too many requests. Please wait before trying again."}`)
 			return
 		}
 		next.ServeHTTP(w, r)

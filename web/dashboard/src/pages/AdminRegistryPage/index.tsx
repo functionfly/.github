@@ -8,7 +8,7 @@ import {
   Trash2,
   RefreshCw,
   Eye,
-  EyeOff,
+  Pencil,
   DollarSign,
   Flag,
   Star,
@@ -16,8 +16,8 @@ import {
   Shield,
   ArrowLeft,
   AlertTriangle,
-  CheckCircle,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +34,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -95,6 +96,16 @@ export function AdminRegistryPage() {
   const [isPricingDialogOpen, setIsPricingDialogOpen] = useState(false);
   const [newPrice, setNewPrice] = useState("");
   const [functionForPricing, setFunctionForPricing] = useState<AdminRegistryFunction | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [functionToEdit, setFunctionToEdit] = useState<AdminRegistryFunction | null>(null);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+  const [editForm, setEditForm] = useState<{
+    title: string;
+    description: string;
+    category: string;
+    visibility: "public" | "private" | "unlisted";
+    price_per_call: string;
+  }>({ title: "", description: "", category: "", visibility: "public", price_per_call: "0" });
 
   // Fetch stats from admin registry API
   const { data: statsData } = useQuery({
@@ -194,6 +205,27 @@ export function AdminRegistryPage() {
     },
   });
 
+  // Update registry function (edit) mutation
+  const updateFunctionMutation = useMutation({
+    mutationFn: ({
+      functionId,
+      updates,
+    }: {
+      functionId: string;
+      updates: Partial<AdminRegistryFunction>;
+    }) => adminRegistryApi.updateFunction(functionId, updates),
+    onSuccess: () => {
+      toast.success("Function updated");
+      queryClient.invalidateQueries({ queryKey: ["admin-registry-functions"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-registry-function-details"] });
+      setIsEditDialogOpen(false);
+      setFunctionToEdit(null);
+    },
+    onError: () => {
+      toast.error("Failed to update function");
+    },
+  });
+
   const filteredFunctions = functions.filter((fn) => {
     const matchesSearch =
       !searchTerm ||
@@ -246,6 +278,57 @@ export function AdminRegistryPage() {
   const handleDeleteClick = (fn: AdminRegistryFunction) => {
     setFunctionToDelete(fn);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleEditClick = (fn: AdminRegistryFunction) => {
+    setFunctionToEdit(fn);
+    setEditForm({
+      title: fn.title ?? "",
+      description: fn.description ?? "",
+      category: fn.category ?? "",
+      visibility: fn.visibility,
+      price_per_call: fn.price_per_call.toString(),
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!functionToEdit) return;
+    const price = parseFloat(editForm.price_per_call);
+    if (Number.isNaN(price) || price < 0) {
+      toast.error("Price must be a non-negative number");
+      return;
+    }
+    updateFunctionMutation.mutate({
+      functionId: functionToEdit.id,
+      updates: {
+        title: editForm.title || undefined,
+        description: editForm.description || undefined,
+        category: editForm.category || undefined,
+        visibility: editForm.visibility,
+        price_per_call: price,
+      },
+    });
+  };
+
+  const handleGenerateDescription = async () => {
+    if (!functionToEdit) return;
+    setIsGeneratingDescription(true);
+    try {
+      const { description } = await adminRegistryApi.generateDescription({
+        name: functionToEdit.name,
+        title: editForm.title || undefined,
+        category: editForm.category || undefined,
+      });
+      setEditForm((f) => ({ ...f, description: description || f.description }));
+      if (description) toast.success("Description generated");
+      else toast.info("No description generated");
+    } catch (e: any) {
+      const msg = e?.response?.status === 503 ? "Open Router not configured (OPENROUTER_API_KEY)" : "Failed to generate description";
+      toast.error(msg);
+    } finally {
+      setIsGeneratingDescription(false);
+    }
   };
 
   const confirmDelete = () => {
@@ -325,12 +408,12 @@ export function AdminRegistryPage() {
                   placeholder="Search registry functions..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-bg-secondary border-white/8 text-white"
+                  className="pl-10 bg-bg-secondary border-border-default text-text-primary"
                 />
               </div>
             </div>
             <Select value={visibilityFilter} onValueChange={setVisibilityFilter}>
-              <SelectTrigger className="w-full sm:w-[150px] bg-bg-secondary border-white/8 text-white">
+              <SelectTrigger className="w-full sm:w-[150px] bg-bg-secondary border-border-default text-text-primary">
                 <SelectValue placeholder="Visibility" />
               </SelectTrigger>
               <SelectContent className="bg-bg-tertiary border-white/8">
@@ -341,7 +424,7 @@ export function AdminRegistryPage() {
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full sm:w-[180px] bg-bg-secondary border-white/8 text-white">
+              <SelectTrigger className="w-full sm:w-[180px] bg-bg-secondary border-border-default text-text-primary">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent className="bg-bg-tertiary border-white/8">
@@ -353,7 +436,7 @@ export function AdminRegistryPage() {
               </SelectContent>
             </Select>
             <Select value={flaggedFilter} onValueChange={setFlaggedFilter}>
-              <SelectTrigger className="w-full sm:w-[150px] bg-bg-secondary border-white/8 text-white">
+              <SelectTrigger className="w-full sm:w-[150px] bg-bg-secondary border-border-default text-text-primary">
                 <SelectValue placeholder="Flag Status" />
               </SelectTrigger>
               <SelectContent className="bg-bg-tertiary border-white/8">
@@ -369,7 +452,7 @@ export function AdminRegistryPage() {
       {/* Functions List */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-white">
+          <CardTitle className="text-text-primary">
             Registry Functions ({filteredFunctions.length})
           </CardTitle>
         </CardHeader>
@@ -383,7 +466,7 @@ export function AdminRegistryPage() {
           ) : filteredFunctions.length === 0 ? (
             <div className="text-center py-12">
               <Code className="h-12 w-12 text-text-muted mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">
+              <h3 className="text-lg font-semibold text-text-primary mb-2">
                 No functions found
               </h3>
               <p className="text-text-secondary">
@@ -397,7 +480,7 @@ export function AdminRegistryPage() {
               {filteredFunctions.map((fn) => (
                 <div
                   key={fn.id}
-                  className={`flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-white/8 hover:bg-white/5 transition-colors ${
+                  className={`flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-white/8 hover:bg-bg-hover transition-colors ${
                     fn.is_flagged ? "border-red-500/30" : ""
                   }`}
                 >
@@ -407,7 +490,7 @@ export function AdminRegistryPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-white">{fn.name}</p>
+                        <p className="font-medium text-text-primary">{fn.name}</p>
                         {fn.is_flagged && (
                           <Flag className="w-4 h-4 text-red-400" />
                         )}
@@ -430,7 +513,7 @@ export function AdminRegistryPage() {
                     </div>
 
                     <div className="text-right min-w-[80px]">
-                      <p className="text-white font-medium">
+                      <p className="text-text-primary font-medium">
                         ${fn.price_per_call.toFixed(4)}
                       </p>
                       <p className="text-xs text-text-muted">per call</p>
@@ -441,20 +524,27 @@ export function AdminRegistryPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-text-muted hover:text-white"
+                          className="text-text-muted hover:text-text-primary"
                         >
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="bg-bg-tertiary border-white/8">
                         <DropdownMenuItem
-                          className="text-white hover:bg-white/5"
+                          className="text-text-primary hover:bg-bg-hover"
                           onClick={() => handleViewDetails(fn)}
                         >
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-white hover:bg-white/5">
+                        <DropdownMenuItem
+                          className="text-text-primary hover:bg-bg-hover"
+                          onClick={() => handleEditClick(fn)}
+                        >
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-text-primary hover:bg-bg-hover">
                           <Shield className="w-4 h-4 mr-2" />
                           Set Visibility
                           <div className="ml-auto flex flex-col">
@@ -475,7 +565,7 @@ export function AdminRegistryPage() {
                           </div>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="text-white hover:bg-white/5"
+                          className="text-text-primary hover:bg-bg-hover"
                           onClick={() => handlePricingClick(fn)}
                         >
                           <DollarSign className="w-4 h-4 mr-2" />
@@ -516,9 +606,12 @@ export function AdminRegistryPage() {
 
       {/* Function Details Dialog */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="bg-bg-tertiary border-white/8 max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-bg-tertiary border-white/8 max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="registry-function-details-desc">
+          <DialogDescription id="registry-function-details-desc" className="sr-only">
+            View details and versions for this registry function.
+          </DialogDescription>
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
+            <DialogTitle className="text-text-primary flex items-center gap-2">
               <Code className="w-5 h-5 text-[#6366f1]" />
               {selectedFunction?.name}
             </DialogTitle>
@@ -529,10 +622,10 @@ export function AdminRegistryPage() {
           ) : functionDetails ? (
             <Tabs defaultValue="details" className="w-full">
               <TabsList className="bg-bg-secondary">
-                <TabsTrigger value="details" className="text-white">
+                <TabsTrigger value="details" className="text-text-primary">
                   Details
                 </TabsTrigger>
-                <TabsTrigger value="versions" className="text-white">
+                <TabsTrigger value="versions" className="text-text-primary">
                   Versions
                 </TabsTrigger>
               </TabsList>
@@ -541,15 +634,15 @@ export function AdminRegistryPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-text-muted">Author</Label>
-                    <p className="text-white">{functionDetails.function.author}</p>
+                    <p className="text-text-primary">{functionDetails.function.author}</p>
                   </div>
                   <div>
                     <Label className="text-text-muted">Name</Label>
-                    <p className="text-white">{functionDetails.function.name}</p>
+                    <p className="text-text-primary">{functionDetails.function.name}</p>
                   </div>
                   <div>
                     <Label className="text-text-muted">Visibility</Label>
-                    <p className="text-white">
+                    <p className="text-text-primary">
                       <Badge className={`${visibilityColors[functionDetails.function.visibility]}`}>
                         {functionDetails.function.visibility}
                       </Badge>
@@ -557,40 +650,40 @@ export function AdminRegistryPage() {
                   </div>
                   <div>
                     <Label className="text-text-muted">Price per Call</Label>
-                    <p className="text-white">${functionDetails.function.price_per_call.toFixed(4)}</p>
+                    <p className="text-text-primary">${functionDetails.function.price_per_call.toFixed(4)}</p>
                   </div>
                   <div>
                     <Label className="text-text-muted">Category</Label>
-                    <p className="text-white">{functionDetails.function.category || "Uncategorized"}</p>
+                    <p className="text-text-primary">{functionDetails.function.category || "Uncategorized"}</p>
                   </div>
                   <div>
                     <Label className="text-text-muted">Latest Version</Label>
-                    <p className="text-white">{functionDetails.function.latest_version || "N/A"}</p>
+                    <p className="text-text-primary">{functionDetails.function.latest_version || "N/A"}</p>
                   </div>
                   <div>
                     <Label className="text-text-muted">Overall Score</Label>
-                    <p className="text-white flex items-center gap-1">
+                    <p className="text-text-primary flex items-center gap-1">
                       <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                       {functionDetails.function.overall_score.toFixed(1)} ({functionDetails.function.total_ratings} ratings)
                     </p>
                   </div>
                   <div>
                     <Label className="text-text-muted">Popularity</Label>
-                    <p className="text-white">{Math.floor(functionDetails.function.popularity_score)}</p>
+                    <p className="text-text-primary">{Math.floor(functionDetails.function.popularity_score)}</p>
                   </div>
                   <div>
                     <Label className="text-text-muted">Reliability Score</Label>
-                    <p className="text-white">{functionDetails.function.reliability_score.toFixed(1)}</p>
+                    <p className="text-text-primary">{functionDetails.function.reliability_score.toFixed(1)}</p>
                   </div>
                   <div>
                     <Label className="text-text-muted">Deterministic Score</Label>
-                    <p className="text-white">{functionDetails.function.deterministic_score.toFixed(1)}</p>
+                    <p className="text-text-primary">{functionDetails.function.deterministic_score.toFixed(1)}</p>
                   </div>
                 </div>
 
                 <div>
                   <Label className="text-text-muted">Description</Label>
-                  <p className="text-white mt-1">
+                  <p className="text-text-primary mt-1">
                     {functionDetails.function.description || "No description"}
                   </p>
                 </div>
@@ -600,7 +693,7 @@ export function AdminRegistryPage() {
                     <Label className="text-text-muted">Tags</Label>
                     <div className="flex flex-wrap gap-2 mt-2">
                       {functionDetails.function.tags.map((tag, i) => (
-                        <Badge key={i} variant="outline" className="text-white">
+                        <Badge key={i} variant="outline" className="text-text-primary">
                           {tag}
                         </Badge>
                       ))}
@@ -614,13 +707,13 @@ export function AdminRegistryPage() {
                       <Flag className="w-4 h-4" />
                       <span className="font-medium">Flagged</span>
                     </div>
-                    <p className="text-white mt-2">{functionDetails.function.flag_reason}</p>
+                    <p className="text-text-primary mt-2">{functionDetails.function.flag_reason}</p>
                   </div>
                 )}
 
                 <div>
                   <Label className="text-text-muted">Created At</Label>
-                  <p className="text-white">
+                  <p className="text-text-primary">
                     {new Date(functionDetails.function.created_at).toLocaleString()}
                   </p>
                 </div>
@@ -636,13 +729,13 @@ export function AdminRegistryPage() {
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="text-white font-medium">v{version.version}</p>
+                            <p className="text-text-primary font-medium">v{version.version}</p>
                             <p className="text-sm text-text-muted">
                               Runtime: {version.runtime}
                             </p>
                           </div>
                           <Badge
-                            className={version.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-gray-500/10 text-gray-400"}
+                            className={version.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-gray-500/10 text-text-secondary"}
                           >
                             {version.is_active ? "Active" : "Inactive"}
                           </Badge>
@@ -650,15 +743,15 @@ export function AdminRegistryPage() {
                         <div className="grid grid-cols-3 gap-4 mt-3 text-sm">
                           <div>
                             <span className="text-text-muted">Timeout:</span>{" "}
-                            <span className="text-white">{version.timeout_ms}ms</span>
+                            <span className="text-text-primary">{version.timeout_ms}ms</span>
                           </div>
                           <div>
                             <span className="text-text-muted">Memory:</span>{" "}
-                            <span className="text-white">{version.memory_mb}MB</span>
+                            <span className="text-text-primary">{version.memory_mb}MB</span>
                           </div>
                           <div>
                             <span className="text-text-muted">Cache TTL:</span>{" "}
-                            <span className="text-white">{version.cache_ttl}s</span>
+                            <span className="text-text-primary">{version.cache_ttl}s</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 mt-3">
@@ -683,11 +776,148 @@ export function AdminRegistryPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Function Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="bg-bg-tertiary border-white/8 max-w-lg" aria-describedby="registry-edit-desc">
+          <DialogDescription id="registry-edit-desc" className="sr-only">
+            Edit registry function title, description, category, visibility, and pricing.
+          </DialogDescription>
+          <DialogHeader>
+            <DialogTitle className="text-text-primary flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-[#6366f1]" />
+              Edit Registry Function
+            </DialogTitle>
+          </DialogHeader>
+          {functionToEdit && (
+            <div className="space-y-4">
+              <p className="text-sm text-text-muted">
+                Editing <span className="font-medium text-text-primary">{functionToEdit.name}</span> by {functionToEdit.author}
+              </p>
+              <div className="space-y-2">
+                <Label className="text-text-primary">Title</Label>
+                <Input
+                  value={editForm.title}
+                  onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="Display title"
+                  className="bg-bg-secondary border-border-default text-text-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-text-primary">Description</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateDescription}
+                    disabled={isGeneratingDescription}
+                    className="border-border-default text-text-secondary hover:bg-bg-hover hover:text-text-primary shrink-0"
+                  >
+                    {isGeneratingDescription ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                        Generate with AI (Open Router)
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <Textarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="Function description"
+                  rows={3}
+                  className="bg-bg-secondary border-border-default text-text-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-text-primary">Category</Label>
+                <Select
+                  value={editForm.category || "Uncategorized"}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, category: v === "Uncategorized" ? "" : v }))}
+                >
+                  <SelectTrigger className="bg-bg-secondary border-border-default text-text-primary">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-bg-tertiary border-white/8">
+                    <SelectItem value="Uncategorized">Uncategorized</SelectItem>
+                    {categories.filter((c) => c !== "All Categories").map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-text-primary">Visibility</Label>
+                <Select
+                  value={editForm.visibility}
+                  onValueChange={(v: "public" | "private" | "unlisted") =>
+                    setEditForm((f) => ({ ...f, visibility: v }))
+                  }
+                >
+                  <SelectTrigger className="bg-bg-secondary border-border-default text-text-primary">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-bg-tertiary border-white/8">
+                    <SelectItem value="public">Public</SelectItem>
+                    <SelectItem value="private">Private</SelectItem>
+                    <SelectItem value="unlisted">Unlisted</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-text-primary">Price per call (USD)</Label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  value={editForm.price_per_call}
+                  onChange={(e) => setEditForm((f) => ({ ...f, price_per_call: e.target.value }))}
+                  className="bg-bg-secondary border-border-default text-text-primary"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              className="border-border-default text-text-primary hover:bg-bg-hover"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={updateFunctionMutation.isPending || !functionToEdit}
+              className="bg-[#6366f1] hover:bg-[#5855eb]"
+            >
+              {updateFunctionMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Flag Dialog */}
       <Dialog open={isFlagDialogOpen} onOpenChange={setIsFlagDialogOpen}>
-        <DialogContent className="bg-bg-tertiary border-white/8">
+        <DialogContent className="bg-bg-tertiary border-white/8" aria-describedby="registry-flag-desc">
+          <DialogDescription id="registry-flag-desc" className="sr-only">
+            Flag or unflag this function for review.
+          </DialogDescription>
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
+            <DialogTitle className="text-text-primary flex items-center gap-2">
               <Flag className="w-5 h-5 text-red-400" />
               {functionToFlag?.is_flagged ? "Unflag Function" : "Flag Function"}
             </DialogTitle>
@@ -699,12 +929,12 @@ export function AdminRegistryPage() {
                 : `Flag "${functionToFlag?.name}" for review.`}
             </p>
             <div>
-              <Label className="text-white">Reason (optional)</Label>
+              <Label className="text-text-primary">Reason (optional)</Label>
               <Textarea
                 value={flagReason}
                 onChange={(e) => setFlagReason(e.target.value)}
                 placeholder="Enter reason for flagging..."
-                className="mt-2 bg-bg-secondary border-white/8 text-white"
+                className="mt-2 bg-bg-secondary border-border-default text-text-primary"
               />
             </div>
           </div>
@@ -712,7 +942,7 @@ export function AdminRegistryPage() {
             <Button
               variant="outline"
               onClick={() => setIsFlagDialogOpen(false)}
-              className="border-white/8 text-white hover:bg-white/5"
+              className="border-border-default text-text-primary hover:bg-bg-hover"
             >
               Cancel
             </Button>
@@ -733,9 +963,12 @@ export function AdminRegistryPage() {
 
       {/* Pricing Dialog */}
       <Dialog open={isPricingDialogOpen} onOpenChange={setIsPricingDialogOpen}>
-        <DialogContent className="bg-bg-tertiary border-white/8">
+        <DialogContent className="bg-bg-tertiary border-white/8" aria-describedby="registry-pricing-desc">
+          <DialogDescription id="registry-pricing-desc" className="sr-only">
+            Set price per call for this registry function.
+          </DialogDescription>
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
+            <DialogTitle className="text-text-primary flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-[#6366f1]" />
               Set Pricing
             </DialogTitle>
@@ -745,7 +978,7 @@ export function AdminRegistryPage() {
               Set the price per call for "{functionForPricing?.name}"
             </p>
             <div>
-              <Label className="text-white">Price per Call (USD)</Label>
+              <Label className="text-text-primary">Price per Call (USD)</Label>
               <Input
                 type="number"
                 step="0.0001"
@@ -753,7 +986,7 @@ export function AdminRegistryPage() {
                 value={newPrice}
                 onChange={(e) => setNewPrice(e.target.value)}
                 placeholder="0.0000"
-                className="mt-2 bg-bg-secondary border-white/8 text-white"
+                className="mt-2 bg-bg-secondary border-border-default text-text-primary"
               />
               <p className="text-xs text-text-muted mt-1">
                 Set to 0 for free functions
@@ -764,7 +997,7 @@ export function AdminRegistryPage() {
             <Button
               variant="outline"
               onClick={() => setIsPricingDialogOpen(false)}
-              className="border-white/8 text-white hover:bg-white/5"
+              className="border-border-default text-text-primary hover:bg-bg-hover"
             >
               Cancel
             </Button>
@@ -781,23 +1014,26 @@ export function AdminRegistryPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="bg-bg-tertiary border-white/8">
+        <DialogContent className="bg-bg-tertiary border-white/8" aria-describedby="registry-delete-desc">
+          <DialogDescription id="registry-delete-desc" className="sr-only">
+            Confirm permanent deletion of this registry function.
+          </DialogDescription>
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
+            <DialogTitle className="text-text-primary flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-400" />
               Delete Function
             </DialogTitle>
           </DialogHeader>
           <p className="text-text-secondary">
             Are you sure you want to delete{" "}
-            <span className="text-white font-medium">{functionToDelete?.name}</span>?
+            <span className="text-text-primary font-medium">{functionToDelete?.name}</span>?
             This action cannot be undone and will remove it from the registry.
           </p>
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
-              className="border-white/8 text-white hover:bg-white/5"
+              className="border-border-default text-text-primary hover:bg-bg-hover"
             >
               Cancel
             </Button>

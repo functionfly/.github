@@ -1,0 +1,410 @@
+/* ==========================================================================
+   FunctionFly Docs Styles
+   Theme-aware documentation styling using FunctionFly design tokens
+   ========================================================================== */
+
+/* Import base styles */
+@import '@/styles/themes.css';
+
+/* ==========================================================================
+   Docs Page Layout
+   ========================================================================== */
+
+.docs-page {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   Header Styles
+   ========================================================================== */
+
+.docs-header {
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: rgba(var(--bg-primary), 0.8);
+  backdrop-filter: blur(20px);
+}
+
+[data-theme="light"] .docs-header {
+  background-color: rgba(255, 255, 255, 0.85);
+}
+
+/* ==========================================================================
+   Article Styles
+   ========================================================================== */
+
+.docs-article {
+  color: var(--text-primary);
+}
+
+.docs-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.docs-description {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Content Typography
+   ========================================================================== */
+
+.docs-content {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.docs-content .docs-h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.docs-content .docs-h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.docs-content .docs-h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.docs-content .docs-p {
+  margin-bottom: 1rem;
+}
+
+.docs-content strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.docs-content em {
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Links
+   ========================================================================== */
+
+.docs-content .docs-link {
+  color: var(--brand-500);
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.docs-content .docs-link:hover {
+  border-bottom-color: var(--brand-500);
+}
+
+[data-theme="light"] .docs-content .docs-link {
+  color: var(--brand-600);
+}
+
+[data-theme="light"] .docs-content .docs-link:hover {
+  border-bottom-color: var(--brand-600);
+}
+
+/* ==========================================================================
+   Code Styles
+   ========================================================================== */
+
+.docs-content .docs-inline-code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  padding: 0.2em 0.4em;
+  background-color: var(--bg-tertiary);
+  border-radius: 0.375rem;
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+.docs-content .docs-code-block {
+  margin: 1.5rem 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-secondary);
+}
+
+.docs-content .docs-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background-color: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.docs-content .docs-code-lang {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.docs-content .docs-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.docs-content .docs-copy-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+  border-color: var(--border-default);
+}
+
+.docs-content .docs-pre {
+  margin: 0;
+  padding: 1rem;
+  overflow-x: auto;
+  background-color: var(--bg-secondary);
+}
+
+.docs-content .docs-code {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre;
+}
+
+/* Syntax highlighting colors - Dark Mode */
+.docs-content .docs-code.language-python,
+.docs-content .docs-code.language-bash,
+.docs-content .docs-code.language-json,
+.docs-content .docs-code.language-yaml {
+  color: #e2e8f0;
+}
+
+/* Syntax highlighting - Light Mode */
+[data-theme="light"] .docs-content .docs-code.language-python,
+[data-theme="light"] .docs-content .docs-code.language-bash,
+[data-theme="light"] .docs-content .docs-code.language-json,
+[data-theme="light"] .docs-content .docs-code.language-yaml {
+  color: #1e293b;
+}
+
+/* ==========================================================================
+   Table Styles
+   ========================================================================== */
+
+.docs-content .docs-table-wrapper {
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.docs-content .docs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.docs-content .docs-table thead {
+  background-color: var(--bg-tertiary);
+}
+
+.docs-content .docs-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.docs-content .docs-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.docs-content .docs-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.docs-content .docs-table tbody tr:hover {
+  background-color: var(--bg-tertiary);
+}
+
+/* ==========================================================================
+   Blockquote Styles
+   ========================================================================== */
+
+.docs-content .docs-blockquote {
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border-left: 4px solid var(--brand-500);
+  background-color: var(--bg-secondary);
+  border-radius: 0 0.5rem 0.5rem 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* ==========================================================================
+   List Styles
+   ========================================================================== */
+
+.docs-content .docs-ul,
+.docs-content .docs-ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.docs-content .docs-ul {
+  list-style-type: disc;
+}
+
+.docs-content .docs-ol {
+  list-style-type: decimal;
+}
+
+.docs-content .docs-ul li,
+.docs-content .docs-ol li {
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+.docs-content .docs-ul li::marker,
+.docs-content .docs-ol li::marker {
+  color: var(--brand-500);
+}
+
+/* ==========================================================================
+   Horizontal Rule
+   ========================================================================== */
+
+.docs-content .docs-hr {
+  margin: 2rem 0;
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--border-default),
+    transparent
+  );
+}
+
+/* ==========================================================================
+   Scrollbar Styles
+   ========================================================================== */
+
+.docs-page ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.docs-page ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.docs-page ::-webkit-scrollbar-thumb {
+  background-color: var(--border-default);
+  border-radius: 4px;
+}
+
+.docs-page ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border-strong);
+}
+
+/* Firefox */
+.docs-page * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
+}
+
+/* ==========================================================================
+   Mobile Menu Animation
+   ========================================================================== */
+
+@media (max-width: 1023px) {
+  .docs-sidebar {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* ==========================================================================
+   Responsive Typography
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .docs-title {
+    font-size: 1.875rem;
+  }
+
+  .docs-content .docs-h1 {
+    font-size: 1.5rem;
+  }
+
+  .docs-content .docs-h2 {
+    font-size: 1.25rem;
+  }
+
+  .docs-content .docs-h3 {
+    font-size: 1.125rem;
+  }
+
+  .docs-content {
+    font-size: 0.9375rem;
+  }
+}
+
+/* ==========================================================================
+   Focus Styles for Accessibility
+   ========================================================================== */
+
+.docs-page button:focus-visible,
+.docs-page a:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Selection Styles
+   ========================================================================== */
+
+.docs-page ::selection {
+  background-color: rgba(99, 102, 241, 0.3);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .docs-page ::selection {
+  background-color: rgba(99, 102, 241, 0.2);
+}

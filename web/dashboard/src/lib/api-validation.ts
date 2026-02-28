@@ -59,6 +59,8 @@ export const databaseMetricSchema = z.object({
 export const userSchema = z.object({
   id: idSchema,
   email: emailSchema,
+  username: z.string().optional(),
+  companyName: z.string().optional(),
   name: z.string().min(1),
   avatar: z.string().url().optional(),
   tenantId: idSchema,

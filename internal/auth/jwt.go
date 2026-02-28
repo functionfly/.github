@@ -50,6 +50,9 @@ func (a *AuthService) generateToken(user *storage.User) (string, error) {
 			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}
+	if user.Username != nil && *user.Username != "" {
+		claims.Username = *user.Username
+	}
 
 	// Add permissions based on role
 	if user.Role != "" {

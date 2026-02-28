@@ -8,8 +8,10 @@ export const ROUTES = {
   SIGNUP: "/signup",
   DASHBOARD: "/dashboard",
   FUNCTIONS: "/functions",
+  REGISTRY: "/registry",
   PROVIDERS: "/providers",
   ANALYTICS: "/analytics",
+  STATE_FABRIC: "/state-fabric",
   SETTINGS: "/settings",
   // Admin routes
   ADMIN: "/admin",
@@ -26,6 +28,7 @@ export const ROUTES = {
   ADMIN_FEEDBACK: "/admin/feedback",
   ADMIN_FUNCTIONS: "/admin/functions",
   ADMIN_REGISTRY: "/admin/registry",
+  ADMIN_STATE_FABRIC: "/admin/state-fabric",
 } as const;
 
 export const PROVIDERS = {

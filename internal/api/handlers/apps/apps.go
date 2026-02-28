@@ -25,6 +25,35 @@ func NewHandler(repo storage.Repository) *Handler {
 	}
 }
 
+// HandleListApps handles GET /v1/apps - list apps for the authenticated user's tenant
+func (h *Handler) HandleListApps(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	apps, err := h.repo.ListAppsByTenant(user.TenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", user.TenantID).Error("Failed to list apps")
+		http.Error(w, "Failed to list apps", http.StatusInternalServerError)
+		return
+	}
+
+	responses := make([]*types.AppResponse, 0, len(apps))
+	for _, app := range apps {
+		responses = append(responses, &types.AppResponse{
+			ID:        app.ID.String(),
+			Name:      app.Name,
+			Slug:      app.Slug,
+			CreatedAt: app.CreatedAt,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"apps": responses})
+}
+
 // HandleCreateApp handles app creation
 func (h *Handler) HandleCreateApp(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)

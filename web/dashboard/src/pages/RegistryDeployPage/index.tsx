@@ -42,6 +42,7 @@ export default function RegistryDeployPage() {
   const [currentVersion, setCurrentVersion] = useState<RegistryFunctionVersion | null>(null);
 
   const [apps, setApps] = useState<App[]>([]);
+  const [appsLoading, setAppsLoading] = useState(false);
   const [selectedApp, setSelectedApp] = useState<string>("");
 
   const [loading, setLoading] = useState(true);
@@ -85,10 +86,11 @@ export default function RegistryDeployPage() {
 
   // Update current version when selection changes
   useEffect(() => {
-    if (selectedVersion === "latest" && versions.length > 0) {
-      setCurrentVersion(versions[0]);
+    const list = Array.isArray(versions) ? versions : [];
+    if (selectedVersion === "latest" && list.length > 0) {
+      setCurrentVersion(list[0]);
     } else {
-      const version = versions.find(v => v.version === selectedVersion);
+      const version = list.find(v => v.version === selectedVersion);
       setCurrentVersion(version || null);
     }
   }, [selectedVersion, versions]);
@@ -101,8 +103,16 @@ export default function RegistryDeployPage() {
         registryApi.getFunctionVersions(author, name),
       ]);
 
-      setRegistryFunction(functionData.function);
-      setVersions(versionsData.versions);
+      // Backend returns the function object directly (no .function wrapper)
+      const raw = functionData as unknown as { function?: RegistryFunction } | RegistryFunction;
+      const fn = "function" in raw && raw.function ? raw.function : (functionData as unknown as RegistryFunction);
+      setRegistryFunction(fn);
+
+      // Backend may return { versions: [...] } or the raw versions array
+      const vers = Array.isArray(versionsData)
+        ? versionsData
+        : (versionsData as { versions?: RegistryFunctionVersion[] })?.versions ?? [];
+      setVersions(vers);
       setFunctionName(name); // Default function name
     } catch (error) {
       console.error("Failed to load function details:", error);
@@ -113,10 +123,15 @@ export default function RegistryDeployPage() {
 
   const loadUserApps = async () => {
     try {
-      const response = await apiClient.get<App[]>("/v1/apps");
-      setApps(response || []);
+      setAppsLoading(true);
+      const response = await apiClient.get<{ apps?: App[] }>("/v1/apps");
+      const list = Array.isArray(response?.apps) ? response.apps : [];
+      setApps(list);
     } catch (error) {
       console.error("Failed to load apps:", error);
+      setApps([]);
+    } finally {
+      setAppsLoading(false);
     }
   };
 
@@ -251,12 +266,17 @@ export default function RegistryDeployPage() {
   if (!registryFunction) {
     return (
       <div className="container mx-auto px-6 py-8">
-        <Alert>
+        <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Function not found or not available for deployment.
+            Function not found or not available for deployment. Check that{" "}
+            <strong>{author}/{name}</strong> exists in the registry and try again.
           </AlertDescription>
         </Alert>
+        <Button variant="outline" className="mt-4" onClick={() => navigate("/registry")}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Registry
+        </Button>
       </div>
     );
   }
@@ -286,13 +306,17 @@ export default function RegistryDeployPage() {
           {registryFunction.category && (
             <Badge variant="secondary">{registryFunction.category}</Badge>
           )}
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <span>⭐ {registryFunction.overall_score.toFixed(1)}</span>
-            <span>({registryFunction.total_ratings} ratings)</span>
-          </div>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <span>📥 {Math.floor(registryFunction.popularity_score)} downloads</span>
-          </div>
+          {(registryFunction.overall_score != null || (registryFunction as { total_ratings?: number }).total_ratings != null) && (
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <span>⭐ {(registryFunction.overall_score ?? 0).toFixed(1)}</span>
+              <span>({(registryFunction as { total_ratings?: number }).total_ratings ?? 0} ratings)</span>
+            </div>
+          )}
+          {(registryFunction as { popularity_score?: number }).popularity_score != null && (
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <span>📥 {Math.floor((registryFunction as { popularity_score?: number }).popularity_score ?? 0)} downloads</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -318,18 +342,34 @@ export default function RegistryDeployPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="app">Target App</Label>
-                      <Select value={selectedApp} onValueChange={setSelectedApp}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an app" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {apps.map((app) => (
-                            <SelectItem key={app.id} value={app.id}>
-                              {app.name} ({app.slug})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {appsLoading ? (
+                        <div className="flex h-10 items-center rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                          Loading apps…
+                        </div>
+                      ) : apps.length === 0 ? (
+                        <div className="rounded-md border border-dashed border-input bg-muted/30 p-4 text-sm">
+                          <p className="text-muted-foreground mb-2">No apps yet.</p>
+                          <p className="text-muted-foreground text-xs mb-3">
+                            Create an app in your dashboard to deploy this function to.
+                          </p>
+                          <Button type="button" variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
+                            Go to Dashboard
+                          </Button>
+                        </div>
+                      ) : (
+                        <Select value={selectedApp} onValueChange={setSelectedApp}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an app" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {apps.map((app) => (
+                              <SelectItem key={app.id} value={app.id}>
+                                {app.name} ({app.slug})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
 
                     <div>
@@ -562,17 +602,17 @@ export default function RegistryDeployPage() {
               <div className="flex justify-between">
                 <span className="text-sm">Rating</span>
                 <div className="flex items-center gap-1">
-                  <span className="font-medium">{registryFunction.overall_score.toFixed(1)}</span>
-                  <span className="text-muted-foreground">({registryFunction.total_ratings})</span>
+                  <span className="font-medium">{(registryFunction.overall_score ?? 0).toFixed(1)}</span>
+                  <span className="text-muted-foreground">({(registryFunction as { total_ratings?: number }).total_ratings ?? 0})</span>
                 </div>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Downloads</span>
-                <span className="font-medium">{Math.floor(registryFunction.popularity_score)}</span>
+                <span className="font-medium">{Math.floor((registryFunction as { popularity_score?: number }).popularity_score ?? 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Reliability</span>
-                <span className="font-medium">{registryFunction.reliability_score.toFixed(1)}%</span>
+                <span className="font-medium">{((registryFunction as { reliability?: number; reliability_score?: number }).reliability ?? (registryFunction as { reliability_score?: number }).reliability_score ?? 0).toFixed(1)}%</span>
               </div>
             </CardContent>
           </Card>

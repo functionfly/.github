@@ -5,15 +5,15 @@
 
 @import "tailwindcss";
 
-/* Import all style modules */
-@import './themes.css';
-@import './animations.css';
-@import './effects.css';
-@import './components.css';
-@import './data-viz.css';
-@import './features.css';
-@import './contact-faq.css';
-@import './registry.css';
+/* Import all style modules (use @/ so Vite resolves from src/ and Tailwind plugin can resolve) */
+@import '@/styles/themes.css';
+@import '@/styles/animations.css';
+@import '@/styles/effects.css';
+@import '@/styles/components.css';
+@import '@/styles/data-viz.css';
+@import '@/styles/features.css';
+@import '@/styles/contact-faq.css';
+@import '@/styles/registry.css';
 
 /* ==========================================================================
    Additional Utility Classes
@@ -104,7 +104,7 @@
   .no-print {
     display: none !important;
   }
-  
+
   body {
     background: white !important;
     color: black !important;

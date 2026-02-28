@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="50%" style="stop-color:#8b5cf6"/>
+      <stop offset="100%" style="stop-color:#d946ef"/>
+    </linearGradient>
+    <linearGradient id="lightningGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background with rounded corners -->
+  <rect width="180" height="180" rx="40" fill="url(#bgGradient)"/>
+  
+  <!-- Symbol centered -->
+  <g transform="translate(66, 66) scale(2)">
+    <!-- Hexagon Base -->
+    <path d="M24 4 L42 14 L42 34 L24 44 L6 34 L6 14 Z" 
+          fill="white" 
+          opacity="0.2"/>
+    <path d="M24 4 L42 14 L42 34 L24 44 L6 34 L6 14 Z" 
+          fill="none" 
+          stroke="white" 
+          stroke-width="2"/>
+    
+    <!-- Lightning Bolt Core -->
+    <path d="M26 12 L20 22 L24 22 L22 32 L30 20 L26 20 L28 12 Z" 
+          fill="url(#lightningGradient)"/>
+    
+    <!-- Flight Path Lines -->
+    <path d="M24 16 L24 36" 
+          stroke="white" 
+          stroke-width="2" 
+          stroke-linecap="round"/>
+    
+    <!-- Connection Dots -->
+    <circle cx="24" cy="18" r="2" fill="white"/>
+    <circle cx="18" cy="28" r="1.5" fill="white" opacity="0.8"/>
+    <circle cx="30" cy="28" r="1.5" fill="white" opacity="0.8"/>
+  </g>
+</svg>

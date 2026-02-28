@@ -1,9 +1,12 @@
 package admin
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
@@ -524,4 +527,99 @@ func (h *RegistryHandler) HandleGetRegistryFunctionMetrics(w http.ResponseWriter
 		"latency_p50_ms": 0,
 		"latency_p99_ms": 0,
 	})
+}
+
+const openRouterFreeModel = "arcee-ai/trinity-large-preview:free"
+const openRouterURL = "https://openrouter.ai/api/v1/chat/completions"
+
+// HandleGenerateRegistryDescription returns POST /v1/admin/registry/generate-description
+// Uses Open Router free models to generate a short description from function name/title/category.
+func (h *RegistryHandler) HandleGenerateRegistryDescription(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	apiKey := os.Getenv("OPENROUTER_API_KEY")
+	if apiKey == "" {
+		http.Error(w, "Open Router API key not configured (OPENROUTER_API_KEY)", http.StatusServiceUnavailable)
+		return
+	}
+
+	var body struct {
+		Name     string `json:"name"`
+		Title    string `json:"title"`
+		Category string `json:"category"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	body.Name = strings.TrimSpace(body.Name)
+	if body.Name == "" {
+		http.Error(w, "name is required", http.StatusBadRequest)
+		return
+	}
+
+	prompt := "Write a short, clear one or two sentence description for a registry function."
+	if body.Name != "" {
+		prompt += " Function name: " + body.Name + "."
+	}
+	if body.Title != "" {
+		prompt += " Display title: " + body.Title + "."
+	}
+	if body.Category != "" {
+		prompt += " Category: " + body.Category + "."
+	}
+	prompt += " Output only the description text, no quotes or prefix."
+
+	reqBody := map[string]interface{}{
+		"model": openRouterFreeModel,
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+		"max_tokens": 150,
+	}
+	encoded, _ := json.Marshal(reqBody)
+	req, err := http.NewRequestWithContext(r.Context(), "POST", openRouterURL, bytes.NewReader(encoded))
+	if err != nil {
+		logrus.WithError(err).Error("Failed to create Open Router request")
+		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		logrus.WithError(err).Error("Open Router request failed")
+		http.Error(w, "Open Router request failed", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		logrus.WithField("status", resp.StatusCode).Error("Open Router returned non-200")
+		http.Error(w, "Open Router returned error", http.StatusBadGateway)
+		return
+	}
+
+	var openResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&openResp); err != nil {
+		logrus.WithError(err).Error("Failed to decode Open Router response")
+		http.Error(w, "Failed to parse response", http.StatusInternalServerError)
+		return
+	}
+	description := ""
+	if len(openResp.Choices) > 0 {
+		description = strings.TrimSpace(openResp.Choices[0].Message.Content)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"description": description})
 }

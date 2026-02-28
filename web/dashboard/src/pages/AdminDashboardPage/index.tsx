@@ -14,7 +14,8 @@ import {
   MessageSquare,
   ExternalLink,
   Code,
-  Database
+  Database,
+  Layers
 } from "lucide-react";
 
 const adminSections = [
@@ -50,7 +51,7 @@ const adminSections = [
     title: "System",
     description: "System configuration and maintenance",
     path: "/admin/system",
-    icon: <Settings className="w-6 h-6 text-gray-500" />,
+    icon: <Settings className="w-6 h-6 text-text-muted" />,
     color: "bg-gray-50 border-gray-200 hover:border-gray-300"
   },
   {
@@ -94,6 +95,13 @@ const adminSections = [
     path: "/admin/registry",
     icon: <Database className="w-6 h-6 text-cyan-500" />,
     color: "bg-cyan-50 border-cyan-200 hover:border-cyan-300"
+  },
+  {
+    title: "State Fabric",
+    description: "Manage state fabrics across all tenants",
+    path: "/admin/state-fabric",
+    icon: <Layers className="w-6 h-6 text-indigo-500" />,
+    color: "bg-indigo-50 border-indigo-200 hover:border-indigo-300"
   }
 ];
 

@@ -1,0 +1,16 @@
+{
+  "author": "functionfly",
+  "name": "base64-decode",
+  "version": "1.0.0",
+  "manifest": {
+    "name": "base64-decode",
+    "version": "1.0.0",
+    "runtime": "python3.11",
+    "description": "Decode a Base64 string to plain text. Optional URL-safe input.",
+    "handler": "handler"
+  },
+  "source": {
+    "code": "import base64\n\ndef handler(event):\n    if isinstance(event, dict):\n        encoded = event.get(\"encoded\", event.get(\"data\", \"\"))\n        url_safe = event.get(\"url_safe\", False)\n    else:\n        encoded = str(event) if event is not None else \"\"\n        url_safe = False\n\n    if not encoded or not str(encoded).strip():\n        return {\"ok\": False, \"error\": \"Input 'encoded' is required and cannot be empty\"}\n\n    try:\n        raw = encoded if isinstance(encoded, bytes) else encoded.encode(\"ascii\")\n        if url_safe:\n            pad = 4 - (len(raw) % 4)\n            if pad != 4:\n                raw += b\"=\" * pad\n            data = base64.urlsafe_b64decode(raw)\n        else:\n            data = base64.b64decode(raw)\n        text = data.decode(\"utf-8\")\n        return {\"ok\": True, \"text\": text}\n    except Exception as e:\n        return {\"ok\": False, \"error\": str(e)}\n",
+    "runtime": "python3.11"
+  }
+}

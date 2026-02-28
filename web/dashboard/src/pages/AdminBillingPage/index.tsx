@@ -61,7 +61,7 @@ export function AdminBillingPage() {
       case "canceled":
         return "bg-red-500/10 text-red-400";
       default:
-        return "bg-gray-500/10 text-gray-400";
+        return "bg-gray-500/10 text-text-secondary";
     }
   };
 
@@ -119,11 +119,11 @@ export function AdminBillingPage() {
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-bg-secondary border border-white/8">
-          <TabsTrigger value="overview" className="text-white data-[state=active]:bg-[#6366f1]">Overview</TabsTrigger>
-          <TabsTrigger value="tiers" className="text-white data-[state=active]:bg-[#6366f1]">Pricing Tiers</TabsTrigger>
-          <TabsTrigger value="subscriptions" className="text-white data-[state=active]:bg-[#6366f1]">Subscriptions</TabsTrigger>
-          <TabsTrigger value="invoices" className="text-white data-[state=active]:bg-[#6366f1]">Invoices</TabsTrigger>
-          <TabsTrigger value="coupons" className="text-white data-[state=active]:bg-[#6366f1]">Coupons</TabsTrigger>
+          <TabsTrigger value="overview" className="text-text-primary data-[state=active]:bg-[#6366f1]">Overview</TabsTrigger>
+          <TabsTrigger value="tiers" className="text-text-primary data-[state=active]:bg-[#6366f1]">Pricing Tiers</TabsTrigger>
+          <TabsTrigger value="subscriptions" className="text-text-primary data-[state=active]:bg-[#6366f1]">Subscriptions</TabsTrigger>
+          <TabsTrigger value="invoices" className="text-text-primary data-[state=active]:bg-[#6366f1]">Invoices</TabsTrigger>
+          <TabsTrigger value="coupons" className="text-text-primary data-[state=active]:bg-[#6366f1]">Coupons</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -137,11 +137,11 @@ export function AdminBillingPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-text-secondary">This Month</span>
-                    <span className="text-2xl font-bold text-white">$19.00</span>
+                    <span className="text-2xl font-bold text-text-primary">$19.00</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-text-secondary">Last Month</span>
-                    <span className="text-white">$0.00</span>
+                    <span className="text-text-primary">$0.00</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-text-secondary">Growth</span>
@@ -161,7 +161,7 @@ export function AdminBillingPage() {
                   {tiers.map((tier) => (
                     <div key={tier.id} className="flex justify-between items-center">
                       <span className="text-text-secondary">{tier.name}</span>
-                      <span className="text-white">
+                      <span className="text-text-primary">
                         {subscriptions.filter(sub => sub.pricing_tier_id === tier.id && sub.status === 'active').length}
                       </span>
                     </div>
@@ -174,7 +174,7 @@ export function AdminBillingPage() {
 
         <TabsContent value="tiers" className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-white">Pricing Tiers</h2>
+            <h2 className="text-xl font-semibold text-text-primary">Pricing Tiers</h2>
             <Button className="bg-[#6366f1] hover:bg-[#5855eb]">
               <Plus className="w-4 h-4 mr-2" />
               Add Tier
@@ -191,11 +191,11 @@ export function AdminBillingPage() {
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-white">{tier.name}</CardTitle>
+                      <CardTitle className="text-text-primary">{tier.name}</CardTitle>
                       <p className="text-text-secondary text-sm">{tier.description}</p>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-white">
+                      <div className="text-2xl font-bold text-text-primary">
                         {formatCurrency(tier.price_cents)}
                       </div>
                       <div className="text-sm text-text-muted">per month</div>
@@ -209,7 +209,7 @@ export function AdminBillingPage() {
                         <span className="text-text-secondary capitalize">
                           {key.replace('_', ' ')}
                         </span>
-                        <span className="text-white">
+                        <span className="text-text-primary">
                           {typeof value === 'number' && value === -1 ? 'Unlimited' : value as ReactNode}
                         </span>
                       </div>
@@ -226,7 +226,7 @@ export function AdminBillingPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="bg-bg-tertiary border-white/8">
-                        <DropdownMenuItem className="text-white hover:bg-white/5">Edit</DropdownMenuItem>
+                        <DropdownMenuItem className="text-text-primary hover:bg-white/5">Edit</DropdownMenuItem>
                         <DropdownMenuItem className="text-red-400 hover:bg-red-500/10">
                           {tier.is_active ? "Deactivate" : "Activate"}
                         </DropdownMenuItem>
@@ -257,7 +257,7 @@ export function AdminBillingPage() {
                       className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-white/8"
                     >
                       <div>
-                        <p className="font-medium text-white">Subscription {subscription.id.slice(-8)}</p>
+                        <p className="font-medium text-text-primary">Subscription {subscription.id.slice(-8)}</p>
                         <p className="text-sm text-text-muted">
                           Tenant: {subscription.tenant_id.slice(0, 8)}... •
                           Period: {formatDate(subscription.current_period_start)} - {formatDate(subscription.current_period_end)}
@@ -274,8 +274,8 @@ export function AdminBillingPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="bg-bg-tertiary border-white/8">
-                            <DropdownMenuItem className="text-white hover:bg-white/5">View Details</DropdownMenuItem>
-                            <DropdownMenuItem className="text-white hover:bg-white/5">Change Plan</DropdownMenuItem>
+                            <DropdownMenuItem className="text-text-primary hover:bg-white/5">View Details</DropdownMenuItem>
+                            <DropdownMenuItem className="text-text-primary hover:bg-white/5">Change Plan</DropdownMenuItem>
                             <DropdownMenuItem className="text-red-400 hover:bg-red-500/10">Cancel</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -306,7 +306,7 @@ export function AdminBillingPage() {
                       className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-white/8"
                     >
                       <div>
-                        <p className="font-medium text-white">Invoice {invoice.id.slice(-8)}</p>
+                        <p className="font-medium text-text-primary">Invoice {invoice.id.slice(-8)}</p>
                         <p className="text-sm text-text-muted">
                           Tenant: {invoice.tenant_id.slice(0, 8)}... •
                           Period: {invoice.period_start ? formatDate(invoice.period_start) : "N/A"}
@@ -314,7 +314,7 @@ export function AdminBillingPage() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <div className="text-lg font-semibold text-white">
+                          <div className="text-lg font-semibold text-text-primary">
                             {formatCurrency(invoice.amount_due_cents)}
                           </div>
                           <Badge className={getStatusBadgeColor(invoice.status)}>
@@ -328,9 +328,9 @@ export function AdminBillingPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="bg-bg-tertiary border-white/8">
-                            <DropdownMenuItem className="text-white hover:bg-white/5">View PDF</DropdownMenuItem>
-                            <DropdownMenuItem className="text-white hover:bg-white/5">Send Email</DropdownMenuItem>
-                            <DropdownMenuItem className="text-white hover:bg-white/5">Mark Paid</DropdownMenuItem>
+                            <DropdownMenuItem className="text-text-primary hover:bg-white/5">View PDF</DropdownMenuItem>
+                            <DropdownMenuItem className="text-text-primary hover:bg-white/5">Send Email</DropdownMenuItem>
+                            <DropdownMenuItem className="text-text-primary hover:bg-white/5">Mark Paid</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -344,7 +344,7 @@ export function AdminBillingPage() {
 
         <TabsContent value="coupons" className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-white">Coupons</h2>
+            <h2 className="text-xl font-semibold text-text-primary">Coupons</h2>
             <Button className="bg-[#6366f1] hover:bg-[#5855eb]">
               <Plus className="w-4 h-4 mr-2" />
               Create Coupon
@@ -366,7 +366,7 @@ export function AdminBillingPage() {
                     >
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-white">{coupon.code}</p>
+                          <p className="font-medium text-text-primary">{coupon.code}</p>
                           <Badge className={coupon.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}>
                             {coupon.is_active ? "Active" : "Inactive"}
                           </Badge>
@@ -385,8 +385,8 @@ export function AdminBillingPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="bg-bg-tertiary border-white/8">
-                          <DropdownMenuItem className="text-white hover:bg-white/5">Edit</DropdownMenuItem>
-                          <DropdownMenuItem className="text-white hover:bg-white/5">View Usage</DropdownMenuItem>
+                          <DropdownMenuItem className="text-text-primary hover:bg-white/5">Edit</DropdownMenuItem>
+                          <DropdownMenuItem className="text-text-primary hover:bg-white/5">View Usage</DropdownMenuItem>
                           <DropdownMenuItem className="text-red-400 hover:bg-red-500/10">
                             {coupon.is_active ? "Deactivate" : "Activate"}
                           </DropdownMenuItem>

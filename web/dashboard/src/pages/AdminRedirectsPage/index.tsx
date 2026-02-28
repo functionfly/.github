@@ -524,7 +524,7 @@ export function AdminRedirectsPage() {
                     {redirect.enabled ? (
                       <Eye className="w-4 h-4 text-green-600" />
                     ) : (
-                      <EyeOff className="w-4 h-4 text-gray-400" />
+                      <EyeOff className="w-4 h-4 text-text-muted" />
                     )}
                   </div>
                   {redirect.notes && (

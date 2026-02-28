@@ -122,6 +122,12 @@ func userToLoginUser(u *storage.User) *LoginUser {
 		CreatedAt:     u.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:     u.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
+	if u.Username != nil && *u.Username != "" {
+		lu.Username = *u.Username
+	}
+	if u.CompanyName != nil && *u.CompanyName != "" {
+		lu.CompanyName = *u.CompanyName
+	}
 	if u.ProviderData != nil {
 		lu.ProviderData = u.ProviderData
 		if n, ok := u.ProviderData["name"].(string); ok {
@@ -233,6 +239,28 @@ func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 	user, err := a.repo.CreateUser(req.Email, hashedPassword, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// Set optional username and company name if provided
+	if req.Username != "" || req.CompanyName != "" {
+		updates := make(map[string]interface{})
+		if req.Username != "" {
+			updates["username"] = req.Username
+		}
+		if req.CompanyName != "" {
+			updates["company_name"] = req.CompanyName
+		}
+		if _, err := a.repo.UpdateUser(context.Background(), user.ID, updates); err != nil {
+			// Log but don't fail signup - user can set these later
+			fmt.Printf("Warning: failed to set username/company name: %v\n", err)
+		} else {
+			if req.Username != "" {
+				user.Username = &req.Username
+			}
+			if req.CompanyName != "" {
+				user.CompanyName = &req.CompanyName
+			}
+		}
 	}
 
 	// Set verification details

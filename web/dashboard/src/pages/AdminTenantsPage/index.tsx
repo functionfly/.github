@@ -92,17 +92,17 @@ export function AdminTenantsPage() {
           </DialogTrigger>
           <DialogContent className="bg-bg-tertiary border-white/8">
             <DialogHeader>
-              <DialogTitle className="text-white">Create New Tenant</DialogTitle>
+              <DialogTitle className="text-text-primary">Create New Tenant</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="tenant-name" className="text-white">Tenant Name</Label>
+                <Label htmlFor="tenant-name" className="text-text-primary">Tenant Name</Label>
                 <Input
                   id="tenant-name"
                   placeholder="Enter tenant name"
                   value={newTenantName}
                   onChange={(e) => setNewTenantName(e.target.value)}
-                  className="bg-bg-secondary border-white/8 text-white"
+                  className="bg-bg-secondary border-border-default text-text-primary"
                 />
               </div>
               <div className="flex justify-end gap-2">
@@ -158,12 +158,12 @@ export function AdminTenantsPage() {
                   placeholder="Search tenants..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-bg-secondary border-white/8 text-white"
+                  className="pl-10 bg-bg-secondary border-border-default text-text-primary"
                 />
               </div>
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px] bg-bg-secondary border-white/8 text-white">
+              <SelectTrigger className="w-full sm:w-[180px] bg-bg-secondary border-border-default text-text-primary">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent className="bg-bg-tertiary border-white/8">
@@ -203,8 +203,8 @@ export function AdminTenantsPage() {
                     <Users className="w-5 h-5 text-[#6366f1]" />
                   </div>
                   <div>
-                    <p className="font-medium text-white">{tenant.name}</p>
-                    <p className="text-sm text-text-muted">ID: {tenant.id.slice(0, 8)}...</p>
+                    <p className="font-medium text-text-primary">{tenant.name}</p>
+                    <p className="text-sm text-text-secondary">ID: {tenant.id.slice(0, 8)}...</p>
                   </div>
                 </div>
 
@@ -226,15 +226,15 @@ export function AdminTenantsPage() {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-text-muted hover:text-white">
+                      <Button variant="ghost" size="sm" className="text-text-muted hover:text-text-primary">
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="bg-bg-tertiary border-white/8">
-                      <DropdownMenuItem className="text-white hover:bg-white/5">
+                      <DropdownMenuItem className="text-text-primary hover:bg-bg-hover">
                         View Details
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-white hover:bg-white/5">
+                      <DropdownMenuItem className="text-text-primary hover:bg-bg-hover">
                         Edit Tenant
                       </DropdownMenuItem>
                       <DropdownMenuItem

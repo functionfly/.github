@@ -448,6 +448,8 @@ export interface AdminFunctionLog {
 export interface AdminUser {
   id: string;
   email: string;
+  username?: string;
+  company_name?: string;
   name?: string;
   tenant_id: string;
   plan: string;
@@ -684,5 +686,10 @@ export const adminRegistryApi = {
     const query = searchParams.toString();
     const url = query ? `/v1/admin/registry/functions/${functionId}/metrics?${query}` : `/v1/admin/registry/functions/${functionId}/metrics`;
     return await apiClient.get(url);
+  },
+
+  // Generate description using Open Router free models (AI)
+  generateDescription: async (params: { name: string; title?: string; category?: string }): Promise<{ description: string }> => {
+    return await apiClient.post<{ description: string }>('/v1/admin/registry/generate-description', params);
   },
 };
