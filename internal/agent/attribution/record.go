@@ -243,3 +243,35 @@ func HashOutput(output json.RawMessage) string {
 	h := sha256.Sum256(output)
 	return hex.EncodeToString(h[:])
 }
+
+// CostBreakdownItem holds cost information for a single function
+type CostBreakdownItem struct {
+	FunctionURI   string  `json:"function_uri"`
+	TotalCalls   int64   `json:"total_calls"`
+	TotalCostUSD float64 `json:"total_cost_usd"`
+	AvgLatencyMs float64 `json:"avg_latency_ms"`
+}
+
+// GetCostBreakdown returns cost breakdown by function for an agent
+func (r *Repository) GetCostBreakdown(ctx context.Context, agentID string) ([]*CostBreakdownItem, error) {
+	var results []*CostBreakdownItem
+
+	err := r.db.WithContext(ctx).
+		Table("agent_execution_records").
+		Select(`
+			function_uri,
+			COUNT(*) as total_calls,
+			COALESCE(SUM(cost_usd), 0) as total_cost_usd,
+			COALESCE(AVG(latency_ms), 0) as avg_latency_ms
+		`).
+		Where("agent_id = ?", agentID).
+		Group("function_uri").
+		Order("total_cost_usd DESC").
+		Scan(&results).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cost breakdown: %w", err)
+	}
+
+	return results, nil
+}
