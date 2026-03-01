@@ -223,6 +223,11 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 			}).Info("Performing replay verification for deterministic function")
 
 			verificationResult = h.verifyReplay(fnVersion, execReq.Input, result, durationMs)
+
+			// DRE 2.0: Update Trust Score v2 after successful verification
+			if verificationResult != nil && verificationResult.Status == VerificationVerified {
+				go h.updateTrustScoreV2(fn.ID)
+			}
 		}
 	}
 
@@ -657,6 +662,61 @@ func (h *Handler) queueExecution(r *http.Request, functionID uuid.UUID, execReq 
 
 func (h *Handler) updateFunctionPopularity(functionID uuid.UUID) error {
 	return h.Repo.IncrementPopularity(functionID)
+}
+
+// updateTrustScoreV2 calculates and updates the Trust Score v2 for a function.
+// This includes DRE 2.0 sub-scores from the execution passport.
+// This is called asynchronously after successful replay verification.
+func (h *Handler) updateTrustScoreV2(functionID uuid.UUID) {
+	// Get DRE scores from the passport
+	dreScores, err := h.Repo.GetDREScoresForTrust(functionID)
+	if err != nil {
+		logrus.WithError(err).WithField("function_id", functionID).Warn("Failed to get DRE scores for trust calculation")
+		return
+	}
+
+	// If no passport exists yet, use default scores
+	if dreScores == nil {
+		dreScores = &registry.DREScores{
+			DeterminismScore:          0,
+			ReplayIntegrityScore:       0,
+			PerformanceStabilityScore: 0,
+			DriftScore:                1.0,
+		}
+	}
+
+	// Convert to TrustMetricsV2 for the calculator
+	metrics := &functionregistry.TrustMetricsV2{
+		TrustMetrics: functionregistry.TrustMetrics{
+			// These would be populated from the function rating in a full implementation
+			SuccessRate:   1.0,
+			P50LatencyMs: 0,
+			P95LatencyMs: 0,
+		},
+		DeterminismScore:          dreScores.DeterminismScore,
+		ReplayIntegrityScore:      dreScores.ReplayIntegrityScore,
+		PerformanceStabilityScore: dreScores.PerformanceStabilityScore,
+		DriftScore:               dreScores.DriftScore,
+	}
+
+	// Calculate Trust Score v2
+	calc := functionregistry.NewTrustScoreCalculator()
+	result := calc.CalculateV2(metrics)
+
+	// Update the trust score in the database
+	if err := h.Repo.UpdateTrustScoreV2(functionID, dreScores, result.TrustScoreV2); err != nil {
+		logrus.WithError(err).WithField("function_id", functionID).Warn("Failed to update Trust Score v2")
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function_id":     functionID,
+		"trust_score_v2": result.TrustScoreV2,
+		"determinism":     dreScores.DeterminismScore,
+		"replay_integrity": dreScores.ReplayIntegrityScore,
+		"performance":    dreScores.PerformanceStabilityScore,
+		"drift":          dreScores.DriftScore,
+	}).Info("Updated Trust Score v2")
 }
 
 // buildAndStoreMEG constructs the Merkle Execution Graph for a completed execution
