@@ -7,6 +7,7 @@ require (
 	github.com/alicebob/miniredis/v2 v2.36.1
 	github.com/bytecodealliance/wasmtime-go/v19 v19.0.0
 	github.com/dgraph-io/ristretto v0.2.0
+	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
