@@ -453,11 +453,11 @@ func (h *FollowHandler) RegisterRoutes(router *Router, middleware ...Middleware)
     // Protected routes (require authentication)
     protected := router.Group("/v1/follow", middleware...)
     
-    // User follows
-    protected.Post("/users/:userID/follow", h.FollowUser)
-    protected.Delete("/users/:userID/follow", h.UnfollowUser)
-    protected.Get("/users/:userID/followers", h.GetUserFollowers)
-    protected.Get("/users/:userID/following", h.GetUserFollowing)
+    // User follows - using username for cleaner URLs
+    protected.Post("/users/:username/follow", h.FollowUser)
+    protected.Delete("/users/:username/follow", h.UnfollowUser)
+    protected.Get("/users/:username/followers", h.GetUserFollowers)
+    protected.Get("/users/:username/following", h.GetUserFollowing)
     
     // Function follows
     protected.Post("/functions/:functionID/follow", h.FollowFunction)
@@ -544,14 +544,15 @@ import (
 // Handler handles follow-related HTTP requests
 type Handler struct {
     followService *services.FollowService
+    userService   *services.UserService // For username resolution
 }
 
 // NewHandler creates a new follow handler
-func NewHandler(followService *services.FollowService) *Handler {
-    return &Handler{followService: followService}
+func NewHandler(followService *services.FollowService, userService *services.UserService) *Handler {
+    return &Handler{followService: followService, userService: userService}
 }
 
-// FollowUser handles POST /v1/follow/users/:userID/follow
+// FollowUser handles POST /v1/follow/users/:username/follow
 func (h *Handler) FollowUser(w http.ResponseWriter, r *http.Request) {
     ctx := r.Context()
     
@@ -562,10 +563,15 @@ func (h *Handler) FollowUser(w http.ResponseWriter, r *http.Request) {
         return
     }
     
-    // Parse target user ID
-    targetUserID, err := uuid.Parse(r.PathValue("userID"))
+    // Get username from URL and resolve to user ID
+    username := r.PathValue("username")
+    targetUser, err := h.userService.GetUserByUsername(ctx, username)
     if err != nil {
-        api.Error(w, http.StatusBadRequest, "invalid user ID")
+        if errors.Is(err, services.ErrUserNotFound) {
+            api.Error(w, http.StatusNotFound, "user not found")
+        } else {
+            api.Error(w, http.StatusInternalServerError, err.Error())
+        }
         return
     }
     
@@ -579,7 +585,7 @@ func (h *Handler) FollowUser(w http.ResponseWriter, r *http.Request) {
     // Execute follow
     followReq := services.FollowUserRequest{
         FollowerID:     currentUser.ID,
-        FollowedUserID: targetUserID,
+        FollowedUserID: targetUser.ID,
         Reason:         req.Reason,
     }
     
