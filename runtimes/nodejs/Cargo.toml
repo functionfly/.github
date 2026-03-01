@@ -1,0 +1,63 @@
+[package]
+name = "functionfly-nodejs-runtime"
+version = "0.1.0"
+edition = "2021"
+description = "FunctionFly Node.js Runtime - QuickJS WASM-based JavaScript execution"
+authors = ["FunctionFly Team"]
+license = "MIT"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json"] }
+log = "0.4"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+async-trait = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID for execution IDs
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# HTTP types
+http = "1.1"
+
+# WASM support - we use quickjs-wasm-sys
+# Note: In production, you'd embed the quickjs-wasm-rs crate
+
+# Resource limiting
+parking_lot = "0.12"
+
+# Concurrency primitives
+futures = "0.3"
+
+# Metrics
+prometheus-client = "0.22"
+
+[target.'cfg(not(target_env = "wasm32"))'.dependencies]
+# Non-WASM specific dependencies
+wasmtime = "17.0"
+
+[lib]
+name = "nodejs_runtime"
+path = "src/lib.rs"
+
+[[bin]]
+name = "functionfly-nodejs"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
