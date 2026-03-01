@@ -64,6 +64,7 @@ const navigationSections: NavSection[] = [
       { path: ROUTES.APPS, label: "Apps", icon: Building2 },
       { path: ROUTES.REGISTRY, label: "Registry", icon: Package },
       { path: ROUTES.PROVIDERS, label: "Providers", icon: Cloud },
+      { path: ROUTES.TEAMS, label: "Teams", icon: Users },
       { path: ROUTES.STATE_FABRIC, label: "State Fabric", icon: Database }
     ]
   },

@@ -75,6 +75,9 @@ import { AdminUserDetailPage } from "@/pages/AdminUserDetailPage";
 import { AdminFunctionDetailPage } from "@/pages/AdminFunctionDetailPage";
 import { UserDashboardFunctionsPage } from "@/pages/UserDashboardFunctionsPage";
 import { UserDashboardSettingsPage } from "@/pages/UserDashboardSettingsPage";
+import { TeamsPage } from "@/pages/TeamsPage";
+import { ForbiddenPage } from "@/pages/ForbiddenPage";
+import { ServerErrorPage } from "@/pages/ServerErrorPage";
 
 function RegistryFunctionRedirect() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -287,6 +290,7 @@ function AppContent() {
         <Route path="state-fabric/:id" element={<StateFabricDetailPage />} />
         <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="teams" element={<TeamsPage />} />
         <Route path="profile" element={<MyProfilePage />} />
         <Route path="dashboard/:username/functions" element={<UserDashboardFunctionsPage />} />
         <Route path="dashboard/:username/settings" element={<UserDashboardSettingsPage />} />
@@ -323,6 +327,12 @@ function AppContent() {
 
       {/* 404 - Not Found */}
       <Route path="*" element={<NotFoundPage />} />
+      
+      {/* 403 - Forbidden */}
+      <Route path="/forbidden" element={<ForbiddenPage />} />
+      
+      {/* 500 - Internal Server Error */}
+      <Route path="/error" element={<ServerErrorPage />} />
     </Routes>
   );
 }
