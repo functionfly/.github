@@ -158,6 +158,35 @@ func (h *Handler) HandleListVersions(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(versions)
 }
 
+// HandleListVersionsAt handles listing function versions using @username URL structure
+// URL: /@/{username}/v1/fx/{functionName}/versions
+func (h *Handler) HandleListVersionsAt(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	username := vars["username"]
+	functionName := vars["functionName"]
+
+	// Remove @ prefix if present
+	if len(username) > 0 && username[0] == '@' {
+		username = username[1:]
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
+	if err != nil {
+		http.Error(w, "Function not found", http.StatusNotFound)
+		return
+	}
+
+	versions, err := h.repo.ListFunctionVersions(fn.ID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list versions")
+		http.Error(w, "Failed to list versions", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(versions)
+}
+
 // HandleDeleteFunction handles deleting a function
 func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)

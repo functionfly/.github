@@ -17,6 +17,7 @@ type PgNotification struct {
 // Repository defines the interface for data access
 type Repository interface {
 	// User operations
+	IsUsernameReserved(username string) (bool, error)
 	CreateUser(email, passwordHash string, tenantID uuid.UUID) (*User, error)
 	CreateUserWithSocialAuth(email string, tenantID uuid.UUID, provider, providerID string, providerData map[string]interface{}) (*User, error)
 	CreateUserWithRole(ctx context.Context, user *User) (*User, error)

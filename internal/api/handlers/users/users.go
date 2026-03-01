@@ -106,6 +106,82 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, profile)
 }
 
+// HandleGetPublicProfileByAt returns a user's public profile by @username.
+// This endpoint is public — it never exposes email, tenantId, role, or any sensitive fields.
+// This is the new clean URL format: /@/username
+func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Request) {
+	username := mux.Vars(r)["username"]
+	if username == "" {
+		writeJSONError(w, http.StatusBadRequest, "username is required")
+		return
+	}
+
+	// Remove @ prefix if present
+	if strings.HasPrefix(username, "@") {
+		username = strings.TrimPrefix(username, "@")
+	}
+
+	user, err := h.repo.GetUserByUsername(username)
+	if err != nil {
+		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve profile")
+		return
+	}
+	if user == nil {
+		writeJSONError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	// Build safe public profile — never expose email, tenantId, role, password, MFA, etc.
+	name := user.Name
+	if name == "" && user.ProviderData != nil {
+		if n, ok := user.ProviderData["name"].(string); ok {
+			name = n
+		}
+	}
+
+	var avatar string
+	if user.ProviderData != nil {
+		if a, ok := user.ProviderData["avatar_url"].(string); ok {
+			avatar = a
+		}
+	}
+
+	var bio string
+	if user.Bio != nil {
+		bio = *user.Bio
+	}
+
+	usernameStr := ""
+	if user.Username != nil {
+		usernameStr = *user.Username
+	}
+
+	// Fetch published functions from registry
+	publishedFunctions := h.getPublishedFunctions(usernameStr)
+
+	// Build SEO-enhanced profile with additional metadata
+	profile := map[string]interface{}{
+		"id":                  user.ID,
+		"username":            usernameStr,
+		"name":                name,
+		"avatar":              avatar,
+		"bio":                 bio,
+		"createdAt":           user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		"publishedFunctions":  publishedFunctions,
+		// SEO enhancement fields
+		"profileUrl":          "/@" + usernameStr,
+		"totalFunctions":      len(publishedFunctions),
+	}
+
+	// Add verification fields if available
+	if user.IsVerified != nil && *user.IsVerified {
+		profile["isVerified"] = true
+	}
+
+	writeJSON(w, http.StatusOK, profile)
+}
+
 // HandleGetMe returns the current authenticated user's profile
 func (h *Handler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)

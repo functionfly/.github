@@ -1,0 +1,141 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  // This enables dynamic routing for @username profiles
+  // In SSR mode, this would be handled differently
+  return [];
+}
+
+const { username } = Astro.params;
+
+// Fetch profile data from API
+let profile = null;
+let functions = [];
+let error = null;
+
+try {
+  const response = await fetch(`${import.meta.env.PUBLIC_API_URL || 'http://localhost:8080'}/v1/@/${username}`);
+  if (response.ok) {
+    profile = await response.json();
+    functions = profile.publishedFunctions || [];
+  } else if (response.status === 404) {
+    error = 'Profile not found';
+  }
+} catch (e) {
+  console.error('Failed to fetch profile:', e);
+  error = 'Failed to load profile';
+}
+
+const title = profile ? `${profile.name || profile.username} (@${profile.username}) - FunctionFly` : `@${username} - FunctionFly`;
+const description = profile?.bio || `View @${username}'s FunctionFly profile and published functions.`;
+---
+
+<BaseLayout title={title} description={description}>
+  <main class="min-h-screen bg-gray-50">
+    {error ? (
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="text-center">
+          <h1 class="text-4xl font-bold text-gray-900 mb-4">Profile Not Found</h1>
+          <p class="text-lg text-gray-600 mb-8">The profile @{username} does not exist.</p>
+          <a href="/" class="text-indigo-600 hover:text-indigo-500">Return to home</a>
+        </div>
+      </div>
+    ) : profile && (
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Profile Header */}
+        <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
+          <div class="flex items-center space-x-6">
+            {profile.avatar ? (
+              <img 
+                src={profile.avatar} 
+                alt={profile.username}
+                class="w-24 h-24 rounded-full"
+              />
+            ) : (
+              <div class="w-24 h-24 rounded-full bg-indigo-100 flex items-center justify-center">
+                <span class="text-3xl font-bold text-indigo-600">
+                  {profile.username?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
+            <div class="flex-1">
+              <div class="flex items-center space-x-3">
+                <h1 class="text-3xl font-bold text-gray-900">@{profile.username}</h1>
+                {profile.isVerified && (
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                    Verified
+                  </span>
+                )}
+              </div>
+              {profile.name && (
+                <p class="text-xl text-gray-600 mt-1">{profile.name}</p>
+              )}
+              {profile.bio && (
+                <p class="text-gray-500 mt-2">{profile.bio}</p>
+              )}
+              <p class="text-sm text-gray-400 mt-2">
+                Joined {new Date(profile.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="text-3xl font-bold text-indigo-600">{functions.length}</div>
+            <div class="text-gray-500">Functions</div>
+          </div>
+          <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="text-3xl font-bold text-indigo-600">{profile.totalCalls?.toLocaleString() || 0}</div>
+            <div class="text-gray-500">Total Calls</div>
+          </div>
+          <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="text-3xl font-bold text-indigo-600">{profile.trustScore || 0}</div>
+            <div class="text-gray-500">Trust Score</div>
+          </div>
+        </div>
+
+        {/* Functions List */}
+        <div class="bg-white rounded-lg shadow-sm p-8">
+          <h2 class="text-2xl font-bold text-gray-900 mb-6">Published Functions</h2>
+          {functions.length > 0 ? (
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {functions.map((func: any) => (
+                <a 
+                  href={`/@${profile.username}/v1/fx/${func.name}`}
+                  class="block p-6 border border-gray-200 rounded-lg hover:border-indigo-300 hover:shadow-md transition"
+                >
+                  <h3 class="text-lg font-semibold text-gray-900">{func.name}</h3>
+                  <p class="text-gray-500 text-sm mt-1">{func.description || 'No description'}</p>
+                  <div class="flex items-center mt-3 text-sm text-gray-400">
+                    <span>v{func.version || '1.0.0'}</span>
+                    <span class="mx-2">•</span>
+                    <span>{func.totalCalls?.toLocaleString() || 0} calls</span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p class="text-gray-500">No functions published yet.</p>
+          )}
+        </div>
+
+        {/* SEO Structured Data */}
+        <script type="application/ld+json" set:html={JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Person",
+          "name": profile.name || profile.username,
+          "url": `https://functionfly.com/@${profile.username}`,
+          "description": profile.bio,
+          "image": profile.avatar,
+          "dateCreated": profile.createdAt
+        })} />
+      </div>
+    )}
+  </main>
+</BaseLayout>

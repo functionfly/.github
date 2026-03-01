@@ -4,6 +4,8 @@
 # - Public routing endpoint /{appSlug}/*
 # - Rate limiting per app
 # - Proxy to orchestrator for route decisions and backend proxying
+# - @username profile and function routes
+# - Subdomain routing for account, run, registry, docs
 
 # Global settings
 {
@@ -30,6 +32,24 @@ functionfly.com {
     # Health check endpoint (public)
     /health {
         respond "OK" 200
+    }
+
+    # NEW: @username profile routes - /@/{username}
+    /@/* {
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # NEW: @username function routes - /@/{username}/v1/fx/{functionName}
+    /@/*/v1/fx/* {
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+        }
     }
 
     # Public routing endpoint: /{appSlug}/*
@@ -130,4 +150,61 @@ functionfly.com {
 
     # Default response for unmatched routes
     respond "FunctionFly - Not Found" 404
+}
+
+# Dashboard subdomain - account.functionfly.com
+account.functionfly.com {
+    # Require authentication for all routes
+    # In production, add auth middleware here
+    reverse_proxy dashboard:3000 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+# Execution subdomain - run.functionfly.com (high traffic optimization)
+run.functionfly.com {
+    # Cache responses for better performance
+    @cacheable {
+        path /@*/*
+    }
+
+    cache @cacheable {
+        header_regexp Cache-Control "public"
+        default_max_age 60
+    }
+
+    reverse_proxy orchestrator-api:8080 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+# Registry API subdomain - registry.functionfly.com
+registry.functionfly.com {
+    # Stricter rate limiting for API
+    rate_limit {
+        zone registry_api {
+            key {remote_host}
+            window 1m
+            events 100
+        }
+    }
+
+    reverse_proxy orchestrator-api:8080 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+# Documentation subdomain - docs.functionfly.com
+docs.functionfly.com {
+    reverse_proxy orchestrator-api:8080 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+    }
 }

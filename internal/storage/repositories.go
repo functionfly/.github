@@ -36,6 +36,11 @@ func (db *PostgresDB) GetUserByUsername(username string) (*User, error) {
 	return db.userRepository.GetUserByUsername(username)
 }
 
+// IsUsernameReserved checks if a username is reserved
+func (db *PostgresDB) IsUsernameReserved(username string) (bool, error) {
+	return db.userRepository.IsUsernameReserved(username)
+}
+
 func (db *PostgresDB) GetUserByVerificationToken(token string) (*User, error) {
 	return db.userRepository.GetUserByVerificationToken(token)
 }

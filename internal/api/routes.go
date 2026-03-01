@@ -251,6 +251,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/users/me/sessions", authMiddleware.RequireAuth(usersHandler.HandleListSessions)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/me/sessions/revoke-others", authMiddleware.RequireAuth(usersHandler.HandleRevokeOtherSessions)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/users/me/sessions/{id}", authMiddleware.RequireAuth(usersHandler.HandleRevokeSession)).Methods("DELETE", "OPTIONS")
+	// @username profile routes (clean URL structure)
+	api.HandleFunc("/@/{username}", usersHandler.HandleGetPublicProfileByAt).Methods("GET", "OPTIONS")
 
 	// MFA routes (protected)
 	api.HandleFunc("/auth/mfa/setup", authMiddleware.RequireAuth(mfaHandler.SetupMFA)).Methods("POST", "OPTIONS")
@@ -277,6 +279,18 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/replay/{executionId}", registryPlaygroundHandler.HandleReplay).Methods("GET", "OPTIONS")
 	api.HandleFunc("/fx/{author}/{name}/code", registryPlaygroundHandler.HandleCodeExamples).Methods("GET", "OPTIONS")
 	api.HandleFunc("/fx/{author}/{name}/ai-schema", registryPlaygroundHandler.HandleAIToolSchema).Methods("GET", "OPTIONS")
+
+	// NEW: @username function routes (clean URL structure)
+	// /@/{username}/v1/fx/{functionName} - Public function page
+	// /@/{username}/v1/fx/{functionName}/execute - Execute function
+	// /@/{username}/v1/fx/{functionName}/v/{version} - Versioned function
+	// /@/{username}/v1/fx/{functionName}/versions - List versions
+	// /@/{username}/v1/fx/{functionName}/stats - Function stats
+	api.HandleFunc("/@/{username}/v1/fx/{functionName}", registryPlaygroundHandler.HandleFunctionPageAt).Methods("GET", "OPTIONS")
+	api.HandleFunc("/@/{username}/v1/fx/{functionName}/execute", registryPlaygroundHandler.HandleExecuteAt).Methods("POST", "OPTIONS")
+	api.HandleFunc("/@/{username}/v1/fx/{functionName}/v/{version}", registryPlaygroundHandler.HandleFunctionPageAtVersion).Methods("GET", "OPTIONS")
+	api.HandleFunc("/@/{username}/v1/fx/{functionName}/versions", registryHandler.HandleListVersionsAt).Methods("GET", "OPTIONS")
+	api.HandleFunc("/@/{username}/v1/fx/{functionName}/stats", registryHandler.HandleGetFunctionStatsAt).Methods("GET", "OPTIONS")
 
 	// Execute playground function with security middleware
 	securePlaygroundExecuteHandler := func(w http.ResponseWriter, r *http.Request) {
