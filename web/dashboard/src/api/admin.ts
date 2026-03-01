@@ -755,3 +755,108 @@ export const adminRegistryApi = {
     return await apiClient.post<{ description: string }>('/v1/admin/registry/generate-description', params);
   },
 };
+
+// Feature Types
+export interface Feature {
+  key: string;
+  name: string;
+  description: string;
+  category: string;
+  type: 'boolean' | 'numeric' | 'list';
+  default: any;
+}
+
+export interface PlanInfo {
+  plan: string;
+  features: string[];
+  feature_count: number;
+  is_enterprise: boolean;
+  is_pro: boolean;
+  is_agent: boolean;
+}
+
+export interface FeatureCheckResult {
+  feature: string;
+  available: boolean;
+  required_plan: string;
+}
+
+export interface TenantFeaturesResponse {
+  tenant_id: string;
+  plan: string;
+  plan_info: PlanInfo[];
+  feature_results: FeatureCheckResult[];
+}
+
+// Feature Management API
+export const featuresApi = {
+  // Get all available features
+  listFeatures: async (): Promise<{ features: Feature[] }> => {
+    const response = await apiClient.get<{ features: Feature[] }>('/v1/admin/features');
+    return response;
+  },
+
+  // Get feature definition
+  getFeatureDefinition: async (feature: string): Promise<Feature> => {
+    const response = await apiClient.get<Feature>(`/v1/admin/features/${feature}`);
+    return response;
+  },
+
+  // Get all plans with their features
+  getAllPlansInfo: async (): Promise<{ plans: PlanInfo[] }> => {
+    const response = await apiClient.get<{ plans: PlanInfo[] }>('/v1/admin/plans');
+    return response;
+  },
+
+  // Get features for a specific plan
+  getPlanFeatures: async (plan: string): Promise<{ plan: string; features: string[] }> => {
+    const response = await apiClient.get<{ plan: string; features: string[] }>(`/v1/admin/plans/${plan}/features`);
+    return response;
+  },
+
+  // Get detailed plan info
+  getPlanInfo: async (plan: string): Promise<{
+    plan: string;
+    features: string[];
+    feature_details: Feature[];
+    feature_count: number;
+  }> => {
+    const response = await apiClient.get<{
+      plan: string;
+      features: string[];
+      feature_details: Feature[];
+      feature_count: number;
+    }>(`/v1/admin/plans/${plan}`);
+    return response;
+  },
+
+  // Check if a plan has a specific feature
+  checkFeature: async (plan: string, feature: string): Promise<{
+    plan: string;
+    feature: string;
+    available: boolean;
+    required_plan: string;
+  }> => {
+    const response = await apiClient.get<{
+      plan: string;
+      feature: string;
+      available: boolean;
+      required_plan: string;
+    }>(`/v1/admin/plans/${plan}/features/${feature}`);
+    return response;
+  },
+
+  // Check tenant features
+  checkTenantFeatures: async (tenantId: string, features?: string[]): Promise<TenantFeaturesResponse> => {
+    const searchParams = new URLSearchParams();
+    if (features) {
+      features.forEach(f => searchParams.append('features', f));
+    }
+    const query = searchParams.toString();
+    const url = query 
+      ? `/v1/admin/tenants/${tenantId}/features?${query}` 
+      : `/v1/admin/tenants/${tenantId}/features`;
+    const response = await apiClient.get<TenantFeaturesResponse>(url);
+    return response;
+  },
+};
