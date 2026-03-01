@@ -50,6 +50,7 @@ type PostgresDB struct {
 	registryRepository     *registry.RegistryRepository
 	incidentRepository     *IncidentRepository
 	teamRepository         *TeamRepository
+	followRepository       *FollowRepository
 	encryptionManager      *DatabaseEncryptionManager
 
 	// Read replica connections
@@ -190,6 +191,7 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 	postgresDB.registryRepository = registry.NewRegistryRepository(postgresDB.GORM, nil)
 	postgresDB.incidentRepository = NewIncidentRepository(postgresDB.DB)
 	postgresDB.teamRepository = NewTeamRepository(postgresDB.GORM)
+	postgresDB.followRepository = NewFollowRepository(postgresDB)
 
 	// Initialize encryption manager
 	encryptionManager, err := NewDatabaseEncryptionManager(postgresDB)

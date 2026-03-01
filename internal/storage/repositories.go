@@ -1035,3 +1035,59 @@ func (db *PostgresDB) IsTeamAdmin(userID uuid.UUID, teamID string) (bool, error)
 	err := db.GORM.Where("user_id = ? AND team_id = ? AND role = 'admin'", userID, teamID).First(&membership).Error
 	return err == nil, err
 }
+
+// Follow operations
+
+// User follows
+func (db *PostgresDB) FollowUser(ctx context.Context, followerID, followedUserID uuid.UUID, reason *string, notifyOnNewFunction, notifyOnFunctionUpdate, notifyOnNewVersion bool) (*UserFollow, error) {
+	return db.followRepository.FollowUser(ctx, followerID, followedUserID, reason, notifyOnNewFunction, notifyOnFunctionUpdate, notifyOnNewVersion)
+}
+
+func (db *PostgresDB) UnfollowUser(ctx context.Context, followerID, followedUserID uuid.UUID) error {
+	return db.followRepository.UnfollowUser(ctx, followerID, followedUserID)
+}
+
+func (db *PostgresDB) IsFollowingUser(ctx context.Context, followerID, followedUserID uuid.UUID) (bool, error) {
+	return db.followRepository.IsFollowingUser(ctx, followerID, followedUserID)
+}
+
+func (db *PostgresDB) GetUserFollowers(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*UserFollow, int, error) {
+	return db.followRepository.GetUserFollowers(ctx, userID, limit, offset)
+}
+
+func (db *PostgresDB) GetUserFollowing(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*UserFollow, int, error) {
+	return db.followRepository.GetUserFollowing(ctx, userID, limit, offset)
+}
+
+func (db *PostgresDB) GetUserFollowerCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	return db.followRepository.GetUserFollowerCount(ctx, userID)
+}
+
+func (db *PostgresDB) GetUserFollowingCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	return db.followRepository.GetUserFollowingCount(ctx, userID)
+}
+
+// Function follows
+func (db *PostgresDB) FollowFunction(ctx context.Context, userID, functionID uuid.UUID, reason *string, notifyOnNewVersion, notifyOnRatingChange, notifyOnTrustChange, notifyOnVerification bool) (*FunctionFollow, error) {
+	return db.followRepository.FollowFunction(ctx, userID, functionID, reason, notifyOnNewVersion, notifyOnRatingChange, notifyOnTrustChange, notifyOnVerification)
+}
+
+func (db *PostgresDB) UnfollowFunction(ctx context.Context, userID, functionID uuid.UUID) error {
+	return db.followRepository.UnfollowFunction(ctx, userID, functionID)
+}
+
+func (db *PostgresDB) IsFollowingFunction(ctx context.Context, userID, functionID uuid.UUID) (bool, error) {
+	return db.followRepository.IsFollowingFunction(ctx, userID, functionID)
+}
+
+func (db *PostgresDB) GetFunctionFollowers(ctx context.Context, functionID uuid.UUID, limit, offset int) ([]*FunctionFollow, int, error) {
+	return db.followRepository.GetFunctionFollowers(ctx, functionID, limit, offset)
+}
+
+func (db *PostgresDB) GetUserFunctionFollows(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*FunctionFollow, int, error) {
+	return db.followRepository.GetUserFunctionFollows(ctx, userID, limit, offset)
+}
+
+func (db *PostgresDB) GetFunctionFollowerCount(ctx context.Context, functionID uuid.UUID) (int, error) {
+	return db.followRepository.GetFunctionFollowerCount(ctx, functionID)
+}
