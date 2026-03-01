@@ -23,6 +23,7 @@ type AgentExecutionRecord struct {
 	ExecutionID      string     `json:"execution_id"`
 	SessionID        string     `json:"session_id,omitempty"`
 	CallDepth        int        `json:"call_depth" gorm:"not null;default:0"`
+	RetryCount       *int       `json:"retry_count,omitempty"`
 	InputHash        string     `json:"input_hash"`          // SHA-256 of input
 	OutputHash       string     `json:"output_hash"`         // SHA-256 of output
 	MemoryBeforeHash string     `json:"memory_before_hash"`  // SHA-256 of agent context before
