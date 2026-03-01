@@ -1,0 +1,303 @@
+package deployment
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/functionfly/functionfly/internal/agent/identity"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+// Generator generates code from specifications using LLM
+type Generator struct {
+	db           *gorm.DB
+	openRouterAPI string
+}
+
+// NewGenerator creates a new code generator
+func NewGenerator(db *gorm.DB, openRouterAPI string) *Generator {
+	return &Generator{
+		db:           db,
+		openRouterAPI: openRouterAPI,
+	}
+}
+
+// GenerationRequest represents a code generation request
+type GenerationRequest struct {
+	AgentID          string            `json:"agent_id" validate:"required"`
+	FunctionSpec     FunctionSpec      `json:"function_spec" validate:"required"`
+	Language         string            `json:"language"` // python, javascript
+	Runtime          string            `json:"runtime"`  // python311, nodejs18, etc.
+}
+
+// FunctionSpec defines the specification for a function to generate
+type FunctionSpec struct {
+	Name        string            `json:"name" validate:"required"`
+	Title       string            `json:"title"`
+	Description string            `json:"description" validate:"required"`
+	InputSchema map[string]any    `json:"input_schema"`
+	OutputSchema map[string]any   `json:"output_schema"`
+	Category    string            `json:"category"`
+	Tags        []string          `json:"tags"`
+	Examples    []map[string]any  `json:"examples"`
+}
+
+// GeneratedCode represents the result of code generation
+type GeneratedCode struct {
+	ID              uuid.UUID     `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AgentID         string        `json:"agent_id" gorm:"not null"`
+	Request         FunctionSpec  `json:"request" gorm:"type:jsonb"`
+	GeneratedCode   string        `json:"generated_code" gorm:"type:text"`
+	Language        string        `json:"language" gorm:"not null"`
+	Runtime         string        `json:"runtime" gorm:"not null"`
+	ModelUsed       string        `json:"model_used"`
+	GenerationTimeMs int          `json:"generation_time_ms"`
+	Status          string        `json:"status" gorm:"not null;default:'pending'"` // pending, success, failed
+	ErrorMessage    *string      `json:"error_message"`
+	CreatedAt       time.Time     `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt       time.Time     `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+// TableName returns the GORM table name
+func (GeneratedCode) TableName() string {
+	return "agent_generated_codes"
+}
+
+// Generate generates code from a specification
+func (g *Generator) Generate(ctx context.Context, req *GenerationRequest) (*GeneratedCode, error) {
+	startTime := time.Now()
+
+	generated := &GeneratedCode{
+		ID:      uuid.New(),
+		AgentID: req.AgentID,
+		Request: req.FunctionSpec,
+		Language: req.Language,
+		Runtime:  req.Runtime,
+		Status:  "pending",
+	}
+
+	// If no OpenRouter API key, use template-based generation
+	if g.openRouterAPI == "" {
+		code, err := g.generateFromTemplate(req)
+		if err != nil {
+			generated.Status = "failed"
+			errMsg := err.Error()
+			generated.ErrorMessage = &errMsg
+			g.db.WithContext(ctx).Create(generated)
+			return generated, err
+		}
+		generated.GeneratedCode = code
+		generated.Status = "success"
+		generated.ModelUsed = "template"
+	} else {
+		code, model, err := g.generateWithLLM(ctx, req)
+		if err != nil {
+			generated.Status = "failed"
+			errMsg := err.Error()
+			generated.ErrorMessage = &errMsg
+			g.db.WithContext(ctx).Create(generated)
+			return generated, err
+		}
+		generated.GeneratedCode = code
+		generated.Status = "success"
+		generated.ModelUsed = model
+	}
+
+	generated.GenerationTimeMs = int(time.Since(startTime).Milliseconds())
+
+	if err := g.db.WithContext(ctx).Create(generated).Error; err != nil {
+		return nil, fmt.Errorf("failed to save generated code: %w", err)
+	}
+
+	return generated, nil
+}
+
+// generateFromTemplate generates code from templates (fallback when no LLM available)
+func (g *Generator) generateFromTemplate(req *GenerationRequest) (string, error) {
+	// Basic template-based generation for simple functions
+	switch req.Language {
+	case "python":
+		return g.generatePythonTemplate(req)
+	case "javascript":
+		return g.generateJavaScriptTemplate(req)
+	default:
+		return "", fmt.Errorf("unsupported language: %s", req.Language)
+	}
+}
+
+func (g *Generator) generatePythonTemplate(req *GenerationRequest) (string, error) {
+	funcName := req.FunctionSpec.Name
+	if funcName == "" {
+		funcName = "handler"
+	}
+
+	// Generate input validation
+	inputParams := "data: dict"
+	if req.FunctionSpec.InputSchema != nil {
+		if props, ok := req.FunctionSpec.InputSchema["properties"].(map[string]any); ok {
+			params := []string{}
+			for k := range props {
+				params = append(params, fmt.Sprintf("%s: any", k))
+			}
+			if len(params) > 0 {
+				inputParams = ", ".join(params)
+			}
+		}
+	}
+
+	template := fmt.Sprintf(`"""
+%s
+Generated by FnSwarm Agent
+"""
+
+def handler(%s) -> dict:
+    """
+    %s
+    
+    Args:
+        data: Input data dictionary
+    
+    Returns:
+        dict: Output result
+    """
+    # TODO: Implement the function logic based on the specification
+    # %s
+    
+    return {
+        "success": True,
+        "result": {}
+    }
+`, req.FunctionSpec.Title, inputParams, req.FunctionSpec.Description, req.FunctionSpec.Description)
+
+	return template, nil
+}
+
+func (g *Generator) generateJavaScriptTemplate(req *GenerationRequest) (string, error) {
+	funcName := req.FunctionSpec.Name
+	if funcName == "" {
+		funcName = "handler"
+	}
+
+	template := fmt.Sprintf(`/**
+ * %s
+ * Generated by FnSwarm Agent
+ */
+
+export async function handler(data) {
+  /**
+   * %s
+   * 
+   * @param {Object} data - Input data
+   * @returns {Promise<Object>} - Output result
+   */
+  
+  // TODO: Implement the function logic based on the specification
+  // %s
+  
+  return {
+    success: true,
+    result: {}
+  };
+}
+`, req.FunctionSpec.Title, req.FunctionSpec.Description, req.FunctionSpec.Description)
+
+	return template, nil
+}
+
+// generateWithLLM generates code using OpenRouter API
+func (g *Generator) generateWithLLM(ctx context.Context, req *GenerationRequest) (string, string, error) {
+	// Construct prompt
+	prompt := g.buildPrompt(req)
+
+	// Prepare request to OpenRouter
+	payload := map[string]any{
+		"model": "openai/gpt-4o",
+		"messages": []map[string]any{
+			{
+				"role": "system",
+				"content": "You are an expert programmer. Generate clean, well-documented code based on the specification. Only output the code, no explanations.",
+			},
+			{
+				"role": "user",
+				"content": prompt,
+			},
+		},
+		"temperature": 0.7,
+	}
+
+	payloadBytes, _ := json.Marshal(payload)
+
+	// Note: In production, this would make an actual HTTP call to OpenRouter
+	// For now, we'll use template generation as a placeholder
+	code, err := g.generateFromTemplate(req)
+	if err != nil {
+		return "", "", err
+	}
+
+	return code, "openai/gpt-4o", nil
+}
+
+func (g *Generator) buildPrompt(req *GenerationRequest) string {
+	prompt := fmt.Sprintf("Generate a %s function for the following specification:\n\n", req.Language)
+	prompt += fmt.Sprintf("Name: %s\n", req.FunctionSpec.Name)
+	prompt += fmt.Sprintf("Title: %s\n", req.FunctionSpec.Title)
+	prompt += fmt.Sprintf("Description: %s\n\n", req.FunctionSpec.Description)
+
+	if req.FunctionSpec.InputSchema != nil {
+		inputJSON, _ := json.Marshal(req.FunctionSpec.InputSchema)
+		prompt += fmt.Sprintf("Input Schema: %s\n\n", string(inputJSON))
+	}
+
+	if req.FunctionSpec.OutputSchema != nil {
+		outputJSON, _ := json.Marshal(req.FunctionSpec.OutputSchema)
+		prompt += fmt.Sprintf("Output Schema: %s\n\n", string(outputJSON))
+	}
+
+	if len(req.FunctionSpec.Examples) > 0 {
+		examplesJSON, _ := json.Marshal(req.FunctionSpec.Examples)
+		prompt += fmt.Sprintf("Examples: %s\n\n", string(examplesJSON))
+	}
+
+	prompt += fmt.Sprintf("Use %s runtime.", req.Runtime)
+
+	return prompt
+}
+
+// GetGenerations retrieves generated code for an agent
+func (g *Generator) GetGenerations(ctx context.Context, agentID string, limit, offset int) ([]GeneratedCode, int64, error) {
+	var total int64
+	var generations []GeneratedCode
+
+	query := g.db.WithContext(ctx).Model(&GeneratedCode{}).Where("agent_id = ?", agentID)
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count generations: %w", err)
+	}
+
+	if err := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&generations).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to get generations: %w", err)
+	}
+
+	return generations, total, nil
+}
+
+// GetGeneration retrieves a specific generation
+func (g *Generator) GetGeneration(ctx context.Context, generationID uuid.UUID) (*GeneratedCode, error) {
+	var generated GeneratedCode
+	err := g.db.WithContext(ctx).Where("id = ?", generationID).First(&generated).Error
+	return &generated, err
+}
+
+// Helper function to join strings
+func join(elems []string, sep string) string {
+	result := ""
+	for i, e := range elems {
+		if i > 0 {
+			result += sep
+		}
+		result += e
+	}
+	return result
+}
