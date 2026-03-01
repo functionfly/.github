@@ -1,40 +1,66 @@
 package commands
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 )
 
+func contains(s, sub string) bool { return strings.Contains(s, sub) }
+
 func NewLoginCmd() *cobra.Command {
 	var provider string
 	var noBrowser bool
+	var dev bool
+	var email string
+	var password string
 	cmd := &cobra.Command{
-		Use:   "login",
-		Short: "Authenticate with FunctionFly",
-		Long:  "Authenticate with FunctionFly using OAuth.\n\nOpens your browser to complete authentication.",
-		Example: "  fly login\n  fly login --provider github\n  fly login --provider google\n  fly login --no-browser",
+		Use:     "login",
+		Short:   "Authenticate with FunctionFly",
+		Long:    "Authenticate with FunctionFly using OAuth or dev email/password.\n\nIn dev mode (FFLY_API_URL set or --dev), use email/password against POST /v1/auth/login.",
+		Example: "  fly login\n  fly login --provider github\n  fly login --dev --email admin@functionfly.local\n  FFLY_API_URL=http://localhost:8080 fly login --dev",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runLogin(provider, noBrowser)
+			return runLogin(provider, noBrowser, dev, email, password)
 		},
 	}
 	cmd.Flags().StringVar(&provider, "provider", "github", "OAuth provider (github, google)")
 	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "Print the auth URL instead of opening a browser")
+	cmd.Flags().BoolVar(&dev, "dev", false, "Use email/password login (dev mode). Use with FFLY_API_URL for local API.")
+	cmd.Flags().StringVar(&email, "email", "", "Email for dev login (or set FFLY_DEV_EMAIL)")
+	cmd.Flags().StringVar(&password, "password", "", "Password for dev login (or set FFLY_DEV_PASSWORD)")
 	return cmd
 }
 
-func runLogin(provider string, noBrowser bool) error {
-	cfg, _ := LoadConfig()
-	baseURL := "https://api.functionfly.com"
-	if cfg != nil && cfg.API.URL != "" {
-		baseURL = cfg.API.URL
+func runLogin(provider string, noBrowser bool, dev bool, emailFlag, passwordFlag string) error {
+	baseURL := os.Getenv("FFLY_API_URL")
+	if baseURL == "" {
+		cfg, _ := LoadConfig()
+		if cfg != nil && cfg.API.URL != "" {
+			baseURL = cfg.API.URL
+		}
 	}
+	if baseURL == "" {
+		baseURL = "https://api.functionfly.com"
+	}
+
+	// Dev mode: email/password when --dev, FFLY_DEV_LOGIN=1, or API is localhost
+	useDev := dev || os.Getenv("FFLY_DEV_LOGIN") == "1" ||
+		(baseURL != "" && (contains(baseURL, "localhost") || contains(baseURL, "127.0.0.1")))
+	if useDev {
+		return runDevLogin(baseURL, emailFlag, passwordFlag)
+	}
+
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return fmt.Errorf("could not start callback server: %w", err)
@@ -98,7 +124,7 @@ func runLogin(provider string, noBrowser bool) error {
 		AvatarURL string `json:"avatar_url"`
 		ExpiresAt string `json:"expires_at"`
 	}
-	if err := client.Get("/v1/auth/me", &userResp); err != nil {
+	if err := client.Get("/v1/users/me", &userResp); err != nil {
 		fmt.Printf("⚠️  Could not fetch user info: %v\n", err)
 	}
 	expiresAt := time.Now().Add(30 * 24 * time.Hour)
@@ -146,4 +172,94 @@ func openBrowser(url string) error {
 		args = []string{url}
 	}
 	return exec.Command(cmd, args...).Start()
+}
+
+// runDevLogin uses POST /v1/auth/login with email/password (for local/dev API).
+func runDevLogin(baseURL, emailFlag, passwordFlag string) error {
+	email := emailFlag
+	if email == "" {
+		email = os.Getenv("FFLY_DEV_EMAIL")
+	}
+	password := passwordFlag
+	if password == "" {
+		password = os.Getenv("FFLY_DEV_PASSWORD")
+	}
+	if IsInteractive() && email == "" {
+		email = Prompt("Email", "admin@functionfly.local")
+	}
+	if IsInteractive() && password == "" {
+		password = Prompt("Password", "")
+	}
+	if email == "" || password == "" {
+		return fmt.Errorf("email and password required for dev login (use --email and --password, or FFLY_DEV_EMAIL and FFLY_DEV_PASSWORD)")
+	}
+
+	body, _ := json.Marshal(map[string]string{"email": email, "password": password})
+	req, err := http.NewRequest("POST", baseURL+"/v1/auth/login", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("login request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	var loginResp struct {
+		Token string `json:"token"`
+		User  *struct {
+			ID       string `json:"id"`
+			Username string `json:"username"`
+			Name     string `json:"name"`
+			Email    string `json:"email"`
+		} `json:"user"`
+	}
+	if err := json.Unmarshal(bodyBytes, &loginResp); err != nil {
+		return fmt.Errorf("invalid login response: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		var errMsg struct {
+			Message string `json:"message"`
+		}
+		_ = json.Unmarshal(bodyBytes, &errMsg)
+		if errMsg.Message != "" {
+			return fmt.Errorf("login failed: %s", errMsg.Message)
+		}
+		return fmt.Errorf("login failed: HTTP %d", resp.StatusCode)
+	}
+	if loginResp.Token == "" {
+		return fmt.Errorf("login response missing token")
+	}
+
+	username := "unknown"
+	userEmail := email
+	userID := ""
+	if loginResp.User != nil {
+		userID = loginResp.User.ID
+		if loginResp.User.Username != "" {
+			username = loginResp.User.Username
+		}
+		if loginResp.User.Email != "" {
+			userEmail = loginResp.User.Email
+		}
+	}
+
+	expiresAt := time.Now().Add(30 * 24 * time.Hour)
+	creds := &Credentials{
+		Version:   "1.0.0",
+		User:      UserInfo{ID: userID, Username: username, Email: userEmail, Provider: "dev", AvatarURL: ""},
+		Token:     loginResp.Token,
+		TokenType: "Bearer",
+		ExpiresAt: expiresAt,
+		CreatedAt: time.Now(),
+	}
+	if err := SaveCredentials(creds); err != nil {
+		return fmt.Errorf("could not save credentials: %w", err)
+	}
+	fmt.Printf("\n✅ Logged in as %s (dev)\n", username)
+	fmt.Printf("   Email: %s\n", userEmail)
+	fmt.Printf("\nYour namespace: fx://%s/*\n", username)
+	return nil
 }

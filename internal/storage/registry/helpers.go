@@ -86,7 +86,7 @@ func (f *RegistryFunction) ToInfoWithRating(version *RegistryFunctionVersion, ra
 			info["backend_id"] = version.BackendID.String()
 		}
 
-		// Parse manifest for input/output examples
+		// Parse manifest for input/output examples and to backfill description/category
 		var manifest map[string]interface{}
 		json.Unmarshal(version.Manifest, &manifest)
 		if input, ok := manifest["input"].(map[string]interface{}); ok {
@@ -96,6 +96,18 @@ func (f *RegistryFunction) ToInfoWithRating(version *RegistryFunctionVersion, ra
 		if output, ok := manifest["output"].(map[string]interface{}); ok {
 			info["output_type"] = output["type"]
 			info["output_example"] = output["example"]
+		}
+		// Backfill description from manifest when DB has none
+		if !f.Description.Valid {
+			if desc, ok := manifest["description"].(string); ok && desc != "" {
+				info["description"] = desc
+			}
+		}
+		// Backfill category from manifest when DB has none
+		if !f.Category.Valid {
+			if cat, ok := manifest["category"].(string); ok && cat != "" {
+				info["category"] = cat
+			}
 		}
 	}
 

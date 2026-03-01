@@ -20,6 +20,13 @@ function useStore<T>(selector: (state: ReturnType<typeof useThemeStore.getState>
   return state;
 }
 
+export function useTheme() {
+  const theme = useStore((state) => state.resolvedTheme);
+  const setTheme = useStore((state) => state.setTheme);
+  const toggleTheme = useStore((state) => state.toggleTheme);
+  return { theme, setTheme, toggleTheme };
+}
+
 interface ThemeProviderProps {
   children: React.ReactNode;
 }

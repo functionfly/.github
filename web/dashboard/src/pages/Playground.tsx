@@ -193,6 +193,9 @@ export function Playground() {
       const response = await fetch(
         `/v1/registry/functions/${author}/${name}?expand=manifest`
       );
+      if (response.status === 404) {
+        throw new Error("Function not found");
+      }
       if (!response.ok) {
         throw new Error("Failed to fetch function");
       }

@@ -30,6 +30,7 @@ import {
   ChevronRight,
   Boxes,
   Sparkles,
+  FileJson,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,12 +56,18 @@ const CATEGORIES = [
   "All Categories",
   "API Tools",
   "Authentication",
+  "Data Format",
   "Database",
+  "datetime",
   "Email",
   "File Processing",
   "Image Processing",
   "Machine Learning",
+  "math",
+  "media",
   "Payment",
+  "security",
+  "text-processing",
   "Utility",
   "Web Scraping",
   "Workflow",
@@ -79,12 +86,18 @@ const CATEGORY_META: Record<string, { icon: React.ElementType; colorClass: strin
   "All Categories":   { icon: Boxes,      colorClass: "registry-cat-color-indigo"  },
   "API Tools":        { icon: Zap,        colorClass: "registry-cat-color-indigo"  },
   "Authentication":   { icon: Shield,     colorClass: "registry-cat-color-violet"  },
+  "Data Format":      { icon: FileJson,   colorClass: "registry-cat-color-teal"    },
   "Database":         { icon: Database,   colorClass: "registry-cat-color-sky"     },
+  "datetime":         { icon: Activity,   colorClass: "registry-cat-color-amber"   },
   "Email":            { icon: Mail,       colorClass: "registry-cat-color-amber"   },
   "File Processing":  { icon: FileText,   colorClass: "registry-cat-color-teal"    },
   "Image Processing": { icon: Image,      colorClass: "registry-cat-color-fuchsia" },
   "Machine Learning": { icon: Brain,      colorClass: "registry-cat-color-violet"  },
+  "math":             { icon: TrendingUp, colorClass: "registry-cat-color-cyan"   },
+  "media":            { icon: Image,      colorClass: "registry-cat-color-fuchsia" },
   "Payment":          { icon: CreditCard, colorClass: "registry-cat-color-emerald" },
+  "security":         { icon: Shield,     colorClass: "registry-cat-color-violet"  },
+  "text-processing":  { icon: FileText,   colorClass: "registry-cat-color-teal"    },
   "Utility":          { icon: Wrench,     colorClass: "registry-cat-color-cyan"    },
   "Web Scraping":     { icon: Globe,      colorClass: "registry-cat-color-rose"    },
   "Workflow":         { icon: GitBranch,  colorClass: "registry-cat-color-orange"  },
@@ -622,7 +635,8 @@ export function BrowseFunctionsPage() {
 
   /* Derived values */
   const totalFunctions = functions.length;
-  const activeCategories = Object.keys(counts).length - 1; // minus "All"
+  /* Number of category options shown in the sidebar (excluding "All Categories") */
+  const categoryCount = CATEGORIES.length - 1;
   const hasActiveFilters =
     searchQuery !== "" || selectedCategory !== "All Categories";
 
@@ -709,7 +723,7 @@ export function BrowseFunctionsPage() {
                   icon={Code}
                 />
                 <StatItem
-                  value={loading ? "—" : activeCategories}
+                  value={loading ? "—" : categoryCount}
                   label="Categories"
                   icon={Layers}
                 />

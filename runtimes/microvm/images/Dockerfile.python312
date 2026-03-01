@@ -45,9 +45,12 @@ RUN apt-get update && apt-get install -y \
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
 
-# Create function execution directory
+# Create function execution directory and install optional Security (1.4) deps
 RUN mkdir -p /function && \
-    mkdir -p /tmp/function-packages
+    mkdir -p /tmp/function-packages && \
+    mkdir -p /opt/functionfly-packages && \
+    pip3 install --target /opt/functionfly-packages --break-system-packages \
+    'cryptography>=46.0' 'bleach>=6.3.0' 'user-agents>=2.2.0' 'PyJWT>=2.11.0' 'bcrypt>=5.0.0'
 
 # Set working directory
 WORKDIR /function
@@ -59,17 +62,18 @@ RUN chmod +x /usr/local/bin/function-agent
 # Create non-root user for security (runs as functionuser)
 RUN useradd -m -u 1000 -s /bin/bash functionuser && \
     chown -R functionuser:functionuser /function && \
-    chown -R functionuser:functionuser /tmp/function-packages
+    chown -R functionuser:functionuser /tmp/function-packages && \
+    chown -R functionuser:functionuser /opt/functionfly-packages
 
 # Switch to non-root user
 USER functionuser
 
-# Set environment variables
+# Set environment variables (optional deps in /opt/functionfly-packages)
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PIP_USER=1
 ENV PIP_TARGET=/tmp/function-packages
-ENV PYTHONPATH=/tmp/function-packages
+ENV PYTHONPATH=/opt/functionfly-packages:/tmp/function-packages
 
 # Default command runs the agent
 ENTRYPOINT ["/usr/local/bin/function-agent"]

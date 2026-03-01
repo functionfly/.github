@@ -45,6 +45,7 @@ export function PlaygroundPage() {
       const response = await fetch(
         `/v1/registry/functions/${author}/${name}?expand=manifest`
       );
+      if (response.status === 404) throw new Error('Function not found');
       if (!response.ok) throw new Error('Failed to fetch function');
       return response.json();
     },
@@ -122,6 +123,29 @@ export function PlaygroundPage() {
   }
 
   if (error) {
+    const isNotFound = (error as Error).message === "Function not found";
+    if (isNotFound) {
+      return (
+        <div className="min-h-screen flex flex-col bg-bg-primary">
+          <Navbar variant="landing" />
+          <main className="flex-1 pt-16 flex items-center justify-center">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold mb-2">Function not found</h1>
+              <p className="text-muted-foreground">
+                The function {author}/{name} could not be found.
+              </p>
+              <Link to="/registry">
+                <Button variant="outline" className="mt-4">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Registry
+                </Button>
+              </Link>
+            </div>
+          </main>
+          <Footer />
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex flex-col bg-bg-primary">
         <Navbar variant="landing" />

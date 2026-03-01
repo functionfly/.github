@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -164,7 +165,7 @@ func (s *StorageService) uploadToS3(ctx context.Context, path string, content []
 	_, err := s.s3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      &s.bucket,
 		Key:         &path,
-		Body:        content,
+		Body:        bytes.NewReader(content),
 		ContentType: &contentType,
 		ACL:         awsTypes.ObjectCannedACLPrivate,
 	})

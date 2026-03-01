@@ -192,13 +192,13 @@ func (h *Handler) HandleGetCacheStats(w http.ResponseWriter, r *http.Request) {
 		// Memory cache stats (L1)
 		if memStats := h.cacheService.GetMemoryStats(); memStats != nil {
 			stats["memory_cache"] = map[string]interface{}{
-				"layer":        "L1",
-				"type":         "memory",
-				"hits":         memStats.Hits,
-				"misses":       memStats.Misses,
-				"hit_ratio":    memStats.Ratio,
-				"size_bytes":   memStats.SizeBytes,
-				"evictions":    memStats.Evictions,
+				"layer":      "L1",
+				"type":       "memory",
+				"hits":       memStats.Hits,
+				"misses":     memStats.Misses,
+				"hit_ratio":  memStats.Ratio,
+				"size_bytes": memStats.SizeBytes,
+				"evictions":  memStats.Evictions,
 			}
 		}
 
@@ -212,13 +212,13 @@ func (h *Handler) HandleGetCacheStats(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			stats["disk_cache"] = map[string]interface{}{
-				"layer":           "L2",
-				"type":            "disk",
-				"total_entries":   diskStats.TotalEntries,
+				"layer":            "L2",
+				"type":             "disk",
+				"total_entries":    diskStats.TotalEntries,
 				"total_size_bytes": diskStats.TotalSizeBytes,
-				"total_hits":      diskStats.TotalHits,
-				"hit_ratio":       hitRatio,
-				"expired_entries": diskStats.ExpiredEntries,
+				"total_hits":       diskStats.TotalHits,
+				"hit_ratio":        hitRatio,
+				"expired_entries":  diskStats.ExpiredEntries,
 			}
 		}
 	}

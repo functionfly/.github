@@ -94,7 +94,6 @@ func (k *RegistryCacheKey) ListFunctionsByTrustScore(category string, tags []str
 		category, tagsStr, visibility, limit, offset)
 }
 
-
 // ExecutionCount generates cache key for execution count queries
 func (k *RegistryCacheKey) ExecutionCount(functionID string, version string) string {
 	if version == "" {
@@ -182,7 +181,6 @@ func (c *RegistryRedisCache) SetWithTTL(ctx context.Context, key string, data []
 	return nil
 }
 
-
 // SetJSON marshals and stores JSON data in cache
 func (c *RegistryRedisCache) SetJSON(ctx context.Context, key string, data interface{}) error {
 	return c.SetJSONWithTTL(ctx, key, data, c.ttl)
@@ -231,6 +229,8 @@ func (c *RegistryRedisCache) InvalidateFunction(ctx context.Context, functionID 
 	patterns := []string{
 		fmt.Sprintf("registry:function:%s:*", functionID),
 		fmt.Sprintf("registry:list:*:%s:*", functionID), // Clear any lists that might contain this function
+		"registry:list:*", // List keys are registry:list:author:category:visibility:limit:offset — clear all so new publishes show up
+		"registry:trust_list:*",
 	}
 
 	for _, pattern := range patterns {
@@ -264,6 +264,16 @@ func (c *RegistryRedisCache) InvalidateSearchResults(ctx context.Context) error 
 	return c.DeleteByPattern(ctx, pattern)
 }
 
+// InvalidateListResults invalidates function list caches (so description/category updates appear after publish)
+func (c *RegistryRedisCache) InvalidateListResults(ctx context.Context) error {
+	for _, pattern := range []string{"registry:list:*", "registry:trust_list:*"} {
+		if err := c.DeleteByPattern(ctx, pattern); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Clear clears all registry cache entries
 func (c *RegistryRedisCache) Clear(ctx context.Context) error {
 	pattern := "registry:*"
@@ -289,7 +299,7 @@ func (c *RegistryRedisCache) GetStats(ctx context.Context) (*RegistryCacheStats,
 	}
 
 	return &RegistryCacheStats{
-		TotalKeys: count,
+		TotalKeys:  count,
 		MemoryInfo: info.Val(),
 	}, nil
 }

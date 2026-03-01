@@ -341,7 +341,7 @@ func (h *DocumentationHandler) generateFunctionOperation(fn *registry.RegistryFu
 	if manifest.Input != nil {
 		requestBody := &OpenAPIRequestBody{
 			Description: "Function input parameters",
-			Required:    manifest.Input.Required,
+			Required:    manifest.Input.Required.IsRequired(),
 			Content: map[string]OpenAPIMediaType{
 				"application/json": {
 					Schema: h.generateSchemaFromIOType(manifest.Input),

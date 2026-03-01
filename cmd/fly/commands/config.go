@@ -149,21 +149,51 @@ func SaveManifest(dir string, m *Manifest) error {
 
 func stripJSONCComments(data []byte) []byte {
 	var result []byte
-	inString := false
-	i := 0
-	for i < len(data) {
+	inString, inLineComment, inBlockComment := false, false, false
+	for i := 0; i < len(data); i++ {
 		c := data[i]
-		if c == '"' && (i == 0 || data[i-1] != '\\') {
-			inString = !inString
+		if inLineComment {
+			if c == '\n' {
+				inLineComment = false
+				result = append(result, c)
+			}
+			continue
 		}
-		if !inString && c == '/' && i+1 < len(data) && data[i+1] == '/' {
-			for i < len(data) && data[i] != '\n' {
+		if inBlockComment {
+			if c == '*' && i+1 < len(data) && data[i+1] == '/' {
+				inBlockComment = false
 				i++
 			}
 			continue
 		}
+		if inString {
+			result = append(result, c)
+			if c == '\\' && i+1 < len(data) {
+				i++
+				result = append(result, data[i])
+			} else if c == '"' {
+				inString = false
+			}
+			continue
+		}
+		if c == '"' {
+			inString = true
+			result = append(result, c)
+			continue
+		}
+		if c == '/' && i+1 < len(data) {
+			if data[i+1] == '/' {
+				inLineComment = true
+				i++
+				continue
+			}
+			if data[i+1] == '*' {
+				inBlockComment = true
+				i++
+				continue
+			}
+		}
 		result = append(result, c)
-		i++
 	}
 	return result
 }

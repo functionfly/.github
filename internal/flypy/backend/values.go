@@ -379,7 +379,7 @@ func (ctx *CodegenContext) generateValue(val ir.Value) string {
 				argStrs = append(argStrs, ctx.generateValue(arg))
 			}
 
-			return GenerateMethodCall(receiver, method, argStrs)
+			return GenerateMethodCall(receiver, method, argStrs, ctx.movedVariables)
 		}
 		return "/* method_call */"
 	case ir.ListComp:

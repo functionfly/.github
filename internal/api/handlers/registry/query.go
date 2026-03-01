@@ -20,7 +20,8 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 
 	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		if err.Error() == "sql: no rows in result set" {
+		errStr := err.Error()
+		if strings.Contains(errStr, "record not found") || strings.Contains(errStr, "sql: no rows in result set") {
 			http.Error(w, "Function not found", http.StatusNotFound)
 			return
 		}

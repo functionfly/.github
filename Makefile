@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
-.PHONY: help build build-local-runtime test clean docker-up docker-down dev api health-monitor migrate migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile
+.PHONY: help build build-local-runtime test clean docker-up docker-down dev api health-monitor migrate migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile venv
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -17,6 +17,28 @@ build: ## Build all services
 build-local-runtime: ## Build the local Rust runtime
 	cd runtimes/local && cargo build --release
 	cp runtimes/local/target/release/functionfly-local bin/
+
+build-fly: ## Build the fly CLI (bin/fly)
+	go build -o bin/fly ./cmd/fly
+
+venv: ## Create .venv for local dev (Python from .python-version) and install functions/functionfly/requirements.txt. Run: source .venv/bin/activate
+	@python3 --version 2>/dev/null || { echo "Python 3 required (pyenv recommended: pyenv install 3.12)"; exit 1; }; \
+	rm -rf .venv && python3 -m venv .venv && .venv/bin/pip install --upgrade pip && \
+	.venv/bin/pip install -r functions/functionfly/requirements.txt && \
+	echo "Done. Activate with: source .venv/bin/activate"
+
+test-functions: ## Run unit tests for functions/functionfly (stdlib handlers)
+	@cd functions/functionfly && (test -d .venv || python3 -m venv .venv) && .venv/bin/pip install -q -r requirements-test.txt && .venv/bin/pytest tests/unit -v -m "not e2e" --tb=short
+
+test-functions-e2e: ## Run unit + e2e tests for functions/functionfly
+	@cd functions/functionfly && (test -d .venv || python3 -m venv .venv) && .venv/bin/pip install -q -r requirements-test.txt && .venv/bin/pytest tests/ -v --tb=short
+
+publish-stdlib: build-fly ## Dev login then publish all functions in functions/functionfly. Requires FFLY_API_URL, FFLY_DEV_EMAIL, FFLY_DEV_PASSWORD.
+	@test -n "$$FFLY_API_URL" || (echo "FFLY_API_URL is required (e.g. http://localhost:8080)"; exit 1)
+	@test -n "$$FFLY_DEV_EMAIL" || (echo "FFLY_DEV_EMAIL is required (e.g. admin@functionfly.local)"; exit 1)
+	@test -n "$$FFLY_DEV_PASSWORD" || (echo "FFLY_DEV_PASSWORD is required"; exit 1)
+	FFLY_API_URL=$$FFLY_API_URL FFLY_DEV_EMAIL=$$FFLY_DEV_EMAIL FFLY_DEV_PASSWORD=$$FFLY_DEV_PASSWORD ./bin/fly login --dev
+	FFLY_API_URL=$$FFLY_API_URL ./bin/fly publish-batch functions/functionfly --conflict-strategy overwrite --concurrency 5
 
 wasm-bundle: ## Bundle function to Wasm for testing
 	go run ./cmd/ffly bundle --wasm
@@ -90,10 +112,13 @@ docker-down: ## Stop docker services
 docker-logs: ## Show docker logs
 	docker compose logs -f
 
-dev: ## Start development environment (local Postgres + Redis, no Docker)
+dev: ## Start development environment (local Postgres + Redis, no Docker). Set DB_PORT=5434 for Docker Postgres.
 	@echo "Using local services: DB_PORT=$${DB_PORT:-5432}, REDIS_ADDR=$${REDIS_ADDR:-localhost:6379}"
 	@if command -v infisical >/dev/null 2>&1; then \
-		DEVELOPMENT=true infisical run --env=dev -- go run ./cmd/orchestrator-api; \
+		DEVELOPMENT=true infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} \
+		go run ./cmd/orchestrator-api; \
 	else \
 		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
 		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
@@ -101,16 +126,22 @@ dev: ## Start development environment (local Postgres + Redis, no Docker)
 		go run ./cmd/orchestrator-api; \
 	fi
 
-api: ## Run orchestrator API (local services; use infisical if available)
+api: ## Run orchestrator API (local services; use infisical if available). Set DB_PORT=5434 for Docker Postgres.
 	@if command -v infisical >/dev/null 2>&1; then \
-		infisical run --env=dev -- go run ./cmd/orchestrator-api; \
+		infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} \
+		go run ./cmd/orchestrator-api; \
 	else \
 		./scripts/run-api-local.sh; \
 	fi
 
-health-monitor: ## Run health monitor service (local DB/Redis)
+health-monitor: ## Run health monitor service (local DB/Redis). Set DB_PORT=5434 for Docker Postgres.
 	@if command -v infisical >/dev/null 2>&1; then \
-		infisical run --env=dev -- go run ./cmd/health-monitor; \
+		infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} \
+		go run ./cmd/health-monitor; \
 	else \
 		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
 		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
@@ -118,9 +149,11 @@ health-monitor: ## Run health monitor service (local DB/Redis)
 		go run ./cmd/health-monitor; \
 	fi
 
-migrate: ## Run database migrations (up). Uses local DB by default (DB_PORT=5432).
+migrate: ## Run database migrations (up). Uses local DB by default (DB_PORT=5432). Set DB_PORT=5434 for Docker Postgres.
 	@if command -v infisical >/dev/null 2>&1; then \
-		infisical run --env=dev -- go run ./cmd/migrate up; \
+		infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+		go run ./cmd/migrate up; \
 	else \
 		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
 		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \

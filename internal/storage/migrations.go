@@ -64,12 +64,19 @@ func RunMigrationsWithValidation(db *PostgresDB) (*MigrationResult, error) {
 	}
 	defer m.Close()
 
-	// If schema is dirty or at version 0 (bad state from a previous failed repair), reset to a valid version so Up() can run
-	if curVer, dirty, verErr := m.Version(); verErr == nil && (dirty || curVer == 0) {
-		available, listErr := GetAvailableMigrations()
-		if listErr != nil {
-			return nil, fmt.Errorf("failed to list migrations for repair: %w", listErr)
-		}
+	// If schema is dirty, at version 0, or at a version with no migration file, repair so Up() can run
+	curVer, dirty, verErr := m.Version()
+	if verErr != nil && verErr != migrate.ErrNilVersion {
+		return nil, fmt.Errorf("failed to get migration version: %w", verErr)
+	}
+	available, listErr := GetAvailableMigrations()
+	if listErr != nil {
+		return nil, fmt.Errorf("failed to list migrations for repair: %w", listErr)
+	}
+	needRepair := false
+	var forceVer int
+	if verErr == nil && (dirty || curVer == 0) {
+		needRepair = true
 		var prevVer uint
 		if dirty {
 			// Dirty at curVer: set to previous migration so the failed one re-runs
@@ -90,32 +97,53 @@ func RunMigrationsWithValidation(db *PostgresDB) (*MigrationResult, error) {
 				sort.Slice(versions, func(i, j int) bool { return versions[i] > versions[j] })
 				prevVer = versions[1]
 			}
-			// else len==1: prevVer stays 0; we'll Force(-1) below so Up() runs the single migration
 		}
-		forceVer := int(prevVer)
+		forceVer = int(prevVer)
 		if curVer == 0 && prevVer == 0 && len(available) > 0 {
-			forceVer = -1 // no migrations applied; Up() will run from first
+			forceVer = -1
 		}
+	} else if verErr == nil && curVer > 0 && !dirty {
+		// DB has a version that may not have a migration file (e.g. old timestamp format or deleted file)
+		hasCurrentVersion := false
+		for _, mig := range available {
+			v, _ := strconv.ParseUint(mig.Version, 10, 64)
+			if v == uint64(curVer) {
+				hasCurrentVersion = true
+				break
+			}
+		}
+		if !hasCurrentVersion {
+			needRepair = true
+			var maxBelow uint
+			for _, mig := range available {
+				v, _ := strconv.ParseUint(mig.Version, 10, 64)
+				if v < uint64(curVer) && uint(v) > maxBelow {
+					maxBelow = uint(v)
+				}
+			}
+			forceVer = int(maxBelow)
+			if maxBelow == 0 {
+				forceVer = -1
+			}
+		}
+	}
+	if needRepair {
 		if err := m.Force(forceVer); err != nil {
 			return nil, fmt.Errorf("failed to repair migration state (force version %d): %w", forceVer, err)
 		}
-		logrus.WithField("repaired_to_version", forceVer).Info("Repaired migration state; migrations will re-run")
+		logrus.WithField("repaired_to_version", forceVer).Info("Repaired migration state (version had no file or was dirty); migrations will re-run")
 	}
 
-	// Get migrations to be applied
-	available, err := GetAvailableMigrations()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get available migrations: %w", err)
-	}
+	// Get migrations to be applied (available already loaded above for repair)
 
 	// Build appliedBefore from current version (avoid GetAppliedMigrations: it creates a second
 	// Migrate that closes the shared DB when it returns)
-	curVerBefore, _, verErr := m.Version()
-	if verErr != nil && verErr != migrate.ErrNilVersion {
-		return nil, fmt.Errorf("failed to get migration version: %w", verErr)
+	curVerBefore, _, versionErr := m.Version()
+	if versionErr != nil && versionErr != migrate.ErrNilVersion {
+		return nil, fmt.Errorf("failed to get migration version: %w", versionErr)
 	}
 	appliedBefore := make(map[string]int)
-	if verErr != migrate.ErrNilVersion {
+	if versionErr != migrate.ErrNilVersion {
 		for _, migration := range available {
 			v, _ := strconv.ParseUint(migration.Version, 10, 64)
 			if uint64(curVerBefore) >= v {
@@ -134,14 +162,14 @@ func RunMigrationsWithValidation(db *PostgresDB) (*MigrationResult, error) {
 
 	// Build appliedAfter from current version (do not call GetAppliedMigrations again: it creates
 	// a second Migrate that closes the shared DB when it returns)
-	curVer, _, verErr := m.Version()
-	if verErr != nil && verErr != migrate.ErrNilVersion {
-		return nil, fmt.Errorf("failed to get version after migrations: %w", verErr)
+	curVerAfter, _, versionErr2 := m.Version()
+	if versionErr2 != nil && versionErr2 != migrate.ErrNilVersion {
+		return nil, fmt.Errorf("failed to get version after migrations: %w", versionErr2)
 	}
 	appliedAfter := make(map[string]int)
 	for _, migration := range available {
 		v, _ := strconv.ParseUint(migration.Version, 10, 64)
-		if uint64(curVer) >= v {
+		if uint64(curVerAfter) >= v {
 			appliedAfter[migration.Version] = 1
 		}
 	}

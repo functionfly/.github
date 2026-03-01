@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -16,22 +18,30 @@ type APIClient struct {
 	client  *http.Client
 }
 
-// NewAPIClient creates a new API client using stored credentials.
+// NewAPIClient creates a new API client using FFLY_TOKEN env or stored credentials.
 func NewAPIClient() (*APIClient, error) {
-	creds, err := LoadCredentials()
-	if err != nil {
-		return nil, err
+	token := os.Getenv("FFLY_TOKEN")
+	if token == "" {
+		creds, err := LoadCredentials()
+		if err != nil {
+			return nil, err
+		}
+		token = creds.Token
 	}
-	cfg, _ := LoadConfig()
 	baseURL := "https://api.functionfly.com"
-	if cfg != nil && cfg.API.URL != "" {
+	if url := os.Getenv("FFLY_API_URL"); url != "" {
+		baseURL = url
+	} else if cfg, _ := LoadConfig(); cfg != nil && cfg.API.URL != "" {
 		baseURL = cfg.API.URL
 	}
-	return &APIClient{BaseURL: baseURL, Token: creds.Token, client: &http.Client{Timeout: 30 * time.Second}}, nil
+	return &APIClient{BaseURL: baseURL, Token: token, client: &http.Client{Timeout: 30 * time.Second}}, nil
 }
 
 // NewAPIClientWithToken creates a new API client with an explicit token.
 func NewAPIClientWithToken(token string) *APIClient {
+	if url := os.Getenv("FFLY_API_URL"); url != "" {
+		return &APIClient{BaseURL: url, Token: token, client: &http.Client{Timeout: 30 * time.Second}}
+	}
 	cfg, _ := LoadConfig()
 	baseURL := "https://api.functionfly.com"
 	if cfg != nil && cfg.API.URL != "" {
@@ -108,6 +118,9 @@ func (c *APIClient) do(req *http.Request, out interface{}) error {
 		}
 		if msg == "" {
 			msg = fmt.Sprintf("HTTP %d", resp.StatusCode)
+			if len(body) > 0 && body[0] != '{' {
+				msg = fmt.Sprintf("%s: %s", msg, strings.TrimSpace(string(body)))
+			}
 		}
 		hint := ""
 		switch resp.StatusCode {

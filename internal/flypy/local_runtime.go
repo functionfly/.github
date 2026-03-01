@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // LocalRuntimeConfig holds configuration for the local runtime
@@ -20,9 +22,9 @@ type LocalRuntimeConfig struct {
 
 // LocalRuntime provides a local execution environment for FlyPy functions
 type LocalRuntime struct {
-	config     *LocalRuntimeConfig
-	server     *http.Server
-	artifact   *Artifact
+	config   *LocalRuntimeConfig
+	server   *http.Server
+	artifact *Artifact
 }
 
 // NewLocalRuntime creates a new local runtime instance
@@ -136,12 +138,12 @@ func (r *LocalRuntime) handleInfo(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"name":          r.artifact.Manifest.Name,
-		"version":       r.artifact.Manifest.Version,
-		"deterministic": r.artifact.Manifest.Deterministic,
-		"capabilities":  r.artifact.CapabilityMap.Requested,
-		"input_schema":  r.artifact.Manifest.InputSchema,
-		"output_schema": r.artifact.Manifest.OutputSchema,
+		"name":             r.artifact.Manifest.Name,
+		"version":          r.artifact.Manifest.Version,
+		"deterministic":    r.artifact.Manifest.Deterministic,
+		"capabilities":     r.artifact.CapabilityMap.Requested,
+		"input_schema":     r.artifact.Manifest.InputSchema,
+		"output_schema":    r.artifact.Manifest.OutputSchema,
 		"determinism_hash": r.artifact.DeterminismHash,
 	})
 }
@@ -171,10 +173,10 @@ func (r *LocalRuntime) handleExecute(w http.ResponseWriter, req *http.Request) {
 		// Fall back to mock response if WASM execution fails
 		logrus.WithError(err).Warn("WASM execution failed, using mock response")
 		output = map[string]interface{}{
-			"result":   "function executed (mock mode)",
-			"input":    input,
+			"result":    "function executed (mock mode)",
+			"input":     input,
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
-			"mode":     "mock",
+			"mode":      "mock",
 		}
 	}
 
@@ -183,22 +185,35 @@ func (r *LocalRuntime) handleExecute(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(output)
 }
 
-// executeWasm executes the function using WASM runtime
+// executeWasm executes the function using WASM runtime (wasmtime when built with cgo)
 func (r *LocalRuntime) executeWasm(input map[string]interface{}) (map[string]interface{}, error) {
-	// Check if we have a compiled WASM artifact
-	if r.artifact == nil || r.artifact.WasmBinary == nil {
+	if r.artifact == nil || r.artifact.WasmModule == nil {
 		return nil, fmt.Errorf("no WASM artifact available")
 	}
 
-	// TODO: Implement actual WASM execution using wasmtime or similar
-	// For now, return a placeholder that indicates WASM mode
-	return map[string]interface{}{
-		"result":   "function executed successfully",
-		"input":    input,
-		"timestamp": time.Now().UTC().Format(time.RFC3339),
-		"mode":     "wasm",
-		"hash":     r.artifact.DeterminismHash,
-	}, nil
+	inputJSON, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("marshal input: %w", err)
+	}
+
+	outputJSON, err := RunWasm(r.artifact.WasmModule, inputJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	var output map[string]interface{}
+	if err := json.Unmarshal(outputJSON, &output); err != nil {
+		return nil, fmt.Errorf("parse WASM output: %w", err)
+	}
+
+	// Ensure common fields for compatibility
+	if output == nil {
+		output = make(map[string]interface{})
+	}
+	output["timestamp"] = time.Now().UTC().Format(time.RFC3339)
+	output["mode"] = "wasm"
+	output["hash"] = r.artifact.DeterminismHash
+	return output, nil
 }
 
 // loadArtifactFromPath loads a FlyPy artifact from the specified directory

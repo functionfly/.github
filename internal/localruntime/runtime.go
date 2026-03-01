@@ -13,14 +13,17 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync/atomic"
 	"syscall"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/functionfly/functionfly/internal/manifest"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // Runtime represents a local FunctionFly function runtime
@@ -509,7 +512,17 @@ func Run(manifestPath string, port int, watch bool) error {
 
 	// Handle file watching if enabled
 	if watch {
-		// File watching is implemented via fsnotify
+		watcher, err := fsnotify.NewWatcher()
+		if err != nil {
+			return fmt.Errorf("failed to create file watcher: %w", err)
+		}
+		defer watcher.Close()
+
+		watchDir := filepath.Dir(manifestPath)
+		if err := watcher.Add(watchDir); err != nil {
+			return fmt.Errorf("failed to watch %s: %w", watchDir, err)
+		}
+
 		go func() {
 			for {
 				select {
@@ -519,10 +532,6 @@ func Run(manifestPath string, port int, watch bool) error {
 					}
 					if event.Op&fsnotify.Write == fsnotify.Write {
 						logrus.Infof("File modified: %s, reloading...", event.Name)
-						// Trigger hot reload callback if provided
-						if onChange != nil {
-							onChange(event.Name)
-						}
 					}
 				case err, ok := <-watcher.Errors:
 					if !ok {

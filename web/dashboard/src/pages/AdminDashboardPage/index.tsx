@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,16 +50,7 @@ import { auditApi } from "@/api/admin";
 import { adminFunctionsApi } from "@/api/admin";
 import { cn } from "@/lib/utils";
 
-// Mock activity data for the chart
-const activityData = [
-  { day: "Mon", users: 12, functions: 45, errors: 2 },
-  { day: "Tue", users: 19, functions: 52, errors: 1 },
-  { day: "Wed", users: 15, functions: 38, errors: 3 },
-  { day: "Thu", users: 25, functions: 67, errors: 0 },
-  { day: "Fri", users: 22, functions: 71, errors: 2 },
-  { day: "Sat", users: 8, functions: 29, errors: 1 },
-  { day: "Sun", users: 6, functions: 18, errors: 0 },
-];
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const revenueData = [
   { month: "Aug", revenue: 1200 },
@@ -234,6 +226,57 @@ export function AdminDashboardPage() {
     queryKey: ["admin-functions-stats"],
     queryFn: () => adminFunctionsApi.listFunctions({ limit: 100 }),
   });
+
+  const end = useMemo(() => new Date(), []);
+  const start = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d;
+  }, []);
+
+  const { data: activityAuditData } = useQuery({
+    queryKey: ["admin-audit-activity", start.toISOString(), end.toISOString()],
+    queryFn: () =>
+      auditApi.listAuditEvents({
+        limit: 500,
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+      }),
+  });
+
+  const activityData = useMemo(() => {
+    const events = activityAuditData?.events ?? [];
+    const byDay: Record<string, { users: number; functions: number }> = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      byDay[key] = { users: 0, functions: 0 };
+    }
+    for (const e of events) {
+      const ts = e.timestamp ?? "";
+      const key = ts.slice(0, 10);
+      if (!byDay[key]) continue;
+      const rt = (e.resource_type ?? "").toLowerCase();
+      const action = (e.action ?? "").toLowerCase();
+      if (rt === "user" || action.includes("user") || action.includes("signup") || action.includes("login")) {
+        byDay[key].users += 1;
+      } else if (rt === "function" || rt === "app" || action.includes("function") || action.includes("deploy")) {
+        byDay[key].functions += 1;
+      } else {
+        byDay[key].functions += 1;
+      }
+    }
+    const sorted = Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b));
+    return sorted.map(([dateStr, counts]) => {
+      const d = new Date(dateStr + "Z");
+      return {
+        day: DAY_LABELS[d.getUTCDay()],
+        users: counts.users,
+        functions: counts.functions,
+      };
+    });
+  }, [activityAuditData]);
 
   const totalUsers = userStats?.total_users ?? 0;
   const activeUsers = userStats?.active_users ?? 0;

@@ -60,13 +60,19 @@ func (r *AppRepository) GetAppBySlug(slug string) (*App, error) {
 	return &app, nil
 }
 
-// ListAppsByTenant lists all apps for a tenant
+// ListAppsByTenant lists all apps for a tenant.
+// Runs inside a transaction with app.tenant_id set so RLS can use the index
+// and avoid a full table scan when the session variable is unset.
 func (r *AppRepository) ListAppsByTenant(tenantID uuid.UUID) ([]*App, error) {
 	var apps []*App
-	err := r.db.Where("tenant_id = ?", tenantID).Order("created_at DESC").Find(&apps).Error
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SET LOCAL app.tenant_id = ?", tenantID.String()).Error; err != nil {
+			return err
+		}
+		return tx.Model(&App{}).Where("tenant_id = ?", tenantID).Order("created_at DESC").Find(&apps).Error
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list apps by tenant: %w", err)
 	}
-
 	return apps, nil
 }

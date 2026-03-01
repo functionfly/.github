@@ -1,7 +1,6 @@
 package schedule
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -404,10 +403,7 @@ func (h *Handler) HandleTriggerManual(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Execute the function directly
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-	defer cancel()
-
+	// Execute the function directly (would use context.WithTimeout(r.Context(), 30*time.Second) when calling execution service)
 	// This would trigger the function execution
 	// In a real implementation, this would call the execution service
 	

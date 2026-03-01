@@ -482,6 +482,10 @@ func (db *PostgresDB) DeleteUserSessions(userID uuid.UUID) error {
 	return db.sessionRepository.DeleteUserSessions(userID)
 }
 
+func (db *PostgresDB) DeleteSessionByID(sessionID, userID uuid.UUID) error {
+	return db.sessionRepository.DeleteSessionByID(sessionID, userID)
+}
+
 func (db *PostgresDB) ListUserSessions(userID uuid.UUID) ([]*Session, error) {
 	return db.sessionRepository.ListUserSessions(userID)
 }

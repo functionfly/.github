@@ -293,6 +293,68 @@ export interface Incident {
   updated_at: string;
 }
 
+// Admin Feedback API (uses apiClient for auth)
+export interface AdminFeedbackItem {
+  id: string;
+  user_id?: string;
+  user_email?: string;
+  feedback_type: string;
+  subject: string;
+  message: string;
+  priority: string;
+  status: string;
+  browser_info?: string;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
+  updated_at: string;
+  attachments?: Array<{ id: string; filename: string; content_type: string; size: number; s3_key: string }>;
+}
+
+export interface AdminFeedbackStats {
+  total: number;
+  status_breakdown: Record<string, number>;
+  type_breakdown: Record<string, number>;
+}
+
+export interface AdminFeedbackAnalytics {
+  stats: AdminFeedbackStats;
+  trends?: {
+    daily?: Array<{ date: string; count: number }>;
+    weekly?: Array<{ week: string; count: number }>;
+    monthly?: Array<{ month: string; count: number }>;
+  };
+}
+
+export const feedbackApi = {
+  listFeedback: async (params?: { limit?: number; offset?: number; status?: string }): Promise<{ feedback: AdminFeedbackItem[]; limit: number; offset: number }> => {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', params.limit.toString());
+    if (params?.offset) searchParams.set('offset', params.offset.toString());
+    if (params?.status) searchParams.set('status', params.status);
+    const query = searchParams.toString();
+    const url = query ? `/v1/admin/feedback?${query}` : '/v1/admin/feedback';
+    return await apiClient.get<{ feedback: AdminFeedbackItem[]; limit: number; offset: number }>(url);
+  },
+
+  getFeedbackAnalytics: async (): Promise<AdminFeedbackAnalytics> => {
+    return await apiClient.get<AdminFeedbackAnalytics>('/v1/admin/feedback/analytics');
+  },
+
+  updateFeedbackStatus: async (feedbackId: string, status: string): Promise<{ message: string }> => {
+    return await apiClient.patch<{ message: string }>(`/v1/admin/feedback/${feedbackId}/status`, { status });
+  },
+
+  exportFeedback: async (format: 'csv' | 'json'): Promise<Blob> => {
+    const base = (import.meta.env.VITE_API_URL as string) || (import.meta.env.DEV ? '/api' : '');
+    const url = `${base}/v1/admin/feedback/export?format=${format}`;
+    const token = apiClient.getToken() || localStorage.getItem('sb-access-token');
+    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) throw new Error('Export failed');
+    return await res.blob();
+  },
+};
+
 export const incidentsApi = {
   listIncidents: async (params?: {
     limit?: number;

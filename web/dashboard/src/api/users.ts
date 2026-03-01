@@ -26,6 +26,15 @@ export interface PasswordChangeRequest {
   newPassword: string;
 }
 
+export interface SessionItem {
+  id: string;
+  device: string;
+  ip: string;
+  location: string;
+  lastActive: string;
+  currentSession: boolean;
+}
+
 export const usersApi = {
   /**
    * Get the public profile for a user by username.
@@ -66,4 +75,22 @@ export const usersApi = {
       token,
       newPassword,
     }),
+
+  /**
+   * List active sessions for the current user.
+   */
+  listSessions: () =>
+    apiClient.get<{ sessions: SessionItem[] }>("/v1/users/me/sessions"),
+
+  /**
+   * Revoke a single session by ID.
+   */
+  revokeSession: (sessionId: string) =>
+    apiClient.delete<{ message: string }>(`/v1/users/me/sessions/${sessionId}`),
+
+  /**
+   * Revoke all other sessions (keep current).
+   */
+  revokeOtherSessions: () =>
+    apiClient.post<{ message: string }>("/v1/users/me/sessions/revoke-others"),
 };

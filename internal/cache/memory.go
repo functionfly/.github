@@ -14,12 +14,13 @@ import (
 // MemoryCache provides L1 in-memory caching using ristretto
 // This is the fastest cache layer with microsecond-level latency
 type MemoryCache struct {
-	cache       *ristretto.Cache
-	hits        atomic.Int64
-	misses      atomic.Int64
-	evicts      atomic.Int64
+	cache        *ristretto.Cache
+	hits         atomic.Int64
+	misses       atomic.Int64
+	evicts       atomic.Int64
+	sizeBytes    atomic.Int64                   // approximate current cost in bytes (not updated on ristretto evictions)
 	functionKeys map[string]map[string]struct{} // functionID -> set of cache keys
-	keysMutex   sync.RWMutex
+	keysMutex    sync.RWMutex
 }
 
 // NewMemoryCache creates a new in-memory cache with the specified max memory in MB
@@ -60,6 +61,7 @@ func (m *MemoryCache) Set(key string, value []byte, ttl time.Duration) {
 	// Cost is based on size
 	cost := int64(len(value))
 	m.cache.SetWithTTL(key, value, cost, ttl)
+	m.sizeBytes.Add(cost)
 
 	// Track the key for function-specific invalidation
 	if functionID := extractFunctionIDFromKey(key); functionID != "" {
@@ -69,6 +71,11 @@ func (m *MemoryCache) Set(key string, value []byte, ttl time.Duration) {
 
 // Delete removes a key from the cache
 func (m *MemoryCache) Delete(key string) {
+	if value, found := m.cache.Get(key); found && value != nil {
+		if b, ok := value.([]byte); ok {
+			m.sizeBytes.Add(-int64(len(b)))
+		}
+	}
 	m.cache.Del(key)
 
 	// Remove from tracking
@@ -80,6 +87,7 @@ func (m *MemoryCache) Delete(key string) {
 // Clear removes all entries from the cache
 func (m *MemoryCache) Clear() {
 	m.cache.Clear()
+	m.sizeBytes.Store(0)
 
 	// Clear all tracking data
 	m.keysMutex.Lock()
@@ -104,6 +112,7 @@ func (m *MemoryCache) Metrics() *CacheMetrics {
 		Hits:      m.hits.Load(),
 		Misses:    m.misses.Load(),
 		Ratio:     ratio,
+		SizeBytes: m.sizeBytes.Load(),
 		Evictions: m.evicts.Load(),
 	}
 }
@@ -228,6 +237,7 @@ type CacheMetrics struct {
 	Hits      int64
 	Misses    int64
 	Ratio     float64
+	SizeBytes int64 // approximate current cache size in bytes
 	Evictions int64
 }
 

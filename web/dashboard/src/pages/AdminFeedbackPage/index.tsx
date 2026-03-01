@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
@@ -28,139 +29,36 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { StatCard } from '@/components/common/StatCard';
 import { toast } from 'sonner';
+import { feedbackApi, type AdminFeedbackItem, type AdminFeedbackStats } from '@/api/admin';
 
-interface Feedback {
-  id: string;
-  user_id?: string;
-  user_email?: string;
-  feedback_type: string;
-  subject: string;
-  message: string;
-  priority: string;
-  status: string;
-  browser_info?: string;
-  ip_address?: string;
-  user_agent?: string;
-  created_at: string;
-  updated_at: string;
-  attachments?: FeedbackAttachment[];
-}
-
-interface FeedbackAttachment {
-  id: string;
-  filename: string;
-  content_type: string;
-  size: number;
-  s3_key: string;
-}
-
-interface FeedbackStats {
-  total: number;
-  status_breakdown: Record<string, number>;
-  type_breakdown: Record<string, number>;
-  trends?: {
-    daily: Array<{ date: string; count: number }>;
-    weekly: Array<{ week: string; count: number }>;
-    monthly: Array<{ month: string; count: number }>;
-  };
-}
-
-const mockFeedback: Feedback[] = [
-  {
-    id: 'fb-1',
-    user_email: 'user1@example.com',
-    feedback_type: 'bug',
-    subject: 'App crashes on login',
-    message: 'The application crashes when trying to log in with valid credentials. Steps to reproduce: 1. Open app 2. Enter email 3. Enter password 4. Click login 5. App crashes',
-    priority: 'high',
-    status: 'submitted',
-    browser_info: 'Chrome 120.0.0.0',
-    created_at: '2026-02-15T10:30:00Z',
-    updated_at: '2026-02-15T10:30:00Z',
-    attachments: [
-      {
-        id: 'att-1',
-        filename: 'crash-log.txt',
-        content_type: 'text/plain',
-        size: 2048,
-        s3_key: 'feedback/fb-1/crash-log.txt'
-      }
-    ]
-  },
-  {
-    id: 'fb-2',
-    user_id: 'user-123',
-    feedback_type: 'feature',
-    subject: 'Add dark mode support',
-    message: 'It would be great to have a dark mode option for better user experience, especially when using the app at night. This would help reduce eye strain and battery usage on OLED displays.',
-    priority: 'medium',
-    status: 'in-review',
-    browser_info: 'Firefox 121.0',
-    created_at: '2026-02-14T15:45:00Z',
-    updated_at: '2026-02-15T09:15:00Z'
-  },
-  {
-    id: 'fb-3',
-    feedback_type: 'improvement',
-    subject: 'Faster loading times',
-    message: 'The dashboard loads quite slowly, especially on slower connections. Could we implement some optimizations like code splitting or lazy loading?',
-    priority: 'medium',
-    status: 'resolved',
-    browser_info: 'Safari 17.0',
-    created_at: '2026-02-13T12:20:00Z',
-    updated_at: '2026-02-15T08:30:00Z'
-  }
-];
-
-const mockStats: FeedbackStats = {
-  total: 247,
-  status_breakdown: {
-    submitted: 45,
-    'in-review': 23,
-    resolved: 156,
-    closed: 23
-  },
-  type_breakdown: {
-    bug: 89,
-    feature: 67,
-    improvement: 58,
-    general: 33
-  },
-  trends: {
-    daily: [
-      { date: '2026-02-09', count: 12 },
-      { date: '2026-02-10', count: 8 },
-      { date: '2026-02-11', count: 15 },
-      { date: '2026-02-12', count: 22 },
-      { date: '2026-02-13', count: 18 },
-      { date: '2026-02-14', count: 25 },
-      { date: '2026-02-15', count: 31 }
-    ],
-    weekly: [
-      { week: 'Week 1', count: 45 },
-      { week: 'Week 2', count: 52 },
-      { week: 'Week 3', count: 38 },
-      { week: 'Week 4', count: 67 },
-      { week: 'Week 5', count: 45 }
-    ],
-    monthly: [
-      { month: 'Dec 2025', count: 145 },
-      { month: 'Jan 2026', count: 178 },
-      { month: 'Feb 2026', count: 247 }
-    ]
-  }
+const emptyStats: AdminFeedbackStats = {
+  total: 0,
+  status_breakdown: {},
+  type_breakdown: {},
 };
 
 export function AdminFeedbackPage() {
   const navigate = useNavigate();
-  const [feedback, setFeedback] = useState<Feedback[]>(mockFeedback);
-  const [stats, setStats] = useState<FeedbackStats>(mockStats);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
-  const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [selectedFeedback, setSelectedFeedback] = useState<AdminFeedbackItem | null>(null);
+
+  const { data: feedbackData, isLoading: feedbackLoading } = useQuery({
+    queryKey: ['admin-feedback'],
+    queryFn: () => feedbackApi.listFeedback({ limit: 100 }),
+  });
+
+  const { data: analyticsData, isLoading: analyticsLoading } = useQuery({
+    queryKey: ['admin-feedback-analytics'],
+    queryFn: () => feedbackApi.getFeedbackAnalytics(),
+  });
+
+  const feedback = feedbackData?.feedback ?? [];
+  const stats: AdminFeedbackStats = analyticsData?.stats ?? emptyStats;
+  const isLoading = feedbackLoading || analyticsLoading;
 
   // Filter feedback
   const filteredFeedback = feedback.filter(item => {
@@ -206,51 +104,26 @@ export function AdminFeedbackPage() {
     }
   };
 
-  const handleStatusUpdate = async (feedbackId: string, newStatus: string) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/v1/admin/feedback/${feedbackId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ feedbackId, status }: { feedbackId: string; status: string }) =>
+      feedbackApi.updateFeedbackStatus(feedbackId, status),
+    onSuccess: (_, { status }) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-feedback'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-feedback-analytics'] });
+      toast.success(`Feedback status updated to ${status}`);
+    },
+    onError: () => toast.error('Failed to update feedback status'),
+  });
 
-      if (!response.ok) {
-        throw new Error('Failed to update status');
-      }
-
-      setFeedback(prev => prev.map(item =>
-        item.id === feedbackId
-          ? { ...item, status: newStatus, updated_at: new Date().toISOString() }
-          : item
-      ));
-
-      toast.success(`Feedback status updated to ${newStatus}`);
-    } catch (error) {
-      toast.error('Failed to update feedback status');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleStatusUpdate = (feedbackId: string, newStatus: string) => {
+    updateStatusMutation.mutate({ feedbackId, status: newStatus });
   };
 
+  const [exporting, setExporting] = useState(false);
   const handleExport = async (format: 'csv' | 'json') => {
-    setIsLoading(true);
+    setExporting(true);
     try {
-      const response = await fetch(`/api/v1/admin/feedback/export?format=${format}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Export failed');
-      }
-
-      const blob = await response.blob();
+      const blob = await feedbackApi.exportFeedback(format);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -259,59 +132,13 @@ export function AdminFeedbackPage() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-
       toast.success(`Feedback data exported as ${format.toUpperCase()}`);
-    } catch (error) {
+    } catch {
       toast.error('Failed to export feedback data');
     } finally {
-      setIsLoading(false);
+      setExporting(false);
     }
   };
-
-  const loadFeedback = async () => {
-    setIsLoading(true);
-    try {
-      const [feedbackRes, analyticsRes] = await Promise.all([
-        fetch('/api/v1/admin/feedback', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-          },
-        }),
-        fetch('/api/v1/admin/feedback/analytics', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-          },
-        })
-      ]);
-
-      if (!feedbackRes.ok || !analyticsRes.ok) {
-        throw new Error('Failed to fetch data');
-      }
-
-      const feedbackData = await feedbackRes.json();
-      const analyticsData = await analyticsRes.json();
-
-      setFeedback(feedbackData.feedback || []);
-      setStats({
-        total: analyticsData.stats.total || 0,
-        status_breakdown: analyticsData.stats.status_breakdown || {},
-        type_breakdown: analyticsData.stats.type_breakdown || {},
-        trends: analyticsData.trends || {},
-      });
-    } catch (error) {
-      console.error('Failed to load feedback data:', error);
-      // Fallback to mock data if API fails
-      setFeedback(mockFeedback);
-      setStats(mockStats);
-      toast.error('Failed to load feedback data, showing sample data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadFeedback();
-  }, []);
 
   const statCards = [
     {
@@ -330,7 +157,9 @@ export function AdminFeedbackPage() {
     },
     {
       title: 'Resolution Rate',
-      value: `${Math.round(((stats.status_breakdown.resolved || 0) + (stats.status_breakdown.closed || 0)) / stats.total * 100)}%`,
+      value: stats.total > 0
+        ? `${Math.round(((stats.status_breakdown.resolved || 0) + (stats.status_breakdown.closed || 0)) / stats.total * 100)}%`
+        : '0%',
       change: { value: 12, label: 'from last month' },
       icon: <CheckCircle className="w-5 h-5 text-[#6366f1]" />,
       trend: 'up' as const,
@@ -364,7 +193,7 @@ export function AdminFeedbackPage() {
           <Button
             variant="outline"
             onClick={() => handleExport('csv')}
-            disabled={isLoading}
+            disabled={exporting || isLoading}
             className="border-border-subtle hover:bg-bg-hover"
           >
             <Download className="w-4 h-4 mr-2" />
@@ -373,7 +202,7 @@ export function AdminFeedbackPage() {
           <Button
             variant="outline"
             onClick={() => handleExport('json')}
-            disabled={isLoading}
+            disabled={exporting || isLoading}
             className="text-text-secondary border-border-default hover:bg-bg-hover"
           >
             <FileText className="w-4 h-4 mr-2" />
@@ -592,7 +421,7 @@ export function AdminFeedbackPage() {
                   <div>
                     <h4 className="text-sm font-medium text-text-primary mb-3">Daily Submissions (Last 7 Days)</h4>
                     <div className="flex items-end gap-2 h-32">
-                      {stats.trends?.daily.map((day, index) => (
+                      {analyticsData?.trends?.daily?.map((day) => (
                         <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
                           <div
                             className="w-full bg-[#6366f1] rounded-t"
@@ -609,7 +438,7 @@ export function AdminFeedbackPage() {
                   <div>
                     <h4 className="text-sm font-medium text-text-primary mb-3">Monthly Growth</h4>
                     <div className="flex items-end gap-4 h-24">
-                      {stats.trends?.monthly.map((month, index) => (
+                      {analyticsData?.trends?.monthly?.map((month) => (
                         <div key={month.month} className="flex-1 flex flex-col items-center gap-1">
                           <div
                             className="w-full bg-emerald-500 rounded-t"

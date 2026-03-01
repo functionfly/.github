@@ -14,12 +14,13 @@ import (
 
 // ScheduleConfig represents a function schedule configuration
 type ScheduleConfig struct {
-	Cron         string    `json:"cron"`
-	Timezone     string    `json:"timezone"`
-	Enabled      bool      `json:"enabled"`
-	LastRun      time.Time `json:"last_run"`
-	NextRun      time.Time `json:"next_run"`
-	RunOnDeploy  bool      `json:"run_on_deploy"`
+	ID          cron.EntryID `json:"-"` // cron entry id for removal
+	Cron        string       `json:"cron"`
+	Timezone    string       `json:"timezone"`
+	Enabled     bool         `json:"enabled"`
+	LastRun     time.Time    `json:"last_run"`
+	NextRun     time.Time    `json:"next_run"`
+	RunOnDeploy bool         `json:"run_on_deploy"`
 }
 
 // FunctionScheduler manages scheduled function executions
@@ -71,8 +72,8 @@ func (s *FunctionScheduler) AddSchedule(ctx context.Context, functionID uuid.UUI
 	}
 
 	// Remove existing schedule if any
-	if entryID, ok := s.functionCache[functionID]; ok {
-		s.cron.Remove(cron.EntryID(entryID.ID))
+	if existing, ok := s.functionCache[functionID]; ok {
+		s.cron.Remove(existing.ID)
 	}
 
 	// Add new schedule
@@ -102,7 +103,7 @@ func (s *FunctionScheduler) RemoveSchedule(ctx context.Context, functionID uuid.
 	defer s.mu.Unlock()
 
 	if config, ok := s.functionCache[functionID]; ok {
-		s.cron.Remove(cron.EntryID(config.ID))
+		s.cron.Remove(config.ID)
 		delete(s.functionCache, functionID)
 		logrus.Infof("Removed schedule for function %s", functionID)
 	}
@@ -136,14 +137,14 @@ func (s *FunctionScheduler) ListSchedules() []*ScheduleConfig {
 func (s *FunctionScheduler) executeScheduledFunction(ctx context.Context, functionID uuid.UUID) {
 	logrus.Infof("Executing scheduled function %s", functionID)
 
-	executor, ok := s.functionCache[functionID]
+	_, ok := s.functionCache[functionID]
 	if !ok {
-		logrus.Warnf("No executor found for function %s", functionID)
+		logrus.Warnf("No schedule found for function %s", functionID)
 		return
 	}
 
-	// Get function from storage
-	function, err := s.storage.GetFunctionByID(ctx, functionID)
+	// Get function from storage (verify it exists)
+	_, err := s.storage.GetFunctionByID(ctx, functionID)
 	if err != nil {
 		logrus.WithError(err).Errorf("Failed to get function %s", functionID)
 		return
@@ -151,12 +152,12 @@ func (s *FunctionScheduler) executeScheduledFunction(ctx context.Context, functi
 
 	// Execute the function
 	input := []byte(fmt.Sprintf(`{"trigger": "scheduled", "timestamp": "%s"}`, time.Now().UTC().Format(time.RFC3339)))
-	
+
 	// Get the actual executor from the map
 	s.mu.RLock()
 	fnExecutor, hasExecutor := s.executors[functionID]
 	s.mu.RUnlock()
-	
+
 	if hasExecutor {
 		_, err := fnExecutor.ExecuteFunction(ctx, functionID, input)
 		if err != nil {

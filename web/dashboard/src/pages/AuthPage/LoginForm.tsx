@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Eye, EyeOff, Shield, Github, Chrome, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,7 @@ function getSafeRedirect(redirect: string | null): string | null {
   return null;
 }
 
-export function LoginForm() {
+export function LoginForm(): React.JSX.Element {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = getSafeRedirect(searchParams.get("redirect"));
@@ -150,27 +150,24 @@ export function LoginForm() {
       navigate(redirectTo ?? "/dashboard", { replace: true });
     } catch (err: unknown) {
       // Handle MFA required - redirect to MFA challenge
-      const error = err as Error;
+      const error = err as Error & { response?: { data?: { retryAfter?: number } } };
       if (error.message === 'MFA_REQUIRED') {
         navigate(`/auth/mfa-challenge?email=${encodeURIComponent(data.email)}`, { replace: true });
         return;
       }
-        const retrySeconds = error.response.data.retryAfter;
-        setRateLimited(true);
-        setRetryAfter(retrySeconds);
-        
-        // Countdown timer
-        const countdown = setInterval(() => {
-          setRetryAfter((prev: number) => {
-            if (prev <= 1) {
-              clearInterval(countdown);
-              setRateLimited(false);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      }
+      const retrySeconds = error.response?.data?.retryAfter ?? 60;
+      setRateLimited(true);
+      setRetryAfter(retrySeconds);
+      const countdown = setInterval(() => {
+        setRetryAfter((prev: number) => {
+          if (prev <= 1) {
+            clearInterval(countdown);
+            setRateLimited(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
       // Error is shown via store (FormError); keep user on login page
     }
   };

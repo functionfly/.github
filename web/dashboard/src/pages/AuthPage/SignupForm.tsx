@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Shield, Check, X, User, Mail, Key, AtSign, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ function PasswordRequirements({ password }: { password: string }) {
   );
 }
 
-export function SignupForm() {
+export function SignupForm(): React.JSX.Element {
   const navigate = useNavigate();
   const { signup, isLoading, error, clearError } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);

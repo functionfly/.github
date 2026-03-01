@@ -237,11 +237,11 @@ func findFunctionDirs(baseDir, pattern string) ([]string, error) {
 
 // BatchFunctionManifest represents a functionfly.jsonc manifest for batch publishing
 type BatchFunctionManifest struct {
-	Author    string `json:"author"`
-	Name      string `json:"name"`
-	Version   string `json:"version"`
-	Runtime   string `json:"runtime"`
-	Public    bool   `json:"public"`
+	Author  string `json:"author"`
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Runtime string `json:"runtime"`
+	Public  bool   `json:"public"`
 }
 
 func loadBatchManifest(dir string) (*BatchFunctionManifest, error) {
@@ -251,66 +251,27 @@ func loadBatchManifest(dir string) (*BatchFunctionManifest, error) {
 		return nil, fmt.Errorf("manifest not found at %s: %w", manifestPath, err)
 	}
 
-	cleaned := stripJSONCComments(string(data))
+	cleaned := string(stripJSONCComments(data))
 	var m BatchFunctionManifest
 	if err := json.Unmarshal([]byte(cleaned), &m); err != nil {
 		return nil, fmt.Errorf("invalid manifest JSON at %s: %w", manifestPath, err)
 	}
-	if m.Author == "" || m.Name == "" || m.Version == "" {
-		return nil, fmt.Errorf("manifest at %s missing required fields: author, name, version", manifestPath)
+	if m.Name == "" || m.Version == "" {
+		return nil, fmt.Errorf("manifest at %s missing required fields: name, version", manifestPath)
+	}
+	if m.Author == "" {
+		m.Author = "functionfly"
 	}
 	return &m, nil
 }
 
-func stripJSONCComments(s string) string {
-	var result []byte
-	inString, inLineComment, inBlockComment := false, false, false
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if inLineComment {
-			if c == '\n' {
-				inLineComment = false
-				result = append(result, c)
-			}
-			continue
-		}
-		if inBlockComment {
-			if c == '*' && i+1 < len(s) && s[i+1] == '/' {
-				inBlockComment = false
-				i++
-			}
-			continue
-		}
-		if inString {
-			result = append(result, c)
-			if c == '\\' && i+1 < len(s) {
-				i++
-				result = append(result, s[i])
-			} else if c == '"' {
-				inString = false
-			}
-			continue
-		}
-		if c == '"' {
-			inString = true
-			result = append(result, c)
-			continue
-		}
-		if c == '/' && i+1 < len(s) {
-			if s[i+1] == '/' {
-				inLineComment = true
-				i++
-				continue
-			}
-			if s[i+1] == '*' {
-				inBlockComment = true
-				i++
-				continue
-			}
-		}
-		result = append(result, c)
+func readRawManifest(dir string) ([]byte, error) {
+	manifestPath := filepath.Join(dir, "functionfly.jsonc")
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil, err
 	}
-	return string(result)
+	return stripJSONCComments(data), nil
 }
 
 func readMainSourceCode(dir string, runtime string) (string, error) {
@@ -379,11 +340,20 @@ func publishSingleFunction(dir string, dryRun bool, conflictStrategy string, cli
 		runtime = "python3.12"
 	}
 
+	rawManifest, err := readRawManifest(dir)
+	if err != nil {
+		result.Status = "failed"
+		result.Error = fmt.Sprintf("failed to read manifest: %v", err)
+		result.DurationMs = time.Since(startTime).Milliseconds()
+		return result
+	}
+
 	reqBody := map[string]interface{}{
-		"author":  manifest.Author,
-		"name":    manifest.Name,
-		"version": manifest.Version,
-		"source":  map[string]interface{}{"code": sourceCode, "runtime": runtime},
+		"author":   manifest.Author,
+		"name":     manifest.Name,
+		"version":  manifest.Version,
+		"manifest": json.RawMessage(rawManifest),
+		"source":   map[string]interface{}{"code": sourceCode, "runtime": runtime},
 	}
 
 	var resp batchPublishResponse

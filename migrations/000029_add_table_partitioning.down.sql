@@ -1,0 +1,3 @@
+-- Table partitioning rollback temporarily disabled
+-- This migration was not applied due to constraint conflicts
+-- No rollback needed since migration was not applied

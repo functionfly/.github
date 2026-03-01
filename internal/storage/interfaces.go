@@ -198,6 +198,7 @@ type Repository interface {
 	UpdateSessionMFAStatus(sessionToken string, mfaVerified bool) error
 	UpdateSessionActivity(sessionToken string) error
 	DeleteSession(sessionToken string) error
+	DeleteSessionByID(sessionID, userID uuid.UUID) error
 	DeleteExpiredSessions() (int64, error)
 	DeleteUserSessions(userID uuid.UUID) error
 	ListUserSessions(userID uuid.UUID) ([]*Session, error)

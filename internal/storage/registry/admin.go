@@ -50,12 +50,12 @@ func (r *RegistryRepository) GetRegistryStats() (total int64, byVisibility map[s
 	return total, byVisibility, nil
 }
 
-// UpdateRegistryFunction updates registry function fields (visibility, price_per_call, title, description, category).
+// UpdateRegistryFunction updates registry function fields (visibility, price_per_call, title, description, category, tags).
 func (r *RegistryRepository) UpdateRegistryFunction(id uuid.UUID, updates map[string]interface{}) (*RegistryFunction, error) {
 	allowed := make(map[string]interface{})
 	for k, v := range updates {
 		switch k {
-		case "visibility", "price_per_call", "title", "description", "category":
+		case "visibility", "price_per_call", "title", "description", "category", "tags":
 			allowed[k] = v
 		}
 	}

@@ -1,115 +1,59 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Zap, Shield, Monitor, Smartphone, Globe, Trash2, RefreshCw, ShieldCheck, Clock } from "lucide-react";
+import { Zap, Monitor, Smartphone, Globe, Trash2, RefreshCw, ShieldCheck, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useAuthStore } from "@/stores/authStore";
-
-// Session type
-interface Session {
-  id: string;
-  device: string;
-  ip: string;
-  location: string;
-  lastActive: string;
-  currentSession: boolean;
-}
-
-// Mock session data (would be fetched from API)
-const mockSessions: Session[] = [
-  {
-    id: "1",
-    device: "Chrome on MacBook Pro",
-    ip: "192.168.1.100",
-    location: "San Francisco, CA",
-    lastActive: "Now",
-    currentSession: true,
-  },
-  {
-    id: "2",
-    device: "Safari on iPhone",
-    ip: "192.168.1.101",
-    location: "San Francisco, CA",
-    lastActive: "2 hours ago",
-    currentSession: false,
-  },
-  {
-    id: "3",
-    device: "Firefox on Windows",
-    ip: "45.32.10.1",
-    location: "New York, NY",
-    lastActive: "3 days ago",
-    currentSession: false,
-  },
-];
+import { usersApi, type SessionItem } from "@/api/users";
 
 export function SessionsPage() {
   const { user, logout } = useAuthStore();
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isRevoking, setIsRevoking] = useState<string | null>(null);
 
-  // Fetch sessions on mount
-  useEffect(() => {
-    const fetchSessions = async () => {
-      setIsLoading(true);
-      try {
-        // In production, fetch from API
-        // const response = await fetch('/v1/auth/sessions');
-        // const data = await response.json();
-        // setSessions(data.sessions);
-        
-        // Using mock data for now
-        setTimeout(() => {
-          setSessions(mockSessions);
-          setIsLoading(false);
-        }, 500);
-      } catch (error) {
-        console.error("Failed to fetch sessions:", error);
-        setIsLoading(false);
-      }
-    };
-    fetchSessions();
-  }, []);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["sessions"],
+    queryFn: async () => {
+      const res = await usersApi.listSessions();
+      return res.sessions;
+    },
+  });
 
-  // Revoke a session
-  const handleRevokeSession = async (sessionId: string) => {
-    setIsRevoking(sessionId);
-    try {
-      // In production, call API
-      // await fetch(`/v1/auth/sessions/${sessionId}`, { method: 'DELETE' });
-      
-      // Remove from local state
-      setSessions(sessions.filter(s => s.id !== sessionId));
-    } catch (error) {
-      console.error("Failed to revoke session:", error);
-    } finally {
+  const sessions: SessionItem[] = data ?? [];
+
+  const revokeMutation = useMutation({
+    mutationFn: (sessionId: string) => usersApi.revokeSession(sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
       setIsRevoking(null);
-    }
+    },
+    onError: () => setIsRevoking(null),
+  });
+
+  const revokeOthersMutation = useMutation({
+    mutationFn: () => usersApi.revokeOtherSessions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      setIsRevoking(null);
+    },
+    onError: () => setIsRevoking(null),
+  });
+
+  const handleRevokeSession = (sessionId: string) => {
+    setIsRevoking(sessionId);
+    revokeMutation.mutate(sessionId);
   };
 
-  // Revoke all other sessions
-  const handleRevokeAllOthers = async () => {
+  const handleRevokeAllOthers = () => {
     if (!confirm("Are you sure you want to sign out all other devices? This action cannot be undone.")) {
       return;
     }
-    
     setIsRevoking("all");
-    try {
-      // In production, call API
-      // await fetch('/v1/auth/sessions/revoke-others', { method: 'POST' });
-      
-      // Keep only current session
-      setSessions(sessions.filter(s => s.currentSession));
-    } catch (error) {
-      console.error("Failed to revoke sessions:", error);
-    } finally {
-      setIsRevoking(null);
-    }
+    revokeOthersMutation.mutate();
   };
 
-  // Get device icon based on device type
   const getDeviceIcon = (device: string) => {
     if (device.toLowerCase().includes("iphone") || device.toLowerCase().includes("android")) {
       return <Smartphone className="w-5 h-5" />;
@@ -192,6 +136,10 @@ export function SessionsPage() {
             {isLoading ? (
               <div className="flex justify-center py-8">
                 <LoadingSpinner text="Loading sessions..." />
+              </div>
+            ) : error ? (
+              <div className="text-center py-8 text-red-600 dark:text-red-400 text-sm">
+                Failed to load sessions. You may need to sign in again.
               </div>
             ) : (
               <div className="space-y-4">

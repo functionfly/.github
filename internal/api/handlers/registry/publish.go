@@ -17,6 +17,7 @@ import (
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/manifest"
 	"github.com/functionfly/functionfly/internal/storage"
+	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -85,6 +86,14 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse manifest early so we can set/update function metadata (title, description, category, tags)
+	cleanManifest := manifest.StripComments(string(req.Manifest))
+	var m functionregistry.FunctionManifest
+	if err := json.Unmarshal([]byte(cleanManifest), &m); err != nil {
+		http.Error(w, "Invalid manifest JSON", http.StatusBadRequest)
+		return
+	}
+
 	// Determine trust level from request or manifest
 	trustLevel := req.TrustLevel
 	if trustLevel == "" {
@@ -102,8 +111,11 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	var fnID uuid.UUID
 
 	if existingFn == nil {
-		// Create new function
-		tags, _ := json.Marshal([]string{})
+		// Create new function with metadata from manifest
+		tagsJSON, _ := json.Marshal(m.Tags)
+		if len(tagsJSON) == 0 || string(tagsJSON) == "null" {
+			tagsJSON, _ = json.Marshal([]string{})
+		}
 		fn := &storage.RegistryFunction{
 			Author:             req.Author,
 			Name:               req.Name,
@@ -114,7 +126,16 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 			DeterministicScore: 0,
 			TenantID:           &user.TenantID,
 			OwnerUserID:        &user.UserID,
-			Tags:               tags,
+			Tags:               tagsJSON,
+		}
+		if m.Title != "" {
+			fn.Title = sql.NullString{String: m.Title, Valid: true}
+		}
+		if m.Description != "" {
+			fn.Description = sql.NullString{String: m.Description, Valid: true}
+		}
+		if m.Category != "" {
+			fn.Category = sql.NullString{String: m.Category, Valid: true}
 		}
 
 		if err := h.repo.CreateFunction(fn); err != nil {
@@ -125,15 +146,25 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		fnID = fn.ID
 	} else {
 		fnID = existingFn.ID
-	}
-
-	// Parse manifest to get runtime and execution details
-	// Strip comments first to support JSONC input
-	cleanManifest := manifest.StripComments(string(req.Manifest))
-	var m functionregistry.FunctionManifest
-	if err := json.Unmarshal([]byte(cleanManifest), &m); err != nil {
-		http.Error(w, "Invalid manifest JSON", http.StatusBadRequest)
-		return
+		// Sync function metadata from this version's manifest (title, description, category, tags)
+		meta := map[string]interface{}{}
+		if m.Title != "" {
+			meta["title"] = m.Title
+		}
+		if m.Description != "" {
+			meta["description"] = m.Description
+		}
+		if m.Category != "" {
+			meta["category"] = m.Category
+		}
+		if len(m.Tags) > 0 {
+			meta["tags"] = m.Tags
+		}
+		if len(meta) > 0 {
+			if _, err := h.repo.UpdateRegistryFunction(fnID, meta); err != nil {
+				logrus.WithError(err).Warn("Failed to update function metadata from manifest")
+			}
+		}
 	}
 
 	// Validate capabilities against allowed list
@@ -224,7 +255,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if _, upsertErr := h.repo.UpsertFunctionVersion(version, conflictStrategy); upsertErr != nil {
+	if _, upsertErr := h.repo.UpsertFunctionVersion(version, storageregistry.VersionConflictStrategy(conflictStrategy)); upsertErr != nil {
 		logrus.WithError(upsertErr).Error("Failed to create/update function version")
 		if strings.Contains(upsertErr.Error(), "already exists") {
 			http.Error(w, upsertErr.Error(), http.StatusConflict)
@@ -241,6 +272,9 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 
 	// Initialize rating
 	h.repo.GetOrCreateRating(fnID)
+
+	// Invalidate list cache so description/category show up in browse UI
+	h.repo.InvalidateListCache(r.Context())
 
 	// NEW: Skip synchronous verification during publish - verify lazily at execute time
 	// This significantly speeds up publish by avoiding expensive security scans

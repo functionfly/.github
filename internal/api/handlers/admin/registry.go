@@ -18,15 +18,15 @@ import (
 // RegistryHandler handles admin registry API (stats, list, get, update, delete, visibility, pricing).
 // Uses the same registry repo as the public registry handler.
 type RegistryHandler struct {
-	registryRepo  *registry.RegistryRepository
-	cacheService  *cache.CacheService
+	registryRepo *registry.RegistryRepository
+	cacheService *cache.CacheService
 }
 
 // NewRegistryHandler creates a new admin registry handler.
 func NewRegistryHandler(registryRepo *registry.RegistryRepository, cacheService *cache.CacheService) *RegistryHandler {
 	return &RegistryHandler{
-		registryRepo:  registryRepo,
-		cacheService:  cacheService,
+		registryRepo: registryRepo,
+		cacheService: cacheService,
 	}
 }
 
@@ -754,10 +754,10 @@ func (h *RegistryHandler) HandleGetCacheStats(w http.ResponseWriter, r *http.Req
 	// Get disk cache stats
 	if diskStats, err := h.cacheService.GetDiskStats(); err == nil && diskStats != nil {
 		stats["disk_cache"] = map[string]interface{}{
-			"total_entries":   diskStats.TotalEntries,
+			"total_entries":    diskStats.TotalEntries,
 			"total_size_bytes": diskStats.TotalSizeBytes,
-			"total_hits":      diskStats.TotalHits,
-			"expired_entries": diskStats.ExpiredEntries,
+			"total_hits":       diskStats.TotalHits,
+			"expired_entries":  diskStats.ExpiredEntries,
 		}
 	}
 

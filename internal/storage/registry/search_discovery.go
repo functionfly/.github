@@ -24,37 +24,42 @@ func (r *RegistryRepository) ListFunctions(author, category string, tags []strin
 		cacheKey := r.keyGen.ListFunctions(author, category, visibility, limit, offset)
 		var cached CachedFunctionList
 		if err := r.cache.GetJSON(context.Background(), cacheKey, &cached); err == nil {
-			// Check if cache is still fresh (within 5 minutes for list queries)
-			if time.Since(cached.CachedAt) < 5*time.Minute {
+			// Reject inconsistent cache (total > 0 but no items — can happen after the Count/Find bug)
+			if cached.Total > 0 && len(cached.Functions) == 0 {
+				// Treat as cache miss and refetch from DB
+			} else if time.Since(cached.CachedAt) < 5*time.Minute {
 				return cached.Functions, cached.Total, nil
 			}
 		}
 	}
 
-	query := r.db.Model(&RegistryFunction{})
-
-	if author != "" {
-		query = query.Where("author = ?", author)
-	}
-
-	if category != "" {
-		query = query.Where("category = ?", category)
-	}
-
 	if visibility == "" {
 		visibility = "public"
 	}
-	query = query.Where("visibility = ?", visibility)
 
-	// Count query
+	// Count and Find must use separate query chains: GORM's Count() modifies the
+	// statement and can cause Find() to return no rows when chained on the same query.
+	countQuery := r.db.Model(&RegistryFunction{}).Where("visibility = ?", visibility)
+	if author != "" {
+		countQuery = countQuery.Where("author = ?", author)
+	}
+	if category != "" {
+		countQuery = countQuery.Where("category = ?", category)
+	}
 	var total int64
-	if err := query.Count(&total).Error; err != nil {
+	if err := countQuery.Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to count functions: %w", err)
 	}
 
-	// Add ordering and pagination
+	listQuery := r.db.Model(&RegistryFunction{}).Where("visibility = ?", visibility)
+	if author != "" {
+		listQuery = listQuery.Where("author = ?", author)
+	}
+	if category != "" {
+		listQuery = listQuery.Where("category = ?", category)
+	}
 	var functions []RegistryFunction
-	if err := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&functions).Error; err != nil {
+	if err := listQuery.Order("created_at DESC").Limit(limit).Offset(offset).Find(&functions).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to list functions: %w", err)
 	}
 
@@ -341,4 +346,3 @@ func (r *RegistryRepository) SearchFunctions(query string, category, runtime str
 
 	return functions, int(total), nil
 }
-

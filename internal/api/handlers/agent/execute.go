@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,7 +12,6 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
-	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -251,8 +249,6 @@ func (h *Handler) authenticateAgent(r *http.Request) (agentID string, tenantID u
 // executeViaRegistry delegates execution to the existing registry execution infrastructure.
 // This uses the registry repository to get the function and then executes it via WASM.
 func (h *Handler) executeViaRegistry(r *http.Request, author, name, version string, input json.RawMessage) (json.RawMessage, error) {
-	ctx := r.Context()
-
 	// Get function by author and name
 	fn, err := h.registryRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
@@ -275,7 +271,8 @@ func (h *Handler) executeViaRegistry(r *http.Request, author, name, version stri
 		// Find the latest version (highest version number)
 		for _, v := range versions {
 			if fnVersion == nil || v.Version > fnVersion.Version {
-				fnVersion = v
+				vCopy := v
+				fnVersion = (*storage.RegistryFunctionVersion)(&vCopy)
 			}
 		}
 	}
@@ -293,7 +290,10 @@ func (h *Handler) executeViaRegistry(r *http.Request, author, name, version stri
 	}
 
 	// Execute via the sandbox executor
-	executor := execution.NewSandboxExecutor(ctx)
+	executor, err := execution.NewSandboxExecutor()
+	if err != nil {
+		return nil, fmt.Errorf("create sandbox executor: %w", err)
+	}
 	result, err := executor.ExecuteFunction(fnVersion, input, timeoutMs)
 	if err != nil {
 		return nil, fmt.Errorf("execution failed: %w", err)

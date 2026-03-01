@@ -106,7 +106,36 @@ type IOType struct {
 	Properties json.RawMessage `json:"properties,omitempty"`
 	Example    json.RawMessage `json:"example,omitempty"`
 	Schema     json.RawMessage `json:"schema,omitempty"`
-	Required   bool            `json:"required,omitempty"`
+	Required   RequiredField   `json:"required,omitempty"` // bool or JSON Schema "required" array of property names
+}
+
+// RequiredField accepts either a bool (body required) or []string (required property names) in JSON
+type RequiredField struct {
+	Bool  bool
+	Array []string
+}
+
+// UnmarshalJSON allows "required" to be either a bool or an array of strings (JSON Schema style)
+func (r *RequiredField) UnmarshalJSON(data []byte) error {
+	var arr []string
+	if err := json.Unmarshal(data, &arr); err == nil {
+		r.Array = arr
+		return nil
+	}
+	var b bool
+	if err := json.Unmarshal(data, &b); err == nil {
+		r.Bool = b
+		return nil
+	}
+	return nil // ignore invalid values
+}
+
+// IsRequired returns true if the request body / output is required (bool true or any required properties)
+func (r *RequiredField) IsRequired() bool {
+	if r.Bool {
+		return true
+	}
+	return len(r.Array) > 0
 }
 
 // Function represents a function in the registry

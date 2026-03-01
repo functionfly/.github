@@ -18,11 +18,17 @@ func (r *RegistryRepository) CreateFunction(fn *RegistryFunction) error {
 		return fmt.Errorf("failed to create function: %w", err)
 	}
 
-	// Invalidate any related cache entries (though new functions won't have cache entries yet)
+	// Invalidate list and search caches so new function appears in registry list
 	if r.cache != nil {
 		go func() {
+			if err := r.cache.InvalidateFunction(context.Background(), fn.ID.String()); err != nil {
+				fmt.Printf("Failed to invalidate cache after function creation: %v\n", err)
+			}
 			if err := r.cache.InvalidateSearchResults(context.Background()); err != nil {
 				fmt.Printf("Failed to invalidate search cache after function creation: %v\n", err)
+			}
+			if err := r.cache.InvalidateListResults(context.Background()); err != nil {
+				fmt.Printf("Failed to invalidate list cache after function creation: %v\n", err)
 			}
 		}()
 	}

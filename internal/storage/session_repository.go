@@ -181,6 +181,25 @@ func (r *SessionRepository) DeleteUserSessions(userID uuid.UUID) error {
 	return nil
 }
 
+// DeleteSessionByID deletes a single session by ID if it belongs to the given user
+func (r *SessionRepository) DeleteSessionByID(sessionID, userID uuid.UUID) error {
+	result, err := r.db.Exec(`
+		DELETE FROM sessions
+		WHERE id = $1 AND user_id = $2`,
+		sessionID, userID)
+
+	if err != nil {
+		return fmt.Errorf("failed to delete session: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("session not found or access denied")
+	}
+
+	return nil
+}
+
 // ListUserSessions retrieves all active sessions for a user
 func (r *SessionRepository) ListUserSessions(userID uuid.UUID) ([]*Session, error) {
 	rows, err := r.db.Query(`

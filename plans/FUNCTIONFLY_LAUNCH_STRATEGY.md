@@ -1214,14 +1214,19 @@ Prioritized actions to move from plan → live registry. Tick as you go.
 - [ ] **Bulk publish pipeline** — Script or flow to publish from manifest + source (e.g. `POST /v1/registry/publish`) for batch uploads.
 - [ ] **Playground + docs** — Input/output examples and "Try it" for each Phase 1 function.
 - [ ] **Data & Formatting (1.1)** — Finish remaining 20 (base64, url encode/decode, hashes, uuid, mime-type, json prettify/minify, yaml-to-json, etc.).
-- [ ] **Text & String (1.2)** — First 10: slugify, trim, case converters, reverse-string, truncate, extract-emails/urls, word-count, remove-html-tags.
-- [ ] **Text & String (1.2)** — Remaining 20.
-- [ ] **Media (1.3)** — Prioritize 5–10 (e.g. image-resize, image-compress, pdf-merge, pdf-extract-text, thumbnail-generate) then rest.
-- [ ] **Security & Web (1.4)** — First 10 (jwt-verify/decode/encode, password-hash/verify, password-strength, generate-random-token, hmac-sign/verify).
-- [ ] **Date & Time (1.5)** — First 10 then remaining 15.
-- [ ] **Numbers & Math (1.6)** — First 10 then remaining 15.
+- [x] **Text & String (1.2)** — First 10: slugify, trim, case converters, reverse-string, truncate, extract-emails/urls, word-count, remove-html-tags.
+- [x] **Text & String (1.2)** — Remaining 20.
+- [x] **Media (1.3)** — Prioritize 5–10 (e.g. image-resize, image-compress, pdf-merge, pdf-extract-text, thumbnail-generate) then rest.
+- [x] **Security & Web (1.4)** — First 10 (jwt-verify/decode/encode, password-hash/verify, password-strength, generate-random-token, hmac-sign/verify).
+- [x] **Security & Web (1.4)** — Remaining 15 (aes-encrypt/decrypt, rsa-generate-keypair/encrypt/decrypt, ip-geolocation, user-agent-parse, rate-limit-check, csrf-token-generate/validate, secure-random, hash-file, verify-certificate, cors-headers, sanitize-html, html-entities-encode).
+- [x] **Date & Time (1.5)** — First 10 then remaining 15 (timestamp-now/to-date, date-to-timestamp/parse/format/add/diff, is-weekend, is-leap-year, days-in-month, week/day/quarter-of-year, timezone-list/offset, time-ago/until, age-calculate, business-days-add/between, iso-week-date, utc-now, local-time, unix-time-ms, parse-rfc2822).
+- [x] **Numbers & Math (1.6)** — First 10 then remaining 15 (random-number/float, clamp, round-decimals, floor-to, ceil-to, percentage-calculate/of, change-percent, factorial, fibonacci, prime-check/factors, gcd, lcm, power-mod, square-root, logarithm, degrees-to-radians, radians-to-degrees, distance-haversine, distance-manhattan, median, standard-deviation, variance).
 - [ ] **Phase 1 verification** — Mark all 150 as verified; run Quality Standards Checklist per function.
 - [ ] **Phase 1 launch** — 150 functions live, all tested and documented.
+
+**Optional dependencies (for full behavior):**
+- **Security (1.4):** `cryptography` for AES and RSA; `bleach` for stronger HTML sanitization; `user-agents` for richer user-agent parsing; `PyJWT` and `bcrypt` for JWT and password functions. These are listed in `functions/functionfly/requirements.txt` and pre-installed in the MicroVM Python images (`runtimes/microvm/images/Dockerfile.python311`, `Dockerfile.python312`).
+- **Date & time (1.5):** All 25 use only the standard library (`datetime`, `zoneinfo`, `email.utils` for RFC 2822).
 
 ### Short-term (Phase 2 prep)
 

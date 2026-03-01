@@ -183,7 +183,7 @@ export function AuthPage() {
               ))}
             </div>
           )}
-          
+
           {/* Fallback: Show static buttons if providers fail to load */}
           {oauthProviders.length === 0 && !isLoadingProviders && (
             <div className="grid grid-cols-2 gap-3">
@@ -221,7 +221,7 @@ export function AuthPage() {
       <div className="auth-testimonial-panel hidden lg:flex flex-1 relative overflow-hidden">
         {/* Background */}
         <div className="absolute inset-0 bg-linear-to-br from-[#6366f1]/20 via-[#8b5cf6]/10 to-bg-primary" />
-        
+
         {/* Decorative Elements */}
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#6366f1]/30 rounded-full blur-[100px]" />
         <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-[#8b5cf6]/30 rounded-full blur-[100px]" />

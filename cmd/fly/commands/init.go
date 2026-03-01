@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -188,17 +187,17 @@ A simple function that returns a greeting.
 async def fetch(request, env, ctx):
     """
     Handle incoming requests and return a greeting.
-    
+
     Args:
         request: The incoming request object
         env: Environment variables and secrets
         ctx: Execution context
-    
+
     Returns:
         Response with greeting message
     """
     url = request.url
-    
+
     # Parse query parameters
     params = {}
     if '?' in url:
@@ -207,10 +206,10 @@ async def fetch(request, env, ctx):
             if '=' in param:
                 key, value = param.split('=', 1)
                 params[key] = value
-    
+
     # Get name from query params or default to World
     name = params.get('name', 'World')
-    
+
     # Return greeting
     return {
         "status": 200,
@@ -239,7 +238,7 @@ user_id_counter = 1
 async def fetch(request, env, ctx):
     """
     Handle incoming HTTP requests with RESTful routing.
-    
+
     Routes:
         GET    /users      - List all users
         GET    /users/{id} - Get user by ID
@@ -250,7 +249,7 @@ async def fetch(request, env, ctx):
     """
     url = request.url
     method = request.method
-    
+
     # Health check endpoint
     if '/health' in url:
         return {
@@ -262,7 +261,7 @@ async def fetch(request, env, ctx):
             },
             "headers": {"Content-Type": "application/json"}
         }
-    
+
     # User management endpoints
     if '/users' in url:
         if method == 'GET':
@@ -275,25 +274,25 @@ async def fetch(request, env, ctx):
                 },
                 "headers": {"Content-Type": "application/json"}
             }
-        
+
         if method == 'POST':
             global user_id_counter
             user_id = user_id_counter
             user_id_counter += 1
-            
+
             user = {
                 "id": user_id,
                 "name": "New User",
                 "created_at": datetime.utcnow().isoformat()
             }
             users_db[user_id] = user
-            
+
             return {
                 "status": 201,
                 "body": user,
                 "headers": {"Content-Type": "application/json"}
             }
-    
+
     # Default: 404 Not Found
     return {
         "status": 404,
@@ -316,10 +315,10 @@ from datetime import datetime
 async def fetch(request, env, ctx):
     """
     Handle scheduled execution.
-    
+
     This function runs automatically based on the schedule defined
     in functionfly.jsonc.
-    
+
     Schedule presets:
         "*/5 * * * *"    - Every 5 minutes
         "0 * * * *"      - Every hour
@@ -332,17 +331,17 @@ async def fetch(request, env, ctx):
         body = await request.json()
     except:
         pass
-    
+
     trigger = body.get("trigger", "manual")
     timestamp = body.get("timestamp", datetime.utcnow().isoformat())
-    
+
     result = {
         "status": "success",
         "trigger": trigger,
         "executed_at": timestamp,
         "message": "Scheduled job completed successfully"
     }
-    
+
     return {
         "status": 200,
         "body": result,
@@ -367,7 +366,7 @@ from datetime import datetime
 async def fetch(request, env, ctx):
     """
     Handle incoming webhook requests.
-    
+
     Supports:
     - Signature verification (X-Hub-Signature-256)
     - Event type parsing
@@ -375,25 +374,25 @@ async def fetch(request, env, ctx):
     """
     # Get webhook secret from environment
     webhook_secret = env.get("WEBHOOK_SECRET", "")
-    
+
     # Get headers
     headers = dict(request.headers)
     event_type = headers.get("x-github-event", headers.get("event-type", "unknown"))
-    
+
     # Parse request body
     body = {}
     try:
         body = await request.json()
     except:
         pass
-    
+
     result = {
         "received": True,
         "event_type": event_type,
         "timestamp": datetime.utcnow().isoformat(),
         "processed": True
     }
-    
+
     return {
         "status": 200,
         "body": result,

@@ -74,14 +74,15 @@ const defaultSettings = (): StateFabricSettings => ({
 });
 
 export function StateFabricDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
-  const isNew = id === "new";
+  // /state-fabric/new has no :id param (route is literal "new"), so id can be undefined
+  const isNew = !id || id === "new";
   const isEditPage = location.pathname.endsWith("/edit");
 
-  const { data: fabric, isLoading: fabricLoading, error } = useStateFabric(id || "");
+  const { data: fabric, isLoading: fabricLoading, error } = useStateFabric(isNew ? "" : id!);
   const { data: metrics } = useStateFabricMetrics(id || "");
   const { data: stores } = useStateFabricStores(id || "");
   const { data: pipelines } = useStateFabricPipelines(id || "");

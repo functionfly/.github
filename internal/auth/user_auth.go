@@ -200,6 +200,13 @@ func userToLoginUser(u *storage.User) *LoginUser {
 	}
 	if u.Username != nil && *u.Username != "" {
 		lu.Username = *u.Username
+	} else if u.Email != "" {
+		// Fallback: use email local part so login/CLI can show a name (e.g. admin@functionfly.local → admin)
+		if at := strings.Index(u.Email, "@"); at > 0 {
+			lu.Username = u.Email[:at]
+		} else {
+			lu.Username = u.Email
+		}
 	}
 	if u.CompanyName != nil && *u.CompanyName != "" {
 		lu.CompanyName = *u.CompanyName

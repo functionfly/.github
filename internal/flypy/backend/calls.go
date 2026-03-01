@@ -464,11 +464,12 @@ func GenerateModuleCallWithKwargs(module, fn string, argStrs []string, kwargs ma
 //   - receiver: The variable name of the object receiving the method call (in Rust syntax)
 //   - method: The method name being called
 //   - argStrs: Array of argument strings in Rust syntax
+//   - movedVariables: optional map of original variable name -> new name (e.g. after CsvDictWriter::new(io))
 //
 // Returns:
 //   - A string containing the equivalent Rust code for the method call
 //   - Error comments if the method is not supported or arguments are invalid
-func GenerateMethodCall(receiver, method string, argStrs []string) string {
+func GenerateMethodCall(receiver, method string, argStrs []string, movedVariables ...map[string]string) string {
 	if receiver == "" {
 		return handleError("method call", errors.New("receiver is empty"))
 	}
@@ -476,9 +477,13 @@ func GenerateMethodCall(receiver, method string, argStrs []string) string {
 		return handleError("method call", errors.New("method name is empty"))
 	}
 
+	var mv map[string]string
+	if len(movedVariables) > 0 {
+		mv = movedVariables[0]
+	}
 	// Check if the receiver has been moved to another variable
-	if movedVariables != nil {
-		if newReceiver, ok := movedVariables[receiver]; ok {
+	if mv != nil {
+		if newReceiver, ok := mv[receiver]; ok {
 			receiver = newReceiver
 		}
 	}

@@ -247,6 +247,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/users/me", authMiddleware.RequireAuth(usersHandler.HandleGetMe)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/me", authMiddleware.RequireAuth(usersHandler.HandleUpdateMe)).Methods("PATCH", "OPTIONS")
 
+	// User sessions (protected)
+	api.HandleFunc("/users/me/sessions", authMiddleware.RequireAuth(usersHandler.HandleListSessions)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/me/sessions/revoke-others", authMiddleware.RequireAuth(usersHandler.HandleRevokeOtherSessions)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/users/me/sessions/{id}", authMiddleware.RequireAuth(usersHandler.HandleRevokeSession)).Methods("DELETE", "OPTIONS")
+
 	// MFA routes (protected)
 	api.HandleFunc("/auth/mfa/setup", authMiddleware.RequireAuth(mfaHandler.SetupMFA)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/mfa/verify", authMiddleware.RequireAuth(mfaHandler.VerifyMFA)).Methods("POST", "OPTIONS")
