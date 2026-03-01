@@ -653,6 +653,123 @@ func (h *PlaygroundHandler) HandleFunctionPage(w http.ResponseWriter, r *http.Re
 	w.Write([]byte(html))
 }
 
+// HandleFunctionPageAt serves the combined function page using the new @username URL structure
+// URL: /@/{username}/v1/fx/{functionName}
+func (h *PlaygroundHandler) HandleFunctionPageAt(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	username := vars["username"]
+	functionName := vars["functionName"]
+
+	// Remove @ prefix if present
+	if len(username) > 0 && username[0] == '@' {
+		username = username[1:]
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
+	if err != nil {
+		http.Error(w, "Function not found", http.StatusNotFound)
+		return
+	}
+
+	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
+	if err != nil {
+		http.Error(w, "Function version not found", http.StatusNotFound)
+		return
+	}
+
+	// Get rating for trust information
+	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+
+	// Generate combined function page with docs + playground
+	html := h.generateFunctionPageHTML(fn, fnVersion, rating)
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(html))
+}
+
+// HandleFunctionPageAtVersion serves a specific version of the function page
+// URL: /@/{username}/v1/fx/{functionName}/v/{version}
+func (h *PlaygroundHandler) HandleFunctionPageAtVersion(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	username := vars["username"]
+	functionName := vars["functionName"]
+	version := vars["version"]
+
+	// Remove @ prefix if present
+	if len(username) > 0 && username[0] == '@' {
+		username = username[1:]
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
+	if err != nil {
+		http.Error(w, "Function not found", http.StatusNotFound)
+		return
+	}
+
+	// Get specific version
+	fnVersion, err := h.repo.GetFunctionVersion(fn.ID, version)
+	if err != nil {
+		http.Error(w, "Function version not found", http.StatusNotFound)
+		return
+	}
+
+	// Get rating for trust information
+	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
+
+	// Generate combined function page with docs + playground
+	html := h.generateFunctionPageHTML(fn, fnVersion, rating)
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(html))
+}
+
+// HandleExecuteAt executes a function using the new @username URL structure
+// URL: /@/{username}/v1/fx/{functionName}/execute
+func (h *PlaygroundHandler) HandleExecuteAt(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	username := vars["username"]
+	functionName := vars["functionName"]
+
+	// Remove @ prefix if present
+	if len(username) > 0 && username[0] == '@' {
+		username = username[1:]
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
+	if err != nil {
+		http.Error(w, "Function not found", http.StatusNotFound)
+		return
+	}
+
+	fnVersion, err := h.repo.GetLatestFunctionVersion(fn.ID)
+	if err != nil {
+		http.Error(w, "Function version not found", http.StatusNotFound)
+		return
+	}
+
+	// Parse request body
+	var execReq struct {
+		Input json.RawMessage `json:"input"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&execReq); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Execute function
+	execReq := &registry.ExecuteRequest{
+		FunctionID: fnVersion.ID,
+		Input:      execReq.Input,
+	}
+
+	result, err := h.repo.ExecuteFunction(execReq)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Execution failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
 // HandleReplay serves a replay page for a past execution
 func (h *PlaygroundHandler) HandleReplay(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)

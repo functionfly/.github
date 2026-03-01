@@ -206,6 +206,18 @@ func (r *UserRepository) GetUserByUsername(username string) (*User, error) {
 	return user, nil
 }
 
+// IsUsernameReserved checks if a username is reserved in the database
+func (r *UserRepository) IsUsernameReserved(username string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRowContext(context.Background(), `
+		SELECT EXISTS(SELECT 1 FROM reserved_usernames WHERE LOWER(username) = LOWER($1))`, 
+		username).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check reserved username: %w", err)
+	}
+	return exists, nil
+}
+
 // GetUserByVerificationToken retrieves a user by verification token
 func (r *UserRepository) GetUserByVerificationToken(token string) (*User, error) {
 	user := &User{}

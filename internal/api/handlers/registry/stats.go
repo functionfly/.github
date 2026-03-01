@@ -64,6 +64,65 @@ func (h *Handler) HandleGetFunctionStats(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(response)
 }
 
+// HandleGetFunctionStatsAt handles getting function statistics using @username URL structure
+// URL: /@/{username}/v1/fx/{functionName}/stats
+func (h *Handler) HandleGetFunctionStatsAt(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	username := vars["username"]
+	functionName := vars["functionName"]
+
+	// Remove @ prefix if present
+	if len(username) > 0 && username[0] == '@' {
+		username = username[1:]
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(username, functionName)
+	if err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			http.Error(w, "Function not found", http.StatusNotFound)
+			return
+		}
+		logrus.WithError(err).Error("Failed to get function")
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// Get ratings
+	rating, err := h.repo.GetOrCreateRating(fn.ID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get rating")
+		http.Error(w, "Failed to get stats", http.StatusInternalServerError)
+		return
+	}
+
+	// Get recent stats (last 24 hours)
+	since := time.Now().Add(-24 * time.Hour)
+	totalCalls, successRate, avgLatency, p95Latency, err := h.repo.GetFunctionStats(fn.ID, since)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get function stats")
+	}
+
+	response := map[string]interface{}{
+		"function_id":        fn.ID,
+		"author":             username,
+		"name":               functionName,
+		"total_calls":        totalCalls,
+		"success_rate":       successRate,
+		"avg_latency_ms":     avgLatency,
+		"p95_latency_ms":     p95Latency,
+		"reliability_score":  rating.ReliabilityScore,
+		"latency_score":      rating.LatencyScore,
+		"overall_score":      rating.OverallScore,
+		"total_ratings":      rating.TotalRatings,
+		"popularity_score":   fn.PopularityScore,
+		// SEO enhancement
+		"function_url":       fmt.Sprintf("/@%s/v1/fx/%s", username, functionName),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 // HandleSubmitRating handles submitting a rating for a function
 func (h *Handler) HandleSubmitRating(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
