@@ -25,10 +25,12 @@ import {
   Layers,
   RotateCcw,
   Wrench,
+  Bot,
 } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/authStore";
+import { useRecentNavStore } from "@/stores/recentNavStore";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/constants";
 import { useNavigationStatus } from "@/hooks/useNavigationStatus";
@@ -65,7 +67,8 @@ const navigationSections: NavSection[] = [
       { path: ROUTES.REGISTRY, label: "Registry", icon: Package },
       { path: ROUTES.PROVIDERS, label: "Providers", icon: Cloud },
       { path: ROUTES.TEAMS, label: "Teams", icon: Users },
-      { path: ROUTES.STATE_FABRIC, label: "State Fabric", icon: Database }
+      { path: ROUTES.STATE_FABRIC, label: "State Fabric", icon: Database },
+      { path: ROUTES.AGENTS, label: "Agents", icon: Bot }
     ]
   },
   {
@@ -96,6 +99,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [isLg, setIsLg] = useState(() => typeof window !== "undefined" && window.innerWidth >= LG_BREAKPOINT);
 
+  const recordRecent = useRecentNavStore((s) => s.record);
+  const recentPaths = useRecentNavStore((s) => s.recentPaths);
+
   useEffect(() => {
     const mq = window.matchMedia(`(min-width: ${LG_BREAKPOINT}px)`);
     const handler = () => setIsLg(mq.matches);
@@ -104,11 +110,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // Get recent items (mock data - would come from user preferences/API)
-  const recentItems = [
-    { path: ROUTES.REGISTRY, label: "Registry", icon: Package },
-    { path: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutDashboard },
-  ];
+  // Record current route for recent-tab tracking (only when inside dashboard layout)
+  useEffect(() => {
+    recordRecent(location.pathname);
+  }, [location.pathname, recordRecent]);
 
   // Swipe gesture for mobile
   const { gestureHandlers } = useSwipeGesture({
@@ -135,6 +140,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   } : null;
 
   const allSections = adminSection ? [...navigationSections, adminSection] : navigationSections;
+
+  // Build path -> nav item map and derive recent items from stored paths (only show items that exist in current nav)
+  const pathToItem = new Map(
+    allSections.flatMap((s) => s.items.map((item) => [item.path, item] as const))
+  );
+  const recentItems = recentPaths
+    .map((path) => pathToItem.get(path))
+    .filter((item): item is NonNullable<typeof item> => item != null);
 
   // Initialize expanded state - all sections expanded by default except admin (collapsed by default)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(() => {
@@ -235,7 +248,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen w-[260px] min-w-[260px] bg-bg-primary border-r border-border-subtle",
+          "dashboard-sidebar fixed left-0 top-0 z-50 h-screen w-[260px] min-w-[260px] bg-bg-primary border-r border-border-subtle",
           "flex flex-col lg:translate-x-0 lg:static lg:shrink-0"
         )}
       >

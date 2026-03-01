@@ -56,15 +56,16 @@ type AuditEvent struct {
 
 // Tenant represents a tenant in the system
 type Tenant struct {
-	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Name      string    `json:"name" gorm:"not null"`
-	Plan      string    `json:"plan" gorm:"not null"`
-	Status    string    `json:"status" gorm:"not null;default:'active'"` // 'active', 'suspended'
-	Users     []User    `json:"users,omitempty" gorm:"foreignKey:TenantID"`
-	Apps      []App     `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
-	Teams     []Team    `json:"teams,omitempty" gorm:"foreignKey:TenantID"`
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	ID                uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Name              string    `json:"name" gorm:"not null"`
+	Plan              string    `json:"plan" gorm:"not null"`
+	Status            string    `json:"status" gorm:"not null;default:'active'"` // 'active', 'suspended'
+	StripeCustomerID  *string   `json:"stripe_customer_id,omitempty" gorm:"column:stripe_customer_id;size:255"`
+	Users             []User    `json:"users,omitempty" gorm:"foreignKey:TenantID"`
+	Apps              []App     `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
+	Teams             []Team    `json:"teams,omitempty" gorm:"foreignKey:TenantID"`
+	CreatedAt         time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt         time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // Team represents a team within a tenant

@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Calendar, Plus, Edit, Trash2, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Calendar, Plus, Edit, Trash2, Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { contentAdminApi, ChangelogEntry } from '@/api/content';
 
 const ChangelogManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) => {
@@ -18,6 +19,7 @@ const ChangelogManager = forwardRef<{ openCreateDialog: () => void }>((props, re
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ChangelogEntry | null>(null);
+  const [generatingAi, setGeneratingAi] = useState(false);
   const [formData, setFormData] = useState({
     version: '',
     type: 'minor' as 'major' | 'minor' | 'patch',
@@ -42,9 +44,10 @@ const ChangelogManager = forwardRef<{ openCreateDialog: () => void }>((props, re
     try {
       setLoading(true);
       const result = await contentAdminApi.listChangelogEntries({ limit: 50 });
-      setEntries(result.entries);
+      setEntries(Array.isArray(result.entries) ? result.entries : []);
     } catch (error) {
       console.error('Failed to fetch changelog entries:', error);
+      setEntries([]);
     } finally {
       setLoading(false);
     }
@@ -55,6 +58,7 @@ const ChangelogManager = forwardRef<{ openCreateDialog: () => void }>((props, re
       await contentAdminApi.createChangelogEntry({
         ...formData,
         date: formData.date || new Date().toISOString(),
+        changes: [],
       });
       setDialogOpen(false);
       resetForm();
@@ -112,6 +116,29 @@ const ChangelogManager = forwardRef<{ openCreateDialog: () => void }>((props, re
       is_published: false,
     });
     setEditingEntry(null);
+  };
+
+  const handleGenerateWithAi = async () => {
+    setGeneratingAi(true);
+    try {
+      const res = await contentAdminApi.generateChangelogContent({
+        version: formData.version || undefined,
+        type: formData.type,
+        topic: formData.title || formData.description || undefined,
+      });
+      setFormData(prev => ({
+        ...prev,
+        title: res.title || prev.title,
+        description: res.description || prev.description,
+      }));
+      if (res.title || res.description) toast.success('Title and description generated');
+      else toast.info('No content generated');
+    } catch (e: any) {
+      const msg = e?.response?.status === 503 ? 'Open Router not configured (OPENROUTER_API_KEY)' : 'Failed to generate';
+      toast.error(msg);
+    } finally {
+      setGeneratingAi(false);
+    }
   };
 
   const getBadgeVariant = (type: string) => {
@@ -193,7 +220,29 @@ const ChangelogManager = forwardRef<{ openCreateDialog: () => void }>((props, re
                   />
                 </div>
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateWithAi}
+                      disabled={generatingAi}
+                      className="shrink-0"
+                    >
+                      {generatingAi ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                          Generate with AI (Open Router)
+                        </>
+                      )}
+                    </Button>
+                  </div>
                   <Textarea
                     id="description"
                     value={formData.description}
@@ -250,7 +299,7 @@ const ChangelogManager = forwardRef<{ openCreateDialog: () => void }>((props, re
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.map((entry) => (
+              {(entries ?? []).map((entry) => (
                 <TableRow key={entry.id}>
                   <TableCell className="font-medium">{entry.version}</TableCell>
                   <TableCell>{entry.title}</TableCell>

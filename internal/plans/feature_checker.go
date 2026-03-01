@@ -130,10 +130,10 @@ type FeatureCheckResult struct {
 // CheckFeatures checks multiple features and returns their availability
 func (fc *FeatureChecker) CheckFeatures(features []string) []FeatureCheckResult {
 	results := make([]FeatureCheckResult, len(features))
-	for i, f := range results {
+	for i, f := range features {
 		results[i] = FeatureCheckResult{
-			Feature:     f,
-			Available:   HasFeature(fc.plan, f),
+			Feature:      f,
+			Available:    HasFeature(fc.plan, f),
 			RequiredPlan: GetRequiredPlan(f),
 		}
 	}

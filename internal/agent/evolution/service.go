@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/agent/attribution"
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -26,7 +27,7 @@ func (s *Service) AnalyzePerformance(ctx context.Context, agentID string, timeWi
 	since := time.Now().Add(-timeWindow)
 
 	// Get execution records
-	var records []identity.AgentExecutionRecord
+	var records []attribution.AgentExecutionRecord
 	err := s.db.WithContext(ctx).
 		Where("agent_id = ? AND timestamp >= ?", agentID, since).
 		Order("timestamp DESC").
@@ -37,12 +38,12 @@ func (s *Service) AnalyzePerformance(ctx context.Context, agentID string, timeWi
 
 	if len(records) == 0 {
 		return &PerformanceAnalysis{
-			AgentID:          agentID,
-			AnalysisWindow:   timeWindow,
-			TotalExecutions:  0,
-			SuccessRate:      0,
-			AvgLatencyMs:     0,
-			AvgCostUSD:       0,
+			AgentID:           agentID,
+			AnalysisWindow:    timeWindow,
+			TotalExecutions:   0,
+			SuccessRate:       0,
+			AvgLatencyMs:      0,
+			AvgCostUSD:        0,
 			FailureCategories: map[string]int{},
 		}, nil
 	}
@@ -106,19 +107,19 @@ func (s *Service) ProposeEvolution(ctx context.Context, agentID string, analysis
 		// Low success rate - propose spawning a specialist helper
 		proposalType = identity.EvolutionTypeSpawnSpecialist
 		proposalData = map[string]any{
-			"reason":            "low_success_rate",
-			"current_success":   analysis.SuccessRate,
-			"target_success":    80.0,
-			"specialist_role":   "error_handler",
-			"capabilities":      []string{"error_recovery", "retry_logic"},
+			"reason":          "low_success_rate",
+			"current_success": analysis.SuccessRate,
+			"target_success":  80.0,
+			"specialist_role": "error_handler",
+			"capabilities":    []string{"error_recovery", "retry_logic"},
 		}
 	} else if analysis.AvgLatencyMs > 10000 {
 		// High latency - propose optimization
 		proposalType = identity.EvolutionTypeModifyPolicy
 		proposalData = map[string]any{
-			"reason":         "high_latency",
+			"reason":          "high_latency",
 			"current_latency": analysis.AvgLatencyMs,
-			"target_latency": 5000.0,
+			"target_latency":  5000.0,
 			"policy_changes": map[string]any{
 				"timeout_ms": analysis.AvgLatencyMs * 2,
 			},
@@ -145,15 +146,15 @@ func (s *Service) ProposeEvolution(ctx context.Context, agentID string, analysis
 	}
 
 	proposal := &identity.EvolutionProposal{
-		ID:                      uuid.New(),
-		AgentID:                 agentID,
-		ProposalType:            proposalType,
-		ProposalData:            proposalData,
-		Status:                  "pending",
-		ParentApprovalRequired:  parentID != nil,
-		SimulatedOutcome:        nil,
-		ApprovedBy:              nil,
-		ImplementedAt:           nil,
+		ID:                     uuid.New(),
+		AgentID:                agentID,
+		ProposalType:           proposalType,
+		ProposalData:           proposalData,
+		Status:                 "pending",
+		ParentApprovalRequired: parentID != nil,
+		SimulatedOutcome:       nil,
+		ApprovedBy:             nil,
+		ImplementedAt:          nil,
 		CreatedAt:              time.Now(),
 		UpdatedAt:              time.Now(),
 	}
@@ -237,7 +238,7 @@ func (s *Service) ImplementProposal(ctx context.Context, proposalID uuid.UUID) e
 		return s.implementPolicyModification(ctx, proposal)
 	case identity.EvolutionTypeGenerateFunction:
 		return s.implementFunctionGeneration(ctx, proposal)
-	// Add other types as needed
+		// Add other types as needed
 	}
 
 	return nil
@@ -293,15 +294,15 @@ func (s *Service) GetProposal(ctx context.Context, proposalID uuid.UUID) (*ident
 // RetireChild proposes retiring a low-performing child agent
 func (s *Service) ProposeRetireChild(ctx context.Context, parentAgentID, childAgentID, reason string) (*identity.EvolutionProposal, error) {
 	proposal := &identity.EvolutionProposal{
-		ID:                      uuid.New(),
-		AgentID:                 parentAgentID,
-		ProposalType:            identity.EvolutionTypeRetireChild,
+		ID:           uuid.New(),
+		AgentID:      parentAgentID,
+		ProposalType: identity.EvolutionTypeRetireChild,
 		ProposalData: map[string]any{
 			"child_agent_id": childAgentID,
 			"reason":         reason,
 		},
-		Status:                  "pending",
-		ParentApprovalRequired:  false, // Self-approval allowed
+		Status:                 "pending",
+		ParentApprovalRequired: false, // Self-approval allowed
 		CreatedAt:              time.Now(),
 		UpdatedAt:              time.Now(),
 	}

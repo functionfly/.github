@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -533,6 +534,311 @@ func (r *ContentRepository) DeleteBlogPost(ctx context.Context, id uuid.UUID) er
 	_, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete blog post: %w", err)
+	}
+	return nil
+}
+
+// ListBlogCategories returns all blog categories ordered by order, title
+func (r *ContentRepository) ListBlogCategories(ctx context.Context) ([]*BlogCategory, error) {
+	query := `SELECT id, title, slug, description, color, icon, "order", created_at, updated_at FROM blog_categories ORDER BY "order" ASC, title ASC`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list blog categories: %w", err)
+	}
+	defer rows.Close()
+	var list []*BlogCategory
+	for rows.Next() {
+		c := &BlogCategory{}
+		var desc, color, icon sql.NullString
+		if err := rows.Scan(&c.ID, &c.Title, &c.Slug, &desc, &color, &icon, &c.Order, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan blog category: %w", err)
+		}
+		if desc.Valid {
+			c.Description = desc.String
+		}
+		if color.Valid {
+			c.Color = color.String
+		}
+		if icon.Valid {
+			c.Icon = icon.String
+		}
+		list = append(list, c)
+	}
+	return list, rows.Err()
+}
+
+// CreateBlogCategory creates a new blog category
+func (r *ContentRepository) CreateBlogCategory(ctx context.Context, c *BlogCategory) (*BlogCategory, error) {
+	query := `INSERT INTO blog_categories (title, slug, description, color, icon, "order")
+		VALUES ($1, $2, NULLIF($3,''), NULLIF($4,''), NULLIF($5,''), $6)
+		RETURNING id, created_at, updated_at`
+	out := &BlogCategory{Title: c.Title, Slug: c.Slug, Description: c.Description, Color: c.Color, Icon: c.Icon, Order: c.Order}
+	err := r.db.QueryRowContext(ctx, query, c.Title, c.Slug, c.Description, c.Color, c.Icon, c.Order).
+		Scan(&out.ID, &out.CreatedAt, &out.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create blog category: %w", err)
+	}
+	return out, nil
+}
+
+// GetBlogCategoryByID returns a blog category by ID
+func (r *ContentRepository) GetBlogCategoryByID(ctx context.Context, id uuid.UUID) (*BlogCategory, error) {
+	query := `SELECT id, title, slug, description, color, icon, "order", created_at, updated_at FROM blog_categories WHERE id = $1`
+	c := &BlogCategory{}
+	var desc, color, icon sql.NullString
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&c.ID, &c.Title, &c.Slug, &desc, &color, &icon, &c.Order, &c.CreatedAt, &c.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("blog category not found")
+		}
+		return nil, fmt.Errorf("failed to get blog category: %w", err)
+	}
+	if desc.Valid {
+		c.Description = desc.String
+	}
+	if color.Valid {
+		c.Color = color.String
+	}
+	if icon.Valid {
+		c.Icon = icon.String
+	}
+	return c, nil
+}
+
+// GetBlogCategoryBySlug returns a blog category by slug
+func (r *ContentRepository) GetBlogCategoryBySlug(ctx context.Context, slug string) (*BlogCategory, error) {
+	query := `SELECT id, title, slug, description, color, icon, "order", created_at, updated_at FROM blog_categories WHERE slug = $1`
+	c := &BlogCategory{}
+	var desc, color, icon sql.NullString
+	err := r.db.QueryRowContext(ctx, query, slug).Scan(&c.ID, &c.Title, &c.Slug, &desc, &color, &icon, &c.Order, &c.CreatedAt, &c.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("blog category not found")
+		}
+		return nil, fmt.Errorf("failed to get blog category: %w", err)
+	}
+	if desc.Valid {
+		c.Description = desc.String
+	}
+	if color.Valid {
+		c.Color = color.String
+	}
+	if icon.Valid {
+		c.Icon = icon.String
+	}
+	return c, nil
+}
+
+// UpdateBlogCategory updates a blog category
+func (r *ContentRepository) UpdateBlogCategory(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*BlogCategory, error) {
+	if len(updates) == 0 {
+		return r.GetBlogCategoryByID(ctx, id)
+	}
+	set := []string{}
+	args := []interface{}{}
+	pos := 1
+	for k, v := range updates {
+		switch k {
+		case "title", "slug", "description", "color", "icon":
+			set = append(set, fmt.Sprintf("%s = $%d", k, pos))
+			args = append(args, v)
+			pos++
+		case "order":
+			set = append(set, fmt.Sprintf(`"order" = $%d`, pos))
+			args = append(args, v)
+			pos++
+		}
+	}
+	if len(set) == 0 {
+		return r.GetBlogCategoryByID(ctx, id)
+	}
+	args = append(args, id)
+	query := fmt.Sprintf("UPDATE blog_categories SET %s, updated_at = NOW() WHERE id = $%d RETURNING id, title, slug, description, color, icon, \"order\", created_at, updated_at", strings.Join(set, ", "), pos)
+	c := &BlogCategory{}
+	var desc, color, icon sql.NullString
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(&c.ID, &c.Title, &c.Slug, &desc, &color, &icon, &c.Order, &c.CreatedAt, &c.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("blog category not found")
+		}
+		return nil, fmt.Errorf("failed to update blog category: %w", err)
+	}
+	if desc.Valid {
+		c.Description = desc.String
+	}
+	if color.Valid {
+		c.Color = color.String
+	}
+	if icon.Valid {
+		c.Icon = icon.String
+	}
+	return c, nil
+}
+
+// DeleteBlogCategory deletes a blog category
+func (r *ContentRepository) DeleteBlogCategory(ctx context.Context, id uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM blog_categories WHERE id = $1", id)
+	if err != nil {
+		return fmt.Errorf("failed to delete blog category: %w", err)
+	}
+	return nil
+}
+
+// ListBlogAuthors returns all blog authors
+func (r *ContentRepository) ListBlogAuthors(ctx context.Context) ([]*BlogAuthor, error) {
+	query := `SELECT id, name, slug, bio, photo, email, website, social_links, role, active, created_at, updated_at FROM blog_authors ORDER BY name ASC`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list blog authors: %w", err)
+	}
+	defer rows.Close()
+	var list []*BlogAuthor
+	for rows.Next() {
+		a, err := r.scanBlogAuthor(rows)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, a)
+	}
+	return list, rows.Err()
+}
+
+func (r *ContentRepository) scanBlogAuthor(row interface {
+	Scan(dest ...interface{}) error
+}) (*BlogAuthor, error) {
+	a := &BlogAuthor{}
+	var bio, email, website, role sql.NullString
+	var photoBytes, socialBytes []byte
+	err := row.Scan(&a.ID, &a.Name, &a.Slug, &bio, &photoBytes, &email, &website, &socialBytes, &role, &a.Active, &a.CreatedAt, &a.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	if bio.Valid {
+		a.Bio = bio.String
+	}
+	if email.Valid {
+		a.Email = email.String
+	}
+	if website.Valid {
+		a.Website = website.String
+	}
+	if role.Valid {
+		a.Role = role.String
+	}
+	if len(photoBytes) > 0 {
+		_ = json.Unmarshal(photoBytes, &a.Photo)
+	}
+	if len(socialBytes) > 0 {
+		_ = json.Unmarshal(socialBytes, &a.SocialLinks)
+	}
+	return a, nil
+}
+
+// CreateBlogAuthor creates a new blog author
+func (r *ContentRepository) CreateBlogAuthor(ctx context.Context, a *BlogAuthor) (*BlogAuthor, error) {
+	photoJSON := nullJSON(a.Photo)
+	socialJSON := nullJSON(a.SocialLinks)
+	query := `INSERT INTO blog_authors (name, slug, bio, photo, email, website, social_links, role, active)
+		VALUES ($1, $2, NULLIF($3,''), $4, NULLIF($5,''), NULLIF($6,''), $7, NULLIF($8,''), $9)
+		RETURNING id, created_at, updated_at`
+	out := &BlogAuthor{Name: a.Name, Slug: a.Slug, Bio: a.Bio, Photo: a.Photo, Email: a.Email, Website: a.Website, SocialLinks: a.SocialLinks, Role: a.Role, Active: a.Active}
+	err := r.db.QueryRowContext(ctx, query, a.Name, a.Slug, a.Bio, photoJSON, a.Email, a.Website, socialJSON, a.Role, a.Active).
+		Scan(&out.ID, &out.CreatedAt, &out.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create blog author: %w", err)
+	}
+	return out, nil
+}
+
+func nullJSON(m map[string]interface{}) interface{} {
+	if m == nil || len(m) == 0 {
+		return nil
+	}
+	b, _ := json.Marshal(m)
+	return string(b) // PostgreSQL jsonb accepts JSON string
+}
+
+// GetBlogAuthorByID returns a blog author by ID
+func (r *ContentRepository) GetBlogAuthorByID(ctx context.Context, id uuid.UUID) (*BlogAuthor, error) {
+	query := `SELECT id, name, slug, bio, photo, email, website, social_links, role, active, created_at, updated_at FROM blog_authors WHERE id = $1`
+	row := r.db.QueryRowContext(ctx, query, id)
+	a, err := r.scanBlogAuthor(row)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("blog author not found")
+		}
+		return nil, err
+	}
+	return a, nil
+}
+
+// GetBlogAuthorBySlug returns a blog author by slug
+func (r *ContentRepository) GetBlogAuthorBySlug(ctx context.Context, slug string) (*BlogAuthor, error) {
+	query := `SELECT id, name, slug, bio, photo, email, website, social_links, role, active, created_at, updated_at FROM blog_authors WHERE slug = $1`
+	row := r.db.QueryRowContext(ctx, query, slug)
+	a, err := r.scanBlogAuthor(row)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("blog author not found")
+		}
+		return nil, err
+	}
+	return a, nil
+}
+
+// UpdateBlogAuthor updates a blog author
+func (r *ContentRepository) UpdateBlogAuthor(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*BlogAuthor, error) {
+	if len(updates) == 0 {
+		return r.GetBlogAuthorByID(ctx, id)
+	}
+	set := []string{}
+	args := []interface{}{}
+	pos := 1
+	for k, v := range updates {
+		switch k {
+		case "name", "slug", "bio", "email", "website", "role":
+			set = append(set, fmt.Sprintf("%s = $%d", k, pos))
+			args = append(args, v)
+			pos++
+		case "active":
+			set = append(set, fmt.Sprintf("active = $%d", pos))
+			args = append(args, v)
+			pos++
+		case "photo":
+			set = append(set, fmt.Sprintf("photo = $%d", pos))
+			if m, ok := v.(map[string]interface{}); ok {
+				args = append(args, nullJSON(m))
+			} else {
+				args = append(args, v)
+			}
+			pos++
+		case "social_links", "socialLinks":
+			set = append(set, fmt.Sprintf("social_links = $%d", pos))
+			if m, ok := v.(map[string]interface{}); ok {
+				args = append(args, nullJSON(m))
+			} else {
+				args = append(args, v)
+			}
+			pos++
+		}
+	}
+	if len(set) == 0 {
+		return r.GetBlogAuthorByID(ctx, id)
+	}
+	args = append(args, id)
+	query := fmt.Sprintf("UPDATE blog_authors SET %s, updated_at = NOW() WHERE id = $%d", strings.Join(set, ", "), pos)
+	_, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update blog author: %w", err)
+	}
+	return r.GetBlogAuthorByID(ctx, id)
+}
+
+// DeleteBlogAuthor deletes a blog author
+func (r *ContentRepository) DeleteBlogAuthor(ctx context.Context, id uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM blog_authors WHERE id = $1", id)
+	if err != nil {
+		return fmt.Errorf("failed to delete blog author: %w", err)
 	}
 	return nil
 }

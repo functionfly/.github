@@ -1,6 +1,8 @@
 package content
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -644,26 +646,303 @@ func (h *Handler) HandleGetPublishedBlogPostBySlug(w http.ResponseWriter, r *htt
 	json.NewEncoder(w).Encode(post)
 }
 
-// HandleGetBlogCategories returns unique categories (tags) from published blog posts
+// HandleGetBlogCategories returns blog categories for the public blog page (same data as admin list, read-only).
 func (h *Handler) HandleGetBlogCategories(w http.ResponseWriter, r *http.Request) {
-	// TEMPORARY: Return mock categories
-	categories := []string{"test", "blog", "tutorial", "news"}
-
+	list, err := h.repo.ListBlogCategories(r.Context())
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list blog categories")
+		http.Error(w, "Failed to list categories", http.StatusInternalServerError)
+		return
+	}
+	if list == nil {
+		list = []*storage.BlogCategory{}
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"categories": categories,
-	})
+	json.NewEncoder(w).Encode(list)
 }
 
-// HandleGetBlogAuthors returns unique authors from published blog posts
+// HandleGetBlogAuthors returns blog authors for the public blog page (same data as admin list, read-only).
 func (h *Handler) HandleGetBlogAuthors(w http.ResponseWriter, r *http.Request) {
-	// TEMPORARY: Return mock authors
-	authors := []string{"Test Author", "John Doe", "Jane Smith"}
-
+	list, err := h.repo.ListBlogAuthors(r.Context())
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list blog authors")
+		http.Error(w, "Failed to list authors", http.StatusInternalServerError)
+		return
+	}
+	if list == nil {
+		list = []*storage.BlogAuthor{}
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"authors": authors,
-	})
+	json.NewEncoder(w).Encode(list)
+}
+
+// Admin categories (CRUD)
+
+// HandleListAdminCategories returns GET /v1/admin/content/categories
+func (h *Handler) HandleListAdminCategories(w http.ResponseWriter, r *http.Request) {
+	list, err := h.repo.ListBlogCategories(r.Context())
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list blog categories")
+		http.Error(w, "Failed to list blog categories", http.StatusInternalServerError)
+		return
+	}
+	if list == nil {
+		list = []*storage.BlogCategory{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(list)
+}
+
+// HandleCreateAdminCategory returns POST /v1/admin/content/categories
+func (h *Handler) HandleCreateAdminCategory(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Title       string `json:"title"`
+		Slug        string `json:"slug"`
+		Description string `json:"description"`
+		Color       string `json:"color"`
+		Icon        string `json:"icon"`
+		Order       int    `json:"order"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(req.Title) == "" {
+		http.Error(w, "Title is required", http.StatusBadRequest)
+		return
+	}
+	slug := strings.TrimSpace(req.Slug)
+	if slug == "" {
+		// Derive slug from title: lowercase, spaces to hyphens, drop non-alnum except hyphen
+		b := make([]byte, 0, len(req.Title))
+		for _, r := range strings.TrimSpace(req.Title) {
+			if r >= 'A' && r <= 'Z' {
+				b = append(b, byte(r+'a'-'A'))
+			} else if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+				b = append(b, byte(r))
+			} else if r == ' ' || r == '-' {
+				if len(b) > 0 && b[len(b)-1] != '-' {
+					b = append(b, '-')
+				}
+			}
+		}
+		slug = strings.Trim(string(b), "-")
+		if slug == "" {
+			slug = "category"
+		}
+	}
+	c := &storage.BlogCategory{
+		Title:       strings.TrimSpace(req.Title),
+		Slug:        slug,
+		Description: strings.TrimSpace(req.Description),
+		Color:       strings.TrimSpace(req.Color),
+		Icon:        strings.TrimSpace(req.Icon),
+		Order:       req.Order,
+	}
+	created, err := h.repo.CreateBlogCategory(r.Context(), c)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to create blog category")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error":  "Failed to create blog category",
+			"detail": err.Error(),
+		})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(created)
+}
+
+// HandleGetAdminCategory returns GET /v1/admin/content/categories/{id}
+func (h *Handler) HandleGetAdminCategory(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid category ID", http.StatusBadRequest)
+		return
+	}
+	c, err := h.repo.GetBlogCategoryByID(r.Context(), id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "Category not found", http.StatusNotFound)
+		} else {
+			logrus.WithError(err).Error("Failed to get blog category")
+			http.Error(w, "Failed to get blog category", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(c)
+}
+
+// HandleUpdateAdminCategory returns PATCH /v1/admin/content/categories/{id}
+func (h *Handler) HandleUpdateAdminCategory(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid category ID", http.StatusBadRequest)
+		return
+	}
+	var updates map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	updated, err := h.repo.UpdateBlogCategory(r.Context(), id, updates)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "Category not found", http.StatusNotFound)
+		} else {
+			logrus.WithError(err).Error("Failed to update blog category")
+			http.Error(w, "Failed to update blog category", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updated)
+}
+
+// HandleDeleteAdminCategory returns DELETE /v1/admin/content/categories/{id}
+func (h *Handler) HandleDeleteAdminCategory(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid category ID", http.StatusBadRequest)
+		return
+	}
+	if err := h.repo.DeleteBlogCategory(r.Context(), id); err != nil {
+		logrus.WithError(err).Error("Failed to delete blog category")
+		http.Error(w, "Failed to delete blog category", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Admin authors (CRUD)
+
+// HandleListAdminAuthors returns GET /v1/admin/content/authors
+func (h *Handler) HandleListAdminAuthors(w http.ResponseWriter, r *http.Request) {
+	list, err := h.repo.ListBlogAuthors(r.Context())
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list blog authors")
+		http.Error(w, "Failed to list blog authors", http.StatusInternalServerError)
+		return
+	}
+	if list == nil {
+		list = []*storage.BlogAuthor{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(list)
+}
+
+// HandleCreateAdminAuthor returns POST /v1/admin/content/authors
+func (h *Handler) HandleCreateAdminAuthor(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name        string                 `json:"name"`
+		Slug        string                 `json:"slug"`
+		Bio         string                 `json:"bio"`
+		Photo       map[string]interface{} `json:"photo"`
+		Email       string                 `json:"email"`
+		Website     string                 `json:"website"`
+		SocialLinks map[string]interface{} `json:"social_links"`
+		Role        string                 `json:"role"`
+		Active      bool                   `json:"active"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Slug) == "" {
+		http.Error(w, "Name and slug are required", http.StatusBadRequest)
+		return
+	}
+	a := &storage.BlogAuthor{
+		Name:        strings.TrimSpace(req.Name),
+		Slug:        strings.TrimSpace(req.Slug),
+		Bio:         strings.TrimSpace(req.Bio),
+		Photo:       req.Photo,
+		Email:       strings.TrimSpace(req.Email),
+		Website:     strings.TrimSpace(req.Website),
+		SocialLinks: req.SocialLinks,
+		Role:        strings.TrimSpace(req.Role),
+		Active:      req.Active,
+	}
+	created, err := h.repo.CreateBlogAuthor(r.Context(), a)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to create blog author")
+		http.Error(w, "Failed to create blog author", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(created)
+}
+
+// HandleGetAdminAuthor returns GET /v1/admin/content/authors/{id}
+func (h *Handler) HandleGetAdminAuthor(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid author ID", http.StatusBadRequest)
+		return
+	}
+	a, err := h.repo.GetBlogAuthorByID(r.Context(), id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "Author not found", http.StatusNotFound)
+		} else {
+			logrus.WithError(err).Error("Failed to get blog author")
+			http.Error(w, "Failed to get blog author", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(a)
+}
+
+// HandleUpdateAdminAuthor returns PATCH /v1/admin/content/authors/{id}
+func (h *Handler) HandleUpdateAdminAuthor(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid author ID", http.StatusBadRequest)
+		return
+	}
+	var updates map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	updated, err := h.repo.UpdateBlogAuthor(r.Context(), id, updates)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "Author not found", http.StatusNotFound)
+		} else {
+			logrus.WithError(err).Error("Failed to update blog author")
+			http.Error(w, "Failed to update blog author", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updated)
+}
+
+// HandleDeleteAdminAuthor returns DELETE /v1/admin/content/authors/{id}
+func (h *Handler) HandleDeleteAdminAuthor(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid author ID", http.StatusBadRequest)
+		return
+	}
+	if err := h.repo.DeleteBlogAuthor(r.Context(), id); err != nil {
+		logrus.WithError(err).Error("Failed to delete blog author")
+		http.Error(w, "Failed to delete blog author", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // HandleSyncGitHubReleases syncs GitHub releases with changelog entries
@@ -678,4 +957,257 @@ func (h *Handler) HandleSyncGitHubReleases(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message": "GitHub releases synced successfully",
 	})
+}
+
+const openRouterFreeModel = "arcee-ai/trinity-large-preview:free"
+const openRouterURL = "https://openrouter.ai/api/v1/chat/completions"
+
+// callOpenRouter sends a prompt to Open Router and returns the trimmed response content.
+func callOpenRouter(ctx context.Context, prompt string, maxTokens int) (string, error) {
+	apiKey := os.Getenv("OPENROUTER_API_KEY")
+	if apiKey == "" {
+		return "", nil
+	}
+	reqBody := map[string]interface{}{
+		"model": openRouterFreeModel,
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+		"max_tokens": maxTokens,
+	}
+	encoded, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", openRouterURL, bytes.NewReader(encoded))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", nil
+	}
+
+	var openResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&openResp); err != nil {
+		return "", err
+	}
+	if len(openResp.Choices) == 0 {
+		return "", nil
+	}
+	return strings.TrimSpace(openResp.Choices[0].Message.Content), nil
+}
+
+// HandleGenerateChangelogContent returns POST /v1/admin/content/generate/changelog
+// Uses Open Router to generate title and description from version/type/topic.
+func (h *Handler) HandleGenerateChangelogContent(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if os.Getenv("OPENROUTER_API_KEY") == "" {
+		http.Error(w, "Open Router API key not configured (OPENROUTER_API_KEY)", http.StatusServiceUnavailable)
+		return
+	}
+
+	var body struct {
+		Version string `json:"version"`
+		Type    string `json:"type"`
+		Topic   string `json:"topic"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	body.Version = strings.TrimSpace(body.Version)
+	body.Type = strings.TrimSpace(body.Type)
+	if body.Type == "" {
+		body.Type = "minor"
+	}
+
+	prompt := "Generate a changelog entry title and a one- or two-sentence description."
+	if body.Version != "" {
+		prompt += " Version: " + body.Version + "."
+	}
+	prompt += " Release type: " + body.Type + "."
+	if body.Topic != "" {
+		prompt += " Topic or focus: " + body.Topic + "."
+	}
+	prompt += " Output exactly two lines: line 1 = title only, line 2 = description only. No labels or extra text."
+
+	out, err := callOpenRouter(r.Context(), prompt, 200)
+	if err != nil {
+		logrus.WithError(err).Error("Open Router request failed for changelog generate")
+		http.Error(w, "Open Router request failed", http.StatusBadGateway)
+		return
+	}
+	title, description := "", ""
+	lines := strings.SplitN(out, "\n", 2)
+	if len(lines) >= 1 {
+		title = strings.TrimSpace(lines[0])
+	}
+	if len(lines) >= 2 {
+		description = strings.TrimSpace(lines[1])
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"title": title, "description": description})
+}
+
+// HandleGenerateBlogContent returns POST /v1/admin/content/generate/blog
+// Uses Open Router to generate title, description, and excerpt from topic.
+func (h *Handler) HandleGenerateBlogContent(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if os.Getenv("OPENROUTER_API_KEY") == "" {
+		http.Error(w, "Open Router API key not configured (OPENROUTER_API_KEY)", http.StatusServiceUnavailable)
+		return
+	}
+
+	var body struct {
+		Topic string `json:"topic"`
+		Title string `json:"title"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	body.Topic = strings.TrimSpace(body.Topic)
+	body.Title = strings.TrimSpace(body.Title)
+	if body.Topic == "" && body.Title == "" {
+		http.Error(w, "topic or title is required", http.StatusBadRequest)
+		return
+	}
+
+	prompt := "Generate a blog post title, a one-sentence meta description, and a short excerpt (2-3 sentences)."
+	if body.Topic != "" {
+		prompt += " Topic: " + body.Topic + "."
+	}
+	if body.Title != "" {
+		prompt += " Optional existing title: " + body.Title + "."
+	}
+	prompt += " Output exactly three lines: line 1 = title only, line 2 = meta description only, line 3 = excerpt only. No labels or extra text."
+
+	out, err := callOpenRouter(r.Context(), prompt, 300)
+	if err != nil {
+		logrus.WithError(err).Error("Open Router request failed for blog generate")
+		http.Error(w, "Open Router request failed", http.StatusBadGateway)
+		return
+	}
+	title, description, excerpt := "", "", ""
+	lines := strings.SplitN(out, "\n", 3)
+	if len(lines) >= 1 {
+		title = strings.TrimSpace(lines[0])
+	}
+	if len(lines) >= 2 {
+		description = strings.TrimSpace(lines[1])
+	}
+	if len(lines) >= 3 {
+		excerpt = strings.TrimSpace(lines[2])
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"title":       title,
+		"description": description,
+		"excerpt":     excerpt,
+	})
+}
+
+// HandleGenerateAuthorContent returns POST /v1/admin/content/generate/author
+// Uses Open Router to generate a short author bio from name/role.
+func (h *Handler) HandleGenerateAuthorContent(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if os.Getenv("OPENROUTER_API_KEY") == "" {
+		http.Error(w, "Open Router API key not configured (OPENROUTER_API_KEY)", http.StatusServiceUnavailable)
+		return
+	}
+
+	var body struct {
+		Name string `json:"name"`
+		Role string `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	body.Name = strings.TrimSpace(body.Name)
+	body.Role = strings.TrimSpace(body.Role)
+	if body.Name == "" {
+		http.Error(w, "name is required", http.StatusBadRequest)
+		return
+	}
+
+	prompt := "Write a short professional author bio (2-3 sentences) for: " + body.Name + "."
+	if body.Role != "" {
+		prompt += " Role: " + body.Role + "."
+	}
+	prompt += " Output only the bio text, no quotes or prefix."
+
+	out, err := callOpenRouter(r.Context(), prompt, 150)
+	if err != nil {
+		logrus.WithError(err).Error("Open Router request failed for author generate")
+		http.Error(w, "Open Router request failed", http.StatusBadGateway)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"bio": strings.TrimSpace(out)})
+}
+
+// HandleGenerateCategoryContent returns POST /v1/admin/content/generate/category
+// Uses Open Router to generate a category description from title.
+func (h *Handler) HandleGenerateCategoryContent(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if os.Getenv("OPENROUTER_API_KEY") == "" {
+		http.Error(w, "Open Router API key not configured (OPENROUTER_API_KEY)", http.StatusServiceUnavailable)
+		return
+	}
+
+	var body struct {
+		Title string `json:"title"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	body.Title = strings.TrimSpace(body.Title)
+	if body.Title == "" {
+		http.Error(w, "title is required", http.StatusBadRequest)
+		return
+	}
+
+	prompt := "Write a short one- or two-sentence description for a blog category titled: " + body.Title + ". Output only the description, no quotes or prefix."
+
+	out, err := callOpenRouter(r.Context(), prompt, 100)
+	if err != nil {
+		logrus.WithError(err).Error("Open Router request failed for category generate")
+		http.Error(w, "Open Router request failed", http.StatusBadGateway)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"description": strings.TrimSpace(out)})
 }

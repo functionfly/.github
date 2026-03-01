@@ -13,14 +13,28 @@ import (
 	"gorm.io/gorm"
 )
 
-// Service handles AI-powered function generation
-type Service struct {
-	db *gorm.DB
+// CodeGenerator generates function source code from a request (e.g. via LLM).
+// If not set, Service uses a template stub. In production, inject an implementation
+// that calls your LLM (OpenAI, Anthropic, etc.).
+type CodeGenerator interface {
+	GenerateCode(ctx context.Context, req *GenerationRequest) (string, error)
 }
 
-// NewService creates a new function generation service
+// Service handles AI-powered function generation
+type Service struct {
+	db      *gorm.DB
+	codeGen CodeGenerator // optional; nil means use template stub
+}
+
+// NewService creates a new function generation service (template stub only).
 func NewService(db *gorm.DB) *Service {
 	return &Service{db: db}
+}
+
+// NewServiceWithGenerator creates a service that uses the given CodeGenerator for code generation.
+// Use this to plug in an LLM-backed implementation.
+func NewServiceWithGenerator(db *gorm.DB, codeGen CodeGenerator) *Service {
+	return &Service{db: db, codeGen: codeGen}
 }
 
 // GenerationRequest represents a request to generate a function
@@ -58,7 +72,7 @@ func (s *Service) GenerateFunction(ctx context.Context, req *GenerationRequest) 
 		req.Runtime = "python3.11"
 	}
 
-	// 2. Generate the function code (in production, this would call an LLM)
+	// 2. Generate the function code (uses injected CodeGenerator if set, else template stub)
 	code, err := s.generateCode(ctx, req)
 	if err != nil {
 		return &GenerationResult{
@@ -69,23 +83,24 @@ func (s *Service) GenerateFunction(ctx context.Context, req *GenerationRequest) 
 
 	// 3. Create the function in the registry
 	functionID := uuid.New()
+	promptHash := hashString(req.Prompt)
 	function := &identity.Function{
-		ID:                  functionID.String(),
-		Author:              req.AgentID,
-		Name:                req.Name,
-		Title:               req.Name,
-		Description:         req.Description,
-		Category:            req.Category,
-		Tags:                req.Tags,
-		Visibility:          "private", // Private by default
-		PricePerCall:        0,
-		PopularityScore:     0,
-		ReliabilityScore:    0,
-		DeterministicScore:  0,
-		OwnerAgentID:        &req.AgentID,
-		AgentGenerated:     true,
-		GenerationPromptHash: hashString(req.Prompt),
-		GenerationModel:     &req.Model,
+		ID:                   functionID.String(),
+		Author:               req.AgentID,
+		Name:                 req.Name,
+		Title:                req.Name,
+		Description:          req.Description,
+		Category:             req.Category,
+		Tags:                 req.Tags,
+		Visibility:           "private", // Private by default
+		PricePerCall:         0,
+		PopularityScore:      0,
+		ReliabilityScore:     0,
+		DeterministicScore:   0,
+		OwnerAgentID:         &req.AgentID,
+		AgentGenerated:       true,
+		GenerationPromptHash: &promptHash,
+		GenerationModel:      &req.Model,
 		RevenueTotalUSD:     0,
 		CreatedAt:           time.Now(),
 		UpdatedAt:           time.Now(),
@@ -121,12 +136,12 @@ func (s *Service) GenerateFunction(ctx context.Context, req *GenerationRequest) 
 	}, nil
 }
 
-// generateCode generates function code (stub - would integrate with LLM in production)
+// generateCode returns generated function code from the injected CodeGenerator or the default template.
 func (s *Service) generateCode(ctx context.Context, req *GenerationRequest) (string, error) {
-	// This is a stub implementation
-	// In production, this would call an LLM API to generate actual code
-
-	// Generate a template based on the prompt
+	if s.codeGen != nil {
+		return s.codeGen.GenerateCode(ctx, req)
+	}
+	// Default: template stub (in production, use NewServiceWithGenerator with an LLM-backed implementation)
 	codeTemplate := `import json
 
 def handler(event):

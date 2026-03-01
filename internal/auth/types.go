@@ -83,6 +83,7 @@ type LoginUser struct {
 	Name          string                 `json:"name,omitempty"`
 	Avatar        string                 `json:"avatar,omitempty"`
 	Role          string                 `json:"role,omitempty"`
+	Plan          string                 `json:"plan,omitempty"` // Tenant's plan (e.g. free, starter, enterprise)
 	EmailVerified bool                   `json:"email_verified"`
 	ProviderData  map[string]interface{} `json:"provider_data,omitempty"`
 	CreatedAt     string                 `json:"created_at"`

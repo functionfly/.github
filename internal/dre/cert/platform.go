@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -35,14 +33,23 @@ type PlatformKeyManager interface {
 	GetKeyMetadata() (*PlatformKeyMetadata, error)
 }
 
+// PlatformKeysForVerificationProvider is an optional interface. When a
+// PlatformKeyManager implements it, PlatformSigner.Verify will try the
+// current key and each historical key in order until one succeeds.
+type PlatformKeysForVerificationProvider interface {
+	// GetPlatformKeysForVerification returns the current key first, then
+	// any historical keys still valid for verification (e.g. after rotation).
+	GetPlatformKeysForVerification() ([]ed25519.PublicKey, error)
+}
+
 // PlatformKeyMetadata contains metadata about a platform signing key.
 type PlatformKeyMetadata struct {
-	KeyID        string    `json:"key_id"`
-	CreatedAt    time.Time `json:"created_at"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	Algorithm    string    `json:"algorithm"`
-	IsActive     bool      `json:"is_active"`
-	RotationPolicy string  `json:"rotation_policy"`
+	KeyID          string    `json:"key_id"`
+	CreatedAt      time.Time `json:"created_at"`
+	ExpiresAt      time.Time `json:"expires_at"`
+	Algorithm      string    `json:"algorithm"`
+	IsActive       bool      `json:"is_active"`
+	RotationPolicy string    `json:"rotation_policy"`
 }
 
 // PlatformSigner handles enterprise platform signatures.
@@ -60,13 +67,13 @@ type AuditLogger interface {
 
 // AuditEvent represents a signature operation audit event.
 type AuditEvent struct {
-	Timestamp   time.Time              `json:"timestamp"`
-	Operation   string                 `json:"operation"` // "sign", "verify", "rotate"
-	KeyID       string                 `json:"key_id"`
-	CertificateID string               `json:"certificate_id,omitempty"`
-	Success     bool                   `json:"success"`
-	Error       string                 `json:"error,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Timestamp     time.Time              `json:"timestamp"`
+	Operation     string                 `json:"operation"` // "sign", "verify", "rotate"
+	KeyID         string                 `json:"key_id"`
+	CertificateID string                 `json:"certificate_id,omitempty"`
+	Success       bool                   `json:"success"`
+	Error         string                 `json:"error,omitempty"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // NewPlatformSigner creates a new platform signer.
@@ -90,10 +97,10 @@ func (s *PlatformSigner) Sign(cert *FXCert) (*Signature, error) {
 	pubKey, err := s.keyManager.GetPlatformKey()
 	if err != nil {
 		s.logAudit(AuditEvent{
-			Operation:      "sign",
+			Operation:     "sign",
 			CertificateID: cert.CertificateID,
-			Success:        false,
-			Error:          err.Error(),
+			Success:       false,
+			Error:         err.Error(),
 		})
 		return nil, fmt.Errorf("cert: get platform key: %w", err)
 	}
@@ -105,10 +112,10 @@ func (s *PlatformSigner) Sign(cert *FXCert) (*Signature, error) {
 	sig, err := s.keyManager.Sign(signatureData)
 	if err != nil {
 		s.logAudit(AuditEvent{
-			Operation:      "sign",
+			Operation:     "sign",
 			CertificateID: cert.CertificateID,
-			Success:        false,
-			Error:          err.Error(),
+			Success:       false,
+			Error:         err.Error(),
 		})
 		return nil, fmt.Errorf("cert: sign certificate: %w", err)
 	}
@@ -121,10 +128,10 @@ func (s *PlatformSigner) Sign(cert *FXCert) (*Signature, error) {
 	}
 
 	s.logAudit(AuditEvent{
-		Operation:      "sign",
-		CertificateID:  cert.CertificateID,
-		Success:        true,
-		KeyID:          s.keyManager.GetKeyID(),
+		Operation:     "sign",
+		CertificateID: cert.CertificateID,
+		Success:       true,
+		KeyID:         s.keyManager.GetKeyID(),
 	})
 
 	return signature, nil
@@ -158,29 +165,43 @@ func (s *PlatformSigner) Verify(cert *FXCert) (bool, error) {
 	sigBytes, err := base64.StdEncoding.DecodeString(cert.Signatures.PlatformSignature.Signature)
 	if err != nil {
 		s.logAudit(AuditEvent{
-			Operation:      "verify",
+			Operation:     "verify",
 			CertificateID: cert.CertificateID,
-			Success:        false,
-			Error:          "invalid signature encoding",
+			Success:       false,
+			Error:         "invalid signature encoding",
 		})
 		return false, fmt.Errorf("cert: decode signature: %w", err)
 	}
 
-	// Get the platform public key
-	pubKey, err := s.keyManager.GetPlatformKey()
-	if err != nil {
-		return false, fmt.Errorf("cert: get platform key: %w", err)
+	// Build list of keys to try: current + historical if supported
+	var keysToTry []ed25519.PublicKey
+	if provider, ok := s.keyManager.(PlatformKeysForVerificationProvider); ok {
+		keysToTry, err = provider.GetPlatformKeysForVerification()
+		if err != nil {
+			return false, fmt.Errorf("cert: get keys for verification: %w", err)
+		}
+	} else {
+		pubKey, err := s.keyManager.GetPlatformKey()
+		if err != nil {
+			return false, fmt.Errorf("cert: get platform key: %w", err)
+		}
+		keysToTry = []ed25519.PublicKey{pubKey}
 	}
 
-	// Verify the signature
-	// Note: In production, you might want to verify against multiple historical keys
-	signatureValid := ed25519.Verify(pubKey, []byte(cert.Integrity.CertificateHash), sigBytes)
+	dataToVerify := []byte(cert.Integrity.CertificateHash)
+	var signatureValid bool
+	for _, pubKey := range keysToTry {
+		if ed25519.Verify(pubKey, dataToVerify, sigBytes) {
+			signatureValid = true
+			break
+		}
+	}
 
 	s.logAudit(AuditEvent{
-		Operation:      "verify",
+		Operation:     "verify",
 		CertificateID: cert.CertificateID,
-		Success:        signatureValid,
-		KeyID:          s.keyManager.GetKeyID(),
+		Success:       signatureValid,
+		KeyID:         s.keyManager.GetKeyID(),
 	})
 
 	if !signatureValid {
@@ -203,14 +224,19 @@ func (s *PlatformSigner) logAudit(event AuditEvent) {
 	}
 }
 
+// maxHistoricalKeys limits how many rotated keys are kept for verification.
+const maxHistoricalKeys = 32
+
 // FilePlatformKeyManager implements PlatformKeyManager using files on disk.
 // This is suitable for development and testing; production should use HSM.
 type FilePlatformKeyManager struct {
-	keyPath     string
-	metadataPath string
-	currentKey  ed25519.PrivateKey
-	keyMetadata *PlatformKeyMetadata
-	mu          sync.RWMutex
+	keyPath              string
+	metadataPath         string
+	historyPath          string
+	currentKey           ed25519.PrivateKey
+	keyMetadata          *PlatformKeyMetadata
+	historicalPublicKeys []ed25519.PublicKey
+	mu                   sync.RWMutex
 }
 
 // NewFilePlatformKeyManager creates a new file-based platform key manager.
@@ -218,6 +244,7 @@ func NewFilePlatformKeyManager(keyPath, metadataPath string) (*FilePlatformKeyMa
 	mgr := &FilePlatformKeyManager{
 		keyPath:      keyPath,
 		metadataPath: metadataPath,
+		historyPath:  metadataPath + ".history",
 	}
 
 	// Try to load existing key
@@ -258,7 +285,50 @@ func (m *FilePlatformKeyManager) loadKey() error {
 		}
 	}
 
+	// Load historical public keys for verification after rotation
+	m.loadHistoricalKeys()
+
 	return nil
+}
+
+// loadHistoricalKeys reads the history file and populates historicalPublicKeys.
+func (m *FilePlatformKeyManager) loadHistoricalKeys() {
+	data, err := os.ReadFile(m.historyPath)
+	if err != nil {
+		m.historicalPublicKeys = nil
+		return
+	}
+	var b64Keys []string
+	if err := json.Unmarshal(data, &b64Keys); err != nil {
+		m.historicalPublicKeys = nil
+		return
+	}
+	keys := make([]ed25519.PublicKey, 0, len(b64Keys))
+	for _, b64 := range b64Keys {
+		dec, err := base64.StdEncoding.DecodeString(b64)
+		if err != nil || len(dec) != ed25519.PublicKeySize {
+			continue
+		}
+		keys = append(keys, ed25519.PublicKey(dec))
+	}
+	// Keep only the most recent entries
+	if len(keys) > maxHistoricalKeys {
+		keys = keys[len(keys)-maxHistoricalKeys:]
+	}
+	m.historicalPublicKeys = keys
+}
+
+// saveHistoricalKeys writes historicalPublicKeys to the history file.
+func (m *FilePlatformKeyManager) saveHistoricalKeys() error {
+	b64 := make([]string, len(m.historicalPublicKeys))
+	for i, k := range m.historicalPublicKeys {
+		b64[i] = base64.StdEncoding.EncodeToString(k)
+	}
+	data, err := json.Marshal(b64)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(m.historyPath, data, 0600)
 }
 
 // generateNewKey generates a new platform key.
@@ -270,11 +340,11 @@ func (m *FilePlatformKeyManager) generateNewKey() error {
 
 	m.currentKey = privKey
 	m.keyMetadata = &PlatformKeyMetadata{
-		KeyID:         fmt.Sprintf("key_%d", time.Now().Unix()),
-		CreatedAt:     time.Now().UTC(),
-		ExpiresAt:    time.Now().UTC().Add(365 * 24 * time.Hour), // 1 year
-		Algorithm:    "Ed25519",
-		IsActive:     true,
+		KeyID:          fmt.Sprintf("key_%d", time.Now().Unix()),
+		CreatedAt:      time.Now().UTC(),
+		ExpiresAt:      time.Now().UTC().Add(365 * 24 * time.Hour), // 1 year
+		Algorithm:      "Ed25519",
+		IsActive:       true,
 		RotationPolicy: "annual",
 	}
 
@@ -347,6 +417,16 @@ func (m *FilePlatformKeyManager) RotateKey(newKey ed25519.PrivateKey) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// Append current key's public part to history before replacing (for verification of old certs)
+	if m.currentKey != nil {
+		pub := m.currentKey.Public().(ed25519.PublicKey)
+		m.historicalPublicKeys = append(m.historicalPublicKeys, pub)
+		if len(m.historicalPublicKeys) > maxHistoricalKeys {
+			m.historicalPublicKeys = m.historicalPublicKeys[len(m.historicalPublicKeys)-maxHistoricalKeys:]
+		}
+		_ = m.saveHistoricalKeys()
+	}
+
 	// Archive old key metadata if exists
 	if m.keyMetadata != nil {
 		oldMetadataPath := m.metadataPath + ".old"
@@ -357,11 +437,11 @@ func (m *FilePlatformKeyManager) RotateKey(newKey ed25519.PrivateKey) error {
 	// Set new key
 	m.currentKey = newKey
 	m.keyMetadata = &PlatformKeyMetadata{
-		KeyID:         fmt.Sprintf("key_%d", time.Now().Unix()),
-		CreatedAt:     time.Now().UTC(),
-		ExpiresAt:    time.Now().UTC().Add(365 * 24 * time.Hour),
-		Algorithm:    "Ed25519",
-		IsActive:     true,
+		KeyID:          fmt.Sprintf("key_%d", time.Now().Unix()),
+		CreatedAt:      time.Now().UTC(),
+		ExpiresAt:      time.Now().UTC().Add(365 * 24 * time.Hour),
+		Algorithm:      "Ed25519",
+		IsActive:       true,
 		RotationPolicy: "annual",
 	}
 
@@ -390,6 +470,23 @@ func (m *FilePlatformKeyManager) GetKeyMetadata() (*PlatformKeyMetadata, error) 
 	}
 
 	return m.keyMetadata, nil
+}
+
+// GetPlatformKeysForVerification implements PlatformKeysForVerificationProvider.
+// It returns the current key first, then historical keys (oldest to newest).
+func (m *FilePlatformKeyManager) GetPlatformKeysForVerification() ([]ed25519.PublicKey, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.currentKey == nil {
+		return nil, fmt.Errorf("cert: no platform key loaded")
+	}
+
+	currentPub := m.currentKey.Public().(ed25519.PublicKey)
+	out := make([]ed25519.PublicKey, 1, 1+len(m.historicalPublicKeys))
+	out[0] = currentPub
+	out = append(out, m.historicalPublicKeys...)
+	return out, nil
 }
 
 // PlatformSignatureVerifier verifies platform signatures for external use.
@@ -444,6 +541,100 @@ func (v *PlatformSignatureVerifier) Verify(cert *FXCert) (bool, error) {
 	// Verify
 	return ed25519.Verify(matchingKey, []byte(cert.Integrity.CertificateHash), sigBytes), nil
 }
+
+// PlatformKeyRegistry stores platform public keys by key ID and implements
+// KeyIDResolver for lookup by public key. Safe for concurrent use.
+type PlatformKeyRegistry struct {
+	mu   sync.RWMutex
+	keys map[string]ed25519.PublicKey // keyID -> public key
+}
+
+// NewPlatformKeyRegistry creates an empty platform key registry.
+func NewPlatformKeyRegistry() *PlatformKeyRegistry {
+	return &PlatformKeyRegistry{
+		keys: make(map[string]ed25519.PublicKey),
+	}
+}
+
+// Register adds or updates a platform public key for the given key ID.
+func (r *PlatformKeyRegistry) Register(keyID string, pubKey ed25519.PublicKey) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.keys == nil {
+		r.keys = make(map[string]ed25519.PublicKey)
+	}
+	r.keys[keyID] = pubKey
+}
+
+// Get returns the public key for keyID, or nil and false if not found.
+func (r *PlatformKeyRegistry) Get(keyID string) (ed25519.PublicKey, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	pub, ok := r.keys[keyID]
+	return pub, ok
+}
+
+// Remove removes the key for keyID. It is a no-op if the key is not present.
+func (r *PlatformKeyRegistry) Remove(keyID string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.keys, keyID)
+}
+
+// KeyIDs returns a copy of all registered key IDs.
+func (r *PlatformKeyRegistry) KeyIDs() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	ids := make([]string, 0, len(r.keys))
+	for id := range r.keys {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+// KeyIDFromPublicKey implements KeyIDResolver by looking up the key ID for the
+// given public key. Returns the first matching key ID and true, or "" and false.
+func (r *PlatformKeyRegistry) KeyIDFromPublicKey(pubKey ed25519.PublicKey) (string, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for id, p := range r.keys {
+		if len(p) == len(pubKey) && string(p) == string(pubKey) {
+			return id, true
+		}
+	}
+	return "", false
+}
+
+// Verify verifies a certificate's platform signature using any key in the registry.
+func (r *PlatformKeyRegistry) Verify(cert *FXCert) (bool, error) {
+	if cert == nil || cert.Signatures.PlatformSignature == nil {
+		return false, fmt.Errorf("cert: no platform signature present")
+	}
+	sigPubKey, err := base64.StdEncoding.DecodeString(cert.Signatures.PlatformSignature.PublicKey)
+	if err != nil {
+		return false, fmt.Errorf("cert: decode public key: %w", err)
+	}
+	r.mu.RLock()
+	var matchingKey ed25519.PublicKey
+	for _, p := range r.keys {
+		if len(p) == len(sigPubKey) && string(p) == string(sigPubKey) {
+			matchingKey = p
+			break
+		}
+	}
+	r.mu.RUnlock()
+	if matchingKey == nil {
+		return false, fmt.Errorf("cert: unknown platform key")
+	}
+	sigBytes, err := base64.StdEncoding.DecodeString(cert.Signatures.PlatformSignature.Signature)
+	if err != nil {
+		return false, fmt.Errorf("cert: decode signature: %w", err)
+	}
+	return ed25519.Verify(matchingKey, []byte(cert.Integrity.CertificateHash), sigBytes), nil
+}
+
+// Ensure PlatformKeyRegistry implements KeyIDResolver.
+var _ KeyIDResolver = (*PlatformKeyRegistry)(nil)
 
 // GetCertificateTrustLevel returns the trust level of a certificate based on its signatures.
 func GetCertificateTrustLevel(cert *FXCert) string {
@@ -509,20 +700,43 @@ func ValidateCertificateChain(cert *FXCert, nodePubKey, platformPubKey ed25519.P
 	return nil
 }
 
+// KeyIDResolver looks up a key ID from a registry by public key.
+// Implement this when keys are managed in an HSM or registry and you need
+// canonical IDs (e.g. key ARN) instead of a derived value.
+type KeyIDResolver interface {
+	KeyIDFromPublicKey(pubKey ed25519.PublicKey) (keyID string, ok bool)
+}
+
 // KeyIDFromSignature extracts the key ID from a signature's public key.
+// It decodes the signature's PublicKey and returns a derived ID (key_%x of first 8 bytes).
 func KeyIDFromSignature(sig *Signature) (string, error) {
+	return KeyIDFromSignatureWithResolver(sig, nil)
+}
+
+// KeyIDFromSignatureWithResolver extracts the key ID from a signature's public key.
+// If resolver is not nil and returns ok true for the signature's public key, that
+// key ID is returned (e.g. from an HSM key registry). Otherwise a key ID is derived
+// from the first 8 bytes of the public key.
+func KeyIDFromSignatureWithResolver(sig *Signature, resolver KeyIDResolver) (string, error) {
 	if sig == nil {
 		return "", fmt.Errorf("cert: nil signature")
 	}
 
-	// The key ID is typically derived from the public key
-	// In a real implementation, this would look up the key in a registry
 	pubKeyBytes, err := base64.StdEncoding.DecodeString(sig.PublicKey)
 	if err != nil {
 		return "", fmt.Errorf("cert: decode public key: %w", err)
 	}
+	if len(pubKeyBytes) != ed25519.PublicKeySize {
+		return "", fmt.Errorf("cert: invalid public key size")
+	}
+	pubKey := ed25519.PublicKey(pubKeyBytes)
 
-	// Create a simple key ID from the public key hash
+	if resolver != nil {
+		if keyID, ok := resolver.KeyIDFromPublicKey(pubKey); ok {
+			return keyID, nil
+		}
+	}
+
 	keyID := fmt.Sprintf("key_%x", pubKeyBytes[:8])
 	return keyID, nil
 }

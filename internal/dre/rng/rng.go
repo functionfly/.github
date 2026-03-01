@@ -5,9 +5,13 @@ package rng
 
 import (
 	"crypto/cipher"
-	"crypto/chacha20"
+	"crypto/sha256"
 	"encoding/binary"
+	"io"
 	"sync"
+
+	"golang.org/x/crypto/chacha20"
+	"golang.org/x/crypto/hkdf"
 )
 
 // DeterministicRNG is a ChaCha20-based deterministic random number generator.
@@ -25,16 +29,16 @@ func New(seed []byte) *DeterministicRNG {
 	// ChaCha20 requires a 32-byte key and 12-byte nonce
 	key := deriveKey(seed)
 	nonce := deriveNonce(seed)
-	
+
 	c, err := chacha20.NewUnauthenticatedCipher(key, nonce)
 	if err != nil {
 		// This should never happen with valid inputs
 		panic("rng: failed to create ChaCha20 cipher: " + err.Error())
 	}
-	
+
 	return &DeterministicRNG{
-		cipher: c,
-		seed:   seed,
+		cipher:  c,
+		seed:    seed,
 		counter: 0,
 	}
 }
@@ -43,15 +47,15 @@ func New(seed []byte) *DeterministicRNG {
 func (r *DeterministicRNG) Seed(seed []byte) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	key := deriveKey(seed)
 	nonce := deriveNonce(seed)
-	
+
 	c, err := chacha20.NewUnauthenticatedCipher(key, nonce)
 	if err != nil {
 		panic("rng: failed to reinitialize ChaCha20 cipher: " + err.Error())
 	}
-	
+
 	r.cipher = c
 	r.seed = seed
 	r.counter = 0
@@ -61,7 +65,7 @@ func (r *DeterministicRNG) Seed(seed []byte) {
 func (r *DeterministicRNG) Next() uint32 {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	var buf [4]byte
 	r.cipher.XORKeyStream(buf[:], buf[:])
 	r.counter++
@@ -72,7 +76,7 @@ func (r *DeterministicRNG) Next() uint32 {
 func (r *DeterministicRNG) Next64() uint64 {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	var buf [8]byte
 	r.cipher.XORKeyStream(buf[:], buf[:])
 	r.counter++
@@ -84,11 +88,11 @@ func (r *DeterministicRNG) Next64() uint64 {
 func (r *DeterministicRNG) Read(p []byte) (n int, err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	if len(p) == 0 {
 		return 0, nil
 	}
-	
+
 	r.cipher.XORKeyStream(p, p)
 	r.counter++
 	return len(p), nil
@@ -123,31 +127,27 @@ func (r *DeterministicRNG) Float64() float64 {
 	return float64(r.Next64()&(1<<53-1)) / float64(1<<53)
 }
 
-// deriveKey derives a 32-byte key from the seed using simple hashing.
-// In production, this should use a proper KDF, but for DCC determinism,
-// we just need a deterministic derivation.
+// DCC domain separation for HKDF (fixed per protocol).
+var kdfSalt = []byte("DCC-RNG-v1")
+
+// deriveKey derives a 32-byte ChaCha20 key from the seed using HKDF-SHA256.
+// Deterministic and suitable for production; same seed always yields the same key.
 func deriveKey(seed []byte) []byte {
-	// Simple derivation: repeat or hash seed to 32 bytes
+	h := hkdf.New(sha256.New, seed, kdfSalt, []byte("rng-key"))
 	key := make([]byte, 32)
-	seedLen := len(seed)
-	
-	for i := 0; i < 32; i++ {
-		key[i] = seed[i%seedLen]
+	if _, err := io.ReadFull(h, key); err != nil {
+		panic("rng: deriveKey: " + err.Error())
 	}
-	
 	return key
 }
 
-// deriveNonce derives a 12-byte nonce from the seed.
+// deriveNonce derives a 12-byte ChaCha20 nonce from the seed using HKDF-SHA256.
+// Uses different info than deriveKey to avoid correlation.
 func deriveNonce(seed []byte) []byte {
+	h := hkdf.New(sha256.New, seed, kdfSalt, []byte("rng-nonce"))
 	nonce := make([]byte, 12)
-	seedLen := len(seed)
-	
-	// Use different derivation than key to avoid correlation
-	offset := seedLen / 2
-	for i := 0; i < 12; i++ {
-		nonce[i] = seed[(i+offset)%seedLen]
+	if _, err := io.ReadFull(h, nonce); err != nil {
+		panic("rng: deriveNonce: " + err.Error())
 	}
-	
 	return nonce
 }

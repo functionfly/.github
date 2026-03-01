@@ -24,11 +24,12 @@ func NewTenantRepository(db *PostgresDB) *TenantRepository {
 func (r *TenantRepository) GetTenantByID(tenantID uuid.UUID) (*Tenant, error) {
 	tenant := &Tenant{}
 	var plan sql.NullString
+	var stripeCustomerID sql.NullString
 	err := r.db.QueryRow(`
-		SELECT id, name, plan, status, created_at, updated_at
+		SELECT id, name, plan, status, stripe_customer_id, created_at, updated_at
 		FROM tenants WHERE id = $1`, tenantID).Scan(
 		&tenant.ID, &tenant.Name, &plan, &tenant.Status,
-		&tenant.CreatedAt, &tenant.UpdatedAt)
+		&stripeCustomerID, &tenant.CreatedAt, &tenant.UpdatedAt)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -40,7 +41,12 @@ func (r *TenantRepository) GetTenantByID(tenantID uuid.UUID) (*Tenant, error) {
 	if plan.Valid {
 		tenant.Plan = plan.String
 	}
-	tenant.Status = "active" // Default status for backward compatibility
+	if stripeCustomerID.Valid && stripeCustomerID.String != "" {
+		tenant.StripeCustomerID = &stripeCustomerID.String
+	}
+	if tenant.Status == "" {
+		tenant.Status = "active" // Default status for backward compatibility
+	}
 
 	return tenant, nil
 }
@@ -63,7 +69,7 @@ func (r *TenantRepository) CountRoutingEventsForTenantSince(tenantID uuid.UUID, 
 
 // ListTenants lists all tenants
 func (r *TenantRepository) ListTenants() ([]*Tenant, error) {
-	query := `SELECT id, name, plan, status, created_at, updated_at FROM tenants ORDER BY created_at DESC`
+	query := `SELECT id, name, plan, status, stripe_customer_id, created_at, updated_at FROM tenants ORDER BY created_at DESC`
 
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -75,12 +81,16 @@ func (r *TenantRepository) ListTenants() ([]*Tenant, error) {
 	for rows.Next() {
 		tenant := &Tenant{}
 		var plan sql.NullString
-		err := rows.Scan(&tenant.ID, &tenant.Name, &plan, &tenant.Status, &tenant.CreatedAt, &tenant.UpdatedAt)
+		var stripeCustomerID sql.NullString
+		err := rows.Scan(&tenant.ID, &tenant.Name, &plan, &tenant.Status, &stripeCustomerID, &tenant.CreatedAt, &tenant.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan tenant: %w", err)
 		}
 		if plan.Valid {
 			tenant.Plan = plan.String
+		}
+		if stripeCustomerID.Valid && stripeCustomerID.String != "" {
+			tenant.StripeCustomerID = &stripeCustomerID.String
 		}
 		if tenant.Status == "" {
 			tenant.Status = "active" // Default status
@@ -125,20 +135,30 @@ func (r *TenantRepository) UpdateTenant(ctx context.Context, tenantID uuid.UUID,
 		argIndex++
 	}
 
+	if stripeCustomerID, ok := updates["stripe_customer_id"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("stripe_customer_id = $%d", argIndex))
+		args = append(args, stripeCustomerID)
+		argIndex++
+	}
+	if _, ok := updates["stripe_customer_id"]; ok && updates["stripe_customer_id"] == nil {
+		setParts = append(setParts, "stripe_customer_id = NULL")
+	}
+
 	if len(setParts) == 0 {
 		return current, nil // No updates
 	}
 
 	setParts = append(setParts, "updated_at = NOW()")
 
-	query := fmt.Sprintf("UPDATE tenants SET %s WHERE id = $%d RETURNING id, name, plan, status, created_at, updated_at",
+	query := fmt.Sprintf("UPDATE tenants SET %s WHERE id = $%d RETURNING id, name, plan, status, stripe_customer_id, created_at, updated_at",
 		strings.Join(setParts, ", "), argIndex)
 
 	args = append(args, tenantID)
 
 	updated := &Tenant{}
 	var plan sql.NullString
-	err = r.db.QueryRow(query, args...).Scan(&updated.ID, &updated.Name, &plan, &updated.Status, &updated.CreatedAt, &updated.UpdatedAt)
+	var stripeCustomerID sql.NullString
+	err = r.db.QueryRow(query, args...).Scan(&updated.ID, &updated.Name, &plan, &updated.Status, &stripeCustomerID, &updated.CreatedAt, &updated.UpdatedAt)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to update tenant: %w", err)
@@ -146,6 +166,9 @@ func (r *TenantRepository) UpdateTenant(ctx context.Context, tenantID uuid.UUID,
 
 	if plan.Valid {
 		updated.Plan = plan.String
+	}
+	if stripeCustomerID.Valid && stripeCustomerID.String != "" {
+		updated.StripeCustomerID = &stripeCustomerID.String
 	}
 
 	return updated, nil
@@ -162,11 +185,12 @@ func (r *TenantRepository) CreateTenant(ctx context.Context, name string) (*Tena
 	query := `
 		INSERT INTO tenants (id, name, status, created_at, updated_at)
 		VALUES ($1, $2, $3, NOW(), NOW())
-		RETURNING id, name, plan, status, created_at, updated_at`
+		RETURNING id, name, plan, status, stripe_customer_id, created_at, updated_at`
 
 	var plan sql.NullString
+	var stripeCustomerID sql.NullString
 	err := r.db.QueryRow(query, tenant.ID, tenant.Name, tenant.Status).Scan(
-		&tenant.ID, &tenant.Name, &plan, &tenant.Status, &tenant.CreatedAt, &tenant.UpdatedAt)
+		&tenant.ID, &tenant.Name, &plan, &tenant.Status, &stripeCustomerID, &tenant.CreatedAt, &tenant.UpdatedAt)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tenant: %w", err)
@@ -174,6 +198,9 @@ func (r *TenantRepository) CreateTenant(ctx context.Context, name string) (*Tena
 
 	if plan.Valid {
 		tenant.Plan = plan.String
+	}
+	if stripeCustomerID.Valid && stripeCustomerID.String != "" {
+		tenant.StripeCustomerID = &stripeCustomerID.String
 	}
 
 	return tenant, nil

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/plans"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -162,8 +163,14 @@ func (h *Handler) HandleCheckTenantFeatures(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	id, err := uuid.Parse(tenantID)
+	if err != nil {
+		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		return
+	}
+
 	// Get tenant from repository
-	tenant, err := h.repo.GetTenantByID(tenantID)
+	tenant, err := h.repo.GetTenantByID(id)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get tenant")
 		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)

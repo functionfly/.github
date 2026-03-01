@@ -9,14 +9,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { FolderOpen, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
+import { FolderOpen, Plus, Edit, Trash2, Loader2, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { blogApi, Category } from '@/api/blog';
+import { contentAdminApi } from '@/api/content';
+import slugify from 'slugify';
 
 const CategoryManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [generatingAi, setGeneratingAi] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -55,8 +59,14 @@ const CategoryManager = forwardRef<{ openCreateDialog: () => void }>((props, ref
       setDialogOpen(false);
       resetForm();
       fetchCategories();
-    } catch (error) {
+      toast.success('Category created');
+    } catch (error: unknown) {
       console.error('Failed to create category:', error);
+      const msg = error && typeof error === 'object' && 'response' in error
+        ? (error as { response?: { data?: { detail?: string; error?: string } } }).response?.data?.detail
+          || (error as { response?: { data?: { error?: string } } }).response?.data?.error
+        : null;
+      toast.error(msg || 'Failed to create category');
     }
   };
 
@@ -96,6 +106,25 @@ const CategoryManager = forwardRef<{ openCreateDialog: () => void }>((props, ref
       order: category.order,
     });
     setDialogOpen(true);
+  };
+
+  const handleGenerateWithAi = async () => {
+    if (!formData.title.trim()) {
+      toast.error('Enter category title to generate description');
+      return;
+    }
+    setGeneratingAi(true);
+    try {
+      const res = await contentAdminApi.generateCategoryContent({ title: formData.title });
+      setFormData(prev => ({ ...prev, description: res.description || prev.description }));
+      if (res.description) toast.success('Description generated');
+      else toast.info('No description generated');
+    } catch (e: any) {
+      const msg = e?.response?.status === 503 ? 'Open Router not configured (OPENROUTER_API_KEY)' : 'Failed to generate';
+      toast.error(msg);
+    } finally {
+      setGeneratingAi(false);
+    }
   };
 
   const resetForm = () => {
@@ -146,7 +175,10 @@ const CategoryManager = forwardRef<{ openCreateDialog: () => void }>((props, ref
                     <Input
                       id="title"
                       value={formData.title}
-                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      onChange={(e) => {
+                        const title = e.target.value;
+                        setFormData(prev => ({ ...prev, title, slug: slugify(title, { lower: true, strict: true, trim: true }) }));
+                      }}
                       placeholder="Category title"
                     />
                   </div>
@@ -191,7 +223,29 @@ const CategoryManager = forwardRef<{ openCreateDialog: () => void }>((props, ref
                   />
                 </div>
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateWithAi}
+                      disabled={generatingAi}
+                      className="shrink-0"
+                    >
+                      {generatingAi ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                          Generate with AI (Open Router)
+                        </>
+                      )}
+                    </Button>
+                  </div>
                   <Textarea
                     id="description"
                     value={formData.description}

@@ -1,0 +1,123 @@
+/* ==========================================================================
+   DRE / Execution Explorer – Light Mode
+   Ensures Execution Explorer page and DRE detail UI (modal, cards, hashes)
+   use light backgrounds and dark text in light theme.
+   ========================================================================== */
+
+[data-theme="light"] .execution-explorer-page {
+  background-color: var(--bg-primary) !important;
+}
+
+[data-theme="light"] .execution-explorer-page .text-foreground,
+[data-theme="light"] .execution-explorer-page h1,
+[data-theme="light"] .execution-explorer-page h2,
+[data-theme="light"] .execution-explorer-page h3 {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .execution-explorer-page .text-muted-foreground {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="light"] .execution-explorer-page .bg-bg-primary\/60,
+[data-theme="light"] .execution-explorer-page [class*="Card"] {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .execution-explorer-page [class*="Card"] .text-muted-foreground,
+[data-theme="light"] .execution-explorer-page [class*="Card"] .text-text-secondary {
+  color: #4b5563 !important;
+}
+
+[data-theme="light"] .execution-explorer-page code,
+[data-theme="light"] .execution-explorer-page .font-mono {
+  background-color: #f5f5f7 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #0f0f1a !important;
+}
+
+/* Execution Detail Modal – light content */
+[data-theme="light"] .execution-explorer-detail-dialog {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-theme="light"] .execution-explorer-detail-dialog [data-slot="dialog-content"],
+[data-theme="light"] .execution-explorer-detail-dialog > div {
+  background-color: #ffffff !important;
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .execution-explorer-detail-dialog [class*="DialogTitle"],
+[data-theme="light"] .execution-explorer-detail-dialog [class*="DialogDescription"] {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .execution-explorer-detail-dialog .text-muted-foreground {
+  color: #4b5563 !important;
+}
+
+[data-theme="light"] .execution-explorer-detail-dialog [class*="Card"] {
+  background-color: #fafafa !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .execution-explorer-detail-dialog .bg-bg-secondary {
+  background-color: #f5f5f7 !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .execution-explorer-detail-dialog .bg-bg-tertiary {
+  background-color: #f0f0f2 !important;
+}
+
+[data-theme="light"] .execution-explorer-detail-dialog .border-border-subtle {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .execution-explorer-detail-dialog [class*="CardTitle"],
+[data-theme="light"] .execution-explorer-detail-dialog [class*="CardDescription"] {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .execution-explorer-detail-dialog [class*="Badge"] {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .execution-explorer-detail-dialog .font-mono,
+[data-theme="light"] .execution-explorer-detail-dialog code {
+  background-color: #f1f5f9 !important;
+  color: #0f0f1a !important;
+}
+
+/* DRE primitives inside modal – HashBlock, labels */
+[data-theme="light"] .execution-explorer-detail-dialog .text-xs.uppercase.tracking-wide {
+  color: #4b5563 !important;
+}
+
+/* Replay modal in light mode */
+[data-theme="light"] .execution-explorer-page [role="dialog"] {
+  background-color: #ffffff !important;
+}
+
+[data-theme="light"] .execution-explorer-page [role="dialog"] [class*="DialogContent"] {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .execution-explorer-page [role="dialog"] [class*="DialogTitle"],
+[data-theme="light"] .execution-explorer-page [role="dialog"] [class*="DialogDescription"],
+[data-theme="light"] .execution-explorer-page [role="dialog"] label,
+[data-theme="light"] .execution-explorer-page [role="dialog"] p {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .execution-explorer-page [role="dialog"] .text-muted-foreground {
+  color: #4b5563 !important;
+}

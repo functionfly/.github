@@ -3,7 +3,6 @@
 import React from 'react';
 import { AlertTriangle, RefreshCcw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
 
 interface Props {
   children: React.ReactNode;
@@ -30,7 +29,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     // Log error to an error reporting service
     console.error('Error caught by boundary:', error);
     console.error('Component stack:', errorInfo.componentStack);
-    
+
     this.setState({
       error,
       errorInfo,
@@ -86,26 +85,26 @@ export class ErrorBoundary extends React.Component<Props, State> {
               </div>
             )}
 
-            {/* Action Buttons */}
+            {/* Action Buttons - use <a> not <Link> because ErrorBoundary renders outside BrowserRouter */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button onClick={this.handleRetry} className="gap-2">
                 <RefreshCcw className="w-4 h-4" />
                 Try Again
               </Button>
-              <Link to="/">
+              <a href="/">
                 <Button variant="outline" className="gap-2 w-full sm:w-auto">
                   <Home className="w-4 h-4" />
                   Go Home
                 </Button>
-              </Link>
+              </a>
             </div>
 
             {/* Support Link */}
             <p className="text-sm text-text-muted">
               If the problem persists, please{' '}
-              <Link to="/contact" className="text-brand-500 hover:underline">
+              <a href="/contact" className="text-brand-500 hover:underline">
                 contact support
-              </Link>
+              </a>
             </p>
           </div>
         </div>

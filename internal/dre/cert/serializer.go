@@ -13,8 +13,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/fxamacker/cbor/v2"
 	drecrypto "github.com/functionfly/functionfly/internal/dre/crypto"
+	cbor "github.com/fxamacker/cbor/v2"
 )
 
 // Encoding defines the serialization format for certificates.
@@ -139,17 +139,18 @@ func (s *Serializer) FromJSON(data []byte) (*FXCert, error) {
 // ToCBOR serializes a certificate to CBOR.
 // Uses canonical CBOR encoding for deterministic output.
 func (s *Serializer) ToCBOR(cert *FXCert) ([]byte, error) {
-	// Configure CBOR encoder for canonical output
-	enc := cbor.NewEncoder(cbor.EncOptions{
+	opts := cbor.EncOptions{
 		Sort: cbor.SortCanonical,
 		Time: cbor.TimeRFC3339,
-	})
-
-	data, err := enc.Marshal(cert)
+	}
+	encMode, err := opts.EncMode()
+	if err != nil {
+		return nil, fmt.Errorf("cert: CBOR enc mode: %w", err)
+	}
+	data, err := encMode.Marshal(cert)
 	if err != nil {
 		return nil, fmt.Errorf("cert: marshal CBOR: %w", err)
 	}
-
 	return data, nil
 }
 
@@ -288,17 +289,17 @@ func (s *Serializer) GetFileInfo(path string) (map[string]interface{}, error) {
 	}
 
 	return map[string]interface{}{
-		"path":             path,
-		"size":             info.Size(),
-		"mode":             info.Mode(),
-		"modtime":          info.ModTime(),
-		"certificate_id":   cert.CertificateID,
-		"fxcert_version":   cert.FXCertVersion,
-		"execution_id":     cert.Execution.ExecutionID,
-		"function_id":      cert.Execution.FunctionID,
-		"execution_root":   cert.Integrity.ExecutionRootHash,
-		"anchored":         cert.Anchoring.Anchored,
-		"has_replay_cert":  cert.ReplayCert != nil,
-		"encoding":         s.encoding,
+		"path":            path,
+		"size":            info.Size(),
+		"mode":            info.Mode(),
+		"modtime":         info.ModTime(),
+		"certificate_id":  cert.CertificateID,
+		"fxcert_version":  cert.FXCertVersion,
+		"execution_id":    cert.Execution.ExecutionID,
+		"function_id":     cert.Execution.FunctionID,
+		"execution_root":  cert.Integrity.ExecutionRootHash,
+		"anchored":        cert.Anchoring.Anchored,
+		"has_replay_cert": cert.ReplayCert != nil,
+		"encoding":        s.encoding,
 	}, nil
 }

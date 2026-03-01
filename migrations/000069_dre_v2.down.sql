@@ -17,6 +17,9 @@ DROP TABLE IF EXISTS drift_reports;
 -- Drop execution passports
 DROP TABLE IF EXISTS function_execution_passports;
 
+-- Drop resource hash history
+DROP TABLE IF EXISTS resource_hash_history;
+
 -- ============================================
 -- DROP COLUMNS FROM REGISTRY_FUNCTION_RATINGS
 -- ============================================

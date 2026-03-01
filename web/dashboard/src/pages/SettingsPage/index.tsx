@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { User, CreditCard, Key, Bell } from "lucide-react";
+import { createBillingPortalSession, getBillingPortalErrorMessage } from "@/api/billing";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +16,9 @@ import { usersApi } from "@/api/users";
 import { useQuery } from "@tanstack/react-query";
 
 export function SettingsPage() {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("account");
+  const [billingPortalLoading, setBillingPortalLoading] = useState(false);
   const user = useAuthStore((state) => state.user);
 
   // Split name into first/last
@@ -43,6 +47,20 @@ export function SettingsPage() {
     queryFn: () => apiClient.get("/v1/api-keys"),
     retry: false,
   });
+
+  // Fetch current user (includes plan from tenant) so billing shows correct plan
+  const { data: meData } = useQuery({
+    queryKey: ["users", "me"],
+    queryFn: () => usersApi.getMe(),
+    retry: false,
+  });
+  const setUserPlan = useAuthStore((s) => s.setUserPlan);
+  useEffect(() => {
+    if (meData?.plan !== undefined && meData.plan !== useAuthStore.getState().user?.plan) {
+      setUserPlan(meData.plan);
+    }
+  }, [meData?.plan, setUserPlan]);
+  const displayPlan = meData?.plan ?? user?.plan ?? "Starter";
 
   const apiKeys = (apiKeysData as any)?.keys ?? [];
 
@@ -100,7 +118,7 @@ export function SettingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
+        <h1 className="text-2xl font-bold text-text-primary">Settings</h1>
         <p className="text-text-secondary">Manage your account and preferences</p>
       </div>
 
@@ -238,16 +256,48 @@ export function SettingsPage() {
             <CardContent>
               <div className="flex items-center justify-between p-4 rounded-lg bg-linear-to-r from-[#6366f1]/10 to-[#8b5cf6]/10 border border-[#6366f1]/20">
                 <div>
-                  <h3 className="font-semibold text-white capitalize">{user?.plan || "Starter"} Plan</h3>
+                  <h3 className="font-semibold text-text-primary capitalize">{displayPlan} Plan</h3>
                   <p className="text-sm text-text-secondary">
-                    {user?.plan === "free" ? "Free forever" : "Active subscription"}
+                    {displayPlan === "free" ? "Free forever" : "Active subscription"}
                   </p>
                 </div>
                 <Badge>Current</Badge>
               </div>
-              <div className="mt-6">
-                <Button variant="outline" onClick={() => window.open("/pricing", "_blank")}>
-                  Upgrade Plan
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Button
+                  variant="default"
+                  onClick={async () => {
+                    setBillingPortalLoading(true);
+                    try {
+                      const returnUrl = `${window.location.origin}${location.pathname}`;
+                      const { url } = await createBillingPortalSession(returnUrl);
+                      window.location.href = url;
+                    } catch (e: unknown) {
+                      setBillingPortalLoading(false);
+                      toast.error(getBillingPortalErrorMessage(e));
+                    }
+                  }}
+                  disabled={billingPortalLoading}
+                >
+                  {billingPortalLoading ? "Opening…" : "Manage billing"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="settings-upgrade-btn"
+                  disabled={billingPortalLoading}
+                  onClick={async () => {
+                    setBillingPortalLoading(true);
+                    try {
+                      const returnUrl = `${window.location.origin}/pricing`;
+                      const { url } = await createBillingPortalSession(returnUrl);
+                      window.location.href = url;
+                    } catch (e: unknown) {
+                      setBillingPortalLoading(false);
+                      toast.error(getBillingPortalErrorMessage(e));
+                    }
+                  }}
+                >
+                  {billingPortalLoading ? "Opening…" : "Upgrade Plan"}
                 </Button>
               </div>
             </CardContent>

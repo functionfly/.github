@@ -64,6 +64,7 @@ func ComputePerfSig(usage ResourceUsage) (*PerfSig, error) {
 	} else {
 		wasmHash = HashString(TagResource, []byte(""))
 	}
+	_ = wasmHash // reserved for future PerfSig field
 
 	// Scheduling trace is not currently tracked - use empty hash
 	schedulingHash := HashString(TagResource, []byte(""))

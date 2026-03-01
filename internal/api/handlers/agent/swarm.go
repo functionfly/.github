@@ -1,27 +1,29 @@
 package agent
 
 import (
+	"encoding/json"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/agent/autonomy"
+	"github.com/functionfly/functionfly/internal/agent/economy"
 	"github.com/functionfly/functionfly/internal/agent/evolution"
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/functionfly/functionfly/internal/agent/marketplace"
 	"github.com/functionfly/functionfly/internal/agent/swarm"
-	"github.com/functionfly/functionfly/internal/agent/economy"
-	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
+	"github.com/gorilla/mux"
 )
 
 // SwarmHandler handles agent swarm operations
 type SwarmHandler struct {
-	swarmService      *swarm.Service
-	messageService    *swarm.MessageService
-	walletService    *economy.Service
+	swarmService       *swarm.Service
+	messageService     *swarm.MessageService
+	walletService      *economy.Service
 	marketplaceService *marketplace.Service
-	evolutionService *evolution.Service
-	autonomyService  *autonomy.Service
+	evolutionService   *evolution.Service
+	autonomyService    *autonomy.Service
 }
 
 // NewSwarmHandler creates a new swarm handler
@@ -38,120 +40,123 @@ func NewSwarmHandler(
 		messageService:     messageService,
 		walletService:      walletService,
 		marketplaceService: marketplaceService,
-		evolutionService:  evolutionService,
-		autonomyService:   autonomyService,
+		evolutionService:   evolutionService,
+		autonomyService:    autonomyService,
 	}
 }
 
 // SpawnChildRequest represents a request to spawn a child agent
 type SpawnChildRequest struct {
-	ChildAgentID      string         `json:"child_agent_id" validate:"required"`
-	ChildName         string         `json:"child_name" validate:"required"`
+	ChildAgentID     string         `json:"child_agent_id" validate:"required"`
+	ChildName        string         `json:"child_name" validate:"required"`
 	ChildDescription string         `json:"child_description"`
-	SwarmRole         string         `json:"swarm_role"`
-	MaxChildAgents    int            `json:"max_child_agents"`
-	Capabilities      map[string]any `json:"capabilities"`
-	InitialBudgetUSD  float64        `json:"initial_budget_usd"`
+	SwarmRole        string         `json:"swarm_role"`
+	MaxChildAgents   int            `json:"max_child_agents"`
+	Capabilities     map[string]any `json:"capabilities"`
+	InitialBudgetUSD float64        `json:"initial_budget_usd"`
 }
 
 // SpawnChild handles POST /v1/agent/:id/spawn
-func (h *SwarmHandler) SpawnChild(c echo.Context) error {
-	parentAgentID := c.Param("id")
+func (h *SwarmHandler) SpawnChild(w http.ResponseWriter, r *http.Request) {
+	parentAgentID := mux.Vars(r)["id"]
 	if parentAgentID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "agent_id is required")
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "agent_id is required")
+		return
 	}
 
 	var req SpawnChildRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		return
 	}
 
 	spawnReq := &swarm.SpawnChildRequest{
-		ParentAgentID:     parentAgentID,
-		ChildAgentID:      req.ChildAgentID,
-		ChildName:         req.ChildName,
-		ChildDescription:  req.ChildDescription,
-		SwarmRole:         req.SwarmRole,
-		MaxChildAgents:    req.MaxChildAgents,
-		Capabilities:      req.Capabilities,
-		InitialBudgetUSD:  req.InitialBudgetUSD,
+		ParentAgentID:    parentAgentID,
+		ChildAgentID:     req.ChildAgentID,
+		ChildName:        req.ChildName,
+		ChildDescription: req.ChildDescription,
+		SwarmRole:        req.SwarmRole,
+		MaxChildAgents:   req.MaxChildAgents,
+		Capabilities:     req.Capabilities,
+		InitialBudgetUSD: req.InitialBudgetUSD,
 	}
 
-	agent, apiKey, err := h.swarmService.SpawnChild(c.Request().Context(), spawnReq)
+	agent, apiKey, err := h.swarmService.SpawnChild(r.Context(), spawnReq)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
 	}
 
-	return c.JSON(http.StatusCreated, map[string]any{
-		"ok":       true,
-		"agent":    agent,
-		"api_key":  apiKey,
-		"message":  "Child agent spawned successfully",
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"ok":      true,
+		"agent":   agent,
+		"api_key": apiKey,
+		"message": "Child agent spawned successfully",
 	})
 }
 
 // GetChildren handles GET /v1/agent/:id/children
-func (h *SwarmHandler) GetChildren(c echo.Context) error {
-	agentID := c.Param("id")
+func (h *SwarmHandler) GetChildren(w http.ResponseWriter, r *http.Request) {
+	agentID := mux.Vars(r)["id"]
 	if agentID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "agent_id is required")
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "agent_id is required")
+		return
 	}
 
-	children, err := h.swarmService.GetChildren(c.Request().Context(), agentID)
+	children, err := h.swarmService.GetChildren(r.Context(), agentID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":       true,
 		"children": children,
 	})
 }
 
 // GetParent handles GET /v1/agent/:id/parent
-func (h *SwarmHandler) GetParent(c echo.Context) error {
-	agentID := c.Param("id")
+func (h *SwarmHandler) GetParent(w http.ResponseWriter, r *http.Request) {
+	agentID := mux.Vars(r)["id"]
 	if agentID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "agent_id is required")
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "agent_id is required")
+		return
 	}
 
-	parent, err := h.swarmService.GetParent(c.Request().Context(), agentID)
+	parent, err := h.swarmService.GetParent(r.Context(), agentID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
 	}
 
-	if parent == nil {
-		return c.JSON(http.StatusOK, map[string]any{
-			"ok":     true,
-			"parent": nil,
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]any{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":     true,
 		"parent": parent,
 	})
 }
 
 // SendMessage handles POST /v1/agent/:id/message
-func (h *SwarmHandler) SendMessage(c echo.Context) error {
-	fromAgentID := c.Param("id")
+func (h *SwarmHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
+	fromAgentID := mux.Vars(r)["id"]
 	if fromAgentID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "from_agent_id is required")
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "from_agent_id is required")
+		return
 	}
 
 	var msg identity.AgentMessage
-	if err := c.Bind(&msg); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		return
 	}
 
 	msg.FromAgentID = fromAgentID
 
-	if err := h.messageService.SendMessage(c.Request().Context(), &msg); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	if err := h.messageService.SendMessage(r.Context(), &msg); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
 	}
 
-	return c.JSON(http.StatusCreated, map[string]any{
+	writeJSON(w, http.StatusCreated, map[string]any{
 		"ok":      true,
 		"message": "Message sent successfully",
 		"msg_id":  msg.ID,
@@ -159,175 +164,207 @@ func (h *SwarmHandler) SendMessage(c echo.Context) error {
 }
 
 // GetInbox handles GET /v1/agent/:id/inbox
-func (h *SwarmHandler) GetInbox(c echo.Context) error {
-	agentID := c.Param("id")
+func (h *SwarmHandler) GetInbox(w http.ResponseWriter, r *http.Request) {
+	agentID := mux.Vars(r)["id"]
 	if agentID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "agent_id is required")
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "agent_id is required")
+		return
 	}
 
-	messages, err := h.messageService.GetInbox(c.Request().Context(), agentID, 50)
+	messages, err := h.messageService.GetInbox(r.Context(), agentID, 50)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":       true,
 		"messages": messages,
 	})
 }
 
 // GetWallet handles GET /v1/agent/:id/wallet
-func (h *SwarmHandler) GetWallet(c echo.Context) error {
-	agentID := c.Param("id")
+func (h *SwarmHandler) GetWallet(w http.ResponseWriter, r *http.Request) {
+	agentID := mux.Vars(r)["id"]
 	if agentID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "agent_id is required")
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "agent_id is required")
+		return
 	}
 
-	wallet, err := h.walletService.GetWallet(c.Request().Context(), agentID)
+	wallet, err := h.walletService.GetWallet(r.Context(), agentID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
-		"ok":      true,
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":     true,
 		"wallet": wallet,
 	})
 }
 
 // CreateListing handles POST /v1/marketplace/agent/list
-func (h *SwarmHandler) CreateListing(c echo.Context) error {
+func (h *SwarmHandler) CreateListing(w http.ResponseWriter, r *http.Request) {
 	var req marketplace.CreateAgentListingRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		return
 	}
 
-	listing, err := h.marketplaceService.ListingAgent(c.Request().Context(), &req)
+	listing, err := h.marketplaceService.ListingAgent(r.Context(), &req)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
 	}
 
-	return c.JSON(http.StatusCreated, map[string]any{
+	writeJSON(w, http.StatusCreated, map[string]any{
 		"ok":      true,
 		"listing": listing,
 	})
 }
 
 // SearchAgents handles GET /v1/marketplace/agents
-func (h *SwarmHandler) SearchAgents(c echo.Context) error {
-	var req marketplace.SearchAgentsRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+func (h *SwarmHandler) SearchAgents(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	req := marketplace.SearchAgentsRequest{
+		PricingModel: q.Get("pricing_model"),
+		Limit:        20,
+		Offset:       0,
+	}
+	if l := q.Get("limit"); l != "" {
+		if n, _ := strconv.Atoi(l); n > 0 {
+			req.Limit = n
+		}
+	}
+	if o := q.Get("offset"); o != "" {
+		if n, _ := strconv.Atoi(o); n >= 0 {
+			req.Offset = n
+		}
+	}
+	if v := q.Get("min_rating"); v != "" {
+		if n, err := strconv.ParseFloat(v, 64); err == nil {
+			req.MinRating = n
+		}
+	}
+	if v := q.Get("max_price_per_call"); v != "" {
+		if n, err := strconv.ParseFloat(v, 64); err == nil {
+			req.MaxPricePerCall = n
+		}
+	}
+	if v := q.Get("min_roi_score"); v != "" {
+		if n, err := strconv.ParseFloat(v, 64); err == nil {
+			req.MinROIScore = n
+		}
+	}
+	if t := q.Get("listing_types"); t != "" {
+		req.ListingTypes = strings.Split(t, ",")
+		for i := range req.ListingTypes {
+			req.ListingTypes[i] = strings.TrimSpace(req.ListingTypes[i])
+		}
 	}
 
-	if req.Limit == 0 {
-		req.Limit = 20
-	}
-
-	results, total, err := h.marketplaceService.SearchAgents(c.Request().Context(), &req)
+	results, total, err := h.marketplaceService.SearchAgents(r.Context(), &req)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
-		"ok":    true,
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":     true,
 		"agents": results,
-		"total": total,
+		"total":  total,
 	})
 }
 
 // ProposeEvolution handles POST /v1/agent/:id/evolve
-func (h *SwarmHandler) ProposeEvolution(c echo.Context) error {
-	agentID := c.Param("id")
+func (h *SwarmHandler) ProposeEvolution(w http.ResponseWriter, r *http.Request) {
+	agentID := mux.Vars(r)["id"]
 	if agentID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "agent_id is required")
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "agent_id is required")
+		return
 	}
 
-	// First analyze performance
-	analysis, err := h.evolutionService.AnalyzePerformance(c.Request().Context(), agentID, 24*7*time.Hour) // 1 week
+	analysis, err := h.evolutionService.AnalyzePerformance(r.Context(), agentID, 24*7*time.Hour)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
 	}
 
-	// Then propose evolution
-	proposal, err := h.evolutionService.ProposeEvolution(c.Request().Context(), agentID, analysis)
+	proposal, err := h.evolutionService.ProposeEvolution(r.Context(), agentID, analysis)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
 	}
 
-	return c.JSON(http.StatusCreated, map[string]any{
-		"ok":        true,
-		"proposal":  proposal,
-		"analysis":  analysis,
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"ok":       true,
+		"proposal": proposal,
+		"analysis": analysis,
 	})
 }
 
 // CreateSchedule handles POST /v1/agent/:id/schedule
-func (h *SwarmHandler) CreateSchedule(c echo.Context) error {
-	agentID := c.Param("id")
+func (h *SwarmHandler) CreateSchedule(w http.ResponseWriter, r *http.Request) {
+	agentID := mux.Vars(r)["id"]
 	if agentID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "agent_id is required")
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "agent_id is required")
+		return
 	}
 
 	var schedule identity.AutonomySchedule
-	if err := c.Bind(&schedule); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	if err := json.NewDecoder(r.Body).Decode(&schedule); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		return
 	}
 
 	schedule.AgentID = agentID
 
-	if err := h.autonomyService.CreateSchedule(c.Request().Context(), &schedule); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	if err := h.autonomyService.CreateSchedule(r.Context(), &schedule); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
 	}
 
-	return c.JSON(http.StatusCreated, map[string]any{
+	writeJSON(w, http.StatusCreated, map[string]any{
 		"ok":       true,
 		"schedule": schedule,
 	})
 }
 
 // GetSchedules handles GET /v1/agent/:id/schedules
-func (h *SwarmHandler) GetSchedules(c echo.Context) error {
-	agentID := c.Param("id")
+func (h *SwarmHandler) GetSchedules(w http.ResponseWriter, r *http.Request) {
+	agentID := mux.Vars(r)["id"]
 	if agentID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "agent_id is required")
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "agent_id is required")
+		return
 	}
 
-	schedules, err := h.autonomyService.GetSchedules(c.Request().Context(), agentID)
+	schedules, err := h.autonomyService.GetSchedules(r.Context(), agentID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":        true,
 		"schedules": schedules,
 	})
 }
 
-// RegisterRoutes registers swarm routes
-func (h *SwarmHandler) RegisterRoutes(e *echo.Echo, basePath string) {
-	agent := e.Group(basePath + "/agent")
+// RegisterRoutes registers swarm routes on a gorilla/mux router
+func (h *SwarmHandler) RegisterRoutes(router *mux.Router, basePath string) {
+	agent := router.PathPrefix(basePath + "/agent").Subrouter()
 
-	// Spawn and children
-	agent.POST("/:id/spawn", h.SpawnChild)
-	agent.GET("/:id/children", h.GetChildren)
-	agent.GET("/:id/parent", h.GetParent)
+	agent.HandleFunc("/{id}/spawn", h.SpawnChild).Methods(http.MethodPost)
+	agent.HandleFunc("/{id}/children", h.GetChildren).Methods(http.MethodGet)
+	agent.HandleFunc("/{id}/parent", h.GetParent).Methods(http.MethodGet)
+	agent.HandleFunc("/{id}/message", h.SendMessage).Methods(http.MethodPost)
+	agent.HandleFunc("/{id}/inbox", h.GetInbox).Methods(http.MethodGet)
+	agent.HandleFunc("/{id}/wallet", h.GetWallet).Methods(http.MethodGet)
+	agent.HandleFunc("/{id}/evolve", h.ProposeEvolution).Methods(http.MethodPost)
+	agent.HandleFunc("/{id}/schedule", h.CreateSchedule).Methods(http.MethodPost)
+	agent.HandleFunc("/{id}/schedules", h.GetSchedules).Methods(http.MethodGet)
 
-	// Messaging
-	agent.POST("/:id/message", h.SendMessage)
-	agent.GET("/:id/inbox", h.GetInbox)
-
-	// Wallet
-	agent.GET("/:id/wallet", h.GetWallet)
-
-	// Evolution
-	agent.POST("/:id/evolve", h.ProposeEvolution)
-
-	// Autonomy
-	agent.POST("/:id/schedule", h.CreateSchedule)
-	agent.GET("/:id/schedules", h.GetSchedules)
-
-	// Marketplace
-	marketplace := e.Group(basePath + "/marketplace")
-	marketplace.GET("/agents", h.SearchAgents)
-	marketplace.POST("/agent/list", h.CreateListing)
+	marketplace := router.PathPrefix(basePath + "/marketplace").Subrouter()
+	marketplace.HandleFunc("/agents", h.SearchAgents).Methods(http.MethodGet)
+	marketplace.HandleFunc("/agent/list", h.CreateListing).Methods(http.MethodPost)
 }

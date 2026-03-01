@@ -5,11 +5,18 @@ import (
 	"os"
 	"strings"
 
+	"github.com/functionfly/functionfly/internal/agent/autonomy"
+	"github.com/functionfly/functionfly/internal/agent/economy"
+	"github.com/functionfly/functionfly/internal/agent/evolution"
+	"github.com/functionfly/functionfly/internal/agent/identity"
+	"github.com/functionfly/functionfly/internal/agent/marketplace"
+	"github.com/functionfly/functionfly/internal/agent/swarm"
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
 	authHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/auth"
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
+	"github.com/functionfly/functionfly/internal/api/handlers/billing"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
@@ -44,6 +51,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize handlers
 	authHandler := authHandlerPkg.NewHandler(s.authSvc)
 	usersHandler := usersHandlerPkg.NewHandler(s.repo, s.authSvc)
+	billingHandler := billing.NewHandler(s.repo)
 	appsHandler := apps.NewHandler(s.repo)
 	backendsHandler := backends.NewHandler(s.repo, s.routingSvc)
 	deploymentsHandler := deployments.NewHandler(s.repo, s.deploySvc)
@@ -122,6 +130,27 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Initialize AEP (Agent Execution Plan) handler
 	aepHandler := agenthandler.NewHandler(s.postgresDB.GORM, s.redisClient, registryRepo)
+
+	// Initialize agent identity repository for swarm services
+	agentIdentityRepo := identity.NewRepository(s.postgresDB.GORM)
+
+	// Initialize agent swarm services
+	agentEconomyService := economy.NewService(s.postgresDB.GORM)
+	agentMarketplaceService := marketplace.NewService(s.postgresDB.GORM)
+	agentAutonomyService := autonomy.NewService(s.postgresDB.GORM)
+	agentEvolutionService := evolution.NewService(s.postgresDB.GORM)
+	agentSwarmMessageService := swarm.NewMessageService(s.postgresDB.GORM)
+	agentSwarmService := swarm.NewService(s.postgresDB.GORM, agentIdentityRepo, agentEconomyService)
+
+	// Initialize Swarm handler (for swarm/marketplace/evolution features)
+	swarmHandler := agenthandler.NewSwarmHandler(
+		agentSwarmService,
+		agentSwarmMessageService,
+		agentEconomyService,
+		agentMarketplaceService,
+		agentEvolutionService,
+		agentAutonomyService,
+	)
 
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(s.authSvc)
@@ -251,6 +280,13 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/users/me/sessions", authMiddleware.RequireAuth(usersHandler.HandleListSessions)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/me/sessions/revoke-others", authMiddleware.RequireAuth(usersHandler.HandleRevokeOtherSessions)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/users/me/sessions/{id}", authMiddleware.RequireAuth(usersHandler.HandleRevokeSession)).Methods("DELETE", "OPTIONS")
+	// User settings by username (protected; requester must match username)
+	api.HandleFunc("/users/{username}/settings", authMiddleware.RequireAuth(usersHandler.HandleGetUserSettings)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/{username}/settings/profile", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsProfile)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/users/{username}/settings/notifications", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsNotifications)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/users/{username}/settings/privacy", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsPrivacy)).Methods("PATCH", "OPTIONS")
+	// Billing portal (Stripe Customer Portal)
+	api.HandleFunc("/billing/portal-session", authMiddleware.RequireAuth(billingHandler.HandleCreatePortalSession)).Methods("POST", "OPTIONS")
 	// @username profile routes (clean URL structure)
 	api.HandleFunc("/@/{username}", usersHandler.HandleGetPublicProfileByAt).Methods("GET", "OPTIONS")
 
@@ -652,13 +688,18 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Billing & economic controls (protected)
 	protected.HandleFunc("/agent/{agent_id}/billing/summary", authMiddleware.RequireAuth(aepHandler.HandleGetBillingSummary)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/billing/spend-cap", authMiddleware.RequireAuth(aepHandler.HandleUpdateSpendCap)).Methods("PUT", "OPTIONS")
-	protected.HandleFunc("/agent/{agent_id}/billing/usage", authMiddleware.RequireAuth(aepHandler.HandleGetBillingSummary)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/cost-breakdown", authMiddleware.RequireAuth(aepHandler.HandleGetCostBreakdown)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/credits/balance", authMiddleware.RequireAuth(aepHandler.HandleGetCreditBalance)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/credits/purchase", authMiddleware.RequireAuth(aepHandler.HandlePurchaseCredits)).Methods("POST", "OPTIONS")
 
 	// Concurrency stats (protected)
 	protected.HandleFunc("/agent/concurrency/stats", authMiddleware.RequireAuth(aepHandler.HandleGetConcurrencyStats)).Methods("GET", "OPTIONS")
+
+	// ============================================================
+	// Swarm / Marketplace / Evolution routes (protected)
+	// ============================================================
+	// Register swarm handler routes
+	swarmHandler.RegisterRoutes(protected, "/v1")
 
 	// Backend routes (protected)
 	protected.HandleFunc("/apps/{appId}/backends", authMiddleware.RequireAuth(backendsHandler.HandleCreateBackend)).Methods("POST")
@@ -840,8 +881,28 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	contentRoutes.HandleFunc("/blog/{postId}", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleUpdateBlogPost)).Methods("PATCH")
 	contentRoutes.HandleFunc("/blog/{postId}", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleDeleteBlogPost)).Methods("DELETE")
 
+	// Blog categories (admin CRUD)
+	contentRoutes.HandleFunc("/categories", authMiddleware.RequirePermission(auth.PermSystemRead)(contentHandler.HandleListAdminCategories)).Methods("GET")
+	contentRoutes.HandleFunc("/categories", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleCreateAdminCategory)).Methods("POST")
+	contentRoutes.HandleFunc("/categories/{id}", authMiddleware.RequirePermission(auth.PermSystemRead)(contentHandler.HandleGetAdminCategory)).Methods("GET")
+	contentRoutes.HandleFunc("/categories/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleUpdateAdminCategory)).Methods("PATCH")
+	contentRoutes.HandleFunc("/categories/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleDeleteAdminCategory)).Methods("DELETE")
+
+	// Blog authors (admin CRUD)
+	contentRoutes.HandleFunc("/authors", authMiddleware.RequirePermission(auth.PermSystemRead)(contentHandler.HandleListAdminAuthors)).Methods("GET")
+	contentRoutes.HandleFunc("/authors", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleCreateAdminAuthor)).Methods("POST")
+	contentRoutes.HandleFunc("/authors/{id}", authMiddleware.RequirePermission(auth.PermSystemRead)(contentHandler.HandleGetAdminAuthor)).Methods("GET")
+	contentRoutes.HandleFunc("/authors/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleUpdateAdminAuthor)).Methods("PATCH")
+	contentRoutes.HandleFunc("/authors/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleDeleteAdminAuthor)).Methods("DELETE")
+
 	// Content sync
 	contentRoutes.HandleFunc("/sync/github-releases", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleSyncGitHubReleases)).Methods("POST")
+
+	// Content generation (Open Router AI) — also register on adminRoutes so path is unambiguous
+	adminRoutes.HandleFunc("/content/generate/changelog", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleGenerateChangelogContent)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/content/generate/blog", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleGenerateBlogContent)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/content/generate/author", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleGenerateAuthorContent)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/content/generate/category", authMiddleware.RequirePermission(auth.PermSystemWrite)(contentHandler.HandleGenerateCategoryContent)).Methods("POST", "OPTIONS")
 
 	// Tenant-scoped operations (admin impersonating tenant)
 	adminRoutes.HandleFunc("/tenants/{tenantId}/apps", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleListTenantApps)).Methods("GET")

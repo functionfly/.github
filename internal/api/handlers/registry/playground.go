@@ -746,28 +746,58 @@ func (h *PlaygroundHandler) HandleExecuteAt(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Parse request body
-	var execReq struct {
+	var bodyReq struct {
 		Input json.RawMessage `json:"input"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&execReq); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&bodyReq); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	// Execute function
-	execReq := &registry.ExecuteRequest{
-		FunctionID: fnVersion.ID,
-		Input:      execReq.Input,
+	// Execute via internal execution endpoint (same as HandlePlaygroundExecute)
+	execRequest := functionregistry.ExecutionRequest{
+		Author:  username,
+		Name:    functionName,
+		Version: fnVersion.Version,
+		Input:   bodyReq.Input,
 	}
-
-	result, err := h.repo.ExecuteFunction(execReq)
+	reqBytes, err := json.Marshal(execRequest)
+	if err != nil {
+		http.Error(w, "Failed to marshal request", http.StatusInternalServerError)
+		return
+	}
+	serverPort := os.Getenv("PORT")
+	if serverPort == "" {
+		serverPort = "8090"
+	}
+	targetURL := fmt.Sprintf("http://localhost:%s/v1/fx/%s/%s@%s", serverPort, username, functionName, fnVersion.Version)
+	proxyReq, err := http.NewRequestWithContext(r.Context(), "POST", targetURL, bytes.NewReader(reqBytes))
+	if err != nil {
+		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+		return
+	}
+	proxyReq.Header.Set("Content-Type", "application/json")
+	proxyReq.Header.Set("X-FunctionFly-Playground", "true")
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(proxyReq)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Execution failed: %v", err), http.StatusInternalServerError)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Failed to read execution response", http.StatusInternalServerError)
+		return
+	}
+	for k, v := range resp.Header {
+		if k == "Content-Type" && len(v) > 0 {
+			w.Header().Set(k, v[0])
+			break
+		}
+	}
+	w.WriteHeader(resp.StatusCode)
+	w.Write(body)
 }
 
 // HandleReplay serves a replay page for a past execution

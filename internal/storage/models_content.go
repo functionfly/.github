@@ -50,6 +50,35 @@ type BlogPost struct {
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
+// BlogCategory represents a blog category
+type BlogCategory struct {
+	ID          uuid.UUID `json:"id"`
+	Title       string    `json:"title"`
+	Slug        string    `json:"slug"`
+	Description string    `json:"description"`
+	Color       string    `json:"color"`
+	Icon        string    `json:"icon"`
+	Order       int       `json:"order"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+// BlogAuthor represents a blog author
+type BlogAuthor struct {
+	ID          uuid.UUID              `json:"id"`
+	Name        string                 `json:"name"`
+	Slug        string                 `json:"slug"`
+	Bio         string                 `json:"bio"`
+	Photo       map[string]interface{}  `json:"photo,omitempty"`
+	Email       string                 `json:"email"`
+	Website     string                 `json:"website"`
+	SocialLinks map[string]interface{} `json:"socialLinks,omitempty"`
+	Role        string                 `json:"role"`
+	Active      bool                   `json:"active"`
+	CreatedAt   time.Time              `json:"createdAt"`
+	UpdatedAt   time.Time              `json:"updatedAt"`
+}
+
 // Feedback represents a user feedback submission
 type Feedback struct {
 	ID           uuid.UUID            `json:"id"`

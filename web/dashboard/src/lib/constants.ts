@@ -13,9 +13,17 @@ export const ROUTES = {
   ANALYTICS: "/analytics",
   STATE_FABRIC: "/state-fabric",
   SETTINGS: "/settings",
+  BILLING: "/settings", // Billing tab lives on Settings page
   TEAMS: "/teams",
   APPS: "/apps",
   APP_DETAIL: "/apps/:appId",
+  FUNCTION_DETAIL: "/functions/:id",
+  // Agent routes
+  AGENTS: "/agents",
+  AGENT_DETAIL: "/agents/:agentId",
+  MARKETPLACE_AGENTS: "/marketplace/agents",
+  MARKETPLACE_FUNCTIONS: "/marketplace/functions",
+  EVOLUTION: "/evolution",
   // Admin routes
   ADMIN: "/admin",
   ADMIN_TENANTS: "/admin/tenants",
@@ -33,6 +41,49 @@ export const ROUTES = {
   ADMIN_REGISTRY: "/admin/registry",
   ADMIN_STATE_FABRIC: "/admin/state-fabric",
 } as const;
+
+/**
+ * All sidebar main nav paths (for recent-tab tracking).
+ * Sorted by path length descending so longer paths match first (e.g. /admin/tenants/1 -> /admin/tenants).
+ */
+export const MAIN_NAV_PATHS: string[] = [
+  ROUTES.ADMIN_TENANTS,
+  ROUTES.ADMIN_USERS,
+  ROUTES.ADMIN_BILLING,
+  ROUTES.ADMIN_AUDIT,
+  ROUTES.ADMIN_SYSTEM,
+  ROUTES.ADMIN_CONTENT,
+  ROUTES.ADMIN_REDIRECTS,
+  ROUTES.ADMIN_NEWSLETTER,
+  ROUTES.ADMIN_CONTENT_CALENDAR,
+  ROUTES.ADMIN_FEEDBACK,
+  ROUTES.ADMIN_FUNCTIONS,
+  ROUTES.ADMIN_REGISTRY,
+  ROUTES.ADMIN_STATE_FABRIC,
+  ROUTES.STATE_FABRIC,
+  ROUTES.MARKETPLACE_AGENTS,
+  ROUTES.MARKETPLACE_FUNCTIONS,
+  ROUTES.FUNCTION_DETAIL,
+  ROUTES.APP_DETAIL,
+  ROUTES.DASHBOARD,
+  ROUTES.FUNCTIONS,
+  ROUTES.APPS,
+  ROUTES.REGISTRY,
+  ROUTES.PROVIDERS,
+  ROUTES.TEAMS,
+  ROUTES.AGENTS,
+  ROUTES.ANALYTICS,
+  ROUTES.SETTINGS,
+].sort((a, b) => b.length - a.length);
+
+/** Resolve current pathname to a canonical sidebar path, or null if not a main nav route. */
+export function getCanonicalNavPath(pathname: string): string | null {
+  for (const p of MAIN_NAV_PATHS) {
+    if (pathname === p || (p !== ROUTES.DASHBOARD && pathname.startsWith(p + "/")))
+      return p;
+  }
+  return null;
+}
 
 // ============================================================================
 // Dynamic Route Builder Functions
@@ -81,12 +132,15 @@ export const ROUTE_BUILDERS = {
 
   // User dashboard sections
   userFunctions: (username: string) => `/dashboard/${username}/functions`,
-  userSettings: (username: string) => `/dashboard/${username}/settings`,
+  userSettings: (username: string) => `/u/${username}/settings`,
 
   // Admin dynamic routes
   adminTenant: (tenantId: string) => `/admin/tenants/${tenantId}`,
   adminUser: (userId: string) => `/admin/users/${userId}`,
   adminFunction: (functionId: string) => `/admin/functions/${functionId}`,
+
+  // Agent dynamic routes
+  agent: (agentId: string) => `/agents/${agentId}`,
 } as const;
 
 // Type for route builder function

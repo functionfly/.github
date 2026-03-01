@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/agent/economy"
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -12,42 +13,43 @@ import (
 
 // Service handles agent swarm orchestration
 type Service struct {
-	db            *gorm.DB
-	identityRepo  *identity.Repository
+	db             *gorm.DB
+	identityRepo   *identity.Repository
 	messageService *MessageService
-	walletService *WalletService
+	walletService  *economy.Service
 }
 
 // NewService creates a new swarm service
-func NewService(db *gorm.DB, identityRepo *identity.Repository) *Service {
+func NewService(db *gorm.DB, identityRepo *identity.Repository, walletService *economy.Service) *Service {
 	return &Service{
-		db:           db,
-		identityRepo: identityRepo,
+		db:            db,
+		identityRepo:  identityRepo,
+		walletService: walletService,
 	}
 }
 
 // SpawnChildRequest represents a request to spawn a child agent
 type SpawnChildRequest struct {
-	ParentAgentID     string
-	ChildAgentID      string
-	ChildName         string
+	ParentAgentID    string
+	ChildAgentID     string
+	ChildName        string
 	ChildDescription string
-	SwarmRole         string // worker | manager | infrastructure
-	MaxChildAgents    int
-	Capabilities      map[string]any
-	InitialBudgetUSD  float64
-	PolicyConfig      *PolicyConfig
+	SwarmRole        string // worker | manager | infrastructure
+	MaxChildAgents   int
+	Capabilities     map[string]any
+	InitialBudgetUSD float64
+	PolicyConfig     *PolicyConfig
 }
 
 // PolicyConfig defines the policy configuration for a child agent
 type PolicyConfig struct {
-	MaxExecutionDepth     int
-	MaxRecursionDepth     int
-	MaxWallTimeMs         int
-	MaxMemoryGrowthMB     int
-	ForbiddenFunctions    []string
-	DeterministicOnly     bool
-	AllowedCapabilities   []string
+	MaxExecutionDepth   int
+	MaxRecursionDepth   int
+	MaxWallTimeMs       int
+	MaxMemoryGrowthMB   int
+	ForbiddenFunctions  []string
+	DeterministicOnly   bool
+	AllowedCapabilities []string
 }
 
 // SpawnChild creates a new child agent under the parent
@@ -64,7 +66,7 @@ func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*iden
 		return nil, "", fmt.Errorf("failed to count children: %w", err)
 	}
 
-	if parent.MaxChildAgents > 0 && childCount >= parent.MaxChildAgents {
+	if parent.MaxChildAgents > 0 && childCount >= int64(parent.MaxChildAgents) {
 		return nil, "", fmt.Errorf("parent agent has reached max child capacity (%d)", parent.MaxChildAgents)
 	}
 
@@ -91,12 +93,12 @@ func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*iden
 
 	// Update swarm fields
 	updates := map[string]interface{}{
-		"parent_agent_id":      req.ParentAgentID,
-		"swarm_role":           req.SwarmRole,
-		"max_child_agents":     req.MaxChildAgents,
-		"capabilities":         req.Capabilities,
-		"autonomous_enabled":   false, // Disabled by default for spawned agents
-		"evolution_enabled":    false,
+		"parent_agent_id":    req.ParentAgentID,
+		"swarm_role":         req.SwarmRole,
+		"max_child_agents":   req.MaxChildAgents,
+		"capabilities":       req.Capabilities,
+		"autonomous_enabled": false, // Disabled by default for spawned agents
+		"evolution_enabled":  false,
 	}
 
 	if err := s.db.WithContext(ctx).Model(&identity.AgentIdentity{}).
@@ -107,12 +109,12 @@ func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*iden
 
 	// Create relationship record
 	relationship := &identity.AgentRelationship{
-		ID:                uuid.New(),
-		ParentAgentID:     req.ParentAgentID,
-		ChildAgentID:      req.ChildAgentID,
-		RelationshipType:  "parent",
+		ID:                 uuid.New(),
+		ParentAgentID:      req.ParentAgentID,
+		ChildAgentID:       req.ChildAgentID,
+		RelationshipType:   "parent",
 		MaxDelegationDepth: 5,
-		CreatedAt:         time.Now(),
+		CreatedAt:          time.Now(),
 	}
 
 	if err := s.db.WithContext(ctx).Create(relationship).Error; err != nil {
@@ -120,16 +122,23 @@ func (s *Service) SpawnChild(ctx context.Context, req *SpawnChildRequest) (*iden
 	}
 
 	// Initialize wallet with initial budget if provided
-	if req.InitialBudgetUSD > 0 {
+	if req.InitialBudgetUSD > 0 && s.walletService != nil {
+		if _, err := s.walletService.GetOrCreateWallet(ctx, req.ChildAgentID); err != nil {
+			return nil, "", fmt.Errorf("failed to create wallet: %w", err)
+		}
+		if _, err := s.walletService.Credit(ctx, req.ChildAgentID, req.InitialBudgetUSD, "initial_budget", map[string]any{"parent_agent_id": req.ParentAgentID}); err != nil {
+			return nil, "", fmt.Errorf("failed to credit initial budget: %w", err)
+		}
+	} else if req.InitialBudgetUSD > 0 {
 		wallet := &identity.AgentWallet{
-			ID:              uuid.New(),
-			AgentID:         req.ChildAgentID,
-			BalanceUSD:      req.InitialBudgetUSD,
+			ID:               uuid.New(),
+			AgentID:          req.ChildAgentID,
+			BalanceUSD:       req.InitialBudgetUSD,
 			EscrowBalanceUSD: 0,
-			TotalEarnedUSD:  0,
-			TotalSpentUSD:   0,
-			CreatedAt:       time.Now(),
-			UpdatedAt:       time.Now(),
+			TotalEarnedUSD:   0,
+			TotalSpentUSD:    0,
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
 		}
 		if err := s.db.WithContext(ctx).Create(wallet).Error; err != nil {
 			return nil, "", fmt.Errorf("failed to create wallet: %w", err)

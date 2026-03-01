@@ -162,20 +162,20 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 
 	// Build SEO-enhanced profile with additional metadata
 	profile := map[string]interface{}{
-		"id":                  user.ID,
-		"username":            usernameStr,
-		"name":                name,
-		"avatar":              avatar,
-		"bio":                 bio,
-		"createdAt":           user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		"publishedFunctions":  publishedFunctions,
+		"id":                 user.ID,
+		"username":           usernameStr,
+		"name":               name,
+		"avatar":             avatar,
+		"bio":                bio,
+		"createdAt":          user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		"publishedFunctions": publishedFunctions,
 		// SEO enhancement fields
-		"profileUrl":          "/@" + usernameStr,
-		"totalFunctions":      len(publishedFunctions),
+		"profileUrl":     "/@" + usernameStr,
+		"totalFunctions": len(publishedFunctions),
 	}
 
 	// Add verification fields if available
-	if user.IsVerified != nil && *user.IsVerified {
+	if user.EmailVerified {
 		profile["isVerified"] = true
 	}
 
@@ -225,15 +225,24 @@ func (h *Handler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 		companyName = *user.CompanyName
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{
+	// Load tenant plan for billing/UI (authoritative source)
+	plan := ""
+	if tenant, err := h.repo.GetTenantByID(user.TenantID); err == nil && tenant != nil && tenant.Plan != "" {
+		plan = tenant.Plan
+	}
+
+	resp := map[string]interface{}{
 		"id":          user.ID,
+		"tenantId":    user.TenantID,
 		"email":       user.Email,
 		"name":        name,
 		"username":    usernameStr,
 		"companyName": companyName,
 		"avatar":      avatar,
+		"plan":        plan,
 		"updatedAt":   user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-	})
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // UpdateMeRequest represents the request body for updating the current user's profile
@@ -364,12 +373,12 @@ func (h *Handler) getPublishedFunctions(username string) []map[string]interface{
 
 // sessionResponseItem is the safe session payload returned to the client (no token).
 type sessionResponseItem struct {
-	ID              string `json:"id"`
-	Device          string `json:"device"`
-	IP              string `json:"ip"`
-	Location        string `json:"location"`
-	LastActive      string `json:"lastActive"`
-	CurrentSession  bool   `json:"currentSession"`
+	ID             string `json:"id"`
+	Device         string `json:"device"`
+	IP             string `json:"ip"`
+	Location       string `json:"location"`
+	LastActive     string `json:"lastActive"`
+	CurrentSession bool   `json:"currentSession"`
 }
 
 func parseUserAgent(ua string) string {
@@ -540,4 +549,170 @@ func (h *Handler) HandleRevokeOtherSessions(w http.ResponseWriter, r *http.Reque
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "All other sessions revoked"})
+}
+
+// requireSelfUsername ensures the request is authenticated and the path username matches the current user. Returns the user and true on success; on failure it writes the error response and returns nil, false.
+func (h *Handler) requireSelfUsername(w http.ResponseWriter, r *http.Request, pathUsername string) (*storage.User, bool) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return nil, false
+	}
+	user, err := h.repo.GetUserByID(claims.UserID)
+	if err != nil || user == nil {
+		writeJSONError(w, http.StatusNotFound, "User not found")
+		return nil, false
+	}
+	usernameStr := ""
+	if user.Username != nil {
+		usernameStr = *user.Username
+	}
+	if pathUsername == "" || !strings.EqualFold(pathUsername, usernameStr) {
+		writeJSONError(w, http.StatusForbidden, "You can only access your own settings")
+		return nil, false
+	}
+	return user, true
+}
+
+// HandleGetUserSettings returns GET /v1/users/{username}/settings — full settings payload for the current user (username must match).
+func (h *Handler) HandleGetUserSettings(w http.ResponseWriter, r *http.Request) {
+	pathUsername := mux.Vars(r)["username"]
+	user, ok := h.requireSelfUsername(w, r, pathUsername)
+	if !ok {
+		return
+	}
+
+	name := user.Name
+	if name == "" && user.ProviderData != nil {
+		if n, ok := user.ProviderData["name"].(string); ok {
+			name = n
+		}
+	}
+	var avatar string
+	if user.ProviderData != nil {
+		if a, ok := user.ProviderData["avatar_url"].(string); ok {
+			avatar = a
+		}
+	}
+	usernameStr := ""
+	if user.Username != nil {
+		usernameStr = *user.Username
+	}
+	bio := ""
+	if user.Bio != nil {
+		bio = *user.Bio
+	}
+
+	payload := map[string]interface{}{
+		"id":       user.ID.String(),
+		"username": usernameStr,
+		"name":     name,
+		"email":    user.Email,
+		"avatar":   avatar,
+		"bio":      bio,
+		"website":  "",
+		"twitter":  "",
+		"github":   "",
+		"settings": map[string]interface{}{
+			"emailNotifications": true,
+			"marketingEmails":    false,
+			"publicProfile":      true,
+			"allowMessaging":     false,
+		},
+	}
+	if user.CreatedAt.IsZero() == false {
+		payload["createdAt"] = user.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
+	}
+	writeJSON(w, http.StatusOK, payload)
+}
+
+// SettingsProfilePatchRequest is the body for PATCH /v1/users/{username}/settings/profile
+type SettingsProfilePatchRequest struct {
+	Name     string `json:"name"`
+	Bio      string `json:"bio"`
+	Website  string `json:"website"`
+	Twitter  string `json:"twitter"`
+	Github   string `json:"github"`
+	Username string `json:"username"`
+}
+
+// HandlePatchUserSettingsProfile handles PATCH /v1/users/{username}/settings/profile
+func (h *Handler) HandlePatchUserSettingsProfile(w http.ResponseWriter, r *http.Request) {
+	pathUsername := mux.Vars(r)["username"]
+	_, ok := h.requireSelfUsername(w, r, pathUsername)
+	if !ok {
+		return
+	}
+	claims := middleware.GetUserFromContext(r)
+
+	var req SettingsProfilePatchRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	updates := make(map[string]interface{})
+	if req.Name != "" {
+		updates["name"] = strings.TrimSpace(req.Name)
+	}
+	if req.Bio != "" {
+		updates["bio"] = strings.TrimSpace(req.Bio)
+	}
+	if req.Username != "" {
+		clean := strings.ToLower(strings.TrimSpace(req.Username))
+		for _, c := range clean {
+			if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
+				writeJSONError(w, http.StatusBadRequest, "Username may only contain lowercase letters, numbers, hyphens, and underscores")
+				return
+			}
+		}
+		if len(clean) < 3 {
+			writeJSONError(w, http.StatusBadRequest, "Username must be at least 3 characters")
+			return
+		}
+		if len(clean) > 30 {
+			writeJSONError(w, http.StatusBadRequest, "Username must be 30 characters or fewer")
+			return
+		}
+		updates["username"] = clean
+	}
+
+	if len(updates) == 0 {
+		writeJSON(w, http.StatusOK, map[string]string{"message": "No changes to save"})
+		return
+	}
+
+	_, err := h.repo.UpdateUser(context.Background(), claims.UserID, updates)
+	if err != nil {
+		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
+			writeJSONError(w, http.StatusConflict, "Username is already taken")
+			return
+		}
+		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update profile settings")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to update profile")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Profile updated"})
+}
+
+// HandlePatchUserSettingsNotifications handles PATCH /v1/users/{username}/settings/notifications (no-op for now)
+func (h *Handler) HandlePatchUserSettingsNotifications(w http.ResponseWriter, r *http.Request) {
+	pathUsername := mux.Vars(r)["username"]
+	if _, ok := h.requireSelfUsername(w, r, pathUsername); !ok {
+		return
+	}
+	// Accept body for future use; no persistence yet
+	_ = json.NewDecoder(r.Body)
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Notification preferences updated"})
+}
+
+// HandlePatchUserSettingsPrivacy handles PATCH /v1/users/{username}/settings/privacy (no-op for now)
+func (h *Handler) HandlePatchUserSettingsPrivacy(w http.ResponseWriter, r *http.Request) {
+	pathUsername := mux.Vars(r)["username"]
+	if _, ok := h.requireSelfUsername(w, r, pathUsername); !ok {
+		return
+	}
+	// Accept body for future use; no persistence yet
+	_ = json.NewDecoder(r.Body)
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Privacy settings updated"})
 }

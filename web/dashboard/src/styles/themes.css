@@ -788,6 +788,47 @@
   color: #4b5563 !important;
 }
 
+/* ==========================================================================
+   Dashboard Sidebar - Light Mode (section headers, dropdown arrows)
+   ========================================================================== */
+
+[data-theme="light"] .dashboard-sidebar nav h3.text-text-muted,
+[data-theme="light"] .dashboard-sidebar nav button.text-text-muted {
+  color: #4b5563 !important;
+}
+
+[data-theme="light"] .dashboard-sidebar nav button.text-text-muted svg {
+  color: #4b5563 !important;
+}
+
+/* ==========================================================================
+   Dashboard Tabs - Light Mode (inactive tab text readable)
+   ========================================================================== */
+
+[data-theme="light"] [role="tablist"] [role="tab"] {
+  color: #4b5563 !important;
+}
+
+[data-theme="light"] [role="tablist"] [role="tab"][data-state="active"] {
+  color: #0f0f1a !important;
+}
+
+/* ==========================================================================
+   Settings page - Upgrade Plan button visible in light mode
+   ========================================================================== */
+
+[data-theme="light"] .settings-upgrade-btn {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  background-color: #f8f9fa !important;
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .settings-upgrade-btn:hover {
+  background-color: #eef2ff !important;
+  border-color: rgba(79, 70, 229, 0.4) !important;
+  color: #4f46e5 !important;
+}
+
 /* Function page markdown prose - dark text in light mode (don't use prose-invert) */
 [data-theme="light"] .function-page-prose {
   --tw-prose-body: #0f0f1a;
@@ -1924,20 +1965,6 @@
 [data-theme="light"] .problem-card-icon {
   background-color: #fee2e2 !important;
   border: 2px solid #fca5a5 !important;
-}
-
-/* Debug: Make problem cards highly visible in all themes */
-.problem-grid > div {
-  background-color: #ffffff !important;
-  border: 3px solid #000000 !important;
-  box-shadow: 0 0 20px rgba(255, 0, 0, 0.5) !important;
-}
-
-.problem-card-title {
-  color: #ff0000 !important;
-  font-size: 20px !important;
-  font-weight: 900 !important;
-  text-shadow: none !important;
 }
 
 /* Enhanced code blocks and interactive elements */

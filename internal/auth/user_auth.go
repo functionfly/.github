@@ -178,6 +178,11 @@ func (a *AuthService) Login(email, password string) (res *LoginResponse, err err
 	// Build safe user for response (no password hash, MFA secrets, or verification tokens)
 	loginUser := userToLoginUser(user)
 
+	// Set tenant plan for billing/UI
+	if tenant, err := a.repo.GetTenantByID(user.TenantID); err == nil && tenant != nil && tenant.Plan != "" {
+		loginUser.Plan = tenant.Plan
+	}
+
 	return &LoginResponse{
 		Token: token,
 		User:  loginUser,

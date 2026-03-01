@@ -356,6 +356,54 @@ func (db *PostgresDB) DeleteBlogPost(ctx context.Context, id uuid.UUID) error {
 	return db.contentRepository.DeleteBlogPost(ctx, id)
 }
 
+func (db *PostgresDB) ListBlogCategories(ctx context.Context) ([]*BlogCategory, error) {
+	return db.contentRepository.ListBlogCategories(ctx)
+}
+
+func (db *PostgresDB) CreateBlogCategory(ctx context.Context, c *BlogCategory) (*BlogCategory, error) {
+	return db.contentRepository.CreateBlogCategory(ctx, c)
+}
+
+func (db *PostgresDB) GetBlogCategoryByID(ctx context.Context, id uuid.UUID) (*BlogCategory, error) {
+	return db.contentRepository.GetBlogCategoryByID(ctx, id)
+}
+
+func (db *PostgresDB) GetBlogCategoryBySlug(ctx context.Context, slug string) (*BlogCategory, error) {
+	return db.contentRepository.GetBlogCategoryBySlug(ctx, slug)
+}
+
+func (db *PostgresDB) UpdateBlogCategory(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*BlogCategory, error) {
+	return db.contentRepository.UpdateBlogCategory(ctx, id, updates)
+}
+
+func (db *PostgresDB) DeleteBlogCategory(ctx context.Context, id uuid.UUID) error {
+	return db.contentRepository.DeleteBlogCategory(ctx, id)
+}
+
+func (db *PostgresDB) ListBlogAuthors(ctx context.Context) ([]*BlogAuthor, error) {
+	return db.contentRepository.ListBlogAuthors(ctx)
+}
+
+func (db *PostgresDB) CreateBlogAuthor(ctx context.Context, a *BlogAuthor) (*BlogAuthor, error) {
+	return db.contentRepository.CreateBlogAuthor(ctx, a)
+}
+
+func (db *PostgresDB) GetBlogAuthorByID(ctx context.Context, id uuid.UUID) (*BlogAuthor, error) {
+	return db.contentRepository.GetBlogAuthorByID(ctx, id)
+}
+
+func (db *PostgresDB) GetBlogAuthorBySlug(ctx context.Context, slug string) (*BlogAuthor, error) {
+	return db.contentRepository.GetBlogAuthorBySlug(ctx, slug)
+}
+
+func (db *PostgresDB) UpdateBlogAuthor(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*BlogAuthor, error) {
+	return db.contentRepository.UpdateBlogAuthor(ctx, id, updates)
+}
+
+func (db *PostgresDB) DeleteBlogAuthor(ctx context.Context, id uuid.UUID) error {
+	return db.contentRepository.DeleteBlogAuthor(ctx, id)
+}
+
 // Feedback operations
 func (db *PostgresDB) CreateFeedback(feedback *Feedback) (*Feedback, error) {
 	return db.feedbackRepository.CreateFeedback(feedback)

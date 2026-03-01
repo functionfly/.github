@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { useAuthStore } from "@/stores/authStore";
+import { PLANS } from "@/lib/constants";
 import { toast } from "sonner";
 import { apiClient } from "@/api/client";
+import { usersApi } from "@/api/users";
+import { createBillingPortalSession, getBillingPortalErrorMessage } from "@/api/billing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +26,7 @@ import {
   Shield,
   Key,
   Trash2,
+  CreditCard,
 } from "lucide-react";
 import "@/styles/components.css";
 
@@ -42,15 +48,36 @@ interface UserProfile {
   };
 }
 
-export function UserDashboardSettingsPage() {
+interface UserDashboardSettingsPageProps {
+  initialTab?: string;
+}
+
+export function UserDashboardSettingsPage({ initialTab }: UserDashboardSettingsPageProps) {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("profile");
+  const location = useLocation();
+  const user = useAuthStore((s) => s.user);
+  const [activeTab, setActiveTab] = useState(initialTab || "profile");
   const [isSaving, setIsSaving] = useState(false);
+  const [billingPortalLoading, setBillingPortalLoading] = useState(false);
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Plan from GET /users/me (authoritative) for billing section
+  const { data: meData } = useQuery({
+    queryKey: ["users", "me"],
+    queryFn: () => usersApi.getMe(),
+    retry: false,
+  });
+  const setUserPlan = useAuthStore((s) => s.setUserPlan);
+  useEffect(() => {
+    if (meData?.plan !== undefined && meData.plan !== useAuthStore.getState().user?.plan) {
+      setUserPlan(meData.plan);
+    }
+  }, [meData?.plan, setUserPlan]);
+  const displayPlan = meData?.plan ?? user?.plan ?? "Free";
 
   // Form fields
   const [name, setName] = useState("");
@@ -191,7 +218,7 @@ export function UserDashboardSettingsPage() {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-white">Settings</h1>
+            <h1 className="text-2xl font-bold text-text-primary">Settings</h1>
             <p className="text-text-secondary">
               Manage your profile and preferences
             </p>
@@ -201,8 +228,9 @@ export function UserDashboardSettingsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
@@ -277,6 +305,66 @@ export function UserDashboardSettingsPage() {
                 <Button onClick={handleSaveProfile} disabled={isSaving}>
                   <Save className="w-4 h-4 mr-2" />
                   {isSaving ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Billing Tab */}
+        <TabsContent value="billing" className="space-y-6">
+          <Card className="card">
+            <CardHeader className="card-header">
+              <CardTitle className="card-title">Current Plan</CardTitle>
+              <p className="text-sm text-text-muted mt-1">Manage your subscription</p>
+            </CardHeader>
+            <CardContent className="card-content">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-linear-to-r from-[#6366f1]/10 to-[#8b5cf6]/10 border border-[#6366f1]/20">
+                <div>
+                  <h3 className="font-semibold text-text-primary capitalize">
+                    {(displayPlan && PLANS[displayPlan.toUpperCase() as keyof typeof PLANS]?.name) || displayPlan} Plan
+                  </h3>
+                  <p className="text-sm text-text-muted">
+                    {displayPlan === "free" ? "Free forever" : "Active subscription"}
+                  </p>
+                </div>
+                <Badge>Current</Badge>
+              </div>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Button
+                  variant="default"
+                  onClick={async () => {
+                    setBillingPortalLoading(true);
+                    try {
+                      const returnUrl = `${window.location.origin}${location.pathname}`;
+                      const { url } = await createBillingPortalSession(returnUrl);
+                      window.location.href = url;
+                    } catch (e: unknown) {
+                      setBillingPortalLoading(false);
+                      toast.error(getBillingPortalErrorMessage(e));
+                    }
+                  }}
+                  disabled={billingPortalLoading}
+                >
+                  {billingPortalLoading ? "Opening…" : "Manage billing"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="settings-upgrade-btn"
+                  disabled={billingPortalLoading}
+                  onClick={async () => {
+                    setBillingPortalLoading(true);
+                    try {
+                      const returnUrl = `${window.location.origin}/pricing`;
+                      const { url } = await createBillingPortalSession(returnUrl);
+                      window.location.href = url;
+                    } catch (e: unknown) {
+                      setBillingPortalLoading(false);
+                      toast.error(getBillingPortalErrorMessage(e));
+                    }
+                  }}
+                >
+                  {billingPortalLoading ? "Opening…" : "Upgrade Plan"}
                 </Button>
               </div>
             </CardContent>

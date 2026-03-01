@@ -30,7 +30,7 @@ func NewFeatureMiddleware() *FeatureMiddleware {
 func (fm *FeatureMiddleware) RequireFeature(feature string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			plan := fm.getTenantPlan(r)
+			plan := GetTenantPlan(r)
 			if plan == "" {
 				http.Error(w, "Tenant plan not found", http.StatusInternalServerError)
 				return
@@ -52,7 +52,7 @@ func (fm *FeatureMiddleware) RequireFeature(feature string) func(http.Handler) h
 func (fm *FeatureMiddleware) RequireAnyFeature(features ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			plan := fm.getTenantPlan(r)
+			plan := GetTenantPlan(r)
 			if plan == "" {
 				http.Error(w, "Tenant plan not found", http.StatusInternalServerError)
 				return
@@ -75,7 +75,7 @@ func (fm *FeatureMiddleware) RequireAnyFeature(features ...string) func(http.Han
 func (fm *FeatureMiddleware) RequireAllFeatures(features ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			plan := fm.getTenantPlan(r)
+			plan := GetTenantPlan(r)
 			if plan == "" {
 				http.Error(w, "Tenant plan not found", http.StatusInternalServerError)
 				return
@@ -96,7 +96,7 @@ func (fm *FeatureMiddleware) RequireAllFeatures(features ...string) func(http.Ha
 // WithFeatureChecker adds a feature checker to the request context
 func (fm *FeatureMiddleware) WithFeatureChecker(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		plan := fm.getTenantPlan(r)
+		plan := GetTenantPlan(r)
 		if plan != "" {
 			checker := plans.NewFeatureChecker(plan)
 			ctx := context.WithValue(r.Context(), ContextKeyFeatureChecker, checker)

@@ -18,82 +18,81 @@ type ReservedUsernameChecker interface {
 var reservedUsernames = map[string]bool{
 	// Platform names
 	"functionfly": true,
-	"function":   true,
-	"flypy":      true,
-	"registry":   true,
-	"api":        true,
+	"function":    true,
+	"flypy":       true,
+	"registry":    true,
+	"api":         true,
 
 	// System accounts
-	"system":   true,
-	"admin":    true,
-	"support":  true,
-	"root":     true,
-	"nobody":   true,
+	"system":    true,
+	"admin":     true,
+	"support":   true,
+	"root":      true,
+	"nobody":    true,
 	"moderator": true,
 
 	// Dashboard routes
-	"account":     true,
-	"dashboard":   true,
-	"billing":    true,
-	"settings":   true,
-	"login":      true,
-	"logout":     true,
-	"signup":     true,
-	"register":   true,
-	"auth":       true,
-	"password":   true,
-	"reset":      true,
+	"account":   true,
+	"dashboard": true,
+	"billing":   true,
+	"settings":  true,
+	"login":     true,
+	"logout":    true,
+	"signup":    true,
+	"register":  true,
+	"auth":      true,
+	"password":  true,
+	"reset":     true,
 
 	// Feature routes
-	"run":        true,
-	"play":       true,
-	"docs":       true,
-	"blog":       true,
-	"market":     true,
+	"run":         true,
+	"play":        true,
+	"docs":        true,
+	"blog":        true,
+	"market":      true,
 	"marketplace": true,
-	"enterprise": true,
-	"security":   true,
-	"trust":      true,
-	"core":       true,
-	"debug":      true,
-	"status":     true,
-	"health":     true,
-	"metrics":    true,
-	"monitoring": true,
+	"enterprise":  true,
+	"security":    true,
+	"trust":       true,
+	"core":        true,
+	"debug":       true,
+	"status":      true,
+	"health":      true,
+	"metrics":     true,
+	"monitoring":  true,
 
 	// API versions
-	"v1":      true,
-	"v2":      true,
-	"v3":      true,
-	"latest":  true,
+	"v1":     true,
+	"v2":     true,
+	"v3":     true,
+	"latest": true,
 
 	// Common reserved
-	"www":      true,
-	"mail":     true,
-	"ftp":      true,
+	"www":       true,
+	"mail":      true,
+	"ftp":       true,
 	"localhost": true,
-	"static":   true,
-	"assets":   true,
-	"cdn":      true,
-	"files":    true,
-	"download": true,
-	"upload":   true,
+	"static":    true,
+	"assets":    true,
+	"cdn":       true,
+	"files":     true,
+	"download":  true,
+	"upload":    true,
 
 	// OAuth providers (reserved for future OAuth)
-	"google":   true,
-	"github":   true,
-	"twitter":  true,
-	"facebook": true,
+	"google":    true,
+	"github":    true,
+	"twitter":   true,
+	"facebook":  true,
 	"microsoft": true,
-	"apple":    true,
-	"slack":    true,
+	"apple":     true,
+	"slack":     true,
 
 	// Function execution paths
-	"execute":   true,
-	"run":       true,
+	"execute":    true,
 	"playground": true,
-	"sandbox":   true,
-	"test":      true,
+	"sandbox":    true,
+	"test":       true,
 
 	// Special keywords
 	"me":      true,
@@ -159,7 +158,7 @@ func ValidateUsernameMiddleware(checker ReservedUsernameChecker) func(http.Handl
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			vars := mux.Vars(r)
-			
+
 			// Check username parameter
 			if username, ok := vars["username"]; ok {
 				if checker.IsReservedUsername(username) {
@@ -177,7 +176,7 @@ func ValidateUsernameMiddleware(checker ReservedUsernameChecker) func(http.Handl
 					return
 				}
 			}
-			
+
 			next.ServeHTTP(w, r)
 		})
 	}

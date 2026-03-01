@@ -26,6 +26,8 @@ interface AuthState {
   initialize: () => Promise<void>;
   refreshSession: () => Promise<void>;
   verifyMFA: (code: string) => Promise<void>;
+  /** Sync plan from an authoritative source (e.g. GET /users/me) so UI shows correct plan. */
+  setUserPlan: (plan: string) => void;
 }
 
 // Create the store
@@ -65,7 +67,7 @@ const authStore = create<AuthState>()(
               name: userData.user.name || '',
               avatar: userData.user.avatar || '',
               tenantId: userData.user.tenant_id || 'default',
-              plan: 'starter',
+              plan: userData.user.plan ?? 'starter',
               role: userData.user.role,
               createdAt: userData.user.created_at,
               updatedAt: userData.user.updated_at,
@@ -166,7 +168,7 @@ const authStore = create<AuthState>()(
             if (authData.tempToken) {
               localStorage.setItem('sb-mfa-temp-token', authData.tempToken);
             }
-            set({ 
+            set({
               mfaRequired: true,
               isLoading: false,
               error: null,
@@ -190,7 +192,7 @@ const authStore = create<AuthState>()(
             name: authData.user.name || '',
             avatar: authData.user.avatar || '',
             tenantId: authData.user.tenant_id || 'default',
-            plan: 'starter',
+            plan: authData.user.plan ?? 'starter',
             role: authData.user.role,
             createdAt: authData.user.created_at,
             updatedAt: authData.user.updated_at,
@@ -316,6 +318,11 @@ const authStore = create<AuthState>()(
 
       clearError: () => set({ error: null }),
 
+      setUserPlan: (plan: string) =>
+        set((state) =>
+          state.user ? { user: { ...state.user, plan } } : {}
+        ),
+
       verifyMFA: async (code: string) => {
         set({ isLoading: true, error: null });
         try {
@@ -335,17 +342,17 @@ const authStore = create<AuthState>()(
           }
 
           const authData = await response.json();
-          
+
           // Update session with new token if provided
           if (authData.token) {
             localStorage.setItem('sb-access-token', authData.token);
           }
 
-          set({ 
+          set({
             mfaRequired: false,
             isLoading: false,
           });
-          
+
           // Reload API client token cache
           apiClient.reloadToken();
         } catch (error) {

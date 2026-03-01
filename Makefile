@@ -112,7 +112,7 @@ docker-down: ## Stop docker services
 docker-logs: ## Show docker logs
 	docker compose logs -f
 
-dev: ## Start development environment (local Postgres + Redis, no Docker). Set DB_PORT=5434 for Docker Postgres.
+dev: ## Start development environment (local Postgres + Redis, no Docker). Set DB_PORT=5434 for Docker Postgres. For billing portal, set STRIPE_SECRET_KEY (e.g. sk_test_...).
 	@echo "Using local services: DB_PORT=$${DB_PORT:-5432}, REDIS_ADDR=$${REDIS_ADDR:-localhost:6379}"
 	@if command -v infisical >/dev/null 2>&1; then \
 		DEVELOPMENT=true infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \

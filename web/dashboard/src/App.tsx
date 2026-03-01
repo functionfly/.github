@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 import { CookieConsentProvider } from "@/components/cookie-consent";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { DevA11y } from "@/components/dev/DevA11y";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { LandingPage } from "@/pages/LandingPage";
 import { TeamPage } from "@/pages/TeamPage";
@@ -78,6 +79,10 @@ import { UserDashboardSettingsPage } from "@/pages/UserDashboardSettingsPage";
 import { TeamsPage } from "@/pages/TeamsPage";
 import { ForbiddenPage } from "@/pages/ForbiddenPage";
 import { ServerErrorPage } from "@/pages/ServerErrorPage";
+import AgentsPage from "@/pages/AgentsPage";
+import AgentMarketplacePage from "@/pages/AgentMarketplacePage";
+import FunctionMarketplacePage from "@/pages/FunctionMarketplacePage";
+import EvolutionPage from "@/pages/EvolutionPage";
 
 function RegistryFunctionRedirect() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -293,7 +298,16 @@ function AppContent() {
         <Route path="teams" element={<TeamsPage />} />
         <Route path="profile" element={<MyProfilePage />} />
         <Route path="dashboard/:username/functions" element={<UserDashboardFunctionsPage />} />
-        <Route path="dashboard/:username/settings" element={<UserDashboardSettingsPage />} />
+        <Route path="u/:username/settings/billing" element={<UserDashboardSettingsPage initialTab="billing" />} />
+        <Route path="u/:username/settings" element={<UserDashboardSettingsPage />} />
+
+        {/* Agent Routes */}
+        <Route path="agents" element={<AgentsPage />} />
+        <Route path="agents/:agentId" element={<AgentsPage />} />
+        <Route path="marketplace/agents" element={<AgentMarketplacePage />} />
+        <Route path="marketplace/functions" element={<FunctionMarketplacePage />} />
+        <Route path="evolution" element={<EvolutionPage />} />
+        <Route path="evolution/:agentId" element={<EvolutionPage />} />
 
         {/* Admin Routes - use Outlet so only one DashboardLayout (parent) is used */}
         <Route
@@ -327,10 +341,10 @@ function AppContent() {
 
       {/* 404 - Not Found */}
       <Route path="*" element={<NotFoundPage />} />
-      
+
       {/* 403 - Forbidden */}
       <Route path="/forbidden" element={<ForbiddenPage />} />
-      
+
       {/* 500 - Internal Server Error */}
       <Route path="/error" element={<ServerErrorPage />} />
     </Routes>
@@ -344,6 +358,7 @@ function App() {
         <ThemeProvider>
           <CookieConsentProvider>
             <Analytics />
+            <DevA11y />
             <BrowserRouter>
               <GlobalKeyboardShortcuts />
               <AppContent />

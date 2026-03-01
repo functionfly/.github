@@ -37,7 +37,7 @@ const (
 //
 // BLAKE3 is used as the default hash algorithm per the ExecutionRootHash v1.0 protocol.
 func Hash(tag string, data []byte) []byte {
-	h := blake3.New()
+	h := blake3.New(32, nil) // 32-byte digest, unkeyed
 	h.Write([]byte(tag))
 	h.Write(data)
 	return h.Sum(nil)

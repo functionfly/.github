@@ -7,6 +7,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/google/uuid"
+	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
 )
 
@@ -210,12 +211,16 @@ func (s *Service) evolveAction(ctx context.Context, schedule identity.AutonomySc
 	}
 }
 
-// calculateNextRun calculates the next run time from a cron expression
-// Simplified implementation - in production use a proper cron library
+// calculateNextRun returns the next run time for a cron expression using robfig/cron.
 func (s *Service) calculateNextRun(cronExpr string) (time.Time, error) {
-	// Simplified: just add 1 hour for demo purposes
-	// In production, parse the cron expression properly
-	return time.Now().Add(1 * time.Hour), nil
+	if cronExpr == "" {
+		return time.Time{}, fmt.Errorf("cron expression is required")
+	}
+	schedule, err := cron.ParseStandard(cronExpr)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid cron expression: %w", err)
+	}
+	return schedule.Next(time.Now().UTC()), nil
 }
 
 // evaluateTriggerCondition evaluates if trigger conditions are met

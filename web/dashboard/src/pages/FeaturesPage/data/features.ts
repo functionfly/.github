@@ -208,7 +208,7 @@ export const features: Feature[] = [
     cta: {
       text: "Configure Environment",
       action: "link",
-      link: "/dashboard/settings"
+      link: "/settings"
     },
     detailedContent: {
       overview:

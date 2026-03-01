@@ -16,6 +16,7 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/policy"
 	"github.com/functionfly/functionfly/internal/agent/quota"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/gorilla/mux"
 	"github.com/redis/go-redis/v9"
@@ -659,8 +660,8 @@ func (h *Handler) HandleGetCreditBalance(w http.ResponseWriter, r *http.Request)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ok":                true,
-		"agent_id":          agentID,
+		"ok":                 true,
+		"agent_id":           agentID,
 		"credit_balance_usd": controls.CreditBalanceUSD,
 	})
 }
@@ -735,8 +736,8 @@ func (h *Handler) HandleGetCostBreakdown(w http.ResponseWriter, r *http.Request)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ok":       true,
-		"agent_id": agentID,
+		"ok":        true,
+		"agent_id":  agentID,
 		"breakdown": breakdown,
 	})
 }
@@ -776,10 +777,25 @@ func (h *Handler) HandlePurchaseCredits(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// In a real implementation, this would:
-	// 1. Process payment via Stripe/etc
-	// 2. Add credits to agent's balance
-	// For now, we simulate the credit addition
+	if payment.IsConfigured() {
+		if req.PaymentMethodID == "" {
+			writeError(w, http.StatusBadRequest, "PAYMENT_METHOD_REQUIRED", "payment_method_id is required when Stripe is configured")
+			return
+		}
+		_, err := payment.Charge(r.Context(), req.PaymentMethodID, req.AmountUSD, map[string]string{
+			"agent_id":  agentID,
+			"tenant_id": agent.TenantID.String(),
+		})
+		if err != nil {
+			logrus.WithError(err).Warn("credit purchase payment failed")
+			writeError(w, http.StatusPaymentRequired, "PAYMENT_FAILED", err.Error())
+			return
+		}
+	} else if req.PaymentMethodID != "" {
+		writeError(w, http.StatusBadRequest, "PAYMENTS_NOT_CONFIGURED", "Stripe is not configured; omit payment_method_id for simulated credit purchase")
+		return
+	}
+
 	if err := h.billingCtrl.AddCredits(r.Context(), agentID, req.AmountUSD); err != nil {
 		writeError(w, http.StatusInternalServerError, "PURCHASE_FAILED", "failed to add credits")
 		return
@@ -788,11 +804,11 @@ func (h *Handler) HandlePurchaseCredits(w http.ResponseWriter, r *http.Request) 
 	controls, _ := h.billingCtrl.GetOrCreateControls(r.Context(), agentID)
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ok":                  true,
-		"message":             "credits purchased successfully",
-		"agent_id":           agentID,
-		"credits_added_usd":  req.AmountUSD,
-		"new_balance_usd":    controls.CreditBalanceUSD,
+		"ok":                true,
+		"message":           "credits purchased successfully",
+		"agent_id":          agentID,
+		"credits_added_usd": req.AmountUSD,
+		"new_balance_usd":   controls.CreditBalanceUSD,
 	})
 }
 
@@ -811,8 +827,8 @@ func (h *Handler) HandleGetConcurrencyStats(w http.ResponseWriter, r *http.Reque
 
 	stats := h.scheduler.GetAllStats()
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ok":                    true,
-		"pools":                 stats,
+		"ok":                      true,
+		"pools":                   stats,
 		"total_active_executions": h.scheduler.TotalActiveExecutions(),
 	})
 }

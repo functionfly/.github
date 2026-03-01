@@ -423,10 +423,13 @@ print(result)`,
                         </Badge>
                       </Link>
                     ) : (
-                      <span className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Link
+                        to={`/registry/${functionInfo.author}/${functionInfo.name}/executions`}
+                        className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                      >
                         <Lock className="w-3 h-3" />
-                        Not available
-                      </span>
+                        View executions
+                      </Link>
                     )}
                   </div>
                   <div>
@@ -519,6 +522,12 @@ print(result)`,
                   <Button size="lg" className="gap-2 px-8">
                     <Play className="w-4 h-4" />
                     Try it Now
+                  </Button>
+                </Link>
+                <Link to={`/registry/${functionInfo.author}/${functionInfo.name}/executions`}>
+                  <Button variant="outline" size="lg" className="gap-2">
+                    <Activity className="w-4 h-4" />
+                    Executions
                   </Button>
                 </Link>
                 <Button variant="outline" size="lg" className="gap-2">

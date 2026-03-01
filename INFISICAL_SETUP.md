@@ -73,6 +73,15 @@ To enable "Generate with AI" for function descriptions in Admin → Registry, ad
 
 Leave unset if you don't need AI-generated descriptions.
 
+### Optional: Stripe billing portal
+
+To enable "Manage billing" on Settings (Stripe Customer Portal), add this secret in Infisical for your environment (e.g. `dev`):
+
+- **Key:** `STRIPE_SECRET_KEY`
+- **Value:** Your Stripe secret key (e.g. `sk_test_...` from [Stripe Dashboard → API keys](https://dashboard.stripe.com/test/apikeys))
+
+Leave unset if you don't need billing; the Settings page will show a clear message when the portal is unavailable.
+
 ### 2. Docker Deployment
 
 #### Using Service Tokens

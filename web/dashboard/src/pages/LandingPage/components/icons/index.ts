@@ -21,3 +21,4 @@ export { DatadogIcon } from './DatadogIcon';
 export { SentryIcon } from './SentryIcon';
 export { NewRelicIcon } from './NewRelicIcon';
 export { CloudflareIcon } from './CloudflareIcon';
+export { FunctionFlyEdgeIcon } from './FunctionFlyEdgeIcon';

@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/agent/attribution"
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -192,12 +193,13 @@ func (s *Service) SearchAgents(ctx context.Context, req *SearchAgentsRequest) ([
 		return nil, 0, err
 	}
 
-	// Calculate rankings
+	// Calculate rankings (reliability from execution data when available)
 	results := make([]AgentSearchResult, len(listings))
 	for i, listing := range listings {
+		reliability := s.agentExecutionSuccessRate(ctx, listing.AgentID)
 		results[i] = AgentSearchResult{
-			Listing: listing,
-			RankScore: CalculateAgentRankScore(listing),
+			Listing:   listing,
+			RankScore: CalculateAgentRankScore(listing, reliability),
 		}
 	}
 
@@ -296,11 +298,32 @@ type FunctionSearchResult struct {
 	RankScore float64
 }
 
-// CalculateAgentRankScore calculates the marketplace rank score for an agent
-func CalculateAgentRankScore(listing identity.AgentListing) float64 {
+// agentExecutionSuccessRate returns the agent's success rate (0-1) from recent execution records.
+// Returns -1 if no execution data (caller should fall back to rating).
+func (s *Service) agentExecutionSuccessRate(ctx context.Context, agentID string) float64 {
+	var total, success int64
+	since := time.Now().Add(-30 * 24 * time.Hour)
+	s.db.WithContext(ctx).Model(&attribution.AgentExecutionRecord{}).
+		Where("agent_id = ? AND timestamp > ?", agentID, since).
+		Count(&total)
+	if total == 0 {
+		return -1
+	}
+	s.db.WithContext(ctx).Model(&attribution.AgentExecutionRecord{}).
+		Where("agent_id = ? AND outcome = ? AND timestamp > ?", agentID, "success", since).
+		Count(&success)
+	return float64(success) / float64(total)
+}
+
+// CalculateAgentRankScore calculates the marketplace rank score for an agent.
+// executionReliability is success rate 0-1 from execution data, or -1 to use listing rating as proxy.
+func CalculateAgentRankScore(listing identity.AgentListing, executionReliability float64) float64 {
 	trustScore := listing.RatingScore
 	economicScore := listing.ROIScore
-	reliability := listing.RatingScore // Could be calculated from execution data
+	reliability := listing.RatingScore
+	if executionReliability >= 0 {
+		reliability = executionReliability * 5 // scale 0-1 to 0-5 to match rating
+	}
 	roi := listing.ROIScore
 	callVolumeLog := math.Log(float64(listing.TotalCalls + 1))
 

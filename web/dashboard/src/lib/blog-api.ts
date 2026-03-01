@@ -146,12 +146,17 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost> {
   }
 }
 
-// Helper function to get all categories
+// Helper function to get all categories (public blog page; returns admin-created categories)
 export async function getCategories(): Promise<Category[]> {
   try {
-    const response = await blogApi.get('/v1/content/categories');
-    // Transform the backend response to match frontend Category interface
-    const { categories } = response.data;
+    const response = await blogApi.get<Category[] | { categories: string[] }>('/v1/content/categories');
+    const data = response.data;
+    // New API returns array of category objects
+    if (Array.isArray(data)) {
+      return data as Category[];
+    }
+    // Legacy: { categories: string[] }
+    const categories = (data as { categories: string[] }).categories || [];
     return categories.map((name: string, index: number) => ({
       id: `category-${index}`,
       title: name,
@@ -166,18 +171,23 @@ export async function getCategories(): Promise<Category[]> {
   }
 }
 
-// Helper function to get all authors
+// Helper function to get all authors (public blog page; returns admin-created authors)
 export async function getAuthors(): Promise<Author[]> {
   try {
-    const response = await blogApi.get('/v1/content/authors');
-    // Transform the backend response to match frontend Author interface
-    const { authors } = response.data;
+    const response = await blogApi.get<Author[] | { authors: string[] }>('/v1/content/authors');
+    const data = response.data;
+    // New API returns array of author objects
+    if (Array.isArray(data)) {
+      return data as Author[];
+    }
+    // Legacy: { authors: string[] }
+    const authors = (data as { authors: string[] }).authors || [];
     return authors.map((name: string, index: number) => ({
       id: `author-${index}`,
-      name: name,
+      name,
       slug: name.toLowerCase().replace(/\s+/g, '-'),
-      bio: '', // Backend doesn't store bio
-      avatar: '', // Backend doesn't store avatar
+      bio: '',
+      active: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }));

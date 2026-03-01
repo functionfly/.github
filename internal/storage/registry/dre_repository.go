@@ -261,17 +261,17 @@ func (r *RegistryRepository) UpdatePassport(functionID uuid.UUID, update Passpor
 	if err := r.db.Model(&ExecutionPassport{}).
 		Where("function_id = ?", functionID).
 		Updates(map[string]interface{}{
-			"deterministic_reliability":    passport.DeterministicReliability,
-			"replay_drift_incidents":       passport.ReplayDriftIncidents,
-			"verified_executions_total":    passport.VerifiedExecutionsTotal,
-			"total_executions":             passport.TotalExecutions,
-			"determinism_score":            passport.DeterminismScore,
-			"replay_integrity_score":       passport.ReplayIntegrityScore,
-			"performance_stability_score":  passport.PerformanceStabilityScore,
-			"drift_score":                  passport.DriftScore,
-			"capsule_versions_used":        passport.CapsuleVersionsUsed,
-			"last_verified_at":             passport.LastVerifiedAt,
-			"updated_at":                   passport.UpdatedAt,
+			"deterministic_reliability":   passport.DeterministicReliability,
+			"replay_drift_incidents":      passport.ReplayDriftIncidents,
+			"verified_executions_total":   passport.VerifiedExecutionsTotal,
+			"total_executions":            passport.TotalExecutions,
+			"determinism_score":           passport.DeterminismScore,
+			"replay_integrity_score":      passport.ReplayIntegrityScore,
+			"performance_stability_score": passport.PerformanceStabilityScore,
+			"drift_score":                 passport.DriftScore,
+			"capsule_versions_used":       passport.CapsuleVersionsUsed,
+			"last_verified_at":            passport.LastVerifiedAt,
+			"updated_at":                  passport.UpdatedAt,
 		}).Error; err != nil {
 		return fmt.Errorf("dre: persist passport update: %w", err)
 	}
@@ -338,12 +338,12 @@ func (r *RegistryRepository) UpdateTrustScoreV2(functionID uuid.UUID, scores *DR
 	if err := r.db.Model(&RegistryFunctionRating{}).
 		Where("function_id = ?", functionID).
 		Updates(map[string]interface{}{
-			"determinism_score":             scores.DeterminismScore,
-			"replay_integrity_score":        scores.ReplayIntegrityScore,
-			"performance_stability_score":   scores.PerformanceStabilityScore,
-			"drift_score":                   scores.DriftScore,
-			"trust_score_v2":                trustScoreV2,
-			"trust_v2_updated_at":           now,
+			"determinism_score":           scores.DeterminismScore,
+			"replay_integrity_score":      scores.ReplayIntegrityScore,
+			"performance_stability_score": scores.PerformanceStabilityScore,
+			"drift_score":                 scores.DriftScore,
+			"trust_score_v2":              trustScoreV2,
+			"trust_v2_updated_at":         now,
 		}).Error; err != nil {
 		return fmt.Errorf("dre: update trust score v2: %w", err)
 	}
@@ -353,7 +353,7 @@ func (r *RegistryRepository) UpdateTrustScoreV2(functionID uuid.UUID, scores *DR
 // UpsertPassport creates or updates an execution passport using ON CONFLICT.
 func (r *RegistryRepository) UpsertPassport(passport *ExecutionPassport) error {
 	if err := r.db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "function_id"}},
+		Columns: []clause.Column{{Name: "function_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"deterministic_reliability",
 			"replay_drift_incidents",
@@ -401,13 +401,6 @@ func computeReplayIntegrityScore(driftIncidents int, verifiedExecutions int64) f
 // Returns 1.0 for zero drift incidents, decays exponentially with each incident.
 func computeDriftScore(driftIncidents int) float64 {
 	return math.Exp(-float64(driftIncidents) * 0.1)
-}
-
-// ResourceHashHistory stores resource hashes for performance stability computation.
-type ResourceHashHistory struct {
-	FunctionID     uuid.UUID
-	ResourceHashes []string
-	UpdatedAt     time.Time
 }
 
 // computePerformanceStabilityScore computes: 1 - stddev(resource_hash_variance)

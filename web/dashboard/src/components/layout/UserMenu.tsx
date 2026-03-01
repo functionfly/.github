@@ -101,7 +101,7 @@ export function UserMenu({ className }: UserMenuProps) {
 
         <DropdownMenuItem asChild>
           <Link
-            to="/profile"
+            to={user.username ? `/u/${user.username}` : "/profile"}
             className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-white/5 cursor-pointer"
             onClick={() => setIsOpen(false)}
           >
@@ -112,7 +112,7 @@ export function UserMenu({ className }: UserMenuProps) {
 
         <DropdownMenuItem asChild>
           <Link
-            to={ROUTES.SETTINGS}
+            to={user.username ? `/u/${user.username}/settings` : ROUTES.SETTINGS}
             className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-white/5 cursor-pointer"
             onClick={() => setIsOpen(false)}
           >
@@ -123,7 +123,7 @@ export function UserMenu({ className }: UserMenuProps) {
 
         <DropdownMenuItem asChild>
           <Link
-            to="/billing"
+            to={user.username ? `/u/${user.username}/settings/billing` : ROUTES.BILLING}
             className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-white/5 cursor-pointer"
             onClick={() => setIsOpen(false)}
           >

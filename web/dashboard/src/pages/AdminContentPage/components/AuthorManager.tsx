@@ -9,14 +9,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Users, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Loader2, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { blogApi, Author } from '@/api/blog';
+import { contentAdminApi } from '@/api/content';
+import slugify from 'slugify';
 
 const AuthorManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) => {
   const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAuthor, setEditingAuthor] = useState<Author | null>(null);
+  const [generatingAi, setGeneratingAi] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -44,9 +48,10 @@ const AuthorManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) 
     try {
       setLoading(true);
       const result = await blogApi.getAuthors();
-      setAuthors(result);
+      setAuthors(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error('Failed to fetch authors:', error);
+      setAuthors([]);
     } finally {
       setLoading(false);
     }
@@ -116,6 +121,28 @@ const AuthorManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) 
     setDialogOpen(true);
   };
 
+  const handleGenerateWithAi = async () => {
+    if (!formData.name.trim()) {
+      toast.error('Enter author name to generate bio');
+      return;
+    }
+    setGeneratingAi(true);
+    try {
+      const res = await contentAdminApi.generateAuthorContent({
+        name: formData.name,
+        role: formData.role || undefined,
+      });
+      setFormData(prev => ({ ...prev, bio: res.bio || prev.bio }));
+      if (res.bio) toast.success('Bio generated');
+      else toast.info('No bio generated');
+    } catch (e: any) {
+      const msg = e?.response?.status === 503 ? 'Open Router not configured (OPENROUTER_API_KEY)' : 'Failed to generate';
+      toast.error(msg);
+    } finally {
+      setGeneratingAi(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -167,7 +194,10 @@ const AuthorManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) 
                     <Input
                       id="name"
                       value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        setFormData(prev => ({ ...prev, name, slug: slugify(name, { lower: true, strict: true, trim: true }) }));
+                      }}
                       placeholder="Author name"
                     />
                   </div>
@@ -212,7 +242,29 @@ const AuthorManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) 
                   />
                 </div>
                 <div>
-                  <Label htmlFor="bio">Bio</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="bio">Bio</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateWithAi}
+                      disabled={generatingAi}
+                      className="shrink-0"
+                    >
+                      {generatingAi ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                          Generate with AI (Open Router)
+                        </>
+                      )}
+                    </Button>
+                  </div>
                   <Textarea
                     id="bio"
                     value={formData.bio}
@@ -280,7 +332,7 @@ const AuthorManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) 
               </TableRow>
             </TableHeader>
             <TableBody>
-              {authors.map((author) => (
+              {(authors ?? []).map((author) => (
                 <TableRow key={author.id}>
                   <TableCell className="font-medium">
                     {author.name}

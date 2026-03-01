@@ -154,6 +154,22 @@ type Repository interface {
 	UpdateBlogPost(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*BlogPost, error)
 	DeleteBlogPost(ctx context.Context, id uuid.UUID) error
 
+	// Blog categories
+	ListBlogCategories(ctx context.Context) ([]*BlogCategory, error)
+	CreateBlogCategory(ctx context.Context, c *BlogCategory) (*BlogCategory, error)
+	GetBlogCategoryByID(ctx context.Context, id uuid.UUID) (*BlogCategory, error)
+	GetBlogCategoryBySlug(ctx context.Context, slug string) (*BlogCategory, error)
+	UpdateBlogCategory(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*BlogCategory, error)
+	DeleteBlogCategory(ctx context.Context, id uuid.UUID) error
+
+	// Blog authors
+	ListBlogAuthors(ctx context.Context) ([]*BlogAuthor, error)
+	CreateBlogAuthor(ctx context.Context, a *BlogAuthor) (*BlogAuthor, error)
+	GetBlogAuthorByID(ctx context.Context, id uuid.UUID) (*BlogAuthor, error)
+	GetBlogAuthorBySlug(ctx context.Context, slug string) (*BlogAuthor, error)
+	UpdateBlogAuthor(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*BlogAuthor, error)
+	DeleteBlogAuthor(ctx context.Context, id uuid.UUID) error
+
 	// Feedback operations
 	CreateFeedback(feedback *Feedback) (*Feedback, error)
 	GetFeedbackByID(id uuid.UUID) (*Feedback, error)

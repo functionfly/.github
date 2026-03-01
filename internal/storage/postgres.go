@@ -267,12 +267,12 @@ func (db *PostgresDB) initPreparedStatements(ctx context.Context) error {
 		"getUserByEmail": `
 			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
-			       created_at, updated_at
+			       created_at, updated_at, name, bio
 			FROM users WHERE email = $1`,
 		"getUserByID": `
 			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
-			       created_at, updated_at
+			       created_at, updated_at, name, bio
 			FROM users WHERE id = $1`,
 		"getTenantByID": `
 			SELECT id, name, plan, status, created_at, updated_at
@@ -431,12 +431,12 @@ func (db *PostgresDB) getStatementQuery(name string) string {
 		"getUserByEmail": `
 			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
-			       created_at, updated_at
+			       created_at, updated_at, name, bio
 			FROM users WHERE email = $1`,
 		"getUserByID": `
 			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
-			       created_at, updated_at
+			       created_at, updated_at, name, bio
 			FROM users WHERE id = $1`,
 		"getTenantByID": `
 			SELECT id, name, plan, status, created_at, updated_at

@@ -96,6 +96,8 @@ func (r *UserRepository) GetUserByEmail(email string) (*User, error) {
 	var mfaSecret sql.NullString
 	var mfaBackupCodes []byte
 	var mfaLastUsed sql.NullTime
+	var nameNull sql.NullString
+	var bioNull sql.NullString
 
 	var row *sql.Row
 	if stmt, _ := r.db.GetPreparedStatement("getUserByEmail"); stmt != nil {
@@ -106,7 +108,8 @@ func (r *UserRepository) GetUserByEmail(email string) (*User, error) {
 	err := row.Scan(
 		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &user.EmailVerified, &companyName,
 		&verificationToken, &verificationExpiresAt, &provider, &providerID, &providerData,
-		&mfaSecret, &user.MFAEnabled, &mfaBackupCodes, &mfaLastUsed, &user.CreatedAt, &user.UpdatedAt)
+		&mfaSecret, &user.MFAEnabled, &mfaBackupCodes, &mfaLastUsed, &user.CreatedAt, &user.UpdatedAt,
+		&nameNull, &bioNull)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -153,6 +156,12 @@ func (r *UserRepository) GetUserByEmail(email string) (*User, error) {
 	if mfaLastUsed.Valid {
 		user.MFALastUsed = &mfaLastUsed.Time
 	}
+	if nameNull.Valid {
+		user.Name = nameNull.String
+	}
+	if bioNull.Valid {
+		user.Bio = &bioNull.String
+	}
 
 	return user, nil
 }
@@ -167,13 +176,15 @@ func (r *UserRepository) GetUserByUsername(username string) (*User, error) {
 	var providerID sql.NullString
 	var providerData []byte
 
+	var nameNull sql.NullString
+	var bioNull sql.NullString
 	err := r.db.QueryRowContext(context.Background(), `
 		SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name,
-		       provider, provider_id, provider_data, created_at, updated_at
+		       provider, provider_id, provider_data, created_at, updated_at, name, bio
 		FROM users WHERE LOWER(username) = LOWER($1)`, username).Scan(
 		&user.ID, &user.TenantID, &usernameNull, &user.Email, &user.PasswordHash, &role,
 		&user.EmailVerified, &companyName, &provider, &providerID, &providerData,
-		&user.CreatedAt, &user.UpdatedAt)
+		&user.CreatedAt, &user.UpdatedAt, &nameNull, &bioNull)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -201,6 +212,12 @@ func (r *UserRepository) GetUserByUsername(username string) (*User, error) {
 		if err := json.Unmarshal(providerData, &user.ProviderData); err != nil {
 			return nil, fmt.Errorf("failed to parse provider data: %w", err)
 		}
+	}
+	if nameNull.Valid {
+		user.Name = nameNull.String
+	}
+	if bioNull.Valid {
+		user.Bio = &bioNull.String
 	}
 
 	return user, nil
@@ -327,6 +344,8 @@ func (r *UserRepository) GetUserByID(userID uuid.UUID) (*User, error) {
 	var mfaSecret sql.NullString
 	var mfaBackupCodes []byte
 	var mfaLastUsed sql.NullTime
+	var nameNull sql.NullString
+	var bioNull sql.NullString
 
 	var row *sql.Row
 	if stmt, _ := r.db.GetPreparedStatement("getUserByID"); stmt != nil {
@@ -337,7 +356,8 @@ func (r *UserRepository) GetUserByID(userID uuid.UUID) (*User, error) {
 	err := row.Scan(
 		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &user.EmailVerified, &companyName,
 		&verificationToken, &verificationExpiresAt, &provider, &providerID, &providerData,
-		&mfaSecret, &user.MFAEnabled, &mfaBackupCodes, &mfaLastUsed, &user.CreatedAt, &user.UpdatedAt)
+		&mfaSecret, &user.MFAEnabled, &mfaBackupCodes, &mfaLastUsed, &user.CreatedAt, &user.UpdatedAt,
+		&nameNull, &bioNull)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -382,6 +402,12 @@ func (r *UserRepository) GetUserByID(userID uuid.UUID) (*User, error) {
 	}
 	if mfaLastUsed.Valid {
 		user.MFALastUsed = &mfaLastUsed.Time
+	}
+	if nameNull.Valid {
+		user.Name = nameNull.String
+	}
+	if bioNull.Valid {
+		user.Bio = &bioNull.String
 	}
 
 	return user, nil
@@ -462,13 +488,24 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 		argIndex++
 	}
 
+	if name, ok := updates["name"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("name = $%d", argIndex))
+		args = append(args, name)
+		argIndex++
+	}
+	if bio, ok := updates["bio"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("bio = $%d", argIndex))
+		args = append(args, bio)
+		argIndex++
+	}
+
 	if len(setParts) == 0 {
 		return current, nil // No updates
 	}
 
 	setParts = append(setParts, "updated_at = NOW()")
 
-	query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d RETURNING id, tenant_id, username, email, password_hash, role, company_name, created_at, updated_at",
+	query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d RETURNING id, tenant_id, username, email, password_hash, role, company_name, name, bio, created_at, updated_at",
 		strings.Join(setParts, ", "), argIndex)
 
 	args = append(args, userID)
@@ -476,13 +513,21 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 	updated := &User{}
 	var usernameNull sql.NullString
 	var companyNameNull sql.NullString
+	var nameNull sql.NullString
+	var bioNull sql.NullString
 	err = r.db.QueryRow(query, args...).Scan(
-		&updated.ID, &updated.TenantID, &usernameNull, &updated.Email, &updated.PasswordHash, &updated.Role, &companyNameNull, &updated.CreatedAt, &updated.UpdatedAt)
+		&updated.ID, &updated.TenantID, &usernameNull, &updated.Email, &updated.PasswordHash, &updated.Role, &companyNameNull, &nameNull, &bioNull, &updated.CreatedAt, &updated.UpdatedAt)
 	if err == nil && usernameNull.Valid {
 		updated.Username = &usernameNull.String
 	}
 	if err == nil && companyNameNull.Valid {
 		updated.CompanyName = &companyNameNull.String
+	}
+	if err == nil && nameNull.Valid {
+		updated.Name = nameNull.String
+	}
+	if err == nil && bioNull.Valid {
+		updated.Bio = &bioNull.String
 	}
 
 	if err != nil {

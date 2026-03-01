@@ -81,7 +81,7 @@ export function MyProfilePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">My Profile</h1>
+          <h1 className="text-2xl font-bold text-text-primary">My Profile</h1>
           <p className="text-text-secondary">Manage your public profile information</p>
         </div>
         {profile.username && (

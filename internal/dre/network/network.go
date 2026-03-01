@@ -3,10 +3,14 @@
 package network
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"sync"
 )
 
@@ -24,11 +28,11 @@ const (
 
 // NetworkHandler handles network requests based on the configured mode.
 type NetworkHandler struct {
-	mode          Mode
-	stubs         map[string][]byte
-	recordings    map[string][]byte
+	mode           Mode
+	stubs          map[string][]byte
+	recordings     map[string][]byte
 	dependencyHash string
-	mu            sync.RWMutex
+	mu             sync.RWMutex
 }
 
 // New creates a new NetworkHandler with the given mode.
@@ -43,13 +47,13 @@ func New(mode Mode) *NetworkHandler {
 // NewWithManifest creates a new NetworkHandler with stub manifest.
 func NewWithManifest(mode Mode, manifestPath string) (*NetworkHandler, error) {
 	h := New(mode)
-	
+
 	if mode == ModeStub && manifestPath != "" {
 		if err := h.LoadManifest(manifestPath); err != nil {
 			return nil, fmt.Errorf("failed to load manifest: %w", err)
 		}
 	}
-	
+
 	return h, nil
 }
 
@@ -74,7 +78,7 @@ func (h *NetworkHandler) HandleRequest(url string, requestBody []byte) ([]byte, 
 	mode := h.mode
 	mu := &h.mu
 	mu.RUnlock() // Release read lock before acquiring write lock
-	
+
 	switch mode {
 	case ModeRecord:
 		return h.handleRecord(url, requestBody)
@@ -87,28 +91,60 @@ func (h *NetworkHandler) HandleRequest(url string, requestBody []byte) ([]byte, 
 	}
 }
 
+// doHTTPRequest performs an HTTP request and returns the response body.
+// Uses POST with requestBody when non-nil, GET otherwise.
+func doHTTPRequest(url string, requestBody []byte) ([]byte, error) {
+	var req *http.Request
+	var err error
+	if len(requestBody) > 0 {
+		req, err = http.NewRequest(http.MethodPost, url, bytes.NewReader(requestBody))
+	} else {
+		req, err = http.NewRequest(http.MethodGet, url, nil)
+	}
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	if len(requestBody) > 0 {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	return io.ReadAll(resp.Body)
+}
+
 // handleRecord handles a request in record mode.
 // First execution: allow outbound, record request/response
 // Replay: return recorded response
 func (h *NetworkHandler) handleRecord(url string, requestBody []byte) ([]byte, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
-	// Check if we have a recording for this URL
+
+	// Check if we have a recording for this URL (replay)
 	if recording, ok := h.recordings[url]; ok {
 		return recording, nil
 	}
-	
-	// In a real implementation, this would make the actual network request
-	// For now, return an error indicating recording needed
-	return nil, fmt.Errorf("record mode: no recording for %s (first execution should record)", url)
+
+	// First execution: perform the actual network request and record the response
+	respBody, err := doHTTPRequest(url, requestBody)
+	if err != nil {
+		return nil, fmt.Errorf("record mode: request failed for %s: %w", url, err)
+	}
+	h.recordings[url] = respBody
+	return respBody, nil
 }
 
 // Record records a response for a URL (for first execution in record mode).
 func (h *NetworkHandler) Record(url string, responseBody []byte) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	h.recordings[url] = responseBody
 }
 
@@ -117,28 +153,45 @@ func (h *NetworkHandler) Record(url string, responseBody []byte) {
 func (h *NetworkHandler) handleStub(url string) ([]byte, error) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	if stub, ok := h.stubs[url]; ok {
 		return stub, nil
 	}
-	
+
 	return nil, fmt.Errorf("stub mode: no stub for %s", url)
 }
 
+// stubEntry is one stub in the manifest (body and optional status).
+type stubEntry struct {
+	Body   string `json:"body"`
+	Status int    `json:"status"`
+}
+
+// manifestFile is the JSON structure of the stub manifest file.
+type manifestFile struct {
+	Stubs map[string]stubEntry `json:"stubs"`
+}
+
 // LoadManifest loads stub responses from a manifest file.
+// Manifest format: { "stubs": { "url": { "body": "...", "status": 200 }, ... } }
+// Body is the raw response body (string); status is optional and currently unused.
 func (h *NetworkHandler) LoadManifest(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read manifest: %w", err)
+	}
+	var manifest manifestFile
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return fmt.Errorf("parse manifest: %w", err)
+	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
-	// In a real implementation, this would read from the file
-	// For now, just set up empty stubs
-	// The manifest format would be:
-	// {
-	//   "stubs": {
-	//     "https://api.example.com/data": {"body": "...", "status": 200}
-	//   }
-	// }
-	
+	if h.stubs == nil {
+		h.stubs = make(map[string][]byte)
+	}
+	for url, entry := range manifest.Stubs {
+		h.stubs[url] = []byte(entry.Body)
+	}
 	return nil
 }
 
@@ -146,7 +199,7 @@ func (h *NetworkHandler) LoadManifest(path string) error {
 func (h *NetworkHandler) AddStub(url string, responseBody []byte) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	h.stubs[url] = responseBody
 }
 
@@ -155,27 +208,22 @@ func (h *NetworkHandler) AddStub(url string, responseBody []byte) {
 func (h *NetworkHandler) DependencyHash() string {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	if h.dependencyHash != "" {
 		return h.dependencyHash
 	}
-	
-	h := sha256.New()
-	
-	// Hash all recordings
+
+	hasher := sha256.New()
 	for url, body := range h.recordings {
-		h.Write([]byte(url))
-		h.Write(body)
+		hasher.Write([]byte(url))
+		hasher.Write(body)
 	}
-	
-	// Hash all stubs
 	for url, body := range h.stubs {
-		h.Write([]byte("stub:"))
-		h.Write([]byte(url))
-		h.Write(body)
+		hasher.Write([]byte("stub:"))
+		hasher.Write([]byte(url))
+		hasher.Write(body)
 	}
-	
-	h.dependencyHash = hex.EncodeToString(h.Sum(nil))
+	h.dependencyHash = hex.EncodeToString(hasher.Sum(nil))
 	return h.dependencyHash
 }
 
@@ -183,12 +231,12 @@ func (h *NetworkHandler) DependencyHash() string {
 func (h *NetworkHandler) Recordings() map[string][]byte {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	recordings := make(map[string][]byte, len(h.recordings))
 	for k, v := range h.recordings {
 		recordings[k] = v
 	}
-	
+
 	return recordings
 }
 
@@ -196,12 +244,12 @@ func (h *NetworkHandler) Recordings() map[string][]byte {
 func (h *NetworkHandler) Stubs() map[string][]byte {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	stubs := make(map[string][]byte, len(h.stubs))
 	for k, v := range h.stubs {
 		stubs[k] = v
 	}
-	
+
 	return stubs
 }
 
@@ -212,8 +260,8 @@ type Manifest struct {
 
 // StubEntry represents a single stub entry.
 type StubEntry struct {
-	Body   string            `json:"body"`
-	Status int               `json:"status"`
+	Body    string            `json:"body"`
+	Status  int               `json:"status"`
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
@@ -221,23 +269,23 @@ type StubEntry struct {
 func (h *NetworkHandler) JSON() (string, error) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	manifest := Manifest{
 		Stubs: make(map[string]StubEntry),
 	}
-	
+
 	for url, body := range h.stubs {
 		manifest.Stubs[url] = StubEntry{
 			Body:   string(body),
 			Status: 200,
 		}
 	}
-	
+
 	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal manifest: %w", err)
 	}
-	
+
 	return string(data), nil
 }
 
@@ -245,6 +293,6 @@ func (h *NetworkHandler) JSON() (string, error) {
 func (h *NetworkHandler) IsAllowed() bool {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	return h.mode != ModeDisabled
 }

@@ -1,5 +1,5 @@
 import { Terminal, Zap } from "lucide-react";
-import { CloudflareIcon, VercelIcon, FlyIoIcon } from "@/pages/LandingPage/components/icons";
+import { CloudflareIcon, VercelIcon, FlyIoIcon, FunctionFlyEdgeIcon } from "@/pages/LandingPage/components/icons";
 import { cn } from "@/lib/utils";
 
 interface ProviderIconProps {
@@ -36,7 +36,7 @@ const providerConfig = {
     label: "Deno Deploy",
   },
   "functionfly-edge": {
-    Icon: Zap,
+    Icon: FunctionFlyEdgeIcon,
     color: "#6366f1",
     label: "FunctionFly Edge",
   },

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 import path from 'path'
 
 // When dashboard runs in Docker, set API_PROXY_TARGET=http://orchestrator-api:8080.
@@ -41,7 +42,19 @@ function noCacheMiddleware() {
 }
 
 export default defineConfig({
-  plugins: [noCacheMiddleware(), react(), tailwindcss()],
+  plugins: [
+    noCacheMiddleware(),
+    react(),
+    tailwindcss(),
+    // Upload source maps to Sentry when SENTRY_AUTH_TOKEN is set (e.g. in CI)
+    process.env.SENTRY_AUTH_TOKEN
+      ? sentryVitePlugin({
+          org: process.env.SENTRY_ORG,
+          project: process.env.SENTRY_PROJECT,
+          sourcemaps: { assets: './dist/**' },
+        })
+      : undefined,
+  ].filter(Boolean),
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

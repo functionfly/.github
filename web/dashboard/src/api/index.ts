@@ -1,6 +1,7 @@
 export { apiClient } from "./client";
 export { authApi } from "./auth";
 export { usersApi } from "./users";
+export { createBillingPortalSession } from "./billing";
 export { appsApi } from "./apps";
 export { functionsApi } from "./functions";
 export { deploymentsApi } from "./deployments";
@@ -9,6 +10,7 @@ export { securityApi } from "./security";
 export { contentApi, contentAdminApi } from "./content";
 export { getAnalyticsSettings, updateAnalyticsSettings } from "./analytics";
 export { stateFabricApi, adminStateFabricApi } from "./stateFabric";
+export { agentApi } from "./agent";
 export {
   tenantApi,
   auditApi,

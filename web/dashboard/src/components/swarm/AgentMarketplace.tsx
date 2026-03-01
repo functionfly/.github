@@ -4,37 +4,23 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Search, 
-  Filter, 
-  Star, 
-  Users, 
+import { agentApi, type MarketplaceAgent } from '@/api/agent';
+import {
+  Search,
+  Filter,
+  Star,
+  Users,
   Zap,
   Shield,
   DollarSign,
   TrendingUp,
   CheckCircle,
-  ExternalLink
+  ExternalLink,
+  Loader2,
 } from 'lucide-react';
 
-// Types for Marketplace
-interface AgentListing {
-  id: string;
-  agentId: string;
-  name: string;
-  description: string;
-  listingType: 'worker' | 'manager' | 'infrastructure';
-  pricingModel: 'free' | 'per_call' | 'subscription' | 'revenue_share';
-  pricePerCall?: number;
-  subscriptionMonthlyUsd?: number;
-  revenueSharePercent?: number;
-  ratingScore: number;
-  totalCalls: number;
-  roiScore: number;
-  trustScore: number;
-  deterministicVerified: boolean;
-  capabilities: string[];
-}
+// Types for Marketplace - using API type
+export type { MarketplaceAgent };
 
 interface MarketplaceFilters {
   search: string;
@@ -44,8 +30,9 @@ interface MarketplaceFilters {
 }
 
 export function AgentMarketplace() {
-  const [listings, setListings] = useState<AgentListing[]>([]);
+  const [listings, setListings] = useState<MarketplaceAgent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<MarketplaceFilters>({
     search: '',
     listingType: '',
@@ -54,8 +41,20 @@ export function AgentMarketplace() {
   });
 
   useEffect(() => {
-    // Mock data - in production fetch from API
-    setTimeout(() => {
+    loadAgents();
+  }, []);
+
+  const loadAgents = async () => {
+    try {
+      setLoading(true);
+      const response = await agentApi.searchMarketplaceAgents({
+        limit: 50,
+      });
+      setListings(response.agents);
+    } catch (err) {
+      console.error('Failed to load marketplace agents:', err);
+      setError('Failed to load agents. Using demo data.');
+      // Fallback to demo data on error
       setListings([
         {
           id: '1',
@@ -68,9 +67,6 @@ export function AgentMarketplace() {
           ratingScore: 4.8,
           totalCalls: 15420,
           roiScore: 92,
-          trustScore: 96,
-          deterministicVerified: true,
-          capabilities: ['research', 'data-analysis', 'summarization']
         },
         {
           id: '2',
@@ -83,13 +79,10 @@ export function AgentMarketplace() {
           ratingScore: 4.6,
           totalCalls: 8930,
           roiScore: 88,
-          trustScore: 94,
-          deterministicVerified: true,
-          capabilities: ['data-processing', 'validation', 'transformation']
         },
         {
           id: '3',
-          agentId: ' swarm-manager',
+          agentId: 'swarm-manager',
           name: 'Swarm Orchestrator',
           description: 'Manages and coordinates multiple agents for complex workflows.',
           listingType: 'manager',
@@ -98,9 +91,6 @@ export function AgentMarketplace() {
           ratingScore: 4.9,
           totalCalls: 3210,
           roiScore: 95,
-          trustScore: 98,
-          deterministicVerified: true,
-          capabilities: ['orchestration', 'delegation', 'workflow-management']
         },
         {
           id: '4',
@@ -113,14 +103,12 @@ export function AgentMarketplace() {
           ratingScore: 4.7,
           totalCalls: 12450,
           roiScore: 90,
-          trustScore: 97,
-          deterministicVerified: true,
-          capabilities: ['monitoring', 'alerting', 'reporting']
-        }
+        },
       ]);
+    } finally {
       setLoading(false);
-    }, 800);
-  }, []);
+    }
+  };
 
   const filteredListings = listings.filter(listing => {
     if (filters.search && !listing.name.toLowerCase().includes(filters.search.toLowerCase())) {
@@ -138,7 +126,7 @@ export function AgentMarketplace() {
     return true;
   });
 
-  const getPriceDisplay = (listing: AgentListing) => {
+  const getPriceDisplay = (listing: MarketplaceAgent) => {
     switch (listing.pricingModel) {
       case 'free':
         return 'Free';
@@ -192,14 +180,14 @@ export function AgentMarketplace() {
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search agents..." 
+              <Input
+                placeholder="Search agents..."
                 className="pl-10"
                 value={filters.search}
                 onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
               />
             </div>
-            <select 
+            <select
               className="px-3 py-2 border rounded-md"
               value={filters.listingType}
               onChange={(e) => setFilters(f => ({ ...f, listingType: e.target.value }))}
@@ -209,7 +197,7 @@ export function AgentMarketplace() {
               <option value="manager">Manager</option>
               <option value="infrastructure">Infrastructure</option>
             </select>
-            <select 
+            <select
               className="px-3 py-2 border rounded-md"
               value={filters.pricingModel}
               onChange={(e) => setFilters(f => ({ ...f, pricingModel: e.target.value }))}
@@ -227,9 +215,9 @@ export function AgentMarketplace() {
       {/* Listings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredListings.map((listing) => (
-          <ListingCard 
-            key={listing.id} 
-            listing={listing} 
+          <ListingCard
+            key={listing.id}
+            listing={listing}
             priceDisplay={getPriceDisplay(listing)}
             roleBadge={getRoleBadge(listing.listingType)}
           />
@@ -247,12 +235,12 @@ export function AgentMarketplace() {
   );
 }
 
-function ListingCard({ 
-  listing, 
+function ListingCard({
+  listing,
   priceDisplay,
-  roleBadge 
-}: { 
-  listing: AgentListing; 
+  roleBadge
+}: {
+  listing: MarketplaceAgent;
   priceDisplay: string;
   roleBadge: string;
 }) {

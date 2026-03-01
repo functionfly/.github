@@ -26,14 +26,14 @@ func TestHashDomainSeparation(t *testing.T) {
 // TestHashString verifies that HashString returns hex-encoded output.
 func TestHashString(t *testing.T) {
 	data := []byte("test input data")
-	
+
 	hashStr := HashString(TagInput, data)
-	
+
 	// BLAKE3 produces 32 bytes = 64 hex characters
 	if len(hashStr) != 64 {
 		t.Errorf("Expected hex string length 64, got %d", len(hashStr))
 	}
-	
+
 	// Verify it's valid hex
 	for _, c := range hashStr {
 		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
@@ -45,10 +45,10 @@ func TestHashString(t *testing.T) {
 // TestMerkleRoot verifies Merkle root computation.
 func TestMerkleRoot(t *testing.T) {
 	tests := []struct {
-		name     string
-		leaves   [][]byte
-		wantNil  bool
-		wantLen  int
+		name    string
+		leaves  [][]byte
+		wantNil bool
+		wantLen int
 	}{
 		{
 			name:    "empty leaves",
@@ -84,7 +84,7 @@ func TestMerkleRoot(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			root := MerkleRoot(tt.leaves)
-			
+
 			if tt.wantNil && root != nil {
 				t.Error("Expected nil root")
 			}
@@ -245,11 +245,11 @@ func TestBuildMEGDeterministic(t *testing.T) {
 		EnvironmentData: map[string]string{
 			"runtime": "wasm/1.0",
 		},
-		Dependencies:     []Dependency{},
-		TraceChunks:     nil,
-		ResourceUsage:   map[string]int64{"cpu": 100},
-		OutputPayload:   map[string]interface{}{"result": "ok"},
-		Metadata:        map[string]string{"id": "test"},
+		Dependencies:  []Dependency{},
+		TraceChunks:   nil,
+		ResourceUsage: map[string]int64{"cpu": 100},
+		OutputPayload: map[string]interface{}{"result": "ok"},
+		Metadata:      map[string]string{"id": "test"},
 	}
 
 	result1, err := BuildMEG(components)
@@ -270,13 +270,13 @@ func TestBuildMEGDeterministic(t *testing.T) {
 // TestBuildMEGWithTrace verifies MEG with trace chunks.
 func TestBuildMEGWithTrace(t *testing.T) {
 	components := MEGComponents{
-		InputPayload:      map[string]interface{}{"in": "value"},
-		EnvironmentData:   map[string]string{"runtime": "wasm/1.0"},
-		Dependencies:     []Dependency{},
-		TraceChunks:      [][]byte{[]byte("chunk1"), []byte("chunk2"), []byte("chunk3")},
-		ResourceUsage:    map[string]int64{"cpu": 100},
-		OutputPayload:    map[string]interface{}{"out": "value"},
-		Metadata:         map[string]string{"id": "test"},
+		InputPayload:    map[string]interface{}{"in": "value"},
+		EnvironmentData: map[string]string{"runtime": "wasm/1.0"},
+		Dependencies:    []Dependency{},
+		TraceChunks:     [][]byte{[]byte("chunk1"), []byte("chunk2"), []byte("chunk3")},
+		ResourceUsage:   map[string]int64{"cpu": 100},
+		OutputPayload:   map[string]interface{}{"out": "value"},
+		Metadata:        map[string]string{"id": "test"},
 	}
 
 	result, err := BuildMEG(components)
@@ -295,11 +295,11 @@ func TestBuildMEGEmptyDeps(t *testing.T) {
 	components := MEGComponents{
 		InputPayload:    map[string]interface{}{"in": "value"},
 		EnvironmentData: map[string]string{"runtime": "wasm/1.0"},
-		Dependencies:   []Dependency{}, // Empty dependencies
-		TraceChunks:    nil,
-		ResourceUsage:  map[string]int64{"cpu": 100},
-		OutputPayload:  map[string]interface{}{"out": "value"},
-		Metadata:       map[string]string{"id": "test"},
+		Dependencies:    []Dependency{}, // Empty dependencies
+		TraceChunks:     nil,
+		ResourceUsage:   map[string]int64{"cpu": 100},
+		OutputPayload:   map[string]interface{}{"out": "value"},
+		Metadata:        map[string]string{"id": "test"},
 	}
 
 	result, err := BuildMEG(components)
@@ -349,19 +349,19 @@ func TestJSONMarshalCanonicalize(t *testing.T) {
 	}
 
 	data := TestStruct{Name: "Alice", Age: 30}
-	
+
 	// Use json.Marshal for comparison
 	stdJSON, err := json.Marshal(data)
 	if err != nil {
 		t.Fatalf("json.Marshal failed: %v", err)
 	}
-	
+
 	// Canonicalize should also work
 	canonJSON, err := Canonicalize(data)
 	if err != nil {
 		t.Fatalf("Canonicalize failed: %v", err)
 	}
-	
+
 	// Both should produce valid JSON (may differ in key ordering)
 	var stdParsed, canonParsed interface{}
 	if err := json.Unmarshal(stdJSON, &stdParsed); err != nil {
@@ -370,5 +370,4 @@ func TestJSONMarshalCanonicalize(t *testing.T) {
 	if err := json.Unmarshal(canonJSON, &canonParsed); err != nil {
 		t.Errorf("Canonical JSON unmarshal failed: %v", err)
 	}
-	
-
+}

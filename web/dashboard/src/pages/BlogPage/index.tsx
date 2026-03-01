@@ -25,15 +25,17 @@ const BlogPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
-  
+
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
-  
+  // Categories from admin (shown on blog page)
+  const [categories, setCategories] = useState<{ id: string; title: string; slug: string; order?: number }[]>([]);
+
   // Enable carousel for multiple featured posts
   const [useCarousel, setUseCarousel] = useState(false);
-  
+
   // Infinite scroll
   const { sentinelRef, isNearBottom } = useInfiniteScroll({ rootMargin: '200px' });
 
@@ -44,7 +46,7 @@ const BlogPage = () => {
       post.tags.forEach(tag => tags.add(tag));
     });
     setAvailableTags(Array.from(tags).sort());
-    
+
     // Enable carousel if there are 2+ posts
     setUseCarousel(blogPosts.length >= 2);
   }, [blogPosts]);
@@ -64,11 +66,11 @@ const BlogPage = () => {
 
       // Ensure posts is always an array
       let posts = result.posts || [];
-      
+
       // Client-side search filtering (if API doesn't support search)
       if (search && search.trim()) {
         const query = search.toLowerCase();
-        posts = posts.filter(post => 
+        posts = posts.filter(post =>
           post.title.toLowerCase().includes(query) ||
           post.content.toLowerCase().includes(query) ||
           post.excerpt?.toLowerCase().includes(query) ||
@@ -96,6 +98,11 @@ const BlogPage = () => {
 
   useEffect(() => {
     fetchBlogPosts(false, searchQuery, selectedTags);
+  }, []);
+
+  // Fetch categories for filter display (admin-created categories)
+  useEffect(() => {
+    contentApi.getPublishedCategories().then(setCategories).catch(() => setCategories([]));
   }, []);
 
   // Handle search
@@ -330,22 +337,38 @@ const BlogPage = () => {
         </motion.div>
 
         {/* Search and Filter */}
-        {(availableTags.length > 0 || true) && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.15 }}
-            className="mb-10 flex flex-col items-center gap-6"
-          >
-            <SearchBar onSearch={handleSearch} placeholder="Search articles..." />
-            <FilterBar
-              availableTags={availableTags}
-              selectedTags={selectedTags}
-              onTagSelect={handleTagSelect}
-              onClearAll={handleClearFilters}
-            />
-          </motion.div>
-        )}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+          className="mb-10 flex flex-col items-center gap-6"
+        >
+          <SearchBar onSearch={handleSearch} placeholder="Search articles..." />
+          {/* Categories from admin */}
+          {categories.length > 0 && (
+            <div className="w-full max-w-3xl">
+              <p className="text-sm text-muted-foreground mb-2 text-center">Categories</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {categories
+                  .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                  .map((cat) => (
+                    <span
+                      key={cat.id}
+                      className="inline-flex px-3 py-1.5 rounded-full text-sm font-medium bg-muted/60 text-muted-foreground border border-border/50"
+                    >
+                      {cat.title}
+                    </span>
+                  ))}
+              </div>
+            </div>
+          )}
+          <FilterBar
+            availableTags={availableTags}
+            selectedTags={selectedTags}
+            onTagSelect={handleTagSelect}
+            onClearAll={handleClearFilters}
+          />
+        </motion.div>
 
         {remainingPosts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -430,12 +453,12 @@ const BlogPage = () => {
                         Read more
                         <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
-                      
+
                       {/* Bookmark Button */}
-                      <BookmarkButton 
-                        postId={post.id} 
-                        postTitle={post.title} 
-                        size="sm" 
+                      <BookmarkButton
+                        postId={post.id}
+                        postTitle={post.title}
+                        size="sm"
                       />
                     </div>
                   </CardContent>
@@ -480,7 +503,7 @@ const BlogPage = () => {
           >
             {/* Sentinel element for infinite scroll */}
             <div ref={sentinelRef} className="h-4" />
-            
+
             {loading ? (
               <div className="flex items-center justify-center gap-2">
                 <Loader2 className="h-5 w-5 animate-spin text-brand-500" />

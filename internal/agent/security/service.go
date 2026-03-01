@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/agent/attribution"
 	"github.com/functionfly/functionfly/internal/agent/identity"
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -218,12 +218,12 @@ func (s *SwarmSecurityService) DetectAnomaly(ctx context.Context, agentID string
 
 	// 4. Check for failed execution spikes
 	var failedExecutions int64
-	s.db.WithContext(ctx).Model(&identity.AgentExecutionRecord{}).
+	s.db.WithContext(ctx).Model(&attribution.AgentExecutionRecord{}).
 		Where("agent_id = ? AND outcome != ? AND timestamp > ?", agentID, "success", since).
 		Count(&failedExecutions)
 
 	var totalExecutions int64
-	s.db.WithContext(ctx).Model(&identity.AgentExecutionRecord{}).
+	s.db.WithContext(ctx).Model(&attribution.AgentExecutionRecord{}).
 		Where("agent_id = ? AND timestamp > ?", agentID, since).
 		Count(&totalExecutions)
 

@@ -495,12 +495,19 @@ func (h *Handler) HandleValidateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Load tenant for plan (billing/UI)
+	plan := ""
+	if tenant, err := h.authSvc.Repo().GetTenantByID(user.TenantID); err == nil && tenant != nil && tenant.Plan != "" {
+		plan = tenant.Plan
+	}
+
 	// Return only the safe subset of user data — never expose password hash, MFA secrets, or tokens
 	safeUser := map[string]interface{}{
 		"id":             user.ID,
 		"tenant_id":      user.TenantID,
 		"email":          user.Email,
 		"role":           user.Role,
+		"plan":           plan,
 		"email_verified": user.EmailVerified,
 		"mfa_enabled":    user.MFAEnabled,
 		"created_at":     user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),

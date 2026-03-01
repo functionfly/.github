@@ -6,7 +6,7 @@ export interface User {
   name: string;
   avatar?: string; // Profile picture URL from social providers
   tenantId: string;
-  plan: "starter" | "pro" | "free";
+  plan: string; // Tenant plan from API: free, starter, pro, enterprise, etc.
   role?: string; // Admin role for admin users
   createdAt: string;
   updatedAt?: string;

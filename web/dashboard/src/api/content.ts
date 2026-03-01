@@ -77,6 +77,12 @@ export const contentApi = {
     const response = await apiClient.get<BlogPost>(`/v1/content/blog/${slug}`);
     return response;
   },
+
+  // Get blog categories for public blog page (from admin-created categories)
+  getPublishedCategories: async (): Promise<{ id: string; title: string; slug: string; order?: number }[]> => {
+    const response = await apiClient.get<{ id: string; title: string; slug: string; order?: number }[]>(`/v1/content/categories`);
+    return Array.isArray(response) ? response : [];
+  },
 };
 
 // Admin API functions (protected)
@@ -172,6 +178,20 @@ export const contentAdminApi = {
   syncGitHubReleases: async (): Promise<{ message: string }> => {
     const response = await apiClient.post<{ message: string }>('/v1/admin/content/sync/github-releases');
     return response;
+  },
+
+  // Generate with AI (Open Router)
+  generateChangelogContent: async (params: { version?: string; type?: string; topic?: string }): Promise<{ title: string; description: string }> => {
+    return await apiClient.post<{ title: string; description: string }>('/v1/admin/content/generate/changelog', params);
+  },
+  generateBlogContent: async (params: { topic?: string; title?: string }): Promise<{ title: string; description: string; excerpt: string }> => {
+    return await apiClient.post<{ title: string; description: string; excerpt: string }>('/v1/admin/content/generate/blog', params);
+  },
+  generateAuthorContent: async (params: { name: string; role?: string }): Promise<{ bio: string }> => {
+    return await apiClient.post<{ bio: string }>('/v1/admin/content/generate/author', params);
+  },
+  generateCategoryContent: async (params: { title: string }): Promise<{ description: string }> => {
+    return await apiClient.post<{ description: string }>('/v1/admin/content/generate/category', params);
   },
 
   syncSanityPosts: async (): Promise<{ message: string }> => {

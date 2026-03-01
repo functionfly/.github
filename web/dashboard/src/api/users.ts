@@ -8,6 +8,18 @@ export interface UpdateProfileRequest {
   bio?: string;
 }
 
+export interface MeResponse {
+  id: string;
+  tenantId?: string;
+  name: string;
+  username?: string;
+  companyName?: string;
+  email: string;
+  avatar?: string;
+  plan?: string;
+  updatedAt: string;
+}
+
 export interface UpdateProfileResponse {
   message: string;
   user: {
@@ -44,10 +56,10 @@ export const usersApi = {
     apiClient.get<PublicUserProfile>(`/v1/users/${encodeURIComponent(username)}`),
 
   /**
-   * Get the current authenticated user's full profile.
+   * Get the current authenticated user's full profile (includes plan from tenant).
    */
   getMe: () =>
-    apiClient.get<UpdateProfileResponse["user"]>("/v1/users/me"),
+    apiClient.get<MeResponse>("/v1/users/me"),
 
   /**
    * Update the current authenticated user's profile.

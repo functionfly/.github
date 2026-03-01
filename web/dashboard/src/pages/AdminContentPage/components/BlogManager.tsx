@@ -10,8 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpen, Plus, Edit, Trash2, Eye, EyeOff, Loader2, Calendar } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2, Eye, EyeOff, Loader2, Calendar, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { blogApi, BlogPost, ContentStatus, Author, Category } from '@/api/blog';
+import { contentAdminApi } from '@/api/content';
+import slugify from 'slugify';
 
 const BlogManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -20,6 +23,7 @@ const BlogManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) =>
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
+  const [generatingAi, setGeneratingAi] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -145,7 +149,9 @@ const BlogManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) =>
       authorId: post.authorId || '',
       categoryId: post.categoryId || '',
       tags: [...(post.tags || [])],
-      heroImage: post.heroImage || { url: '', alt: '', caption: '' },
+      heroImage: post.heroImage
+        ? { url: post.heroImage.url, alt: post.heroImage.alt, caption: post.heroImage.caption ?? '' }
+        : { url: '', alt: '', caption: '' },
       status: post.status,
       publishedAt: post.publishedAt || '',
       scheduledAt: post.scheduledAt || '',
@@ -180,6 +186,31 @@ const BlogManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) =>
       campaign: '',
     });
     setEditingPost(null);
+  };
+
+  const handleGenerateWithAi = async () => {
+    const topic = formData.title?.trim() || formData.description?.trim();
+    if (!topic) {
+      toast.error('Enter a title or description to use as topic for AI');
+      return;
+    }
+    setGeneratingAi(true);
+    try {
+      const res = await contentAdminApi.generateBlogContent({ topic, title: formData.title || undefined });
+      setFormData(prev => ({
+        ...prev,
+        title: res.title || prev.title,
+        description: res.description || prev.description,
+        ...(res.excerpt && !prev.body ? { body: res.excerpt } : {}),
+      }));
+      if (res.title || res.description) toast.success('Title and description generated');
+      else toast.info('No content generated');
+    } catch (e: any) {
+      const msg = e?.response?.status === 503 ? 'Open Router not configured (OPENROUTER_API_KEY)' : 'Failed to generate';
+      toast.error(msg);
+    } finally {
+      setGeneratingAi(false);
+    }
   };
 
   const addTag = () => {
@@ -260,7 +291,10 @@ const BlogManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) =>
                     <Input
                       id="title"
                       value={formData.title}
-                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      onChange={(e) => {
+                        const title = e.target.value;
+                        setFormData(prev => ({ ...prev, title, slug: slugify(title, { lower: true, strict: true, trim: true }) }));
+                      }}
                       placeholder="Post title"
                     />
                   </div>
@@ -275,7 +309,29 @@ const BlogManager = forwardRef<{ openCreateDialog: () => void }>((props, ref) =>
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateWithAi}
+                      disabled={generatingAi}
+                      className="shrink-0"
+                    >
+                      {generatingAi ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                          Generate with AI (Open Router)
+                        </>
+                      )}
+                    </Button>
+                  </div>
                   <Textarea
                     id="description"
                     value={formData.description}

@@ -80,13 +80,13 @@ export default function ExecutionExplorerPage() {
     null
   );
   const [filters, setFilters] = useState({
-    version: "",
+    version: "__all",
     verifiedOnly: false,
   });
   // Replay modal state
   const [replayModalOpen, setReplayModalOpen] = useState(false);
   const [replayMode, setReplayMode] = useState<ReplayMode>("strict");
-  const [selectedExecutionForReplay, setSelectedExecutionForReplay] = useState<Execution | null>(null);
+  const [selectedExecutionForReplay, setSelectedExecutionForReplay] = useState<ExecutionDetail | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: [
@@ -102,7 +102,7 @@ export default function ExecutionExplorerPage() {
       dreApi.listExecutions(author!, name!, {
         offset: page * limit,
         limit,
-        version: filters.version || undefined,
+        version: filters.version && filters.version !== "__all" ? filters.version : undefined,
         verified_only: filters.verifiedOnly || undefined,
       }),
     enabled: !!author && !!name,
@@ -146,7 +146,7 @@ export default function ExecutionExplorerPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg-primary">
+    <div className="execution-explorer-page min-h-screen flex flex-col bg-bg-primary">
       <Navbar variant="landing" />
       <main className="flex-1 pt-16">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -214,7 +214,7 @@ export default function ExecutionExplorerPage() {
                       <SelectValue placeholder="All versions" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All versions</SelectItem>
+                      <SelectItem value="__all">All versions</SelectItem>
                       {/* Could dynamically load versions */}
                     </SelectContent>
                   </Select>
@@ -257,15 +257,27 @@ export default function ExecutionExplorerPage() {
 
             {data?.executions.length === 0 && (
               <Card className="bg-bg-primary/60 border-border-subtle">
-                <CardContent className="p-12 text-center">
-                  <Hash className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">
-                    No executions found
-                  </h3>
-                  <p className="text-muted-foreground">
-                    This function hasn't been executed yet or no execution
-                    records are available.
-                  </p>
+                <CardContent className="p-12">
+                  <div className="text-center mb-8">
+                    <Hash className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">
+                      No executions found
+                    </h3>
+                    <p className="text-muted-foreground mb-6">
+                      This function hasn't been executed yet or no execution
+                      records are available.
+                    </p>
+                  </div>
+                  <div className="border-t border-border-subtle pt-8">
+                    <p className="text-sm font-medium text-foreground mb-3">
+                      When executions exist, you'll see:
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+                      <li>Execution cards with root hash, version, and verification status</li>
+                      <li>Click any card to open the <strong className="text-foreground">DRE detail view</strong>: execution header, Merkle execution tree, trust score, FXCERT viewer, and replay</li>
+                      <li>Filters by version and verified-only toggle</li>
+                    </ul>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -310,7 +322,7 @@ export default function ExecutionExplorerPage() {
         open={!!selectedExecution}
         onOpenChange={() => setSelectedExecution(null)}
       >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="execution-explorer-detail-dialog max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Lock className="w-5 h-5 text-brand-500" />
@@ -322,8 +334,8 @@ export default function ExecutionExplorerPage() {
           </DialogHeader>
 
           {executionDetail ? (
-            <ExecutionDetailView 
-              execution={executionDetail.execution} 
+            <ExecutionDetailView
+              execution={executionDetail.execution}
               onReplay={() => {
                 setSelectedExecutionForReplay(executionDetail.execution);
                 setReplayModalOpen(true);
@@ -582,147 +594,6 @@ function ExecutionDetailView({ execution, onReplay }: { execution: ExecutionDeta
               : undefined,
           }}
         />
-      )}
-    </div>
-  );
-}
-
-      {/* Status Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Version
-          </Label>
-          <div className="text-sm">{execution.version}</div>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Created
-          </Label>
-          <div className="text-sm">
-            {format(new Date(execution.created_at), "PPpp")}
-          </div>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Determinism Tier
-          </Label>
-          <Badge variant="outline" className="capitalize">
-            {execution.determinism_tier}
-          </Badge>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Protocol Version
-          </Label>
-          <div className="text-sm font-mono">
-            {execution.protocol_version}
-          </div>
-        </div>
-      </div>
-
-      {/* Verification Status */}
-      <div className="space-y-2">
-        <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-          Replay Verification
-        </Label>
-        <div className="bg-bg-secondary rounded-lg p-4 space-y-3">
-          {execution.replay_verified_at ? (
-            <>
-              <div className="flex items-center gap-2 text-green-500">
-                <CheckCircle className="w-5 h-5" />
-                <span className="font-medium">Replay Verified</span>
-              </div>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>
-                  Verified at:{" "}
-                  {format(new Date(execution.replay_verified_at), "PPpp")}
-                </p>
-                {execution.replay_node_id && (
-                  <p>Node: {execution.replay_node_id}</p>
-                )}
-              </div>
-              {execution.roots_match ? (
-                <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
-                  <Shield className="w-3 h-3 mr-1" />
-                  Root hashes match
-                </Badge>
-              ) : (
-                <Badge
-                  variant="destructive"
-                  className="bg-red-500/10 text-red-500 border-red-500/20"
-                >
-                  <AlertCircle className="w-3 h-3 mr-1" />
-                  Root hash mismatch
-                </Badge>
-              )}
-            </>
-          ) : (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Clock className="w-5 h-5" />
-              <span>Replay verification pending</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Component Hashes */}
-      <div className="space-y-2">
-        <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-          Component Hashes (MEG)
-        </Label>
-        <div className="space-y-2">
-          {componentOrder.map(({ key, label }) => {
-            const hash = execution.component_hashes[key];
-            return (
-              <div
-                key={key}
-                className="flex items-center gap-3 bg-bg-secondary rounded p-2"
-              >
-                <span className="text-xs text-muted-foreground w-32 shrink-0">
-                  {label}
-                </span>
-                <code className="flex-1 font-mono text-xs truncate">
-                  {hash || "—"}
-                </code>
-                {hash && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 shrink-0"
-                    onClick={() => copyToClipboard(hash)}
-                  >
-                    <Copy className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Certificate Info */}
-      {execution.certificate && (
-        <div className="space-y-2">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Certificate
-          </Label>
-          <div className="bg-bg-secondary rounded-lg p-4 space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="capitalize">
-                {execution.certificate.cert_level}
-              </Badge>
-              {execution.certificate.anchored && (
-                <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">
-                  Anchored
-                </Badge>
-              )}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              ID: {execution.certificate.certificate_id}
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
