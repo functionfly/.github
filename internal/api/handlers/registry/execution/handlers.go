@@ -805,7 +805,8 @@ func (h *Handler) buildAndStoreMEG(
 		IncrementTotal:        true,
 		IncrementVerified:     false, // Will be set to true after replay verification
 		CapsuleDescriptorHash: capsuleHash,
-		LastVerifiedAt:        &now,
+		LastVerifiedAt:       &now,
+		ResourceHash:         megResult.ResourceHash, // For performance stability tracking
 	}
 	if err := h.Repo.UpdatePassport(fn.ID, passportUpdate); err != nil {
 		logrus.WithError(err).WithField("function_id", fn.ID).Warn("DRE: Failed to update execution passport")
