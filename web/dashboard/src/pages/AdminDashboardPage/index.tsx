@@ -101,6 +101,15 @@ const adminSections = [
     borderColor: "border-purple-500/20 hover:border-purple-500/40",
   },
   {
+    title: "Features",
+    description: "Tier-specific features and permissions",
+    path: "/admin/features",
+    icon: Shield,
+    iconColor: "text-amber-500",
+    bgColor: "bg-amber-500/10",
+    borderColor: "border-amber-500/20 hover:border-amber-500/40",
+  },
+  {
     title: "Audit Log",
     description: "Security and system events",
     path: "/admin/audit",

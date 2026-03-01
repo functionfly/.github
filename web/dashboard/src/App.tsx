@@ -28,6 +28,7 @@ import { AdminTenantsPage } from "@/pages/AdminTenantsPage";
 import { AdminUsersPage } from "@/pages/AdminUsersPage";
 import { AdminBillingPage } from "@/pages/AdminBillingPage";
 import { AdminAuditPage } from "@/pages/AdminAuditPage";
+import { AdminFeaturesPage } from "@/pages/AdminFeaturesPage";
 import { AdminSystemPage } from "@/pages/AdminSystemPage";
 import { AdminRedirectsPage } from "@/pages/AdminRedirectsPage";
 import { AdminNewsletterPage } from "@/pages/AdminNewsletterPage";
@@ -292,6 +293,7 @@ function AppContent() {
           <Route path="tenants" element={<AdminTenantsPage />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="billing" element={<AdminBillingPage />} />
+          <Route path="features" element={<AdminFeaturesPage />} />
           <Route path="audit" element={<AdminAuditPage />} />
           <Route path="system" element={<AdminSystemPage />} />
           <Route path="redirects" element={<AdminRedirectsPage />} />
