@@ -67,6 +67,13 @@ import { UserProfilePage } from "@/pages/UserProfilePage";
 import { MyProfilePage } from "@/pages/MyProfilePage";
 import { AppsPage } from "@/pages/AppsPage";
 import { AppDetailPage } from "@/pages/AppDetailPage";
+import { FunctionSettingsPage } from "@/pages/FunctionsPage/FunctionSettingsPage";
+import { FunctionLogsPage } from "@/pages/FunctionsPage/FunctionLogsPage";
+import { AdminTenantDetailPage } from "@/pages/AdminTenantDetailPage";
+import { AdminUserDetailPage } from "@/pages/AdminUserDetailPage";
+import { AdminFunctionDetailPage } from "@/pages/AdminFunctionDetailPage";
+import { UserDashboardFunctionsPage } from "@/pages/UserDashboardFunctionsPage";
+import { UserDashboardSettingsPage } from "@/pages/UserDashboardSettingsPage";
 
 function RegistryFunctionRedirect() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -270,6 +277,8 @@ function AppContent() {
         <Route path="functions/deploy" element={<RegistryDeployPage />} />
         <Route path="functions/:id" element={<FunctionDetailPage />} />
         <Route path="functions/:id/edit" element={<FunctionEditorPage />} />
+        <Route path="functions/:author/:name/settings" element={<FunctionSettingsPage />} />
+        <Route path="functions/:author/:name/logs" element={<FunctionLogsPage />} />
         <Route path="providers" element={<ProvidersPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="state-fabric" element={<StateFabricPage />} />
@@ -278,6 +287,8 @@ function AppContent() {
         <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="profile" element={<MyProfilePage />} />
+        <Route path="dashboard/:username/functions" element={<UserDashboardFunctionsPage />} />
+        <Route path="dashboard/:username/settings" element={<UserDashboardSettingsPage />} />
 
         {/* Admin Routes - use Outlet so only one DashboardLayout (parent) is used */}
         <Route
@@ -290,7 +301,9 @@ function AppContent() {
         >
           <Route index element={<AdminDashboardPage />} />
           <Route path="tenants" element={<AdminTenantsPage />} />
+          <Route path="tenants/:tenantId" element={<AdminTenantDetailPage />} />
           <Route path="users" element={<AdminUsersPage />} />
+          <Route path="users/:userId" element={<AdminUserDetailPage />} />
           <Route path="billing" element={<AdminBillingPage />} />
           <Route path="audit" element={<AdminAuditPage />} />
           <Route path="system" element={<AdminSystemPage />} />
@@ -300,6 +313,7 @@ function AppContent() {
           <Route path="content" element={<AdminContentPage />} />
           <Route path="feedback" element={<AdminFeedbackPage />} />
           <Route path="functions" element={<AdminFunctionsPage />} />
+          <Route path="functions/:functionId" element={<AdminFunctionDetailPage />} />
           <Route path="registry" element={<AdminRegistryPage />} />
           <Route path="state-fabric" element={<AdminStateFabricPage />} />
         </Route>
