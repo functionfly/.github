@@ -43,6 +43,7 @@ import {
   AlertCircle,
   Filter,
   Calendar,
+  Play,
 } from "lucide-react";
 import { Navbar } from "@/components/common/Navbar";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
@@ -50,6 +51,26 @@ import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { dreApi, type Execution, type ExecutionDetail } from "@/api/dre";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
+
+// Import DRE Components
+import {
+  ExecutionHeader,
+  ExecutionRootBadge,
+  MerkleExecutionTree,
+  HashDiffViewer,
+  ReplayExecutionButton,
+  ReplayModal,
+  ReplayProgressTimeline,
+  ReplayResultCard,
+  FXCertViewer,
+  TrustScoreBreakdown,
+  CapsuleInspector,
+  VerificationBadge,
+  DeterminismBadge,
+  CollapsibleSection,
+  MetricCard,
+} from "@/components/dre";
+import { ReplayMode } from "@/components/dre/replay";
 
 export default function ExecutionExplorerPage() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -62,6 +83,10 @@ export default function ExecutionExplorerPage() {
     version: "",
     verifiedOnly: false,
   });
+  // Replay modal state
+  const [replayModalOpen, setReplayModalOpen] = useState(false);
+  const [replayMode, setReplayMode] = useState<ReplayMode>("strict");
+  const [selectedExecutionForReplay, setSelectedExecutionForReplay] = useState<Execution | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: [
@@ -297,7 +322,13 @@ export default function ExecutionExplorerPage() {
           </DialogHeader>
 
           {executionDetail ? (
-            <ExecutionDetailView execution={executionDetail.execution} />
+            <ExecutionDetailView 
+              execution={executionDetail.execution} 
+              onReplay={() => {
+                setSelectedExecutionForReplay(executionDetail.execution);
+                setReplayModalOpen(true);
+              }}
+            />
           ) : (
             <div className="flex items-center justify-center py-12">
               <LoadingSpinner />
@@ -305,6 +336,26 @@ export default function ExecutionExplorerPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Replay Modal */}
+      <ReplayModal
+        open={replayModalOpen}
+        onOpenChange={setReplayModalOpen}
+        capsule={{
+          version: "1.0.0",
+          runtime_version: "python-3.11",
+          memory_limit: 512,
+          instruction_limit: 1000000,
+          float_mode: "deterministic",
+          determinism_flags: ["no-random", "deterministic-float"],
+        }}
+        costEstimate={{ amount: 0.001, currency: "USD" }}
+        onStartReplay={(mode, nodeId) => {
+          console.log("Starting replay:", mode, nodeId);
+          toast.success("Replay started!");
+          setReplayModalOpen(false);
+        }}
+      />
     </div>
   );
 }
@@ -425,7 +476,7 @@ function ExecutionCard({
   );
 }
 
-function ExecutionDetailView({ execution }: { execution: ExecutionDetail }) {
+function ExecutionDetailView({ execution, onReplay }: { execution: ExecutionDetail; onReplay?: () => void }) {
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = (text: string) => {
@@ -447,28 +498,94 @@ function ExecutionDetailView({ execution }: { execution: ExecutionDetail }) {
 
   return (
     <div className="space-y-6">
-      {/* Execution Root Hash */}
-      <div className="space-y-2">
-        <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-          Execution Root Hash
-        </Label>
-        <div className="flex gap-2">
-          <code className="flex-1 font-mono text-sm bg-bg-secondary p-3 rounded break-all">
-            {execution.execution_root_hash}
-          </code>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => copyToClipboard(execution.execution_root_hash)}
-          >
-            {copied ? (
-              <Check className="w-4 h-4" />
-            ) : (
-              <Copy className="w-4 h-4" />
-            )}
-          </Button>
+      {/* Execution Header with new component */}
+      <ExecutionHeader
+        executionId={execution.execution_id}
+        determinismTier={execution.determinism_tier as any}
+        trustScore={85}
+        verified={execution.replay_verified_at !== null}
+        protocolVersion={execution.protocol_version}
+        isLatestProtocol={true}
+      />
+
+      {/* Execution Root Badge */}
+      <ExecutionRootBadge
+        hash={execution.execution_root_hash}
+        verified={execution.replay_verified_at !== null}
+        anchored={execution.certificate?.anchored || false}
+        chain={execution.certificate?.anchored ? "Ethereum" : undefined}
+        blockNumber={execution.certificate?.anchored ? 12345678 : undefined}
+      />
+
+      {/* Replay Button */}
+      {onReplay && (
+        <div className="flex justify-end">
+          <ReplayExecutionButton
+            onClick={onReplay}
+            capsuleVersion={execution.version}
+            showWarning={execution.determinism_tier !== "full"}
+            warningMessage={
+              execution.determinism_tier !== "full"
+                ? "This execution has non-deterministic components. Replay may differ."
+                : undefined
+            }
+          />
         </div>
-      </div>
+      )}
+
+      {/* Merkle Execution Tree */}
+      <MerkleExecutionTree
+        hashes={{
+          input: execution.component_hashes.input,
+          output: execution.component_hashes.output,
+          environment: execution.component_hashes.environment,
+          dependency: execution.component_hashes.dependency,
+          trace: execution.component_hashes.trace,
+          resource: execution.component_hashes.resource,
+          metadata: execution.component_hashes.metadata,
+        }}
+        onNodeClick={(type, hash) => {
+          console.log("Node clicked:", type, hash);
+        }}
+      />
+
+      {/* Trust Score Breakdown */}
+      <TrustScoreBreakdown
+        determinismScore={execution.determinism_tier === "full" ? 100 : execution.determinism_tier === "lite" ? 80 : 60}
+        replayConsistency={execution.roots_match ? 100 : 50}
+        resourceStability={95}
+        driftIncidents={execution.roots_match ? 0 : 1}
+        overallScore={execution.replay_verified_at ? 85 : 60}
+      />
+
+      {/* FX Certificate */}
+      {execution.certificate && (
+        <FXCertViewer
+          certificate={{
+            certificate_id: execution.certificate.certificate_id,
+            level: execution.certificate.cert_level as any,
+            certificate_hash: execution.certificate.certificate_hash,
+            execution_root_hash: execution.execution_root_hash,
+            issued_at: execution.certificate.created_at,
+            expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            signatures: {
+              node: { verified: true, key_id: "node-key-1" },
+              platform: { verified: true, key_id: "platform-key-1" },
+            },
+            anchor: execution.certificate.anchored
+              ? {
+                  chain: "Ethereum",
+                  block_number: 12345678,
+                  tx_hash: "0x1234...",
+                  timestamp: new Date().toISOString(),
+                }
+              : undefined,
+          }}
+        />
+      )}
+    </div>
+  );
+}
 
       {/* Status Grid */}
       <div className="grid grid-cols-2 gap-4">

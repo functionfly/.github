@@ -43,6 +43,7 @@ import { CodeBlock } from "@/components/common/CodeBlock";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { TrustScoreBadge, TrustLevel } from "@/components/common/TrustScoreBadge";
+import { DeterministicReliabilityBadge } from "@/components/dre";
 import { useState } from "react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -457,7 +458,13 @@ print(result)`,
                   },
                   {
                     icon: <Shield className="w-5 h-5 text-blue-500" />,
-                    value: `${functionInfo.reliability.toFixed(1)}%`,
+                    value: (
+                      <DeterministicReliabilityBadge
+                        percentage={functionInfo.reliability * 100}
+                        showTrend
+                        trend="stable"
+                      />
+                    ),
                     label: "reliability",
                     color: "blue",
                     delay: 0.1,
