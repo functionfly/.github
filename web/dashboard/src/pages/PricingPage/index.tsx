@@ -13,6 +13,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { useCardGestures, useScrollAnimation } from "./hooks";
 import { ComparisonSection } from "./components/ComparisonSection";
 import { StateFabricPricingSection } from "./components/StateFabricPricingSection";
+import { AgentPricingSection } from "./components/AgentPricingSection";
 import { WhyChooseUsSection } from "./components/WhyChooseUsSection";
 import { FAQSection } from "./components/FAQSection";
 import { CTASection } from "./components/CTASection";
@@ -353,6 +354,9 @@ export function PricingPage() {
 
           {/* State Fabric pricing – separate section for easy management */}
           <StateFabricPricingSection />
+
+          {/* Agent Execution Plans – for AI agent infrastructure */}
+          <AgentPricingSection />
 
           {/* Additional Sections */}
           <FeatureCarousel />
