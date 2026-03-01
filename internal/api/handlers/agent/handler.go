@@ -706,6 +706,96 @@ func (h *Handler) HandleUpdateSpendCap(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleGetCostBreakdown returns cost breakdown by function for an agent
+// GET /v1/agent/{agent_id}/cost-breakdown
+func (h *Handler) HandleGetCostBreakdown(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+		return
+	}
+
+	agentID := mux.Vars(r)["agent_id"]
+	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
+		return
+	}
+
+	if agent.TenantID != claims.TenantID {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+		return
+	}
+
+	// Get cost breakdown from attribution repository
+	breakdown, err := h.attributionRepo.GetCostBreakdown(r.Context(), agentID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "COST_BREAKDOWN_FAILED", "failed to get cost breakdown")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":       true,
+		"agent_id": agentID,
+		"breakdown": breakdown,
+	})
+}
+
+// HandlePurchaseCredits purchases execution credits for an agent
+// POST /v1/agent/{agent_id}/credits/purchase
+func (h *Handler) HandlePurchaseCredits(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+		return
+	}
+
+	agentID := mux.Vars(r)["agent_id"]
+	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
+		return
+	}
+
+	if agent.TenantID != claims.TenantID {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+		return
+	}
+
+	var req struct {
+		AmountUSD       float64 `json:"amount_usd"`
+		PaymentMethodID string  `json:"payment_method_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "invalid request body")
+		return
+	}
+
+	if req.AmountUSD <= 0 {
+		writeError(w, http.StatusBadRequest, "INVALID_AMOUNT", "amount must be positive")
+		return
+	}
+
+	// In a real implementation, this would:
+	// 1. Process payment via Stripe/etc
+	// 2. Add credits to agent's balance
+	// For now, we simulate the credit addition
+	if err := h.billingCtrl.AddCredits(r.Context(), agentID, req.AmountUSD); err != nil {
+		writeError(w, http.StatusInternalServerError, "PURCHASE_FAILED", "failed to add credits")
+		return
+	}
+
+	controls, _ := h.billingCtrl.GetOrCreateControls(r.Context(), agentID)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":                  true,
+		"message":             "credits purchased successfully",
+		"agent_id":           agentID,
+		"credits_added_usd":  req.AmountUSD,
+		"new_balance_usd":    controls.CreditBalanceUSD,
+	})
+}
+
 // ============================================================
 // Concurrency Stats
 // ============================================================
