@@ -10,6 +10,7 @@ import {
   IntegrationsSection,
   SecuritySection,
   FeaturesSection,
+  BuiltForAIAgentsSection,
   PricingSection,
   InteractiveDemoSection,
   PerformanceMetricsDashboard,
@@ -64,6 +65,7 @@ export function LandingPage() {
       <IntegrationsSection />
       <SecuritySection />
       <FeaturesSection />
+      <BuiltForAIAgentsSection />
       <PricingSection />
       <InteractiveDemoSection />
       <PerformanceMetricsDashboard />

@@ -5,6 +5,7 @@ export { ProcessStepsSection } from './ProcessStepsSection';
 export { IntegrationsSection } from './IntegrationsSection';
 export { SecuritySection } from './SecuritySection';
 export { FeaturesSection } from './FeaturesSection';
+export { BuiltForAIAgentsSection } from './BuiltForAIAgentsSection';
 export { PricingSection } from './PricingSection';
 export { InteractiveDemoSection } from './InteractiveDemoSection';
 export { PerformanceMetricsDashboard } from './PerformanceMetricsDashboard';
