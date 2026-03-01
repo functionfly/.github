@@ -1,14 +1,17 @@
 // Package crypto implements the Merkle Execution Graph (MEG) cryptographic primitives
 // for the Deterministic Replay Engine (DRE) 2.0 protocol.
 //
-// Hash algorithm: SHA-256 with domain separation (FIPS-compatible default).
-// To use BLAKE3, build with the blake3 build tag and ensure lukechampine.com/blake3
-// is available: go get lukechampine.com/blake3
+// Hash algorithm: BLAKE3 - extremely fast, tree-native, parallelizable,
+// with strong cryptographic guarantees. Ideal for large trace hashing.
+//
+// BLAKE3 produces a 32-byte (256-bit) output by default, which is used
+// for all hash computations in the MEG protocol.
 package crypto
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
+
+	"lukechampine.com/blake3"
 )
 
 // Domain separation tags — fixed forever in protocol (DRE/1.0)
@@ -28,17 +31,19 @@ const (
 	TagReplayProof  = "FX_REPLAY_PROOF"
 )
 
-// Hash computes SHA-256(tag || data) with domain separation.
+// Hash computes BLAKE3(tag || data) with domain separation.
 // The tag is prepended as raw bytes (no length prefix) to ensure
 // domain separation between different hash contexts.
+//
+// BLAKE3 is used as the default hash algorithm per the ExecutionRootHash v1.0 protocol.
 func Hash(tag string, data []byte) []byte {
-	h := sha256.New()
+	h := blake3.New()
 	h.Write([]byte(tag))
 	h.Write(data)
 	return h.Sum(nil)
 }
 
-// HashString returns the hex-encoded hash of SHA-256(tag || data).
+// HashString returns the hex-encoded hash of BLAKE3(tag || data).
 func HashString(tag string, data []byte) string {
 	return hex.EncodeToString(Hash(tag, data))
 }
