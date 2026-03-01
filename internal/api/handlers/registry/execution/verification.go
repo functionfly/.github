@@ -136,6 +136,9 @@ func (h *Handler) verifyReplay(fnVersion *storage.RegistryFunctionVersion, origi
 	if originalMEG.ExecutionRootHash == replayMEG.ExecutionRootHash {
 		result.OutputMatches = true
 		result.Status = VerificationVerified
+
+		// Update passport to mark as verified (async)
+		go h.updatePassportVerified(fnVersion.FunctionID, replayMEG.ResourceHash)
 	} else {
 		result.OutputMatches = false
 		result.Status = VerificationFailed
@@ -158,6 +161,19 @@ func (h *Handler) verifyReplay(fnVersion *storage.RegistryFunctionVersion, origi
 	}
 
 	return result
+}
+
+// updatePassportVerified updates the passport after successful replay verification.
+func (h *Handler) updatePassportVerified(functionID uuid.UUID, resourceHash string) {
+	now := time.Now()
+	update := storage.PassportUpdate{
+		IncrementVerified: true,
+		ResourceHash:      resourceHash,
+		LastVerifiedAt:   &now,
+	}
+	if err := h.Repo.UpdatePassport(functionID, update); err != nil {
+		fmt.Printf("DRE: failed to update passport verified: %v\n", err)
+	}
 }
 
 // storeDriftReport persists a drift report and updates the function passport.

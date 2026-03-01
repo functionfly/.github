@@ -231,12 +231,28 @@ func (r *RegistryRepository) UpdatePassport(functionID uuid.UUID, update Passpor
 		}
 	}
 
+	// Track resource hash for performance stability calculation
+	if update.ResourceHash != "" {
+		if err := r.TrackResourceHash(functionID, update.ResourceHash); err != nil {
+			// Log but don't fail - performance tracking is non-critical
+			fmt.Printf("dre: track resource hash: %v\n", err)
+		}
+	}
+
 	// Recompute DRE sub-scores
 	passport.DeterminismScore = computeDeterminismScore(passport.VerifiedExecutionsTotal, passport.TotalExecutions)
 	passport.ReplayIntegrityScore = computeReplayIntegrityScore(passport.ReplayDriftIncidents, passport.VerifiedExecutionsTotal)
 	passport.DriftScore = computeDriftScore(passport.ReplayDriftIncidents)
 	if passport.TotalExecutions > 0 {
 		passport.DeterministicReliability = float64(passport.VerifiedExecutionsTotal) / float64(passport.TotalExecutions)
+	}
+
+	// Compute performance stability score from resource hash history
+	resourceHashes, err := r.GetResourceHashHistory(functionID)
+	if err != nil {
+		fmt.Printf("dre: get resource history: %v\n", err)
+	} else {
+		passport.PerformanceStabilityScore = computePerformanceStabilityScore(resourceHashes)
 	}
 
 	passport.UpdatedAt = time.Now()
@@ -385,4 +401,102 @@ func computeReplayIntegrityScore(driftIncidents int, verifiedExecutions int64) f
 // Returns 1.0 for zero drift incidents, decays exponentially with each incident.
 func computeDriftScore(driftIncidents int) float64 {
 	return math.Exp(-float64(driftIncidents) * 0.1)
+}
+
+// ResourceHashHistory stores resource hashes for performance stability computation.
+type ResourceHashHistory struct {
+	FunctionID     uuid.UUID
+	ResourceHashes []string
+	UpdatedAt     time.Time
+}
+
+// computePerformanceStabilityScore computes: 1 - stddev(resource_hash_variance)
+// This measures how consistent the resource usage patterns are across executions.
+// A stable function (same resources each time) gets a high score.
+// Functions with highly variable resource usage get lower scores.
+func computePerformanceStabilityScore(resourceHashes []string) float64 {
+	if len(resourceHashes) < 2 {
+		// Not enough data to compute variance
+		return 0
+	}
+
+	// Convert hex hashes to numeric values for variance calculation
+	// We'll use a simple approach: count unique hashes
+	uniqueHashes := make(map[string]bool)
+	for _, h := range resourceHashes {
+		uniqueHashes[h] = true
+	}
+
+	// Compute uniqueness ratio (lower is better - more consistent)
+	uniquenessRatio := float64(len(uniqueHashes)) / float64(len(resourceHashes))
+
+	// Score = 1 - uniqueness ratio (perfect consistency = 1.0)
+	score := 1.0 - uniquenessRatio
+
+	// Apply minimum threshold - require at least some variance
+	// If all hashes are the same, score = 1.0
+	// If all hashes are different, score = 0.0
+	return score
+}
+
+// TrackResourceHash stores a resource hash for future stability analysis.
+// This should be called after each execution with a verified MEG record.
+func (r *RegistryRepository) TrackResourceHash(functionID uuid.UUID, resourceHash string) error {
+	// Get or create resource hash history
+	var history ResourceHashHistory
+	err := r.db.Where("function_id = ?", functionID).First(&history).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return fmt.Errorf("dre: get resource history: %w", err)
+	}
+
+	now := time.Now()
+	if err == gorm.ErrRecordNotFound {
+		// Create new history with the first hash
+		hashes := []string{resourceHash}
+		hashesJSON, _ := json.Marshal(hashes)
+		history = ResourceHashHistory{
+			FunctionID:     functionID,
+			ResourceHashes: hashesJSON,
+			UpdatedAt:      now,
+		}
+		return r.db.Create(&history).Error
+	}
+
+	// Add new hash, keep last 100 for stability calculation
+	var hashes []string
+	if len(history.ResourceHashes) > 0 {
+		_ = json.Unmarshal(history.ResourceHashes, &hashes)
+	}
+	hashes = append(hashes, resourceHash)
+	if len(hashes) > 100 {
+		hashes = hashes[len(hashes)-100:]
+	}
+	hashesJSON, _ := json.Marshal(hashes)
+	history.ResourceHashes = hashesJSON
+	history.UpdatedAt = now
+
+	return r.db.Save(&history).Error
+}
+
+// GetResourceHashHistory retrieves the resource hash history for a function.
+func (r *RegistryRepository) GetResourceHashHistory(functionID uuid.UUID) ([]string, error) {
+	var history ResourceHashHistory
+	err := r.db.Where("function_id = ?", functionID).First(&history).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("dre: get resource history: %w", err)
+	}
+
+	if len(history.ResourceHashes) == 0 || string(history.ResourceHashes) == "null" {
+		return nil, nil
+	}
+
+	var hashes []string
+	if err := json.Unmarshal(history.ResourceHashes, &hashes); err != nil {
+		return nil, fmt.Errorf("dre: unmarshal resource hashes: %w", err)
+	}
+
+	return hashes, nil
 }

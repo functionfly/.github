@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS execution_meg_records (
 CREATE INDEX IF NOT EXISTS idx_meg_execution_id ON execution_meg_records(execution_id);
 CREATE INDEX IF NOT EXISTS idx_meg_function_id ON execution_meg_records(function_id);
 CREATE INDEX IF NOT EXISTS idx_meg_root_hash ON execution_meg_records(execution_root_hash);
+CREATE INDEX IF NOT EXISTS idx_meg_created_at ON execution_meg_records(created_at DESC);
 
 -- ============================================
 -- EXECUTION CERTIFICATES
@@ -78,6 +79,7 @@ CREATE INDEX IF NOT EXISTS idx_cert_execution_id ON execution_certificates(execu
 CREATE INDEX IF NOT EXISTS idx_cert_function_id ON execution_certificates(function_id);
 CREATE INDEX IF NOT EXISTS idx_cert_root_hash ON execution_certificates(execution_root_hash);
 CREATE INDEX IF NOT EXISTS idx_cert_certificate_id ON execution_certificates(certificate_id);
+CREATE INDEX IF NOT EXISTS idx_cert_created_at ON execution_certificates(created_at DESC);
 
 -- ============================================
 -- DRIFT REPORTS
@@ -103,6 +105,7 @@ CREATE TABLE IF NOT EXISTS drift_reports (
 CREATE INDEX IF NOT EXISTS idx_drift_function_id ON drift_reports(function_id);
 CREATE INDEX IF NOT EXISTS idx_drift_detected_at ON drift_reports(detected_at);
 CREATE INDEX IF NOT EXISTS idx_drift_execution_id ON drift_reports(execution_id);
+CREATE INDEX IF NOT EXISTS idx_drift_category ON drift_reports(drift_category);
 
 -- ============================================
 -- EXECUTION PASSPORTS
@@ -134,8 +137,21 @@ CREATE TABLE IF NOT EXISTS function_execution_passports (
     updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Index for execution passports
+-- Indexes for execution passports
 CREATE INDEX IF NOT EXISTS idx_passport_function_id ON function_execution_passports(function_id);
+CREATE INDEX IF NOT EXISTS idx_passport_deterministic_rel ON function_execution_passports(deterministic_reliability DESC);
+CREATE INDEX IF NOT EXISTS idx_passport_trust_scores ON function_execution_passports(determinism_score, replay_integrity_score);
+
+-- ============================================
+-- RESOURCE HASH HISTORY (performance stability)
+-- ============================================
+CREATE TABLE IF NOT EXISTS resource_hash_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    function_id UUID NOT NULL,
+    resource_hashes JSONB NOT NULL DEFAULT '[]',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_resource_hash_history_function_id ON resource_hash_history(function_id);
 
 -- ============================================
 -- EXTEND REGISTRY_FUNCTION_RATINGS
@@ -158,3 +174,4 @@ COMMENT ON TABLE execution_meg_records IS 'Merkle Execution Graph records for de
 COMMENT ON TABLE execution_certificates IS 'FXCERT execution certificates for cryptographically verifiable function executions';
 COMMENT ON TABLE drift_reports IS 'Drift reports when replay verification fails (DRE 2.0 anti-manipulation)';
 COMMENT ON TABLE function_execution_passports IS 'Public-facing determinism passports for marketplace display';
+COMMENT ON TABLE resource_hash_history IS 'Resource hash history for performance stability scoring';
