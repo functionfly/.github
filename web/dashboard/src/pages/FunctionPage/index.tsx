@@ -44,6 +44,7 @@ import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { TrustScoreBadge, TrustLevel } from "@/components/common/TrustScoreBadge";
 import { DeterministicReliabilityBadge } from "@/components/dre";
+import { FollowFunctionButton } from "@/components/follow";
 import { useState } from "react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -52,6 +53,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface FunctionInfo {
+  id: string;
   author: string;
   name: string;
   version: string;
@@ -535,6 +537,11 @@ print(result)`,
                   View on GitHub
                 </Button>
                 <ShareButton functionInfo={functionInfo} />
+                <FollowFunctionButton
+                  functionId={functionInfo.id}
+                  functionName={functionInfo.name}
+                  size="lg"
+                />
               </motion.div>
 
               {/* Auto-generated Documentation — directly under Try it Now */}
