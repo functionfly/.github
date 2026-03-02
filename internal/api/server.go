@@ -21,6 +21,7 @@ import (
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/health"
 	"github.com/functionfly/functionfly/internal/monitoring"
+	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/routing"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -48,6 +49,10 @@ type Server struct {
 	redisClient     *redis.Client
 	httpServer      *http.Server
 	shutdownTimeout time.Duration
+
+	// Notification service
+	notificationSvc *notification.Service
+	notificationRepo notification.Repository
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -166,20 +171,26 @@ func NewServer(db *storage.PostgresDB) *Server {
 	// Initialize health monitor for backend health checks and circuit breaker
 	healthMonitor := health.NewMonitor(repo)
 
+	// Initialize notification repository and service
+	notificationRepo := notification.NewPostgresRepository(db.DB)
+	notificationSvc := notification.NewService(notificationRepo, db, emailSvc, logrus.New())
+
 	s := &Server{
-		postgresDB:      db,
-		repo:            repo,
-		router:          router,
-		authSvc:         authSvc,
-		routingSvc:      routing.NewRouter(repo),
-		deploySvc:       deploySvc,
-		monitoringSvc:   monitoringSvc,
-		realtimeMonitor: realtimeMonitor,
-		storageService:  storageService,
-		sessionCleanup:  sessionCleanup,
-		healthMonitor:   healthMonitor,
-		redisClient:     redisClient,
-		shutdownTimeout: shutdownTimeout,
+		postgresDB:       db,
+		repo:             repo,
+		router:           router,
+		authSvc:          authSvc,
+		routingSvc:       routing.NewRouter(repo),
+		deploySvc:        deploySvc,
+		monitoringSvc:    monitoringSvc,
+		realtimeMonitor:  realtimeMonitor,
+		storageService:   storageService,
+		sessionCleanup:   sessionCleanup,
+		healthMonitor:    healthMonitor,
+		redisClient:      redisClient,
+		shutdownTimeout:  shutdownTimeout,
+		notificationSvc:  notificationSvc,
+		notificationRepo: notificationRepo,
 		httpServer: &http.Server{
 			Handler:      router,
 			ReadTimeout:  15 * time.Second,
@@ -240,6 +251,10 @@ func (s *Server) ListenAndServe(addr string) error {
 	// Start health monitor for backend health checks and circuit breaker (MVP gap fix)
 	s.healthMonitor.Start()
 
+	// Start notification service
+	s.notificationSvc.Start(ctx)
+	logrus.Info("Notification service started")
+
 	// Channel to listen for interrupt signals
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -281,6 +296,12 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	// Stop health monitor
 	s.healthMonitor.Stop()
 
+	// Stop notification service
+	if s.notificationSvc != nil {
+		s.notificationSvc.Stop()
+		logrus.Info("Notification service stopped")
+	}
+
 	// Shutdown the HTTP server gracefully
 	return s.httpServer.Shutdown(ctx)
 }
@@ -288,6 +309,16 @@ func (s *Server) Shutdown(ctx context.Context) error {
 // GetShutdownTimeout returns the configured shutdown timeout
 func (s *Server) GetShutdownTimeout() time.Duration {
 	return s.shutdownTimeout
+}
+
+// GetNotificationService returns the notification service
+func (s *Server) GetNotificationService() *notification.Service {
+	return s.notificationSvc
+}
+
+// GetNotificationRepository returns the notification repository
+func (s *Server) GetNotificationRepository() notification.Repository {
+	return s.notificationRepo
 }
 
 // initializeArtifactStore initializes the artifact store based on environment configuration

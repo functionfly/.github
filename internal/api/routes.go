@@ -24,6 +24,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
+	notificationHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	"github.com/functionfly/functionfly/internal/api/handlers/playground"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
 	registryhandler "github.com/functionfly/functionfly/internal/api/handlers/registry"
@@ -64,6 +65,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize monitoring handler
 	monitoringHandler := monitoring.NewHandler(s.repo, s.monitoringSvc, s.realtimeMonitor, s.authSvc)
 	mfaHandler := mfaHandlerPkg.NewMFAHandler(s.authSvc)
+
+	// Initialize notification handler
+	notificationHandler := notificationHandlerPkg.NewHandler(s.notificationSvc, s.notificationRepo)
+
+	// Initialize notification WebSocket handler
+	notificationWSHandler := notificationHandlerPkg.NewWebSocketHandler(
+		notificationHandlerPkg.NewWebSocketHub(logrus.New()),
+		logrus.New(),
+	)
 
 	// Initialize app-based playground handler
 	appPlaygroundHandler := playground.NewHandler(s.repo)
@@ -312,6 +322,18 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/auth/mfa/enable", authMiddleware.RequireAuth(mfaHandler.EnableMFA)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/mfa/disable", authMiddleware.RequireAuth(mfaHandler.DisableMFA)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/mfa/status", authMiddleware.RequireAuth(mfaHandler.GetMFAStatus)).Methods("GET", "OPTIONS")
+
+	// Notification routes (protected)
+	api.HandleFunc("/notifications", authMiddleware.RequireAuth(notificationHandler.HandleListNotifications)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/notifications/unread-count", authMiddleware.RequireAuth(notificationHandler.HandleGetUnreadCount)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/notifications/read-all", authMiddleware.RequireAuth(notificationHandler.HandleMarkAllAsRead)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/notifications/{id}/read", authMiddleware.RequireAuth(notificationHandler.HandleMarkAsRead)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/notifications/{id}", authMiddleware.RequireAuth(notificationHandler.HandleDeleteNotification)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/users/me/notification-preferences", authMiddleware.RequireAuth(notificationHandler.HandleGetPreferences)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/me/notification-preferences", authMiddleware.RequireAuth(notificationHandler.HandleUpdatePreferences)).Methods("PATCH", "OPTIONS")
+
+	// Notification WebSocket route (protected)
+	api.HandleFunc("/notifications/stream", authMiddleware.RequireAuth(notificationWSHandler.HandleWebSocket))
 
 	// Playground routes (public) - App-based functions
 	api.HandleFunc("/run/{appSlug}/{functionName}", appPlaygroundHandler.HandlePlaygroundUI).Methods("GET", "OPTIONS")
