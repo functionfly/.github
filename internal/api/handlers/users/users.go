@@ -293,10 +293,11 @@ func (h *Handler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 
 // UpdateMeRequest represents the request body for updating the current user's profile
 type UpdateMeRequest struct {
-	Name        string `json:"name"`
-	Username    string `json:"username"`
-	CompanyName string `json:"companyName"`
-	Bio         string `json:"bio"`
+	Name        string  `json:"name"`
+	Username    string  `json:"username"`
+	CompanyName string  `json:"companyName"`
+	Bio         string  `json:"bio"`
+	Avatar      *string `json:"avatar,omitempty"` // Profile picture URL (nil = no change, "" = clear); stored in provider_data.avatar_url
 	// Extended profile fields
 	Location    string                 `json:"location"`
 	Website     string                 `json:"website"`
@@ -378,20 +379,111 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		updates["social_links"] = req.SocialLinks
 	}
 
-	if len(updates) == 0 {
-		writeJSONError(w, http.StatusBadRequest, "No fields to update")
+	// Persist avatar URL in provider_data when client sends avatar (nil = no change, "" = clear)
+	var responseAvatar string
+	if req.Avatar != nil {
+		currentUser, err := h.repo.GetUserByID(claims.UserID)
+		if err != nil || currentUser == nil {
+			// Continue without updating avatar if we can't load user
+		} else {
+			merged := make(map[string]interface{})
+			if currentUser.ProviderData != nil {
+				for k, v := range currentUser.ProviderData {
+					merged[k] = v
+				}
+			}
+			merged["avatar_url"] = *req.Avatar
+			if err := h.repo.UpdateUserProviderData(claims.UserID, merged); err != nil {
+				logrus.WithError(err).WithField("userID", claims.UserID).Warn("Failed to update avatar in provider_data")
+			} else {
+				responseAvatar = *req.Avatar
+			}
+		}
+	}
+
+	// No-op: no profile fields and no avatar change — return current user (200) instead of 400
+	if len(updates) == 0 && req.Avatar == nil {
+		updatedUser, _ := h.repo.GetUserByID(claims.UserID)
+		if updatedUser == nil {
+			writeJSONError(w, http.StatusInternalServerError, "Failed to load profile")
+			return
+		}
+		avatar := ""
+		if updatedUser.ProviderData != nil {
+			if a, ok := updatedUser.ProviderData["avatar_url"].(string); ok {
+				avatar = a
+			}
+		}
+		name := updatedUser.Name
+		if name == "" && updatedUser.ProviderData != nil {
+			if n, ok := updatedUser.ProviderData["name"].(string); ok {
+				name = n
+			}
+		}
+		usernameStr := ""
+		if updatedUser.Username != nil {
+			usernameStr = *updatedUser.Username
+		}
+		companyName := ""
+		if updatedUser.CompanyName != nil {
+			companyName = *updatedUser.CompanyName
+		}
+		getString := func(s *string) string {
+			if s == nil {
+				return ""
+			}
+			return *s
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"message": "Profile updated successfully",
+			"user": map[string]interface{}{
+				"id":          updatedUser.ID,
+				"name":        name,
+				"username":    usernameStr,
+				"companyName": companyName,
+				"email":       updatedUser.Email,
+				"avatar":      avatar,
+				"bio":         getString(updatedUser.Bio),
+				"location":    getString(updatedUser.Location),
+				"website":     getString(updatedUser.Website),
+				"jobTitle":    getString(updatedUser.JobTitle),
+				"socialLinks": updatedUser.SocialLinks,
+				"twitterUrl":  getString(updatedUser.TwitterURL),
+				"githubUrl":   getString(updatedUser.GithubURL),
+				"linkedinUrl": getString(updatedUser.LinkedInURL),
+				"updatedAt":   updatedUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			},
+		})
 		return
 	}
 
-	updatedUser, err := h.repo.UpdateUser(context.Background(), claims.UserID, updates)
-	if err != nil {
-		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
-			writeJSONError(w, http.StatusConflict, "Username is already taken")
+	var updatedUser *storage.User
+	if len(updates) > 0 {
+		var err error
+		updatedUser, err = h.repo.UpdateUser(context.Background(), claims.UserID, updates)
+		if err != nil {
+			if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
+				writeJSONError(w, http.StatusConflict, "Username is already taken")
+				return
+			}
+			logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update user")
+			writeJSONError(w, http.StatusInternalServerError, "Failed to update profile")
 			return
 		}
-		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update user")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to update profile")
+	} else {
+		updatedUser, _ = h.repo.GetUserByID(claims.UserID)
+	}
+	if updatedUser == nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to load profile")
 		return
+	}
+
+	// Build avatar for response: use responseAvatar if we just set it, else from provider_data
+	avatar := responseAvatar
+	if avatar == "" && updatedUser.ProviderData != nil {
+		if a, ok := updatedUser.ProviderData["avatar_url"].(string); ok {
+			avatar = a
+		}
 	}
 
 	name := updatedUser.Name
@@ -409,13 +501,6 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	companyName := ""
 	if updatedUser.CompanyName != nil {
 		companyName = *updatedUser.CompanyName
-	}
-
-	var avatar string
-	if updatedUser.ProviderData != nil {
-		if a, ok := updatedUser.ProviderData["avatar_url"].(string); ok {
-			avatar = a
-		}
 	}
 
 	// Helper to get string from pointer
@@ -900,11 +985,36 @@ func (h *Handler) HandleGetUserAchievements(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Get user achievements
+	// Join date: user.CreatedAt is the user's actual account creation time from the users table (when they joined).
+	joinDate := user.CreatedAt
+	if joinDate.IsZero() {
+		joinDate = time.Now() // fallback only if created_at was never set
+	}
+	earnedAtISO := joinDate.Format("2006-01-02T15:04:05Z07:00")
+
+	// Get user achievements (on error still return "Joined FunctionFly" so something shows)
 	achievements, err := h.repo.GetUserAchievements(user.ID)
 	if err != nil {
-		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to get user achievements")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve achievements")
+		logrus.WithError(err).WithField("userID", user.ID).Warn("Failed to get user achievements, returning joined achievement only")
+		joinedOnly := []map[string]interface{}{{
+			"id":          "joined-" + user.ID.String(),
+			"slug":        "joined_functionfly",
+			"name":        "Member",
+			"description": "Joined FunctionFly",
+			"icon":        "UserPlus",
+			"color":       "blue",
+			"category":    "milestone",
+			"points":      0,
+			"earnedAt":    earnedAtISO,
+			"progress":    100,
+			"isCompleted": true,
+			"metadata":    map[string]interface{}{},
+		}}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"achievements": joinedOnly,
+			"totalPoints":  0,
+			"available":    1,
+		})
 		return
 	}
 
@@ -927,6 +1037,36 @@ func (h *Handler) HandleGetUserAchievements(w http.ResponseWriter, r *http.Reque
 			"progress":    ua.Progress,
 			"isCompleted": ua.IsCompleted,
 			"metadata":    ua.Metadata,
+		})
+	}
+
+	// Ensure "Joined FunctionFly" achievement is always included as earned (earnedAt = real join date from users.created_at)
+	hasJoined := false
+	for _, m := range response {
+		if s, _ := m["slug"].(string); s == "joined_functionfly" {
+			hasJoined = true
+			break
+		}
+	}
+	if !hasJoined {
+		joinedDef, _ := h.repo.GetAchievementBySlug("joined_functionfly")
+		name, desc, icon, color, category, points := "Member", "Joined FunctionFly", "UserPlus", "blue", "milestone", 0
+		if joinedDef != nil {
+			name, desc, icon, color, category, points = joinedDef.Name, joinedDef.Description, joinedDef.Icon, joinedDef.Color, joinedDef.Category, joinedDef.Points
+		}
+		response = append(response, map[string]interface{}{
+			"id":          "joined-" + user.ID.String(),
+			"slug":        "joined_functionfly",
+			"name":        name,
+			"description": desc,
+			"icon":        icon,
+			"color":       color,
+			"category":    category,
+			"points":      points,
+			"earnedAt":    earnedAtISO,
+			"progress":    100,
+			"isCompleted": true,
+			"metadata":    map[string]interface{}{},
 		})
 	}
 
@@ -997,11 +1137,16 @@ func (h *Handler) HandleGetUserActivity(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Get user activity
+	// Get user activity (return empty if tables not yet migrated)
 	activities, err := h.repo.GetUserActivity(user.ID, limit, offset)
 	if err != nil {
-		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to get user activity")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve activity")
+		logrus.WithError(err).WithField("userID", user.ID).Warn("Failed to get user activity, returning empty")
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"activities": []interface{}{},
+			"limit":      limit,
+			"offset":     offset,
+			"total":      0,
+		})
 		return
 	}
 
@@ -1102,11 +1247,13 @@ func (h *Handler) HandleGetUserSkills(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user skills
+	// Get user skills (return empty if tables not yet migrated)
 	skills, err := h.repo.GetUserSkills(user.ID)
 	if err != nil {
-		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to get user skills")
-		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve skills")
+		logrus.WithError(err).WithField("userID", user.ID).Warn("Failed to get user skills, returning empty")
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"skills": []interface{}{},
+		})
 		return
 	}
 
@@ -1174,6 +1321,11 @@ func (h *Handler) HandleAddUserSkill(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, http.StatusConflict, "Skill already exists")
 			return
 		}
+		if strings.Contains(err.Error(), "does not exist") {
+			logrus.WithError(err).WithField("userID", claims.UserID).Warn("user_skills table missing; run migrations")
+			writeJSONError(w, http.StatusServiceUnavailable, "Profile features are not available yet. Run database migrations.")
+			return
+		}
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to add user skill")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to add skill")
 		return
@@ -1211,6 +1363,11 @@ func (h *Handler) HandleRemoveUserSkill(w http.ResponseWriter, r *http.Request) 
 	// First verify the skill belongs to this user (by checking if we can get it)
 	userSkills, err := h.repo.GetUserSkills(claims.UserID)
 	if err != nil {
+		if strings.Contains(err.Error(), "does not exist") {
+			logrus.WithError(err).WithField("userID", claims.UserID).Warn("user_skills table missing; run migrations")
+			writeJSONError(w, http.StatusServiceUnavailable, "Profile features are not available yet. Run database migrations.")
+			return
+		}
 		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to get user skills")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to verify skill ownership")
 		return
@@ -1230,6 +1387,11 @@ func (h *Handler) HandleRemoveUserSkill(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.repo.RemoveUserSkill(skillID); err != nil {
+		if strings.Contains(err.Error(), "does not exist") {
+			logrus.WithError(err).WithField("skillID", skillID).Warn("user_skills table missing; run migrations")
+			writeJSONError(w, http.StatusServiceUnavailable, "Profile features are not available yet. Run database migrations.")
+			return
+		}
 		logrus.WithError(err).WithField("skillID", skillID).Error("Failed to remove user skill")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to remove skill")
 		return

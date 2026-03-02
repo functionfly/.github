@@ -250,3 +250,362 @@ export function EditProfileModal({
           {/* Avatar & Cover Preview */}
           <div className="relative">
             <div className="h-32 rounded-lg overflow-hidden bg-gradient-to-br from-brand-500/20 to-purple-500/20 relative">
+              {coverImageUrl ? (
+                <img
+                  src={coverImageUrl}
+                  alt="Cover"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-brand-500 via-brand-600 to-indigo-700 opacity-50" />
+              )}
+              <div className="absolute inset-0 bg-black/20" />
+            </div>
+            <div className="absolute -bottom-8 left-6 flex items-end gap-4">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full border-4 border-card bg-gradient-to-br from-brand-500 to-purple-500 flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+                  {profile.avatar ? (
+                    <img
+                      src={profile.avatar}
+                      alt={profile.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    name.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-brand-500 hover:bg-brand-600 rounded-full flex items-center justify-center text-white shadow-lg transition-colors">
+                        <Camera className="w-3.5 h-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Avatar is synced from your social login</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </div>
+          </div>
+
+          {/* Spacer for avatar overlap */}
+          <div className="h-6" />
+
+          {/* Basic Info Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">
+              Basic Information
+            </h3>
+
+            {/* Display Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name" className="flex items-center gap-2 text-text-secondary">
+                <User className="w-4 h-4" />
+                Display Name *
+              </Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={() => handleBlur("name")}
+                placeholder="Your full name"
+                className={cn(
+                  touched.name && errors.name && "border-error focus:border-error focus:ring-error/20"
+                )}
+                disabled={isLoading}
+              />
+              {touched.name && errors.name && (
+                <p className="text-xs text-error flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.name}
+                </p>
+              )}
+            </div>
+
+            {/* Username */}
+            <div className="space-y-2">
+              <Label htmlFor="username" className="flex items-center gap-2 text-text-secondary">
+                <Globe className="w-4 h-4" />
+                Username *
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">
+                  @
+                </span>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))
+                  }
+                  onBlur={() => handleBlur("username")}
+                  placeholder="username"
+                  className={cn(
+                    "pl-7",
+                    touched.username && errors.username && "border-error focus:border-error focus:ring-error/20"
+                  )}
+                  disabled={isLoading}
+                />
+              </div>
+              {touched.username && errors.username ? (
+                <p className="text-xs text-error flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.username}
+                </p>
+              ) : (
+                <p className="text-xs text-text-muted">
+                  Your public profile URL: /u/{username || "username"}
+                </p>
+              )}
+            </div>
+
+            {/* Bio */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="bio" className="text-text-secondary">
+                  Bio
+                </Label>
+                <span
+                  className={cn(
+                    "text-xs",
+                    bio.length > MAX_BIO_LENGTH ? "text-error" : "text-text-muted"
+                  )}
+                >
+                  {bio.length}/{MAX_BIO_LENGTH}
+                </span>
+              </div>
+              <Textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value.slice(0, MAX_BIO_LENGTH))}
+                placeholder="Tell others about yourself, your interests, and what you build..."
+                rows={4}
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Location & Work Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">
+              Location & Work
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Location */}
+              <div className="space-y-2">
+                <Label htmlFor="location" className="flex items-center gap-2 text-text-secondary">
+                  <MapPin className="w-4 h-4" />
+                  Location
+                </Label>
+                <Input
+                  id="location"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="City, Country"
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* Company */}
+              <div className="space-y-2">
+                <Label htmlFor="company" className="flex items-center gap-2 text-text-secondary">
+                  <Building2 className="w-4 h-4" />
+                  Company
+                </Label>
+                <Input
+                  id="company"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  placeholder="Company or organization"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* Job Title */}
+            <div className="space-y-2">
+              <Label htmlFor="jobTitle" className="flex items-center gap-2 text-text-secondary">
+                <Briefcase className="w-4 h-4" />
+                Job Title
+              </Label>
+              <Input
+                id="jobTitle"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="e.g., Senior Software Engineer"
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Online Presence Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">
+              Online Presence
+            </h3>
+
+            {/* Website */}
+            <div className="space-y-2">
+              <Label htmlFor="website" className="flex items-center gap-2 text-text-secondary">
+                <Globe className="w-4 h-4" />
+                Personal Website
+              </Label>
+              <Input
+                id="website"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                onBlur={() => handleBlur("website")}
+                placeholder="https://yourwebsite.com"
+                className={cn(
+                  touched.website && errors.website && "border-error focus:border-error focus:ring-error/20"
+                )}
+                disabled={isLoading}
+              />
+              {touched.website && errors.website && (
+                <p className="text-xs text-error flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.website}
+                </p>
+              )}
+            </div>
+
+            {/* Social Links */}
+            <div className="space-y-3">
+              <Label className="text-text-secondary">Social Profiles</Label>
+
+              {/* GitHub */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Github className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                  <Input
+                    value={githubUrl}
+                    onChange={(e) => setGithubUrl(e.target.value)}
+                    onBlur={() => handleBlur("githubUrl")}
+                    placeholder="https://github.com/username"
+                    className={cn(
+                      "pl-10",
+                      touched.githubUrl && errors.githubUrl && "border-error focus:border-error focus:ring-error/20"
+                    )}
+                    disabled={isLoading}
+                  />
+                </div>
+                {touched.githubUrl && errors.githubUrl && (
+                  <p className="text-xs text-error flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.githubUrl}
+                  </p>
+                )}
+              </div>
+
+              {/* Twitter/X */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Twitter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                  <Input
+                    value={twitterUrl}
+                    onChange={(e) => setTwitterUrl(e.target.value)}
+                    onBlur={() => handleBlur("twitterUrl")}
+                    placeholder="https://twitter.com/username"
+                    className={cn(
+                      "pl-10",
+                      touched.twitterUrl && errors.twitterUrl && "border-error focus:border-error focus:ring-error/20"
+                    )}
+                    disabled={isLoading}
+                  />
+                </div>
+                {touched.twitterUrl && errors.twitterUrl && (
+                  <p className="text-xs text-error flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.twitterUrl}
+                  </p>
+                )}
+              </div>
+
+              {/* LinkedIn */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                  <Input
+                    value={linkedinUrl}
+                    onChange={(e) => setLinkedinUrl(e.target.value)}
+                    onBlur={() => handleBlur("linkedinUrl")}
+                    placeholder="https://linkedin.com/in/username"
+                    className={cn(
+                      "pl-10",
+                      touched.linkedinUrl && errors.linkedinUrl && "border-error focus:border-error focus:ring-error/20"
+                    )}
+                    disabled={isLoading}
+                  />
+                </div>
+                {touched.linkedinUrl && errors.linkedinUrl && (
+                  <p className="text-xs text-error flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.linkedinUrl}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Cover Image Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-text-primary uppercase tracking-wider">
+              Profile Customization
+            </h3>
+
+            <div className="space-y-2">
+              <Label htmlFor="coverImage" className="flex items-center gap-2 text-text-secondary">
+                <ImageIcon className="w-4 h-4" />
+                Cover Image URL
+              </Label>
+              <Input
+                id="coverImage"
+                value={coverImageUrl}
+                onChange={(e) => setCoverImageUrl(e.target.value)}
+                placeholder="https://example.com/cover-image.jpg"
+                disabled={isLoading}
+              />
+              <p className="text-xs text-text-muted">
+                Recommended size: 1500x500 pixels. Leave empty for a gradient background.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-border-subtle">
+          <Button
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isLoading}
+            className="w-full sm:w-auto"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isLoading || !isFormValid()}
+            className="w-full sm:w-auto gap-2"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default EditProfileModal;

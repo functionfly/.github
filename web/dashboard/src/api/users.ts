@@ -6,6 +6,7 @@ export interface UpdateProfileRequest {
   username?: string;
   companyName?: string;
   bio?: string;
+  avatar?: string; // Profile picture URL (or "" to clear)
   location?: string;
   website?: string;
   jobTitle?: string;

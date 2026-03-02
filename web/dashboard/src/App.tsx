@@ -67,7 +67,8 @@ import RegistryDeployPage from '@/pages/RegistryDeployPage';
 import { DOCS_SITE_URL } from '@/lib/constants';
 import { DocsPage } from '@/pages/DocsPage';
 import { MyProfilePage } from '@/pages/MyProfilePage';
-import { ProfilePage } from '@/pages/ProfilePage';
+import { ProfilePage } from '@/pages/ProfilePage/ProfilePage';
+import { ProfileSettingsPage } from '@/pages/ProfileSettingsPage';
 import { AppsPage } from '@/pages/AppsPage';
 import { AppDetailPage } from '@/pages/AppDetailPage';
 import { FunctionSettingsPage } from '@/pages/FunctionsPage/FunctionSettingsPage';
@@ -340,6 +341,7 @@ function AppContent() {
         <Route path="enterprise/audit" element={<EnterpriseAuditPage />} />
         <Route path="enterprise/support" element={<EnterpriseSupportPage />} />
         <Route path="profile" element={<MyProfilePage />} />
+        <Route path="profile/settings" element={<ProfileSettingsPage />} />
         <Route path="dashboard/:username/functions" element={<UserDashboardFunctionsPage />} />
         <Route
           path="u/:username/settings/billing"

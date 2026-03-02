@@ -846,6 +846,7 @@ export interface Achievement {
 
 /** Activity feed item types */
 export type ActivityType =
+  | "joined"
   | "function_published"
   | "function_updated"
   | "function_deleted"
