@@ -1,16 +1,20 @@
 package registry
 
 import (
+	"crypto/ed25519"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/cache"
+	"github.com/functionfly/functionfly/internal/dre"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 // Handler contains registry API handlers
@@ -21,11 +25,17 @@ type Handler struct {
 	cdnService      *cache.CDNService
 	edgeCache       *cache.EdgeCacheService
 	realtimeMonitor *monitoring.RealtimeMonitor
+	// DRE execution node config (optional): when set, FXCERTs are signed
+	dreNodeKey      ed25519.PrivateKey
+	drePlatformKey  ed25519.PrivateKey
+	dreNodeID       string
+	dreRegion       string
 }
 
-// NewHandler creates a new registry handler
+// NewHandler creates a new registry handler.
+// DRE node key is loaded from env (DRE_NODE_PRIVATE_KEY or DRE_NODE_PRIVATE_KEY_PATH); when set, FXCERTs are signed.
 func NewHandler(repo *registry.RegistryRepository, backendRepo storage.Repository, cacheService *cache.CacheService, cdnService *cache.CDNService, edgeCache *cache.EdgeCacheService, realtimeMonitor *monitoring.RealtimeMonitor) *Handler {
-	return &Handler{
+	h := &Handler{
 		repo:            repo,
 		backendRepo:     backendRepo,
 		cacheService:    cacheService,
@@ -33,6 +43,25 @@ func NewHandler(repo *registry.RegistryRepository, backendRepo storage.Repositor
 		edgeCache:       edgeCache,
 		realtimeMonitor: realtimeMonitor,
 	}
+	key, nodeID, region, err := dre.LoadNodeKeyFromEnv()
+	if err != nil {
+		logrus.WithError(err).Warn("DRE: failed to load node key from env; FXCERTs will be unsigned")
+	}
+	if key != nil {
+		h.dreNodeKey = key
+		logrus.Info("DRE: node key loaded; FXCERTs will be signed")
+	}
+	platformKey, err := dre.LoadPlatformKeyFromEnv()
+	if err != nil {
+		logrus.WithError(err).Warn("DRE: failed to load platform key from env")
+	}
+	if platformKey != nil {
+		h.drePlatformKey = platformKey
+		logrus.Info("DRE: platform key loaded; FXCERTs will include platform signature")
+	}
+	h.dreNodeID = nodeID
+	h.dreRegion = region
+	return h
 }
 
 // getClientIP extracts the client IP address from the request
@@ -225,4 +254,85 @@ func (h *Handler) HandleGetCacheStats(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(stats)
+}
+
+// certJSONMinimal is used to parse CertJSON for bootstrap detection.
+type certJSONMinimal struct {
+	Execution struct {
+		FunctionID string `json:"function_id"`
+		NodeID     string `json:"node_id"`
+	} `json:"execution"`
+}
+
+// HandleRegenerateBootstrap regenerates bootstrap FXCERTs for registry functions so they are signed with the current node key.
+// POST /v1/admin/registry/dre/regenerate-bootstrap?author=functionfly (optional author filter)
+func (h *Handler) HandleRegenerateBootstrap(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
+		return
+	}
+	author := strings.TrimSpace(r.URL.Query().Get("author"))
+
+	functions, _, err := h.repo.ListFunctionsForAdmin("", "", "", 5000, 0)
+	if err != nil {
+		logrus.WithError(err).Error("DRE: regenerate bootstrap failed to list functions")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "failed to list functions"})
+		return
+	}
+
+	regenerated := 0
+	for _, fn := range functions {
+		if author != "" && !strings.EqualFold(fn.Author, author) {
+			continue
+		}
+		versions, err := h.repo.ListFunctionVersions(fn.ID)
+		if err != nil {
+			logrus.WithError(err).WithField("function_id", fn.ID).Warn("DRE: list versions failed")
+			continue
+		}
+		for _, v := range versions {
+			fnVersion, err := h.repo.GetFunctionVersion(fn.ID, v.Version)
+			if err != nil || fnVersion == nil {
+				continue
+			}
+			expectedFunctionID := fmt.Sprintf("fx://%s/%s/%s", fn.Author, fn.Name, fnVersion.Version)
+			certs, err := h.repo.GetCertificatesByFunctionID(fn.ID, 200, 0)
+			if err != nil {
+				continue
+			}
+			for _, cert := range certs {
+				var minimal certJSONMinimal
+				if err := json.Unmarshal(cert.CertJSON, &minimal); err != nil {
+					continue
+				}
+				if minimal.Execution.NodeID != "bootstrap" || minimal.Execution.FunctionID != expectedFunctionID {
+					continue
+				}
+				if err := h.repo.DeleteCertificate(cert.CertificateID); err != nil {
+					logrus.WithError(err).WithField("certificate_id", cert.CertificateID).Warn("DRE: delete cert failed")
+					continue
+				}
+				if err := h.repo.DeleteMEGRecord(cert.MEGRecordID); err != nil {
+					logrus.WithError(err).WithField("meg_id", cert.MEGRecordID).Warn("DRE: delete MEG failed")
+				}
+				execution.BootstrapFXCERT(h.repo, &fn, fnVersion, "bootstrap", "internal", h.dreNodeKey, h.drePlatformKey)
+				regenerated++
+				logrus.WithFields(logrus.Fields{
+					"function":  fmt.Sprintf("%s/%s", fn.Author, fn.Name),
+					"version":   fnVersion.Version,
+					"cert_id":   cert.CertificateID,
+				}).Info("DRE: regenerated bootstrap FXCERT")
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"regenerated": regenerated,
+		"message":     fmt.Sprintf("regenerated %d bootstrap FXCERT(s)", regenerated),
+	})
 }

@@ -145,13 +145,16 @@ func (r *RegistryRepository) CreateOrUpdateVerificationStatus(status *RegistryFu
 	return nil
 }
 
-// GetVerificationStatus retrieves the verification status for a function version
+// GetVerificationStatus retrieves the verification status for a function version.
+// Uses Find instead of First so a missing row does not log "record not found".
 func (r *RegistryRepository) GetVerificationStatus(functionVersionID uuid.UUID) (*RegistryFunctionVerificationStatus, error) {
 	var status RegistryFunctionVerificationStatus
-	if err := r.db.Where("function_version_id = ?", functionVersionID).First(&status).Error; err != nil {
+	if err := r.db.Where("function_version_id = ?", functionVersionID).Limit(1).Find(&status).Error; err != nil {
 		return nil, fmt.Errorf("failed to get verification status: %w", err)
 	}
-
+	if status.ID == uuid.Nil {
+		return nil, nil
+	}
 	return &status, nil
 }
 

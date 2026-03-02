@@ -279,6 +279,11 @@ type RegistryFunctionVerificationStatus struct {
 	FunctionVersion *RegistryFunctionVersion `json:"function_version,omitempty" gorm:"foreignKey:FunctionVersionID;references:ID"`
 }
 
+// TableName returns the database table name for RegistryFunctionVerificationStatus.
+func (RegistryFunctionVerificationStatus) TableName() string {
+	return "registry_function_verification_status"
+}
+
 // ============================================
 // DRE 2.0 Models
 // ============================================
@@ -404,7 +409,7 @@ type PassportUpdate struct {
 	TrustPenalty          float64
 	CapsuleDescriptorHash string
 	LastVerifiedAt        *time.Time
-	ResourceHash           string // Resource hash for performance stability tracking
+	ResourceHash          string // Resource hash for performance stability tracking
 }
 
 // DREScores contains the 4 DRE sub-scores used in TrustScore v2 calculation.
@@ -424,7 +429,7 @@ type ResourceHashHistory struct {
 	ID             uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	FunctionID     uuid.UUID       `json:"function_id" gorm:"type:uuid;not null;index"`
 	ResourceHashes json.RawMessage `json:"resource_hashes" gorm:"type:jsonb;default:'[]'"`
-	UpdatedAt      time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
+	UpdatedAt      time.Time       `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // TableName returns the database table name for ResourceHashHistory.

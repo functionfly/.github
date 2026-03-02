@@ -119,7 +119,7 @@ const (
 )
 
 // Generate creates a signed FXCERT from a completed MEG result.
-// The nodeKey is used to sign the execution_root_hash with Ed25519.
+// nodeKey signs the execution_root_hash; platformKey (optional) signs the certificate_hash.
 func Generate(
 	meg *drecrypto.MEGResult,
 	exec ExecutionSection,
@@ -127,6 +127,7 @@ func Generate(
 	trust TrustSection,
 	level CertLevel,
 	nodeKey ed25519.PrivateKey,
+	platformKey ed25519.PrivateKey,
 ) (*FXCert, error) {
 	if meg == nil {
 		return nil, fmt.Errorf("cert: meg result is nil")
@@ -176,6 +177,18 @@ func Generate(
 				PublicKey: base64.StdEncoding.EncodeToString(pubKey),
 				Signature: base64.StdEncoding.EncodeToString(sig),
 			},
+		}
+	}
+
+	// Optionally sign the certificate hash with the platform key (for Platform Key ID in UI)
+	if platformKey != nil {
+		certHashBytes := []byte(cert.Integrity.CertificateHash)
+		sig := ed25519.Sign(platformKey, certHashBytes)
+		pubKey := platformKey.Public().(ed25519.PublicKey)
+		cert.Signatures.PlatformSignature = &Signature{
+			Algorithm: "Ed25519",
+			PublicKey: base64.StdEncoding.EncodeToString(pubKey),
+			Signature: base64.StdEncoding.EncodeToString(sig),
 		}
 	}
 

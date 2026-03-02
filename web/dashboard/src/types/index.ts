@@ -35,6 +35,14 @@ export interface PublicUserProfile {
   name: string;
   avatar?: string;
   bio?: string;
+  location?: string;
+  website?: string;
+  jobTitle?: string;
+  companyName?: string;
+  twitterUrl?: string;
+  githubUrl?: string;
+  linkedinUrl?: string;
+  socialLinks?: Record<string, string>;
   createdAt: string;
   publishedFunctions: PublicRegistryFunction[];
 }
@@ -455,6 +463,173 @@ export interface TestFunctionResponse {
   logs: FunctionLog[];
 }
 
+// Function Card Types
+
+export type FunctionCardVariant = "compact" | "expanded" | "analytics";
+
+export type PricingModel = "free" | "per_call" | "subscription" | "revenue_share";
+
+export interface FunctionAuthor {
+  id: string;
+  username: string;
+  name: string;
+  avatar?: string;
+  profileUrl?: string;
+}
+
+export interface FunctionMetrics {
+  executionCount: number;
+  executionTrend?: number[]; // Last 7 days for sparkline
+  averageLatency?: number;
+  errorRate?: number;
+}
+
+export interface FunctionRating {
+  average: number; // 0-5
+  count: number;
+  distribution?: Record<number, number>; // rating -> count
+}
+
+export interface FunctionCardData {
+  id: string;
+  name: string;
+  description: string;
+  author: FunctionAuthor;
+  trustScore: number; // 0-100
+  metrics: FunctionMetrics;
+  pricing: {
+    model: PricingModel;
+    pricePerCall?: number; // in cents or USD
+    currency?: string;
+  };
+  isVerified: boolean;
+  isDeterministic: boolean;
+  rating: FunctionRating;
+  tags?: string[];
+  category?: string;
+  language?: string;
+  lastUpdated?: string;
+  version?: string;
+  isFavorite?: boolean;
+  isFeatured?: boolean;
+}
+
+export interface FunctionCardProps {
+  data: FunctionCardData;
+  variant?: FunctionCardVariant;
+  className?: string;
+  // Action handlers
+  onView?: (id: string) => void;
+  onExecute?: (id: string) => void;
+  onFavorite?: (id: string, isFavorite: boolean) => void;
+  onShare?: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onAdminAction?: (id: string, action: string) => void;
+}
+
+// Function Header Types
+
+export type TrustTier = "critical" | "high" | "medium" | "low" | "untrusted";
+
+export interface FunctionHeaderData {
+  /** Function name */
+  name: string;
+  /** Function ID */
+  id: string;
+  /** Hash identifier for the function execution */
+  executionRootHash: string;
+  /** Trust level indicator */
+  trustTier: TrustTier;
+  /** Economic/scoring metric (0-100) */
+  economicScore: number;
+  /** Runtime environment (e.g., workers, vercel, fly, deno) */
+  runtime: string;
+  /** Resource identifier/signature */
+  resourceSignature: string;
+  /** Certificate verification status */
+  fxcert: {
+    verified: boolean;
+    issuedAt?: string;
+    expiresAt?: string;
+    issuer?: string;
+  };
+  /** Optional description */
+  description?: string;
+  /** Optional status for the status badge */
+  status?: "online" | "offline" | "degraded" | "pending";
+  /** Optional version */
+  version?: string;
+}
+
+export interface FunctionHeaderProps {
+  data: FunctionHeaderData;
+  className?: string;
+  /** Optional back button handler */
+  onBack?: () => void;
+  /** Optional action handlers */
+  onEdit?: () => void;
+  onDeploy?: () => void;
+  onTest?: () => void;
+  onShare?: () => void;
+}
+
+// Trust Score Badge Types
+
+/** Trust score band classification */
+export type TrustScoreBand = "excellent" | "good" | "fair" | "poor";
+
+/** Fraud risk level assessment */
+export type FraudRiskLevel = "low" | "medium" | "high";
+
+/**
+ * Comprehensive trust metrics for a function
+ * All scores are 0-100 except where noted
+ */
+export interface TrustMetrics {
+  /** Overall trust score (0-100%) */
+  overallScore: number;
+  /** Reliability score - uptime/execution success rate */
+  reliability: number;
+  /** Latency score - response time metric (0-100, higher is better) */
+  latency: number;
+  /** Determinism score - consistency of outputs */
+  determinism: number;
+  /** Community reputation score - user ratings/votes */
+  communityReputation: number;
+  /** Fraud risk assessment */
+  fraudRisk: FraudRiskLevel;
+  /** Optional: detailed breakdown data */
+  details?: {
+    /** Total number of executions analyzed */
+    totalExecutions?: number;
+    /** Number of failed executions */
+    failedExecutions?: number;
+    /** Average response time in ms */
+    averageResponseTimeMs?: number;
+    /** Number of community votes/ratings */
+    voteCount?: number;
+    /** Last updated timestamp */
+    lastUpdated?: string;
+  };
+}
+
+/**
+ * Props for the TrustScoreBadge component
+ */
+export interface TrustScoreBadgeProps {
+  /** Trust metrics data object */
+  metrics: TrustMetrics;
+  /** Display variant */
+  variant?: "compact" | "expanded" | "mini";
+  /** Whether to show detailed tooltip on hover */
+  showDetails?: boolean;
+  /** Optional additional CSS classes */
+  className?: string;
+  /** Optional callback when badge is clicked */
+  onClick?: () => void;
+}
+
 // State Fabric Types
 
 export interface StateFabric {
@@ -634,4 +809,224 @@ export interface CreateTriggerRequest {
   includeNew: boolean;
   maxInvocationsPerMinute: number;
   isActive: boolean;
+}
+
+// ============================================================================
+// Enhanced Profile Page Types
+// ============================================================================
+
+/** Tab types for profile page navigation */
+export type ProfileTab = "overview" | "functions" | "activity" | "analytics" | "about" | "settings";
+
+/** Social links for user profile */
+export interface SocialLinks {
+  github?: string;
+  twitter?: string;
+  linkedin?: string;
+  website?: string;
+  discord?: string;
+  devto?: string;
+  medium?: string;
+}
+
+/** Achievement/Badge data */
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  unlockedAt: string;
+  tier: "bronze" | "silver" | "gold" | "platinum";
+  progress?: {
+    current: number;
+    target: number;
+  };
+}
+
+/** Activity feed item types */
+export type ActivityType =
+  | "function_published"
+  | "function_updated"
+  | "function_deleted"
+  | "achievement_earned"
+  | "review_received"
+  | "milestone_reached"
+  | "followed"
+  | "follower_gained"
+  | "contribution"
+  | "deployment";
+
+/** Activity feed item */
+export interface UserActivity {
+  id: string;
+  type: ActivityType;
+  title: string;
+  description?: string;
+  timestamp: string;
+  metadata?: Record<string, any>;
+  relatedFunction?: {
+    id: string;
+    name: string;
+    author: string;
+  };
+  relatedUser?: {
+    id: string;
+    username: string;
+    avatar?: string;
+  };
+}
+
+/** User statistics for profile page */
+export interface UserStats {
+  // Function stats
+  functionsPublished: number;
+  functionsTrend: number; // Percentage change
+  totalExecutions: number;
+  executionsTrend: number;
+  totalViews: number;
+  viewsTrend: number;
+
+  // Reputation
+  trustScore: number;
+  reputationRank: string;
+
+  // Social
+  followersCount: number;
+  followingCount: number;
+  followersTrend: number;
+
+  // Financial (if applicable)
+  totalEarnings?: number;
+  earningsTrend?: number;
+  currency?: string;
+
+  // Contribution streak
+  contributionStreak: {
+    current: number;
+    longest: number;
+    lastContribution: string;
+  };
+
+  // Contribution graph data (GitHub-style heatmap)
+  contributionGraph: {
+    date: string;
+    count: number;
+    level: 0 | 1 | 2 | 3 | 4;
+  }[];
+}
+
+/** Skill/Technology expertise */
+export interface Skill {
+  name: string;
+  level: "beginner" | "intermediate" | "advanced" | "expert";
+  category: "language" | "framework" | "tool" | "platform" | "concept";
+  endorsements?: number;
+}
+
+/** Extended user profile data */
+export interface UserProfile {
+  id: string;
+  username: string;
+  name: string;
+  avatar?: string;
+  coverImage?: string;
+  bio?: string;
+  location?: string;
+  company?: string;
+  jobTitle?: string;
+  website?: string;
+  socialLinks: SocialLinks;
+  skills: Skill[];
+  createdAt: string;
+  updatedAt?: string;
+  isOnline: boolean;
+  lastActive?: string;
+
+  // Extended info for About tab
+  experience?: {
+    company: string;
+    title: string;
+    startDate: string;
+    endDate?: string;
+    current: boolean;
+    description?: string;
+  }[];
+  education?: {
+    institution: string;
+    degree: string;
+    field: string;
+    startDate: string;
+    endDate?: string;
+  }[];
+  openSourceContributions?: {
+    project: string;
+    url: string;
+    contributions: number;
+  }[];
+  languages?: string[];
+
+  // Stats and content
+  stats: UserStats;
+  achievements: Achievement[];
+  recentActivity: UserActivity[];
+  publishedFunctions: FunctionCardData[];
+}
+
+/** Analytics data for profile */
+export interface ProfileAnalytics {
+  executionHistory: {
+    date: string;
+    executions: number;
+    uniqueUsers: number;
+  }[];
+  popularFunctions: {
+    functionId: string;
+    name: string;
+    executions: number;
+    percentage: number;
+  }[];
+  revenueHistory?: {
+    date: string;
+    revenue: number;
+    calls: number;
+  }[];
+  geographicDistribution: {
+    country: string;
+    executions: number;
+    percentage: number;
+  }[];
+  deviceStats: {
+    device: string;
+    percentage: number;
+  }[];
+  browserStats: {
+    browser: string;
+    percentage: number;
+  }[];
+}
+
+/** Filter and sort options for functions tab */
+export interface FunctionFilters {
+  search: string;
+  sortBy: "popular" | "recent" | "name" | "rating";
+  category?: string;
+  language?: string;
+  visibility?: "all" | "public" | "private";
+}
+
+/** Trust metrics visualization data */
+export interface TrustMetricsVisualization {
+  overallScore: number;
+  breakdown: {
+    reliability: number;
+    performance: number;
+    security: number;
+    community: number;
+    documentation: number;
+  };
+  history: {
+    date: string;
+    score: number;
+  }[];
 }

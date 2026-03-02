@@ -836,6 +836,249 @@ func (db *PostgresDB) GetSlowQueries() []*QueryStats {
 	return db.queryMonitor.GetSlowQueries()
 }
 
+// ============================================================================
+// User Profile Operations
+// ============================================================================
+
+// GetUserSkills retrieves all skills for a user
+func (db *PostgresDB) GetUserSkills(userID uuid.UUID) ([]*UserSkill, error) {
+	var skills []*UserSkill
+	if err := db.GORM.Where("user_id = ?", userID).Find(&skills).Error; err != nil {
+		return nil, fmt.Errorf("failed to get user skills: %w", err)
+	}
+	return skills, nil
+}
+
+// AddUserSkill adds a new skill for a user
+func (db *PostgresDB) AddUserSkill(skill *UserSkill) error {
+	if err := db.GORM.Create(skill).Error; err != nil {
+		return fmt.Errorf("failed to add user skill: %w", err)
+	}
+	return nil
+}
+
+// RemoveUserSkill removes a skill by ID
+func (db *PostgresDB) RemoveUserSkill(skillID uuid.UUID) error {
+	if err := db.GORM.Delete(&UserSkill{}, skillID).Error; err != nil {
+		return fmt.Errorf("failed to remove user skill: %w", err)
+	}
+	return nil
+}
+
+// GetUserAchievements retrieves all achievements for a user
+func (db *PostgresDB) GetUserAchievements(userID uuid.UUID) ([]*UserAchievement, error) {
+	var achievements []*UserAchievement
+	if err := db.GORM.Where("user_id = ?", userID).
+		Preload("Achievement").
+		Order("earned_at DESC").
+		Find(&achievements).Error; err != nil {
+		return nil, fmt.Errorf("failed to get user achievements: %w", err)
+	}
+	return achievements, nil
+}
+
+// GetAchievementBySlug retrieves an achievement by its slug
+func (db *PostgresDB) GetAchievementBySlug(slug string) (*Achievement, error) {
+	var achievement Achievement
+	if err := db.GORM.Where("slug = ?", slug).First(&achievement).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get achievement by slug: %w", err)
+	}
+	return &achievement, nil
+}
+
+// ListAchievements retrieves all achievement definitions
+func (db *PostgresDB) ListAchievements() ([]*Achievement, error) {
+	var achievements []*Achievement
+	if err := db.GORM.Order("category, name").Find(&achievements).Error; err != nil {
+		return nil, fmt.Errorf("failed to list achievements: %w", err)
+	}
+	return achievements, nil
+}
+
+// AwardAchievement awards an achievement to a user
+func (db *PostgresDB) AwardAchievement(userID, achievementID uuid.UUID, metadata map[string]interface{}) error {
+	ua := &UserAchievement{
+		UserID:        userID,
+		AchievementID: achievementID,
+		EarnedAt:      time.Now(),
+		Progress:      100,
+		IsCompleted:   true,
+		Metadata:      metadata,
+	}
+	if err := db.GORM.Create(ua).Error; err != nil {
+		return fmt.Errorf("failed to award achievement: %w", err)
+	}
+	return nil
+}
+
+// UpdateAchievementProgress updates the progress of a user achievement
+func (db *PostgresDB) UpdateAchievementProgress(userAchievementID uuid.UUID, progress int, isCompleted bool) error {
+	updates := map[string]interface{}{
+		"progress": progress,
+	}
+	if isCompleted {
+		updates["is_completed"] = true
+		updates["earned_at"] = time.Now()
+	}
+	if err := db.GORM.Model(&UserAchievement{}).Where("id = ?", userAchievementID).Updates(updates).Error; err != nil {
+		return fmt.Errorf("failed to update achievement progress: %w", err)
+	}
+	return nil
+}
+
+// GetUserActivity retrieves activity feed for a user
+func (db *PostgresDB) GetUserActivity(userID uuid.UUID, limit, offset int) ([]*UserActivity, error) {
+	var activities []*UserActivity
+	if err := db.GORM.Where("user_id = ?", userID).
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&activities).Error; err != nil {
+		return nil, fmt.Errorf("failed to get user activity: %w", err)
+	}
+	return activities, nil
+}
+
+// CreateUserActivity creates a new activity feed item
+func (db *PostgresDB) CreateUserActivity(activity *UserActivity) error {
+	if err := db.GORM.Create(activity).Error; err != nil {
+		return fmt.Errorf("failed to create user activity: %w", err)
+	}
+	return nil
+}
+
+// GetUserExecutionStats retrieves execution statistics for a user
+func (db *PostgresDB) GetUserExecutionStats(userID uuid.UUID) (map[string]interface{}, error) {
+	// Get user's published functions from registry
+	var functions []struct {
+		ID             uuid.UUID
+		ExecutionCount int64
+		UniqueUsers    int64
+	}
+
+	if err := db.GORM.Raw(`
+		SELECT id, COALESCE(execution_count, 0) as execution_count, COALESCE(unique_users, 0) as unique_users
+		FROM registry_functions
+		WHERE author_id = ?
+	`, userID).Scan(&functions).Error; err != nil {
+		return nil, fmt.Errorf("failed to get user functions: %w", err)
+	}
+
+	var totalExecutions, totalUniqueUsers int64
+	for _, fn := range functions {
+		totalExecutions += fn.ExecutionCount
+		totalUniqueUsers += fn.UniqueUsers
+	}
+
+	// Get execution history for last 30 days
+	var history []struct {
+		Date       string `json:"date"`
+		Executions int64  `json:"executions"`
+	}
+
+	if err := db.GORM.Raw(`
+		SELECT DATE(created_at) as date, COUNT(*) as executions
+		FROM registry_executions
+		WHERE author_id = ? AND created_at >= NOW() - INTERVAL '30 days'
+		GROUP BY DATE(created_at)
+		ORDER BY date
+	`, userID).Scan(&history).Error; err != nil {
+		// Continue even if no data
+		history = []struct {
+			Date       string `json:"date"`
+			Executions int64  `json:"executions"`
+		}{}
+	}
+
+	return map[string]interface{}{
+		"totalExecutions":  totalExecutions,
+		"totalUniqueUsers": totalUniqueUsers,
+		"functionCount":    len(functions),
+		"executionHistory": history,
+	}, nil
+}
+
+// GetUserPopularFunctions retrieves most popular functions for a user
+func (db *PostgresDB) GetUserPopularFunctions(userID uuid.UUID, limit int) ([]map[string]interface{}, error) {
+	var functions []map[string]interface{}
+
+	if err := db.GORM.Raw(`
+		SELECT
+			rf.id,
+			rf.name,
+			rf.description,
+			COALESCE(rf.execution_count, 0) as execution_count,
+			COALESCE(rf.rating, 0) as rating,
+			COALESCE(rf.total_ratings, 0) as total_ratings
+		FROM registry_functions rf
+		WHERE rf.author_id = ?
+		ORDER BY rf.execution_count DESC NULLS LAST
+		LIMIT ?
+	`, userID, limit).Scan(&functions).Error; err != nil {
+		return nil, fmt.Errorf("failed to get popular functions: %w", err)
+	}
+
+	return functions, nil
+}
+
+// GetUserGeographicStats retrieves geographic distribution of executions
+func (db *PostgresDB) GetUserGeographicStats(userID uuid.UUID) (map[string]interface{}, error) {
+	var regions []struct {
+		Region     string `json:"region"`
+		Executions int64  `json:"executions"`
+	}
+
+	if err := db.GORM.Raw(`
+		SELECT
+			COALESCE(re.region, 'unknown') as region,
+			COUNT(*) as executions
+		FROM registry_executions re
+		WHERE re.author_id = ? AND re.created_at >= NOW() - INTERVAL '30 days'
+		GROUP BY re.region
+		ORDER BY executions DESC
+	`, userID).Scan(&regions).Error; err != nil {
+		regions = []struct {
+			Region     string `json:"region"`
+			Executions int64  `json:"executions"`
+		}{}
+	}
+
+	return map[string]interface{}{
+		"regions": regions,
+	}, nil
+}
+
+// GetUserDeviceStats retrieves device/browser statistics
+func (db *PostgresDB) GetUserDeviceStats(userID uuid.UUID) (map[string]interface{}, error) {
+	var devices []struct {
+		Device     string `json:"device"`
+		Executions int64  `json:"executions"`
+	}
+
+	if err := db.GORM.Raw(`
+		SELECT
+			COALESCE(re.user_agent, 'unknown') as device,
+			COUNT(*) as executions
+		FROM registry_executions re
+		WHERE re.author_id = ? AND re.created_at >= NOW() - INTERVAL '30 days'
+		GROUP BY re.user_agent
+		ORDER BY executions DESC
+		LIMIT 5
+	`, userID).Scan(&devices).Error; err != nil {
+		devices = []struct {
+			Device     string `json:"device"`
+			Executions int64  `json:"executions"`
+		}{}
+	}
+
+	return map[string]interface{}{
+		"devices": devices,
+	}, nil
+}
+
 // Close gracefully shuts down the database connections and health monitoring
 func (db *PostgresDB) Close() error {
 	// Stop health monitoring

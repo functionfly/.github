@@ -1,7 +1,0 @@
-{
-  "name": "url-encode",
-  "version": "1.0.0",
-  "runtime": "python",
-  "entry": "main.py",
-  "handler": "handler"
-}

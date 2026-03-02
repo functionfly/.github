@@ -112,6 +112,12 @@ export function DocsSidebar({
         </h3>
         <div className="space-y-1">
           <a
+            href="/dashboard"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+          >
+            Dashboard
+          </a>
+          <a
             href="/registry"
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
           >

@@ -26,6 +26,7 @@ import {
   RotateCcw,
   Wrench,
   Bot,
+  PieChart,
 } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,8 @@ const navigationSections: NavSection[] = [
   {
     title: "Insights",
     items: [
-      { path: ROUTES.ANALYTICS, label: "Analytics", icon: BarChart3 }
+      { path: ROUTES.ANALYTICS, label: "Analytics", icon: BarChart3 },
+      { path: ROUTES.USAGE, label: "Usage", icon: PieChart }
     ]
   },
   {
@@ -87,7 +89,7 @@ const navigationSections: NavSection[] = [
 
 const LG_BREAKPOINT = 1024;
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
@@ -471,3 +473,5 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     </>
   );
 }
+
+export { Sidebar };

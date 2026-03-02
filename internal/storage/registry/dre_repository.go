@@ -2,14 +2,29 @@ package registry
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+// isRelationNotFound returns true if the error is Postgres "relation does not exist".
+// Used to skip resource_hash_history when migration 069 has not been applied.
+func isRelationNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false
+	}
+	s := strings.ToLower(err.Error())
+	return strings.Contains(s, "resource_hash_history") && strings.Contains(s, "does not exist")
+}
 
 // StoreMEGRecord persists a Merkle Execution Graph record.
 // This is called asynchronously after each execution of a deterministic function.
@@ -128,6 +143,24 @@ func (r *RegistryRepository) GetCertificatesByFunctionID(functionID uuid.UUID, l
 		return nil, fmt.Errorf("dre: get certificates by function id: %w", err)
 	}
 	return certs, nil
+}
+
+// DeleteCertificate deletes a certificate by its certificate_id (e.g. for regeneration).
+func (r *RegistryRepository) DeleteCertificate(certificateID string) error {
+	result := r.db.Where("certificate_id = ?", certificateID).Delete(&ExecutionCertificate{})
+	if result.Error != nil {
+		return fmt.Errorf("dre: delete certificate: %w", result.Error)
+	}
+	return nil
+}
+
+// DeleteMEGRecord deletes a MEG record by ID (e.g. for regeneration).
+func (r *RegistryRepository) DeleteMEGRecord(megID uuid.UUID) error {
+	result := r.db.Where("id = ?", megID).Delete(&MEGRecord{})
+	if result.Error != nil {
+		return fmt.Errorf("dre: delete meg record: %w", result.Error)
+	}
+	return nil
 }
 
 // StoreDriftReport persists a drift report and updates the function's execution passport.
@@ -434,11 +467,15 @@ func computePerformanceStabilityScore(resourceHashes []string) float64 {
 
 // TrackResourceHash stores a resource hash for future stability analysis.
 // This should be called after each execution with a verified MEG record.
+// No-op if resource_hash_history table does not exist (migration 069 not applied).
 func (r *RegistryRepository) TrackResourceHash(functionID uuid.UUID, resourceHash string) error {
 	// Get or create resource hash history
 	var history ResourceHashHistory
 	err := r.db.Where("function_id = ?", functionID).First(&history).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
+		if isRelationNotFound(err) {
+			return nil
+		}
 		return fmt.Errorf("dre: get resource history: %w", err)
 	}
 
@@ -452,7 +489,11 @@ func (r *RegistryRepository) TrackResourceHash(functionID uuid.UUID, resourceHas
 			ResourceHashes: hashesJSON,
 			UpdatedAt:      now,
 		}
-		return r.db.Create(&history).Error
+		err = r.db.Create(&history).Error
+		if err != nil && isRelationNotFound(err) {
+			return nil
+		}
+		return err
 	}
 
 	// Add new hash, keep last 100 for stability calculation
@@ -468,15 +509,23 @@ func (r *RegistryRepository) TrackResourceHash(functionID uuid.UUID, resourceHas
 	history.ResourceHashes = hashesJSON
 	history.UpdatedAt = now
 
-	return r.db.Save(&history).Error
+	err = r.db.Save(&history).Error
+	if err != nil && isRelationNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 // GetResourceHashHistory retrieves the resource hash history for a function.
+// Returns nil,nil if the table does not exist (migration 069 not applied).
 func (r *RegistryRepository) GetResourceHashHistory(functionID uuid.UUID) ([]string, error) {
 	var history ResourceHashHistory
 	err := r.db.Where("function_id = ?", functionID).First(&history).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		if isRelationNotFound(err) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("dre: get resource history: %w", err)

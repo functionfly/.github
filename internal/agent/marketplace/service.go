@@ -2,6 +2,7 @@ package marketplace
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/attribution"
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -62,19 +64,19 @@ func (s *Service) ListingAgent(ctx context.Context, req *CreateAgentListingReque
 
 	// Create new listing
 	listing := &identity.AgentListing{
-		ID:                    uuid.New(),
-		AgentID:               req.AgentID,
-		ListingType:           req.ListingType,
-		PricingModel:          req.PricingModel,
-		PricePerCall:          req.PricePerCall,
+		ID:                     uuid.New(),
+		AgentID:                req.AgentID,
+		ListingType:            req.ListingType,
+		PricingModel:           req.PricingModel,
+		PricePerCall:           req.PricePerCall,
 		SubscriptionMonthlyUSD: req.SubscriptionMonthlyUSD,
-		RevenueSharePercent:   req.RevenueSharePercent,
-		RatingScore:           0,
-		TotalCalls:            0,
-		ROIScore:              0,
-		IsActive:              req.IsActive,
-		ListedAt:              time.Now(),
-		UpdatedAt:             time.Now(),
+		RevenueSharePercent:    req.RevenueSharePercent,
+		RatingScore:            0,
+		TotalCalls:             0,
+		ROIScore:               0,
+		IsActive:               req.IsActive,
+		ListedAt:               time.Now(),
+		UpdatedAt:              time.Now(),
 	}
 
 	if err := s.db.WithContext(ctx).Create(listing).Error; err != nil {
@@ -86,13 +88,13 @@ func (s *Service) ListingAgent(ctx context.Context, req *CreateAgentListingReque
 
 // CreateAgentListingRequest represents a request to create an agent listing
 type CreateAgentListingRequest struct {
-	AgentID               string
-	ListingType           string // worker | manager | infrastructure
-	PricingModel          string // free | per_call | subscription | revenue_share
-	PricePerCall         *float64
+	AgentID                string
+	ListingType            string // worker | manager | infrastructure
+	PricingModel           string // free | per_call | subscription | revenue_share
+	PricePerCall           *float64
 	SubscriptionMonthlyUSD *float64
-	RevenueSharePercent  *float64
-	IsActive              bool
+	RevenueSharePercent    *float64
+	IsActive               bool
 }
 
 // ListingFunction creates a marketplace listing for a function
@@ -125,18 +127,18 @@ func (s *Service) ListingFunction(ctx context.Context, req *CreateFunctionListin
 
 	// Create new listing
 	listing := &identity.FunctionListing{
-		ID:                    uuid.New(),
-		FunctionID:            req.FunctionID,
-		PricingModel:          req.PricingModel,
-		PricePerCall:          req.PricePerCall,
+		ID:                     uuid.New(),
+		FunctionID:             req.FunctionID,
+		PricingModel:           req.PricingModel,
+		PricePerCall:           req.PricePerCall,
 		SubscriptionMonthlyUSD: req.SubscriptionMonthlyUSD,
-		RevenueSharePercent:   req.RevenueSharePercent,
-		IsActive:              req.IsActive,
-		RatingScore:           0,
-		CallVolume:            0,
-		DeterministicVerified: false,
-		ListedAt:              time.Now(),
-		UpdatedAt:             time.Now(),
+		RevenueSharePercent:    req.RevenueSharePercent,
+		IsActive:               req.IsActive,
+		RatingScore:            0,
+		CallVolume:             0,
+		DeterministicVerified:  false,
+		ListedAt:               time.Now(),
+		UpdatedAt:              time.Now(),
 	}
 
 	if err := s.db.WithContext(ctx).Create(listing).Error; err != nil {
@@ -148,12 +150,12 @@ func (s *Service) ListingFunction(ctx context.Context, req *CreateFunctionListin
 
 // CreateFunctionListingRequest represents a request to create a function listing
 type CreateFunctionListingRequest struct {
-	FunctionID            uuid.UUID
+	FunctionID             uuid.UUID
 	PricingModel           string // free | per_call | subscription | revenue_share
-	PricePerCall          *float64
+	PricePerCall           *float64
 	SubscriptionMonthlyUSD *float64
-	RevenueSharePercent   *float64
-	IsActive              bool
+	RevenueSharePercent    *float64
+	IsActive               bool
 }
 
 // SearchAgents searches for agents in the marketplace
@@ -185,11 +187,17 @@ func (s *Service) SearchAgents(ctx context.Context, req *SearchAgentsRequest) ([
 
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
+		if isRelationNotFound(err) {
+			return nil, 0, nil
+		}
 		return nil, 0, err
 	}
 
 	var listings []identity.AgentListing
 	if err := query.Order("rating_score DESC").Limit(req.Limit).Offset(req.Offset).Find(&listings).Error; err != nil {
+		if isRelationNotFound(err) {
+			return nil, 0, nil
+		}
 		return nil, 0, err
 	}
 
@@ -217,13 +225,13 @@ func (s *Service) SearchAgents(ctx context.Context, req *SearchAgentsRequest) ([
 
 // SearchAgentsRequest represents a search request for agents
 type SearchAgentsRequest struct {
-	ListingTypes     []string // worker | manager | infrastructure
-	PricingModel     string
-	MinRating        float64
-	MaxPricePerCall  float64
-	MinROIScore      float64
-	Limit            int
-	Offset           int
+	ListingTypes    []string // worker | manager | infrastructure
+	PricingModel    string
+	MinRating       float64
+	MaxPricePerCall float64
+	MinROIScore     float64
+	Limit           int
+	Offset          int
 }
 
 // AgentSearchResult represents an agent search result with ranking
@@ -296,6 +304,16 @@ type SearchFunctionsRequest struct {
 type FunctionSearchResult struct {
 	Listing   identity.FunctionListing
 	RankScore float64
+}
+
+// isRelationNotFound returns true if the error is a Postgres "relation does not exist" (42P01).
+// Used to return empty results when agent_listings (or related) table has not been migrated yet.
+func isRelationNotFound(err error) bool {
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) {
+		return pqErr.Code == "42P01" // undefined_table
+	}
+	return false
 }
 
 // agentExecutionSuccessRate returns the agent's success rate (0-1) from recent execution records.

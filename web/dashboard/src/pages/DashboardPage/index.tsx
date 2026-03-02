@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FunctionSquare, Activity, Globe, Zap, Play, X, Loader2 } from "lucide-react";
-import { StatusBadge } from "@/components/common/StatusBadge";
-import { ProviderIcon } from "@/components/common/ProviderIcon";
+import { FunctionSquare, Activity, Globe, Zap, Play, X, Loader2, Building2 } from "lucide-react";
+import { ProviderStatus } from "@/components/common/ProviderStatus";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useOnboardingStore } from "@/stores/onboardingStore";
@@ -10,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { functionsApi } from "@/api/functions";
 import { providersApi } from "@/api/providers";
+import { appsApi } from "@/api/apps";
 import { dashboardApi } from "@/api/dashboard";
 import {
   MetricCard,
@@ -21,6 +21,7 @@ import {
   SystemHealthIndicator,
   QuickCreateAgentCard,
 } from "@/components/dashboard";
+import { EnterpriseStatusCard } from "@/components/enterprise";
 import type { AgentActivityItem } from "@/components/dashboard";
 
 export function DashboardPage() {
@@ -37,7 +38,16 @@ export function DashboardPage() {
     queryFn: () => providersApi.getConnectedProviders(),
   });
 
+  const { data: appsData, isLoading: appsLoading } = useQuery({
+    queryKey: ["apps"],
+    queryFn: async () => {
+      const res = await appsApi.list();
+      return res.apps;
+    },
+  });
+
   const functions = functionsData?.functions ?? [];
+  const apps = appsData ?? [];
   const activeFunctions = functions.filter((f) => f.status === "deployed").length;
 
   const handleResumeOnboarding = () => {
@@ -57,6 +67,13 @@ export function DashboardPage() {
   const { data: activityData, isLoading: activityLoading } = useQuery({
     queryKey: ["dashboard", "activity"],
     queryFn: () => dashboardApi.getActivity(20),
+  });
+
+  const { data: memoryData, isLoading: memoryLoading } = useQuery({
+    queryKey: ["dashboard", "memory"],
+    queryFn: () => dashboardApi.getMemoryUsage(),
+    retry: 1,
+    staleTime: 30_000,
   });
 
   const usageGraphData = useMemo(() => {
@@ -87,6 +104,21 @@ export function DashboardPage() {
       agentName: a.function_name,
     }));
   }, [activityData]);
+
+  const providerStatusList = useMemo(() => {
+    if (!providers?.length) return [];
+    const statusMap = {
+      online: "connected" as const,
+      offline: "disconnected" as const,
+      degraded: "error" as const,
+      pending: "connecting" as const,
+    };
+    return providers.map((p) => ({
+      provider: p.id,
+      status: statusMap[p.status] ?? "disconnected",
+      lastChecked: p.connectedAt,
+    }));
+  }, [providers]);
 
   const sparklineUp = useMemo(() => [10, 14, 12, 18, 22, 20, 24], []);
   const sparklineFlat = useMemo(() => [20, 22, 19, 21, 20, 23, 22], []);
@@ -166,6 +198,9 @@ export function DashboardPage() {
         transition={{ duration: 0.5, delay: 0.1 }}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
+        {/* Enterprise Status Card - only visible for enterprise users */}
+        <EnterpriseStatusCard />
+
         <MetricCard
           title="Active Functions"
           value={functionsLoading ? "—" : activeFunctions}
@@ -250,7 +285,17 @@ export function DashboardPage() {
         transition={{ duration: 0.5, delay: 0.25 }}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
-        <MemoryUsageGauge percent={62} label="Memory" size="md" />
+        {memoryLoading ? (
+          <Card className="border-theme bg-card flex flex-col justify-center p-6 min-h-[140px]">
+            <Loader2 className="h-8 w-8 animate-spin text-text-muted mx-auto" />
+          </Card>
+        ) : (
+          <MemoryUsageGauge
+            percent={memoryData?.percent ?? 0}
+            label="Memory"
+            size="md"
+          />
+        )}
         <Card className="border-theme bg-card flex flex-col justify-center p-6">
           <CardHeader className="p-0 pb-2">
             <CardTitle className="text-sm font-medium text-text-secondary">
@@ -277,48 +322,74 @@ export function DashboardPage() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="lg:col-span-2"
         >
+          {providersLoading ? (
+            <Card className="glass-card glow hover-lift flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
+            </Card>
+          ) : !providerStatusList.length ? (
+            <Card className="glass-card glow hover-lift">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-text-secondary text-sm">No providers connected yet.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => navigate("/providers")}
+                >
+                  Connect a Provider
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <ProviderStatus providers={providerStatusList} className="grid-cols-1 lg:grid-cols-2" />
+          )}
+        </motion.div>
+
+        {/* Recent Apps & Recent Functions */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="space-y-4"
+        >
           <Card className="glass-card glow hover-lift">
             <CardHeader>
-              <CardTitle className="text-text-primary text-glow">Provider Status</CardTitle>
+              <CardTitle className="text-text-primary text-glow">Recent Apps</CardTitle>
             </CardHeader>
             <CardContent>
-              {providersLoading ? (
+              {appsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
                 </div>
-              ) : !providers || providers.length === 0 ? (
+              ) : apps.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-text-secondary text-sm">No providers connected yet.</p>
+                  <p className="text-text-secondary text-sm">No apps yet.</p>
                   <Button
                     variant="outline"
                     size="sm"
                     className="mt-3"
-                    onClick={() => navigate("/providers")}
+                    onClick={() => navigate("/apps")}
                   >
-                    Connect a Provider
+                    Create an App
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {providers.map((provider, index) => (
+                  {apps.slice(0, 5).map((app, index) => (
                     <motion.div
-                      key={provider.id}
-                      initial={{ opacity: 0, x: -20 }}
+                      key={app.id}
+                      initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
-                      className="glass-light hover-lift p-4 rounded-lg border border-white/8 hover:border-brand-500/30 transition-all duration-300"
+                      className="flex gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors duration-200 cursor-pointer"
+                      onClick={() => navigate(`/apps/${app.id}`)}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-lg bg-bg-tertiary flex items-center justify-center">
-                            <ProviderIcon provider={provider.id} size="lg" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-white">{provider.name}</p>
-                            <p className="text-sm text-text-muted">Global</p>
-                          </div>
-                        </div>
-                        <StatusBadge status={provider.status} />
+                      <div className="w-10 h-10 shrink-0 rounded-lg bg-bg-tertiary flex items-center justify-center">
+                        <Building2 className="w-5 h-5 text-text-muted" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-text-primary font-medium truncate">{app.name}</p>
+                        <p className="text-xs text-text-muted truncate">{app.slug}</p>
                       </div>
                     </motion.div>
                   ))}
@@ -326,14 +397,7 @@ export function DashboardPage() {
               )}
             </CardContent>
           </Card>
-        </motion.div>
 
-        {/* Recent Functions */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
           <Card className="glass-card glow hover-lift">
             <CardHeader>
               <CardTitle className="text-text-primary text-glow">Recent Functions</CardTitle>

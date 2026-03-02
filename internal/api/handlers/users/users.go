@@ -90,6 +90,14 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 		usernameStr = *user.Username
 	}
 
+	// Helper to get string from pointer
+	getString := func(s *string) string {
+		if s == nil {
+			return ""
+		}
+		return *s
+	}
+
 	// Fetch published functions from registry
 	publishedFunctions := h.getPublishedFunctions(usernameStr)
 
@@ -99,6 +107,13 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 		"name":               name,
 		"avatar":             avatar,
 		"bio":                bio,
+		"location":           getString(user.Location),
+		"website":            getString(user.Website),
+		"jobTitle":           getString(user.JobTitle),
+		"companyName":        getString(user.CompanyName),
+		"twitterUrl":         getString(user.TwitterURL),
+		"githubUrl":          getString(user.GithubURL),
+		"linkedinUrl":        getString(user.LinkedInURL),
 		"createdAt":          user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		"publishedFunctions": publishedFunctions,
 	}
@@ -157,6 +172,14 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 		usernameStr = *user.Username
 	}
 
+	// Helper to get string from pointer
+	getString := func(s *string) string {
+		if s == nil {
+			return ""
+		}
+		return *s
+	}
+
 	// Fetch published functions from registry
 	publishedFunctions := h.getPublishedFunctions(usernameStr)
 
@@ -167,6 +190,13 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 		"name":               name,
 		"avatar":             avatar,
 		"bio":                bio,
+		"location":           getString(user.Location),
+		"website":            getString(user.Website),
+		"jobTitle":           getString(user.JobTitle),
+		"companyName":        getString(user.CompanyName),
+		"twitterUrl":         getString(user.TwitterURL),
+		"githubUrl":          getString(user.GithubURL),
+		"linkedinUrl":        getString(user.LinkedInURL),
 		"createdAt":          user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		"publishedFunctions": publishedFunctions,
 		// SEO enhancement fields
@@ -231,6 +261,14 @@ func (h *Handler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 		plan = tenant.Plan
 	}
 
+	// Helper to get string from pointer
+	getString := func(s *string) string {
+		if s == nil {
+			return ""
+		}
+		return *s
+	}
+
 	resp := map[string]interface{}{
 		"id":          user.ID,
 		"tenantId":    user.TenantID,
@@ -240,6 +278,14 @@ func (h *Handler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 		"companyName": companyName,
 		"avatar":      avatar,
 		"plan":        plan,
+		"bio":         getString(user.Bio),
+		"location":    getString(user.Location),
+		"website":     getString(user.Website),
+		"jobTitle":    getString(user.JobTitle),
+		"socialLinks": user.SocialLinks,
+		"twitterUrl":  getString(user.TwitterURL),
+		"githubUrl":   getString(user.GithubURL),
+		"linkedinUrl": getString(user.LinkedInURL),
 		"updatedAt":   user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -251,6 +297,14 @@ type UpdateMeRequest struct {
 	Username    string `json:"username"`
 	CompanyName string `json:"companyName"`
 	Bio         string `json:"bio"`
+	// Extended profile fields
+	Location    string                 `json:"location"`
+	Website     string                 `json:"website"`
+	JobTitle    string                 `json:"jobTitle"`
+	SocialLinks map[string]interface{} `json:"socialLinks"`
+	TwitterURL  string                 `json:"twitterUrl"`
+	GithubURL   string                 `json:"githubUrl"`
+	LinkedInURL string                 `json:"linkedinUrl"`
 }
 
 // HandleUpdateMe updates the current authenticated user's profile
@@ -297,6 +351,32 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	if req.Bio != "" {
 		updates["bio"] = strings.TrimSpace(req.Bio)
 	}
+	if req.Location != "" {
+		updates["location"] = strings.TrimSpace(req.Location)
+	}
+	if req.Website != "" {
+		// Simple URL validation
+		website := strings.TrimSpace(req.Website)
+		if !strings.HasPrefix(website, "http://") && !strings.HasPrefix(website, "https://") {
+			website = "https://" + website
+		}
+		updates["website"] = website
+	}
+	if req.JobTitle != "" {
+		updates["job_title"] = strings.TrimSpace(req.JobTitle)
+	}
+	if req.TwitterURL != "" {
+		updates["twitter_url"] = strings.TrimSpace(req.TwitterURL)
+	}
+	if req.GithubURL != "" {
+		updates["github_url"] = strings.TrimSpace(req.GithubURL)
+	}
+	if req.LinkedInURL != "" {
+		updates["linkedin_url"] = strings.TrimSpace(req.LinkedInURL)
+	}
+	if len(req.SocialLinks) > 0 {
+		updates["social_links"] = req.SocialLinks
+	}
 
 	if len(updates) == 0 {
 		writeJSONError(w, http.StatusBadRequest, "No fields to update")
@@ -338,6 +418,14 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Helper to get string from pointer
+	getString := func(s *string) string {
+		if s == nil {
+			return ""
+		}
+		return *s
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"message": "Profile updated successfully",
 		"user": map[string]interface{}{
@@ -347,6 +435,14 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 			"companyName": companyName,
 			"email":       updatedUser.Email,
 			"avatar":      avatar,
+			"bio":         getString(updatedUser.Bio),
+			"location":    getString(updatedUser.Location),
+			"website":     getString(updatedUser.Website),
+			"jobTitle":    getString(updatedUser.JobTitle),
+			"socialLinks": updatedUser.SocialLinks,
+			"twitterUrl":  getString(updatedUser.TwitterURL),
+			"githubUrl":   getString(updatedUser.GithubURL),
+			"linkedinUrl": getString(updatedUser.LinkedInURL),
 			"updatedAt":   updatedUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		},
 	})
@@ -715,4 +811,429 @@ func (h *Handler) HandlePatchUserSettingsPrivacy(w http.ResponseWriter, r *http.
 	// Accept body for future use; no persistence yet
 	_ = json.NewDecoder(r.Body)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Privacy settings updated"})
+}
+
+// ============================================================================
+// User Analytics Endpoints
+// ============================================================================
+
+// HandleGetUserAnalytics handles GET /v1/users/{username}/analytics
+// Returns execution history, popular functions, geographic stats, device/browser stats
+func (h *Handler) HandleGetUserAnalytics(w http.ResponseWriter, r *http.Request) {
+	username := mux.Vars(r)["username"]
+	if username == "" {
+		writeJSONError(w, http.StatusBadRequest, "username is required")
+		return
+	}
+
+	// Get user by username
+	user, err := h.repo.GetUserByUsername(username)
+	if err != nil {
+		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve user")
+		return
+	}
+	if user == nil {
+		writeJSONError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	// Get execution stats
+	executionStats, err := h.repo.GetUserExecutionStats(user.ID)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to get user execution stats")
+		// Continue without stats
+		executionStats = map[string]interface{}{}
+	}
+
+	// Get popular functions
+	popularFunctions, err := h.repo.GetUserPopularFunctions(user.ID, 5)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to get popular functions")
+		popularFunctions = []map[string]interface{}{}
+	}
+
+	// Get geographic stats
+	geoStats, err := h.repo.GetUserGeographicStats(user.ID)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to get geographic stats")
+		geoStats = map[string]interface{}{"regions": []interface{}{}}
+	}
+
+	// Get device stats
+	deviceStats, err := h.repo.GetUserDeviceStats(user.ID)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to get device stats")
+		deviceStats = map[string]interface{}{"devices": []interface{}{}}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"executionStats":   executionStats,
+		"popularFunctions": popularFunctions,
+		"geographicStats":  geoStats,
+		"deviceStats":      deviceStats,
+	})
+}
+
+// ============================================================================
+// User Achievements Endpoints
+// ============================================================================
+
+// HandleGetUserAchievements handles GET /v1/users/{username}/achievements
+// Returns earned badges/achievements with progress
+func (h *Handler) HandleGetUserAchievements(w http.ResponseWriter, r *http.Request) {
+	username := mux.Vars(r)["username"]
+	if username == "" {
+		writeJSONError(w, http.StatusBadRequest, "username is required")
+		return
+	}
+
+	// Get user by username
+	user, err := h.repo.GetUserByUsername(username)
+	if err != nil {
+		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve user")
+		return
+	}
+	if user == nil {
+		writeJSONError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	// Get user achievements
+	achievements, err := h.repo.GetUserAchievements(user.ID)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to get user achievements")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve achievements")
+		return
+	}
+
+	// Transform to response format
+	response := make([]map[string]interface{}, 0, len(achievements))
+	for _, ua := range achievements {
+		if ua.Achievement == nil {
+			continue
+		}
+		response = append(response, map[string]interface{}{
+			"id":          ua.ID,
+			"slug":        ua.Achievement.Slug,
+			"name":        ua.Achievement.Name,
+			"description": ua.Achievement.Description,
+			"icon":        ua.Achievement.Icon,
+			"color":       ua.Achievement.Color,
+			"category":    ua.Achievement.Category,
+			"points":      ua.Achievement.Points,
+			"earnedAt":    ua.EarnedAt.Format("2006-01-02T15:04:05Z07:00"),
+			"progress":    ua.Progress,
+			"isCompleted": ua.IsCompleted,
+			"metadata":    ua.Metadata,
+		})
+	}
+
+	// Get all available achievements for progress tracking
+	allAchievements, err := h.repo.ListAchievements()
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list all achievements")
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"achievements": response,
+		"totalPoints":  h.calculateTotalPoints(achievements),
+		"available":    len(allAchievements),
+	})
+}
+
+// calculateTotalPoints calculates the sum of points from earned achievements
+func (h *Handler) calculateTotalPoints(achievements []*storage.UserAchievement) int {
+	total := 0
+	for _, ua := range achievements {
+		if ua.IsCompleted && ua.Achievement != nil {
+			total += ua.Achievement.Points
+		}
+	}
+	return total
+}
+
+// ============================================================================
+// User Activity Feed Endpoints
+// ============================================================================
+
+// HandleGetUserActivity handles GET /v1/users/{username}/activity
+// Returns timeline of user actions (publish, update, earn badge, etc.)
+func (h *Handler) HandleGetUserActivity(w http.ResponseWriter, r *http.Request) {
+	username := mux.Vars(r)["username"]
+	if username == "" {
+		writeJSONError(w, http.StatusBadRequest, "username is required")
+		return
+	}
+
+	// Get query params for pagination
+	limit := 20
+	offset := 0
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := fmt.Sscanf(l, "%d", &limit); err == nil && parsed == 1 {
+			if limit > 100 {
+				limit = 100
+			}
+		}
+	}
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if parsed, err := fmt.Sscanf(o, "%d", &offset); err == nil && parsed == 1 {
+			if offset < 0 {
+				offset = 0
+			}
+		}
+	}
+
+	// Get user by username
+	user, err := h.repo.GetUserByUsername(username)
+	if err != nil {
+		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve user")
+		return
+	}
+	if user == nil {
+		writeJSONError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	// Get user activity
+	activities, err := h.repo.GetUserActivity(user.ID, limit, offset)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to get user activity")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve activity")
+		return
+	}
+
+	// Transform to response format
+	response := make([]map[string]interface{}, 0, len(activities))
+	for _, activity := range activities {
+		response = append(response, map[string]interface{}{
+			"id":          activity.ID,
+			"type":        activity.ActivityType,
+			"title":       activity.Title,
+			"description": activity.Description,
+			"metadata":    activity.Metadata,
+			"isPublic":    activity.IsPublic,
+			"createdAt":   activity.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"activities": response,
+		"limit":      limit,
+		"offset":     offset,
+		"total":      len(response),
+	})
+}
+
+// HandleCreateUserActivity handles POST /v1/users/me/activity (for authenticated users)
+// Creates a new activity feed item
+func (h *Handler) HandleCreateUserActivity(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	type createActivityRequest struct {
+		ActivityType string                 `json:"activityType"`
+		Title        string                 `json:"title"`
+		Description  string                 `json:"description"`
+		Metadata     map[string]interface{} `json:"metadata"`
+		IsPublic     bool                   `json:"isPublic"`
+	}
+
+	var req createActivityRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.ActivityType == "" || req.Title == "" {
+		writeJSONError(w, http.StatusBadRequest, "activityType and title are required")
+		return
+	}
+
+	activity := &storage.UserActivity{
+		UserID:       claims.UserID,
+		ActivityType: req.ActivityType,
+		Title:        req.Title,
+		Description:  req.Description,
+		Metadata:     req.Metadata,
+		IsPublic:     req.IsPublic,
+	}
+
+	if err := h.repo.CreateUserActivity(activity); err != nil {
+		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to create user activity")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to create activity")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"id":        activity.ID,
+		"message":   "Activity created successfully",
+		"createdAt": activity.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	})
+}
+
+// ============================================================================
+// User Skills Endpoints
+// ============================================================================
+
+// HandleGetUserSkills handles GET /v1/users/{username}/skills
+// Returns user skills/expertise
+func (h *Handler) HandleGetUserSkills(w http.ResponseWriter, r *http.Request) {
+	username := mux.Vars(r)["username"]
+	if username == "" {
+		writeJSONError(w, http.StatusBadRequest, "username is required")
+		return
+	}
+
+	// Get user by username
+	user, err := h.repo.GetUserByUsername(username)
+	if err != nil {
+		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve user")
+		return
+	}
+	if user == nil {
+		writeJSONError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	// Get user skills
+	skills, err := h.repo.GetUserSkills(user.ID)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to get user skills")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve skills")
+		return
+	}
+
+	// Transform to response format
+	response := make([]map[string]interface{}, 0, len(skills))
+	for _, skill := range skills {
+		response = append(response, map[string]interface{}{
+			"id":       skill.ID,
+			"name":     skill.Name,
+			"level":    skill.Level,
+			"category": skill.Category,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"skills": response,
+	})
+}
+
+// HandleAddUserSkill handles POST /v1/users/me/skills
+// Adds a new skill for the authenticated user
+func (h *Handler) HandleAddUserSkill(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	type addSkillRequest struct {
+		Name     string `json:"name"`
+		Level    string `json:"level"`    // beginner, intermediate, advanced, expert
+		Category string `json:"category"` // language, framework, tool, platform, soft
+	}
+
+	var req addSkillRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.Name == "" {
+		writeJSONError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+
+	// Validate level
+	validLevels := map[string]bool{"beginner": true, "intermediate": true, "advanced": true, "expert": true}
+	if req.Level != "" && !validLevels[req.Level] {
+		writeJSONError(w, http.StatusBadRequest, "level must be one of: beginner, intermediate, advanced, expert")
+		return
+	}
+	if req.Level == "" {
+		req.Level = "intermediate"
+	}
+
+	skill := &storage.UserSkill{
+		UserID:   claims.UserID,
+		Name:     req.Name,
+		Level:    req.Level,
+		Category: req.Category,
+	}
+
+	if err := h.repo.AddUserSkill(skill); err != nil {
+		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
+			writeJSONError(w, http.StatusConflict, "Skill already exists")
+			return
+		}
+		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to add user skill")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to add skill")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]interface{}{
+		"id":      skill.ID,
+		"name":    skill.Name,
+		"level":   skill.Level,
+		"message": "Skill added successfully",
+	})
+}
+
+// HandleRemoveUserSkill handles DELETE /v1/users/me/skills/{id}
+// Removes a skill for the authenticated user
+func (h *Handler) HandleRemoveUserSkill(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	skillIDStr := mux.Vars(r)["id"]
+	if skillIDStr == "" {
+		writeJSONError(w, http.StatusBadRequest, "skill id is required")
+		return
+	}
+
+	skillID, err := uuid.Parse(skillIDStr)
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid skill id")
+		return
+	}
+
+	// First verify the skill belongs to this user (by checking if we can get it)
+	userSkills, err := h.repo.GetUserSkills(claims.UserID)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to get user skills")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to verify skill ownership")
+		return
+	}
+
+	found := false
+	for _, s := range userSkills {
+		if s.ID == skillID {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		writeJSONError(w, http.StatusNotFound, "Skill not found")
+		return
+	}
+
+	if err := h.repo.RemoveUserSkill(skillID); err != nil {
+		logrus.WithError(err).WithField("skillID", skillID).Error("Failed to remove user skill")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to remove skill")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Skill removed successfully"})
 }

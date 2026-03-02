@@ -16,5 +16,11 @@ export * from "./capsule";
 // FXCERT
 export * from "./fxcert";
 
+// Certificates list
+export * from "./certificate";
+
+// History
+export * from "./history";
+
 // Trust & Drift
 export * from "./trust";

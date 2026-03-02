@@ -51,12 +51,12 @@ export function AgentPricingCard({ plan, index, inView }: AgentPricingCardProps)
             </span>
           </div>
         )}
-        
+
         {/* Bot icon header */}
         <div className="absolute top-0 right-0 w-24 h-24 opacity-10">
           <Bot className="w-full h-full text-cyan-400" />
         </div>
-        
+
         <CardContent className="p-5 md:p-6 relative z-10">
           <div className="mb-3">
             <div className="flex items-center gap-2 mb-1">
@@ -98,7 +98,7 @@ export function AgentPricingCard({ plan, index, inView }: AgentPricingCardProps)
                 "w-full py-3 text-sm font-semibold",
                 plan.highlighted &&
                   "bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600",
-                !plan.highlighted && "border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                !plan.highlighted && "pricing-agent-cta-outline border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
               )}
             >
               {plan.cta}

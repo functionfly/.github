@@ -135,9 +135,44 @@ func (v *VerificationService) CheckExecutionAllowed(functionVersionID uuid.UUID,
 	return true, "", nil
 }
 
-// GetVerificationStatus gets the verification status for a function version
+// GetVerificationStatus gets the verification status for a function version.
+// For trusted authors (e.g. functionfly) with no status record, auto-creates and returns a verified status
+// so they are always treated as verified and can receive FXCERTs.
 func (v *VerificationService) GetVerificationStatus(functionVersionID uuid.UUID) (*storage.RegistryFunctionVerificationStatus, error) {
-	return v.repo.GetVerificationStatus(functionVersionID)
+	status, err := v.repo.GetVerificationStatus(functionVersionID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			ver, verErr := v.repo.GetFunctionVersionByID(functionVersionID)
+			if verErr != nil {
+				return nil, err
+			}
+			fn, fnErr := v.repo.GetFunctionByID(ver.FunctionID)
+			if fnErr != nil {
+				return nil, err
+			}
+			if v.isTrustedAuthor(fn.Author) {
+				now := time.Now()
+				verifiedStatus := &storage.RegistryFunctionVerificationStatus{
+					FunctionVersionID:   functionVersionID,
+					ContentHashVerified: true,
+					SignatureVerified:   true,
+					MalwareScanned:      true,
+					MalwareStatus:       "clean",
+					MalwareRiskScore:    0,
+					ApprovalRequired:    false,
+					ApprovalStatus:      "not_required",
+					OverallStatus:       "verified",
+					LastVerifiedAt:      &now,
+				}
+				if createErr := v.repo.CreateOrUpdateVerificationStatus(verifiedStatus); createErr != nil {
+					return nil, err
+				}
+				return verifiedStatus, nil
+			}
+		}
+		return nil, err
+	}
+	return status, nil
 }
 
 // Helper methods

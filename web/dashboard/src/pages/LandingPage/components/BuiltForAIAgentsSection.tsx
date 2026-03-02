@@ -56,7 +56,7 @@ const agentFeatures = [
 
 export function BuiltForAIAgentsSection() {
   return (
-    <section className="py-20 border-t border-border-subtle bg-gradient-to-b from-slate-900/50 to-slate-950/50">
+    <section className="built-for-ai-section py-20 border-t border-border-subtle bg-gradient-to-b from-slate-900/50 to-slate-950/50">
       <div className="max-w-7xl mx-auto px-4 lg:px-6">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 mb-6">
@@ -67,7 +67,7 @@ export function BuiltForAIAgentsSection() {
             Built for AI Agents
           </h2>
           <p className="text-text-secondary max-w-2xl mx-auto text-lg">
-            The complete infrastructure layer for building, scaling, and monetizing AI agents. 
+            The complete infrastructure layer for building, scaling, and monetizing AI agents.
             Cost controls, state management, and burst handling—built-in.
           </p>
         </div>
@@ -83,7 +83,7 @@ export function BuiltForAIAgentsSection() {
             >
               <Card className="h-full bg-gradient-to-br from-white/5 to-white/10 border-white/10 hover:border-white/20 transition-all duration-300 hover:shadow-lg group">
                 <CardContent className="p-6">
-                  <div 
+                  <div
                     className={`w-12 h-12 rounded-lg bg-gradient-to-br ${feature.bgGradient} border flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}
                     style={{ borderColor: feature.color }}
                   >
@@ -98,8 +98,8 @@ export function BuiltForAIAgentsSection() {
         </div>
 
         <div className="text-center">
-          <Link 
-            to="/pricing" 
+          <Link
+            to="/pricing"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold hover:from-cyan-600 hover:to-blue-600 transition-all duration-300"
           >
             View Agent Plans

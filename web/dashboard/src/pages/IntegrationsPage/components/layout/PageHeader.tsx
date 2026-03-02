@@ -1,7 +1,8 @@
-import { motion } from "framer-motion";
-import { Puzzle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { motion } from 'framer-motion';
+import { Puzzle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import { DOCS_SITE_URL } from '@/lib/constants';
 
 const PageHeader = () => {
   return (
@@ -45,7 +46,7 @@ const PageHeader = () => {
               Start Building
             </Button>
           </Link>
-          <Link to="/docs/integrations">
+          <a href={`${DOCS_SITE_URL}/integrations`} target="_blank" rel="noopener noreferrer">
             <Button
               size="lg"
               variant="outline"
@@ -53,7 +54,7 @@ const PageHeader = () => {
             >
               View Documentation
             </Button>
-          </Link>
+          </a>
         </div>
       </motion.div>
     </div>

@@ -293,21 +293,23 @@ function ListingCard({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs">
-            <span>Trust Score</span>
-            <span className="font-medium">{listing.trustScore}%</span>
+        {listing.trustScore !== undefined && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs">
+              <span>Trust Score</span>
+              <span className="font-medium">{listing.trustScore}%</span>
+            </div>
+            <Progress value={listing.trustScore} className="h-2" />
           </div>
-          <Progress value={listing.trustScore} className="h-2" />
-        </div>
+        )}
 
         <div className="flex flex-wrap gap-1">
-          {listing.capabilities.slice(0, 3).map((cap) => (
+          {listing.capabilities?.slice(0, 3).map((cap) => (
             <Badge key={cap} variant="secondary" className="text-xs">
               {cap}
             </Badge>
           ))}
-          {listing.capabilities.length > 3 && (
+          {listing.capabilities && listing.capabilities.length > 3 && (
             <Badge variant="secondary" className="text-xs">
               +{listing.capabilities.length - 3}
             </Badge>

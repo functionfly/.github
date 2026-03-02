@@ -1,6 +1,6 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Card,
@@ -28,6 +28,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   Lock,
@@ -69,7 +70,10 @@ import {
   DeterminismBadge,
   CollapsibleSection,
   MetricCard,
+  CertificateList,
+  FunctionHistoryTab,
 } from "@/components/dre";
+import { mapCertificateDetailToFXCertData } from "@/lib/dre";
 import { ReplayMode } from "@/components/dre/replay";
 
 export default function ExecutionExplorerPage() {
@@ -87,6 +91,24 @@ export default function ExecutionExplorerPage() {
   const [replayModalOpen, setReplayModalOpen] = useState(false);
   const [replayMode, setReplayMode] = useState<ReplayMode>("strict");
   const [selectedExecutionForReplay, setSelectedExecutionForReplay] = useState<ExecutionDetail | null>(null);
+
+  // Certificates tab and full FXCERT modal
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const certIdFromUrl = searchParams.get("certId");
+  const [activeTab, setActiveTab] = useState<"executions" | "certificates" | "history">(
+    tabFromUrl === "certificates" ? "certificates" : tabFromUrl === "history" ? "history" : "history"
+  );
+  const [selectedCertId, setSelectedCertId] = useState<string | null>(certIdFromUrl);
+
+  useEffect(() => {
+    if (tabFromUrl === "certificates") setActiveTab("certificates");
+    else if (tabFromUrl === "history") setActiveTab("history");
+    else if (tabFromUrl === "executions") setActiveTab("executions");
+  }, [tabFromUrl]);
+  useEffect(() => {
+    if (certIdFromUrl) setSelectedCertId(certIdFromUrl);
+  }, [certIdFromUrl]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: [
@@ -189,6 +211,27 @@ export default function ExecutionExplorerPage() {
             </div>
           </motion.div>
 
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => {
+              setActiveTab(v as "executions" | "certificates" | "history");
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p);
+                if (v === "certificates") next.set("tab", "certificates");
+                else if (v === "history") next.set("tab", "history");
+                else if (v === "executions") next.delete("tab");
+                return next;
+              });
+            }}
+            className="w-full"
+          >
+            <TabsList className="mb-6">
+              <TabsTrigger value="history">History</TabsTrigger>
+              <TabsTrigger value="certificates">Certificates (FXCERT)</TabsTrigger>
+              <TabsTrigger value="executions">Executions (MEG)</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="executions" className="mt-0">
           {/* Filters */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -314,6 +357,38 @@ export default function ExecutionExplorerPage() {
               </Button>
             </motion.div>
           )}
+            </TabsContent>
+
+            <TabsContent value="history" className="mt-0">
+              <FunctionHistoryTab
+                author={author!}
+                name={name!}
+                onViewCert={(certId) => {
+                  setSelectedCertId(certId);
+                  setSearchParams((p) => {
+                    const next = new URLSearchParams(p);
+                    next.set("certId", certId);
+                    return next;
+                  });
+                }}
+              />
+            </TabsContent>
+
+            <TabsContent value="certificates" className="mt-0">
+              <CertificateList
+                author={author!}
+                name={name!}
+                onViewCert={(certId) => {
+                  setSelectedCertId(certId);
+                  setSearchParams((p) => {
+                    const next = new URLSearchParams(p);
+                    next.set("certId", certId);
+                    return next;
+                  });
+                }}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
 
@@ -339,6 +414,15 @@ export default function ExecutionExplorerPage() {
               onReplay={() => {
                 setSelectedExecutionForReplay(executionDetail.execution);
                 setReplayModalOpen(true);
+              }}
+              onViewFullCert={(certId) => {
+                setSelectedExecution(null);
+                setSelectedCertId(certId);
+                setSearchParams((p) => {
+                  const next = new URLSearchParams(p);
+                  next.set("certId", certId);
+                  return next;
+                });
               }}
             />
           ) : (
@@ -368,7 +452,83 @@ export default function ExecutionExplorerPage() {
           setReplayModalOpen(false);
         }}
       />
+
+      {/* Full FXCERT Modal */}
+      <Dialog
+        open={!!selectedCertId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedCertId(null);
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p);
+              next.delete("certId");
+              return next;
+            });
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-brand-500" />
+              FXCERT
+            </DialogTitle>
+            <DialogDescription>
+              Execution certificate details
+            </DialogDescription>
+          </DialogHeader>
+          {selectedCertId && author && name && (
+            <FXCERTModalContent
+              author={author}
+              name={name}
+              certId={selectedCertId}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function FXCERTModalContent({
+  author,
+  name,
+  certId,
+}: {
+  author: string;
+  name: string;
+  certId: string;
+}) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["certificate", author, name, certId],
+    queryFn: () => dreApi.getCertificate(author, name, certId),
+    enabled: !!author && !!name && !!certId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+  if (error || !data) {
+    return (
+      <ErrorMessage
+        error={error instanceof Error ? error : new Error("Failed to load certificate")}
+      />
+    );
+  }
+
+  const fxcertData = mapCertificateDetailToFXCertData(data);
+  const fullCertJson = JSON.stringify(data.cert, null, 2);
+
+  return (
+    <FXCertViewer
+      certificate={fxcertData}
+      showDetails
+      fullCertJson={fullCertJson}
+    />
   );
 }
 
@@ -488,7 +648,15 @@ function ExecutionCard({
   );
 }
 
-function ExecutionDetailView({ execution, onReplay }: { execution: ExecutionDetail; onReplay?: () => void }) {
+function ExecutionDetailView({
+  execution,
+  onReplay,
+  onViewFullCert,
+}: {
+  execution: ExecutionDetail;
+  onReplay?: () => void;
+  onViewFullCert?: (certId: string) => void;
+}) {
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = (text: string) => {
@@ -572,28 +740,41 @@ function ExecutionDetailView({ execution, onReplay }: { execution: ExecutionDeta
 
       {/* FX Certificate */}
       {execution.certificate && (
-        <FXCertViewer
-          certificate={{
-            certificate_id: execution.certificate.certificate_id,
-            level: execution.certificate.cert_level as any,
-            certificate_hash: execution.certificate.certificate_hash,
-            execution_root_hash: execution.execution_root_hash,
-            issued_at: execution.certificate.created_at,
-            expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-            signatures: {
-              node: { verified: true, key_id: "node-key-1" },
-              platform: { verified: true, key_id: "platform-key-1" },
-            },
-            anchor: execution.certificate.anchored
-              ? {
-                  chain: "Ethereum",
-                  block_number: 12345678,
-                  tx_hash: "0x1234...",
-                  timestamp: new Date().toISOString(),
-                }
-              : undefined,
-          }}
-        />
+        <div className="space-y-2">
+          <FXCertViewer
+            certificate={{
+              certificate_id: execution.certificate.certificate_id,
+              level: execution.certificate.cert_level as "standard" | "extended" | "enterprise",
+              certificate_hash: execution.certificate.certificate_hash,
+              execution_root_hash: execution.execution_root_hash,
+              issued_at: execution.certificate.created_at,
+              expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+              signatures: {
+                node: { verified: true, key_id: "node-key-1" },
+                platform: { verified: true, key_id: "platform-key-1" },
+              },
+              anchor: execution.certificate.anchored
+                ? {
+                    chain: "Ethereum",
+                    block_number: 12345678,
+                    tx_hash: "0x1234...",
+                    timestamp: new Date().toISOString(),
+                  }
+                : undefined,
+            }}
+          />
+          {onViewFullCert && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              onClick={() => onViewFullCert(execution.certificate!.certificate_id)}
+            >
+              <Shield className="h-4 w-4" />
+              View full FXCERT
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );

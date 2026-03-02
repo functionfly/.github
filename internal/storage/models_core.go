@@ -8,19 +8,28 @@ import (
 
 // User represents a user in the system
 type User struct {
-	ID                    uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TenantID              uuid.UUID  `json:"tenant_id" gorm:"type:uuid;not null"`
-	Tenant                *Tenant    `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
-	Username              *string    `json:"username,omitempty" gorm:"uniqueIndex;size:255"`
-	Email                 string     `json:"email" gorm:"uniqueIndex;not null"`
-	Name                  string     `json:"name,omitempty" gorm:"size:255"` // Display name (separate from OAuth provider name)
-	PasswordHash          string     `json:"password_hash" gorm:"column:password_hash"`
-	Role                  string     `json:"role,omitempty" gorm:"size:50"` // Platform role for admin users
-	EmailVerified         bool       `json:"email_verified" gorm:"default:false"`
-	CompanyName           *string    `json:"company_name,omitempty" gorm:"size:255"`
-	Bio                   *string    `json:"bio,omitempty" gorm:"type:text"`
-	VerificationToken     *string    `json:"verification_token,omitempty"`
-	VerificationExpiresAt *time.Time `json:"verification_expires_at,omitempty"`
+	ID            uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TenantID      uuid.UUID `json:"tenant_id" gorm:"type:uuid;not null"`
+	Tenant        *Tenant   `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
+	Username      *string   `json:"username,omitempty" gorm:"uniqueIndex;size:255"`
+	Email         string    `json:"email" gorm:"uniqueIndex;not null"`
+	Name          string    `json:"name,omitempty" gorm:"size:255"` // Display name (separate from OAuth provider name)
+	PasswordHash  string    `json:"password_hash" gorm:"column:password_hash"`
+	Role          string    `json:"role,omitempty" gorm:"size:50"` // Platform role for admin users
+	EmailVerified bool      `json:"email_verified" gorm:"default:false"`
+	CompanyName   *string   `json:"company_name,omitempty" gorm:"size:255"`
+	Bio           *string   `json:"bio,omitempty" gorm:"type:text"`
+	// Extended profile fields
+	Location              *string                `json:"location,omitempty" gorm:"size:255"`
+	Website               *string                `json:"website,omitempty" gorm:"size:500"`
+	JobTitle              *string                `json:"job_title,omitempty" gorm:"size:255"`
+	SocialLinks           map[string]interface{} `json:"social_links,omitempty" gorm:"type:jsonb;default:'{}'"`
+	TwitterURL            *string                `json:"twitter_url,omitempty" gorm:"column:twitter_url;size:500"`
+	GithubURL             *string                `json:"github_url,omitempty" gorm:"column:github_url;size:500"`
+	LinkedInURL           *string                `json:"linkedin_url,omitempty" gorm:"column:linkedin_url;size:500"`
+	CoverImageURL         *string                `json:"cover_image_url,omitempty" gorm:"column:cover_image_url;size:500"`
+	VerificationToken     *string                `json:"verification_token,omitempty"`
+	VerificationExpiresAt *time.Time             `json:"verification_expires_at,omitempty"`
 	// Social authentication fields
 	Provider     *string                `json:"provider,omitempty"`                        // 'google', 'github', etc.
 	ProviderID   *string                `json:"provider_id,omitempty"`                     // External user ID from OAuth provider
@@ -31,9 +40,13 @@ type User struct {
 	MFABackupCodes []string   `json:"mfa_backup_codes,omitempty" gorm:"type:jsonb"` // Backup codes for MFA recovery
 	MFALastUsed    *time.Time `json:"mfa_last_used,omitempty"`                      // Last time MFA was used
 	// Team collaboration fields
-	Teams     []TeamMembership `json:"teams,omitempty" gorm:"foreignKey:UserID"`
-	CreatedAt time.Time        `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time        `json:"updated_at" gorm:"autoUpdateTime"`
+	Teams []TeamMembership `json:"teams,omitempty" gorm:"foreignKey:UserID"`
+	// Profile-related associations
+	Skills       []UserSkill       `json:"skills,omitempty" gorm:"foreignKey:UserID"`
+	Achievements []UserAchievement `json:"achievements,omitempty" gorm:"foreignKey:UserID"`
+	Activity     []UserActivity    `json:"activity,omitempty" gorm:"foreignKey:UserID"`
+	CreatedAt    time.Time         `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time         `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // AuditEvent represents an audit log entry
@@ -56,16 +69,16 @@ type AuditEvent struct {
 
 // Tenant represents a tenant in the system
 type Tenant struct {
-	ID                uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Name              string    `json:"name" gorm:"not null"`
-	Plan              string    `json:"plan" gorm:"not null"`
-	Status            string    `json:"status" gorm:"not null;default:'active'"` // 'active', 'suspended'
-	StripeCustomerID  *string   `json:"stripe_customer_id,omitempty" gorm:"column:stripe_customer_id;size:255"`
-	Users             []User    `json:"users,omitempty" gorm:"foreignKey:TenantID"`
-	Apps              []App     `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
-	Teams             []Team    `json:"teams,omitempty" gorm:"foreignKey:TenantID"`
-	CreatedAt         time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt         time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	ID               uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Name             string    `json:"name" gorm:"not null"`
+	Plan             string    `json:"plan" gorm:"not null"`
+	Status           string    `json:"status" gorm:"not null;default:'active'"` // 'active', 'suspended'
+	StripeCustomerID *string   `json:"stripe_customer_id,omitempty" gorm:"column:stripe_customer_id;size:255"`
+	Users            []User    `json:"users,omitempty" gorm:"foreignKey:TenantID"`
+	Apps             []App     `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
+	Teams            []Team    `json:"teams,omitempty" gorm:"foreignKey:TenantID"`
+	CreatedAt        time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt        time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // Team represents a team within a tenant
@@ -141,4 +154,81 @@ type Provider struct {
 
 func (Provider) TableName() string {
 	return "providers"
+}
+
+// UserSkill represents a skill or expertise area for a user
+type UserSkill struct {
+	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
+	User      *User     `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	Name      string    `json:"name" gorm:"size:100;not null"`
+	Level     string    `json:"level" gorm:"size:20;not null;default:'intermediate'"` // beginner, intermediate, advanced, expert
+	Category  string    `json:"category" gorm:"size:50"`                              // language, framework, tool, platform, soft
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+func (UserSkill) TableName() string {
+	return "user_skills"
+}
+
+// Achievement represents a badge/achievement definition
+type Achievement struct {
+	ID               uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Slug             string    `json:"slug" gorm:"uniqueIndex;size:100;not null"`
+	Name             string    `json:"name" gorm:"size:255;not null"`
+	Description      string    `json:"description" gorm:"type:text;not null"`
+	Icon             string    `json:"icon" gorm:"size:100"`
+	Color            string    `json:"color" gorm:"size:20"`
+	Category         string    `json:"category" gorm:"size:50;not null"`         // publisher, community, usage, milestone
+	RequirementType  string    `json:"requirement_type" gorm:"size:50;not null"` // function_count, execution_count, rating, days_active
+	RequirementValue int       `json:"requirement_value" gorm:"not null"`
+	Points           int       `json:"points" gorm:"default:0"`
+	IsHidden         bool      `json:"is_hidden" gorm:"default:false"`
+	CreatedAt        time.Time `json:"created_at" gorm:"autoCreateTime"`
+}
+
+func (Achievement) TableName() string {
+	return "achievements"
+}
+
+// UserAchievement represents an achievement earned by a user
+type UserAchievement struct {
+	ID            uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	UserID        uuid.UUID              `json:"user_id" gorm:"type:uuid;not null;index"`
+	User          *User                  `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	AchievementID uuid.UUID              `json:"achievement_id" gorm:"type:uuid;not null;index"`
+	Achievement   *Achievement           `json:"achievement,omitempty" gorm:"foreignKey:AchievementID"`
+	EarnedAt      time.Time              `json:"earned_at" gorm:"autoCreateTime"`
+	Progress      int                    `json:"progress" gorm:"default:0"`
+	IsCompleted   bool                   `json:"is_completed" gorm:"default:false"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb"`
+}
+
+func (UserAchievement) TableName() string {
+	return "user_achievements"
+}
+
+// UserActivity represents an activity feed item for a user
+type UserActivity struct {
+	ID           uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	UserID       uuid.UUID              `json:"user_id" gorm:"type:uuid;not null;index"`
+	User         *User                  `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	ActivityType string                 `json:"activity_type" gorm:"size:50;not null"` // function_published, function_updated, badge_earned, profile_updated
+	Title        string                 `json:"title" gorm:"size:255;not null"`
+	Description  string                 `json:"description" gorm:"type:text"`
+	Metadata     map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb"`
+	IsPublic     bool                   `json:"is_public" gorm:"default:true"`
+	CreatedAt    time.Time              `json:"created_at" gorm:"autoCreateTime"`
+}
+
+func (UserActivity) TableName() string {
+	return "user_activity"
+}
+
+// SocialLinks represents social media links for a user (stored as JSON)
+type SocialLinks struct {
+	Twitter  string `json:"twitter,omitempty"`
+	Github   string `json:"github,omitempty"`
+	LinkedIn string `json:"linkedin,omitempty"`
 }

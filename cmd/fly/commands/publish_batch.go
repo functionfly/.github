@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -274,6 +275,32 @@ func readRawManifest(dir string) ([]byte, error) {
 	return stripJSONCComments(data), nil
 }
 
+// humanizeFunctionName turns "text-truncate" into "Text truncate".
+func humanizeFunctionName(name string) string {
+	if name == "" {
+		return ""
+	}
+	parts := strings.Split(strings.ReplaceAll(name, "_", "-"), "-")
+	for i, p := range parts {
+		if len(p) > 0 {
+			parts[i] = strings.ToUpper(p[:1]) + strings.ToLower(p[1:])
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+// injectDescriptionIfMissing adds manifest["description"] from function name when missing or empty.
+func injectDescriptionIfMissing(rawManifest []byte, functionName string) ([]byte, error) {
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawManifest, &m); err != nil {
+		return nil, err
+	}
+	if desc, ok := m["description"].(string); !ok || desc == "" {
+		m["description"] = humanizeFunctionName(functionName)
+	}
+	return json.Marshal(m)
+}
+
 func readMainSourceCode(dir string, runtime string) (string, error) {
 	var mainFile string
 	switch runtime {
@@ -344,6 +371,14 @@ func publishSingleFunction(dir string, dryRun bool, conflictStrategy string, cli
 	if err != nil {
 		result.Status = "failed"
 		result.Error = fmt.Sprintf("failed to read manifest: %v", err)
+		result.DurationMs = time.Since(startTime).Milliseconds()
+		return result
+	}
+	// Inject description from function name when manifest has none (so backend stores it)
+	rawManifest, err = injectDescriptionIfMissing(rawManifest, manifest.Name)
+	if err != nil {
+		result.Status = "failed"
+		result.Error = fmt.Sprintf("failed to prepare manifest: %v", err)
 		result.DurationMs = time.Since(startTime).Milliseconds()
 		return result
 	}

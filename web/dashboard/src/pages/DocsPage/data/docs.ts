@@ -79,9 +79,12 @@ flypy deploy
 
 - [Quickstart Guide](/docs/quickstart) - Deploy your first function
 - [Core Concepts](/docs/concepts) - Understand the FunctionFly architecture
-- [CLI Reference](/docs/cli) - Learn the command-line interface
+- [CLI Overview](/docs/cli-overview) - Install and use the CLI
+- [CLI Commands](/docs/cli-commands) - Full command reference
+- [API Reference](/docs/api-overview) - REST API and authentication
+- [Troubleshooting](/docs/troubleshooting-overview) - Common issues and debugging
         `,
-        lastUpdated: "2026-02-27"
+        lastUpdated: "2026-02-26"
       },
       {
         slug: "quickstart",
@@ -95,7 +98,7 @@ Get your first function deployed to multiple edge providers in minutes.
 ## Prerequisites
 
 - Node.js 18+ installed
-- A FunctionFly account (sign up at [functionfly.io](https://functionfly.io))
+- A FunctionFly account (sign up at [functionfly.com](https://functionfly.com))
 
 ## Step 1: Install the CLI
 
@@ -212,6 +215,383 @@ Adapters normalize requests between different provider formats:
 | Query Params | ✓ | ✓ | ✓ | ✓ |
 | Body | ✓ | ✓ | ✓ | ✓ |
 | Environment | ✓ | ✓ | ✓ | ✓ |
+        `,
+        lastUpdated: "2026-02-27"
+      }
+    ]
+  },
+  {
+    id: "cli",
+    title: "CLI",
+    icon: Terminal,
+    pages: [
+      {
+        slug: "cli-overview",
+        title: "Overview",
+        description: "Install and configure the FunctionFly CLI",
+        content: `
+# CLI Overview
+
+The FunctionFly CLI (\`fly\`) is the official tool to create, run, and publish functions from your terminal. Go from idea to global API in under 60 seconds.
+
+## Installation
+
+### macOS / Linux (Homebrew)
+
+\`\`\`bash
+brew install functionfly/tap/fly
+\`\`\`
+
+### npm (Node.js)
+
+\`\`\`bash
+npm install -g @functionfly/cli
+# or
+pnpm add -g @functionfly/cli
+\`\`\`
+
+After install, the binary may be available as \`fly\` or \`flypy\` depending on the package.
+
+### Direct download
+
+Download the latest binary for your platform from the [releases page](https://github.com/functionfly/functionfly/releases) and add it to your \`PATH\`.
+
+### Verify
+
+\`\`\`bash
+fly --version
+\`\`\`
+
+## Shell completion
+
+Generate completion scripts for your shell:
+
+\`\`\`bash
+# Bash
+fly completion bash > /etc/bash_completion.d/fly
+
+# Zsh
+fly completion zsh > \${fpath[1]}/_fly
+
+# Fish
+fly completion fish > ~/.config/fish/completions/fly.fish
+
+# Reload your shell or open a new terminal
+\`\`\`
+
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| \`FFLY_API_URL\` | API base URL (default: production). Set to \`http://localhost:8080\` for local dev. |
+| \`FFLY_DEV_EMAIL\` | Email for dev login (with \`fly login --dev\`) |
+| \`FFLY_DEV_PASSWORD\` | Password for dev login |
+| \`FFLY_CONFIG\` | Path to config file (overrides default location) |
+
+Credentials are stored in \`~/.functionfly/credentials.json\` after \`fly login\`.
+
+## Quick reference
+
+| Command | Description |
+|---------|-------------|
+| \`fly login\` | Authenticate with FunctionFly |
+| \`fly init <name>\` | Create a new function project |
+| \`fly dev\` | Run function locally |
+| \`fly publish\` | Publish to the registry |
+| \`fly logs\` | Stream execution logs |
+| \`fly rollback\` | Roll back to a previous version |
+| \`fly env\` | Manage environment variables |
+| \`fly secrets\` | Manage secrets |
+
+See [Commands Reference](/docs/cli-commands) for full details.
+        `,
+        lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "cli-commands",
+        title: "Commands Reference",
+        description: "All CLI commands and options",
+        content: `
+# Commands Reference
+
+Complete reference for every \`fly\` command.
+
+## Authentication
+
+### \`fly login\`
+
+Authenticate with FunctionFly (OAuth or dev email/password).
+
+\`\`\`bash
+fly login                    # Open browser for OAuth
+fly login --provider github   # Use GitHub
+fly login --provider google  # Use Google
+fly login --no-browser       # Print auth URL instead of opening browser
+fly login --dev --email admin@example.com  # Dev mode (requires FFLY_API_URL)
+\`\`\`
+
+### \`fly whoami\`
+
+Show the currently logged-in user.
+
+### \`fly logout\`
+
+Clear stored credentials.
+
+---
+
+## Function lifecycle
+
+### \`fly init <name>\`
+
+Scaffold a new function project in the current directory.
+
+\`\`\`bash
+fly init my-function
+fly init my-api --template http-api   # http-api | cron-job | webhook | hello-world
+\`\`\`
+
+Creates \`functionfly.jsonc\`, \`main.py\` (or template), and \`test.http\`.
+
+### \`fly dev\`
+
+Run the function locally for development.
+
+\`\`\`bash
+fly dev           # Default port 8787
+fly dev --port 3000
+\`\`\`
+
+### \`fly publish\`
+
+Publish the function to the FunctionFly registry.
+
+\`\`\`bash
+fly publish
+fly publish --access public
+fly publish --access private
+fly publish --build        # Build before publishing
+fly publish --dry-run      # Validate and bundle without publishing
+fly publish --force        # Skip confirmation
+fly publish --json         # Output JSON
+\`\`\`
+
+### \`fly publish batch\`
+
+Publish multiple functions (each subdirectory with a \`functionfly.jsonc\`).
+
+\`\`\`bash
+fly publish batch
+fly publish batch --dry-run
+fly publish batch --pattern "apps/*/functionfly.jsonc"
+\`\`\`
+
+### \`fly update <bump>\`
+
+Bump the version in \`functionfly.jsonc\`.
+
+\`\`\`bash
+fly update patch   # 1.0.0 → 1.0.1
+fly update minor   # 1.0.0 → 1.1.0
+fly update major   # 1.0.0 → 2.0.0
+fly update 2.0.0   # Set exact version
+\`\`\`
+
+### \`fly test\`
+
+Test your deployed function (invoke and validate response).
+
+\`\`\`bash
+fly test
+fly test --json
+\`\`\`
+
+### \`fly rollback\`
+
+Roll back to a previous version.
+
+\`\`\`bash
+fly rollback              # Previous version
+fly rollback --version 1.0.5
+fly rollback --force      # Skip confirmation
+fly rollback --json
+\`\`\`
+
+---
+
+## Logs and stats
+
+### \`fly logs\`
+
+Stream execution logs.
+
+\`\`\`bash
+fly logs
+fly logs --follow          # Stream in real time
+fly logs --tail 100        # Last N lines
+fly logs --since 1h        # Logs from last 1 hour
+fly logs --level error     # Filter by level (info, warn, error)
+fly logs --json
+\`\`\`
+
+### \`fly stats\`
+
+View usage statistics (invocations, latency, errors).
+
+\`\`\`bash
+fly stats
+fly stats --json
+\`\`\`
+
+---
+
+## Environment and secrets
+
+### \`fly env\`
+
+Manage environment variables for the published function.
+
+\`\`\`bash
+fly env list               # List (values masked)
+fly env set KEY=value      # Set one or more
+fly env get KEY            # Get value
+fly env unset KEY           # Remove (alias: delete, rm)
+fly env list --json
+\`\`\`
+
+### \`fly secrets\`
+
+Manage secrets (encrypted, not shown in logs or UI).
+
+\`\`\`bash
+fly secrets list           # List secret names
+fly secrets set API_KEY=sk-xxx
+fly secrets unset API_KEY  # Alias: delete, rm
+fly secrets list --json
+\`\`\`
+
+---
+
+## Scheduling
+
+### \`fly schedule\`
+
+Manage scheduled (cron) executions.
+
+\`\`\`bash
+fly schedule set "*/5 * * * *"     # Every 5 minutes
+fly schedule set --preset every-hour
+fly schedule list
+fly schedule get
+fly schedule remove
+fly schedule presets        # List available presets
+fly schedule trigger         # Trigger run now
+\`\`\`
+
+---
+
+## Global options
+
+Available on every command:
+
+| Option | Description |
+|--------|-------------|
+| \`--help\`, \`-h\` | Show help |
+| \`--version\`, \`-v\` | Show version |
+| \`--json\` | Output as JSON (where supported) |
+
+## Exit codes
+
+- \`0\`: Success
+- \`1\`: General error (auth, config, API failure)
+- \`2\`: Invalid usage (missing args, invalid flags)
+        `,
+        lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "cli-config",
+        title: "Configuration",
+        description: "Manifest and config files",
+        content: `
+# CLI Configuration
+
+## Manifest: \`functionfly.jsonc\`
+
+Every function project has a manifest file. The CLI looks for \`functionfly.jsonc\` or \`functionfly.json\` in the current directory.
+
+### Minimal example
+
+\`\`\`json
+{
+  "$schema": "https://functionfly.com/schemas/functionfly.json",
+  "name": "my-function",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "public": true
+}
+\`\`\`
+
+### Full reference
+
+| Field | Type | Description |
+|-------|------|-------------|
+| \`name\` | string | **Required.** Function name (slug). |
+| \`version\` | string | **Required.** Semver (e.g. \`1.0.0\`). |
+| \`runtime\` | string | **Required.** e.g. \`python3.11\`, \`node20\`. |
+| \`public\` | boolean | Whether the function is public in the registry (default: \`true\`). |
+| \`description\` | string | Short description. |
+| \`deterministic\` | boolean | Ensures reproducible builds (default: \`true\`). |
+| \`cache_ttl\` | number | Cache TTL in seconds (default: \`86400\`). |
+| \`timeout_ms\` | number | Request timeout in milliseconds (default: \`5000\`). |
+| \`memory_mb\` | number | Memory limit in MB (default: \`128\`). |
+| \`schedule\` | string | Cron expression for scheduled runs (optional). |
+| \`env\` | object | Static env key-value pairs (optional). |
+| \`dependencies\` | object | Runtime dependencies (optional). |
+
+### Example with options
+
+\`\`\`json
+{
+  "$schema": "https://functionfly.com/schemas/functionfly.json",
+  "name": "my-api",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "public": true,
+  "description": "A REST API",
+  "timeout_ms": 10000,
+  "memory_mb": 256,
+  "cache_ttl": 3600,
+  "schedule": "0 * * * *",
+  "env": {
+    "LOG_LEVEL": "info"
+  }
+}
+\`\`\`
+
+### JSONC comments
+
+\`functionfly.jsonc\` supports comments:
+
+\`\`\`jsonc
+{
+  "name": "my-function",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  // "public": false  // uncomment for private
+}
+\`\`\`
+
+## Config file (global)
+
+Global CLI config is stored in:
+
+- \`~/.functionfly/config.yaml\` (or path in \`FFLY_CONFIG\`)
+
+Used for API URL and app context when not in a function directory. Credentials are stored separately in \`~/.functionfly/credentials.json\` after \`fly login\`.
+
+## Working directory
+
+All project-scoped commands (\`fly publish\`, \`fly logs\`, \`fly env\`, etc.) must be run from the directory that contains \`functionfly.jsonc\`, or they will fail with a message to run \`fly init\`.
         `,
         lastUpdated: "2026-02-27"
       }
@@ -354,6 +734,89 @@ Set in \`functionfly.jsonc\`:
 \`\`\`
         `,
         lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "agent-ai-llm-integration",
+        title: "AI & LLM integration",
+        description: "Let LLMs and AI agents discover and call your public functions",
+        content: `
+# AI & LLM integration
+
+FunctionFly exposes the public registry to AI agents via a standard discovery endpoint. LLMs (OpenAI, Anthropic, Gemini, open-source agents) can fetch one URL, discover all public functions, and call them using native tool-calling APIs—no custom integration code.
+
+## Discovery endpoint
+
+\`\`\`
+GET /.well-known/functionfly.json
+\`\`\`
+
+- **Public** — no authentication required
+- **Cacheable** — \`Cache-Control: public, max-age=300\` (5 minutes)
+- **Content-Type** — \`application/json\`
+
+### Query parameters (all optional)
+
+| Param     | Type   | Description                    |
+|-----------|--------|--------------------------------|
+| \`category\` | string | Filter by function category    |
+| \`tags\`     | string | Comma-separated tag filter     |
+| \`author\`   | string | Filter by author               |
+| \`q\`        | string | Text search                    |
+| \`limit\`    | int    | Max functions (default 50, max 200) |
+| \`offset\`   | int    | Pagination offset              |
+
+## Response
+
+The response includes \`schema_version\`, \`provider\`, \`api_base\`, \`execution_endpoint\`, \`agent_endpoint\`, \`discovery_endpoint\`, \`generated_at\`, \`total_functions\`, and a \`functions\` array. Each function has:
+
+- \`uri\`, \`name\`, \`title\`, \`description\`, \`version\`, \`category\`, \`tags\`
+- \`execution_url\`, \`agent_execution_url\` — where to call the function
+- \`tool_schema\` — **OpenAI-compatible** tool definition (name, description, parameters) for use in \`tools\` / \`tool_choice\`
+
+## Example: OpenAI
+
+\`\`\`python
+import openai
+import requests
+
+# Discover all FunctionFly functions
+manifest = requests.get("https://api.functionfly.com/.well-known/functionfly.json").json()
+
+# Extract tool schemas for OpenAI
+tools = [fn["tool_schema"] for fn in manifest["functions"]]
+
+# Use in chat completion
+response = openai.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Slugify this: Hello World"}],
+    tools=tools,
+    tool_choice="auto"
+)
+\`\`\`
+
+## Example: Anthropic
+
+\`\`\`typescript
+const manifest = await fetch("https://api.functionfly.com/.well-known/functionfly.json").then(r => r.json());
+const tools = manifest.functions.map(fn => fn.tool_schema.function);
+
+const response = await anthropic.messages.create({
+  model: "claude-opus-4-5",
+  tools: tools,
+  messages: [{ role: "user", content: "Convert 'hello world' to a slug" }]
+});
+\`\`\`
+
+## Calling a function
+
+After the LLM chooses a tool (function), call it via:
+
+- **Direct execution:** \`POST /v1/fx/{author}/{name}\` with \`{"input": <args>}\`
+- **Agent execution (quota/attribution):** \`POST /v1/agent/execute/{author}/{name}\` with \`X-Agent-API-Key\` and \`{"input": <args>}\`
+
+The \`tool_schema\` \`parameters\` match the function's input schema so the model can fill arguments correctly.
+        `,
+        lastUpdated: "2026-03-01"
       }
     ]
   },
@@ -439,79 +902,228 @@ Set environment variables for each provider:
       {
         slug: "cli",
         title: "CLI Reference",
-        description: "Command-line interface documentation",
+        description: "Deployment and CLI quick reference",
         content: `
-# CLI Reference
+# CLI Reference (Deployment)
 
-The FunctionFly CLI (\`flypy\`) is your primary tool for managing functions.
+For the complete CLI documentation, see the dedicated **CLI** section:
 
-## Installation
+- [CLI Overview](/docs/cli-overview) – Installation, shell completion, environment variables
+- [Commands Reference](/docs/cli-commands) – Every \`fly\` command and option
+- [Configuration](/docs/cli-config) – \`functionfly.jsonc\` manifest and config files
 
-\`\`\`bash
-npm install -g @functionfly/cli
-\`\`\`
-
-## Commands
-
-### Authentication
+## Quick deployment commands
 
 \`\`\`bash
-flypy login          # Log in to FunctionFly
-flypy logout         # Log out
-flypy whoami         # Show current user
+fly login              # Authenticate
+fly init <name>        # Create a function
+fly dev                # Run locally
+fly publish            # Publish to registry
+fly logs --follow      # Stream logs
+fly rollback           # Roll back
+fly env set KEY=value  # Set env vars
 \`\`\`
 
-### Function Management
+## Manifest
+
+Deployment is driven by \`functionfly.jsonc\` in your project directory. See [CLI Configuration](/docs/cli-config) for the full manifest reference.
+        `,
+        lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "env-vars",
+        title: "Environment Variables",
+        description: "Managing secrets and environment configuration",
+        content: `
+# Environment Variables
+
+Manage configuration and secrets across all providers from a single place.
+
+## Setting Variables
+
+### Via CLI
 
 \`\`\`bash
-flypy init <name>           # Create a new function
-flypy dev                   # Run local development server
-flypy deploy                # Deploy function
-flypy logs                  # View function logs
-flypy status                # Check deployment status
+# Set a variable (synced to all providers)
+flypy env set API_KEY=sk_live_xxx
+
+# Set for a specific provider
+flypy env set DATABASE_URL=postgres://... --provider=vercel
+
+# List all variables
+flypy env list
+
+# Remove a variable
+flypy env rm API_KEY
 \`\`\`
 
-### Environment Variables
+### Via Dashboard
+
+1. Open your function in the dashboard
+2. Go to **Settings** → **Environment variables**
+3. Add or edit variables; they are encrypted at rest and synced to all providers on next deploy
+
+## Scopes
+
+| Scope | When applied |
+|-------|--------------|
+| **All providers** | Default; variable is available on every deployment |
+| **Per provider** | Use \`--provider=vercel\` (or cloudflare, fly, deno) |
+| **Per environment** | Use \`--env=production\` or \`--env=staging\` |
+
+## Security
+
+- **Secrets**: Values are encrypted at rest (AES-256) and in transit (TLS 1.3)
+- **Masking**: Secret values are never shown in logs or the UI after creation
+- **Rotation**: Rotate keys in the dashboard; redeploy to push new values to providers
+
+## Reference in Code
+
+\`\`\`python
+import os
+
+# All env vars are available as standard environment variables
+api_key = os.environ.get("API_KEY")
+db_url = os.environ.get("DATABASE_URL")
+\`\`\`
+
+## Best Practices
+
+1. Use the dashboard or CLI for secrets; avoid committing \`.env\` files
+2. Use different values per environment (staging vs production)
+3. Document required variables in your function's README
+        `,
+        lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "cicd",
+        title: "CI/CD",
+        description: "Deploy from GitHub Actions, GitLab CI, and more",
+        content: `
+# CI/CD Integration
+
+Deploy FunctionFly functions from your existing CI/CD pipelines.
+
+## GitHub Actions
+
+\`\`\`yaml
+name: Deploy to FunctionFly
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install FunctionFly CLI
+        run: npm install -g @functionfly/cli
+
+      - name: Deploy
+        env:
+          FUNCTIONFLY_API_KEY: \${{ secrets.FUNCTIONFLY_API_KEY }}
+        run: flypy deploy --non-interactive
+\`\`\`
+
+## GitLab CI
+
+\`\`\`yaml
+deploy:
+  stage: deploy
+  image: node:20
+  script:
+    - npm install -g @functionfly/cli
+    - flypy deploy --non-interactive
+  variables:
+    FUNCTIONFLY_API_KEY: \$FUNCTIONFLY_API_KEY
+  only:
+    - main
+\`\`\`
+
+## API Key for CI
+
+1. In the dashboard: **Settings** → **API keys** → **Create key**
+2. Name it (e.g. \`ci-github\`) and copy the key
+3. Store as a secret in your CI system: \`FUNCTIONFLY_API_KEY\`
+4. The CLI uses this when \`flypy login\` is not possible (e.g. headless CI)
+
+## Options
+
+| Flag | Description |
+|------|-------------|
+| \`--non-interactive\` | Fail if input is required (required in CI) |
+| \`--skip-tests\` | Skip pre-deploy tests |
+| \`--provider\` | Deploy only to one provider |
+| \`--env\` | Target environment (e.g. staging) |
+
+## Rollbacks
+
+To rollback from CI, use the same API key and run:
 
 \`\`\`bash
-flypy env list              # List environment variables
-flypy env set KEY=value     # Set environment variable
-flypy env get KEY           # Get environment variable
-flypy env rm KEY            # Remove environment variable
+flypy rollback --version <previous-version>
 \`\`\`
+        `,
+        lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "rollbacks",
+        title: "Rollbacks",
+        description: "Revert to a previous deployment",
+        content: `
+# Rollbacks
 
-### Provider Management
+Revert to a previous deployment across all providers when needed.
+
+## When to Rollback
+
+- A bad release causes errors or downtime
+- A provider-specific issue appears after deploy
+- You need to quickly restore a known-good state
+
+## Via CLI
 
 \`\`\`bash
-flypy providers list        # List configured providers
-flypy providers add <name>  # Add a provider
-flypy providers rm <name>   # Remove a provider
+# List recent deployments (versions)
+flypy releases list
+
+# Rollback to the previous deployment
+flypy rollback
+
+# Rollback to a specific version
+flypy rollback --version 20260226120000
+
+# Rollback only one provider
+flypy rollback --provider=vercel
 \`\`\`
 
-## Global Options
+## Via Dashboard
 
-\`\`\`bash
---help, -h        Show help
---version, -v     Show version
---debug           Enable debug logging
---config <path>   Use specific config file
-\`\`\`
+1. Open your function
+2. Go to **Deployments** or **Releases**
+3. Find the deployment you want to restore
+4. Click **Rollback** and confirm
 
-## Configuration File
+## What Happens
 
-Default configuration is read from \`functionfly.jsonc\`:
+- Traffic is switched to the selected previous version
+- All providers are updated to that version (or only the selected provider)
+- No new build is run; the previous artifact is re-used
+- Rollback typically completes in under a minute
 
-\`\`\`json
-{
-  "name": "my-function",
-  "version": "1.0.0",
-  "runtime": "python3.11",
-  "providers": {
-    "vercel": { "enabled": true },
-    "cloudflare": { "enabled": true }
-  }
-}
-\`\`\`
+## After a Rollback
+
+- Investigate the failed release (logs, metrics) before deploying again
+- Use [Troubleshooting](/docs/common-errors) for common causes
+- Consider enabling [canary deployments](/docs/deployment-overview#deployment-strategies) for riskier changes
         `,
         lastUpdated: "2026-02-27"
       }
@@ -683,6 +1295,125 @@ def handle_request(req):
 \`\`\`
         `,
         lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "authentication",
+        title: "Authentication",
+        description: "OAuth, JWT, and MFA",
+        content: `
+# Authentication
+
+FunctionFly supports multiple authentication methods for the dashboard and API.
+
+## Dashboard Login
+
+- **Email + password** with optional MFA
+- **OAuth**: Sign in with Google, GitHub, or other configured IdPs
+- **SSO**: SAML 2.0 and OpenID Connect for enterprise
+
+## API Authentication
+
+### API Keys
+
+Best for server-to-server and CI/CD:
+
+\`\`\`bash
+curl -H "Authorization: Bearer ff_sk_xxx" \\
+  https://api.functionfly.io/v1/functions
+\`\`\`
+
+Create and manage keys in **Settings** → **API keys**. Keys can be scoped to a team or function.
+
+### OAuth 2.0
+
+For third-party apps and user-delegated access:
+
+- **Authorization code** with PKCE for public clients
+- **Client credentials** for machine-to-machine
+- Tokens are JWTs with short-lived access and optional refresh
+
+### JWT
+
+- Access tokens expire in 1 hour (configurable)
+- Refresh tokens (if enabled) last 30 days
+- Token rotation on refresh for security
+
+## MFA (Multi-Factor Authentication)
+
+1. Enable in **Settings** → **Security**
+2. Use an authenticator app (TOTP) or hardware key
+3. Required for sensitive actions (e.g. delete function, change billing) when enabled
+
+## Best Practices
+
+- Use API keys for automation; rotate them periodically
+- Enable MFA on accounts with deploy or admin access
+- Prefer short-lived tokens and refresh when building integrations
+        `,
+        lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "api-keys",
+        title: "API Keys",
+        description: "Create and manage API keys",
+        content: `
+# API Keys
+
+API keys authenticate requests to the FunctionFly API and CLI (e.g. in CI).
+
+## Creating a Key
+
+### Dashboard
+
+1. Go to **Settings** → **API keys**
+2. Click **Create key**
+3. Name the key (e.g. \`Production CI\`, \`Staging\`)
+4. Optionally restrict scope (all functions vs specific function or team)
+5. Copy the key once; it is not shown again
+
+### CLI
+
+\`\`\`bash
+flypy api-keys create --name "CI key" --scope function:my-app
+\`\`\`
+
+## Using a Key
+
+### Environment variable
+
+\`\`\`bash
+export FUNCTIONFLY_API_KEY=ff_sk_xxx
+flypy deploy --non-interactive
+\`\`\`
+
+### Header
+
+\`\`\`
+Authorization: Bearer ff_sk_xxx
+\`\`\`
+
+## Scopes
+
+| Scope | Access |
+|-------|--------|
+| Full | All functions and resources in the account |
+| Team | Only functions in the selected team(s) |
+| Function | Single function (read/deploy/logs) |
+
+## Rotation
+
+1. Create a new key with the same scope
+2. Update CI/secrets to use the new key
+3. Verify deployments work
+4. Revoke the old key in **Settings** → **API keys**
+
+## Security
+
+- Keys are stored hashed; the plain value is shown only at creation
+- Revoke keys immediately if they are exposed
+- Prefer narrow scopes (e.g. one function) for CI keys
+        `,
+        lastUpdated: "2026-02-27"
       }
     ]
   },
@@ -781,6 +1512,473 @@ Access pre-built dashboards for:
 - Performance: Latency and throughput
 - Errors: Error analysis and trends
 - Costs: Spend by provider and function
+        `,
+        lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "alerts",
+        title: "Alerts",
+        description: "Configure alerts and notifications",
+        content: `
+# Alerts
+
+Configure alerts so you're notified when metrics cross thresholds.
+
+## Alert Types
+
+### Function-level
+
+- **Error rate** above a percentage (e.g. > 5%)
+- **Latency** above a threshold (e.g. p95 > 500ms)
+- **Invocations** spike or drop
+- **Cold starts** frequency
+
+### Account-level
+
+- **Quota** (invocations, bandwidth) approaching limit
+- **Billing** threshold
+
+## Creating an Alert
+
+### Dashboard
+
+1. Open **Monitoring** → **Alerts**
+2. Click **Create alert**
+3. Choose metric, condition (e.g. \`error_rate > 5%\`), and duration (e.g. 5 minutes)
+4. Add channels: email, Slack, PagerDuty, or webhook
+
+### Configuration file
+
+\`\`\`yaml
+# functionfly.alerts.yaml (optional)
+alerts:
+  - name: high_error_rate
+    metric: error_rate
+    condition: "> 0.05"
+    window: 5m
+    severity: critical
+    channels:
+      - type: slack
+        url: \$SLACK_WEBHOOK
+  - name: slow_response
+    metric: p95_latency_ms
+    condition: "> 500"
+    window: 10m
+    severity: warning
+\`\`\`
+
+## Severity
+
+| Level | Use case |
+|-------|----------|
+| Critical | Page immediately; likely user impact |
+| Warning | Investigate soon |
+| Info | For awareness (e.g. deploy completed) |
+
+## Webhooks
+
+Send alerts to any HTTP endpoint:
+
+\`\`\`json
+{
+  "event": "alert.triggered",
+  "alert": "high_error_rate",
+  "function": "my-api",
+  "value": 0.12,
+  "threshold": 0.05,
+  "timestamp": "2026-02-26T12:00:00Z"
+}
+\`\`\`
+        `,
+        lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "logs",
+        title: "Logs",
+        description: "View and query function logs",
+        content: `
+# Logs
+
+Access structured logs for debugging and auditing.
+
+## Viewing Logs
+
+### Dashboard
+
+1. Open your function
+2. Go to **Logs**
+3. Filter by time range, level (info, error), or provider
+4. Click a log line for full context (request id, trace id)
+
+### CLI
+
+\`\`\`bash
+# Tail logs (live)
+flypy logs --tail
+
+# Last 100 lines
+flypy logs -n 100
+
+# Filter by level
+flypy logs --level error
+
+# Filter by provider
+flypy logs --provider=cloudflare
+\`\`\`
+
+## Log Levels
+
+- **DEBUG**: Detailed diagnostics (disable in production)
+- **INFO**: Normal operations (e.g. request completed)
+- **WARN**: Recoverable issues (e.g. retry)
+- **ERROR**: Failures (e.g. exception)
+- **CRITICAL**: Severe failure (e.g. crash)
+
+## Structured Logging
+
+\`\`\`python
+from functionfly import log
+
+log.info("order_created", order_id="123", amount=99.99, user_id="u_456")
+log.error("payment_failed", order_id="123", reason="insufficient_funds")
+\`\`\`
+
+Query in the dashboard with \`order_id:123\` or \`level:error\`.
+
+## Retention
+
+- **Free**: 7 days
+- **Pro**: 30 days
+- **Enterprise**: Configurable (e.g. 90 days or export to your SIEM)
+
+## Best Practices
+
+1. Use structured fields (not only message) for filtering
+2. Avoid logging secrets or PII
+3. Use appropriate levels so alerts stay actionable
+        `,
+        lastUpdated: "2026-02-27"
+      }
+    ]
+  },
+  {
+    id: "api-reference",
+    title: "API Reference",
+    icon: FileText,
+    pages: [
+      {
+        slug: "api-overview",
+        title: "Overview",
+        description: "REST API introduction",
+        content: `
+# API Reference Overview
+
+The FunctionFly REST API lets you manage functions, deployments, and resources programmatically.
+
+## Base URL
+
+\`\`\`
+https://api.functionfly.io/v1
+\`\`\`
+
+## Authentication
+
+All requests require authentication via API key or OAuth token:
+
+\`\`\`
+Authorization: Bearer <token>
+\`\`\`
+
+See [Authentication](/docs/authentication) and [API Keys](/docs/api-keys) for details.
+
+## Rate Limits
+
+| Plan | Requests/minute |
+|------|-----------------|
+| Free | 60 |
+| Pro | 300 |
+| Enterprise | Custom |
+
+\`429 Too Many Requests\` is returned when exceeded. Retry after the \`Retry-After\` header.
+
+## Pagination
+
+List endpoints return paginated results:
+
+\`\`\`
+GET /v1/functions?page=2&per_page=20
+\`\`\`
+
+Response includes \`page\`, \`per_page\`, \`total\`, and \`data\`.
+
+## Errors
+
+Errors use a consistent format:
+
+\`\`\`json
+{
+  "error": {
+    "code": "validation_error",
+    "message": "Invalid request body",
+    "details": { "field": "name" }
+  }
+}
+\`\`\`
+
+Common HTTP codes: \`400\` (bad request), \`401\` (unauthorized), \`404\` (not found), \`429\` (rate limit).
+        `,
+        lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "rest-api",
+        title: "REST API",
+        description: "Endpoints for functions and deployments",
+        content: `
+# REST API Endpoints
+
+## Functions
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | \`/v1/functions\` | List functions |
+| POST | \`/v1/functions\` | Create function |
+| GET | \`/v1/functions/:id\` | Get function |
+| PATCH | \`/v1/functions/:id\` | Update function |
+| DELETE | \`/v1/functions/:id\` | Delete function |
+
+## Deployments
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | \`/v1/functions/:id/deployments\` | Create deployment |
+| GET | \`/v1/functions/:id/deployments\` | List deployments |
+| GET | \`/v1/functions/:id/deployments/:vid\` | Get deployment |
+| POST | \`/v1/functions/:id/rollback\` | Rollback to version |
+
+## Environment Variables
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | \`/v1/functions/:id/env\` | List env vars (values masked) |
+| PUT | \`/v1/functions/:id/env\` | Set env vars (bulk) |
+
+## Invoke
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | \`/v1/functions/:id/invoke\` | Invoke function (sync) |
+
+## Example
+
+\`\`\`bash
+# List functions
+curl -H "Authorization: Bearer \$TOKEN" \\
+  https://api.functionfly.io/v1/functions
+
+# Create deployment
+curl -X POST -H "Authorization: Bearer \$TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"ref": "main"}' \\
+  https://api.functionfly.io/v1/functions/fn_xxx/deployments
+\`\`\`
+        `,
+        lastUpdated: "2026-02-27"
+      }
+    ]
+  },
+  {
+    id: "troubleshooting",
+    title: "Troubleshooting",
+    icon: AlertTriangle,
+    pages: [
+      {
+        slug: "troubleshooting-overview",
+        title: "Overview",
+        description: "Common issues and how to resolve them",
+        content: `
+# Troubleshooting Overview
+
+Quick links to the most common issues and where to get help.
+
+## Common Issues
+
+- [Deploy failures](/docs/common-errors#deploy-failures) – Build errors, provider timeouts, config issues
+- [Runtime errors](/docs/common-errors#runtime-errors) – Function crashes, timeouts, out of memory
+- [Routing and failover](/docs/common-errors#routing) – Traffic not reaching the right provider
+- [Authentication](/docs/common-errors#authentication) – Login, API keys, OAuth
+
+## Debugging
+
+- [Enable debug logging](/docs/debugging) – CLI and SDK
+- [Inspect logs and traces](/docs/logs) – Dashboard and CLI
+- [Reproduce locally](/docs/debugging#local-reproduction) – \`flypy dev\` and provider simulators
+
+## Getting Help
+
+- [Contact Support](/contact) – For account and platform issues
+- [FAQ](/faq) – Common questions
+- [Status page](https://status.functionfly.com) – Outages and incidents
+- [Community](https://github.com/functionfly/functionfly/discussions) – Discussions and examples
+        `,
+        lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "common-errors",
+        title: "Common Errors",
+        description: "Frequent errors and solutions",
+        content: `
+# Common Errors
+
+## Deploy Failures
+
+### \`Build failed: module not found\`
+
+- Ensure all dependencies are in \`package.json\` (Node) or \`requirements.txt\` (Python)
+- Run \`flypy build\` locally to reproduce
+- Check [CLI Commands](/docs/cli-commands) and [Configuration](/docs/cli-config) for supported runtimes
+
+### \`Provider timeout: Vercel\` (or Cloudflare, Fly, Deno)
+
+- Large bundles or slow builds can hit provider limits
+- Reduce bundle size (tree-shake, split) or increase timeout in \`functionfly.jsonc\`
+- Deploy to one provider first: \`flypy deploy --provider=cloudflare\`
+
+### \`Invalid configuration\`
+
+- Validate \`functionfly.jsonc\` with \`flypy config validate\`
+- Ensure \`runtime\`, \`name\`, and \`providers\` are set correctly
+
+## Runtime Errors
+
+### \`Function timeout\`
+
+- Default timeout is 30s (varies by provider)
+- Increase in config or optimize long-running work (use queues, background jobs)
+
+### \`Out of memory\`
+
+- Increase memory in \`functionfly.jsonc\` (e.g. \`memory: 512\`)
+- Profile with [Monitoring](/docs/monitoring-overview) to find leaks or heavy allocations
+
+### \`Cold start timeout\`
+
+- Optimize startup (lazy load, reduce dependencies)
+- Use [warm-up](/docs/deployment-overview) if available for your plan
+
+## Routing
+
+### Traffic not failing over
+
+- Check [provider status](https://status.functionfly.com)
+- Verify health checks in the dashboard (Deployments → Health)
+- Ensure at least two providers are enabled and deployed
+
+## Authentication
+
+### \`Invalid API key\`
+
+- Create a new key in **Settings** → **API keys** and update your client
+- Ensure no extra spaces; use \`Authorization: Bearer <key>\`
+
+### \`Unauthorized\` on dashboard
+
+- Clear cookies or try incognito; re-login
+- If SSO: confirm your IdP is configured and your account is linked
+        `,
+        lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "debugging",
+        title: "Debugging",
+        description: "Enable debug logs and reproduce issues",
+        content: `
+# Debugging
+
+## Enable Debug Logging
+
+### CLI
+
+\`\`\`bash
+flypy deploy --debug
+# or
+export FUNCTIONFLY_DEBUG=1
+flypy deploy
+\`\`\`
+
+### SDK (in your function)
+
+\`\`\`python
+import os
+os.environ["FUNCTIONFLY_LOG_LEVEL"] = "DEBUG"
+\`\`\`
+
+## Local Reproduction
+
+\`\`\`bash
+# Run function locally (simulates request/response)
+flypy dev
+
+# Invoke with custom body
+curl -X POST http://localhost:3000/ -d '{"key": "value"}'
+\`\`\`
+
+Match runtime and env vars to production when possible.
+
+## Inspect Logs and Traces
+
+1. **Dashboard** → Your function → **Logs**: filter by time, level, request id
+2. **CLI**: \`flypy logs --tail\` for live logs
+3. Use the **request id** from responses to trace a single request across logs and [tracing](/docs/monitoring-overview#tracing)
+
+## Provider-Specific Debugging
+
+- **Vercel**: Check Vercel dashboard for build/runtime logs
+- **Cloudflare**: Workers dashboard → Logs and Metrics
+- **Fly.io**: \`fly logs\` in your Fly app
+- **Deno**: Deploy dashboard logs
+
+## Reporting a Bug
+
+When contacting support, include:
+
+- Function name and (if applicable) deployment version
+- Request id or timestamp of the failure
+- Relevant log snippet (redact secrets)
+- Steps to reproduce
+- Expected vs actual behavior
+        `,
+        lastUpdated: "2026-02-27"
+      },
+      {
+        slug: "getting-help",
+        title: "Getting Help",
+        description: "Support channels and resources",
+        content: `
+# Getting Help
+
+## Support Channels
+
+| Channel | Use for | Response |
+|---------|---------|----------|
+| [Contact form](/contact) | Account, billing, platform bugs | Within 1–2 business days |
+| [FAQ](/faq) | Common how-to and conceptual questions | Self-serve |
+| [Status page](https://status.functionfly.com) | Outages and incidents | Live updates |
+| [GitHub Discussions](https://github.com/functionfly/functionfly/discussions) | Community help, examples, feature ideas | Community and team |
+
+## Before You Contact Support
+
+1. Check [Common Errors](/docs/common-errors) and [FAQ](/faq)
+2. Search [GitHub Discussions](https://github.com/functionfly/functionfly/discussions)
+3. Gather: function name, deployment id or timestamp, request id, error message, and steps to reproduce
+
+## Enterprise Support
+
+Enterprise plans include:
+
+- Dedicated support channel (email/Slack)
+- SLA-backed response times
+- Architecture and best-practice reviews
+- See [Enterprise Support](/enterprise/support) for details
         `,
         lastUpdated: "2026-02-27"
       }

@@ -40,6 +40,15 @@ func (r *RegistryRepository) GetFunctionVersion(functionID uuid.UUID, version st
 	return &v, nil
 }
 
+// GetFunctionVersionByID retrieves a function version by its primary key (used for verification status lookup).
+func (r *RegistryRepository) GetFunctionVersionByID(id uuid.UUID) (*RegistryFunctionVersion, error) {
+	var v RegistryFunctionVersion
+	if err := r.db.First(&v, id).Error; err != nil {
+		return nil, fmt.Errorf("failed to get function version: %w", err)
+	}
+	return &v, nil
+}
+
 // GetLatestFunctionVersion retrieves the latest version of a function
 func (r *RegistryRepository) GetLatestFunctionVersion(functionID uuid.UUID) (*RegistryFunctionVersion, error) {
 	// Try cache first if available

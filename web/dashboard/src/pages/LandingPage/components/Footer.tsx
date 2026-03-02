@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Github, Twitter, Linkedin, MessageCircle, Mail, ArrowUp, Heart } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
+import { DOCS_SITE_URL } from "@/lib/constants";
 
 export function Footer() {
 
@@ -112,7 +113,9 @@ export function Footer() {
               <ul className="space-y-3">
                 <li>
                   <a
-                    href="#"
+                    href={DOCS_SITE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
                     Documentation

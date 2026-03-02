@@ -193,19 +193,20 @@ func (AgentWallet) TableName() string {
 
 // AgentListing represents a marketplace listing for an agent
 type AgentListing struct {
-	ID                     uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	AgentID                string    `json:"agent_id" gorm:"uniqueIndex;not null"`
-	ListingType            string    `json:"listing_type" gorm:"not null;default:'worker'"` // worker | manager | infrastructure
-	PricingModel           string    `json:"pricing_model" gorm:"not null;default:'per_call'"`
-	PricePerCall           *float64  `json:"price_per_call" gorm:"type:decimal(10,4)"`
-	SubscriptionMonthlyUSD *float64  `json:"subscription_monthly_usd" gorm:"type:decimal(10,2)"`
-	RevenueSharePercent    *float64  `json:"revenue_share_percent" gorm:"type:decimal(5,2)"`
-	RatingScore            float64   `json:"rating_score" gorm:"type:decimal(3,2);default:0"`
-	TotalCalls             int       `json:"total_calls" gorm:"not null;default:0"`
-	ROIScore               float64   `json:"roi_score" gorm:"type:decimal(5,2);default:0"`
-	IsActive               bool      `json:"is_active" gorm:"not null;default:true"`
-	ListedAt               time.Time `json:"listed_at" gorm:"autoCreateTime"`
-	UpdatedAt              time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	ID                     uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AgentID                string         `json:"agent_id" gorm:"uniqueIndex;not null"`
+	Agent                  *AgentIdentity `json:"agent,omitempty" gorm:"foreignKey:AgentID;references:AgentID"`
+	ListingType            string         `json:"listing_type" gorm:"not null;default:'worker'"` // worker | manager | infrastructure
+	PricingModel           string         `json:"pricing_model" gorm:"not null;default:'per_call'"`
+	PricePerCall           *float64       `json:"price_per_call" gorm:"type:decimal(10,4)"`
+	SubscriptionMonthlyUSD *float64       `json:"subscription_monthly_usd" gorm:"type:decimal(10,2)"`
+	RevenueSharePercent    *float64       `json:"revenue_share_percent" gorm:"type:decimal(5,2)"`
+	RatingScore            float64        `json:"rating_score" gorm:"type:decimal(3,2);default:0"`
+	TotalCalls             int            `json:"total_calls" gorm:"not null;default:0"`
+	ROIScore               float64        `json:"roi_score" gorm:"type:decimal(5,2);default:0"`
+	IsActive               bool           `json:"is_active" gorm:"not null;default:true"`
+	ListedAt               time.Time      `json:"listed_at" gorm:"autoCreateTime"`
+	UpdatedAt              time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // TableName returns the GORM table name

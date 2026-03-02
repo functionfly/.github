@@ -12,6 +12,7 @@ import { Footer } from '@/pages/LandingPage/components/Footer';
 import { MetaTags } from '@/components/seo/MetaTags';
 import { FAQPageStructuredData } from '@/components/seo/StructuredData';
 import { useWebVitals } from '@/hooks/useWebVitals';
+import { DOCS_SITE_URL } from '@/lib/constants';
 
 interface FAQItemProps {
   question: string;
@@ -373,7 +374,7 @@ export function FAQPage() {
                 <MessageSquare className="h-4 w-4" />
                 Contact Support
               </Link>
-              <a href="https://docs.functionfly.com" target="_blank" rel="noopener noreferrer" className="faq-contact-button secondary">
+              <a href={DOCS_SITE_URL} target="_blank" rel="noopener noreferrer" className="faq-contact-button secondary">
                 <ExternalLink className="h-4 w-4" />
                 View Documentation
               </a>

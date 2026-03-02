@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Check, Copy, ExternalLink, AlertTriangle, Info, CheckCircle, XCircle } from "lucide-react";
+import { DOCS_SITE_URL } from "@/lib/constants";
 import { type DocPage } from "../data/docs";
 
 interface DocsContentProps {
@@ -200,7 +201,9 @@ export function DocsContent({ page }: DocsContentProps) {
       <footer className="mt-12 pt-8 border-t border-border-subtle">
         <div className="flex items-center justify-between">
           <a
-            href="/docs"
+            href={DOCS_SITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
           >
             <ExternalLink className="w-4 h-4" />

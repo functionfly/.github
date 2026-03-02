@@ -1,6 +1,7 @@
 package execution
 
 import (
+	"crypto/ed25519"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -33,6 +34,10 @@ type Handler struct {
 	NodeID string
 	// Region is the geographic region of this node
 	Region string
+	// NodeKey is the Ed25519 private key used to sign FXCERTs. If nil, certs are generated without a node signature (e.g. bootstrap).
+	NodeKey ed25519.PrivateKey
+	// PlatformKey is the optional Ed25519 platform key; when set, certs include a platform signature (Platform Key ID in UI).
+	PlatformKey ed25519.PrivateKey
 }
 
 // HandleExecute handles executing a function
@@ -231,10 +236,11 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// DRE 2.0: Build Merkle Execution Graph for deterministic functions
+	// DRE 2.0: Build Merkle Execution Graph and FXCERT for deterministic functions, or all functionfly-authored functions
 	var executionRootHash string
 	var certID string
-	if statusCode >= 200 && statusCode < 300 && fnVersion.Deterministic && !cached {
+	issueFXCERT := statusCode >= 200 && statusCode < 300 && !cached && (fnVersion.Deterministic || strings.EqualFold(author, "functionfly"))
+	if issueFXCERT {
 		go h.buildAndStoreMEG(fn, fnVersion, execReq.Input, result, resourceUsage, durationMs)
 	}
 
@@ -679,7 +685,7 @@ func (h *Handler) updateTrustScoreV2(functionID uuid.UUID) {
 	if dreScores == nil {
 		dreScores = &registry.DREScores{
 			DeterminismScore:          0,
-			ReplayIntegrityScore:       0,
+			ReplayIntegrityScore:      0,
 			PerformanceStabilityScore: 0,
 			DriftScore:                1.0,
 		}
@@ -689,14 +695,14 @@ func (h *Handler) updateTrustScoreV2(functionID uuid.UUID) {
 	metrics := &functionregistry.TrustMetricsV2{
 		TrustMetrics: functionregistry.TrustMetrics{
 			// These would be populated from the function rating in a full implementation
-			SuccessRate:   1.0,
+			SuccessRate:  1.0,
 			P50LatencyMs: 0,
 			P95LatencyMs: 0,
 		},
 		DeterminismScore:          dreScores.DeterminismScore,
 		ReplayIntegrityScore:      dreScores.ReplayIntegrityScore,
 		PerformanceStabilityScore: dreScores.PerformanceStabilityScore,
-		DriftScore:               dreScores.DriftScore,
+		DriftScore:                dreScores.DriftScore,
 	}
 
 	// Calculate Trust Score v2
@@ -710,12 +716,12 @@ func (h *Handler) updateTrustScoreV2(functionID uuid.UUID) {
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"function_id":     functionID,
-		"trust_score_v2": result.TrustScoreV2,
-		"determinism":     dreScores.DeterminismScore,
+		"function_id":      functionID,
+		"trust_score_v2":   result.TrustScoreV2,
+		"determinism":      dreScores.DeterminismScore,
 		"replay_integrity": dreScores.ReplayIntegrityScore,
-		"performance":    dreScores.PerformanceStabilityScore,
-		"drift":          dreScores.DriftScore,
+		"performance":      dreScores.PerformanceStabilityScore,
+		"drift":            dreScores.DriftScore,
 	}).Info("Updated Trust Score v2")
 }
 
@@ -825,8 +831,8 @@ func (h *Handler) buildAndStoreMEG(
 		DeterminismScore: 0,
 	}
 
-	// Generate certificate without signing (no node key configured by default)
-	cert, err := drecert.Generate(megResult, certExec, certCapsule, certTrust, drecert.CertLevelStandard, nil)
+	// Generate certificate; sign with node key and optional platform key when configured
+	cert, err := drecert.Generate(megResult, certExec, certCapsule, certTrust, drecert.CertLevelStandard, h.NodeKey, h.PlatformKey)
 	if err != nil {
 		logrus.WithError(err).Warn("DRE: Failed to generate FXCERT")
 		return
@@ -865,8 +871,8 @@ func (h *Handler) buildAndStoreMEG(
 		IncrementTotal:        true,
 		IncrementVerified:     false, // Will be set to true after replay verification
 		CapsuleDescriptorHash: capsuleHash,
-		LastVerifiedAt:       &now,
-		ResourceHash:         megResult.ResourceHash, // For performance stability tracking
+		LastVerifiedAt:        &now,
+		ResourceHash:          megResult.ResourceHash, // For performance stability tracking
 	}
 	if err := h.Repo.UpdatePassport(fn.ID, passportUpdate); err != nil {
 		logrus.WithError(err).WithField("function_id", fn.ID).Warn("DRE: Failed to update execution passport")

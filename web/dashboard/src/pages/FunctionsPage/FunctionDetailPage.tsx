@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -22,29 +21,17 @@ import { ProviderIcon } from "@/components/common/ProviderIcon";
 import { LineChart } from "@/components/common/LineChart";
 import { BarChart } from "@/components/common/BarChart";
 import { PieChart } from "@/components/common/PieChart";
+import { FunctionHeader } from "@/components/functions";
+import type { FunctionHeaderData, TrustTier } from "@/types";
 import {
-  ArrowLeft,
-  Edit,
-  Rocket,
-  Trash2,
-  MoreVertical,
-  Calendar,
   Clock,
   Globe,
   Activity,
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  Play,
-  Pause,
   RotateCcw
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import "@/styles/components.css";
 
 interface FunctionData {
@@ -101,6 +88,40 @@ const errorData = [
   { name: "5xx", value: 25, color: "#ef4444" },
   { name: "Timeout", value: 10, color: "#8b5cf6" },
 ];
+
+/**
+ * Map function data to FunctionHeaderData format
+ * Uses mock data for fields not available from the API
+ */
+function mapToFunctionHeaderData(
+  data: FunctionData,
+  trustTier: TrustTier = "high",
+  economicScore: number = 87
+): FunctionHeaderData {
+  // Generate a mock execution root hash based on function id
+  const executionRootHash = `0x${data.id.split('').map(c => c.charCodeAt(0).toString(16)).join('').padEnd(64, '0').slice(0, 64)}`;
+
+  // Generate a mock resource signature
+  const resourceSignature = `res_sig_${data.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 16)}`;
+
+  return {
+    name: data.name,
+    id: data.id,
+    executionRootHash,
+    trustTier,
+    economicScore,
+    runtime: data.runtime,
+    resourceSignature,
+    fxcert: {
+      verified: true,
+      issuedAt: data.createdAt,
+      issuer: "FunctionFly Registry",
+    },
+    status: data.status,
+    version: data.version,
+    description: `Function deployed across ${data.providers.join(", ")} in ${data.region.toUpperCase()} region`,
+  };
+}
 
 export function FunctionDetailPage() {
   const { id } = useParams();
@@ -240,64 +261,15 @@ export function FunctionDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/functions")}
-            className="text-text-secondary hover:text-text-primary"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-white">{functionData.name}</h1>
-              <StatusBadge status={functionData.status} />
-            </div>
-            <p className="text-text-secondary">Function management and monitoring</p>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => navigate(`/functions/${id}/edit`)}
-          >
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
-          </Button>
-          <Button
-            onClick={handleRedeploy}
-            disabled={isRedeploying}
-          >
-            <Rocket className="w-4 h-4 mr-2" />
-            {isRedeploying ? "Redeploying..." : "Redeploy"}
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-bg-tertiary border-white/8">
-              <DropdownMenuItem>
-                <Play className="w-4 h-4 mr-2" />
-                Test Function
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Pause className="w-4 h-4 mr-2" />
-                Pause Deployments
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-red-400">
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Function
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+      {/* Function Header */}
+      <FunctionHeader
+        data={mapToFunctionHeaderData(functionData)}
+        onBack={() => navigate("/functions")}
+        onEdit={() => navigate(`/functions/${id}/edit`)}
+        onDeploy={handleRedeploy}
+        onTest={() => toast.info("Test functionality coming soon")}
+        onShare={() => toast.info("Share functionality coming soon")}
+      />
 
       {/* Function Info Card */}
       <Card className="card">

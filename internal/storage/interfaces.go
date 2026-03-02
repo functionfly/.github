@@ -298,4 +298,26 @@ type Repository interface {
 	UpdateTeamInviteStatus(inviteID uuid.UUID, status string) error
 	GetTeamByUserID(userID uuid.UUID) (*Team, error)
 	IsTeamAdmin(userID uuid.UUID, teamID string) (bool, error)
+
+	// User profile operations
+	GetUserSkills(userID uuid.UUID) ([]*UserSkill, error)
+	AddUserSkill(skill *UserSkill) error
+	RemoveUserSkill(skillID uuid.UUID) error
+
+	// User achievements operations
+	GetUserAchievements(userID uuid.UUID) ([]*UserAchievement, error)
+	GetAchievementBySlug(slug string) (*Achievement, error)
+	ListAchievements() ([]*Achievement, error)
+	AwardAchievement(userID, achievementID uuid.UUID, metadata map[string]interface{}) error
+	UpdateAchievementProgress(userAchievementID uuid.UUID, progress int, isCompleted bool) error
+
+	// User activity operations
+	GetUserActivity(userID uuid.UUID, limit, offset int) ([]*UserActivity, error)
+	CreateUserActivity(activity *UserActivity) error
+
+	// User analytics operations
+	GetUserExecutionStats(userID uuid.UUID) (map[string]interface{}, error)
+	GetUserPopularFunctions(userID uuid.UUID, limit int) ([]map[string]interface{}, error)
+	GetUserGeographicStats(userID uuid.UUID) (map[string]interface{}, error)
+	GetUserDeviceStats(userID uuid.UUID) (map[string]interface{}, error)
 }

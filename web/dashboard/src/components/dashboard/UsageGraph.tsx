@@ -41,8 +41,8 @@ export function UsageGraph({
         </CardHeader>
       )}
       <CardContent className={title ? "pt-0" : undefined}>
-        <div className="h-[200px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[200px] min-h-[200px] w-full min-w-0">
+          <ResponsiveContainer width="100%" height="100%" minHeight={200}>
             <AreaChart
               data={data}
               margin={{ top: 8, right: 8, left: 0, bottom: 0 }}

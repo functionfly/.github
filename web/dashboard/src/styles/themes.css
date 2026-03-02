@@ -1134,14 +1134,22 @@
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
 }
 
-[data-theme="light"] .features-section-enhanced h2 {
+[data-theme="light"] .features-section-enhanced h2,
+[data-theme="light"] .features-section-enhanced .features-section-headline {
   color: #0f172a !important;
   font-weight: 800 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8), 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Stronger contrast for "Everything you need to stay online" in light mode */
+[data-theme="light"] .features-section-enhanced .features-section-headline {
+  color: #020617 !important;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.9), 0 1px 3px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="light"] .features-section-enhanced .text-slate-600,
-[data-theme="light"] .features-section-enhanced p.text-xl {
+[data-theme="light"] .features-section-enhanced p.text-xl,
+[data-theme="light"] .features-section-enhanced .text-text-secondary {
   color: #334155 !important;
 }
 
@@ -1167,6 +1175,29 @@
 [data-theme="light"] .features-section-enhanced .glass-card .text-slate-600,
 [data-theme="light"] .features-section-enhanced .glass-card p {
   color: #475569 !important;
+}
+
+/* Feature card icons: ensure visible in light mode (colored icons on light bg) */
+[data-theme="light"] .features-section-enhanced .features-section-icon-wrap {
+  border-width: 1px !important;
+}
+
+[data-theme="light"] .features-section-enhanced .features-section-icon-wrap svg {
+  color: inherit !important;
+}
+
+/* Predictive Routing illustration: ensure paths visible in light mode */
+[data-theme="light"] .features-section-enhanced .features-section-icon-wrap svg circle[fill="var(--success)"],
+[data-theme="light"] .features-section-enhanced .features-section-icon-wrap svg path[fill="var(--success)"] {
+  fill: #059669 !important;
+}
+
+[data-theme="light"] .features-section-enhanced .features-section-icon-wrap svg path[stroke="var(--success)"] {
+  stroke: #059669 !important;
+}
+
+[data-theme="light"] .features-section-enhanced .features-section-icon-wrap svg path[fill="var(--bg-primary)"] {
+  fill: #f8fafc !important;
 }
 
 /* Trusted by Industry Leaders / Use Cases - same clear light treatment */
@@ -1249,7 +1280,7 @@
 
 
 [data-theme="light"] .footer-enhanced .text-text-muted {
-  color: #6a6a7a !important;
+  color: #52525b !important;
 }
 
 /* Footer social icons styling is handled by themeStore.ts */
@@ -1441,6 +1472,55 @@
   color: #0f0f1a !important;
 }
 
+/* Security badge cards: ensure icon container and icons visible in light mode */
+[data-theme="light"] .security-section-enhanced .glass-card .bg-white\/5 {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .security-section-enhanced .glass-card .w-12.h-12 svg {
+  color: #1a1a2e !important;
+  fill: #1a1a2e !important;
+}
+
+/* Built for AI Agents section - light mode */
+[data-theme="light"] .built-for-ai-section {
+  background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .built-for-ai-section .rounded-full.border-cyan-500\/20,
+[data-theme="light"] .built-for-ai-section .border-cyan-500\/20 span {
+  border-color: rgba(8, 145, 178, 0.35) !important;
+  color: #0e7490 !important;
+}
+
+[data-theme="light"] .built-for-ai-section .text-cyan-400 {
+  color: #0891b2 !important;
+}
+
+[data-theme="light"] .built-for-ai-section h2.text-white {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .built-for-ai-section .text-text-secondary {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .built-for-ai-section .bg-gradient-to-br.from-white\/5 {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .built-for-ai-section .bg-gradient-to-br.from-white\/5 h3 {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .built-for-ai-section .bg-gradient-to-br.from-white\/5 .text-text-secondary {
+  color: #475569 !important;
+}
+
 /* Pricing Section enhancements for light mode */
 [data-theme="light"] .pricing-section-enhanced h2 {
   color: #0f0f1a !important;
@@ -1576,10 +1656,118 @@
   color: #334155 !important;
 }
 
+/* Agent Execution Plans (AEP) - light mode contrast */
+[data-theme="light"] .pricing-agent-section .rounded-full.border-cyan-500\/20 span {
+  color: #0e7490 !important;
+}
+
+[data-theme="light"] .pricing-agent-section .rounded-full.border-cyan-500\/20 {
+  background: rgba(8, 145, 178, 0.12) !important;
+  border-color: rgba(8, 145, 178, 0.35) !important;
+}
+
+[data-theme="light"] .pricing-agent-section h2.text-white {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .pricing-agent-section .pricing-agent-card {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(8, 145, 178, 0.3) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .pricing-agent-section .pricing-agent-card:hover {
+  border-color: rgba(8, 145, 178, 0.5) !important;
+}
+
+[data-theme="light"] .pricing-agent-section .pricing-agent-card h3.text-white,
+[data-theme="light"] .pricing-agent-section .pricing-agent-card .pricing-agent-price {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .pricing-agent-section .pricing-agent-card .text-cyan-300\/70 {
+  color: #0e7490 !important;
+  opacity: 0.9;
+}
+
+[data-theme="light"] .pricing-agent-section .pricing-agent-card svg.text-cyan-400,
+[data-theme="light"] .pricing-agent-section .pricing-agent-card .text-cyan-400 {
+  color: #0891b2 !important;
+}
+
+[data-theme="light"] .pricing-agent-section .pricing-agent-card [class*="from-cyan-500\/20"] .text-cyan-400,
+[data-theme="light"] .pricing-agent-section .pricing-agent-card [class*="from-cyan-500\/20"] svg {
+  color: #0891b2 !important;
+}
+
+[data-theme="light"] .pricing-agent-section .pricing-agent-card .absolute.opacity-10 svg {
+  color: #0891b2 !important;
+  opacity: 0.18 !important;
+}
+
+[data-theme="light"] .pricing-agent-section .pricing-agent-card .pricing-agent-cta-outline {
+  color: #0e7490 !important;
+  border-color: rgba(8, 145, 178, 0.5) !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .pricing-agent-section .pricing-agent-card .pricing-agent-cta-outline:hover {
+  background: rgba(8, 145, 178, 0.12) !important;
+  border-color: #0891b2 !important;
+  color: #0e7490 !important;
+}
+
 /* Powerful Features section - light mode */
 [data-theme="light"] .pricing-page .pricing-feature-carousel h2,
 [data-theme="light"] .pricing-page .pricing-feature-carousel h3 {
   color: #1e1b4b !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-feature-carousel-card {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(30, 27, 75, 0.14) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-carousel-nav-btn {
+  color: #1e1b4b !important;
+  border-color: rgba(30, 27, 75, 0.25) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-carousel-nav-btn:hover {
+  background: rgba(99, 102, 241, 0.1) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  color: #4f46e5 !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-why-choose-card {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(30, 27, 75, 0.14) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-why-choose-card h3 {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-why-choose-card p {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-why-choose-section h2 span:first-of-type {
+  color: #1e1b4b !important;
+  background: linear-gradient(to right, #1e1b4b, #334155) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-why-choose-section h2 span:last-of-type {
+  background: linear-gradient(to right, #4f46e5, #7c3aed) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
 }
 
 /* Compare Plans section - light mode */
@@ -1636,6 +1824,45 @@
 
 [data-theme="light"] .pricing-page .pricing-faq-section .pricing-faq-card p {
   color: #475569 !important;
+}
+
+/* Pricing page CTA section - light mode contrast */
+[data-theme="light"] .pricing-page .pricing-cta-section {
+  background: linear-gradient(135deg, rgba(238, 242, 255, 0.98) 0%, rgba(232, 236, 255, 0.98) 50%, rgba(245, 243, 255, 0.98) 100%) !important;
+  border-color: rgba(99, 102, 241, 0.25) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-cta-heading-line1 {
+  color: #1e1b4b !important;
+  background: linear-gradient(to right, #1e1b4b, #334155) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-cta-heading-line2 {
+  background: linear-gradient(to right, #4f46e5, #7c3aed) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-cta-section .text-text-secondary {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-cta-docs-btn {
+  color: #4f46e5 !important;
+  border-color: rgba(79, 70, 229, 0.5) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .pricing-page .pricing-cta-docs-btn:hover {
+  background: rgba(99, 102, 241, 0.12) !important;
+  border-color: #6366f1 !important;
+  color: #4f46e5 !important;
 }
 
 /* State Fabric pricing section - light mode */
@@ -1892,6 +2119,44 @@
 [data-theme="light"] .interactive-demo-enhanced .text-text-secondary {
   color: #4a4a5a !important;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Interactive demo tab bar: visible background and dark inactive tab text in light mode */
+[data-theme="light"] .interactive-demo-enhanced .interactive-demo-tabs {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .interactive-demo-enhanced .interactive-demo-tab:not([data-state="active"]) {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .interactive-demo-enhanced .interactive-demo-tab:not([data-state="active"]) svg {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .interactive-demo-enhanced .interactive-demo-tab[data-state="active"] {
+  color: #fff !important;
+}
+
+[data-theme="light"] .interactive-demo-enhanced .interactive-demo-tab[data-state="active"] svg {
+  color: #fff !important;
+}
+
+/* Reset button in code sandbox: stronger contrast in light mode (override glass-card button) */
+[data-theme="light"] .interactive-demo-enhanced .glass-card .interactive-demo-reset-btn {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #334155 !important;
+  border: 1px solid rgba(0, 0, 0, 0.2) !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .interactive-demo-enhanced .glass-card .interactive-demo-reset-btn:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.3) !important;
+  color: #1e293b !important;
+  box-shadow: none !important;
 }
 
 /* Problem Section enhancements for light mode */

@@ -5,6 +5,14 @@ import { API_BASE_URL } from './constants';
  */
 const API_VERSION = 'v1';
 
+/** API root (no /v1). Well-known discovery is served at root. */
+const apiRoot = API_BASE_URL.replace(/\/v1\/?$/, '') || API_BASE_URL;
+
+/**
+ * AI/LLM discovery manifest URL (GET). Public, no auth. Returns OpenAI-compatible tool schemas for all public functions.
+ */
+export const WELL_KNOWN_DISCOVERY_URL = `${apiRoot.replace(/\/$/, '')}/.well-known/functionfly.json`;
+
 /**
  * Full API base URL with version
  */

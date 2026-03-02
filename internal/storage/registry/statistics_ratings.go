@@ -211,15 +211,22 @@ func (r *RegistryRepository) UpdateTrustScore(rating *RegistryFunctionRating) er
 		"user_diversity":     rating.UserDiversity,
 		"trust_score":        rating.TrustScore,
 		"trust_updated_at":   trustUpdatedAt,
-		"success_rate":       rating.SuccessRate,
+		"success_rate":      rating.SuccessRate,
 		"p95_latency_ms":     rating.P95LatencyMs,
 		"avg_latency_ms":     rating.AvgLatencyMs,
-		"reliability_score":  rating.ReliabilityScore,
+		"reliability_score": rating.ReliabilityScore,
 		"latency_score":      rating.LatencyScore,
 	}).Error; err != nil {
 		return fmt.Errorf("failed to update trust score: %w", err)
 	}
 
+	// Invalidate rating cache so next GET returns updated trust score
+	if r.cache != nil && r.keyGen != nil {
+		cacheKey := r.keyGen.FunctionRating(rating.FunctionID.String())
+		if err := r.cache.Delete(context.Background(), cacheKey); err != nil {
+			fmt.Printf("Failed to invalidate rating cache: %v\n", err)
+		}
+	}
 	return nil
 }
 

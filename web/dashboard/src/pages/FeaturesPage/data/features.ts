@@ -8,6 +8,7 @@ import {
   Settings,
   Globe,
 } from "lucide-react";
+import { DOCS_SITE_URL } from "@/lib/constants";
 import { Feature, categoryColors } from "../types";
 import { PredictiveRoutingIllustration } from "../illustrations";
 import { GlobalNetworkIllustration } from "../illustrations";
@@ -136,7 +137,7 @@ export const features: Feature[] = [
     cta: {
       text: "Get Started with CLI",
       action: "link",
-      link: "/docs/cli"
+      link: `${DOCS_SITE_URL}/cli`
     },
     ...categoryColors["Developer Tools"],
   },

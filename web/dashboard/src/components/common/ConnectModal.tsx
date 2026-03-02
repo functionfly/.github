@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { DOCS_SITE_URL } from "@/lib/constants";
 import {
   Loader2,
   Key,
@@ -100,7 +101,7 @@ const providerConfigs: Record<ProviderType, ProviderConfig> = {
     color: "#6366f1",
     authMethods: ["none"],
     features: ["Zero Configuration", "Automatic Scaling", "Global Edge Network", "Managed Infrastructure"],
-    docsUrl: "/docs/providers/functionfly-edge",
+    docsUrl: `${DOCS_SITE_URL}/providers/functionfly-edge`,
     requiredScopes: [],
   },
 };
@@ -627,7 +628,7 @@ export function ConnectModal({
           {!selectedProvider && (
             <div className="text-xs text-text-secondary">
               Need help? Check our{" "}
-              <a href="/docs/providers" className="text-indigo-400 hover:text-indigo-300">
+              <a href={`${DOCS_SITE_URL}/providers`} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">
                 provider setup guide
               </a>
             </div>

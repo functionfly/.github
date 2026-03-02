@@ -28,7 +28,7 @@ export function CTASection({ onPlanSelect }: CTASectionProps) {
       <div className="absolute inset-0 bg-gradient-to-r from-[#6366f1]/10 via-transparent to-[#8b5cf6]/10 blur-3xl -mx-8 rounded-3xl" />
 
       <div className="relative max-w-4xl mx-auto">
-        <Card className="border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl shadow-2xl shadow-[#6366f1]/10 overflow-hidden">
+        <Card className="pricing-cta-section border border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl shadow-2xl shadow-[#6366f1]/10 overflow-hidden">
           {/* Card background gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1]/5 via-transparent to-[#8b5cf6]/5" />
 
@@ -48,16 +48,16 @@ export function CTASection({ onPlanSelect }: CTASectionProps) {
             </motion.div>
 
             <motion.h3
-              className="text-4xl md:text-5xl font-bold text-white mb-6"
+              className="pricing-cta-heading text-4xl md:text-5xl font-bold text-white mb-6"
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
               transition={{ duration: 0.6, delay: 0.5 }}
             >
-              <span className="bg-gradient-to-r from-white via-white to-text-secondary bg-clip-text text-transparent">
+              <span className="pricing-cta-heading-line1 bg-gradient-to-r from-white via-white to-text-secondary bg-clip-text text-transparent">
                 Need help choosing
               </span>
               <br />
-              <span className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] bg-clip-text text-transparent">
+              <span className="pricing-cta-heading-line2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] bg-clip-text text-transparent">
                 a plan?
               </span>
             </motion.h3>
@@ -86,13 +86,15 @@ export function CTASection({ onPlanSelect }: CTASectionProps) {
                   Contact Sales
                 </Button>
               </Link>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-white/30 hover:border-white/50 hover:bg-white/10 text-white font-semibold px-8 py-4 backdrop-blur-sm transition-all duration-300"
-              >
-                View Documentation
-              </Button>
+              <Link to="/docs">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="pricing-cta-docs-btn border-white/30 hover:border-white/50 hover:bg-white/10 text-white font-semibold px-8 py-4 backdrop-blur-sm transition-all duration-300"
+                >
+                  View Documentation
+                </Button>
+              </Link>
             </motion.div>
           </CardContent>
         </Card>

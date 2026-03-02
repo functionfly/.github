@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useSpringCarousel } from "react-spring-carousel";
 import { useScrollAnimation } from "../hooks";
 import toast from "react-hot-toast";
@@ -54,18 +55,22 @@ export function FeatureCarousel() {
       id: `feature-${index}`,
       renderItem: (
         <div className="flex items-center justify-center p-8 h-full">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
-            className="text-center max-w-md mx-auto flex flex-col items-center justify-center"
-          >
-            <div className={`w-20 h-20 mb-6 rounded-2xl bg-linear-to-br ${feature.color} border border-white/20 flex items-center justify-center text-4xl`}>
-              {feature.icon}
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-4">{feature.title}</h3>
-            <p className="text-text-secondary leading-relaxed">{feature.description}</p>
-          </motion.div>
+          <Card className="pricing-feature-carousel-card w-full max-w-md border-white/10 bg-white/5 backdrop-blur-sm">
+            <CardContent className="pt-8 pb-8">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6 }}
+                className="text-center flex flex-col items-center justify-center"
+              >
+                <div className={`w-20 h-20 mb-6 rounded-2xl bg-linear-to-br ${feature.color} border border-white/20 flex items-center justify-center text-4xl`}>
+                  {feature.icon}
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4">{feature.title}</h3>
+                <p className="text-text-secondary leading-relaxed">{feature.description}</p>
+              </motion.div>
+            </CardContent>
+          </Card>
         </div>
       ),
     })),
@@ -114,7 +119,8 @@ export function FeatureCarousel() {
             variant="outline"
             size="sm"
             onClick={slideToPrevItem}
-            className="border-white/20 hover:bg-white/10"
+            className="pricing-carousel-nav-btn border-white/20 hover:bg-white/10 text-text-primary"
+            aria-label="Previous feature"
           >
             ← Previous
           </Button>
@@ -122,7 +128,8 @@ export function FeatureCarousel() {
             variant="outline"
             size="sm"
             onClick={slideToNextItem}
-            className="border-white/20 hover:bg-white/10"
+            className="pricing-carousel-nav-btn border-white/20 hover:bg-white/10 text-text-primary"
+            aria-label="Next feature"
           >
             Next →
           </Button>

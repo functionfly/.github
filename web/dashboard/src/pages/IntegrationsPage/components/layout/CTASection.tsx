@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { DOCS_SITE_URL } from "@/lib/constants";
 
 const CTASection = () => {
   return (
@@ -43,7 +44,7 @@ const CTASection = () => {
               Start Building
             </Button>
           </Link>
-          <Link to="/docs/integrations">
+          <a href={`${DOCS_SITE_URL}/integrations`} target="_blank" rel="noopener noreferrer">
             <Button
               size="lg"
               variant="outline"
@@ -51,7 +52,7 @@ const CTASection = () => {
             >
               Integration Docs
             </Button>
-          </Link>
+          </a>
         </div>
       </div>
     </motion.section>

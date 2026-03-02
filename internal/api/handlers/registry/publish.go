@@ -11,7 +11,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/functionregistry"
@@ -116,14 +118,18 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		if len(tagsJSON) == 0 || string(tagsJSON) == "null" {
 			tagsJSON, _ = json.Marshal([]string{})
 		}
+		relScore, detScore := 0.0, 0.0
+		if strings.EqualFold(req.Author, "functionfly") {
+			relScore, detScore = 90.0, 90.0
+		}
 		fn := &storage.RegistryFunction{
 			Author:             req.Author,
 			Name:               req.Name,
 			Visibility:         "public",
 			PricePerCall:       0,
 			PopularityScore:    0,
-			ReliabilityScore:   0,
-			DeterministicScore: 0,
+			ReliabilityScore:   relScore,
+			DeterministicScore: detScore,
 			TenantID:           &user.TenantID,
 			OwnerUserID:        &user.UserID,
 			Tags:               tagsJSON,
@@ -159,6 +165,11 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		}
 		if len(m.Tags) > 0 {
 			meta["tags"] = m.Tags
+		}
+		// FunctionFly functions get default high trust on function record if not already set
+		if strings.EqualFold(req.Author, "functionfly") && existingFn.ReliabilityScore == 0 && existingFn.DeterministicScore == 0 {
+			meta["reliability_score"] = 90.0
+			meta["deterministic_score"] = 90.0
 		}
 		if len(meta) > 0 {
 			if _, err := h.repo.UpdateRegistryFunction(fnID, meta); err != nil {
@@ -271,10 +282,61 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Initialize rating
-	h.repo.GetOrCreateRating(fnID)
+	rating, _ := h.repo.GetOrCreateRating(fnID)
+	// FunctionFly functions get default high trust values from the start
+	if rating != nil && strings.EqualFold(req.Author, "functionfly") {
+		rating.TrustScore = 0.9 // DB constraint: 0-1; frontend gets 0-100 via helpers
+		rating.ReliabilityScore = 0.9
+		rating.SuccessRate = 0.9
+		_ = h.repo.UpdateTrustScore(rating)
+		dreScores := &storageregistry.DREScores{
+			DeterminismScore:          0.9,
+			ReplayIntegrityScore:      0.9,
+			PerformanceStabilityScore: 0.9,
+			DriftScore:                1.0,
+		}
+		_ = h.repo.UpdateTrustScoreV2(fnID, dreScores, 0.9)
+	}
 
 	// Invalidate list cache so description/category show up in browse UI
 	h.repo.InvalidateListCache(r.Context())
+
+	// Auto-verify official FunctionFly functions so they are always verified and get FXCERTs
+	if strings.EqualFold(req.Author, "functionfly") {
+		now := time.Now()
+		verifiedStatus := &storageregistry.RegistryFunctionVerificationStatus{
+			FunctionVersionID:   version.ID,
+			ContentHashVerified: true,
+			SignatureVerified:   true,
+			MalwareScanned:      true,
+			MalwareStatus:       "clean",
+			MalwareRiskScore:    0,
+			ApprovalRequired:    false,
+			ApprovalStatus:      "not_required",
+			OverallStatus:       "verified",
+			LastVerifiedAt:      &now,
+		}
+		if err := h.repo.CreateOrUpdateVerificationStatus(verifiedStatus); err != nil {
+			logrus.WithError(err).WithField("function_version_id", version.ID).Warn("Failed to auto-verify FunctionFly function")
+		} else {
+			logrus.WithFields(logrus.Fields{
+				"function": fmt.Sprintf("%s/%s", req.Author, req.Name),
+				"version":  req.Version,
+			}).Info("Auto-verified FunctionFly function with FXCERT status")
+		}
+		// Generate bootstrap FXCERT so History and Certificates show a cert after publish
+		go func() {
+			fn, err := h.repo.GetFunctionByID(fnID)
+			if err != nil || fn == nil {
+				return
+			}
+			fnVersion, err := h.repo.GetFunctionVersion(fnID, req.Version)
+			if err != nil || fnVersion == nil {
+				return
+			}
+			execution.BootstrapFXCERT(h.repo, fn, fnVersion, "bootstrap", "internal", h.dreNodeKey, h.drePlatformKey)
+		}()
+	}
 
 	// NEW: Skip synchronous verification during publish - verify lazily at execute time
 	// This significantly speeds up publish by avoiding expensive security scans

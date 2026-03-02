@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { Zap, Shield, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { useScrollAnimation } from "../hooks";
 
 // Why Choose Us Section with scroll animations
@@ -30,7 +32,7 @@ export function WhyChooseUsSection() {
       initial={{ opacity: 0, y: 40 }}
       animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
-      className="mb-24 relative"
+      className="pricing-why-choose-section mb-24 relative"
     >
       {/* Section background */}
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent blur-3xl -mx-8 rounded-3xl" />
@@ -42,10 +44,13 @@ export function WhyChooseUsSection() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="flex flex-col items-center text-center mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#6366f1]/10 to-[#8b5cf6]/10 border border-[#6366f1]/20 mb-6">
+          <Badge
+            variant="outline"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#6366f1]/10 to-[#8b5cf6]/10 border-[#6366f1]/20 mb-6 text-sm font-medium text-[#6366f1]"
+          >
             <div className="w-2 h-2 rounded-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] animate-pulse" />
-            <span className="text-sm font-medium text-[#6366f1]">Why Choose Us</span>
-          </div>
+            Why Choose Us
+          </Badge>
 
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 text-center">
             <span className="bg-gradient-to-r from-white via-white to-text-secondary bg-clip-text text-transparent">
@@ -82,38 +87,42 @@ export function WhyChooseUsSection() {
                 delay: 0.4 + index * 0.15,
                 ease: [0.25, 0.46, 0.45, 0.94]
               }}
-              className="text-center group"
+              className="h-full"
             >
-              <div className="relative mb-6">
-                <motion.div
-                  className={`w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br ${colorScheme.bg} border ${colorScheme.border} flex items-center justify-center backdrop-blur-sm shadow-lg`}
-                  whileHover={{ scale: 1.15, rotate: 5 }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                >
-                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${colorScheme.bg} flex items-center justify-center`}>
-                    <feature.icon className={`w-8 h-8 ${colorScheme.icon}`} />
+              <Card className="pricing-why-choose-card h-full border-white/10 bg-white/5 backdrop-blur-sm text-center group">
+                <CardContent className="pt-8 pb-8">
+                  <div className="relative mb-6">
+                    <motion.div
+                      className={`w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br ${colorScheme.bg} border ${colorScheme.border} flex items-center justify-center backdrop-blur-sm shadow-lg`}
+                      whileHover={{ scale: 1.15, rotate: 5 }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${colorScheme.bg} flex items-center justify-center`}>
+                        <feature.icon className={`w-8 h-8 ${colorScheme.icon}`} />
+                      </div>
+                    </motion.div>
+                    <div className={`absolute inset-0 bg-gradient-to-br ${colorScheme.bg} rounded-3xl blur-xl opacity-50 -z-10 group-hover:opacity-75 transition-opacity duration-300`} />
                   </div>
-                </motion.div>
-                <div className={`absolute inset-0 bg-gradient-to-br ${colorScheme.bg} rounded-3xl blur-xl opacity-50 -z-10 group-hover:opacity-75 transition-opacity duration-300`} />
-              </div>
 
-              <motion.h3
-                className="text-2xl font-bold text-white mb-4 group-hover:text-white/90 transition-colors"
-                initial={{ opacity: 0 }}
-                animate={inView ? { opacity: 1 } : { opacity: 0 }}
-                transition={{ delay: 0.6 + index * 0.15 }}
-              >
-                {feature.title}
-              </motion.h3>
+                  <motion.h3
+                    className="text-2xl font-bold text-white mb-4 group-hover:text-white/90 transition-colors"
+                    initial={{ opacity: 0 }}
+                    animate={inView ? { opacity: 1 } : { opacity: 0 }}
+                    transition={{ delay: 0.6 + index * 0.15 }}
+                  >
+                    {feature.title}
+                  </motion.h3>
 
-              <motion.p
-                className="text-text-secondary text-base leading-relaxed group-hover:text-text-secondary/90 transition-colors"
-                initial={{ opacity: 0 }}
-                animate={inView ? { opacity: 1 } : { opacity: 0 }}
-                transition={{ delay: 0.7 + index * 0.15 }}
-              >
-                {feature.description}
-              </motion.p>
+                  <motion.p
+                    className="text-text-secondary text-base leading-relaxed group-hover:text-text-secondary/90 transition-colors"
+                    initial={{ opacity: 0 }}
+                    animate={inView ? { opacity: 1 } : { opacity: 0 }}
+                    transition={{ delay: 0.7 + index * 0.15 }}
+                  >
+                    {feature.description}
+                  </motion.p>
+                </CardContent>
+              </Card>
             </motion.div>
           );
         })}

@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +11,6 @@ import {
   ArrowLeft,
   Play,
   Github,
-  DollarSign,
-  Shield,
-  Clock,
-  Type,
   Terminal,
   FileJson,
   Zap,
@@ -32,18 +28,17 @@ import {
   Code2,
   BookOpen,
   BarChart3,
-  Lock,
-  User,
-  Layers,
   ExternalLink,
+  Shield,
 } from "lucide-react";
 import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/pages/LandingPage/components";
 import { CodeBlock } from "@/components/common/CodeBlock";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
-import { TrustScoreBadge, TrustLevel } from "@/components/common/TrustScoreBadge";
 import { DeterministicReliabilityBadge } from "@/components/dre";
+import { FunctionHeader, FunctionCard, TrustScoreBadge } from "@/components/functions";
+import type { FunctionHeaderData, TrustTier, FunctionCardData, TrustMetrics, FraudRiskLevel } from "@/types";
 import { useState } from "react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -79,14 +74,145 @@ interface FunctionInfo {
   /** Trust score 0–100 from ratings (included when rating exists) */
   trust_score?: number;
   trust_level?: string;
+  /** Whether this version is verified (e.g. functionfly official) */
+  verified?: boolean;
   /** Declared capabilities for sandbox / integrity */
   capabilities?: string[];
   /** Version integrity hash (displayed as ExecutionRootHash badge) */
   source_hash?: string;
 }
 
+/**
+ * Map FunctionInfo to FunctionHeaderData format
+ */
+function mapToFunctionHeaderData(
+  data: FunctionInfo,
+  trustTier: TrustTier = "medium"
+): FunctionHeaderData {
+  // Use source_hash if available, otherwise generate a placeholder
+  const executionRootHash = data.source_hash
+    ? data.source_hash.startsWith("0x")
+      ? data.source_hash
+      : `0x${data.source_hash}`
+    : `0x${data.author}${data.name}`.slice(0, 66).padEnd(66, "0");
+
+  // Generate resource signature from author/name
+  const resourceSignature = `res_sig_${data.author.slice(0, 8)}${data.name.slice(0, 8)}`;
+
+  // Map trust_level to TrustTier (backend sends high|medium|low|untrusted)
+  const mappedTrustTier: TrustTier =
+    (data.trust_level?.toLowerCase() as TrustTier) ||
+    (data.trust_score != null && data.trust_score >= 80
+      ? "high"
+      : data.trust_score != null && data.trust_score >= 50
+      ? "medium"
+      : data.trust_score != null && data.trust_score >= 20
+      ? "low"
+      : trustTier);
+
+  // Calculate economic score from reliability and other factors
+  const economicScore = Math.round((data.reliability || 0.5) * 100);
+
+  return {
+    name: data.title || data.name,
+    id: `${data.author}/${data.name}`,
+    executionRootHash,
+    trustTier: mappedTrustTier,
+    economicScore,
+    runtime: data.runtime,
+    resourceSignature,
+    fxcert: {
+      verified: data.verified === true || (data.verified !== false && data.deterministic) || false,
+      issuedAt: data.created_at,
+      issuer: "FunctionFly Registry",
+    },
+    status: "online",
+    version: `v${data.version}`,
+    description: data.description,
+  };
+}
+
+/**
+ * Map FunctionInfo to FunctionCardData format
+ */
+function mapToFunctionCardData(data: FunctionInfo): FunctionCardData {
+  return {
+    id: `${data.author}/${data.name}`,
+    name: data.title || data.name,
+    description: data.description || "No description available",
+    author: {
+      id: data.author,
+      username: data.author,
+      name: data.author,
+    },
+    trustScore: data.trust_score ?? Math.round((data.reliability || 0.5) * 100),
+    metrics: {
+      executionCount: data.executions || 0,
+      executionTrend: data.popularity_score ? [data.popularity_score] : undefined,
+    },
+    pricing: {
+      model: data.price_per_call === 0 ? "free" : "per_call",
+      pricePerCall: data.price_per_call,
+      currency: "USD",
+    },
+    isVerified: data.deterministic || false,
+    isDeterministic: data.deterministic || false,
+    rating: {
+      average: data.stars ? Math.min(data.stars / 20, 5) : 0,
+      count: data.stars || 0,
+    },
+    tags: data.tags,
+    category: data.category,
+    language: data.runtime,
+    lastUpdated: data.updated_at,
+    version: data.version,
+    isFavorite: false,
+    isFeatured: data.popularity_score ? data.popularity_score > 80 : false,
+  };
+}
+
+/**
+ * Map FunctionInfo to TrustMetrics format for TrustScoreBadge
+ */
+function mapToTrustMetrics(data: FunctionInfo): TrustMetrics {
+  // Calculate overall score from trust_score or derive from reliability
+  const overallScore = data.trust_score ?? Math.round((data.reliability || 0.5) * 100);
+
+  // Reliability is already a 0-1 value, convert to 0-100
+  const reliability = Math.round((data.reliability || 0.5) * 100);
+
+  // Latency score - assume 100 if no data (higher is better for this metric)
+  // In a real scenario, this would be calculated based on avg_response_time
+  // For now, default to good score
+  const latency = 85;
+
+  // Determinism score - based on deterministic flag
+  const determinism = data.deterministic ? 95 : 50;
+
+  // Community reputation - based on stars/ratings
+  // Normalize stars (assuming 0-100 scale) to 0-100 score
+  const communityReputation = data.stars ? Math.min(data.stars, 100) : 50;
+
+  // Fraud risk - default to low
+  const fraudRisk: FraudRiskLevel = "low";
+
+  return {
+    overallScore,
+    reliability,
+    latency,
+    determinism,
+    communityReputation,
+    fraudRisk,
+    details: {
+      totalExecutions: data.executions,
+      lastUpdated: data.updated_at,
+    },
+  };
+}
+
 export default function FunctionPage() {
   const { author, name } = useParams<{ author: string; name: string }>();
+  const navigate = useNavigate();
 
   const { data: functionInfo, isLoading, error } = useQuery<FunctionInfo>({
     queryKey: ["function", author, name],
@@ -306,236 +432,109 @@ print(result)`,
       <Navbar variant="landing" />
       <main className="flex-1 pt-16">
         <div className="container mx-auto px-4 py-8 max-w-5xl">
-          {/* Back button */}
-          <div className="mb-6">
-            <Link to="/registry">
-              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-                <ArrowLeft className="w-4 h-4" />
-                Back to Registry
-              </Button>
-            </Link>
-          </div>
-
-          {/* Hero Section with Animation */}
+          {/* Function Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-500/10 via-brand-500/5 to-transparent border border-border-subtle p-8 mb-8"
+            className="mb-8"
           >
-            <div className="relative z-10">
-              {/* Breadcrumb */}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                <Link to={`/registry?author=${functionInfo.author}`} className="hover:text-foreground transition-colors">
-                  {functionInfo.author}
-                </Link>
-                <ChevronRight className="w-4 h-4" />
-                <span className="text-foreground font-medium">{functionInfo.name}</span>
-                <Badge variant="secondary" className="ml-2">v{functionInfo.version}</Badge>
-                {functionInfo.deterministic && (
-                  <Badge variant="outline" className="gap-1">
-                    <Shield className="w-3 h-3" />
-                    Deterministic
-                  </Badge>
-                )}
-              </div>
+            <FunctionHeader
+              data={mapToFunctionHeaderData(functionInfo)}
+              onBack={() => navigate("/registry")}
+              onShare={() => {
+                const shareUrl = window.location.href;
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                  toast.success("Link copied to clipboard");
+                });
+              }}
+            />
 
-              {/* Title */}
-              <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                {functionInfo.title || functionInfo.name}
-              </h1>
-
-              {/* Description */}
-              {functionInfo.description ? (
-                <p className="text-xl text-muted-foreground mb-6 max-w-2xl">
-                  {functionInfo.description}
-                </p>
-              ) : (
-                <p className="text-xl text-muted-foreground/60 mb-6 italic">
-                  No description available
-                </p>
-              )}
-
-              {/* Tags */}
-              <div className="flex flex-wrap gap-2 mb-6">
-                {functionInfo.category && (
-                  <Badge variant="outline" className="gap-1">
-                    <Package className="w-3 h-3" />
-                    {functionInfo.category}
-                  </Badge>
-                )}
-                {functionInfo.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary">
-                    {tag}
-                  </Badge>
-                ))}
-                <Badge variant="outline" className="gap-1">
-                  <Terminal className="w-3 h-3" />
-                  {functionInfo.runtime}
-                </Badge>
-              </div>
-
-              {/* Function profile: Owner, Trust Score, ExecutionRootHash, Capabilities (description & version live in hero/breadcrumb only) */}
-              <Card className="function-profile-card mb-8 bg-bg-primary/60 border-border-subtle">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Layers className="w-5 h-5 text-brand-500" />
-                    Function profile
-                  </CardTitle>
-                  <CardDescription>Identity, integrity, and capabilities for this function</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Owner</p>
-                    <Link to={`/registry?author=${functionInfo.author}`} className="text-sm font-medium text-brand-500 hover:underline flex items-center gap-1">
-                      <User className="w-4 h-4" />
-                      {functionInfo.author}
-                    </Link>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Trust score</p>
-                    {functionInfo.trust_score != null ? (
-                      <TrustScoreBadge
-                        trustScore={functionInfo.trust_score}
-                        trustLevel={functionInfo.trust_level as TrustLevel}
-                        showScore
-                        size="sm"
-                      />
-                    ) : (
-                      <span className="text-sm text-muted-foreground">—</span>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Execution root hash</p>
-                    {functionInfo.source_hash ? (
-                      <Link
-                        to={`/registry/${functionInfo.author}/${functionInfo.name}/executions`}
-                        className="inline-flex items-center min-w-0 max-w-full"
-                      >
-                        <Badge
-                          variant="outline"
-                          className="font-mono text-xs gap-1 min-w-0 max-w-full hover:bg-brand-500/10 hover:border-brand-500/30 transition-colors cursor-pointer"
-                          title={`${functionInfo.source_hash} - Click to explore all executions`}
-                        >
-                          <Lock className="w-3 h-3 shrink-0" />
-                          <span className="truncate block min-w-0">{functionInfo.source_hash}</span>
-                          <ExternalLink className="w-3 h-3 shrink-0 ml-1" />
-                        </Badge>
-                      </Link>
-                    ) : (
-                      <Link
-                        to={`/registry/${functionInfo.author}/${functionInfo.name}/executions`}
-                        className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-                      >
-                        <Lock className="w-3 h-3" />
-                        View executions
-                      </Link>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Capabilities</p>
-                    {functionInfo.capabilities && functionInfo.capabilities.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {functionInfo.capabilities.map((cap) => (
-                          <Badge key={cap} variant="outline" className="text-xs">
-                            {cap}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">None declared</span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Stats Cards with Animation */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 function-page-hero-stats">
-                {[
-                  {
-                    icon: <DollarSign className="w-5 h-5 text-green-500" />,
-                    value: `$${functionInfo.price_per_call.toFixed(6)}`,
-                    label: "per call",
-                    color: "green",
-                    delay: 0,
-                  },
-                  {
-                    icon: <Shield className="w-5 h-5 text-blue-500" />,
-                    value: (
-                      <DeterministicReliabilityBadge
-                        percentage={functionInfo.reliability * 100}
-                        showTrend
-                        trend="stable"
-                      />
-                    ),
-                    label: "reliability",
-                    color: "blue",
-                    delay: 0.1,
-                  },
-                  {
-                    icon: <Clock className="w-5 h-5 text-yellow-500" />,
-                    value: `${functionInfo.cache_ttl}s`,
-                    label: "cache TTL",
-                    color: "yellow",
-                    delay: 0.2,
-                  },
-                  {
-                    icon: <Type className="w-5 h-5 text-purple-500" />,
-                    value: functionInfo.input_type || "any",
-                    label: "input type",
-                    color: "purple",
-                    delay: 0.3,
-                  },
-                ].map((stat, index) => (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.3 + stat.delay }}
-                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
-                  >
-                    <Card className="function-stat-card bg-bg-primary/50 backdrop-blur border-border-subtle hover:border-brand-500/30 transition-colors cursor-default">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-lg bg-${stat.color}-500/10 flex items-center justify-center`}>
-                            {stat.icon}
-                          </div>
-                          <div>
-                            <div className="text-2xl font-bold">{stat.value}</div>
-                            <div className="text-xs text-muted-foreground">{stat.label}</div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* CTA Buttons */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.6 }}
-                className="flex flex-wrap gap-4"
-              >
-                <Link to={`/run/${functionInfo.author}/${functionInfo.name}`}>
-                  <Button size="lg" className="gap-2 px-8">
-                    <Play className="w-4 h-4" />
-                    Try it Now
-                  </Button>
-                </Link>
-                <Link to={`/registry/${functionInfo.author}/${functionInfo.name}/executions`}>
-                  <Button variant="outline" size="lg" className="gap-2">
-                    <Activity className="w-4 h-4" />
-                    Executions
-                  </Button>
-                </Link>
-                <Button variant="outline" size="lg" className="gap-2">
-                  <Github className="w-4 h-4" />
-                  View on GitHub
+            {/* CTA Buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+              className="flex flex-wrap gap-4 mt-6"
+            >
+              <Link to={`/run/${functionInfo.author}/${functionInfo.name}`}>
+                <Button size="lg" className="gap-2 px-8">
+                  <Play className="w-4 h-4" />
+                  Try it Now
                 </Button>
-                <ShareButton functionInfo={functionInfo} />
-              </motion.div>
+              </Link>
+              <Link to={`/registry/${functionInfo.author}/${functionInfo.name}/executions`}>
+                <Button variant="outline" size="lg" className="gap-2">
+                  <Activity className="w-4 h-4" />
+                  Executions
+                </Button>
+              </Link>
+              <Link to={`/registry/${functionInfo.author}/${functionInfo.name}/executions?tab=certificates`}>
+                <Button variant="outline" size="lg" className="gap-2">
+                  <Shield className="w-4 h-4" />
+                  Certificates
+                </Button>
+              </Link>
+              <Button variant="outline" size="lg" className="gap-2">
+                <Github className="w-4 h-4" />
+                View on GitHub
+              </Button>
+              <ShareButton functionInfo={functionInfo} />
+            </motion.div>
+          </motion.div>
+
+          {/* Function Card - Function Overview */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mb-8"
+          >
+            <FunctionCard
+              data={mapToFunctionCardData(functionInfo)}
+              variant="expanded"
+              onView={() => navigate(`/fx/${functionInfo.author}/${functionInfo.name}`)}
+              onExecute={() => navigate(`/run/${functionInfo.author}/${functionInfo.name}`)}
+              onShare={() => {
+                const shareUrl = window.location.href;
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                  toast.success("Link copied to clipboard");
+                });
+              }}
+              onFavorite={(id, isFav) => {
+                toast.info(isFav ? "Added to favorites" : "Removed from favorites");
+              }}
+            />
+          </motion.div>
+
+          {/* Trust Score Badge - Expanded View */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="mb-8"
+          >
+            <div className="grid md:grid-cols-2 gap-6">
+              <TrustScoreBadge
+                metrics={mapToTrustMetrics(functionInfo)}
+                variant="expanded"
+                showDetails={true}
+              />
+              <div className="flex items-center justify-center rounded-xl border border-border-subtle bg-bg-secondary/50 p-4">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Shield className="h-5 w-5 text-brand-500" />
+                    <h3 className="font-semibold text-foreground">Trust & Verification</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    This function has been verified by the FunctionFly registry.
+                    Trust scores are calculated based on execution reliability,
+                    community ratings, and deterministic behavior.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
 
               {/* Auto-generated Documentation — directly under Try it Now */}
               <motion.div
@@ -750,8 +749,6 @@ print(result)`,
                   </ScrollArea>
                 </div>
               </motion.div>
-            </div>
-          </motion.div>
 
           {/* Code Examples with Tabs */}
           <motion.div

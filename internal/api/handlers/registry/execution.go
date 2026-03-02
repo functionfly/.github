@@ -15,6 +15,10 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		BackendRepo:  h.backendRepo,
 		CacheService: h.cacheService,
 		EdgeCache:    h.edgeCache,
+		NodeID:       h.dreNodeID,
+		Region:       h.dreRegion,
+		NodeKey:      h.dreNodeKey,
+		PlatformKey:  h.drePlatformKey,
 	}
 	execHandler.HandleExecute(w, r)
 }
@@ -27,6 +31,10 @@ func (h *Handler) HandleTest(w http.ResponseWriter, r *http.Request) {
 		BackendRepo:  h.backendRepo,
 		CacheService: h.cacheService,
 		EdgeCache:    h.edgeCache,
+		NodeID:       h.dreNodeID,
+		Region:       h.dreRegion,
+		NodeKey:      h.dreNodeKey,
+		PlatformKey:  h.drePlatformKey,
 	}
 	execHandler.HandleTest(w, r)
 }
@@ -39,6 +47,10 @@ func (h *Handler) HandleGetReplay(w http.ResponseWriter, r *http.Request) {
 		BackendRepo:  h.backendRepo,
 		CacheService: h.cacheService,
 		EdgeCache:    h.edgeCache,
+		NodeID:       h.dreNodeID,
+		Region:       h.dreRegion,
+		NodeKey:      h.dreNodeKey,
+		PlatformKey:  h.drePlatformKey,
 	}
 	execHandler.HandleGetReplay(w, r)
 }
@@ -51,6 +63,10 @@ func (h *Handler) HandleVerifyReplay(w http.ResponseWriter, r *http.Request) {
 		BackendRepo:  h.backendRepo,
 		CacheService: h.cacheService,
 		EdgeCache:    h.edgeCache,
+		NodeID:       h.dreNodeID,
+		Region:       h.dreRegion,
+		NodeKey:      h.dreNodeKey,
+		PlatformKey:  h.drePlatformKey,
 	}
 	execHandler.HandleVerifyReplay(w, r)
 }

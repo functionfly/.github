@@ -66,6 +66,109 @@ export interface ExecutionDetailResponse {
   execution: ExecutionDetail;
 }
 
+// Certificate list (from GET /registry/{author}/{name}/certs)
+export interface CertificateListItem {
+  certificate_id: string;
+  cert_level: string;
+  execution_root_hash: string;
+  certificate_hash: string;
+  anchored: boolean;
+  created_at: string;
+}
+
+export interface CertificateListResponse {
+  function: string;
+  certs: CertificateListItem[];
+  limit: number;
+  offset: number;
+}
+
+// Full FXCERT from backend (cert field in GET /registry/.../cert/{cert_id})
+export interface FXCertExecutionSection {
+  execution_id: string;
+  function_id: string;
+  owner_id: string;
+  caller_id: string;
+  node_id: string;
+  region: string;
+  timestamp_virtual: string;
+  timestamp_real_utc: string;
+  protocol_version: string;
+}
+
+export interface FXCertCapsuleSection {
+  capsule_descriptor_hash: string;
+  determinism_tier: string;
+  protocol_version: string;
+}
+
+export interface FXCertIntegritySection {
+  execution_root_hash: string;
+  input_hash: string;
+  environment_hash: string;
+  dependency_hash: string;
+  trace_hash: string;
+  resource_hash: string;
+  output_hash: string;
+  metadata_hash: string;
+  certificate_hash: string;
+}
+
+export interface FXCertTrustSection {
+  trust_score: number;
+  determinism_score: number;
+  replay_consistency_score: number;
+  drift_incidents_total: number;
+  verified_executions_total: number;
+}
+
+export interface FXCertSignature {
+  algorithm: string;
+  public_key: string;
+  signature: string;
+}
+
+export interface FXCertSignatureSection {
+  node_signature?: FXCertSignature | null;
+  platform_signature?: FXCertSignature | null;
+}
+
+export interface FXCertAnchoringSection {
+  anchored: boolean;
+  anchor_chain?: string;
+  anchor_block_number?: number;
+  anchor_tx_hash?: string;
+  anchor_merkle_root?: string;
+  anchored_at?: string;
+}
+
+export interface FXCertRaw {
+  fxcert_version: string;
+  certificate_id: string;
+  execution: FXCertExecutionSection;
+  capsule: FXCertCapsuleSection;
+  integrity: FXCertIntegritySection;
+  trust: FXCertTrustSection;
+  signatures: FXCertSignatureSection;
+  anchoring?: FXCertAnchoringSection;
+  replay_certification?: unknown;
+}
+
+export interface CertificateDetailResponse {
+  certificate_id: string;
+  cert_level: string;
+  execution_root_hash: string;
+  certificate_hash: string;
+  created_at: string;
+  anchored: boolean;
+  cert: FXCertRaw;
+}
+
+export interface CertificateListParams {
+  limit?: number;
+  offset?: number;
+}
+
 class DreApi {
   // List executions for a function
   async listExecutions(
@@ -97,6 +200,33 @@ class DreApi {
   ): Promise<ExecutionDetailResponse> {
     return apiClient.get<ExecutionDetailResponse>(
       `/v1/registry/${author}/${name}/executions/${executionId}`
+    );
+  }
+
+  // List certificates (FXCERTs) for a function
+  async listCertificates(
+    author: string,
+    name: string,
+    params?: CertificateListParams
+  ): Promise<CertificateListResponse> {
+    const queryParams = new URLSearchParams();
+    if (params?.limit !== undefined)
+      queryParams.append("limit", params.limit.toString());
+    if (params?.offset !== undefined)
+      queryParams.append("offset", params.offset.toString());
+    const query = queryParams.toString();
+    const url = `/v1/registry/${author}/${name}/certs${query ? `?${query}` : ""}`;
+    return apiClient.get<CertificateListResponse>(url);
+  }
+
+  // Get single FXCERT by certificate_id
+  async getCertificate(
+    author: string,
+    name: string,
+    certId: string
+  ): Promise<CertificateDetailResponse> {
+    return apiClient.get<CertificateDetailResponse>(
+      `/v1/registry/${author}/${name}/cert/${encodeURIComponent(certId)}`
     );
   }
 }

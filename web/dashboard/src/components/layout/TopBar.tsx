@@ -5,6 +5,7 @@ import { Breadcrumb } from "./Breadcrumb";
 import { UserMenu } from "./UserMenu";
 import { SearchButton } from "./SearchButton";
 import { ProductsDropdown } from "@/components/common/ProductsDropdown";
+import { EnterpriseBadge } from "@/components/enterprise";
 import { useNavigationStatus } from "@/hooks/useNavigationStatus";
 import { useContextualActions } from "@/hooks/useContextualActions";
 import { useThemeStore } from "@/stores/themeStore";
@@ -90,6 +91,9 @@ export function TopBar({ onMenuClick, className }: TopBarProps) {
               </span>
             )}
           </Button>
+
+          {/* Enterprise Badge */}
+          <EnterpriseBadge />
 
           {/* User Menu */}
           <UserMenu />

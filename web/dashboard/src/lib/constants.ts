@@ -1,6 +1,9 @@
 export const APP_NAME = "FunctionFly";
 export const APP_TAGLINE = "Multi-Cloud Failover for Indie SaaS";
 
+/** Base URL for the docs site (web/docs app). */
+export const DOCS_SITE_URL = "/docs";
+
 export const ROUTES = {
   HOME: "/",
   PRICING: "/pricing",
@@ -11,6 +14,7 @@ export const ROUTES = {
   REGISTRY: "/registry",
   PROVIDERS: "/providers",
   ANALYTICS: "/analytics",
+  USAGE: "/usage",
   STATE_FABRIC: "/state-fabric",
   SETTINGS: "/settings",
   BILLING: "/settings", // Billing tab lives on Settings page
@@ -40,6 +44,13 @@ export const ROUTES = {
   ADMIN_FUNCTIONS: "/admin/functions",
   ADMIN_REGISTRY: "/admin/registry",
   ADMIN_STATE_FABRIC: "/admin/state-fabric",
+  // Enterprise routes
+  ENTERPRISE: "/enterprise",
+  ENTERPRISE_SLA: "/enterprise/sla",
+  ENTERPRISE_AUDIT: "/enterprise/audit",
+  ENTERPRISE_SECURITY: "/enterprise/security",
+  ENTERPRISE_SUPPORT: "/enterprise/support",
+  ENTERPRISE_COMPLIANCE: "/enterprise/compliance",
 } as const;
 
 /**
@@ -73,6 +84,7 @@ export const MAIN_NAV_PATHS: string[] = [
   ROUTES.TEAMS,
   ROUTES.AGENTS,
   ROUTES.ANALYTICS,
+  ROUTES.USAGE,
   ROUTES.SETTINGS,
 ].sort((a, b) => b.length - a.length);
 
@@ -113,10 +125,10 @@ export const ROUTE_BUILDERS = {
   // Blog posts
   blogPost: (slug: string) => `/blog/${slug}`,
 
-  // Documentation
-  docs: (slug?: string) => (slug ? `/docs/${slug}` : '/docs'),
+  // Documentation (main docs site = web/docs app)
+  docs: (slug?: string) => (slug ? `${DOCS_SITE_URL}/${slug}` : DOCS_SITE_URL),
   docsApi: (endpoint?: string) =>
-    endpoint ? `/docs/api/${endpoint}` : '/docs/api',
+    endpoint ? `${DOCS_SITE_URL}/api/${endpoint}` : `${DOCS_SITE_URL}/api`,
 
   // Registry search
   registrySearch: (query: string, page = 1) =>
@@ -203,6 +215,8 @@ export const PLANS = {
       functions: 1,
       providers: 2,
       requests: 100000,
+      stateFabrics: 0,
+      agents: 0,
     },
   },
   STARTER: {
@@ -224,6 +238,8 @@ export const PLANS = {
       providers: 3,
       requests: 1000000,
       customDomains: 1,
+      stateFabrics: 1,
+      agents: 2,
     },
   },
   PROFESSIONAL: {
@@ -249,6 +265,8 @@ export const PLANS = {
       requests: 10000000,
       customDomains: 5,
       sla: "99.9%",
+      stateFabrics: 5,
+      agents: 10,
     },
   },
   ENTERPRISE: {
@@ -274,6 +292,8 @@ export const PLANS = {
       requests: Infinity,
       customDomains: Infinity,
       sla: "99.99%",
+      stateFabrics: Infinity,
+      agents: Infinity,
     },
   },
 } as const;
@@ -427,3 +447,6 @@ export const STATUS_COLORS = {
 } as const;
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+
+/** Path for the AI/LLM discovery manifest (GET). Full URL: ${API_BASE_URL}/.well-known/functionfly.json */
+export const WELL_KNOWN_DISCOVERY_PATH = "/.well-known/functionfly.json";

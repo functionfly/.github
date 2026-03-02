@@ -1,18 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, MoreVertical, Rocket, Edit, Trash2, Eye, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Search, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { StatusBadge } from "@/components/common/StatusBadge";
-import { ProviderIcon } from "@/components/common/ProviderIcon";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -21,9 +13,50 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FunctionCardCompact } from "@/components/functions";
 import { functionsApi } from "@/api/functions";
 import { toast } from "sonner";
-import type { FunctionConfig } from "@/types";
+import type { FunctionConfig, FunctionCardData } from "@/types";
+
+/**
+ * Map FunctionConfig (API data) to FunctionCardData format
+ */
+function mapToFunctionCardData(fn: FunctionConfig & { runtime?: string; updated_at?: string }): FunctionCardData {
+  return {
+    id: fn.id,
+    name: fn.name,
+    description: `Function deployed on ${fn.providers.join(", ")} in ${fn.region}`,
+    author: {
+      id: fn.tenantId,
+      username: "current-user",
+      name: "Current User",
+    },
+    trustScore: 75, // Default trust score for user functions
+    metrics: {
+      executionCount: 0, // Default since not tracked in FunctionConfig
+      averageLatency: 0,
+      errorRate: 0,
+    },
+    pricing: {
+      model: "free",
+      pricePerCall: 0,
+      currency: "USD",
+    },
+    isVerified: false,
+    isDeterministic: true,
+    rating: {
+      average: 0,
+      count: 0,
+    },
+    tags: fn.providers,
+    category: "Edge Function",
+    language: fn.runtime || "python",
+    lastUpdated: fn.updated_at || fn.updatedAt,
+    version: fn.version,
+    isFavorite: false,
+    isFeatured: false,
+  };
+}
 
 export function FunctionsPage() {
   const navigate = useNavigate();
@@ -124,84 +157,26 @@ export function FunctionsPage() {
         </div>
       )}
 
-      {/* Functions List */}
+      {/* Functions Grid */}
       {!isLoading && (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredFunctions.map((fn) => (
-            <Card key={fn.id} className="hover:border-[#6366f1]/30 transition-colors">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-[#6366f1]/10 flex items-center justify-center">
-                      <Rocket className="w-5 h-5 text-[#6366f1]" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-white">{fn.name}</h3>
-                      <p className="text-sm text-text-muted">
-                        {fn.runtime || "unknown runtime"}
-                        {fn.updated_at ? ` • Updated ${new Date(fn.updated_at).toLocaleDateString()}` : ""}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-6">
-                    {/* Providers */}
-                    {fn.providers && fn.providers.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-text-muted">Providers:</span>
-                        <div className="flex -space-x-1">
-                          {fn.providers.map((provider) => (
-                            <div
-                              key={typeof provider === "string" ? provider : provider.id}
-                              className="w-6 h-6 rounded-full bg-bg-tertiary border border-white/8 flex items-center justify-center"
-                            >
-                              <ProviderIcon
-                                provider={typeof provider === "string" ? provider : provider.id}
-                                size="sm"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Status */}
-                    <StatusBadge status={(fn.status as any) || "online"} />
-
-                    {/* Actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-text-secondary">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-bg-tertiary border-white/8">
-                        <DropdownMenuItem className="gap-2" onClick={() => navigate(`/functions/${fn.id}`)}>
-                          <Eye className="w-4 h-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2" onClick={() => navigate(`/functions/${fn.id}/edit`)}>
-                          <Edit className="w-4 h-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-red-400" onClick={() => handleDeleteClick(fn)}>
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <FunctionCardCompact
+              key={fn.id}
+              data={mapToFunctionCardData(fn)}
+              onView={(id) => navigate(`/functions/${id}`)}
+              onEdit={(id) => navigate(`/functions/${id}/edit`)}
+              onDelete={() => handleDeleteClick(fn)}
+            />
           ))}
         </div>
       )}
 
+      {/* Empty State */}
       {!isLoading && filteredFunctions.length === 0 && (
         <Card className="p-12 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-bg-tertiary flex items-center justify-center">
-            <Rocket className="w-8 h-8 text-text-muted" />
+            <Plus className="w-8 h-8 text-text-muted" />
           </div>
           <h3 className="text-lg font-medium text-white mb-2">
             {searchQuery ? "No functions match your search" : "No functions yet"}

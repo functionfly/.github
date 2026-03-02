@@ -6,6 +6,13 @@ export interface UpdateProfileRequest {
   username?: string;
   companyName?: string;
   bio?: string;
+  location?: string;
+  website?: string;
+  jobTitle?: string;
+  socialLinks?: Record<string, string>;
+  twitterUrl?: string;
+  githubUrl?: string;
+  linkedinUrl?: string;
 }
 
 export interface MeResponse {
@@ -45,6 +52,126 @@ export interface SessionItem {
   location: string;
   lastActive: string;
   currentSession: boolean;
+}
+
+// ============================================================================
+// User Analytics Types
+// ============================================================================
+
+export interface ExecutionHistoryItem {
+  date: string;
+  executions: number;
+  uniqueUsers?: number;
+}
+
+export interface PopularFunction {
+  id: string;
+  name: string;
+  description: string;
+  executionCount: number;
+  rating: number;
+  totalRatings: number;
+}
+
+export interface GeographicStat {
+  region: string;
+  executions: number;
+}
+
+export interface DeviceStat {
+  device: string;
+  executions: number;
+}
+
+export interface UserAnalyticsResponse {
+  executionStats: {
+    totalExecutions: number;
+    totalUniqueUsers: number;
+    functionCount: number;
+    executionHistory: ExecutionHistoryItem[];
+  };
+  popularFunctions: PopularFunction[];
+  geographicStats: {
+    regions: GeographicStat[];
+  };
+  deviceStats: {
+    devices: DeviceStat[];
+  };
+}
+
+// ============================================================================
+// User Achievements Types
+// ============================================================================
+
+export interface Achievement {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  category: string;
+  points: number;
+  earnedAt: string;
+  progress: number;
+  isCompleted: boolean;
+  metadata: Record<string, unknown>;
+}
+
+export interface UserAchievementsResponse {
+  achievements: Achievement[];
+  totalPoints: number;
+  available: number;
+}
+
+// ============================================================================
+// User Activity Types
+// ============================================================================
+
+export interface UserActivityItem {
+  id: string;
+  type: string;
+  title: string;
+  description?: string;
+  metadata: Record<string, unknown>;
+  isPublic: boolean;
+  createdAt: string;
+}
+
+export interface UserActivityResponse {
+  activities: UserActivityItem[];
+  limit: number;
+  offset: number;
+  total: number;
+}
+
+export interface CreateActivityRequest {
+  activityType: string;
+  title: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  isPublic?: boolean;
+}
+
+// ============================================================================
+// User Skills Types
+// ============================================================================
+
+export interface UserSkill {
+  id: string;
+  name: string;
+  level: "beginner" | "intermediate" | "advanced" | "expert";
+  category?: string;
+}
+
+export interface UserSkillsResponse {
+  skills: UserSkill[];
+}
+
+export interface AddSkillRequest {
+  name: string;
+  level?: "beginner" | "intermediate" | "advanced" | "expert";
+  category?: string;
 }
 
 export const usersApi = {
@@ -105,4 +232,63 @@ export const usersApi = {
    */
   revokeOtherSessions: () =>
     apiClient.post<{ message: string }>("/v1/users/me/sessions/revoke-others"),
+
+  // ============================================================================
+  // User Profile Analytics
+  // ============================================================================
+
+  /**
+   * Get analytics data for a user profile.
+   * Includes execution history, popular functions, geographic stats, device stats.
+   */
+  getUserAnalytics: (username: string) =>
+    apiClient.get<UserAnalyticsResponse>(`/v1/users/${encodeURIComponent(username)}/analytics`),
+
+  // ============================================================================
+  // User Achievements
+  // ============================================================================
+
+  /**
+   * Get achievements for a user profile.
+   */
+  getUserAchievements: (username: string) =>
+    apiClient.get<UserAchievementsResponse>(`/v1/users/${encodeURIComponent(username)}/achievements`),
+
+  // ============================================================================
+  // User Activity Feed
+  // ============================================================================
+
+  /**
+   * Get activity feed for a user profile.
+   */
+  getUserActivity: (username: string, params?: { limit?: number; offset?: number }) =>
+    apiClient.get<UserActivityResponse>(`/v1/users/${encodeURIComponent(username)}/activity`, { params }),
+
+  /**
+   * Create a new activity feed item (for authenticated user).
+   */
+  createActivity: (data: CreateActivityRequest) =>
+    apiClient.post<{ id: string; message: string; createdAt: string }>("/v1/users/me/activity", data),
+
+  // ============================================================================
+  // User Skills
+  // ============================================================================
+
+  /**
+   * Get skills for a user profile.
+   */
+  getUserSkills: (username: string) =>
+    apiClient.get<UserSkillsResponse>(`/v1/users/${encodeURIComponent(username)}/skills`),
+
+  /**
+   * Add a skill for the authenticated user.
+   */
+  addSkill: (data: AddSkillRequest) =>
+    apiClient.post<{ id: string; name: string; level: string; message: string }>("/v1/users/me/skills", data),
+
+  /**
+   * Remove a skill for the authenticated user.
+   */
+  removeSkill: (skillId: string) =>
+    apiClient.delete<{ message: string }>(`/v1/users/me/skills/${skillId}`),
 };

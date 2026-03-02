@@ -223,6 +223,44 @@ func (h *SwarmHandler) CreateListing(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// marketplaceAgentResponse is the API shape for one marketplace agent (camelCase for frontend).
+type marketplaceAgentResponse struct {
+	ID                     string   `json:"id"`
+	AgentID                string   `json:"agentId"`
+	Name                   string   `json:"name"`
+	Description            string   `json:"description"`
+	ListingType            string   `json:"listingType"`
+	PricingModel           string   `json:"pricingModel"`
+	PricePerCall           *float64 `json:"pricePerCall,omitempty"`
+	SubscriptionMonthlyUsd *float64 `json:"subscriptionMonthlyUsd,omitempty"`
+	RevenueSharePercent    *float64 `json:"revenueSharePercent,omitempty"`
+	RatingScore            float64  `json:"ratingScore"`
+	TotalCalls             int      `json:"totalCalls"`
+	ROIScore               float64  `json:"roiScore"`
+}
+
+func marketplaceAgentFromResult(res marketplace.AgentSearchResult) marketplaceAgentResponse {
+	l := res.Listing
+	name, desc := "", ""
+	if l.Agent != nil {
+		name, desc = l.Agent.Name, l.Agent.Description
+	}
+	return marketplaceAgentResponse{
+		ID:                     l.ID.String(),
+		AgentID:                l.AgentID,
+		Name:                   name,
+		Description:            desc,
+		ListingType:            l.ListingType,
+		PricingModel:           l.PricingModel,
+		PricePerCall:           l.PricePerCall,
+		SubscriptionMonthlyUsd: l.SubscriptionMonthlyUSD,
+		RevenueSharePercent:    l.RevenueSharePercent,
+		RatingScore:            l.RatingScore,
+		TotalCalls:             l.TotalCalls,
+		ROIScore:               l.ROIScore,
+	}
+}
+
 // SearchAgents handles GET /v1/marketplace/agents
 func (h *SwarmHandler) SearchAgents(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
@@ -269,9 +307,13 @@ func (h *SwarmHandler) SearchAgents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	agents := make([]marketplaceAgentResponse, len(results))
+	for i, res := range results {
+		agents[i] = marketplaceAgentFromResult(res)
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":     true,
-		"agents": results,
+		"agents": agents,
 		"total":  total,
 	})
 }

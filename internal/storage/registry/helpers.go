@@ -3,7 +3,23 @@ package registry
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
 )
+
+// humanizeFunctionName turns a function name like "text-truncate" into "Text truncate".
+func humanizeFunctionName(name string) string {
+	if name == "" {
+		return "No description available"
+	}
+	parts := strings.Split(strings.ReplaceAll(name, "_", "-"), "-")
+	for i, p := range parts {
+		if len(p) > 0 {
+			parts[i] = strings.ToUpper(p[:1]) + strings.ToLower(p[1:])
+		}
+	}
+	return strings.Join(parts, " ")
+}
 
 // Helper function to parse tags from JSON
 func ParseTags(raw json.RawMessage) ([]string, error) {
@@ -43,6 +59,9 @@ func (f *RegistryFunction) ToInfoWithRating(version *RegistryFunctionVersion, ra
 
 	tags, _ := ParseTags(f.Tags)
 	info["tags"] = tags
+
+	info["created_at"] = f.CreatedAt.Format(time.RFC3339)
+	info["updated_at"] = f.UpdatedAt.Format(time.RFC3339)
 
 	if version != nil {
 		info["runtime"] = version.Runtime
@@ -109,11 +128,20 @@ func (f *RegistryFunction) ToInfoWithRating(version *RegistryFunctionVersion, ra
 				info["category"] = cat
 			}
 		}
+		// Fallback description when none in DB or manifest (e.g. batch-published functions)
+		if desc, _ := info["description"].(string); desc == "" {
+			info["description"] = humanizeFunctionName(f.Name)
+		}
+		info["published_at"] = version.PublishedAt.Format(time.RFC3339)
 	}
 
-	// Add trust score from rating if available
+	// Add trust score from rating if available (DB stores 0-1; API returns 0-100 for frontend)
 	if rating != nil {
-		info["trust_score"] = rating.TrustScore
+		trustScore := rating.TrustScore
+		if trustScore > 0 && trustScore <= 1 {
+			trustScore = trustScore * 100
+		}
+		info["trust_score"] = trustScore
 		info["success_rate"] = rating.SuccessRate
 		info["p50_latency_ms"] = rating.P50LatencyMs
 		info["p95_latency_ms"] = rating.P95LatencyMs
@@ -123,19 +151,19 @@ func (f *RegistryFunction) ToInfoWithRating(version *RegistryFunctionVersion, ra
 		info["tenant_diversity"] = rating.TenantDiversity
 		info["user_diversity"] = rating.UserDiversity
 
-		// Determine trust level
-		trustLevel := "insufficient_data"
+		// Determine trust level from scaled score (0-100)
+		trustLevel := "medium"
 		switch {
-		case rating.TrustScore >= 80:
-			trustLevel = "excellent"
-		case rating.TrustScore >= 60:
-			trustLevel = "good"
-		case rating.TrustScore >= 40:
-			trustLevel = "fair"
-		case rating.TrustScore >= 20:
-			trustLevel = "poor"
-		case rating.TrustScore > 0:
-			trustLevel = "very_poor"
+		case trustScore >= 80:
+			trustLevel = "high"
+		case trustScore >= 60:
+			trustLevel = "high"
+		case trustScore >= 40:
+			trustLevel = "medium"
+		case trustScore >= 20:
+			trustLevel = "low"
+		case trustScore > 0:
+			trustLevel = "untrusted"
 		}
 		info["trust_level"] = trustLevel
 	}

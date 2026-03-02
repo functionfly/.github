@@ -70,7 +70,7 @@ export function FeaturesSection() {
     <section className="py-20 border-t border-border-subtle aurora-bg features-section-enhanced">
       <div className="max-w-7xl mx-auto px-4 lg:px-6">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-text-primary mb-4">
+          <h2 className="features-section-headline text-3xl font-bold text-text-primary mb-4">
             Everything you need to stay online
           </h2>
           <p className="text-text-secondary max-w-2xl mx-auto">
@@ -102,16 +102,17 @@ export function FeaturesSection() {
               >
                 <CardContent className="p-6">
                   <div
-                    className="w-12 h-12 rounded-xl bg-linear-to-br border flex items-center justify-center mb-4 glow hover-glow transition-all duration-300"
+                    className="features-section-icon-wrap w-12 h-12 rounded-xl bg-linear-to-br border flex items-center justify-center mb-4 glow hover-glow transition-all duration-300"
                     style={{
                       background: `linear-gradient(135deg, ${feature.color}40, ${feature.color}20)`,
                       borderColor: `${feature.color}50`,
+                      color: feature.color,
                     }}
                   >
                     {feature.illustration ? (
                       <feature.illustration />
                     ) : (
-                      <feature.icon className="w-6 h-6 text-white drop-shadow-md" />
+                      <feature.icon className="w-6 h-6 drop-shadow-sm text-inherit" />
                     )}
                   </div>
                   <h3 className="text-lg font-semibold text-text-primary mb-2">

@@ -113,7 +113,7 @@ export async function handler(event, context) {
           <Button
             variant="outline"
             onClick={() => { setLogs([]); setHasFailover(false); }}
-            className="border-border-default text-text-primary hover:bg-bg-hover" style={{ color: 'var(--text-primary)', borderColor: 'var(--border-default)' }}
+            className="interactive-demo-reset-btn border-border-default text-text-primary hover:bg-bg-hover" style={{ color: 'var(--text-primary)', borderColor: 'var(--border-default)' }}
           >
             <RotateCcw className="w-4 h-4 mr-2" />
             Reset
@@ -470,24 +470,24 @@ export function InteractiveDemoSection() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <Tabs defaultValue="code" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/8">
+            <TabsList className="interactive-demo-tabs grid w-full grid-cols-3 bg-white/5 border border-white/8">
               <TabsTrigger
                 value="code"
-                className="data-[state=active]:bg-[#6366f1] data-[state=active]:text-white text-text-secondary"
+                className="interactive-demo-tab data-[state=active]:bg-[#6366f1] data-[state=active]:text-white text-text-secondary"
               >
                 <Code className="w-4 h-4 mr-2" />
                 Code Sandbox
               </TabsTrigger>
               <TabsTrigger
                 value="dashboard"
-                className="data-[state=active]:bg-[#6366f1] data-[state=active]:text-white text-text-secondary"
+                className="interactive-demo-tab data-[state=active]:bg-[#6366f1] data-[state=active]:text-white text-text-secondary"
               >
                 <BarChart3 className="w-4 h-4 mr-2" />
                 Status Dashboard
               </TabsTrigger>
               <TabsTrigger
                 value="pricing"
-                className="data-[state=active]:bg-[#6366f1] data-[state=active]:text-white text-text-secondary"
+                className="interactive-demo-tab data-[state=active]:bg-[#6366f1] data-[state=active]:text-white text-text-secondary"
               >
                 <Calculator className="w-4 h-4 mr-2" />
                 Pricing Calculator

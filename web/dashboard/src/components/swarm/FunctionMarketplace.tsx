@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Search, 
-  Code, 
-  Star, 
+import {
+  Search,
+  Code,
+  Star,
   Zap,
   Shield,
   DollarSign,
@@ -17,6 +17,7 @@ import {
   Bot,
   GitCommit
 } from 'lucide-react';
+import { AIDiscoveryUrlCard } from '@/components/common/AIDiscoveryUrlCard';
 
 // Types for Function Marketplace
 interface FunctionListing {
@@ -210,20 +211,23 @@ export function FunctionMarketplace() {
         </div>
       </div>
 
+      {/* AI discovery endpoint for LLMs */}
+      <AIDiscoveryUrlCard />
+
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search functions..." 
+              <Input
+                placeholder="Search functions..."
                 className="pl-10"
                 value={filters.search}
                 onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
               />
             </div>
-            <select 
+            <select
               className="px-3 py-2 border rounded-md"
               value={filters.category}
               onChange={(e) => setFilters(f => ({ ...f, category: e.target.value }))}
@@ -236,7 +240,7 @@ export function FunctionMarketplace() {
             </select>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 text-sm">
-                <input 
+                <input
                   type="checkbox"
                   checked={filters.deterministicOnly}
                   onChange={(e) => setFilters(f => ({ ...f, deterministicOnly: e.target.checked }))}
@@ -246,7 +250,7 @@ export function FunctionMarketplace() {
                 Deterministic
               </label>
               <label className="flex items-center gap-2 text-sm">
-                <input 
+                <input
                   type="checkbox"
                   checked={filters.agentGeneratedOnly}
                   onChange={(e) => setFilters(f => ({ ...f, agentGeneratedOnly: e.target.checked }))}
@@ -263,8 +267,8 @@ export function FunctionMarketplace() {
       {/* Listings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredListings.map((fn) => (
-          <FunctionCard 
-            key={fn.id} 
+          <FunctionCard
+            key={fn.id}
             fn={fn}
             priceDisplay={getPriceDisplay(fn)}
           />
@@ -282,11 +286,11 @@ export function FunctionMarketplace() {
   );
 }
 
-function FunctionCard({ 
+function FunctionCard({
   fn,
   priceDisplay
-}: { 
-  fn: FunctionListing; 
+}: {
+  fn: FunctionListing;
   priceDisplay: React.ReactNode;
 }) {
   return (

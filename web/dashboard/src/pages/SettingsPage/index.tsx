@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { User, CreditCard, Key, Bell } from "lucide-react";
 import { createBillingPortalSession, getBillingPortalErrorMessage } from "@/api/billing";
+import { EnterpriseSettingsSection } from "@/components/enterprise";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -246,6 +247,9 @@ export function SettingsPage() {
 
         {/* Billing Settings */}
         <TabsContent value="billing" className="space-y-6">
+          {/* Enterprise Settings Section - only visible for enterprise users */}
+          <EnterpriseSettingsSection />
+
           <Card>
             <CardHeader>
               <CardTitle>Current Plan</CardTitle>

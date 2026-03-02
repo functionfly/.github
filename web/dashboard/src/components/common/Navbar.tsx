@@ -7,10 +7,12 @@ import { UserMenu } from "@/components/layout/UserMenu";
 import { SearchButton } from "@/components/layout/SearchButton";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { ProductsDropdown } from "@/components/common/ProductsDropdown";
+import { MarketplaceDropdown } from "@/components/common/MarketplaceDropdown";
 import { useAuthStore } from "@/stores/authStore";
 import { useNavigationStatus } from "@/hooks/useNavigationStatus";
 import { useThemeStore } from "@/stores/themeStore";
 import { cn } from "@/lib/utils";
+import { DOCS_SITE_URL } from "@/lib/constants";
 
 interface NavbarProps {
   variant?: "landing" | "dashboard";
@@ -47,7 +49,7 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
     { path: "/", label: "Home" },
     { path: "/registry", label: "Functions" },
     { path: "/pricing", label: "Pricing" },
-    { path: "/docs", label: "Docs" }
+    { path: DOCS_SITE_URL, label: "Docs", external: true }
   ];
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -86,6 +88,7 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
             {isAuthenticated ? (
               <>
                 <ProductsDropdown />
+                <MarketplaceDropdown />
                 <Link
                   to="/settings"
                   className={cn(
@@ -128,6 +131,7 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
                 >
                   Functions
                 </Link>
+                <MarketplaceDropdown />
                 <Link
                   to="/pricing"
                   className={cn(
@@ -140,18 +144,17 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
                 >
                   Pricing
                 </Link>
-                <Link
-                  to="/docs"
-                  className={cn(
-                    "text-text-secondary hover:text-text-primary transition-colors font-medium",
-                    location.pathname === "/docs" && "text-text-primary"
-                  )}
+                <a
+                  href={DOCS_SITE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-text-secondary hover:text-text-primary transition-colors font-medium"
                   style={theme === 'light' ? {
                     color: '#1a1a2e',
                   } : {}}
                 >
                   Docs
-                </Link>
+                </a>
               </>
             )}
           </div>
@@ -313,6 +316,39 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
                     </Link>
                   </div>
 
+                  {/* Marketplace Section */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-semibold text-text-primary px-2">
+                      Marketplace
+                    </div>
+                    <Link
+                      to="/marketplace/functions"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
+                        location.pathname === "/marketplace/functions" && "text-text-primary"
+                      )}
+                      style={theme === 'light' ? {
+                        color: '#1a1a2e',
+                      } : {}}
+                    >
+                      ⚡ Function Marketplace
+                    </Link>
+                    <Link
+                      to="/marketplace/agents"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
+                        location.pathname === "/marketplace/agents" && "text-text-primary"
+                      )}
+                      style={theme === 'light' ? {
+                        color: '#1a1a2e',
+                      } : {}}
+                    >
+                      🤖 Agent Marketplace
+                    </Link>
+                  </div>
+
                   <Link
                     to="/settings"
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -358,6 +394,39 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
                   >
                     ⚡ Browse Functions
                   </Link>
+                  {/* Marketplace Section */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-semibold text-text-primary px-2">
+                      Marketplace
+                    </div>
+                    <Link
+                      to="/marketplace/functions"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
+                        location.pathname === "/marketplace/functions" && "text-text-primary"
+                      )}
+                      style={theme === 'light' ? {
+                        color: '#1a1a2e',
+                      } : {}}
+                    >
+                      ⚡ Function Marketplace
+                    </Link>
+                    <Link
+                      to="/marketplace/agents"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
+                        location.pathname === "/marketplace/agents" && "text-text-primary"
+                      )}
+                      style={theme === 'light' ? {
+                        color: '#1a1a2e',
+                      } : {}}
+                    >
+                      🤖 Agent Marketplace
+                    </Link>
+                  </div>
+
                   <Link
                     to="/pricing"
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -371,19 +440,18 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
                   >
                     Pricing
                   </Link>
-                  <Link
-                    to="/docs"
+                  <a
+                    href={DOCS_SITE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={cn(
-                      "block py-2 text-text-secondary hover:text-text-primary transition-colors font-medium",
-                      location.pathname === "/docs" && "text-text-primary"
-                    )}
+                    className="block py-2 text-text-secondary hover:text-text-primary transition-colors font-medium"
                     style={theme === 'light' ? {
                       color: '#1a1a2e',
                     } : {}}
                   >
                     Docs
-                  </Link>
+                  </a>
                 </>
               )}
 
