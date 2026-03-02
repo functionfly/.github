@@ -17,7 +17,7 @@ const targetMetrics = [
   },
   {
     icon: Globe,
-    value: "4",
+    value: "5",
     label: "Cloud Providers",
     description: "Multi-cloud redundancy out of the box",
   },

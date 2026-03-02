@@ -1,5 +1,5 @@
 export const APP_NAME = "FunctionFly";
-export const APP_TAGLINE = "Multi-Cloud Failover for Indie SaaS";
+export const APP_TAGLINE = "Serverless Functions & AI Agent Infrastructure";
 
 /** Base URL for the docs site (web/docs app). */
 export const DOCS_SITE_URL = "/docs";

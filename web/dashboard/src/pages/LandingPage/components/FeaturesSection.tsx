@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRightLeft, Network, Brain } from "lucide-react";
+import { ArrowRightLeft, Network, Brain, Database, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 // Custom illustration component for Predictive Routing
@@ -63,6 +63,24 @@ const features = [
     borderColor: "var(--success)",
     illustration: PredictiveRoutingIllustration,
   },
+  {
+    icon: Database,
+    title: "State Fabric",
+    description:
+      "Durable state management with automatic snapshots, deterministic replay, and cost attribution.",
+    color: "#06b6d4",
+    bgGradient: "from-cyan-500/20 to-cyan-500/10",
+    borderColor: "#06b6d4",
+  },
+  {
+    icon: Zap,
+    title: "Function Registry",
+    description:
+      "Publish and discover reusable functions. Built-in marketplace for sharing and monetization.",
+    color: "#f59e0b",
+    bgGradient: "from-amber-500/20 to-amber-500/10",
+    borderColor: "#f59e0b",
+  },
 ];
 
 export function FeaturesSection() {
@@ -79,7 +97,7 @@ export function FeaturesSection() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}

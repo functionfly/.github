@@ -29,7 +29,7 @@ export function HeroSection() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-500 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-500" />
             </span>
-            Now in Public Beta
+            Now in General Availability
           </span>
         </motion.div>
 
@@ -39,9 +39,9 @@ export function HeroSection() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6"
         >
-          <span className="text-text-primary text-glow hero-title-main">Multi-Cloud Failover</span>
+          <span className="text-text-primary text-glow hero-title-main">Serverless Functions</span>
           <br />
-          <span className="gradient-text text-glow-success shine-effect">for Indie SaaS</span>
+          <span className="gradient-text text-glow-success shine-effect">& AI Agent Infrastructure</span>
         </motion.h1>
 
         <motion.p
@@ -50,8 +50,7 @@ export function HeroSection() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto mb-10 text-balance hero-subtitle"
         >
-          {APP_TAGLINE}. Deploy once, run everywhere, never go down. The edge
-          platform that puts you in control.
+          {APP_TAGLINE}. Deploy serverless functions to edge, build AI agents with built-in cost controls, and scale with confidence.
         </motion.p>
 
         <motion.div

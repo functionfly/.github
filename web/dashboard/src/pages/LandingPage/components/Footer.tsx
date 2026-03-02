@@ -21,8 +21,8 @@ export function Footer() {
                 <Logo size="md" />
               </div>
               <p className="text-text-secondary mb-6 max-w-sm">
-                The edge platform that puts you in control. Deploy once, run
-                everywhere, never go down.
+                Serverless functions & AI agent infrastructure. Deploy to edge,
+                build AI agents with built-in cost controls, and scale with confidence.
               </p>
               <div className="flex items-center gap-4">
                 <motion.a
@@ -78,6 +78,30 @@ export function Footer() {
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
                     Pricing
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/state-fabric"
+                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                  >
+                    State Fabric
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/agents"
+                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                  >
+                    AI Agents
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/registry"
+                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                  >
+                    Function Registry
                   </a>
                 </li>
                 <li>

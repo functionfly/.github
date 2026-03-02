@@ -49,9 +49,9 @@ export function LandingPage() {
     <div className="min-h-screen bg-bg-primary">
       {/* SEO Meta Tags */}
       <MetaTags
-        title="FunctionFly - Deploy Functions Anywhere | Serverless Platform"
-        description="Deploy serverless functions to any cloud provider with FunctionFly. Zero-config deployments, instant scaling, and unified developer experience. Start building today."
-        keywords={["serverless", "functions", "deployment", "cloud", "devops", "serverless platform", "function as a service"]}
+        title="FunctionFly - Serverless Functions & AI Agent Infrastructure"
+        description="Deploy serverless functions to edge with multi-cloud failover. Build AI agents with built-in cost controls, state management, and unlimited scaling."
+        keywords={["serverless", "functions", "AI agents", "edge computing", "multi-cloud", "deployment", "cloud", "devops"]}
       />
 
       {/* Structured Data */}

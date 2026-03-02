@@ -53,6 +53,11 @@ const integrationPartners: IntegrationPartners = {
       icon: NetlifyIcon,
       category: "Edge"
     },
+    {
+      name: "FunctionFly Edge",
+      icon: "simple-icons:functionfly",
+      category: "Managed"
+    },
   ],
   frameworks: [
     {
