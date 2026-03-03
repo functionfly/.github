@@ -1,11 +1,10 @@
-package channels
+package notification
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/functionfly/functionfly/internal/email"
-	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
 )
@@ -26,11 +25,11 @@ func NewEmailChannel(emailSvc email.Service, logger *logrus.Logger) *EmailChanne
 
 // Name returns the channel name
 func (c *EmailChannel) Name() string {
-	return notification.ChannelEmail
+	return ChannelEmail
 }
 
 // Send sends a notification via email
-func (c *EmailChannel) Send(ctx context.Context, n *notification.Notification, user *storage.User) error {
+func (c *EmailChannel) Send(ctx context.Context, n *Notification, user *storage.User) error {
 	if c.emailSvc == nil {
 		return fmt.Errorf("email service not configured")
 	}
@@ -49,8 +48,8 @@ func (c *EmailChannel) Send(ctx context.Context, n *notification.Notification, u
 	// For now, we'll log the email instead of actually sending
 	// In production, this would integrate with the email service
 	c.logger.WithFields(logrus.Fields{
-		"to":       userEmail,
-		"subject":  subject,
+		"to":                userEmail,
+		"subject":           subject,
 		"notification_type": n.Type,
 	}).Info("Would send email notification")
 
@@ -69,7 +68,7 @@ func (c *EmailChannel) IsConfigured() bool {
 }
 
 // buildHTMLBody builds the HTML email body
-func (c *EmailChannel) buildHTMLBody(n *notification.Notification) string {
+func (c *EmailChannel) buildHTMLBody(n *Notification) string {
 	// Default HTML template
 	return fmt.Sprintf(`
 <!DOCTYPE html>
@@ -104,7 +103,7 @@ func (c *EmailChannel) buildHTMLBody(n *notification.Notification) string {
 }
 
 // buildTextBody builds the plain text email body
-func (c *EmailChannel) buildTextBody(n *notification.Notification) string {
+func (c *EmailChannel) buildTextBody(n *Notification) string {
 	return fmt.Sprintf(`FunctionFly Notification
 
 %s
@@ -115,3 +114,4 @@ func (c *EmailChannel) buildTextBody(n *notification.Notification) string {
 © 2024 FunctionFly. All rights reserved.
 `, n.Title, n.Body)
 }
+

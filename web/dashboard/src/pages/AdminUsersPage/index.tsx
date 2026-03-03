@@ -486,7 +486,7 @@ export function AdminUsersPage() {
                     <div className="flex items-center justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-text-muted hover:text-text-primary h-8 w-8 p-0">
+                          <Button variant="ghost" size="sm" className="text-text-muted hover:text-text-primary h-8 w-8 p-0" aria-label="User actions">
                             <MoreVertical className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>

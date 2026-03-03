@@ -146,7 +146,7 @@ function getFeatureValue(value: boolean | string) {
   if (value === "limited" || value === "partial") {
     return <Minus className="w-5 h-5 text-yellow-400 mx-auto" />;
   }
-  return <span className="text-sm text-text-secondary">{value}</span>;
+  return <span className="text-sm text-text-secondary font-medium">{value}</span>;
 }
 
 export function CompetitorComparison() {
@@ -156,7 +156,7 @@ export function CompetitorComparison() {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.8 }}
-      className="py-20"
+      className="competitor-comparison py-20"
     >
       <div className="text-center mb-16">
         <motion.div
@@ -168,7 +168,7 @@ export function CompetitorComparison() {
           <Badge variant="outline" className="mb-4 border-[#6366f1]/30 text-[#6366f1]">
             Why Choose FunctionFly
           </Badge>
-          <h2 className="text-4xl font-bold text-white mb-4">
+          <h2 className="text-4xl font-bold text-text-primary mb-4">
             How we compare to the competition
           </h2>
           <p className="text-text-secondary max-w-2xl mx-auto text-lg">
@@ -184,23 +184,22 @@ export function CompetitorComparison() {
         viewport={{ once: true }}
         transition={{ duration: 0.6, delay: 0.2 }}
       >
-        <Card className="border-white/8 bg-white/5 overflow-hidden">
+        <Card className="competitor-comparison-card border-border-default dark:border-white/8 bg-bg-secondary/80 dark:bg-white/5 overflow-hidden">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[800px]">
                 <thead>
-                  <tr className="border-b border-white/8">
-                    <th className="text-left p-6 text-white font-semibold min-w-[200px]">
+                  <tr className="border-b border-border-default dark:border-white/8">
+                    <th className="text-left p-6 text-text-primary font-semibold min-w-[200px]">
                       Features
                     </th>
                     {competitors.map((competitor) => (
                       <th
                         key={competitor.key}
                         className="text-center p-6 font-semibold min-w-[120px]"
-                        style={{ color: competitor.highlight ? "#6366f1" : "white" }}
                       >
                         <div className="flex flex-col items-center gap-2">
-                          <span className={competitor.highlight ? "text-[#6366f1]" : "text-white"}>
+                          <span className={competitor.highlight ? "text-[#6366f1]" : "text-text-primary"}>
                             {competitor.name}
                           </span>
                           {competitor.highlight && (
@@ -217,7 +216,7 @@ export function CompetitorComparison() {
                   {categories.map((category) => (
                     <React.Fragment key={category}>
                       {/* Category Header */}
-                      <tr className="bg-white/2">
+                      <tr className="bg-bg-tertiary/50 dark:bg-white/2">
                         <td
                           colSpan={competitors.length + 1}
                           className="p-4 text-[#6366f1] font-semibold text-sm uppercase tracking-wide"
@@ -231,15 +230,15 @@ export function CompetitorComparison() {
                         .map((item, index) => (
                           <motion.tr
                             key={item.feature}
-                            className={`border-b border-white/4 ${
-                              index % 2 === 0 ? "bg-white/1" : ""
+                            className={`border-b border-border-subtle dark:border-white/4 ${
+                              index % 2 === 0 ? "bg-bg-tertiary/30 dark:bg-white/1" : ""
                             }`}
                             initial={{ opacity: 0, x: -20 }}
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true }}
                             transition={{ duration: 0.5, delay: index * 0.05 }}
                           >
-                            <td className="p-6 text-white font-medium">
+                            <td className="p-6 text-text-primary font-medium">
                               {item.feature}
                             </td>
                             {competitors.map((competitor) => {
@@ -274,14 +273,14 @@ export function CompetitorComparison() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6, delay: 0.4 }}
-        className="mt-16 grid md:grid-cols-3 gap-6"
+        className="competitor-differentiators mt-16 grid md:grid-cols-3 gap-6"
       >
-        <Card className="border-[#6366f1]/20 bg-[#6366f1]/5">
+        <Card className="competitor-diff-card border-[#6366f1]/20 bg-[#6366f1]/5 dark:bg-[#6366f1]/5">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-[#6366f1]/20 flex items-center justify-center">
               <Check className="w-6 h-6 text-[#6366f1]" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">
+            <h3 className="text-lg font-semibold text-text-primary mb-2">
               Multi-Provider Magic
             </h3>
             <p className="text-text-secondary text-sm">
@@ -290,12 +289,12 @@ export function CompetitorComparison() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#6366f1]/20 bg-[#6366f1]/5">
+        <Card className="competitor-diff-card border-[#6366f1]/20 bg-[#6366f1]/5 dark:bg-[#6366f1]/5">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-[#6366f1]/20 flex items-center justify-center">
               <Check className="w-6 h-6 text-[#6366f1]" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">
+            <h3 className="text-lg font-semibold text-text-primary mb-2">
               Intelligent Failover
             </h3>
             <p className="text-text-secondary text-sm">
@@ -304,12 +303,12 @@ export function CompetitorComparison() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#6366f1]/20 bg-[#6366f1]/5">
+        <Card className="competitor-diff-card border-[#6366f1]/20 bg-[#6366f1]/5 dark:bg-[#6366f1]/5">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-[#6366f1]/20 flex items-center justify-center">
               <Check className="w-6 h-6 text-[#6366f1]" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">
+            <h3 className="text-lg font-semibold text-text-primary mb-2">
               Predictive Routing
             </h3>
             <p className="text-text-secondary text-sm">

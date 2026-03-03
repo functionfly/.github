@@ -138,7 +138,7 @@ export function AgentsPage() {
                     {agent.agentId}
                   </CardDescription>
                 </div>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" aria-label="Agent options">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </CardHeader>
@@ -158,7 +158,7 @@ export function AgentsPage() {
                       <Settings className="h-3 w-3 mr-1" />
                       Manage
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" aria-label="Delete agent">
                       <Trash2 className="h-3 w-3 text-red-500" />
                     </Button>
                   </div>

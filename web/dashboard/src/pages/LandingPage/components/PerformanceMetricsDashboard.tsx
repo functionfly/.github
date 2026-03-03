@@ -534,6 +534,7 @@ export function PerformanceMetricsDashboard() {
                       stroke="var(--success)"
                       strokeWidth={2}
                       name="Uptime %"
+                      isAnimationActive={false}
                     />
                     <Line
                       yAxisId="right"
@@ -542,6 +543,7 @@ export function PerformanceMetricsDashboard() {
                       stroke="var(--brand-500)"
                       strokeWidth={2}
                       name="Latency (ms)"
+                      isAnimationActive={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -576,6 +578,7 @@ export function PerformanceMetricsDashboard() {
                           outerRadius={80}
                           paddingAngle={2}
                           dataKey="value"
+                          isAnimationActive={false}
                         >
                           {pieData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />

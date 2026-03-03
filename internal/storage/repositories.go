@@ -65,6 +65,14 @@ func (db *PostgresDB) UpdateUserProviderData(userID uuid.UUID, providerData map[
 	return db.userRepository.UpdateUserProviderData(userID, providerData)
 }
 
+func (db *PostgresDB) UpdateUserSettings(userID uuid.UUID, settings map[string]interface{}) error {
+	return db.userRepository.UpdateUserSettings(userID, settings)
+}
+
+func (db *PostgresDB) GetUserSettings(userID uuid.UUID) (map[string]interface{}, error) {
+	return db.userRepository.GetUserSettings(userID)
+}
+
 func (db *PostgresDB) UpdateUserMFA(userID uuid.UUID, secret *string, enabled bool, backupCodes []string, lastUsed *time.Time) error {
 	return db.userRepository.UpdateUserMFA(userID, secret, enabled, backupCodes, lastUsed)
 }
@@ -232,6 +240,14 @@ func (db *PostgresDB) GetBackendByID(id uuid.UUID) (*Backend, error) {
 
 func (db *PostgresDB) GetAllEnabledBackends() ([]*Backend, error) {
 	return db.backendRepository.GetAllEnabledBackends()
+}
+
+func (db *PostgresDB) ListAllBackends(ctx context.Context) ([]*Backend, error) {
+	return db.backendRepository.ListAllBackends(ctx)
+}
+
+func (db *PostgresDB) UpdateBackendEnabled(ctx context.Context, backendID uuid.UUID, enabled bool) error {
+	return db.backendRepository.UpdateBackendEnabled(ctx, backendID, enabled)
 }
 
 func (db *PostgresDB) InsertHealthCheck(backendID uuid.UUID, ok bool, statusCode, latencyMs int, errorMessage string) error {
@@ -981,6 +997,38 @@ func (db *PostgresDB) GetProvidersByUser(userID uuid.UUID) ([]*Provider, error) 
 
 func (db *PostgresDB) UpdateProviderStatus(providerID string, status string) error {
 	return db.GORM.Model(&Provider{}).Where("id = ?", providerID).Update("status", status).Error
+}
+
+func (db *PostgresDB) ListAllProviders(ctx context.Context) ([]*Provider, error) {
+	var providers []*Provider
+	err := db.GORM.WithContext(ctx).Find(&providers).Error
+	return providers, err
+}
+
+func (db *PostgresDB) UpdateProvider(ctx context.Context, providerID string, updates map[string]interface{}) (*Provider, error) {
+	// Get current provider
+	var provider Provider
+	if err := db.GORM.WithContext(ctx).Where("id = ?", providerID).First(&provider).Error; err != nil {
+		return nil, err
+	}
+
+	// Apply updates
+	if status, ok := updates["status"].(string); ok {
+		provider.Status = status
+	}
+	if isShared, ok := updates["is_shared"].(bool); ok {
+		provider.IsShared = isShared
+	}
+	if teamID, ok := updates["team_id"].(string); ok {
+		provider.TeamID = &teamID
+	}
+
+	// Update in database
+	if err := db.GORM.WithContext(ctx).Save(&provider).Error; err != nil {
+		return nil, err
+	}
+
+	return &provider, nil
 }
 
 func (db *PostgresDB) ShareProviderWithTeam(providerID string, teamID string) error {

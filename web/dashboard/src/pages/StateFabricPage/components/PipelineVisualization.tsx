@@ -157,7 +157,7 @@ export function PipelineVisualization({ fabricId, pipelines }: PipelineVisualiza
                         <Play className="w-4 h-4" />
                       )}
                     </Button>
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" aria-label="Pipeline settings">
                       <Settings className="w-4 h-4" />
                     </Button>
                     <Button

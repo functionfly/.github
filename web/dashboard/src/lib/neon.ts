@@ -131,16 +131,19 @@ export const getUsersByIds = async (userIds: string[]) => {
 
   if (error) throw error;
 
-  // Transform the data to match the expected format
-  return data.map(user => ({
-    id: user.id,
-    name: user.profile?.first_name && user.profile?.last_name
-      ? `${user.profile.first_name} ${user.profile.last_name}`
-      : user.email.split('@')[0], // Fallback to email username
-    email: user.email,
-    avatar_url: user.profile?.avatar_url,
-    last_active_at: user.profile?.last_active_at,
-  }));
+  // Transform the data to match the expected format (profile is an array from the join)
+  return data.map(user => {
+    const profile = Array.isArray(user.profile) ? user.profile[0] : user.profile;
+    return {
+      id: user.id,
+      name: profile?.first_name && profile?.last_name
+        ? `${profile.first_name} ${profile.last_name}`
+        : user.email.split('@')[0], // Fallback to email username
+      email: user.email,
+      avatar_url: profile?.avatar_url,
+      last_active_at: profile?.last_active_at,
+    };
+  });
 };
 
 export const getUserLastActive = async (userId: string) => {
@@ -216,8 +219,10 @@ export class RealtimeManager {
     onPresence?: (event: string, payload: any) => void;
   }) {
     const baseUrl = import.meta.env.VITE_API_URL || window.location.origin;
-    const wsUrl = baseUrl.replace(/^http/, 'ws');
-    const fullWsUrl = `${wsUrl}/api/monitoring/realtime`;
+    const realtimePath = '/v1/monitoring/realtime';
+    const fullWsUrl = baseUrl.startsWith('http')
+      ? `${baseUrl.replace(/^http/, 'ws').replace(/\/$/, '')}${realtimePath}`
+      : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}${baseUrl.startsWith('/') ? baseUrl : `/${baseUrl || 'api'}`}${realtimePath}`;
 
     try {
       const ws = new WebSocket(fullWsUrl);

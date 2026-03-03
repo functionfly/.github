@@ -1,4 +1,4 @@
-package channels
+package notification
 
 import (
 	"bytes"
@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
 )
@@ -20,7 +19,7 @@ import (
 type WebhookChannel struct {
 	client *http.Client
 	logger *logrus.Logger
-	repo   notification.Repository
+	repo   Repository
 }
 
 // NewWebhookChannel creates a new webhook channel
@@ -35,13 +34,13 @@ func NewWebhookChannel(logger *logrus.Logger) *WebhookChannel {
 
 // Name returns the channel name
 func (c *WebhookChannel) Name() string {
-	return notification.ChannelWebhook
+	return ChannelWebhook
 }
 
 // Send sends a notification via webhook
-func (c *WebhookChannel) Send(ctx context.Context, n *notification.Notification, user *storage.User) error {
+func (c *WebhookChannel) Send(ctx context.Context, n *Notification, user *storage.User) error {
 	// Get user's webhook preferences
-	pref, err := c.repo.GetPreference(ctx, n.UserID, notification.ChannelWebhook, n.Category)
+	pref, err := c.repo.GetPreference(ctx, n.UserID, ChannelWebhook, n.Category)
 	if err != nil {
 		return fmt.Errorf("failed to get webhook preference: %w", err)
 	}
@@ -112,8 +111,8 @@ func (c *WebhookChannel) Send(ctx context.Context, n *notification.Notification,
 		// Check response status
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			c.logger.WithFields(logrus.Fields{
-				"webhook_url": *pref.WebhookURL,
-				"status_code": resp.StatusCode,
+				"webhook_url":     *pref.WebhookURL,
+				"status_code":     resp.StatusCode,
 				"notification_id": n.ID,
 			}).Debug("Webhook delivered successfully")
 			return nil
@@ -140,7 +139,7 @@ func (c *WebhookChannel) IsConfigured() bool {
 }
 
 // SetRepository sets the repository for the channel
-func (c *WebhookChannel) SetRepository(repo notification.Repository) {
+func (c *WebhookChannel) SetRepository(repo Repository) {
 	c.repo = repo
 }
 

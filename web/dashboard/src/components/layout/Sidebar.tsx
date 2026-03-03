@@ -25,13 +25,18 @@ import {
   Layers,
   RotateCcw,
   Wrench,
+  Server,
   Bot,
   PieChart,
+  Bell,
+  Activity,
+  AlertTriangle,
 } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/authStore";
 import { useRecentNavStore } from "@/stores/recentNavStore";
+import { useNotificationStore } from "@/stores/notificationStore";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/constants";
 import { useNavigationStatus } from "@/hooks/useNavigationStatus";
@@ -57,7 +62,9 @@ const navigationSections: NavSection[] = [
   {
     title: "Overview",
     items: [
-      { path: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutDashboard }
+      { path: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutDashboard },
+      { path: "/status", label: "Status", icon: Activity },
+      { path: "/notifications", label: "Notifications", icon: Bell }
     ]
   },
   {
@@ -94,6 +101,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
   const status = useNavigationStatus();
+  const unreadCount = useNotificationStore((state) => state.unreadCounts.all);
 
   const isAdmin = user?.role && ["super_admin", "support", "billing_admin", "developer_admin"].includes(user.role);
 
@@ -130,6 +138,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
       { path: ROUTES.ADMIN_BILLING, label: "Billing", icon: CreditCard },
       { path: ROUTES.ADMIN_AUDIT, label: "Audit Log", icon: Shield },
       { path: ROUTES.ADMIN_SYSTEM, label: "System", icon: Wrench },
+      { path: ROUTES.ADMIN_BACKENDS, label: "Platform Backends", icon: Server },
+      { path: ROUTES.ADMIN_PROVIDERS, label: "Providers", icon: Cloud },
       { path: ROUTES.ADMIN_CONTENT, label: "Content", icon: FileText },
       { path: ROUTES.ADMIN_REDIRECTS, label: "Redirects", icon: RotateCcw },
       { path: ROUTES.ADMIN_NEWSLETTER, label: "Newsletter", icon: Mail },
@@ -138,6 +148,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
       { path: ROUTES.ADMIN_FUNCTIONS, label: "Functions", icon: Code },
       { path: ROUTES.ADMIN_REGISTRY, label: "Registry", icon: Database },
       { path: ROUTES.ADMIN_STATE_FABRIC, label: "State Fabric", icon: Layers },
+      { path: "/admin/status/incidents", label: "Status Incidents", icon: AlertTriangle },
     ]
   } : null;
 
@@ -279,7 +290,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-4">
+        <nav className="flex-1 p-4 space-y-4" aria-label="Primary navigation">
           {/* Recent Items */}
           {recentItems.length > 0 && !mobileSearchQuery && (
             <div className="space-y-2">
@@ -374,6 +385,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                         return status.analytics.hasAlerts;
                       case ROUTES.SETTINGS:
                         return status.settings.hasWarnings;
+                      case "/notifications":
+                        return unreadCount > 0;
                       default:
                         return false;
                     }
@@ -404,6 +417,14 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                           return {
                             count: "!",
                             color: "bg-warning"
+                          };
+                        }
+                        break;
+                      case "/notifications":
+                        if (unreadCount > 0) {
+                          return {
+                            count: unreadCount > 99 ? "99+" : unreadCount.toString(),
+                            color: "bg-error"
                           };
                         }
                         break;

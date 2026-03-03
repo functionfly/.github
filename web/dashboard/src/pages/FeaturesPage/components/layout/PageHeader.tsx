@@ -14,7 +14,7 @@ export const PageHeader = () => {
         <div className="icon-container animate-float">
           <Zap className="w-8 h-8 text-[#6366f1]" />
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+        <h1 className="features-hero-title text-4xl md:text-5xl font-bold mb-4">
           Powerful features for modern developers
         </h1>
         <p className="text-text-secondary max-w-2xl mx-auto text-lg mb-8">

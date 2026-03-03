@@ -25,7 +25,7 @@ export function DashboardLayout() {
       <div className="flex-1 flex flex-col min-w-0 relative overflow-hidden">
         <Navbar variant="dashboard" onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 pt-20 lg:pt-24 p-4 lg:p-6 overflow-auto">
+        <main className="flex-1 pt-20 lg:pt-24 p-4 lg:p-6 overflow-auto" aria-label="Main content">
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>

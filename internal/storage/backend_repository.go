@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -367,4 +368,54 @@ func (r *BackendRepository) GetRecentRoutingEvents(limit int, since time.Time) (
 	}
 
 	return events, nil
+}
+
+// ListAllBackends lists all backends (without shared_secret for security)
+func (r *BackendRepository) ListAllBackends(ctx context.Context) ([]*Backend, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, app_id, provider, region, url, enabled, priority, created_at, updated_at
+		FROM backends
+		ORDER BY provider ASC, region ASC, created_at ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all backends: %w", err)
+	}
+	defer rows.Close()
+
+	var backends []*Backend
+	for rows.Next() {
+		backend := &Backend{}
+		err := rows.Scan(
+			&backend.ID, &backend.AppID, &backend.Provider, &backend.Region,
+			&backend.URL, &backend.Enabled, &backend.Priority,
+			&backend.CreatedAt, &backend.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan backend: %w", err)
+		}
+		backends = append(backends, backend)
+	}
+
+	return backends, nil
+}
+
+// UpdateBackendEnabled updates the enabled status of a backend
+func (r *BackendRepository) UpdateBackendEnabled(ctx context.Context, backendID uuid.UUID, enabled bool) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE backends
+		SET enabled = $1, updated_at = NOW()
+		WHERE id = $2`,
+		enabled, backendID)
+	if err != nil {
+		return fmt.Errorf("failed to update backend enabled status: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("backend not found")
+	}
+
+	return nil
 }

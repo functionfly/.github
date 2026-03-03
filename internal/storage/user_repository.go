@@ -22,6 +22,14 @@ func NewUserRepository(db *PostgresDB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
+// nullIfEmpty returns nil for empty string so DB stores NULL; otherwise returns s.
+func nullIfEmpty(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
 // CreateUser creates a new user
 func (r *UserRepository) CreateUser(email, passwordHash string, tenantID uuid.UUID) (*User, error) {
 	user := &User{
@@ -178,13 +186,22 @@ func (r *UserRepository) GetUserByUsername(username string) (*User, error) {
 
 	var nameNull sql.NullString
 	var bioNull sql.NullString
+	var locationNull sql.NullString
+	var websiteNull sql.NullString
+	var jobTitleNull sql.NullString
+	var twitterURLNull sql.NullString
+	var githubURLNull sql.NullString
+	var linkedinURLNull sql.NullString
+
 	err := r.db.QueryRowContext(context.Background(), `
 		SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name,
-		       provider, provider_id, provider_data, created_at, updated_at, name, bio
+		       provider, provider_id, provider_data, created_at, updated_at, name, bio,
+		       location, website, job_title, twitter_url, github_url, linkedin_url
 		FROM users WHERE LOWER(username) = LOWER($1)`, username).Scan(
 		&user.ID, &user.TenantID, &usernameNull, &user.Email, &user.PasswordHash, &role,
 		&user.EmailVerified, &companyName, &provider, &providerID, &providerData,
-		&user.CreatedAt, &user.UpdatedAt, &nameNull, &bioNull)
+		&user.CreatedAt, &user.UpdatedAt, &nameNull, &bioNull,
+		&locationNull, &websiteNull, &jobTitleNull, &twitterURLNull, &githubURLNull, &linkedinURLNull)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -219,6 +236,24 @@ func (r *UserRepository) GetUserByUsername(username string) (*User, error) {
 	if bioNull.Valid {
 		user.Bio = &bioNull.String
 	}
+	if locationNull.Valid {
+		user.Location = &locationNull.String
+	}
+	if websiteNull.Valid {
+		user.Website = &websiteNull.String
+	}
+	if jobTitleNull.Valid {
+		user.JobTitle = &jobTitleNull.String
+	}
+	if twitterURLNull.Valid {
+		user.TwitterURL = &twitterURLNull.String
+	}
+	if githubURLNull.Valid {
+		user.GithubURL = &githubURLNull.String
+	}
+	if linkedinURLNull.Valid {
+		user.LinkedInURL = &linkedinURLNull.String
+	}
 
 	return user, nil
 }
@@ -227,7 +262,7 @@ func (r *UserRepository) GetUserByUsername(username string) (*User, error) {
 func (r *UserRepository) IsUsernameReserved(username string) (bool, error) {
 	var exists bool
 	err := r.db.QueryRowContext(context.Background(), `
-		SELECT EXISTS(SELECT 1 FROM reserved_usernames WHERE LOWER(username) = LOWER($1))`, 
+		SELECT EXISTS(SELECT 1 FROM reserved_usernames WHERE LOWER(username) = LOWER($1))`,
 		username).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("failed to check reserved username: %w", err)
@@ -498,6 +533,36 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 		args = append(args, bio)
 		argIndex++
 	}
+	if location, ok := updates["location"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("location = $%d", argIndex))
+		args = append(args, nullIfEmpty(location))
+		argIndex++
+	}
+	if website, ok := updates["website"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("website = $%d", argIndex))
+		args = append(args, nullIfEmpty(website))
+		argIndex++
+	}
+	if jobTitle, ok := updates["job_title"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("job_title = $%d", argIndex))
+		args = append(args, nullIfEmpty(jobTitle))
+		argIndex++
+	}
+	if twitterURL, ok := updates["twitter_url"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("twitter_url = $%d", argIndex))
+		args = append(args, nullIfEmpty(twitterURL))
+		argIndex++
+	}
+	if githubURL, ok := updates["github_url"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("github_url = $%d", argIndex))
+		args = append(args, nullIfEmpty(githubURL))
+		argIndex++
+	}
+	if linkedinURL, ok := updates["linkedin_url"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("linkedin_url = $%d", argIndex))
+		args = append(args, nullIfEmpty(linkedinURL))
+		argIndex++
+	}
 
 	if len(setParts) == 0 {
 		return current, nil // No updates
@@ -505,7 +570,7 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 
 	setParts = append(setParts, "updated_at = NOW()")
 
-	query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d RETURNING id, tenant_id, username, email, password_hash, role, company_name, name, bio, created_at, updated_at",
+	query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d RETURNING id, tenant_id, username, email, password_hash, role, company_name, name, bio, location, website, job_title, twitter_url, github_url, linkedin_url, created_at, updated_at",
 		strings.Join(setParts, ", "), argIndex)
 
 	args = append(args, userID)
@@ -515,8 +580,16 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 	var companyNameNull sql.NullString
 	var nameNull sql.NullString
 	var bioNull sql.NullString
+	var locationNull sql.NullString
+	var websiteNull sql.NullString
+	var jobTitleNull sql.NullString
+	var twitterURLNull sql.NullString
+	var githubURLNull sql.NullString
+	var linkedinURLNull sql.NullString
 	err = r.db.QueryRow(query, args...).Scan(
-		&updated.ID, &updated.TenantID, &usernameNull, &updated.Email, &updated.PasswordHash, &updated.Role, &companyNameNull, &nameNull, &bioNull, &updated.CreatedAt, &updated.UpdatedAt)
+		&updated.ID, &updated.TenantID, &usernameNull, &updated.Email, &updated.PasswordHash, &updated.Role, &companyNameNull, &nameNull, &bioNull,
+		&locationNull, &websiteNull, &jobTitleNull, &twitterURLNull, &githubURLNull, &linkedinURLNull,
+		&updated.CreatedAt, &updated.UpdatedAt)
 	if err == nil && usernameNull.Valid {
 		updated.Username = &usernameNull.String
 	}
@@ -528,6 +601,24 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 	}
 	if err == nil && bioNull.Valid {
 		updated.Bio = &bioNull.String
+	}
+	if err == nil && locationNull.Valid {
+		updated.Location = &locationNull.String
+	}
+	if err == nil && websiteNull.Valid {
+		updated.Website = &websiteNull.String
+	}
+	if err == nil && jobTitleNull.Valid {
+		updated.JobTitle = &jobTitleNull.String
+	}
+	if err == nil && twitterURLNull.Valid {
+		updated.TwitterURL = &twitterURLNull.String
+	}
+	if err == nil && githubURLNull.Valid {
+		updated.GithubURL = &githubURLNull.String
+	}
+	if err == nil && linkedinURLNull.Valid {
+		updated.LinkedInURL = &linkedinURLNull.String
 	}
 
 	if err != nil {
@@ -666,6 +757,41 @@ func (r *UserRepository) UpdateUserMFALastUsed(userID uuid.UUID, lastUsed *time.
 	}
 
 	return nil
+}
+
+// UpdateUserSettings updates the settings JSONB field for a user
+func (r *UserRepository) UpdateUserSettings(userID uuid.UUID, settings map[string]interface{}) error {
+	settingsJSON, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user settings: %w", err)
+	}
+
+	_, err = r.db.Exec(`
+		UPDATE users SET settings = $1, updated_at = NOW() WHERE id = $2`,
+		settingsJSON, userID)
+
+	if err != nil {
+		return fmt.Errorf("failed to update user settings: %w", err)
+	}
+
+	return nil
+}
+
+// GetUserSettings retrieves the settings JSONB field for a user
+func (r *UserRepository) GetUserSettings(userID uuid.UUID) (map[string]interface{}, error) {
+	user, err := r.GetUserByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	if user.Settings == nil {
+		return make(map[string]interface{}), nil
+	}
+
+	return user.Settings, nil
 }
 
 // HashPassword securely hashes a password using bcrypt

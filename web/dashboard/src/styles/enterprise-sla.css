@@ -1,0 +1,199 @@
+/* ==========================================================================
+   Enterprise SLA Dashboard - Custom Styles
+   Uptime metrics, incident history, and SLA compliance
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Page wrapper - subtle background and spacing
+   -------------------------------------------------------------------------- */
+.enterprise-sla-page {
+  --sla-card-radius: 1rem;
+  --sla-empty-icon-size: 3.5rem;
+}
+
+.enterprise-sla-page .enterprise-sla-subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   SLA metric cards - elevated, theme-aware
+   -------------------------------------------------------------------------- */
+.enterprise-sla-page .sla-metric-card {
+  border-radius: var(--sla-card-radius);
+  border: 1px solid var(--border-subtle);
+  background: var(--card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.enterprise-sla-page .sla-metric-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--border-default);
+}
+
+.enterprise-sla-page .sla-metric-card .sla-value {
+  color: var(--text-primary);
+  font-size: 1.875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.enterprise-sla-page .sla-metric-card .sla-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.enterprise-sla-page .sla-metric-card .sla-subtitle {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+/* Status icon containers - success / warning / error */
+.enterprise-sla-page .sla-icon-wrap {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.enterprise-sla-page .sla-icon-wrap.success {
+  color: var(--success);
+  background: var(--success-glow);
+}
+
+.enterprise-sla-page .sla-icon-wrap.warning {
+  color: var(--warning);
+  background: var(--warning-glow);
+}
+
+.enterprise-sla-page .sla-icon-wrap.error {
+  color: var(--error);
+  background: var(--error-glow);
+}
+
+/* --------------------------------------------------------------------------
+   Uptime graph placeholder - engaging empty state
+   -------------------------------------------------------------------------- */
+.enterprise-sla-page .sla-uptime-card {
+  border-radius: var(--sla-card-radius);
+  border: 1px solid var(--border-subtle);
+  background: var(--card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.enterprise-sla-page .sla-uptime-card .sla-card-title {
+  color: var(--text-primary);
+}
+
+.enterprise-sla-page .sla-uptime-empty {
+  min-height: 16rem;
+  border-radius: 0.75rem;
+  border: 1px dashed var(--border-default);
+  background:
+    linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 19px,
+      var(--border-subtle) 19px,
+      var(--border-subtle) 20px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 19px,
+      var(--border-subtle) 19px,
+      var(--border-subtle) 20px
+    );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+}
+
+.enterprise-sla-page .sla-uptime-empty-icon {
+  width: var(--sla-empty-icon-size);
+  height: var(--sla-empty-icon-size);
+  border-radius: 1rem;
+  background: linear-gradient(135deg, var(--color-brand-500) 0%, var(--color-brand-600) 100%);
+  opacity: 0.95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.enterprise-sla-page .sla-uptime-empty-title {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.enterprise-sla-page .sla-uptime-empty-desc {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+  max-width: 20rem;
+}
+
+/* --------------------------------------------------------------------------
+   Recent incidents card
+   -------------------------------------------------------------------------- */
+.enterprise-sla-page .sla-incidents-card {
+  border-radius: var(--sla-card-radius);
+  border: 1px solid var(--border-subtle);
+  background: var(--card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.enterprise-sla-page .sla-incidents-card .sla-card-title {
+  color: var(--text-primary);
+}
+
+.enterprise-sla-page .sla-incident-row {
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.enterprise-sla-page .sla-incident-row:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-default);
+}
+
+.enterprise-sla-page .sla-incident-row .incident-title {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.enterprise-sla-page .sla-incident-row .incident-desc {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* --------------------------------------------------------------------------
+   Enterprise gate (non-enterprise users)
+   -------------------------------------------------------------------------- */
+.enterprise-sla-page .sla-gate-card {
+  border: 1px dashed var(--border-default);
+  border-radius: var(--sla-card-radius);
+  background: var(--card);
+}
+
+.enterprise-sla-page .sla-gate-title {
+  color: var(--text-primary);
+}
+
+.enterprise-sla-page .sla-gate-desc {
+  color: var(--text-secondary);
+}

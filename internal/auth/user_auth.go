@@ -377,9 +377,21 @@ func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 		fmt.Printf("Warning: failed to send verification email: %v\n", err)
 	}
 
+	// Welcome notification (in-app) so the user sees it when they open the platform
+	a.sendWelcomeNotification(context.Background(), user.ID)
+
 	return &SignupResponse{
 		Message:              "Account created successfully. Please check your email to verify your account.",
 		EmailSent:            emailSent,
 		RequiresVerification: true,
 	}, nil
+}
+
+// sendWelcomeNotification sends an in-app welcome notification if a notifier is configured.
+func (a *AuthService) sendWelcomeNotification(ctx context.Context, userID uuid.UUID) {
+	if a.notifySvc != nil {
+		if err := a.notifySvc.SendWelcome(ctx, userID); err != nil {
+			logrus.WithError(err).WithField("user_id", userID).Warn("Failed to send welcome notification")
+		}
+	}
 }

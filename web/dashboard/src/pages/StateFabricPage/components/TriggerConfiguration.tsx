@@ -270,7 +270,7 @@ export function TriggerConfiguration({ fabricId }: TriggerConfigurationProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" aria-label="Edit trigger code">
                       <Code className="w-4 h-4" />
                     </Button>
                     <Button

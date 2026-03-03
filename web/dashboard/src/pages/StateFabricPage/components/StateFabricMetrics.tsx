@@ -192,6 +192,7 @@ export function StateFabricMetrics({ fabricId, metrics }: StateFabricMetricsProp
                     stroke="#6366f1"
                     fillOpacity={1}
                     fill="url(#colorOps)"
+                    isAnimationActive={false}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -223,6 +224,7 @@ export function StateFabricMetrics({ fabricId, metrics }: StateFabricMetricsProp
                     stroke="#10b981"
                     strokeWidth={2}
                     dot={false}
+                    isAnimationActive={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -277,6 +279,7 @@ export function StateFabricMetrics({ fabricId, metrics }: StateFabricMetricsProp
                   stroke="#8b5cf6"
                   fillOpacity={1}
                   fill="url(#colorStorage)"
+                  isAnimationActive={false}
                 />
               </AreaChart>
             </ResponsiveContainer>

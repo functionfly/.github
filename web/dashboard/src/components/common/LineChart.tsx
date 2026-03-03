@@ -123,6 +123,7 @@ export function LineChart({
                 dot={{ fill: line.color, strokeWidth: 0, r: 4 }}
                 activeDot={{ r: 6, stroke: line.color, strokeWidth: 2, fill: "var(--bg-primary)" }}
                 name={line.name}
+                isAnimationActive={false}
               />
             ))}
           </RechartsLineChart>

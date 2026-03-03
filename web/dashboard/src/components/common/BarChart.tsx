@@ -127,13 +127,14 @@ export function BarChart({
               }
             />
             {showLegend && <Legend />}
-            {series.map((bar, index) => (
+            {series.map((bar) => (
               <Bar
                 key={bar.key}
                 dataKey={bar.key}
                 fill={bar.color}
                 name={bar.name}
                 radius={bar.radius || [2, 2, 0, 0]}
+                isAnimationActive={false}
               />
             ))}
           </RechartsBarChart>

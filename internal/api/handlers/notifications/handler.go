@@ -14,12 +14,12 @@ import (
 
 // Handler contains notification handlers
 type Handler struct {
-	service notification.Service
+	service *notification.Service
 	repo    notification.Repository
 }
 
 // NewHandler creates a new notifications handler
-func NewHandler(service notification.Service, repo notification.Repository) *Handler {
+func NewHandler(service *notification.Service, repo notification.Repository) *Handler {
 	return &Handler{
 		service: service,
 		repo:    repo,
@@ -63,13 +63,12 @@ func (h *Handler) HandleListNotifications(w http.ResponseWriter, r *http.Request
 			opts.Offset = o
 		}
 	}
-
-	ops.Status = r.URL.Query().Get("status")
-	ops.Category = r.URL.Query().Get("category")
-	ops.UnreadOnly = r.URL.Query().Get("unread_only") == "true"
+	opts.Status = r.URL.Query().Get("status")
+	opts.Category = r.URL.Query().Get("category")
+	opts.UnreadOnly = r.URL.Query().Get("unread_only") == "true"
 
 	// Get notifications
-	notifications, err := h.service.ListNotifications(r.Context(), user.ID, opts)
+	notifications, err := h.service.ListNotifications(r.Context(), user.UserID, opts)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list notifications")
 		http.Error(w, "Failed to list notifications", http.StatusInternalServerError)
@@ -77,7 +76,7 @@ func (h *Handler) HandleListNotifications(w http.ResponseWriter, r *http.Request
 	}
 
 	// Get unread count
-	unreadCount, err := h.service.GetUnreadCount(r.Context(), user.ID)
+	unreadCount, err := h.service.GetUnreadCount(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get unread count")
 		// Don't fail the request, just log the error
@@ -102,7 +101,7 @@ func (h *Handler) HandleGetUnreadCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	count, err := h.service.GetUnreadCount(r.Context(), user.ID)
+	count, err := h.service.GetUnreadCount(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get unread count")
 		http.Error(w, "Failed to get unread count", http.StatusInternalServerError)
@@ -139,7 +138,7 @@ func (h *Handler) HandleMarkAsRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if n.UserID != user.ID {
+	if n.UserID != user.UserID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -164,7 +163,7 @@ func (h *Handler) HandleMarkAllAsRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.MarkAllAsRead(r.Context(), user.ID); err != nil {
+	if err := h.service.MarkAllAsRead(r.Context(), user.UserID); err != nil {
 		logrus.WithError(err).Error("Failed to mark all notifications as read")
 		http.Error(w, "Failed to mark all as read", http.StatusInternalServerError)
 		return
@@ -198,7 +197,7 @@ func (h *Handler) HandleDeleteNotification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if n.UserID != user.ID {
+	if n.UserID != user.UserID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -223,7 +222,7 @@ func (h *Handler) HandleGetPreferences(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prefs, err := h.service.GetPreferences(r.Context(), user.ID)
+	prefs, err := h.service.GetPreferences(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get notification preferences")
 		http.Error(w, "Failed to get preferences", http.StatusInternalServerError)
@@ -252,7 +251,7 @@ func (h *Handler) HandleUpdatePreferences(w http.ResponseWriter, r *http.Request
 
 	// Update each preference
 	for _, pref := range req.Preferences {
-		pref.UserID = user.ID // Ensure user can only update their own preferences
+		pref.UserID = user.UserID // Ensure user can only update their own preferences
 		if err := h.service.SavePreference(r.Context(), &pref); err != nil {
 			logrus.WithError(err).Error("Failed to save preference")
 			http.Error(w, "Failed to save preferences", http.StatusInternalServerError)

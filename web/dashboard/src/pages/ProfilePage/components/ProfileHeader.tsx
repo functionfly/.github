@@ -217,13 +217,13 @@ export function ProfileHeader({ profile, isOwnProfile, onEditProfile, onAvatarCl
               </Button>
             )}
 
-            <Button variant="outline" size="icon" onClick={handleShare}>
+            <Button variant="outline" size="icon" onClick={handleShare} aria-label="Share profile">
               <Share2 className="w-4 h-4" />
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" aria-label="Profile options">
                   <MoreHorizontal className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>

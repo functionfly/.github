@@ -225,3 +225,47 @@ func (r *RegistryRepository) GetApprovalByID(approvalID uuid.UUID) (*RegistryFun
 
 	return &approval, nil
 }
+
+// BlockFunction blocks a function by setting its verification status to "blocked"
+func (r *RegistryRepository) BlockFunction(functionVersionID uuid.UUID, reason string) error {
+	// Get or create verification status
+	status, err := r.GetVerificationStatus(functionVersionID)
+	if err != nil {
+		return fmt.Errorf("failed to get verification status: %w", err)
+	}
+
+	now := time.Now()
+	if status == nil {
+		// Create new blocked status
+		status = &RegistryFunctionVerificationStatus{
+			FunctionVersionID: functionVersionID,
+			OverallStatus:     "blocked",
+			BlockReason:       reason,
+			BlockedAt:         &now,
+		}
+	} else {
+		// Update existing status
+		status.OverallStatus = "blocked"
+		status.BlockReason = reason
+		status.BlockedAt = &now
+	}
+
+	return r.CreateOrUpdateVerificationStatus(status)
+}
+
+// UnblockFunction unblocks a previously blocked function
+func (r *RegistryRepository) UnblockFunction(functionVersionID uuid.UUID) error {
+	status, err := r.GetVerificationStatus(functionVersionID)
+	if err != nil {
+		return fmt.Errorf("failed to get verification status: %w", err)
+	}
+
+	if status != nil && status.OverallStatus == "blocked" {
+		status.OverallStatus = "verified" // Or whatever the previous status was
+		status.BlockReason = ""
+		status.BlockedAt = nil
+		return r.CreateOrUpdateVerificationStatus(status)
+	}
+
+	return nil // Not blocked, nothing to do
+}

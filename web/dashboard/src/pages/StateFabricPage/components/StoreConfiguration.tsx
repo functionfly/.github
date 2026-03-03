@@ -199,7 +199,7 @@ export function StoreConfiguration({ fabricId, stores }: StoreConfigurationProps
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" aria-label="Store settings">
                       <Settings className="w-4 h-4" />
                     </Button>
                     <Button

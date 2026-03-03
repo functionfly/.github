@@ -7,19 +7,35 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/functionfly/functionfly/internal/functionregistry"
 )
 
 // Handler handles runtime-related API requests
 type Handler struct {
-	registry functionregistry.Registry
+	registry interface {
+		GetFunction(id string) (*FunctionConfig, error)
+		UpdateFunction(fn *FunctionConfig) error
+	}
 }
 
 // New creates a new runtime handler
-func New(registry functionregistry.Registry) *Handler {
+func New(registry interface {
+	GetFunction(id string) (*FunctionConfig, error)
+	UpdateFunction(fn *FunctionConfig) error
+}) *Handler {
 	return &Handler{
 		registry: registry,
 	}
+}
+
+// FunctionConfig represents the runtime configuration for a function used by this handler.
+// It is intentionally minimal and decoupled from storage models.
+type FunctionConfig struct {
+	Runtime        string
+	MemoryMB       int
+	TimeoutMs      int
+	NetworkEnabled bool
+	Environment    map[string]string
+	MaxConcurrent  int
 }
 
 // RuntimeInfo represents runtime information
@@ -35,37 +51,37 @@ type RuntimeInfo struct {
 
 // RuntimeDiagnostics represents runtime diagnostics data
 type RuntimeDiagnostics struct {
-	Runtime      string            `json:"runtime"`
-	Environment  map[string]string `json:"environment"`
-	Resources    ResourceUsage     `json:"resources"`
-	Network      NetworkStatus     `json:"network"`
-	Security     SecurityStatus    `json:"security"`
-	Performance  PerformanceData   `json:"performance"`
-	Timestamp    time.Time         `json:"timestamp"`
+	Runtime     string            `json:"runtime"`
+	Environment map[string]string `json:"environment"`
+	Resources   ResourceUsage     `json:"resources"`
+	Network     NetworkStatus     `json:"network"`
+	Security    SecurityStatus    `json:"security"`
+	Performance PerformanceData   `json:"performance"`
+	Timestamp   time.Time         `json:"timestamp"`
 }
 
 // ResourceUsage represents resource usage
 type ResourceUsage struct {
-	MemoryLimit   int `json:"memory_limit_mb"`
-	MemoryUsed    int `json:"memory_used_mb"`
-	CPUCores      int `json:"cpu_cores"`
-	Timeout       int `json:"timeout_ms"`
+	MemoryLimit int `json:"memory_limit_mb"`
+	MemoryUsed  int `json:"memory_used_mb"`
+	CPUCores    int `json:"cpu_cores"`
+	Timeout     int `json:"timeout_ms"`
 }
 
 // NetworkStatus represents network status
 type NetworkStatus struct {
-	Enabled        bool     `json:"enabled"`
-	DNSWorking     bool     `json:"dns_working"`
-	ExternalCalls  int      `json:"external_calls_per_minute"`
-	AllowedHosts   []string `json:"allowed_hosts"`
+	Enabled       bool     `json:"enabled"`
+	DNSWorking    bool     `json:"dns_working"`
+	ExternalCalls int      `json:"external_calls_per_minute"`
+	AllowedHosts  []string `json:"allowed_hosts"`
 }
 
 // SecurityStatus represents security status
 type SecurityStatus struct {
-	SandboxEnabled    bool     `json:"sandbox_enabled"`
-	ModuleRestrictions bool    `json:"module_restrictions"`
-	BlockedModules    []string `json:"blocked_modules"`
-	EnvironmentCount   int     `json:"environment_variables"`
+	SandboxEnabled     bool     `json:"sandbox_enabled"`
+	ModuleRestrictions bool     `json:"module_restrictions"`
+	BlockedModules     []string `json:"blocked_modules"`
+	EnvironmentCount   int      `json:"environment_variables"`
 }
 
 // PerformanceData represents performance metrics
@@ -255,7 +271,7 @@ func (h *Handler) UpdateRuntimeConfig(w http.ResponseWriter, r *http.Request) {
 	var config struct {
 		Runtime        string `json:"runtime"`
 		MemoryMB       int    `json:"memory_mb"`
-		TimeoutMs     int    `json:"timeout_ms"`
+		TimeoutMs      int    `json:"timeout_ms"`
 		NetworkEnabled bool   `json:"network_enabled"`
 	}
 

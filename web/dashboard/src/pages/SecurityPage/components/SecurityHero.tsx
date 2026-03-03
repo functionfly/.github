@@ -37,7 +37,7 @@ export function SecurityHero({ securityScore, lastUpdated }: SecurityHeroProps) 
   const complianceScore = Math.min(100, securityScore + Math.random() * 1.5);
 
   return (
-    <div className="relative overflow-hidden bg-gradient-to-br from-white/10 via-white/5 to-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl shadow-black/50">
+    <div className="security-hero-card relative overflow-hidden bg-gradient-to-br from-white/10 via-white/5 to-white/10 dark:from-white/10 dark:via-white/5 dark:to-white/10 backdrop-blur-xl rounded-2xl border border-border-default dark:border-white/20 shadow-2xl shadow-black/20 dark:shadow-black/50">
       {/* Enhanced background pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-10 left-10">
@@ -53,7 +53,7 @@ export function SecurityHero({ securityScore, lastUpdated }: SecurityHeroProps) 
 
       {/* Gradient overlays */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#10b981]/5 via-transparent to-[#ef4444]/5" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/10 dark:from-black/20 via-transparent to-transparent" />
 
       <div className="relative p-8 md:p-12">
         {/* Header */}
@@ -67,15 +67,15 @@ export function SecurityHero({ securityScore, lastUpdated }: SecurityHeroProps) 
             <div className="absolute -inset-2 bg-gradient-to-br from-[#10b981]/20 to-[#ef4444]/20 rounded-2xl blur-lg -z-10" />
           </div>
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-white via-white to-text-secondary bg-clip-text text-transparent mb-2">
+            <h1 className="text-3xl md:text-4xl font-bold text-text-primary mb-2">
               Security Dashboard
             </h1>
             <p className="text-base md:text-lg text-text-secondary font-light">
               Real-time security monitoring and compliance overview
             </p>
             <div className="flex items-center gap-2 mt-3">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-sm text-green-400 font-medium">Live monitoring active</span>
+              <div className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 animate-pulse" />
+              <span className="text-sm text-green-600 dark:text-green-400 font-medium">Live monitoring active</span>
             </div>
           </div>
         </div>
@@ -168,32 +168,32 @@ export function SecurityHero({ securityScore, lastUpdated }: SecurityHeroProps) 
         </div>
 
         {/* Status bar */}
-        <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between pt-6 md:pt-8 border-t border-white/20 gap-6 sm:gap-0 transition-all duration-700 delay-500 ${
+        <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between pt-6 md:pt-8 border-t border-border-default dark:border-white/20 gap-6 sm:gap-0 transition-all duration-700 delay-500 ${
           isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}>
           <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                <div className="absolute inset-0 bg-green-400 rounded-full animate-ping opacity-30"></div>
+                <div className="w-3 h-3 bg-green-500 dark:bg-green-400 rounded-full animate-pulse"></div>
+                <div className="absolute inset-0 bg-green-500 dark:bg-green-400 rounded-full animate-ping opacity-30"></div>
               </div>
-              <span className="text-sm font-medium text-green-400">All systems operational</span>
+              <span className="text-sm font-medium text-green-600 dark:text-green-400">All systems operational</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30 flex items-center justify-center">
-                <Users className="h-4 w-4 text-blue-400" />
+                <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
-              <span className="text-sm font-medium text-blue-400">24/7 monitoring active</span>
+              <span className="text-sm font-medium text-blue-600 dark:text-blue-400">24/7 monitoring active</span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30 flex items-center justify-center">
-              <TrendingUp className="h-4 w-4 text-green-400" />
+              <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
             </div>
             <div className="text-right">
               <div className="text-xs text-text-secondary mb-1">Last updated</div>
-              <span className="text-sm font-medium text-white">
+              <span className="text-sm font-medium text-text-primary">
                 {new Intl.DateTimeFormat('en-US', {
                   month: 'short',
                   day: 'numeric',

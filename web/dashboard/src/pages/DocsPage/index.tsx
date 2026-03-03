@@ -104,7 +104,7 @@ export function DocsPage() {
             </button>
 
             {/* Right: Nav Links */}
-            <nav className="flex items-center gap-1 sm:gap-4">
+            <nav className="flex items-center gap-1 sm:gap-4" aria-label="Docs site navigation">
               <a href="/registry" className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors">
                 <Code className="w-4 h-4" />
                 <span>Registry</span>

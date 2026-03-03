@@ -42,11 +42,38 @@ type User struct {
 	// Team collaboration fields
 	Teams []TeamMembership `json:"teams,omitempty" gorm:"foreignKey:UserID"`
 	// Profile-related associations
-	Skills       []UserSkill       `json:"skills,omitempty" gorm:"foreignKey:UserID"`
-	Achievements []UserAchievement `json:"achievements,omitempty" gorm:"foreignKey:UserID"`
-	Activity     []UserActivity    `json:"activity,omitempty" gorm:"foreignKey:UserID"`
-	CreatedAt    time.Time         `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt    time.Time         `json:"updated_at" gorm:"autoUpdateTime"`
+	Skills       []UserSkill            `json:"skills,omitempty" gorm:"foreignKey:UserID"`
+	Achievements []UserAchievement      `json:"achievements,omitempty" gorm:"foreignKey:UserID"`
+	Activity     []UserActivity         `json:"activity,omitempty" gorm:"foreignKey:UserID"`
+	Settings     map[string]interface{} `json:"settings,omitempty" gorm:"type:jsonb;default:'{}'"` // Profile settings (visibility, notifications, privacy)
+	CreatedAt    time.Time              `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time              `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+// UserProfileSettings represents the user's profile settings
+// Stored in the User.Settings JSONB field
+type UserProfileSettings struct {
+	// Visibility settings
+	ProfileVisibility string `json:"profileVisibility"` // "public", "followers", "private"
+	ShowEmail         bool   `json:"showEmail"`
+	ShowLocation      bool   `json:"showLocation"`
+	ShowCompany       bool   `json:"showCompany"`
+	ShowActivity      bool   `json:"showActivity"`
+	ShowAnalytics     bool   `json:"showAnalytics"`
+
+	// Notification settings
+	EmailNotifications    bool `json:"emailNotifications"`
+	PushNotifications     bool `json:"pushNotifications"`
+	NotifyOnFollow        bool `json:"notifyOnFollow"`
+	NotifyOnMention       bool `json:"notifyOnMention"`
+	NotifyOnFunctionUsage bool `json:"notifyOnFunctionUsage"`
+	NotifyOnReviews       bool `json:"notifyOnReviews"`
+	WeeklyDigest          bool `json:"weeklyDigest"`
+
+	// Privacy settings
+	AllowTagging   bool `json:"allowTagging"`
+	AllowIndexing  bool `json:"allowIndexing"`
+	ShowLastActive bool `json:"showLastActive"`
 }
 
 // AuditEvent represents an audit log entry

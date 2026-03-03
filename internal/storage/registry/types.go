@@ -272,6 +272,9 @@ type RegistryFunctionVerificationStatus struct {
 	OverallStatus      string     `json:"overall_status" gorm:"not null;size:50"` // "unverified", "verifying", "verified", "failed", "blocked"
 	LastVerifiedAt     *time.Time `json:"last_verified_at,omitempty"`
 	NextVerificationAt *time.Time `json:"next_verification_at,omitempty"` // For periodic re-verification
+	// Blocking information
+	BlockReason string     `json:"block_reason,omitempty" gorm:"type:text"` // Reason for blocking
+	BlockedAt   *time.Time `json:"blocked_at,omitempty"`                   // When the function was blocked
 	CreatedAt          time.Time  `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt          time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 

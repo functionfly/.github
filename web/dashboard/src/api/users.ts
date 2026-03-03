@@ -235,6 +235,58 @@ export const usersApi = {
     apiClient.post<{ message: string }>("/v1/users/me/sessions/revoke-others"),
 
   // ============================================================================
+  // User Profile Settings
+  // ============================================================================
+
+  /**
+   * Get current user profile settings.
+   */
+  getMySettings: () =>
+    apiClient.get<{ settings: Record<string, unknown> }>(`/v1/users/me/settings`),
+
+  /**
+   * Get user profile settings by username.
+   */
+  getUserSettings: (username: string) =>
+    apiClient.get<{ settings: Record<string, unknown> }>(`/v1/users/${encodeURIComponent(username)}/settings`),
+
+  /**
+   * Update current user notification settings.
+   */
+  updateMyNotificationSettings: (data: Record<string, boolean>) =>
+    apiClient.patch<{ message: string }>(`/v1/users/me/settings/notifications`, data),
+
+  /**
+   * Update user notification settings by username.
+   */
+  updateNotificationSettings: (username: string, data: Record<string, boolean>) =>
+    apiClient.patch<{ message: string }>(`/v1/users/${encodeURIComponent(username)}/settings/notifications`, data),
+
+  /**
+   * Update current user privacy settings.
+   */
+  updateMyPrivacySettings: (data: Record<string, boolean>) =>
+    apiClient.patch<{ message: string }>(`/v1/users/me/settings/privacy`, data),
+
+  /**
+   * Update user privacy settings by username.
+   */
+  updatePrivacySettings: (username: string, data: Record<string, boolean>) =>
+    apiClient.patch<{ message: string }>(`/v1/users/${encodeURIComponent(username)}/settings/privacy`, data),
+
+  /**
+   * Update current user visibility settings.
+   */
+  updateMyVisibilitySettings: (data: Record<string, unknown>) =>
+    apiClient.patch<{ message: string }>(`/v1/users/me/settings/visibility`, data),
+
+  /**
+   * Update user visibility settings by username.
+   */
+  updateVisibilitySettings: (username: string, data: Record<string, unknown>) =>
+    apiClient.patch<{ message: string }>(`/v1/users/${encodeURIComponent(username)}/settings/visibility`, data),
+
+  // ============================================================================
   // User Profile Analytics
   // ============================================================================
 

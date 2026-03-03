@@ -176,17 +176,44 @@ func (h *Handler) HandleRealtimeConnection(w http.ResponseWriter, r *http.Reques
 	// If no user in context, try to authenticate via token query parameter (for WebSocket connections)
 	if userClaims == nil {
 		token := r.URL.Query().Get("token")
+		logrus.WithFields(logrus.Fields{
+			"token_length": len(token),
+			"has_token":    token != "",
+		}).Info("WebSocket authentication attempt")
 		if token != "" {
 			claims, err := h.authSvc.ValidateToken(token)
 			if err != nil {
-				logrus.WithError(err).Warn("WebSocket authentication failed via token")
-				http.Error(w, "Authentication required", http.StatusUnauthorized)
+				tokenPrefix := token
+				if len(token) > 50 {
+					tokenPrefix = token[:50] + "..."
+				}
+				logrus.WithError(err).WithField("token_prefix", tokenPrefix).Warn("WebSocket authentication failed via token")
+				// For WebSocket, send a proper close frame with policy violation code
+				if r.Header.Get("Upgrade") == "websocket" {
+					conn, upgradeErr := h.upgrader.Upgrade(w, r, nil)
+					if upgradeErr == nil {
+						conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(1008, "Authentication required"), time.Now().Add(time.Second))
+						conn.Close()
+					}
+				} else {
+					http.Error(w, "Authentication required", http.StatusUnauthorized)
+				}
 				return
 			}
 			userClaims = claims
+			logrus.WithField("user_id", userClaims.UserID).Info("WebSocket authentication successful")
 		} else {
 			logrus.Warn("No authenticated user found in context and no token provided for realtime connection")
-			http.Error(w, "Authentication required", http.StatusUnauthorized)
+			// For WebSocket, send a proper close frame
+			if r.Header.Get("Upgrade") == "websocket" {
+				conn, upgradeErr := h.upgrader.Upgrade(w, r, nil)
+				if upgradeErr == nil {
+					conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(1008, "Authentication required"), time.Now().Add(time.Second))
+					conn.Close()
+				}
+			} else {
+				http.Error(w, "Authentication required", http.StatusUnauthorized)
+			}
 			return
 		}
 	}
@@ -294,8 +321,8 @@ func (h *Handler) HandleGetDashboardConfig(w http.ResponseWriter, r *http.Reques
 					"time_range":  "1h",
 				},
 				{
-					"type":           "alert_list",
-					"title":          "Active Alerts",
+					"type":            "alert_list",
+					"title":           "Active Alerts",
 					"severity_filter": []string{"warning", "error", "critical"},
 				},
 			},
@@ -550,7 +577,7 @@ func (h *Handler) HandleSubscribeToDatabaseChanges(w http.ResponseWriter, r *htt
 				"performance_metrics", "monitoring_events", "user_notifications",
 			},
 			"websocket_channels": map[string]interface{}{
-				"description": "Use WebSocket connection to /monitoring/realtime and subscribe to 'db_changes_{table}' channels",
+				"description":     "Use WebSocket connection to /monitoring/realtime and subscribe to 'db_changes_{table}' channels",
 				"tenant_specific": "For tenant-scoped changes, use 'db_changes_{table}_{tenant_id}' channels",
 			},
 			"current_tenant_id": userClaims.TenantID.String(),
@@ -579,17 +606,17 @@ func (h *Handler) HandleSubscribeToDatabaseChanges(w http.ResponseWriter, r *htt
 		},
 		"event_types": []string{"INSERT", "UPDATE", "DELETE"},
 		"payload_format": map[string]interface{}{
-			"type": "broadcast",
+			"type":  "broadcast",
 			"event": "db_change",
 			"payload": map[string]interface{}{
-				"schema": "public",
-				"table": table,
-				"eventType": "INSERT|UPDATE|DELETE",
+				"schema":           "public",
+				"table":            table,
+				"eventType":        "INSERT|UPDATE|DELETE",
 				"commit_timestamp": "timestamp",
-				"new": "new row data (null for DELETE)",
-				"old": "old row data (null for INSERT)",
-				"ids": []string{"uuids"},
-				"errors": "error message or null",
+				"new":              "new row data (null for DELETE)",
+				"old":              "old row data (null for INSERT)",
+				"ids":              []string{"uuids"},
+				"errors":           "error message or null",
 			},
 		},
 		"note": "Database changes are automatically broadcast via WebSocket. Use the useDatabaseChanges hook in the frontend.",
@@ -640,8 +667,8 @@ func (h *Handler) HandleGetLocalRuntimeMetrics(w http.ResponseWriter, r *http.Re
 		"aggregated_metrics": aggregatedMetrics,
 		"active_runtimes":    len(activeRuntimes),
 		"time_range":         timeRangeStr,
-		"since":             since.Format(time.RFC3339),
-		"timestamp":         time.Now().Format(time.RFC3339),
+		"since":              since.Format(time.RFC3339),
+		"timestamp":          time.Now().Format(time.RFC3339),
 		"available_metrics": []string{
 			"functionfly_local_runtime_executions_total",
 			"functionfly_local_runtime_execution_duration_seconds",
@@ -676,12 +703,12 @@ func (h *Handler) HandleGetLocalRuntimeMetrics(w http.ResponseWriter, r *http.Re
 				"runtime_id":     runtime.RuntimeID,
 				"runtime_type":   runtime.RuntimeType,
 				"function_name":  runtime.FunctionName,
-				"host":          runtime.Host,
-				"port":          runtime.Port,
-				"status":        runtime.Status,
-				"uptime":        runtime.Uptime,
+				"host":           runtime.Host,
+				"port":           runtime.Port,
+				"status":         runtime.Status,
+				"uptime":         runtime.Uptime,
 				"last_heartbeat": runtime.LastHeartbeat.Format(time.RFC3339),
-				"health":        health,
+				"health":         health,
 			}
 			runtimeDetails = append(runtimeDetails, runtimeDetail)
 		}

@@ -5,15 +5,19 @@ import { sentryVitePlugin } from '@sentry/vite-plugin'
 import path from 'path'
 
 // When dashboard runs in Docker, set API_PROXY_TARGET=http://orchestrator-api:8080.
-// On host, use 127.0.0.1 to avoid IPv6 (::1) issues where Docker may only publish to IPv4.
-const apiProxyTarget = process.env.VITE_PROXY_API_TARGET || process.env.API_PROXY_TARGET || 'http://127.0.0.1:8080'
+// On host, use localhost for WebSocket compatibility
+const apiProxyTarget = process.env.VITE_PROXY_API_TARGET || process.env.API_PROXY_TARGET || 'http://localhost:8080'
 
 function proxyConfigure(proxy: any) {
   proxy.on('error', (err: Error, _req: any, res: any) => {
     console.error('[Vite proxy] Cannot reach API at', apiProxyTarget, err.message)
-    if (res && !res.headersSent) {
-      res.writeHead(500, { 'Content-Type': 'text/plain' })
-      res.end('Proxy error: ' + err.message)
+    if (res && typeof res.writeHead === 'function' && !res.headersSent) {
+      try {
+        res.writeHead(500, { 'Content-Type': 'text/plain' })
+        res.end('Proxy error: ' + err.message)
+      } catch (e) {
+        console.error('[Vite proxy] Failed to send error response:', e)
+      }
     }
   })
   proxy.on('proxyReq', (_proxyReq: any, req: any) => {
@@ -117,6 +121,7 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
         configure: proxyConfigure,
+        ws: true, // Enable WebSocket proxying for realtime connections
       },
       // Fallback: /v1/... -> backend /v1/...
       '/v1': {

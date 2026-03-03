@@ -154,3 +154,80 @@ func (r *IncidentRepository) ResolveIncident(ctx context.Context, incidentID uui
 
 	return r.UpdateIncident(ctx, incidentID, updates)
 }
+
+// ListIncidentsSince returns incidents created on or after the given time, newest first.
+func (r *IncidentRepository) ListIncidentsSince(ctx context.Context, since time.Time, limit int) ([]*Incident, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, title, severity, status, description, created_at, resolved_at, updated_at
+		FROM incidents WHERE created_at >= $1 ORDER BY created_at DESC LIMIT $2`,
+		since, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list incidents since: %w", err)
+	}
+	defer rows.Close()
+
+	var incidents []*Incident
+	for rows.Next() {
+		var incident Incident
+		if err := rows.Scan(&incident.ID, &incident.Title, &incident.Severity, &incident.Status,
+			&incident.Description, &incident.CreatedAt, &incident.ResolvedAt, &incident.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan incident: %w", err)
+		}
+		incidents = append(incidents, &incident)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating incidents: %w", err)
+	}
+	return incidents, nil
+}
+
+// CountIncidentsSince returns the number of incidents created on or after the given time.
+func (r *IncidentRepository) CountIncidentsSince(ctx context.Context, since time.Time) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM incidents WHERE created_at >= $1`, since).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count incidents since: %w", err)
+	}
+	return count, nil
+}
+
+// DailyIncidentCount is the number of incidents that occurred on a single calendar day (UTC).
+type DailyIncidentCount struct {
+	Date  string // YYYY-MM-DD
+	Count int
+}
+
+// CountIncidentsGroupedByDay returns incident counts per day for the period starting at since (inclusive).
+// Days with zero incidents are not included; callers can merge with a full date range to get zeros.
+func (r *IncidentRepository) CountIncidentsGroupedByDay(ctx context.Context, since time.Time) ([]DailyIncidentCount, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT (created_at AT TIME ZONE 'UTC')::date::text AS day, COUNT(*)
+		FROM incidents
+		WHERE created_at >= $1
+		GROUP BY (created_at AT TIME ZONE 'UTC')::date
+		ORDER BY day`,
+		since)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count incidents by day: %w", err)
+	}
+	defer rows.Close()
+
+	var result []DailyIncidentCount
+	for rows.Next() {
+		var d DailyIncidentCount
+		if err := rows.Scan(&d.Date, &d.Count); err != nil {
+			return nil, fmt.Errorf("failed to scan day count: %w", err)
+		}
+		result = append(result, d)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating incident day counts: %w", err)
+	}
+	return result, nil
+}

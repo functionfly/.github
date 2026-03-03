@@ -38,10 +38,10 @@
   --color-bg-glass-light: rgba(255, 255, 255, 0.7);
   --color-bg-glass-strong-light: rgba(255, 255, 255, 0.9);
 
-  /* Light Mode Text - High contrast for readability */
+  /* Light Mode Text - High contrast for readability (WCAG AA 4.5:1+) */
   --color-text-primary-light: #0f0f1a;
-  --color-text-secondary-light: #4a4a5a;
-  --color-text-muted-light: #52525f;
+  --color-text-secondary-light: #3a3a45;
+  --color-text-muted-light: #43434e;
   --color-text-accent-light: #4f46e5;
 
   /* --------------------------------------------------------------------------
@@ -462,6 +462,23 @@
 }
 
 /* ==========================================================================
+   Security Page - Light Mode
+   ========================================================================== */
+
+[data-theme="light"] .security-compliance-gradient {
+  background: linear-gradient(135deg, #059669 0%, #dc2626 50%, #4f46e5 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+[data-theme="light"] .security-hero-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.98) 50%, rgba(255, 255, 255, 0.95) 100%) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ==========================================================================
    Light Mode Override
    ========================================================================== */
 
@@ -878,6 +895,10 @@
 
 [data-theme="light"] .bg-bg-secondary\/50 {
   background-color: color-mix(in srgb, var(--bg-secondary) 50%, transparent) !important;
+}
+
+[data-theme="light"] .bg-bg-secondary\/95 {
+  background-color: color-mix(in srgb, var(--bg-secondary) 95%, transparent) !important;
 }
 
 [data-theme="light"] .bg-bg-tertiary {

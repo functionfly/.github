@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { RealtimeEvent } from './types';
+import axios from 'axios';
 
 // WebSocket connection state
 interface WebSocketConnection {
@@ -30,35 +31,49 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
   });
 
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const errorSetForAttemptRef = useRef(false);
 
-  // Get WebSocket URL from environment with authentication (must be absolute)
+  // Refs so connect/handleMessage don't change when parent re-renders (avoids effect loop)
+  const channelNameRef = useRef(channelName);
+  const eventTypeRef = useRef(eventType);
+  const onEventRef = useRef(onEvent);
+  channelNameRef.current = channelName;
+  eventTypeRef.current = eventType;
+  onEventRef.current = onEvent;
+
+  // Get WebSocket URL: backend route is /v1/monitoring/realtime. With proxy we use /api/v1/... so proxy rewrites to /v1/...
   const getWebSocketUrl = useCallback(() => {
     const apiUrl = (import.meta.env.VITE_API_URL as string) ?? '';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
+    const realtimePath = '/v1/monitoring/realtime';
 
     let href: string;
     if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
       const base = apiUrl.replace(/^http/, 'ws');
-      href = `${base.endsWith('/') ? base.slice(0, -1) : base}/api/monitoring/realtime`;
+      href = `${base.endsWith('/') ? base.slice(0, -1) : base}${realtimePath}`;
     } else {
-      const path = apiUrl.startsWith('/') ? apiUrl : `/${apiUrl || 'api'}`;
-      href = `${protocol}//${host}${path}/monitoring/realtime`;
+      // Same-origin: use /api so Vite proxy forwards; proxy strips /api so backend gets /v1/...
+      const apiPrefix = apiUrl.startsWith('/') ? apiUrl : `/${apiUrl || 'api'}`;
+      href = `${protocol}//${host}${apiPrefix}${realtimePath}`;
     }
 
     const token = localStorage.getItem('sb-access-token');
     const url = new URL(href);
-    if (token) {
+    if (token && token.trim()) {
       url.searchParams.set('token', token);
     }
 
     return url.toString();
   }, []);
 
-  // Handle incoming WebSocket messages
+  // Handle incoming WebSocket messages (stable callback; reads from refs)
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
       const data = JSON.parse(event.data);
+      const eventType = eventTypeRef.current;
+      const onEvent = onEventRef.current;
 
       // Handle system messages
       if (data.type === 'connection_established') {
@@ -67,12 +82,10 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
         return;
       }
 
-      if (data.type === 'subscribed' || data.type === 'unsubscribed') {
-        // Channel subscription status messages
+      if (data.type === 'subscribed' || data.type === 'unsubscribed' || data.type === 'pong') {
         return;
       }
 
-      // Handle broadcast messages
       if (data.type === 'broadcast' && data.event === eventType && data.payload) {
         if (onEvent) {
           onEvent(data.payload as T);
@@ -81,27 +94,38 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
     } catch (err) {
       console.error('Failed to parse WebSocket message:', err);
     }
-  }, [eventType, onEvent]);
+  }, []);
 
-  // Connect to WebSocket
+  // Connect to WebSocket (stable: only depends on getWebSocketUrl)
   const connect = useCallback(() => {
     if (connectionRef.current.ws?.readyState === WebSocket.OPEN) {
-      return; // Already connected
+      return;
     }
+
+    // Don't connect if no token
+    const token = localStorage.getItem('sb-access-token');
+    if (!token || !token.trim()) {
+      return;
+    }
+
+    errorSetForAttemptRef.current = false;
 
     try {
       const wsUrl = getWebSocketUrl();
       const ws = new WebSocket(wsUrl);
+      const channel = channelNameRef.current;
 
       ws.onopen = () => {
         console.log('WebSocket connected to', wsUrl);
         connectionRef.current.isConnected = true;
         connectionRef.current.reconnectAttempts = 0;
 
-        // Subscribe to the specified channel
+        // Start ping interval to keep connection alive
+        startPingInterval();
+
         ws.send(JSON.stringify({
           type: 'subscribe',
-          channel: channelName,
+          channel,
         }));
 
         setIsConnected(true);
@@ -113,26 +137,45 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
       ws.onclose = (event) => {
         console.log('WebSocket disconnected:', event.code, event.reason);
         connectionRef.current.isConnected = false;
+        connectionRef.current.ws = null;
         setIsConnected(false);
 
-        // Attempt to reconnect if not a clean close and within retry limits
-        if (!event.wasClean && connectionRef.current.reconnectAttempts < connectionRef.current.maxReconnectAttempts) {
+        // Don't retry on authentication failures (close codes that indicate auth issues)
+        const isAuthFailure = event.code === 1008 || event.code === 1011 || event.reason?.includes('Authentication');
+        const shouldRetry = !isAuthFailure && !event.wasClean && connectionRef.current.reconnectAttempts < connectionRef.current.maxReconnectAttempts;
+
+        if (shouldRetry) {
           connectionRef.current.reconnectAttempts++;
           const delay = connectionRef.current.reconnectDelay * Math.pow(2, connectionRef.current.reconnectAttempts - 1);
-
           console.log(`Attempting to reconnect in ${delay}ms (attempt ${connectionRef.current.reconnectAttempts}/${connectionRef.current.maxReconnectAttempts})`);
-
           reconnectTimeoutRef.current = setTimeout(() => {
             connect();
           }, delay);
-        } else if (connectionRef.current.reconnectAttempts >= connectionRef.current.maxReconnectAttempts) {
+        } else if (connectionRef.current.reconnectAttempts >= connectionRef.current.maxReconnectAttempts && !errorSetForAttemptRef.current) {
+          errorSetForAttemptRef.current = true;
           setError('Failed to reconnect after maximum attempts');
+        } else if (isAuthFailure) {
+          // Clear invalid token on authentication failure
+          localStorage.removeItem('sb-access-token');
+          if (!errorSetForAttemptRef.current) {
+            errorSetForAttemptRef.current = true;
+            setError('Authentication failed - please log in again');
+          }
+        } else if (event.code === 1006 || !event.wasClean) {
+          // Set error once per abnormal close to avoid update storm (onerror + onclose both fire)
+          if (!errorSetForAttemptRef.current) {
+            errorSetForAttemptRef.current = true;
+            setError('WebSocket connection error');
+          }
         }
       };
 
       ws.onerror = (event) => {
-        console.error('WebSocket error:', event);
-        setError('WebSocket connection error');
+        // Check if this is an authentication failure by trying to detect it from the error
+        // Since we can't get the HTTP status code from the WebSocket error, we'll let onclose handle it
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('WebSocket error (connection may have closed abnormally)', event);
+        }
       };
 
       connectionRef.current.ws = ws;
@@ -140,7 +183,33 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
       console.error('Failed to create WebSocket connection:', err);
       setError('Failed to establish WebSocket connection');
     }
-  }, [channelName, getWebSocketUrl, handleMessage]);
+  }, [getWebSocketUrl, handleMessage]);
+
+  // Start ping interval to keep connection alive
+  const startPingInterval = useCallback(() => {
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+    }
+
+    // Send ping every 30 seconds to keep connection alive (server timeout is 60 seconds)
+    pingIntervalRef.current = setInterval(() => {
+      if (connectionRef.current.ws?.readyState === WebSocket.OPEN) {
+        try {
+          connectionRef.current.ws.send(JSON.stringify({ type: 'ping' }));
+        } catch (err) {
+          console.warn('Failed to send ping:', err);
+        }
+      }
+    }, 30000);
+  }, []);
+
+  // Stop ping interval
+  const stopPingInterval = useCallback(() => {
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
+  }, []);
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
@@ -149,6 +218,8 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
       reconnectTimeoutRef.current = null;
     }
 
+    stopPingInterval();
+
     if (connectionRef.current.ws) {
       connectionRef.current.ws.close(1000, 'Component unmounting');
       connectionRef.current.ws = null;
@@ -156,7 +227,7 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
 
     connectionRef.current.isConnected = false;
     setIsConnected(false);
-  }, []);
+  }, [stopPingInterval]);
 
   // Send message to channel
   const sendMessage = useCallback((event: string, payload: any) => {
@@ -174,14 +245,45 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
 
   // Effect to manage WebSocket connection
   useEffect(() => {
-    if (user?.id) {
-      connect();
-    }
+    const checkAuthAndConnect = async () => {
+      const token = localStorage.getItem('sb-access-token');
+      console.log('WebSocket auth check:', { userId: user?.id, userEmail: user?.email, hasToken: !!token });
+
+      // First check basic auth state
+      if (!user?.id || !user?.email || !token) {
+        console.log('Skipping WebSocket connection - missing auth data');
+        if (token) {
+          console.log('Clearing invalid token');
+          localStorage.removeItem('sb-access-token');
+        }
+        disconnect();
+        return;
+      }
+
+      // Validate session with server
+      try {
+        const response = await axios.get('/api/v1/auth/validate', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.status === 200) {
+          console.log('Session valid, attempting WebSocket connection');
+          connect();
+        } else {
+          throw new Error('Session invalid');
+        }
+      } catch (error) {
+        console.log('Session validation failed, clearing auth state');
+        localStorage.removeItem('sb-access-token');
+        disconnect();
+      }
+    };
+
+    checkAuthAndConnect();
 
     return () => {
       disconnect();
     };
-  }, [user?.id, connect, disconnect]);
+  }, [user?.id, user?.email, connect, disconnect]);
 
   // Effect to handle channel name changes
   useEffect(() => {

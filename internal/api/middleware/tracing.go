@@ -105,6 +105,22 @@ func TracingMiddleware(next http.Handler) http.Handler {
 			w.Header().Set(tracestateHeader, ts)
 		}
 
+		// WebSocket upgrade requires the raw ResponseWriter (http.Hijacker); do not wrap
+		if r.Header.Get("Upgrade") == "websocket" {
+			next.ServeHTTP(w, r.WithContext(ctx))
+			logrus.WithFields(logrus.Fields{
+				"trace_id":    traceID,
+				"span_id":     spanID,
+				"parent_id":   parentID,
+				"service":     serviceName,
+				"method":      r.Method,
+				"path":        r.URL.Path,
+				"status_code": 101,
+				"duration_ms": time.Since(startTime).Milliseconds(),
+			}).Debug("request trace span")
+			return
+		}
+
 		wrapped := &tracingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 		next.ServeHTTP(wrapped, r.WithContext(ctx))
 

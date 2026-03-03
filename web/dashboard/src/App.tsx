@@ -1,13 +1,17 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
+import { Bell, Shield, DollarSign, AlertTriangle, MessageSquare } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
+import { useNotificationStore } from '@/stores/notificationStore';
+import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
 import { CookieConsentProvider } from '@/components/cookie-consent';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { DevA11y } from '@/components/dev/DevA11y';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import type { Notification, NotificationCategory } from '@/types/notifications';
 import { LandingPage } from '@/pages/LandingPage';
 import { TeamPage } from '@/pages/TeamPage';
 import { PricingPage } from '@/pages/PricingPage';
@@ -38,6 +42,8 @@ import { AdminFeedbackPage } from '@/pages/AdminFeedbackPage';
 import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
 import { AdminFunctionsPage } from '@/pages/AdminFunctionsPage';
 import { AdminRegistryPage } from '@/pages/AdminRegistryPage';
+import { AdminBackendsPage } from '@/pages/AdminBackendsPage';
+import { AdminProvidersPage } from '@/pages/AdminProvidersPage';
 import { PrivacyPage } from '@/pages/PrivacyPage';
 import { SecurityPage } from '@/pages/SecurityPage';
 import { TermsPage } from '@/pages/TermsPage';
@@ -61,6 +67,10 @@ import { ReplayPage } from '@/pages/ReplayPage';
 import { StateFabricPage } from '@/pages/StateFabricPage';
 import { StateFabricDetailPage } from '@/pages/StateFabricPage/StateFabricDetailPage';
 import { AdminStateFabricPage } from '@/pages/AdminStateFabricPage';
+import { AdminTrustDashboardPage } from '@/pages/AdminTrustDashboardPage';
+import { AdminExecutionAuditPage } from '@/pages/AdminExecutionAuditPage';
+import { AdminFraudDetectionPage } from '@/pages/AdminFraudDetectionPage';
+import { AdminEconomicLeaderboardPage } from '@/pages/AdminEconomicLeaderboardPage';
 import { StateFabricMarketingPage } from '@/pages/StateFabricMarketingPage';
 import { BrowseFunctionsPage } from '@/pages/BrowseFunctionsPage';
 import RegistryDeployPage from '@/pages/RegistryDeployPage';
@@ -85,10 +95,13 @@ import AgentsPage from '@/pages/AgentsPage';
 import AgentMarketplacePage from '@/pages/AgentMarketplacePage';
 import FunctionMarketplacePage from '@/pages/FunctionMarketplacePage';
 import EvolutionPage from '@/pages/EvolutionPage';
-import { EnterpriseSLAPage } from '@/pages/EnterpriseSLAPage';
+import EnterpriseSLAPage from '@/pages/EnterpriseSLAPage';
 import { EnterpriseAuditPage } from '@/pages/EnterpriseAuditPage';
 import { EnterpriseSupportPage } from '@/pages/EnterpriseSupportPage';
 import { UsagePage } from '@/pages/UsagePage';
+import { NotificationsPage } from '@/pages/NotificationsPage';
+import StatusPage from '@/pages/StatusPage';
+import AdminIncidentsPage from '@/pages/AdminStatusPage/AdminIncidentsPage';
 
 function RegistryFunctionRedirect() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -221,6 +234,125 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />;
 }
 
+/**
+ * Icon mapping for notification categories
+ */
+const CATEGORY_ICONS: Record<NotificationCategory, React.ReactNode> = {
+  all: <Bell className="h-4 w-4" />,
+  trust: <Shield className="h-4 w-4" />,
+  revenue: <DollarSign className="h-4 w-4" />,
+  issues: <AlertTriangle className="h-4 w-4" />,
+  messages: <MessageSquare className="h-4 w-4" />,
+  security: <Shield className="h-4 w-4" />,
+};
+
+/**
+ * Color mapping for notification priorities
+ */
+const PRIORITY_COLORS: Record<string, string> = {
+  critical: 'var(--error)',
+  high: 'var(--warning)',
+  medium: 'var(--info)',
+  low: 'var(--success)',
+};
+
+/**
+ * NotificationsProvider - Handles real-time notifications and toast integration
+ */
+function NotificationsProvider({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
+  const { updateUnreadCount, updateUnreadCounts } = useNotificationStore();
+
+  useNotificationRealtime({
+    enabled: isAuthenticated && !!user?.id,
+    onNewNotification: (notification: Notification) => {
+      // Update unread counts
+      const currentState = useNotificationStore.getState();
+      updateUnreadCount('all', currentState.unreadCounts.all + 1);
+      if (notification.category !== 'all') {
+        updateUnreadCount(
+          notification.category,
+          currentState.unreadCounts[notification.category] + 1
+        );
+      }
+
+      // Show toast notification
+      const icon = CATEGORY_ICONS[notification.category] || CATEGORY_ICONS.all;
+      const borderColor = PRIORITY_COLORS[notification.priority] || 'var(--brand-500)';
+
+      toast.info(
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5" style={{ color: borderColor }}>
+            {icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-text-primary">{notification.title}</p>
+            <p className="text-sm text-text-secondary truncate">{notification.message}</p>
+          </div>
+        </div>,
+        {
+          duration: 5000,
+          action: {
+            label: 'View',
+            onClick: () => {
+              if (notification.actionUrl) {
+                navigate(notification.actionUrl);
+              } else {
+                navigate('/notifications');
+              }
+            },
+          },
+          style: {
+            borderLeft: `4px solid ${borderColor}`,
+            cursor: 'pointer',
+          },
+          onDismiss: () => {
+            // Optional: track dismissed notifications
+          },
+          onAutoClose: () => {
+            // Optional: track auto-closed notifications
+          },
+        }
+      );
+    },
+    onTrustAlert: (alert) => {
+      // Show critical trust alerts as error toasts
+      if (alert.severity === 'critical' || alert.severity === 'emergency') {
+        toast.error(
+          <div className="flex items-start gap-3">
+            <Shield className="h-4 w-4 mt-0.5 text-error" />
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-text-primary">Trust Alert: {alert.title}</p>
+              <p className="text-sm text-text-secondary truncate">{alert.description}</p>
+            </div>
+          </div>,
+          {
+            duration: 10000,
+            action: {
+              label: 'View Details',
+              onClick: () => {
+                if (alert.actionUrl) {
+                  navigate(alert.actionUrl);
+                } else {
+                  navigate('/notifications');
+                }
+              },
+            },
+            style: {
+              borderLeft: '4px solid var(--error)',
+              cursor: 'pointer',
+            },
+          }
+        );
+      }
+    },
+  });
+
+  return <>{children}</>;
+}
+
 function AppContent() {
   const initialize = useAuthStore((state) => state.initialize);
 
@@ -229,9 +361,11 @@ function AppContent() {
   }, [initialize]);
 
   return (
-    <Routes>
+    <NotificationsProvider>
+      <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/status" element={<StatusPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/features" element={<FeaturesPage />} />
       <Route path="/integrations" element={<IntegrationsPage />} />
@@ -318,6 +452,7 @@ function AppContent() {
         }
       >
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="apps" element={<AppsPage />} />
         <Route path="apps/:appId" element={<AppDetailPage />} />
         <Route path="functions" element={<FunctionsPage />} />
@@ -375,6 +510,8 @@ function AppContent() {
           <Route path="features" element={<AdminFeaturesPage />} />
           <Route path="audit" element={<AdminAuditPage />} />
           <Route path="system" element={<AdminSystemPage />} />
+          <Route path="backends" element={<AdminBackendsPage />} />
+          <Route path="providers" element={<AdminProvidersPage />} />
           <Route path="redirects" element={<AdminRedirectsPage />} />
           <Route path="newsletter" element={<AdminNewsletterPage />} />
           <Route path="content-calendar" element={<AdminContentCalendarPage />} />
@@ -383,7 +520,14 @@ function AppContent() {
           <Route path="functions" element={<AdminFunctionsPage />} />
           <Route path="functions/:functionId" element={<AdminFunctionDetailPage />} />
           <Route path="registry" element={<AdminRegistryPage />} />
+          <Route path="registry/functions" element={<AdminRegistryPage />} />
+          <Route path="registry/functions/:functionId" element={<AdminFunctionDetailPage />} />
           <Route path="state-fabric" element={<AdminStateFabricPage />} />
+          <Route path="trust-dashboard" element={<AdminTrustDashboardPage />} />
+          <Route path="execution-audit" element={<AdminExecutionAuditPage />} />
+          <Route path="fraud-detection" element={<AdminFraudDetectionPage />} />
+          <Route path="economic-leaderboard" element={<AdminEconomicLeaderboardPage />} />
+          <Route path="status/incidents" element={<AdminIncidentsPage />} />
         </Route>
       </Route>
 
@@ -395,7 +539,8 @@ function AppContent() {
 
       {/* 500 - Internal Server Error */}
       <Route path="/error" element={<ServerErrorPage />} />
-    </Routes>
+      </Routes>
+    </NotificationsProvider>
   );
 }
 

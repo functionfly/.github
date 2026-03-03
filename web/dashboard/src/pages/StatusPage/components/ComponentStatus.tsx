@@ -1,0 +1,274 @@
+import { motion } from 'framer-motion';
+import {
+  Server,
+  Database,
+  Zap,
+  Shield,
+  Cloud,
+  HardDrive,
+  Layers,
+  Activity,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { ComponentHealth } from '@/api/status';
+
+interface ComponentStatusProps {
+  components: ComponentHealth[];
+  isLoading?: boolean;
+}
+
+const categoryConfig = {
+  core: {
+    label: 'Core Services',
+    icon: Server,
+    color: 'text-brand-400',
+  },
+  provider: {
+    label: 'Providers',
+    icon: Cloud,
+    color: 'text-purple-400',
+  },
+  infrastructure: {
+    label: 'Infrastructure',
+    icon: HardDrive,
+    color: 'text-blue-400',
+  },
+};
+
+const statusConfig = {
+  operational: {
+    dot: 'bg-emerald-500',
+    text: 'text-emerald-400',
+    label: 'Operational',
+    pulse: true,
+  },
+  degraded: {
+    dot: 'bg-amber-500',
+    text: 'text-amber-400',
+    label: 'Degraded',
+    pulse: false,
+  },
+  down: {
+    dot: 'bg-red-500',
+    text: 'text-red-400',
+    label: 'Down',
+    pulse: false,
+  },
+};
+
+// Map component IDs to icons
+const componentIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  orchestrator: Layers,
+  health_monitor: Activity,
+  database: Database,
+  cache: Zap,
+  caddy: Shield,
+  cloudflare: Cloud,
+  vercel: Cloud,
+  fly: Cloud,
+  deno: Cloud,
+  functionfly_edge: Cloud,
+};
+
+function ComponentCard({
+  component,
+  index,
+}: {
+  component: ComponentHealth;
+  index: number;
+}) {
+  const status = statusConfig[component.status];
+  const Icon = componentIcons[component.id] || Server;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
+    >
+      <Card
+        className={cn(
+          'group relative overflow-hidden transition-all duration-300',
+          'hover:border-border-default hover:shadow-lg',
+          component.status === 'degraded' && 'border-amber-500/30',
+          component.status === 'down' && 'border-red-500/30'
+        )}
+      >
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  'flex h-10 w-10 items-center justify-center rounded-lg',
+                  'bg-bg-tertiary text-text-secondary',
+                  'group-hover:text-text-primary transition-colors'
+                )}
+              >
+                <Icon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-medium text-text-primary">{component.name}</h3>
+                <p className="text-xs text-text-muted">
+                  {component.latency_ms > 0 ? `${component.latency_ms}ms latency` : 'No latency data'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                {status.pulse && (
+                  <span
+                    className={cn(
+                      'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75',
+                      status.dot
+                    )}
+                  />
+                )}
+                <span
+                  className={cn(
+                    'relative inline-flex rounded-full h-2.5 w-2.5',
+                    status.dot
+                  )}
+                />
+              </span>
+              <span className={cn('text-xs font-medium', status.text)}>
+                {status.label}
+              </span>
+            </div>
+          </div>
+
+          {/* Uptime indicator */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-text-muted">Uptime</span>
+              <span className={cn('font-medium', status.text)}>
+                {component.uptime_percent.toFixed(2)}%
+              </span>
+            </div>
+            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-tertiary">
+              <motion.div
+                className={cn('h-full rounded-full', status.dot)}
+                initial={{ width: 0 }}
+                animate={{ width: `${component.uptime_percent}%` }}
+                transition={{ duration: 0.5, delay: index * 0.05 }}
+              />
+            </div>
+          </div>
+
+          {component.message && (
+            <p className="mt-3 text-xs text-text-secondary line-clamp-2">
+              {component.message}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-lg" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </div>
+          <Skeleton className="h-4 w-16" />
+        </div>
+        <div className="mt-4 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-3 w-12" />
+            <Skeleton className="h-3 w-10" />
+          </div>
+          <Skeleton className="h-1.5 w-full" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ComponentStatus({ components, isLoading }: ComponentStatusProps) {
+  const list = Array.isArray(components) ? components : [];
+  // Group components by category
+  const groupedComponents = list.reduce((acc, component) => {
+    const category = component.category;
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(component);
+    return acc;
+  }, {} as Record<string, ComponentHealth[]>);
+
+  const categories = Object.keys(groupedComponents).sort((a, b) => {
+    const order = ['core', 'provider', 'infrastructure'];
+    return order.indexOf(a) - order.indexOf(b);
+  });
+
+  return (
+    <section aria-label="Component Status">
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-text-primary">Component Health</h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Real-time status of all platform components
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-8">
+          {[1, 2, 3].map((categoryIndex) => (
+            <div key={categoryIndex}>
+              <Skeleton className="mb-4 h-6 w-32" />
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {[1, 2, 3].map((i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : list.length === 0 ? (
+        <Card className="p-8 text-center">
+          <p className="text-text-secondary">No component data available</p>
+        </Card>
+      ) : (
+        <div className="space-y-8">
+          {categories.map((category) => {
+            const config = categoryConfig[category as keyof typeof categoryConfig] || {
+              label: category,
+              icon: Server,
+              color: 'text-text-secondary',
+            };
+            const CategoryIcon = config.icon;
+
+            return (
+              <div key={category}>
+                <div className="mb-4 flex items-center gap-2">
+                  <CategoryIcon className={cn('h-5 w-5', config.color)} />
+                  <h3 className="font-medium text-text-primary">{config.label}</h3>
+                  <span className="text-sm text-text-muted">
+                    ({groupedComponents[category].length})
+                  </span>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {groupedComponents[category].map((component, index) => (
+                    <ComponentCard
+                      key={component.id}
+                      component={component}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}

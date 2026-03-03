@@ -18,12 +18,12 @@ export function EnterpriseSupportPage() {
   if (!isEnterprise) {
     return (
       <PageLayout title="Enterprise Support">
-        <Card className="border-dashed border-white/20">
+        <Card className="border-dashed border-border-default">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
-              <Headphones className="w-8 h-8 text-amber-400" />
+              <Headphones className="w-8 h-8 text-amber-500" />
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">
+            <h2 className="text-xl font-semibold text-text-primary mb-2">
               Enterprise Feature
             </h2>
             <p className="text-text-secondary mb-6 max-w-md">
@@ -77,7 +77,7 @@ export function EnterpriseSupportPage() {
         {/* Account Manager */}
         <Card className="border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent">
           <CardHeader>
-            <CardTitle className="text-white">Your Dedicated Account Manager</CardTitle>
+            <CardTitle className="text-text-primary">Your Dedicated Account Manager</CardTitle>
             <CardDescription className="text-text-secondary">
               Personal support for your enterprise needs
             </CardDescription>
@@ -85,10 +85,10 @@ export function EnterpriseSupportPage() {
           <CardContent>
             <div className="flex items-start gap-4">
               <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center">
-                <Headphones className="w-8 h-8 text-amber-400" />
+                <Headphones className="w-8 h-8 text-amber-500" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white">Enterprise Support Team</h3>
+                <h3 className="text-lg font-semibold text-text-primary">Enterprise Support Team</h3>
                 <p className="text-text-secondary mt-1">
                   Our enterprise support team is available to help you with any questions,
                   from technical implementation to billing inquiries.
@@ -111,7 +111,7 @@ export function EnterpriseSupportPage() {
         {/* SLA Guarantee */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-white">Support SLA</CardTitle>
+            <CardTitle className="text-text-primary">Support SLA</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -161,9 +161,9 @@ function SupportCard({ title, description, icon: Icon, availability, action }: S
       <Card className="h-full">
         <CardContent className="p-6">
           <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center mb-4">
-            <Icon className="w-6 h-6 text-amber-400" />
+            <Icon className="w-6 h-6 text-amber-500" />
           </div>
-          <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
+          <h3 className="text-lg font-semibold text-text-primary mb-1">{title}</h3>
           <p className="text-sm text-text-secondary mb-4">{description}</p>
           <div className="flex items-center gap-2 mb-4">
             <Clock className="w-4 h-4 text-text-muted" />
@@ -186,12 +186,12 @@ interface SLAItemProps {
 
 function SLAItem({ title, response, icon: Icon }: SLAItemProps) {
   return (
-    <div className="p-4 rounded-lg bg-bg-secondary border border-white/8">
+    <div className="p-4 rounded-lg bg-bg-secondary border border-border-subtle">
       <div className="flex items-center gap-2 mb-2">
-        <Icon className="w-4 h-4 text-green-400" />
-        <span className="text-sm font-medium text-white">{title}</span>
+        <Icon className="w-4 h-4 text-green-600 dark:text-green-400" />
+        <span className="text-sm font-medium text-text-primary">{title}</span>
       </div>
-      <p className="text-lg font-semibold text-amber-400">{response}</p>
+      <p className="text-lg font-semibold text-amber-600 dark:text-amber-400">{response}</p>
       <p className="text-xs text-text-muted">Response time</p>
     </div>
   );

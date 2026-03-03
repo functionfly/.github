@@ -29,6 +29,7 @@ import {
   BarChart3,
   Zap,
   Globe,
+  ClipboardList,
 } from "lucide-react";
 import {
   AreaChart,
@@ -181,6 +182,42 @@ const adminSections = [
     iconColor: "text-amber-500",
     bgColor: "bg-amber-500/10",
     borderColor: "border-amber-500/20 hover:border-amber-500/40",
+  },
+  {
+    title: "Trust Dashboard",
+    description: "Monitor trust distribution and detect suspicious trust activity",
+    path: "/admin/trust-dashboard",
+    icon: Shield,
+    iconColor: "text-emerald-500",
+    bgColor: "bg-emerald-500/10",
+    borderColor: "border-emerald-500/20 hover:border-emerald-500/40",
+  },
+  {
+    title: "Execution Audit",
+    description: "Searchable audit trail for all function executions",
+    path: "/admin/execution-audit",
+    icon: ClipboardList,
+    iconColor: "text-blue-500",
+    bgColor: "bg-blue-500/10",
+    borderColor: "border-blue-500/20 hover:border-blue-500/40",
+  },
+  {
+    title: "Fraud Detection",
+    description: "AI-powered fraud and bot pattern detection",
+    path: "/admin/fraud-detection",
+    icon: AlertTriangle,
+    iconColor: "text-rose-500",
+    bgColor: "bg-rose-500/10",
+    borderColor: "border-rose-500/20 hover:border-rose-500/40",
+  },
+  {
+    title: "Economic Leaderboard",
+    description: "Revenue leaders and economic manipulation detection",
+    path: "/admin/economic-leaderboard",
+    icon: TrendingUp,
+    iconColor: "text-violet-500",
+    bgColor: "bg-violet-500/10",
+    borderColor: "border-violet-500/20 hover:border-violet-500/40",
   },
 ];
 
@@ -438,8 +475,8 @@ export function AdminDashboardPage() {
                     fontSize: "12px",
                   }}
                 />
-                <Area type="monotone" dataKey="users" stroke="#6366f1" strokeWidth={2} fill="url(#colorUsers)" name="New Users" />
-                <Area type="monotone" dataKey="functions" stroke="#10b981" strokeWidth={2} fill="url(#colorFunctions)" name="Function Calls" />
+                <Area type="monotone" dataKey="users" stroke="#6366f1" strokeWidth={2} fill="url(#colorUsers)" name="New Users" isAnimationActive={false} />
+                <Area type="monotone" dataKey="functions" stroke="#10b981" strokeWidth={2} fill="url(#colorFunctions)" name="Function Calls" isAnimationActive={false} />
               </AreaChart>
             </ResponsiveContainer>
             <div className="flex items-center gap-4 mt-2">
@@ -484,7 +521,7 @@ export function AdminDashboardPage() {
                   }}
                   formatter={(value) => [`$${value}`, "Revenue"]}
                 />
-                <Bar dataKey="revenue" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
             <div className="mt-2 flex items-center justify-between">

@@ -17,6 +17,8 @@
 @import '@/styles/registry.css';
 @import '@/styles/admin.css';
 @import '@/styles/dre.css';
+@import '@/styles/notifications-light-mode.css';
+@import '@/styles/enterprise-sla.css';
 
 /* ==========================================================================
    Additional Utility Classes

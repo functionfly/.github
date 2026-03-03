@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
-.PHONY: help build build-local-runtime test clean docker-up docker-down dev api health-monitor migrate migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile venv
+.PHONY: help build build-local-runtime test clean docker-up docker-down dev api health-monitor migrate migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -288,6 +288,14 @@ db-backup-list: ## List available backups
 		"b2") b2 ls $$DB_BACKUP_B2_BUCKET $$DB_BACKUP_S3_PREFIX | grep functionfly || echo "No B2 backups found" ;; \
 		*) echo "Configure DB_BACKUP_STORAGE_BACKEND to list remote backups" ;; \
 	esac
+
+db-maintenance: ## Run database maintenance (analyze/vacuum) to optimize performance
+	@echo "Running database maintenance..."
+	@if command -v infisical >/dev/null 2>&1; then \
+		infisical run --env=dev -- ./scripts/db-maintenance.sh; \
+	else \
+		./scripts/db-maintenance.sh; \
+	fi
 
 db-migrate-prod: ## Run migrations on production database
 	@echo "Running migrations on production database..."

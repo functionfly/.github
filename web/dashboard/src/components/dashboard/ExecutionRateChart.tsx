@@ -95,8 +95,7 @@ export function ExecutionRateChart({
                 strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 4, fill: strokeColor }}
-                isAnimationActive={true}
-                animationDuration={500}
+                isAnimationActive={false}
               />
             </LineChart>
           </ResponsiveContainer>

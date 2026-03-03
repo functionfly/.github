@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"time"
@@ -10,10 +11,16 @@ import (
 	"github.com/google/uuid"
 )
 
+// WelcomeNotifier is implemented by the notification service to send welcome notifications to new users.
+type WelcomeNotifier interface {
+	SendWelcome(ctx context.Context, userID uuid.UUID) error
+}
+
 // AuthService handles authentication operations
 type AuthService struct {
 	repo           storage.Repository
 	emailSvc       email.Service
+	notifySvc      WelcomeNotifier // optional; when set, welcome notification is sent on signup/OAuth signup
 	jwtSecret      []byte
 	jwtDuration    time.Duration
 	oauthProviders map[string]*OAuthProvider
@@ -60,6 +67,11 @@ func (a *AuthService) GenerateToken(user *storage.User) (string, error) {
 // SetEmailService sets the email service for the auth service
 func (a *AuthService) SetEmailService(emailSvc email.Service) {
 	a.emailSvc = emailSvc
+}
+
+// SetNotificationService sets the optional notifier for welcome notifications (e.g. notification.Service).
+func (a *AuthService) SetNotificationService(n WelcomeNotifier) {
+	a.notifySvc = n
 }
 
 // Repo returns the repository interface

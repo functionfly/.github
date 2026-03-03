@@ -549,6 +549,18 @@ func (db *PostgresDB) ListIncidents(ctx context.Context, limit int, offset int, 
 	return db.incidentRepository.ListIncidents(ctx, limit, offset, status)
 }
 
+func (db *PostgresDB) ListIncidentsSince(ctx context.Context, since time.Time, limit int) ([]*Incident, error) {
+	return db.incidentRepository.ListIncidentsSince(ctx, since, limit)
+}
+
+func (db *PostgresDB) CountIncidentsSince(ctx context.Context, since time.Time) (int, error) {
+	return db.incidentRepository.CountIncidentsSince(ctx, since)
+}
+
+func (db *PostgresDB) CountIncidentsGroupedByDay(ctx context.Context, since time.Time) ([]DailyIncidentCount, error) {
+	return db.incidentRepository.CountIncidentsGroupedByDay(ctx, since)
+}
+
 func (db *PostgresDB) UpdateIncident(ctx context.Context, incidentID uuid.UUID, updates map[string]interface{}) (*Incident, error) {
 	return db.incidentRepository.UpdateIncident(ctx, incidentID, updates)
 }

@@ -111,10 +111,17 @@ export function ProfilePage({
     queryKey: ["enhanced-profile", username],
     queryFn: async () => {
       if (!username) throw new Error("Username is required");
+
+      // Use authenticated endpoint for own profile, public endpoint for others
+      const profileApiCall = isOwnProfile
+        ? usersApi.getMe()
+        : usersApi.getPublicProfile(username);
+
       const [profileResponse, functionsResponse] = await Promise.all([
-        usersApi.getPublicProfile(username),
+        profileApiCall,
         registryApi.getFunctions({ author: username, limit: 100 }),
       ]);
+
       return transformToUserProfile(
         profileResponse,
         functionsResponse.functions || []
@@ -330,6 +337,7 @@ export function ProfilePage({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["enhanced-profile", username] });
       queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["my-settings"] });
       useAuthStore.getState().initialize();
     },
   });
@@ -368,7 +376,7 @@ export function ProfilePage({
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar variant="landing" />
+      <Navbar variant="dashboard" />
 
       <main className="pt-16 pb-16">
         <div className="max-w-7xl mx-auto">

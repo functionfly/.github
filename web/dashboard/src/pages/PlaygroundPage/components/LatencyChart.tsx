@@ -77,6 +77,7 @@ export function LatencyChart({ className }: LatencyChartProps) {
             stroke="#6366f1"
             strokeWidth={1.5}
             fill="url(#latencyGradient)"
+            isAnimationActive={false}
             dot={(props) => {
               const { cx, cy, payload } = props;
               return (

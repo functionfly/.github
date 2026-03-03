@@ -790,9 +790,8 @@ const FunctionCard = React.forwardRef<HTMLDivElement, FunctionCardProps>(
               {onAdminAction && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Open admin menu">
                       <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Open admin menu</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

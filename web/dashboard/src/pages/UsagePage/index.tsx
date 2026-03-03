@@ -662,6 +662,7 @@ export function UsagePage() {
                         nameKey="name"
                         label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                         labelLine={{ stroke: "var(--color-border-subtle)" }}
+                        isAnimationActive={false}
                       >
                         {usageDistributionData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
@@ -715,7 +716,7 @@ export function UsagePage() {
                       }}
                       labelStyle={{ color: "var(--color-text-primary)" }}
                     />
-                    <Bar dataKey="pct" fill="var(--color-brand-500)" radius={[0, 4, 4, 0]} name="Utilization %" />
+                    <Bar dataKey="pct" fill="var(--color-brand-500)" radius={[0, 4, 4, 0]} name="Utilization %" isAnimationActive={false} />
                   </RechartsBarChart>
                 </ResponsiveContainer>
               </div>

@@ -252,6 +252,7 @@ function StatusDashboardDemo() {
                   stroke="var(--brand-500)"
                   fill="var(--brand-500)"
                   fillOpacity={0.3}
+                  isAnimationActive={false}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -278,6 +279,7 @@ function StatusDashboardDemo() {
                   stroke="var(--success)"
                   strokeWidth={2}
                   dot={false}
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>

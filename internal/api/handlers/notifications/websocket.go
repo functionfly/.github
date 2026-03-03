@@ -204,7 +204,7 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 
 	// Create client
 	client := &WebSocketClient{
-		UserID: user.ID.String(),
+		UserID: user.UserID.String(),
 		Conn:   conn,
 		Send:   make(chan []byte, 256),
 		hub:    h.hub,
@@ -227,7 +227,7 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	data, _ := json.Marshal(welcomeMsg)
 	client.Send <- data
 
-	h.logger.WithField("user_id", user.ID).Info("WebSocket connection established")
+	h.logger.WithField("user_id", user.UserID).Info("WebSocket connection established")
 }
 
 // SubscribeToNotifications listens to PostgreSQL notifications and broadcasts to WebSocket clients

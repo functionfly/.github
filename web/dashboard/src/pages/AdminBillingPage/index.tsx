@@ -263,7 +263,7 @@ export function AdminBillingPage() {
                       }}
                       formatter={(value) => [`$${value}`, "MRR"]}
                     />
-                    <Area type="monotone" dataKey="mrr" stroke="#6366f1" strokeWidth={2} fill="url(#colorMrr)" name="MRR" />
+                    <Area type="monotone" dataKey="mrr" stroke="#6366f1" strokeWidth={2} fill="url(#colorMrr)" name="MRR" isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -287,6 +287,7 @@ export function AdminBillingPage() {
                           outerRadius={70}
                           paddingAngle={3}
                           dataKey="value"
+                          isAnimationActive={false}
                         >
                           {tierPieData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
@@ -444,7 +445,7 @@ export function AdminBillingPage() {
                     <StatusBadge status={tier.is_active ? "active" : "canceled"} />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-text-muted hover:text-text-primary">
+                        <Button variant="ghost" size="sm" className="text-text-muted hover:text-text-primary" aria-label="Pricing tier options">
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -502,7 +503,7 @@ export function AdminBillingPage() {
                         <StatusBadge status={subscription.status} />
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-text-muted hover:text-text-primary h-8 w-8 p-0">
+                            <Button variant="ghost" size="sm" className="text-text-muted hover:text-text-primary h-8 w-8 p-0" aria-label="Subscription options">
                               <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -565,7 +566,7 @@ export function AdminBillingPage() {
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-text-muted hover:text-text-primary h-8 w-8 p-0">
+                            <Button variant="ghost" size="sm" className="text-text-muted hover:text-text-primary h-8 w-8 p-0" aria-label="Invoice options">
                               <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -628,7 +629,7 @@ export function AdminBillingPage() {
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-text-muted hover:text-text-primary h-8 w-8 p-0">
+                          <Button variant="ghost" size="sm" className="text-text-muted hover:text-text-primary h-8 w-8 p-0" aria-label="Coupon options">
                             <MoreVertical className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>

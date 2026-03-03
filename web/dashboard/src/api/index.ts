@@ -25,3 +25,31 @@ export {
   type Invoice,
   type Coupon
 } from "./admin";
+export { notificationsApi } from "./notifications";
+export type {
+  FetchNotificationsParams,
+  NotificationCount,
+} from "./notifications";
+export { enterpriseSlaApi } from "./enterprise";
+export type {
+  SLAOverviewResponse,
+  SLAUptimeHistoryResponse,
+  SLAIncidentsResponse,
+  SLAIncidentItem,
+  UptimeHistoryPoint,
+} from "./enterprise";
+export { statusApi } from "./status";
+export type {
+  PlatformStatus,
+  ComponentHealth,
+  ProviderStatus,
+  Incident,
+  IncidentSeverity,
+  IncidentStatus,
+  MaintenanceWindow,
+  UptimeMetrics,
+  LatencyMetrics,
+  CreateIncidentRequest,
+  UpdateIncidentRequest,
+  GetIncidentsParams,
+} from "./status";

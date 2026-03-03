@@ -11,9 +11,13 @@ import (
 func (r *RegistryRepository) ListFunctionsForAdmin(visibility, category, search string, limit, offset int) ([]RegistryFunction, int, error) {
 	query := r.db.Model(&RegistryFunction{})
 
+	// If visibility is specified and not "all", filter by it
+	// If visibility is empty or "all", show all visibilities (no filter)
 	if visibility != "" && visibility != "all" {
 		query = query.Where("visibility = ?", visibility)
 	}
+	// If category is specified and not "all", filter by it
+	// If category is empty or "all", show all categories (no filter)
 	if category != "" && category != "all" {
 		query = query.Where("category = ?", category)
 	}

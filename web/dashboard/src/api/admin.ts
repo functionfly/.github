@@ -853,10 +853,401 @@ export const featuresApi = {
       features.forEach(f => searchParams.append('features', f));
     }
     const query = searchParams.toString();
-    const url = query 
-      ? `/v1/admin/tenants/${tenantId}/features?${query}` 
+    const url = query
+      ? `/v1/admin/tenants/${tenantId}/features?${query}`
       : `/v1/admin/tenants/${tenantId}/features`;
     const response = await apiClient.get<TenantFeaturesResponse>(url);
     return response;
+  },
+};
+
+// Maintenance Mode Types
+export interface MaintenanceConfig {
+  enabled: boolean;
+  name: string;
+  description?: string;
+  message?: string;
+  page_template: string;
+  retry_after_seconds: number;
+  rollout_percentage: number;
+  scheduled_start?: string;
+  scheduled_end?: string;
+  is_scheduled: boolean;
+  timezone: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaintenanceTemplate {
+  id: string;
+  name: string;
+  title?: string;
+  message_html?: string;
+  logo_url?: string;
+  background_color: string;
+  text_color: string;
+  accent_color: string;
+  show_contact_info: boolean;
+  contact_email?: string;
+  show_social_links: boolean;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaintenanceAuditLog {
+  id: string;
+  maintenance_id?: string;
+  action: string;
+  old_values?: string;
+  new_values?: string;
+  changed_by?: string;
+  changed_at: string;
+  ip_address?: string;
+  user_agent?: string;
+}
+
+export interface MaintenanceStatus {
+  maintenance_mode: boolean;
+  scheduled_maintenance?: Array<{
+    name: string;
+    scheduled_start: string;
+    scheduled_end: string;
+    status: string;
+  }>;
+}
+
+// Maintenance Mode API
+export const maintenanceApi = {
+  // Get current maintenance status
+  getStatus: async (): Promise<MaintenanceConfig> => {
+    const response = await apiClient.get<MaintenanceConfig>('/v1/admin/maintenance');
+    return response;
+  },
+
+  // Enable maintenance mode
+  enable: async (config: Partial<MaintenanceConfig>): Promise<{ enabled: boolean; message: string }> => {
+    const response = await apiClient.post<{ enabled: boolean; message: string }>('/v1/admin/maintenance', config);
+    return response;
+  },
+
+  // Disable maintenance mode
+  disable: async (): Promise<{ enabled: boolean; message: string }> => {
+    const response = await apiClient.delete<{ enabled: boolean; message: string }>('/v1/admin/maintenance');
+    return response;
+  },
+
+  // Update maintenance configuration
+  update: async (config: Partial<MaintenanceConfig>): Promise<{ message: string }> => {
+    const response = await apiClient.put<{ message: string }>('/v1/admin/maintenance', config);
+    return response;
+  },
+
+  // Get all templates
+  getTemplates: async (): Promise<{ templates: MaintenanceTemplate[] }> => {
+    const response = await apiClient.get<{ templates: MaintenanceTemplate[] }>('/v1/admin/maintenance/templates');
+    return response;
+  },
+
+  // Create new template
+  createTemplate: async (template: Partial<MaintenanceTemplate>): Promise<{ template: MaintenanceTemplate }> => {
+    const response = await apiClient.post<{ template: MaintenanceTemplate }>('/v1/admin/maintenance/templates', template);
+    return response;
+  },
+
+  // Update template
+  updateTemplate: async (id: string, template: Partial<MaintenanceTemplate>): Promise<{ template: MaintenanceTemplate }> => {
+    const response = await apiClient.put<{ template: MaintenanceTemplate }>(`/v1/admin/maintenance/templates/${id}`, template);
+    return response;
+  },
+
+  // Delete template
+  deleteTemplate: async (id: string): Promise<{ message: string }> => {
+    const response = await apiClient.delete<{ message: string }>(`/v1/admin/maintenance/templates/${id}`);
+    return response;
+  },
+
+  // Get scheduled maintenance
+  getScheduled: async (): Promise<{ scheduled: MaintenanceConfig[] }> => {
+    const response = await apiClient.get<{ scheduled: MaintenanceConfig[] }>('/v1/admin/maintenance/schedule');
+    return response;
+  },
+
+  // Get audit log
+  getAuditLog: async (limit: number = 50): Promise<{ audit_log: MaintenanceAuditLog[] }> => {
+    const response = await apiClient.get<{ audit_log: MaintenanceAuditLog[] }>(`/v1/admin/maintenance/audit?limit=${limit}`);
+    return response;
+  },
+
+  // Get public status (no auth required)
+  getPublicStatus: async (): Promise<MaintenanceStatus> => {
+    const response = await apiClient.get<MaintenanceStatus>('/maintenance/status');
+    return response;
+  },
+};
+
+// Admin Oversight API (Trust, Fraud, Execution Audit, Economic Leaderboard)
+export interface TrustDistribution {
+  excellent: number;
+  good: number;
+  fair: number;
+  poor: number;
+}
+
+export interface HighRiskFunction {
+  id: string;
+  name: string;
+  tenant: string;
+  trustScore: number;
+  riskFactors: string[];
+  lastUpdated: string;
+}
+
+export interface TrustSpike {
+  id: string;
+  functionName: string;
+  tenant: string;
+  previousScore: number;
+  newScore: number;
+  spikeAmount: number;
+  detectedAt: string;
+}
+
+export interface ReputationFarmAlert {
+  id: string;
+  type: string;
+  description: string;
+  affectedFunctions: string[];
+  severity: string;
+  detectedAt: string;
+  details: Record<string, any>;
+}
+
+export interface TrustDashboardData {
+  distribution: TrustDistribution;
+  highRiskFunctions: HighRiskFunction[];
+  trustSpikes: TrustSpike[];
+  reputationFarmingAlerts: ReputationFarmAlert[];
+}
+
+export interface ExecutionRecord {
+  id: string;
+  executionRootHash: string;
+  tenant: string;
+  functionName: string;
+  timestamp: string;
+  nodeSignature: string;
+  status: "success" | "error" | "timeout";
+  duration: number;
+  inputSize: number;
+  outputSize: number;
+  errorMessage?: string;
+}
+
+export interface ExecutionAuditData {
+  executions: ExecutionRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface BotPattern {
+  id: string;
+  patternType: string;
+  confidenceScore: number;
+  affectedFunctions: string[];
+  affectedTenants: string[];
+  detectedAt: string;
+  pattern: string;
+}
+
+export interface FakeDiversityAlert {
+  id: string;
+  tenantGroup: string[];
+  indicators: string[];
+  riskLevel: string;
+  detectedAt: string;
+  commonPatterns: string[];
+}
+
+export interface IPCluster {
+  id: string;
+  ipRange: string;
+  associatedTenants: string[];
+  riskLevel: string;
+  commonPatterns: string[];
+  firstSeen: string;
+  lastSeen: string;
+}
+
+export interface WashUsagePattern {
+  id: string;
+  tenantA: string;
+  tenantB: string;
+  function: string;
+  pattern: string;
+  confidence: number;
+  reciprocalExecutions: number;
+  detectedAt: string;
+}
+
+export interface FraudSummary {
+  totalBotPatterns: number;
+  highRiskClusters: number;
+  suspiciousTenants: number;
+  washUsageDetected: number;
+}
+
+export interface FraudDetectionData {
+  botPatterns: BotPattern[];
+  fakeDiversityAlerts: FakeDiversityAlert[];
+  ipClusters: IPCluster[];
+  washUsagePatterns: WashUsagePattern[];
+  summary: FraudSummary;
+}
+
+export interface RevenueGenerator {
+  id: string;
+  rank: number;
+  tenantFunction: string;
+  revenue30d: number;
+  executionCount: number;
+  growthRate: number;
+}
+
+export interface SuspiciousGrowthAlert {
+  id: string;
+  tenantFunction: string;
+  pattern: string;
+  details: string;
+  detectedAt: string;
+}
+
+export interface ArtificialBoosting {
+  id: string;
+  function: string;
+  detectedPattern: string;
+  confidence: number;
+  relatedAccounts: string[];
+}
+
+export interface EconomicLeaderboardData {
+  topRevenueGenerators: RevenueGenerator[];
+  suspiciousGrowth: SuspiciousGrowthAlert[];
+  artificialBoosting: ArtificialBoosting[];
+}
+
+export const oversightApi = {
+  // Trust Dashboard
+  getTrustDashboard: async (): Promise<TrustDashboardData> => {
+    return await apiClient.get<TrustDashboardData>('/v1/admin/oversight/trust-dashboard');
+  },
+
+  // Execution Audit
+  getExecutionAudit: async (params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    tenant?: string;
+    status?: string;
+    hash?: string;
+  }): Promise<ExecutionAuditData> => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set('page', params.page.toString());
+    if (params?.pageSize) searchParams.set('pageSize', params.pageSize.toString());
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.tenant) searchParams.set('tenant', params.tenant);
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.hash) searchParams.set('hash', params.hash);
+
+    const query = searchParams.toString();
+    const url = query ? `/v1/admin/oversight/execution-audit?${query}` : '/v1/admin/oversight/execution-audit';
+    return await apiClient.get<ExecutionAuditData>(url);
+  },
+
+  // Fraud Detection
+  getFraudDetection: async (): Promise<FraudDetectionData> => {
+    return await apiClient.get<FraudDetectionData>('/v1/admin/oversight/fraud-detection');
+  },
+
+  // Economic Leaderboard
+  getEconomicLeaderboard: async (): Promise<EconomicLeaderboardData> => {
+    return await apiClient.get<EconomicLeaderboardData>('/v1/admin/oversight/economic-leaderboard');
+  },
+
+  // Block Entity
+  blockEntity: async (type: string, id: string): Promise<{ status: string; message: string }> => {
+    return await apiClient.post<{ status: string; message: string }>(`/v1/admin/oversight/block/${type}/${id}`);
+  },
+
+  // Investigate Entity
+  investigateEntity: async (type: string, id: string): Promise<{ status: string; message: string }> => {
+    return await apiClient.post<{ status: string; message: string }>(`/v1/admin/oversight/investigate/${type}/${id}`);
+  },
+};
+
+// Platform Backend Types
+export interface PlatformBackend {
+  id: string;
+  app_id: string;
+  app_name: string;
+  tenant_id: string;
+  tenant_name: string;
+  provider: string;
+  region: string;
+  url: string;
+  enabled: boolean;
+  priority: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Platform Backends API
+export const backendsApi = {
+  // List all platform backends
+  listPlatformBackends: async (): Promise<{ backends: PlatformBackend[] }> => {
+    return await apiClient.get<{ backends: PlatformBackend[] }>('/v1/admin/backends');
+  },
+
+  // Update backend enabled status
+  updateBackendEnabled: async (backendId: string, enabled: boolean): Promise<PlatformBackend> => {
+    return await apiClient.patch<PlatformBackend>(`/v1/admin/backends/${backendId}`, { enabled });
+  },
+};
+
+// Admin Provider Types
+export interface AdminProvider {
+  id: string;
+  user_id: string;
+  user_email: string;
+  tenant_id: string;
+  tenant_name: string;
+  provider: string;
+  status: 'active' | 'inactive' | 'error';
+  is_shared: boolean;
+  team_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Admin Providers API
+export const adminProvidersApi = {
+  // List all providers across all users
+  listProviders: async (): Promise<{ providers: AdminProvider[] }> => {
+    return await apiClient.get<{ providers: AdminProvider[] }>('/v1/admin/providers');
+  },
+
+  // Update provider
+  updateProvider: async (providerId: string, updates: {
+    status?: 'active' | 'inactive' | 'error';
+    is_shared?: boolean;
+    team_id?: string;
+  }): Promise<AdminProvider> => {
+    return await apiClient.patch<AdminProvider>(`/v1/admin/providers/${providerId}`, updates);
+  },
+
+  // Delete/deactivate provider
+  deleteProvider: async (providerId: string): Promise<{ message: string }> => {
+    return await apiClient.delete<{ message: string }>(`/v1/admin/providers/${providerId}`);
   },
 };

@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "runtime": "python3.11",
   "entry": "main.py",
+  "category": "http",
+  "description": "RESTful HTTP API with built-in routing for CRUD operations",
   "memory_mb": 256,
   "timeout_ms": 10000
 }

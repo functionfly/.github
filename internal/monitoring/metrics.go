@@ -15,7 +15,6 @@ var (
 	registry = prometheus.NewRegistry()
 )
 
-
 // Custom metrics for FunctionFly performance monitoring
 var (
 	// HTTP request metrics
@@ -86,7 +85,6 @@ var (
 		},
 		[]string{"backend_id", "from_state", "to_state"},
 	)
-
 
 	cacheSize = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -341,7 +339,6 @@ func RecordCircuitBreakerTransition(backendID, fromState, toState string) {
 	circuitBreakerTransitionsTotal.WithLabelValues(backendID, fromState, toState).Inc()
 }
 
-
 // UpdateCacheSize updates cache size metrics
 func UpdateCacheSize(cacheType string, size int) {
 	cacheSize.WithLabelValues(cacheType).Set(float64(size))
@@ -496,6 +493,14 @@ func HTTPMetricsMiddleware(next http.Handler) http.Handler {
 			if path, err := route.GetPathTemplate(); err == nil {
 				endpoint = path
 			}
+		}
+
+		// WebSocket upgrade requires the raw ResponseWriter (http.Hijacker); do not wrap
+		if r.Header.Get("Upgrade") == "websocket" {
+			next.ServeHTTP(w, r)
+			duration := time.Since(start)
+			RecordHTTPMetrics(method, endpoint, "101", backendProvider, region, duration)
+			return
 		}
 
 		// Create a response writer wrapper to capture status code

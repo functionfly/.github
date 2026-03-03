@@ -30,6 +30,8 @@ type Repository interface {
 	UpdateUser(ctx context.Context, userID uuid.UUID, updates map[string]interface{}) (*User, error)
 	UpdateUserEmailVerification(ctx context.Context, userID uuid.UUID, verified bool, token *string, expiresAt *time.Time) error
 	UpdateUserProviderData(userID uuid.UUID, providerData map[string]interface{}) error
+	UpdateUserSettings(userID uuid.UUID, settings map[string]interface{}) error
+	GetUserSettings(userID uuid.UUID) (map[string]interface{}, error)
 	// MFA operations
 	UpdateUserMFA(userID uuid.UUID, secret *string, enabled bool, backupCodes []string, lastUsed *time.Time) error
 	UpdateUserMFAEnabled(userID uuid.UUID, enabled bool) error
@@ -106,6 +108,8 @@ type Repository interface {
 	ListBackendsByAppID(appID uuid.UUID) ([]*Backend, error)
 	GetBackendByID(id uuid.UUID) (*Backend, error)
 	GetAllEnabledBackends() ([]*Backend, error)
+	ListAllBackends(ctx context.Context) ([]*Backend, error)
+	UpdateBackendEnabled(ctx context.Context, backendID uuid.UUID, enabled bool) error
 
 	// Health check operations
 	InsertHealthCheck(backendID uuid.UUID, ok bool, statusCode, latencyMs int, errorMessage string) error
@@ -276,6 +280,9 @@ type Repository interface {
 	CreateIncident(ctx context.Context, incident *Incident) (*Incident, error)
 	GetIncidentByID(ctx context.Context, incidentID uuid.UUID) (*Incident, error)
 	ListIncidents(ctx context.Context, limit int, offset int, status *string) ([]*Incident, error)
+	ListIncidentsSince(ctx context.Context, since time.Time, limit int) ([]*Incident, error)
+	CountIncidentsSince(ctx context.Context, since time.Time) (int, error)
+	CountIncidentsGroupedByDay(ctx context.Context, since time.Time) ([]DailyIncidentCount, error)
 	UpdateIncident(ctx context.Context, incidentID uuid.UUID, updates map[string]interface{}) (*Incident, error)
 	ResolveIncident(ctx context.Context, incidentID uuid.UUID) (*Incident, error)
 
@@ -284,7 +291,9 @@ type Repository interface {
 	GetProviderByID(providerID string) (*Provider, error)
 	GetProviderByUserAndType(userID uuid.UUID, providerType string) (*Provider, error)
 	GetProvidersByUser(userID uuid.UUID) ([]*Provider, error)
+	ListAllProviders(ctx context.Context) ([]*Provider, error)
 	UpdateProviderStatus(providerID string, status string) error
+	UpdateProvider(ctx context.Context, providerID string, updates map[string]interface{}) (*Provider, error)
 	ShareProviderWithTeam(providerID string, teamID string) error
 
 	// Encryption operations

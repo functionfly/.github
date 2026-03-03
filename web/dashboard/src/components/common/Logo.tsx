@@ -31,7 +31,7 @@ export function Logo({ size = "md", showText = true, className, variant = "defau
     <div className={cn("flex items-center gap-2", className)}>
       <img
         src={logoSrc}
-        alt="FunctionFly"
+        alt={showText ? "" : "FunctionFly"}
         width={config.icon}
         height={config.icon}
         className="shrink-0"

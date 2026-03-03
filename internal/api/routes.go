@@ -20,6 +20,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
+	"github.com/functionfly/functionfly/internal/api/handlers/enterprise"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
@@ -32,6 +33,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/security"
 	"github.com/functionfly/functionfly/internal/api/handlers/state"
 	"github.com/functionfly/functionfly/internal/api/handlers/statefabric"
+	statushandler "github.com/functionfly/functionfly/internal/api/handlers/status"
 	"github.com/functionfly/functionfly/internal/api/handlers/teams"
 	usersHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/users"
 	"github.com/functionfly/functionfly/internal/api/handlers/wellknown"
@@ -40,6 +42,7 @@ import (
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/captcha"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
 	statefabricrepo "github.com/functionfly/functionfly/internal/storage/statefabric"
@@ -59,7 +62,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	deploymentsHandler := deployments.NewHandler(s.repo, s.deploySvc)
 	functionsHandler := functions.NewHandler(s.repo, s.deploySvc)
 	adminHandler := admin.NewHandler(s.repo, s.authSvc)
+	adminBackendsHandler := admin.NewBackendsHandler(s.repo, s.authSvc)
+	adminProvidersHandler := admin.NewProvidersHandler(s.repo, s.authSvc)
 	securityHandler := security.NewHandler(s.repo, s.authSvc)
+
+	// Initialize maintenance mode handler
+	maintenanceRepo := storage.NewMaintenanceRepository(s.postgresDB.GORM)
+	maintenanceHandler := admin.NewMaintenanceHandler(maintenanceRepo, s.authSvc)
+	maintenanceMiddleware := middleware.NewMaintenanceMiddleware(maintenanceRepo)
 	contentHandler := content.NewHandler(s.repo)
 	feedbackHandler := feedbackHandlerPkg.NewHandler(s.repo, s.storageService)
 	// Initialize monitoring handler
@@ -113,6 +123,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	registryHandler := registryhandler.NewHandler(registryRepo, s.repo, cacheService, cdnService, edgeCache, s.realtimeMonitor)
 	adminRegistryHandler := admin.NewRegistryHandler(registryRepo, cacheService)
 
+	// Initialize oversight handler for trust, fraud, execution audit, and economic monitoring
+	oversightHandler := admin.NewOversightHandler(registryRepo, s.postgresDB.GORM, nil)
+
 	// Initialize documentation handler
 	docsHandler := registryhandler.NewDocumentationHandler(registryRepo)
 
@@ -130,6 +143,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Initialize dashboard handler (tenant-scoped metrics and activity)
 	dashboardHandler := dashboard.NewHandler(s.repo)
+	enterpriseSLAHandler := enterprise.NewSLAHandler(s.repo)
 
 	// Initialize state handler
 	stateRepo := staterepo.NewStateRepository(s.postgresDB.GORM)
@@ -152,6 +166,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	agentEvolutionService := evolution.NewService(s.postgresDB.GORM)
 	agentSwarmMessageService := swarm.NewMessageService(s.postgresDB.GORM)
 	agentSwarmService := swarm.NewService(s.postgresDB.GORM, agentIdentityRepo, agentEconomyService)
+
+	// Initialize status page handler
+	statusRepo := statushandler.NewRepository(s.postgresDB.DB)
+	statusRepo.SetGormDB(s.postgresDB.GORM)
+	prometheusURL := os.Getenv("PROMETHEUS_URL")
+	if prometheusURL == "" {
+		prometheusURL = "http://prometheus:9090"
+	}
+	statusHandler := statushandler.NewHandler(statusRepo, prometheusURL, s.authSvc)
 
 	// Initialize Swarm handler (for swarm/marketplace/evolution features)
 	swarmHandler := agenthandler.NewSwarmHandler(
@@ -214,6 +237,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Apply distributed tracing middleware first (W3C Trace Context)
 	s.router.Use(middleware.TracingMiddleware)
+
+	// Apply maintenance mode check middleware
+	s.router.Use(maintenanceMiddleware.CheckMaintenanceMode)
 
 	// Apply logging middleware first (temporarily disabled)
 	// s.router.Use(func(next http.Handler) http.Handler {
@@ -291,11 +317,18 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/users/me/sessions", authMiddleware.RequireAuth(usersHandler.HandleListSessions)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/me/sessions/revoke-others", authMiddleware.RequireAuth(usersHandler.HandleRevokeOtherSessions)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/users/me/sessions/{id}", authMiddleware.RequireAuth(usersHandler.HandleRevokeSession)).Methods("DELETE", "OPTIONS")
+	// User settings (protected; for current authenticated user)
+	api.HandleFunc("/users/me/settings", authMiddleware.RequireAuth(usersHandler.HandleGetUserSettingsMe)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/me/settings/profile", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsProfileMe)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/users/me/settings/notifications", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsNotificationsMe)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/users/me/settings/privacy", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsPrivacyMe)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/users/me/settings/visibility", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsVisibilityMe)).Methods("PATCH", "OPTIONS")
 	// User settings by username (protected; requester must match username)
 	api.HandleFunc("/users/{username}/settings", authMiddleware.RequireAuth(usersHandler.HandleGetUserSettings)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/profile", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsProfile)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/notifications", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsNotifications)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/privacy", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsPrivacy)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/users/{username}/settings/visibility", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsVisibility)).Methods("PATCH", "OPTIONS")
 
 	// User profile analytics (public)
 	api.HandleFunc("/users/{username}/analytics", usersHandler.HandleGetUserAnalytics).Methods("GET", "OPTIONS")
@@ -430,6 +463,36 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/metrics/security/faq", securityHandler.HandleGetSecurityFAQ).Methods("GET")
 	api.HandleFunc("/metrics/security/resources", securityHandler.HandleGetSecurityResources).Methods("GET")
 	api.HandleFunc("/metrics/security/contacts", securityHandler.HandleGetContactInfo).Methods("GET")
+
+	// Status Page routes (public - for status page)
+	// GET /api/v1/status - Current platform status
+	api.HandleFunc("/status", statusHandler.HandleGetPlatformStatus).Methods("GET", "OPTIONS")
+	// GET /api/v1/status/components - Per-component status
+	api.HandleFunc("/status/components", statusHandler.HandleGetComponents).Methods("GET", "OPTIONS")
+	// GET /api/v1/status/providers - Per-provider status by region
+	api.HandleFunc("/status/providers", statusHandler.HandleGetProviders).Methods("GET", "OPTIONS")
+
+	// Incident routes (public read, admin write)
+	// GET /api/v1/incidents - List incidents with filtering
+	api.HandleFunc("/incidents", statusHandler.HandleListIncidents).Methods("GET", "OPTIONS")
+	// GET /api/v1/incidents/:id - Single incident details
+	api.HandleFunc("/incidents/{id}", statusHandler.HandleGetIncident).Methods("GET", "OPTIONS")
+	// POST /api/v1/incidents - Create incident (admin only)
+	api.HandleFunc("/incidents", authMiddleware.RequireAuth(statusHandler.HandleCreateIncident)).Methods("POST", "OPTIONS")
+	// PATCH /api/v1/incidents/:id - Update incident (admin only)
+	api.HandleFunc("/incidents/{id}", authMiddleware.RequireAuth(statusHandler.HandleUpdateIncident)).Methods("PATCH", "OPTIONS")
+
+	// Metrics routes (public)
+	// GET /api/v1/metrics/uptime - Historical uptime data
+	api.HandleFunc("/metrics/uptime", statusHandler.HandleGetUptimeMetrics).Methods("GET", "OPTIONS")
+	// GET /api/v1/metrics/latency - Latency trends by provider/region
+	api.HandleFunc("/metrics/latency", statusHandler.HandleGetLatencyMetrics).Methods("GET", "OPTIONS")
+
+	// Maintenance routes (public read, admin write)
+	// GET /api/v1/maintenance - Scheduled maintenance windows
+	api.HandleFunc("/maintenance", statusHandler.HandleListMaintenance).Methods("GET", "OPTIONS")
+	// POST /api/v1/maintenance - Create maintenance window (admin only)
+	api.HandleFunc("/maintenance", authMiddleware.RequireAuth(statusHandler.HandleCreateMaintenance)).Methods("POST", "OPTIONS")
 
 	// Content management (public - for frontend consumption)
 	api.HandleFunc("/content/changelog", contentHandler.HandleGetPublishedChangelogEntries).Methods("GET")
@@ -643,6 +706,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/dashboard/execution-rate", authMiddleware.RequireAuth(dashboardHandler.HandleGetExecutionRate)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/dashboard/activity", authMiddleware.RequireAuth(dashboardHandler.HandleGetActivity)).Methods("GET", "OPTIONS")
 
+	// Enterprise SLA routes (protected, enterprise plan required)
+	protected.HandleFunc("/enterprise/sla/overview", authMiddleware.RequireAuth(enterpriseSLAHandler.HandleGetSLAOverview)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/enterprise/sla/uptime-history", authMiddleware.RequireAuth(enterpriseSLAHandler.HandleGetUptimeHistory)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/enterprise/sla/incidents", authMiddleware.RequireAuth(enterpriseSLAHandler.HandleGetIncidents)).Methods("GET", "OPTIONS")
+
 	// StateFabric routes (protected)
 	protected.HandleFunc("/state", authMiddleware.RequireAuth(stateHandler.HandleListStates)).Methods("GET")
 	protected.HandleFunc("/state", authMiddleware.RequireAuth(stateHandler.HandleCreateState)).Methods("POST")
@@ -768,6 +836,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.HandleFunc("/health/detailed", s.handleDetailedHealth).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/check", s.handleHealthCheck).Methods("GET", "OPTIONS")
 
+	// Maintenance status (public)
+	s.router.HandleFunc("/maintenance/status", maintenanceHandler.HandleGetPublicStatus).Methods("GET", "OPTIONS")
+
+	// Status WebSocket endpoint (public - for real-time status updates)
+	// WS /ws/v1/status - Real-time status updates
+	statusWSHub := statushandler.NewStatusWebSocketHub(statusHandler, logrus.New())
+	go statusWSHub.Run()
+	s.router.HandleFunc("/ws/v1/status", statusHandler.HandleWebSocket(statusWSHub)).Methods("GET")
+
 	// Prometheus metrics endpoint (public for scraping)
 	s.router.Handle("/metrics", promhttp.Handler()).Methods("GET")
 
@@ -798,6 +875,31 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Audit log
 	adminRoutes.HandleFunc("/audit-events", authMiddleware.RequirePermission(auth.PermAuditRead)(adminHandler.HandleListAuditEvents)).Methods("GET", "OPTIONS")
+
+	// Maintenance mode management
+	adminRoutes.HandleFunc("/maintenance", authMiddleware.RequirePermission(auth.PermSystemRead)(maintenanceHandler.HandleGetMaintenanceStatus)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/maintenance", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(maintenanceHandler.HandleEnableMaintenance))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/maintenance", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(maintenanceHandler.HandleUpdateMaintenance))).Methods("PUT", "OPTIONS")
+	adminRoutes.HandleFunc("/maintenance", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(maintenanceHandler.HandleDisableMaintenance))).Methods("DELETE", "OPTIONS")
+
+	// Maintenance templates
+	adminRoutes.HandleFunc("/maintenance/templates", authMiddleware.RequirePermission(auth.PermSystemRead)(maintenanceHandler.HandleGetTemplates)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/maintenance/templates", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(maintenanceHandler.HandleCreateTemplate))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/maintenance/templates/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(maintenanceHandler.HandleUpdateTemplate))).Methods("PUT", "OPTIONS")
+	adminRoutes.HandleFunc("/maintenance/templates/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(maintenanceHandler.HandleDeleteTemplate))).Methods("DELETE", "OPTIONS")
+
+	// Maintenance scheduling and audit
+	adminRoutes.HandleFunc("/maintenance/schedule", authMiddleware.RequirePermission(auth.PermSystemRead)(maintenanceHandler.HandleGetScheduledMaintenance)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/maintenance/audit", authMiddleware.RequirePermission(auth.PermSystemRead)(maintenanceHandler.HandleGetAuditLog)).Methods("GET", "OPTIONS")
+
+	// Platform backends management
+	adminRoutes.HandleFunc("/backends", authMiddleware.RequirePermission(auth.PermSystemRead)(adminBackendsHandler.HandleListPlatformBackends)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/backends/{backendId}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminBackendsHandler.HandleUpdateBackendEnabled))).Methods("PATCH", "OPTIONS")
+
+	// Provider management
+	adminRoutes.HandleFunc("/providers", authMiddleware.RequirePermission(auth.PermSystemRead)(adminProvidersHandler.HandleListProviders)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/providers/{providerId}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminProvidersHandler.HandleUpdateProvider))).Methods("PATCH", "OPTIONS")
+	adminRoutes.HandleFunc("/providers/{providerId}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminProvidersHandler.HandleDeleteProvider))).Methods("DELETE", "OPTIONS")
 
 	// Incident management
 	adminRoutes.HandleFunc("/incidents", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleListIncidents)).Methods("GET")
@@ -895,6 +997,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	adminRoutes.HandleFunc("/cache", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminRegistryHandler.HandlePurgeAllCache))).Methods("DELETE", "OPTIONS")
 	adminRoutes.HandleFunc("/cache/{functionId}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminRegistryHandler.HandlePurgeFunctionCache))).Methods("DELETE", "OPTIONS")
 	adminRoutes.HandleFunc("/cache/{functionId}/{version}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminRegistryHandler.HandlePurgeVersionCache))).Methods("DELETE", "OPTIONS")
+
+	// Admin oversight routes (trust dashboard, execution audit, fraud detection, economic leaderboard)
+	adminRoutes.HandleFunc("/oversight/trust-dashboard", authMiddleware.RequirePermission(auth.PermSystemRead)(oversightHandler.HandleGetTrustDashboard)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/oversight/execution-audit", authMiddleware.RequirePermission(auth.PermSystemRead)(oversightHandler.HandleGetExecutionAudit)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/oversight/fraud-detection", authMiddleware.RequirePermission(auth.PermSystemRead)(oversightHandler.HandleGetFraudDetection)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/oversight/economic-leaderboard", authMiddleware.RequirePermission(auth.PermSystemRead)(oversightHandler.HandleGetEconomicLeaderboard)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/oversight/block/{type}/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(oversightHandler.HandleBlockEntity)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/oversight/investigate/{type}/{id}", authMiddleware.RequirePermission(auth.PermSystemRead)(oversightHandler.HandleInvestigateEntity)).Methods("POST", "OPTIONS")
 
 	// Admin state fabrics (stats before {id} for route precedence)
 	adminRoutes.HandleFunc("/state-fabrics/stats", authMiddleware.RequirePermission(auth.PermTenantsRead)(stateFabricHandler.HandleGetStats)).Methods("GET", "OPTIONS")

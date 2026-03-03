@@ -56,8 +56,7 @@ export function TrendSparkline({
               fill={`url(#sparkline-fill-${trend})`}
               dot={false}
               activeDot={false}
-              isAnimationActive={true}
-              animationDuration={400}
+              isAnimationActive={false}
             />
           </AreaChart>
         ) : (
@@ -72,8 +71,7 @@ export function TrendSparkline({
               strokeWidth={1.5}
               dot={false}
               activeDot={false}
-              isAnimationActive={true}
-              animationDuration={400}
+              isAnimationActive={false}
             />
           </LineChart>
         )}

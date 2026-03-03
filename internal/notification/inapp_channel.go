@@ -1,4 +1,4 @@
-package channels
+package notification
 
 import (
 	"context"
@@ -7,20 +7,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
 )
 
 // InAppChannel handles in-app notification delivery using pg_notify
 type InAppChannel struct {
-	repo   notification.Repository
+	repo   Repository
 	db     *storage.PostgresDB
 	logger *logrus.Logger
 }
 
 // NewInAppChannel creates a new in-app channel
-func NewInAppChannel(repo notification.Repository, db *storage.PostgresDB, logger *logrus.Logger) *InAppChannel {
+func NewInAppChannel(repo Repository, db *storage.PostgresDB, logger *logrus.Logger) *InAppChannel {
 	return &InAppChannel{
 		repo:   repo,
 		db:     db,
@@ -30,11 +29,11 @@ func NewInAppChannel(repo notification.Repository, db *storage.PostgresDB, logge
 
 // Name returns the channel name
 func (c *InAppChannel) Name() string {
-	return notification.ChannelInApp
+	return ChannelInApp
 }
 
 // Send sends a notification via in-app (pg_notify)
-func (c *InAppChannel) Send(ctx context.Context, n *notification.Notification, user *storage.User) error {
+func (c *InAppChannel) Send(ctx context.Context, n *Notification, user *storage.User) error {
 	// Notification is already stored in database by the service
 	// We just need to trigger pg_notify for real-time updates
 
@@ -55,7 +54,7 @@ func (c *InAppChannel) Send(ctx context.Context, n *notification.Notification, u
 	// Use pg_notify to broadcast to listening clients
 	// The channel name includes user_id for targeted delivery
 	channelName := fmt.Sprintf("user_notifications_%s", n.UserID.String())
-	
+
 	if err := c.pgNotify(channelName, string(payload)); err != nil {
 		c.logger.WithError(err).Warn("Failed to send pg_notify, but notification is stored in database")
 		// Don't return error here - the notification is already saved in DB
@@ -173,3 +172,4 @@ func (m *WebSocketManager) Run() {
 		}
 	}
 }
+

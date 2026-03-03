@@ -34,9 +34,14 @@ func NewService(repo Repository, db *storage.PostgresDB, emailSvc email.Service,
 	}
 
 	// Register channels
-	s.channels[ChannelEmail] = NewEmailChannel(emailSvc, logger)
-	s.channels[ChannelInApp] = NewInAppChannel(repo, db, logger)
-	s.channels[ChannelWebhook] = NewWebhookChannel(logger)
+	emailChannel := NewEmailChannel(emailSvc, logger)
+	inAppChannel := NewInAppChannel(repo, db, logger)
+	webhookChannel := NewWebhookChannel(logger)
+	webhookChannel.SetRepository(repo)
+
+	s.channels[ChannelEmail] = emailChannel
+	s.channels[ChannelInApp] = inAppChannel
+	s.channels[ChannelWebhook] = webhookChannel
 
 	// Initialize queue and dispatcher
 	s.queue = NewQueue(repo, logger)
@@ -108,6 +113,20 @@ func (s *Service) Broadcast(ctx context.Context, req BroadcastRequest) error {
 		}
 	}
 	return nil
+}
+
+// SendWelcome sends a welcome notification to a new user (in-app only so everyone sees it when they open the app).
+func (s *Service) SendWelcome(ctx context.Context, userID uuid.UUID) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     TypeWelcome,
+		Category: CategorySystem,
+		Title:    "Welcome to FunctionFly",
+		Body:     "We're glad you're here. Deploy your first function or explore the docs to get started.",
+		Channels: []string{ChannelInApp},
+		Priority: PriorityNormal,
+	})
+	return err
 }
 
 // GetUnreadCount returns unread notification count for user
@@ -243,13 +262,13 @@ func replaceAll(s, old, new string) string {
 
 // Queue manages the notification processing queue
 type Queue struct {
-	repo       Repository
-	logger     *logrus.Logger
-	queue      chan *Notification
-	wg         sync.WaitGroup
-	ctx        context.Context
-	cancel     context.CancelFunc
-	workers    int
+	repo    Repository
+	logger  *logrus.Logger
+	queue   chan *Notification
+	wg      sync.WaitGroup
+	ctx     context.Context
+	cancel  context.CancelFunc
+	workers int
 }
 
 // NewQueue creates a new notification queue
@@ -363,7 +382,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, n *Notification) error {
 				"notification_id": n.ID,
 				"channel":         channelName,
 			}).Error("Failed to send notification")
-			
+
 			// Track failure analytics
 			analytics := &NotificationAnalytics{
 				NotificationID: n.ID,

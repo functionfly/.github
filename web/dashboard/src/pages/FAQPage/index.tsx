@@ -327,7 +327,7 @@ export function FAQPage() {
             <div className="faq-section">
               <div className="p-12 text-center">
                 <HelpCircle className="h-12 w-12 text-text-secondary mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2 text-white">No results found</h3>
+                <h3 className="text-xl font-semibold mb-2 text-text-primary">No results found</h3>
                 <p className="text-text-secondary">
                   Try adjusting your search terms or browse all categories.
                 </p>

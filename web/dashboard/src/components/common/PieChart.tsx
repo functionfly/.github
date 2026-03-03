@@ -124,6 +124,7 @@ export function PieChart({
               outerRadius={outerRadius}
               paddingAngle={2}
               dataKey="value"
+              isAnimationActive={false}
               label={showLabels ? (props) => (
                 <CustomLabel {...props} formatter={labelFormatter} data={dataWithColors} />
               ) : false}

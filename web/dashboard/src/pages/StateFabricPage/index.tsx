@@ -268,7 +268,7 @@ export function StateFabricPage() {
               <SelectItem value="custom">Custom</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={() => refetch()}>
+          <Button variant="outline" size="icon" onClick={() => refetch()} aria-label="Refresh state fabrics">
             <RefreshCw className="w-4 h-4" />
           </Button>
         </div>

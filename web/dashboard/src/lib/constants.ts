@@ -35,6 +35,8 @@ export const ROUTES = {
   ADMIN_BILLING: "/admin/billing",
   ADMIN_AUDIT: "/admin/audit",
   ADMIN_SYSTEM: "/admin/system",
+  ADMIN_BACKENDS: "/admin/backends",
+  ADMIN_PROVIDERS: "/admin/providers",
   // Blog & Content Admin
   ADMIN_CONTENT: "/admin/content",
   ADMIN_REDIRECTS: "/admin/redirects",
@@ -63,6 +65,8 @@ export const MAIN_NAV_PATHS: string[] = [
   ROUTES.ADMIN_BILLING,
   ROUTES.ADMIN_AUDIT,
   ROUTES.ADMIN_SYSTEM,
+  ROUTES.ADMIN_BACKENDS,
+  ROUTES.ADMIN_PROVIDERS,
   ROUTES.ADMIN_CONTENT,
   ROUTES.ADMIN_REDIRECTS,
   ROUTES.ADMIN_NEWSLETTER,

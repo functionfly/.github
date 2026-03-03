@@ -126,8 +126,8 @@ export function AppDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link to={ROUTES.APPS}>
-          <Button variant="ghost" size="icon">
+        <Link to={ROUTES.APPS} aria-label="Back to apps">
+          <Button variant="ghost" size="icon" aria-label="Back to apps">
             <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>

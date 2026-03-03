@@ -93,6 +93,7 @@ const (
 	TypeSystemMaintenance     = "system.maintenance"
 	TypeSystemUpdateAvailable = "system.update_available"
 	TypeSystemAnnouncement    = "system.announcement"
+	TypeWelcome               = "system.welcome"
 
 	// Function notifications
 	TypeFunctionPublished     = "function.published"

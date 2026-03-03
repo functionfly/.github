@@ -87,6 +87,11 @@ func (rtm *RealtimeMonitor) HandleRealtimeConnection(ctx context.Context, conn *
 
 	// Subscribe to default channels
 	rtm.subscribeToDefaultChannels(rtConn)
+
+	// Send connection established message to client
+	rtConn.sendJSON(map[string]interface{}{
+		"type": "connection_established",
+	})
 }
 
 // subscribeToDefaultChannels subscribes a connection to default monitoring channels
@@ -195,8 +200,8 @@ func (rtm *RealtimeMonitor) BroadcastToChannel(channel string, message interface
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"channel":         channel,
-		"broadcast_count": broadcastCount,
+		"channel":           channel,
+		"broadcast_count":   broadcastCount,
 		"total_connections": len(rtm.connections),
 	}).Debug("Message broadcasted to channel")
 }
@@ -235,7 +240,7 @@ func (rtm *RealtimeMonitor) GetConnectionStats() map[string]interface{} {
 	return map[string]interface{}{
 		"total_connections":     totalConnections,
 		"channel_subscriptions": channelSubscriptions,
-		"timestamp":            time.Now(),
+		"timestamp":             time.Now(),
 	}
 }
 
@@ -316,19 +321,21 @@ func (rtConn *RealtimeConnection) handleClientMessage(rtm *RealtimeMonitor, mess
 		if channel, ok := msg["channel"].(string); ok {
 			rtm.unsubscribeConnection(rtConn, channel)
 			rtConn.sendJSON(map[string]interface{}{
-				"type":      "unsubscribed",
-				"channel":   channel,
+				"type":    "unsubscribed",
+				"channel": channel,
 			})
 		}
 	case "ping":
+		// Extend read deadline when ping is received (like pong handler)
+		rtConn.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		rtConn.sendJSON(map[string]interface{}{
-			"type": "pong",
+			"type":      "pong",
 			"timestamp": time.Now(),
 		})
 	default:
 		logrus.WithFields(logrus.Fields{
 			"connection_id": rtConn.ID,
-			"message_type": msgType,
+			"message_type":  msgType,
 		}).Warn("Unknown client message type")
 	}
 }
@@ -405,7 +412,6 @@ func (rtm *RealtimeMonitor) listenAndBroadcastDatabaseChanges(channelName string
 	}
 }
 
-
 // ListenForNotification listens for a PostgreSQL notification on the specified channel
 func (s *Service) ListenForNotification(ctx context.Context, channel string) (string, error) {
 	// Start listening on the channel
@@ -438,9 +444,9 @@ func (rtm *RealtimeMonitor) SubscribeToDatabaseChanges(table string, tenantID *u
 	// For now, database changes are handled automatically through WebSocket broadcasting
 	// This method is kept for future programmatic subscription needs
 	logrus.WithFields(logrus.Fields{
-		"table":      table,
-		"tenant_id":  tenantID,
-		"channel":    channelName,
+		"table":     table,
+		"tenant_id": tenantID,
+		"channel":   channelName,
 	}).Info("Database change subscription requested (WebSocket broadcasting is automatic)")
 
 	// If programmatic callback is needed in the future, it could be implemented here

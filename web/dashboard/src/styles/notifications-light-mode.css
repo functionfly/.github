@@ -1,0 +1,465 @@
+/* ==========================================================================
+   Global Ghost Button Hover Fix - Light Mode
+   Apply across entire platform
+   ========================================================================== */
+
+/* Global ghost button hover fix for light mode */
+[data-theme="light"] button[data-variant="ghost"],
+[data-theme="light"] [data-variant="ghost"],
+[data-theme="light"] button[variant="ghost"],
+[data-theme="light"] [variant="ghost"] {
+  background-color: transparent !important;
+  color: #4b5563 !important;
+}
+
+[data-theme="light"] button[data-variant="ghost"]:hover,
+[data-theme="light"] [data-variant="ghost"]:hover,
+[data-theme="light"] button[data-variant="ghost"][data-state="open"],
+[data-theme="light"] [data-variant="ghost"][data-state="open"],
+[data-theme="light"] button[variant="ghost"]:hover,
+[data-theme="light"] [variant="ghost"]:hover,
+[data-theme="light"] button[variant="ghost"][data-state="open"],
+[data-theme="light"] [variant="ghost"][data-state="open"] {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #0f0f1a !important;
+}
+
+/* Disabled ghost buttons */
+[data-theme="light"] button[data-variant="ghost"]:disabled,
+[data-theme="light"] [data-variant="ghost"]:disabled,
+[data-theme="light"] button[variant="ghost"]:disabled,
+[data-theme="light"] [variant="ghost"]:disabled {
+  background-color: transparent !important;
+  color: #9ca3af !important;
+  opacity: 0.5;
+}
+
+/* Class-based ghost button selectors */
+[data-theme="light"] .ghost,
+[data-theme="light"] [class*="ghost"] {
+  background-color: transparent !important;
+  color: #4b5563 !important;
+}
+
+[data-theme="light"] .ghost:hover,
+[data-theme="light"] [class*="ghost"]:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #0f0f1a !important;
+}
+
+/* Fix for buttons in light mode with ghost appearance */
+[data-theme="light"] button[type="button"].h-8.w-8,
+[data-theme="light"] button[type="button"].h-9.w-9,
+[data-theme="light"] button[type="button"][size="icon"] {
+  background-color: transparent !important;
+}
+
+[data-theme="light"] button[type="button"].h-8.w-8:hover,
+[data-theme="light"] button[type="button"].h-9.w-9:hover,
+[data-theme="light"] button[type="button"][size="icon"]:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #0f0f1a !important;
+}
+
+/* Fix ghost buttons in cards and panels */
+[data-theme="light"] .bg-bg-secondary button[type="button"]:hover,
+[data-theme="light"] .bg-bg-primary button[type="button"]:hover,
+[data-theme="light"] .bg-white button[type="button"]:hover,
+[data-theme="light"] [class*="bg-white"] button[type="button"]:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #0f0f1a !important;
+}
+
+/* ==========================================================================
+   Notification Panel - Light Mode Fixes
+   ========================================================================== */
+
+/* Notification Sheet/Panel background in light mode */
+[data-theme="light"] [data-state="open"][data-side="right"] {
+  background-color: #ffffff !important;
+}
+
+/* Notification Center container in light mode */
+[data-theme="light"] .bg-bg-primary.border-border-default.rounded-xl {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Notification header in light mode */
+[data-theme="light"] .bg-bg-secondary\/80.backdrop-blur-md {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Warning/Connection status banner in light mode */
+[data-theme="light"] .text-warning.bg-warning-glow\/20 {
+  background-color: rgba(217, 119, 6, 0.12) !important;
+  color: #b45309 !important;
+  border: 1px solid rgba(217, 119, 6, 0.2) !important;
+}
+
+/* Error state icon container in light mode */
+[data-theme="light"] .bg-error\/10.border-error\/20 {
+  background-color: rgba(220, 38, 38, 0.08) !important;
+  border-color: rgba(220, 38, 38, 0.2) !important;
+}
+
+/* Error icon color in light mode */
+[data-theme="light"] .text-error {
+  color: #dc2626 !important;
+}
+
+/* Warning icon color in light mode */
+[data-theme="light"] .text-warning {
+  color: #d97706 !important;
+}
+
+/* Success icon color in light mode */
+[data-theme="light"] .text-success {
+  color: #059669 !important;
+}
+
+/* Info icon color in light mode */
+[data-theme="light"] .text-info {
+  color: #2563eb !important;
+}
+
+/* Notification tabs in light mode */
+[data-theme="light"] [role="tablist"].bg-transparent.border-border-subtle {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Active tab in notification panel */
+[data-theme="light"] [role="tab"][data-state="active"].border-brand-500 {
+  color: #0f0f1a !important;
+  border-color: #4f46e5 !important;
+}
+
+/* Inactive tab text in notification panel */
+[data-theme="light"] [role="tab"].text-text-muted {
+  color: #6b7280 !important;
+}
+
+/* Notification group headers in light mode */
+[data-theme="light"] .text-text-muted.uppercase.tracking-wider {
+  color: #6b7280 !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Notification card borders in light mode */
+[data-theme="light"] .divide-border-subtle > * {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Empty state icon container in light mode */
+[data-theme="light"] .bg-bg-tertiary.border-border-subtle {
+  background-color: #f3f4f6 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Sheet overlay backdrop in light mode */
+[data-theme="light"] [data-state="open"].fixed.inset-0 {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Notification badge in light mode */
+[data-theme="light"] .bg-brand-500\/10.text-brand-500 {
+  background-color: rgba(79, 70, 229, 0.1) !important;
+  color: #4f46e5 !important;
+  border-color: rgba(79, 70, 229, 0.2) !important;
+}
+
+/* Button outline variant in notification panel for light mode */
+[data-theme="light"] button[variant="outline"],
+[data-theme="light"] [variant="outline"] {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] button[variant="outline"]:hover,
+[data-theme="light"] [variant="outline"]:hover {
+  background-color: #f9fafb !important;
+  border-color: rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Notification dropdown menu in light mode */
+[data-theme="light"] [data-radix-popper-content-wrapper] > div {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Dropdown menu items in light mode */
+[data-theme="light"] [role="menuitem"] {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] [role="menuitem"]:hover,
+[data-theme="light"] [role="menuitem"][data-highlighted] {
+  background-color: #f3f4f6 !important;
+}
+
+/* Dropdown menu separator in light mode */
+[data-theme="light"] [role="separator"] {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Ghost button hover fixes in notification panel - prevent dark background */
+[data-theme="light"] button[variant="ghost"],
+[data-theme="light"] [variant="ghost"] {
+  background-color: transparent !important;
+  color: #4b5563 !important;
+}
+
+[data-theme="light"] button[variant="ghost"]:hover,
+[data-theme="light"] [variant="ghost"]:hover,
+[data-theme="light"] button[variant="ghost"][data-state="open"],
+[data-theme="light"] [variant="ghost"][data-state="open"] {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #0f0f1a !important;
+}
+
+/* Specific fix for notification header ghost buttons */
+[data-theme="light"] .bg-bg-secondary\/80 button[variant="ghost"],
+[data-theme="light"] .bg-bg-secondary\/80 [variant="ghost"] {
+  background-color: transparent !important;
+  color: #4b5563 !important;
+}
+
+[data-theme="light"] .bg-bg-secondary\/80 button[variant="ghost"]:hover,
+[data-theme="light"] .bg-bg-secondary\/80 [variant="ghost"]:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #0f0f1a !important;
+}
+
+/* Fix for disabled ghost button state */
+[data-theme="light"] button[variant="ghost"]:disabled,
+[data-theme="light"] [variant="ghost"]:disabled {
+  background-color: transparent !important;
+  color: #9ca3af !important;
+  opacity: 0.5;
+}
+
+/* Additional ghost button selectors for Radix UI buttons */
+[data-theme="light"] button[data-variant="ghost"],
+[data-theme="light"] [data-variant="ghost"] {
+  background-color: transparent !important;
+  color: #4b5563 !important;
+}
+
+[data-theme="light"] button[data-variant="ghost"]:hover,
+[data-theme="light"] [data-variant="ghost"]:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #0f0f1a !important;
+}
+
+/* Class-based ghost button selectors */
+[data-theme="light"] .ghost,
+[data-theme="light"] [class*="ghost"] {
+  background-color: transparent !important;
+}
+
+[data-theme="light"] .ghost:hover,
+[data-theme="light"] [class*="ghost"]:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Specific targeting for notification panel action buttons */
+[data-theme="light"] .notification-panel-actions button,
+[data-theme="light"] .notification-header-actions button {
+  background-color: transparent !important;
+}
+
+[data-theme="light"] .notification-panel-actions button:hover,
+[data-theme="light"] .notification-header-actions button:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #0f0f1a !important;
+}
+
+/* Target any button inside the notification sheet header */
+[data-theme="light"] [data-side="right"] button[type="button"],
+[data-theme="light"] .sheet-content-notifications button[type="button"] {
+  background-color: transparent !important;
+}
+
+[data-theme="light"] [data-side="right"] button[type="button"]:hover,
+[data-theme="light"] .sheet-content-notifications button[type="button"]:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #0f0f1a !important;
+}
+
+/* Specific Notification Center fixes */
+
+/* The main notification center panel */
+[data-theme="light"] .notification-center-panel,
+[data-theme="light"] [class*="NotificationCenter"] {
+  background-color: #ffffff !important;
+}
+
+/* Notification sheet content */
+[data-theme="light"] .sheet-content-notifications {
+  background-color: #ffffff !important;
+  border-left-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Ensure text is visible on light backgrounds */
+[data-theme="light"] .notification-title {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .notification-message {
+  color: #4b5563 !important;
+}
+
+/* Try Again button specific styling */
+[data-theme="light"] .notification-retry-button {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .notification-retry-button:hover {
+  background-color: #f3f4f6 !important;
+  border-color: rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Fix for warning glow background in light mode */
+[data-theme="light"] .bg-warning\/10,
+[data-theme="light"] .bg-warning-glow {
+  background-color: rgba(217, 119, 6, 0.1) !important;
+}
+
+[data-theme="light"] .bg-warning-glow\/20 {
+  background-color: rgba(217, 119, 6, 0.12) !important;
+}
+
+/* Fix for error glow background in light mode */
+[data-theme="light"] .bg-error\/10,
+[data-theme="light"] .bg-error-glow {
+  background-color: rgba(220, 38, 38, 0.08) !important;
+}
+
+[data-theme="light"] .bg-error-glow\/20 {
+  background-color: rgba(220, 38, 38, 0.1) !important;
+}
+
+/* Success glow background in light mode */
+[data-theme="light"] .bg-success\/10,
+[data-theme="light"] .bg-success-glow {
+  background-color: rgba(5, 150, 105, 0.08) !important;
+}
+
+[data-theme="light"] .bg-success-glow\/20 {
+  background-color: rgba(5, 150, 105, 0.1) !important;
+}
+
+/* Info glow background in light mode */
+[data-theme="light"] .bg-info\/10,
+[data-theme="light"] .bg-info-glow {
+  background-color: rgba(37, 99, 235, 0.08) !important;
+}
+
+[data-theme="light"] .bg-info-glow\/20 {
+  background-color: rgba(37, 99, 235, 0.1) !important;
+}
+
+/* ==========================================================================
+   Missing Button Utility Classes for Light Mode
+   ========================================================================== */
+
+/* Button ghost hover background */
+[data-theme="light"] .hover\:bg-button-ghost-hover:hover,
+[data-theme="light"] .bg-button-ghost-hover {
+  background-color: #f1f3f4 !important;
+}
+
+/* Button outline hover background */
+[data-theme="light"] .hover\:bg-button-outline-hover:hover,
+[data-theme="light"] .bg-button-outline-hover {
+  background-color: #f1f3f4 !important;
+}
+
+/* Button secondary hover background */
+[data-theme="light"] .hover\:bg-button-secondary-hover:hover,
+[data-theme="light"] .bg-button-secondary-hover {
+  background-color: #e8eaed !important;
+}
+
+/* Button primary colors */
+[data-theme="light"] .bg-button-primary {
+  background-color: #6366f1 !important;
+}
+
+[data-theme="light"] .hover\:bg-button-primary-hover:hover,
+[data-theme="light"] .bg-button-primary-hover {
+  background-color: #4f46e5 !important;
+}
+
+/* Border focus utility */
+[data-theme="light"] .hover\:border-border-focus:hover {
+  border-color: rgba(79, 70, 229, 0.4) !important;
+}
+
+/* Ensure proper contrast for text on hover */
+[data-theme="light"] .hover\:text-text-primary:hover {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .hover\:text-text-secondary:hover {
+  color: #4a4a5a !important;
+}
+
+/* ==========================================================================
+   Enterprise Status Card - Light Mode Fixes
+   ========================================================================== */
+
+/* Fix hardcoded white text in Enterprise Status Card */
+[data-theme="light"] .text-white.text-base,
+[data-theme="light"] .text-white.font-medium {
+  color: #0f0f1a !important;
+}
+
+/* Fix amber icon colors for better contrast in light mode */
+[data-theme="light"] .text-amber-400 {
+  color: #d97706 !important;
+}
+
+[data-theme="light"] .text-amber-500 {
+  color: #f59e0b !important;
+}
+
+/* Fix amber background tints */
+[data-theme="light"] .bg-amber-500\/10,
+[data-theme="light"] .bg-amber-500\/5 {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+[data-theme="light"] .bg-amber-500\/20 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+
+/* Fix amber borders */
+[data-theme="light"] .border-amber-500\/20,
+[data-theme="light"] .border-amber-500\/30 {
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+/* Hover state for amber-bordered buttons */
+[data-theme="light"] .hover\:bg-amber-500\/10:hover {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+
+/* Fix green status text */
+[data-theme="light"] .text-green-400 {
+  color: #16a34a !important;
+}
+
+[data-theme="light"] .text-green-500 {
+  color: #22c55e !important;
+}
+
+/* Enterprise card background gradient in light mode */
+[data-theme="light"] .from-amber-500\/5.via-transparent.to-yellow-500\/5 {
+  background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.08), transparent, rgba(234, 179, 8, 0.08)) !important;
+}

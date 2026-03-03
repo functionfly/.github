@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { AnalyticsManagement } from "./components/AnalyticsManagement";
 import { DatabaseMonitoring } from "./components/DatabaseMonitoring";
+import { MaintenanceMode } from "./components/MaintenanceMode";
 import { SectionErrorBoundary } from "./components/SectionErrorBoundary";
 import { healthApi, incidentsApi, type SystemHealth, type Incident } from "@/api/admin";
 
@@ -147,6 +148,11 @@ export function AdminSystemPage() {
           </CardContent>
         </Card>
       ) : null}
+
+      {/* Maintenance Mode Control */}
+      <SectionErrorBoundary sectionTitle="Maintenance Mode">
+        <MaintenanceMode />
+      </SectionErrorBoundary>
 
       {/* Health Checks */}
       {systemHealth?.checks && typeof systemHealth.checks === "object" && (

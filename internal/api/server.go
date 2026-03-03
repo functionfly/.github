@@ -129,6 +129,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 
 	authSvc := auth.NewAuthService(repo, jwtSecret)
 	authSvc.SetEmailService(emailSvc)
+	// Notification service is set below after it is created
 
 	// Set base URL for OAuth redirects
 	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
@@ -174,6 +175,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 	// Initialize notification repository and service
 	notificationRepo := notification.NewPostgresRepository(db.DB)
 	notificationSvc := notification.NewService(notificationRepo, db, emailSvc, logrus.New())
+	authSvc.SetNotificationService(notificationSvc)
 
 	s := &Server{
 		postgresDB:       db,
@@ -207,6 +209,22 @@ func NewServer(db *storage.PostgresDB) *Server {
 	return s
 }
 
+// corsResponseWriter wraps http.ResponseWriter to add CORS headers
+type corsResponseWriter struct {
+	http.ResponseWriter
+	origin string
+}
+
+func (w *corsResponseWriter) WriteHeader(code int) {
+	if w.origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", w.origin)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+	}
+	w.ResponseWriter.WriteHeader(code)
+}
+
 // localhostCORSWrapper ensures CORS headers are set for localhost origins on every response.
 // This guarantees the dashboard at :3000 can call the API at :8080 even when the route returns 404.
 func localhostCORSWrapper(next http.Handler) http.Handler {
@@ -227,12 +245,24 @@ func localhostCORSWrapper(next http.Handler) http.Handler {
 			return
 		}
 
-		if isLocalhost {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info")
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		// For WebSocket upgrades, use the original response writer to preserve Hijacker interface
+		if r.Header.Get("Upgrade") == "websocket" {
+			if isLocalhost {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
+			next.ServeHTTP(w, r)
+			return
 		}
+
+		// Wrap the response writer for regular HTTP requests
+		if isLocalhost {
+			w = &corsResponseWriter{ResponseWriter: w, origin: origin}
+		}
+
+		// Call the next handler
 		next.ServeHTTP(w, r)
 	})
 }

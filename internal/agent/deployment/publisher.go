@@ -22,37 +22,37 @@ func NewPublisher(db *gorm.DB) *Publisher {
 
 // PublishRequest represents a request to publish a function
 type PublishRequest struct {
-	AgentID       string `json:"agent_id" validate:"required"`
+	AgentID         string    `json:"agent_id" validate:"required"`
 	GeneratedCodeID uuid.UUID `json:"generated_code_id" validate:"required"`
-	Author         string `json:"author" validate:"required"`
-	Name          string `json:"name" validate:"required"`
-	Title         string `json:"title"`
-	Description   string `json:"description"`
-	Category      string `json:"category"`
-	Tags          []string `json:"tags"`
-	IsPublic      bool   `json:"is_public"`
+	Author          string    `json:"author" validate:"required"`
+	Name            string    `json:"name" validate:"required"`
+	Title           string    `json:"title"`
+	Description     string    `json:"description"`
+	Category        string    `json:"category"`
+	Tags            []string  `json:"tags"`
+	IsPublic        bool      `json:"is_public"`
 }
 
 // PublishedFunction represents a successfully published function
 type PublishedFunction struct {
-	ID                  uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	AgentID             string    `json:"agent_id" gorm:"not null"`
-	GeneratedCodeID     uuid.UUID `json:"generated_code_id" gorm:"type:uuid"`
-	FunctionID          string    `json:"function_id"` // The published function ID (author/name)
-	RegistryFunctionID  *uuid.UUID `json:"registry_function_id" gorm:"type:uuid"`
-	Author              string    `json:"author" gorm:"not null"`
-	Name                string    `json:"name" gorm:"not null"`
-	Title               string    `json:"title"`
-	Description         string    `json:"description"`
-	Category            string    `json:"category"`
-	Tags                []string  `json:"tags" gorm:"type:text[]"`
-	IsPublic            bool      `json:"is_public" gorm:"not null;default:false"`
-	Status              string    `json:"status" gorm:"not null;default:'pending'"` // pending, published, failed
-	Version             string    `json:"version" gorm:"not null;default:'1.0.0'"`
-	ErrorMessage        *string  `json:"error_message"`
+	ID                 uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AgentID            string     `json:"agent_id" gorm:"not null"`
+	GeneratedCodeID    uuid.UUID  `json:"generated_code_id" gorm:"type:uuid"`
+	FunctionID         string     `json:"function_id"` // The published function ID (author/name)
+	RegistryFunctionID *uuid.UUID `json:"registry_function_id" gorm:"type:uuid"`
+	Author             string     `json:"author" gorm:"not null"`
+	Name               string     `json:"name" gorm:"not null"`
+	Title              string     `json:"title"`
+	Description        string     `json:"description"`
+	Category           string     `json:"category"`
+	Tags               []string   `json:"tags" gorm:"type:text[]"`
+	IsPublic           bool       `json:"is_public" gorm:"not null;default:false"`
+	Status             string     `json:"status" gorm:"not null;default:'pending'"` // pending, published, failed
+	Version            string     `json:"version" gorm:"not null;default:'1.0.0'"`
+	ErrorMessage       *string    `json:"error_message"`
 	PublishedAt        *time.Time `json:"published_at"`
-	CreatedAt          time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt          time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	CreatedAt          time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt          time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // TableName returns the GORM table name
@@ -153,21 +153,21 @@ func (p *Publisher) createRegistryFunction(ctx context.Context, generated Genera
 
 	// Create new function
 	newFunc := identity.Function{
-		ID:               uuid.New().String(),
-		Author:           req.Author,
-		Name:             req.Name,
-		LatestVersion:   "1.0.0",
-		Title:            req.Title,
-		Description:      req.Description,
-		Category:         req.Category,
-		Tags:             req.Tags,
-		Visibility:       "private",
-		PopularityScore:  0,
-		ReliabilityScore: 0,
+		ID:                 uuid.New().String(),
+		Author:             req.Author,
+		Name:               req.Name,
+		LatestVersion:      "1.0.0",
+		Title:              req.Title,
+		Description:        req.Description,
+		Category:           req.Category,
+		Tags:               req.Tags,
+		Visibility:         "private",
+		PopularityScore:    0,
+		ReliabilityScore:   0,
 		DeterministicScore: 0,
-		OwnerAgentID:     &req.AgentID,
-		AgentGenerated:   true,
-		GenerationModel:  &generated.ModelUsed,
+		OwnerAgentID:       &req.AgentID,
+		AgentGenerated:     true,
+		GenerationModel:    &generated.ModelUsed,
 	}
 
 	if req.IsPublic {
@@ -240,10 +240,10 @@ func (p *Publisher) Unpublish(ctx context.Context, functionID uuid.UUID) error {
 
 	// Optionally hide the function in the registry
 	if published.RegistryFunctionID != nil {
-		var func identity.Function
-		if err := p.db.WithContext(ctx).Where("id = ?", *published.RegistryFunctionID).First(&func).Error; err == nil {
-			func.Visibility = "private"
-			p.db.WithContext(ctx).Save(&func)
+		var fn identity.Function
+		if err := p.db.WithContext(ctx).Where("id = ?", *published.RegistryFunctionID).First(&fn).Error; err == nil {
+			fn.Visibility = "private"
+			p.db.WithContext(ctx).Save(&fn)
 		}
 	}
 

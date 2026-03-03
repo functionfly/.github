@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, Bell, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/common/Logo";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -8,8 +8,8 @@ import { SearchButton } from "@/components/layout/SearchButton";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { ProductsDropdown } from "@/components/common/ProductsDropdown";
 import { MarketplaceDropdown } from "@/components/common/MarketplaceDropdown";
+import { NotificationBell } from "@/components/notifications";
 import { useAuthStore } from "@/stores/authStore";
-import { useNavigationStatus } from "@/hooks/useNavigationStatus";
 import { useThemeStore } from "@/stores/themeStore";
 import { cn } from "@/lib/utils";
 import { DOCS_SITE_URL } from "@/lib/constants";
@@ -26,15 +26,6 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const theme = useThemeStore((state) => state.theme);
-
-
-  const status = useNavigationStatus();
-
-  const totalNotifications = status.functions.pendingDeployments +
-    (status.functions.hasIssues ? 1 : 0) +
-    (status.providers.hasOffline ? 1 : 0) +
-    (status.analytics.hasAlerts ? 1 : 0) +
-    (status.settings.hasWarnings ? 1 : 0);
 
   const isAdmin = user?.role && ["super_admin", "support", "billing_admin", "developer_admin"].includes(user.role);
 
@@ -70,6 +61,7 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
               size="icon"
               className="lg:hidden text-text-secondary hover:text-text-primary mr-2"
               onClick={onMenuClick}
+              aria-label="Open navigation menu"
               style={theme === 'light' ? {
                 color: '#1a1a2e',
               } : {}}
@@ -79,7 +71,7 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
           )}
 
           {/* Logo */}
-          <Link to={isAuthenticated ? "/dashboard" : "/"} className="shrink-0">
+          <Link to={isAuthenticated ? "/dashboard" : "/"} className="shrink-0" aria-label="FunctionFly home">
             <Logo />
           </Link>
 
@@ -171,21 +163,14 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
 
                 {/* Notifications (Dashboard only) */}
                 {variant === "dashboard" && (
-                  <Button
+                  <NotificationBell
                     variant="ghost"
-                    size="icon"
-                    className="relative text-text-secondary hover:text-text-primary hover:bg-bg-hover"
-                    style={theme === 'light' ? {
-                      color: '#1a1a2e',
-                    } : {}}
-                  >
-                    <Bell className="w-5 h-5" />
-                    {totalNotifications > 0 && (
-                      <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] bg-error text-white text-xs font-bold rounded-full px-1">
-                        {totalNotifications > 9 ? '9+' : totalNotifications}
-                      </span>
+                    size="md"
+                    className={cn(
+                      "relative text-text-secondary hover:text-text-primary hover:bg-bg-hover",
+                      theme === 'light' && "text-[#1a1a2e]"
                     )}
-                  </Button>
+                  />
                 )}
 
                 {/* User Menu */}

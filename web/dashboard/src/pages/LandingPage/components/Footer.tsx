@@ -6,7 +6,7 @@ import { DOCS_SITE_URL } from "@/lib/constants";
 export function Footer() {
 
   return (
-    <footer className="relative overflow-hidden footer-enhanced" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <footer className="relative overflow-hidden footer-enhanced" style={{ backgroundColor: 'var(--bg-primary)' }} role="contentinfo" aria-label="Site footer">
       {/* Background Effects */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-500/5 rounded-full blur-[128px] light-mode-enhanced" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-[128px] light-mode-enhanced" />
@@ -24,38 +24,42 @@ export function Footer() {
                 Serverless functions & AI agent infrastructure. Deploy to edge,
                 build AI agents with built-in cost controls, and scale with confidence.
               </p>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4" role="group" aria-label="Social links">
                 <motion.a
                   href="#"
                   className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect shine-effect"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  aria-label="FunctionFly on GitHub"
                 >
-                  <Github className="w-5 h-5" />
+                  <Github className="w-5 h-5" aria-hidden />
                 </motion.a>
                 <motion.a
                   href="#"
                   className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  aria-label="FunctionFly on Twitter"
                 >
-                  <Twitter className="w-5 h-5" />
+                  <Twitter className="w-5 h-5" aria-hidden />
                 </motion.a>
                 <motion.a
                   href="#"
                   className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  aria-label="FunctionFly on LinkedIn"
                 >
-                  <Linkedin className="w-5 h-5" />
+                  <Linkedin className="w-5 h-5" aria-hidden />
                 </motion.a>
                 <motion.a
                   href="#"
                   className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  aria-label="FunctionFly on community chat"
                 >
-                  <MessageCircle className="w-5 h-5" />
+                  <MessageCircle className="w-5 h-5" aria-hidden />
                 </motion.a>
               </div>
             </div>
@@ -210,15 +214,7 @@ export function Footer() {
                 </li>
                 <li>
                   <a
-                    href="#"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
-                    Status Page
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
+                    href="/status"
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
                     System Status

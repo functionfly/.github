@@ -285,6 +285,10 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 		}
 	}
 
+	if newUser {
+		a.sendWelcomeNotification(context.Background(), user.ID)
+	}
+
 	return &OAuthCallbackResponse{
 		Token:   jwtToken,
 		User:    user,
@@ -372,8 +376,8 @@ func (a *AuthService) linkSocialAccountToUser(userID uuid.UUID, provider, provid
 	// Update the user record with social provider information
 	ctx := context.Background()
 	updates := map[string]interface{}{
-		"provider":     &provider,
-		"provider_id":  &providerID,
+		"provider":      &provider,
+		"provider_id":   &providerID,
 		"provider_data": providerData,
 	}
 

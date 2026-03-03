@@ -676,6 +676,7 @@ export function Playground() {
                     size="sm"
                     onClick={handleClearHistory}
                     className="text-muted-foreground hover:text-red-500"
+                    aria-label="Clear execution history"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

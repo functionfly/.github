@@ -63,8 +63,6 @@ const (
 func (o *Optimizer) GenerateOptimizations(ctx context.Context, agentID string, patterns []ExecutionPattern) ([]Optimization, error) {
 	optimizations := []Optimization{}
 
-	analyzer := NewAnalyzer(o.db)
-
 	for _, pattern := range patterns {
 		if !pattern.IsActive {
 			continue

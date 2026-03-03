@@ -86,8 +86,7 @@ export function UsageGraph({
                 stroke={color}
                 strokeWidth={2}
                 fill="url(#usage-gradient)"
-                isAnimationActive={true}
-                animationDuration={500}
+                isAnimationActive={false}
               />
             </AreaChart>
           </ResponsiveContainer>

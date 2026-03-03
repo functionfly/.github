@@ -167,6 +167,17 @@ func (h *RegistryHandler) HandleGetRegistryFunction(w http.ResponseWriter, r *ht
 	if fn.Category.Valid {
 		cat = fn.Category.String
 	}
+	tags := fn.Tags
+	capabilities := fn.Capabilities
+	embedConfig := fn.EmbedConfig
+	tenantID := ""
+	if fn.TenantID != nil {
+		tenantID = fn.TenantID.String()
+	}
+	ownerUserID := ""
+	if fn.OwnerUserID != nil {
+		ownerUserID = fn.OwnerUserID.String()
+	}
 	overallScore := 0.0
 	totalRatings := 0
 	if fn.Rating != nil {
@@ -176,16 +187,51 @@ func (h *RegistryHandler) HandleGetRegistryFunction(w http.ResponseWriter, r *ht
 
 	versionMaps := make([]map[string]interface{}, 0, len(versions))
 	for _, v := range versions {
+		deploymentID := ""
+		if v.DeploymentID != nil {
+			deploymentID = v.DeploymentID.String()
+		}
+		backendID := ""
+		if v.BackendID != nil {
+			backendID = v.BackendID.String()
+		}
+		contentHash := ""
+		if v.ContentHash.Valid {
+			contentHash = v.ContentHash.String
+		}
+		sourceHash := ""
+		if v.SourceHash.Valid {
+			sourceHash = v.SourceHash.String
+		}
+		sourceCode := ""
+		if v.SourceCode.Valid {
+			sourceCode = v.SourceCode.String
+		}
+		bundleSize := 0
+		if v.BundleSize.Valid {
+			bundleSize = int(v.BundleSize.Int32)
+		}
 		versionMaps = append(versionMaps, map[string]interface{}{
 			"id":            v.ID.String(),
 			"function_id":   v.FunctionID.String(),
 			"version":       v.Version,
+			"manifest":      v.Manifest,
 			"runtime":       v.Runtime,
 			"timeout_ms":    v.TimeoutMs,
 			"memory_mb":     v.MemoryMB,
 			"deterministic": v.Deterministic,
 			"cache_ttl":     v.CacheTTL,
+			"capabilities":  v.Capabilities,
+			"side_effects":  v.SideEffects,
+			"idempotent":    v.Idempotent,
+			"deployment_id": deploymentID,
+			"backend_id":    backendID,
+			"content_hash":  contentHash,
+			"source_hash":   sourceHash,
+			"source_code":   sourceCode,
+			"bundle_size":   bundleSize,
 			"published_at":  v.PublishedAt,
+			"updated_at":    v.UpdatedAt,
 			"is_active":     true,
 		})
 	}
@@ -199,11 +245,16 @@ func (h *RegistryHandler) HandleGetRegistryFunction(w http.ResponseWriter, r *ht
 			"title":               title,
 			"description":         desc,
 			"category":            cat,
+			"tags":                tags,
 			"visibility":          fn.Visibility,
 			"price_per_call":      fn.PricePerCall,
 			"popularity_score":    fn.PopularityScore,
 			"reliability_score":   fn.ReliabilityScore,
 			"deterministic_score": fn.DeterministicScore,
+			"capabilities":        capabilities,
+			"embed_config":        embedConfig,
+			"tenant_id":           tenantID,
+			"owner_user_id":       ownerUserID,
 			"latest_version":      latestVersion,
 			"total_ratings":       totalRatings,
 			"overall_score":       overallScore,
