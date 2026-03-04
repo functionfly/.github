@@ -35,11 +35,22 @@ export function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
-  const [notifications, setNotifications] = useState({
-    deploymentSuccess: true,
-    deploymentFailure: true,
-    failoverEvents: true,
-    providerIssues: true,
+  const [notifications, setNotifications] = useState(() => {
+    // Load saved preferences from localStorage
+    const saved = localStorage.getItem("notificationPreferences");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // ignore parse errors
+      }
+    }
+    return {
+      deploymentSuccess: true,
+      deploymentFailure: true,
+      failoverEvents: true,
+      providerIssues: true,
+    };
   });
 
   // Fetch API keys
@@ -383,9 +394,12 @@ export function SettingsPage() {
                     </div>
                     <Switch
                       checked={notifications[item.key]}
-                      onCheckedChange={(checked) =>
-                        setNotifications((prev) => ({ ...prev, [item.key]: checked }))
-                      }
+                      onCheckedChange={(checked) => {
+                        const updated = { ...notifications, [item.key]: checked };
+                        setNotifications(updated);
+                        localStorage.setItem("notificationPreferences", JSON.stringify(updated));
+                        toast.success("Notification preference saved");
+                      }}
                     />
                   </div>
                 ))}

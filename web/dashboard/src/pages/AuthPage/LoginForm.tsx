@@ -10,6 +10,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { cn } from "@/lib/utils";
 import { useLoginForm } from "@/hooks/useAuthForms";
 import { useAuthStore } from "@/stores/authStore";
+import { toast } from "sonner";
 
 // New authentication libraries
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
@@ -130,7 +131,7 @@ export function LoginForm(): React.JSX.Element {
 
     // Verify reCAPTCHA token (only in production)
     if (import.meta.env.PROD && !recaptchaToken) {
-      alert('Please complete the security verification');
+      toast.error('Please complete the security verification');
       return;
     }
 
