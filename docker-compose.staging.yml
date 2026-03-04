@@ -1,5 +1,20 @@
 version: '3.8'
 
+# ============================================================================
+# FunctionFly Staging Environment Docker Compose
+# ============================================================================
+# This configuration supports the following staging subdomains:
+#   - staging.functionfly.com       -> Caddy (port 8083)
+#   - api.staging.functionfly.com   -> Orchestrator API (port 8082)
+#   - edge.staging.functionfly.com  -> Edge requests via Caddy
+#   - cdn.staging.functionfly.com   -> Static assets via Caddy
+#
+# Local Development Ports:
+#   - Orchestrator API: 8082
+#   - Caddy Proxy:      8083 (HTTP), 8444 (HTTPS)
+#   - Redis:            6380
+# ============================================================================
+
 services:
   # Neon Postgres is cloud-hosted, so we don't need a local database container
   # Database connection configured via environment variables to Neon staging branch
@@ -9,76 +24,135 @@ services:
       context: .
       dockerfile: deploy/docker/Dockerfile.orchestrator
     container_name: functionfly-orchestrator-staging
+    hostname: orchestrator-api
     ports:
       - "8082:8080"  # Different port to avoid conflicts with dev/production
     environment:
       # Staging environment configuration
       - NODE_ENV=staging
       - ENVIRONMENT=staging
+      - PORT=8080
+
       # Database configuration (Neon staging branch)
       - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
+      - DB_PORT=${DB_PORT:-5432}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - DB_SSLMODE=${DB_SSLMODE}
+      - DB_NAME=${DB_NAME:-functionfly}
+      - DB_SSLMODE=${DB_SSLMODE:-require}
+
       # Disable Supabase for staging
       - USE_SUPABASE=false
+
       # Email configuration for staging (uses external SMTP)
       - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USERNAME=${SMTP_USERNAME}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - FROM_EMAIL=${FROM_EMAIL}
-      - FROM_NAME=${FROM_NAME}
+      - FROM_EMAIL=${FROM_EMAIL:-noreply@staging.functionfly.com}
+      - FROM_NAME=${FROM_NAME:-FunctionFly Staging}
+
       # Staging-specific URLs
-      - BASE_URL=${BASE_URL}
-      - FRONTEND_URL=${FRONTEND_URL}
+      - BASE_URL=${BASE_URL:-https://api.staging.functionfly.com}
+      - FRONTEND_URL=${FRONTEND_URL:-https://app.staging.functionfly.com}
+
       # JWT and security
       - JWT_SECRET=${JWT_SECRET}
       - API_SHARED_SECRET=${API_SHARED_SECRET}
+
       # Rate limiting (more permissive for staging)
-      - RATE_LIMIT_REQUESTS=200
-      - RATE_LIMIT_WINDOW_SECONDS=60
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-200}
+      - RATE_LIMIT_WINDOW_SECONDS=${RATE_LIMIT_WINDOW_SECONDS:-60}
+
       # CORS for staging
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://staging.functionfly.com,https://app.staging.functionfly.com,http://localhost:3000}
       - CORS_ALLOWED_METHODS=GET, POST, PUT, PATCH, DELETE, OPTIONS
       - CORS_ALLOWED_HEADERS=Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info
+
       # Security headers
-      - CONTENT_SECURITY_POLICY=default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:;
-      - HSTS_MAX_AGE=31536000
+      - "CONTENT_SECURITY_POLICY=${CONTENT_SECURITY_POLICY:-default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:;}"
+      - HSTS_MAX_AGE=${HSTS_MAX_AGE:-31536000}
+
       # Advanced security (enabled for staging testing)
-      - ADVANCED_SECURITY_SLIDING_WINDOW_LIMIT=200
-      - ADVANCED_SECURITY_SLIDING_WINDOW_MINUTES=1
-      - ADVANCED_SECURITY_TOKEN_BUCKET_RATE=20.0
-      - ADVANCED_SECURITY_TOKEN_BUCKET_BURST=40
-      - ADVANCED_SECURITY_ENABLE_BOT_DETECTION=true
-      - ADVANCED_SECURITY_ENABLE_TRAFFIC_ANALYSIS=true
-      - ADVANCED_SECURITY_SUSPICIOUS_THRESHOLD=15
-      - ADVANCED_SECURITY_BLOCK_MINUTES=30
-      - ADVANCED_SECURITY_CIRCUIT_BREAKER_THRESHOLD=0.7
-      - ADVANCED_SECURITY_CIRCUIT_BREAKER_MINUTES=2
-      - ADVANCED_SECURITY_QUEUE_SIZE=2000
-      - ADVANCED_SECURITY_QUEUE_SECONDS=60
-      - ADVANCED_SECURITY_BLOCKED_COUNTRIES=
-      - ADVANCED_SECURITY_BLOCKED_IPS=
-      - ADVANCED_SECURITY_ALLOWED_IPS=
-      - ADVANCED_SECURITY_ENABLE_SQL_INJECTION_FILTER=true
-      - ADVANCED_SECURITY_ENABLE_XSS_FILTER=true
-      - ADVANCED_SECURITY_ENABLE_PATH_TRAVERSAL_FILTER=true
-      - ADVANCED_SECURITY_METRICS_ENABLED=true
+      - ADVANCED_SECURITY_SLIDING_WINDOW_LIMIT=${ADVANCED_SECURITY_SLIDING_WINDOW_LIMIT:-200}
+      - ADVANCED_SECURITY_SLIDING_WINDOW_MINUTES=${ADVANCED_SECURITY_SLIDING_WINDOW_MINUTES:-1}
+      - ADVANCED_SECURITY_TOKEN_BUCKET_RATE=${ADVANCED_SECURITY_TOKEN_BUCKET_RATE:-20.0}
+      - ADVANCED_SECURITY_TOKEN_BUCKET_BURST=${ADVANCED_SECURITY_TOKEN_BUCKET_BURST:-40}
+      - ADVANCED_SECURITY_ENABLE_BOT_DETECTION=${ADVANCED_SECURITY_ENABLE_BOT_DETECTION:-true}
+      - ADVANCED_SECURITY_ENABLE_TRAFFIC_ANALYSIS=${ADVANCED_SECURITY_ENABLE_TRAFFIC_ANALYSIS:-true}
+      - ADVANCED_SECURITY_SUSPICIOUS_THRESHOLD=${ADVANCED_SECURITY_SUSPICIOUS_THRESHOLD:-15}
+      - ADVANCED_SECURITY_BLOCK_MINUTES=${ADVANCED_SECURITY_BLOCK_MINUTES:-30}
+      - ADVANCED_SECURITY_CIRCUIT_BREAKER_THRESHOLD=${ADVANCED_SECURITY_CIRCUIT_BREAKER_THRESHOLD:-0.7}
+      - ADVANCED_SECURITY_CIRCUIT_BREAKER_MINUTES=${ADVANCED_SECURITY_CIRCUIT_BREAKER_MINUTES:-2}
+      - ADVANCED_SECURITY_QUEUE_SIZE=${ADVANCED_SECURITY_QUEUE_SIZE:-2000}
+      - ADVANCED_SECURITY_QUEUE_SECONDS=${ADVANCED_SECURITY_QUEUE_SECONDS:-60}
+      - ADVANCED_SECURITY_BLOCKED_COUNTRIES=${ADVANCED_SECURITY_BLOCKED_COUNTRIES}
+      - ADVANCED_SECURITY_BLOCKED_IPS=${ADVANCED_SECURITY_BLOCKED_IPS}
+      - ADVANCED_SECURITY_ALLOWED_IPS=${ADVANCED_SECURITY_ALLOWED_IPS}
+      - ADVANCED_SECURITY_ENABLE_SQL_INJECTION_FILTER=${ADVANCED_SECURITY_ENABLE_SQL_INJECTION_FILTER:-true}
+      - ADVANCED_SECURITY_ENABLE_XSS_FILTER=${ADVANCED_SECURITY_ENABLE_XSS_FILTER:-true}
+      - ADVANCED_SECURITY_ENABLE_PATH_TRAVERSAL_FILTER=${ADVANCED_SECURITY_ENABLE_PATH_TRAVERSAL_FILTER:-true}
+      - ADVANCED_SECURITY_METRICS_ENABLED=${ADVANCED_SECURITY_METRICS_ENABLED:-true}
+
       # Database encryption (staging uses same keys as production for testing)
-      - DB_ENCRYPTION_ENABLED=true
+      - DB_ENCRYPTION_ENABLED=${DB_ENCRYPTION_ENABLED:-true}
       - DB_MASTER_KEY_PASSWORD=${DB_MASTER_KEY_PASSWORD}
+
       # Archive storage (disabled in staging to reduce costs)
-      - ARCHIVE_ENABLED=false
-      - ARCHIVE_RETENTION_DAYS=30
-      - ARCHIVE_CLEANUP_INTERVAL_HOURS=24
+      - ARCHIVE_ENABLED=${ARCHIVE_ENABLED:-false}
+      - ARCHIVE_RETENTION_DAYS=${ARCHIVE_RETENTION_DAYS:-30}
+      - ARCHIVE_CLEANUP_INTERVAL_HOURS=${ARCHIVE_CLEANUP_INTERVAL_HOURS:-24}
+
       # Redis for artifact storage (staging can use local Redis or external)
-      - REDIS_ADDR=${REDIS_ADDR}
+      - REDIS_ADDR=${REDIS_ADDR:-redis:6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - REDIS_DB=1  # Different DB than production
-      - ARTIFACT_TTL=24h  # Shorter TTL for staging
+      - REDIS_DB=${REDIS_DB:-1}  # Different DB than production
+      - ARTIFACT_TTL=${ARTIFACT_TTL:-24h}  # Shorter TTL for staging
+
+      # Cache configuration
+      - CACHE_REDIS_ENABLED=${CACHE_REDIS_ENABLED:-true}
+      - CACHE_MEMORY_MAX_MB=${CACHE_MEMORY_MAX_MB:-100}
+      - CACHE_DISK_ENABLED=${CACHE_DISK_ENABLED:-false}
+      - CACHE_REDIS_REGISTRY_TTL=${CACHE_REDIS_REGISTRY_TTL:-600}
+      - CACHE_DEFAULT_TTL=${CACHE_DEFAULT_TTL:-3600}
+
+      # CDN Configuration
+      - CACHE_CDN_ENABLED=${CACHE_CDN_ENABLED:-false}
+      - CACHE_CDN_PROVIDER=${CACHE_CDN_PROVIDER:-cloudflare}
+      - CACHE_CDN_BASE_URL=${CACHE_CDN_BASE_URL:-https://cdn.staging.functionfly.com}
+
+      # Edge Cache Configuration
+      - CACHE_EDGE_ENABLED=${CACHE_EDGE_ENABLED:-true}
+      - CACHE_EDGE_DURATION=${CACHE_EDGE_DURATION:-1h}
+
+      # Function verification
+      - VERIFICATION_ENABLED=${VERIFICATION_ENABLED:-true}
+      - VERIFICATION_TIMEOUT_SECONDS=${VERIFICATION_TIMEOUT_SECONDS:-30}
+      - VERIFICATION_MAX_FILE_SIZE_MB=${VERIFICATION_MAX_FILE_SIZE_MB:-10}
+      - VERIFICATION_CACHE_TTL_MINUTES=${VERIFICATION_CACHE_TTL_MINUTES:-60}
+
+      # Trust levels
+      - MINIMUM_TRUST_LEVEL=${MINIMUM_TRUST_LEVEL:-standard}
+
+      # OAuth Configuration
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+
+      # GitHub API
+      - GITHUB_OWNER=${GITHUB_OWNER:-functionfly}
+      - GITHUB_REPO=${GITHUB_REPO:-functionfly}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+
+      # Stripe (test mode)
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -88,6 +162,8 @@ services:
     restart: unless-stopped
     networks:
       - functionfly-staging
+    depends_on:
+      - redis
     # Resource limits for staging
     deploy:
       resources:
@@ -102,11 +178,12 @@ services:
   redis:
     image: redis:7-alpine
     container_name: functionfly-redis-staging
+    hostname: redis
     ports:
-      - "127.0.0.1:6380:6379"  # Different port than dev/production
+      - "127.0.0.1:6380:6379"  # Different port than dev/production (localhost only for security)
     volumes:
       - redis_staging_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -115,6 +192,11 @@ services:
     networks:
       - functionfly-staging
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
 
   # Caddy reverse proxy for staging
   caddy:
@@ -122,9 +204,10 @@ services:
       context: .
       dockerfile: deploy/caddy/Dockerfile
     container_name: functionfly-caddy-staging
+    hostname: caddy
     ports:
-      - "8083:80"   # Different port for staging
-      - "8444:443"  # Different SSL port for staging
+      - "8083:80"   # Staging HTTP port
+      - "8444:443"  # Staging HTTPS port (if SSL is configured)
     depends_on:
       - orchestrator-api
     volumes:
@@ -135,6 +218,11 @@ services:
     networks:
       - functionfly-staging
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
 
   # Health monitor for staging
   health-monitor:
@@ -142,46 +230,66 @@ services:
       context: .
       dockerfile: deploy/docker/Dockerfile.health-monitor
     container_name: functionfly-health-monitor-staging
+    hostname: health-monitor
     environment:
       # Staging environment configuration
       - NODE_ENV=staging
       - ENVIRONMENT=staging
+
       # Database configuration (Neon staging branch)
       - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
+      - DB_PORT=${DB_PORT:-5432}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - DB_SSLMODE=${DB_SSLMODE}
+      - DB_NAME=${DB_NAME:-functionfly}
+      - DB_SSLMODE=${DB_SSLMODE:-require}
+
       # Disable Supabase for staging
       - USE_SUPABASE=false
+
       # Email configuration for staging
       - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USERNAME=${SMTP_USERNAME}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - FROM_EMAIL=${FROM_EMAIL}
       - FROM_NAME=${FROM_NAME}
+
       # Staging-specific URLs
       - BASE_URL=${BASE_URL}
       - FRONTEND_URL=${FRONTEND_URL}
+
       # JWT and security
       - JWT_SECRET=${JWT_SECRET}
       - API_SHARED_SECRET=${API_SHARED_SECRET}
+
+      # Health check targets
+      - HEALTH_CHECK_TARGETS=http://orchestrator-api:8080/health
+      - HEALTH_CHECK_INTERVAL=30
     depends_on:
       - orchestrator-api
       - redis
     networks:
       - functionfly-staging
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
 
 volumes:
   redis_staging_data:
     driver: local
+    name: functionfly_redis_staging_data
   caddy_staging_data:
     driver: local
+    name: functionfly_caddy_staging_data
 
 networks:
   functionfly-staging:
     driver: bridge
     name: functionfly-staging
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

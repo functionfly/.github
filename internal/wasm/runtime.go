@@ -317,6 +317,15 @@ func (r *PythonRuntime) readMemory(ptr int32, size int) ([]byte, error) {
 	return data, nil
 }
 
+// GetMemoryUsage returns the current memory usage in bytes
+func (r *PythonRuntime) GetMemoryUsage() uint64 {
+	if r.memory == nil {
+		return 0
+	}
+	// Each page is 64KB (65536 bytes)
+	return uint64(r.memory.Size(r.store)) * 65536
+}
+
 // Close cleans up the runtime resources
 func (r *PythonRuntime) Close() error {
 	// The store and engine will be garbage collected

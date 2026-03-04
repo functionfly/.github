@@ -1,0 +1,50 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0f;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="brand" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d946ef;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Decorative elements -->
+  <circle cx="100" cy="100" r="60" fill="url(#brand)" opacity="0.1"/>
+  <circle cx="1100" cy="530" r="80" fill="url(#brand)" opacity="0.1"/>
+  <circle cx="100" cy="530" r="40" fill="url(#brand)" opacity="0.1"/>
+  <circle cx="1100" cy="100" r="50" fill="url(#brand)" opacity="0.1"/>
+
+  <!-- Logo/Icon -->
+  <g transform="translate(100, 100)">
+    <!-- FunctionFly logo simplified -->
+    <rect x="0" y="0" width="80" height="80" rx="16" fill="url(#brand)"/>
+    <circle cx="25" cy="25" r="8" fill="white"/>
+    <circle cx="40" cy="40" r="8" fill="white"/>
+    <circle cx="55" cy="55" r="8" fill="white"/>
+  </g>
+
+  <!-- Main content -->
+  <g transform="translate(240, 200)">
+    <text x="0" y="0" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="700" fill="white">
+      FunctionFly
+    </text>
+    <text x="0" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="400" fill="#a0a0b0">
+      Deploy Functions Anywhere
+    </text>
+    <text x="0" y="120" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="300" fill="#808080">
+      Serverless functions with multi-cloud failover
+    </text>
+  </g>
+
+  <!-- Domain -->
+  <text x="100" y="580" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#666666">
+    functionfly.dev
+  </text>
+</svg>

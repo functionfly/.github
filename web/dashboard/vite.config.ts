@@ -6,7 +6,7 @@ import path from 'path'
 
 // When dashboard runs in Docker, set API_PROXY_TARGET=http://orchestrator-api:8080.
 // On host, use localhost for WebSocket compatibility
-const apiProxyTarget = process.env.VITE_PROXY_API_TARGET || process.env.API_PROXY_TARGET || 'http://localhost:8080'
+const apiProxyTarget = process.env.VITE_PROXY_API_TARGET || process.env.API_PROXY_TARGET || 'http://127.0.0.1:8080'
 
 function proxyConfigure(proxy: any) {
   proxy.on('error', (err: Error, _req: any, res: any) => {
@@ -45,9 +45,58 @@ function noCacheMiddleware() {
   }
 }
 
+// Security headers middleware for auth pages and sensitive routes
+function securityHeadersMiddleware() {
+  return {
+    name: 'security-headers',
+    configureServer(server: any) {
+      server.middlewares.use((req: any, res: any, next: () => void) => {
+        // Apply strict security headers to all routes, especially auth pages
+        res.setHeader('X-Frame-Options', 'DENY')
+        res.setHeader('X-Content-Type-Options', 'nosniff')
+        res.setHeader('X-XSS-Protection', '1; mode=block')
+        res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+
+        // Strict CSP for auth pages and API routes
+        const isAuthPage = req.url?.includes('/login') || req.url?.includes('/signup') || req.url?.includes('/auth')
+        if (isAuthPage) {
+          // Very restrictive CSP for auth pages
+          res.setHeader('Content-Security-Policy',
+            "default-src 'self'; " +
+            "script-src 'self' 'unsafe-inline'; " +
+            "style-src 'self' 'unsafe-inline'; " +
+            "img-src 'self' data: https:; " +
+            "font-src 'self'; " +
+            "connect-src 'self'; " +
+            "frame-ancestors 'none';"
+          )
+        } else {
+          // Standard CSP for other pages
+          res.setHeader('Content-Security-Policy',
+            "default-src 'self'; " +
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+            "style-src 'self' 'unsafe-inline'; " +
+            "img-src 'self' data: https: blob:; " +
+            "font-src 'self' https:; " +
+            "connect-src 'self' https: wss:;"
+          )
+        }
+
+        // HSTS for HTTPS
+        if (req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https') {
+          res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+        }
+
+        next()
+      })
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     noCacheMiddleware(),
+    securityHeadersMiddleware(),
     react(),
     tailwindcss(),
     // Upload source maps to Sentry when SENTRY_AUTH_TOKEN is set (e.g. in CI)

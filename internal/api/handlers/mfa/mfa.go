@@ -6,6 +6,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -79,8 +80,42 @@ func (h *MFAHandler) VerifyMFA(w http.ResponseWriter, r *http.Request) {
 	response, err := h.authSvc.VerifyMFA(req)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to verify MFA")
+
+		// Log MFA verification failure
+		authEvent := &storage.AuthEvent{
+			UserID:        &claims.UserID,
+			EventType:     "mfa_verify",
+			Success:       false,
+			FailureReason: stringPtr("mfa_verification_error"),
+			IPAddress:     r.RemoteAddr, // Will be overridden by middleware if available
+			UserAgent:     r.Header.Get("User-Agent"),
+		}
+		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+			h.logger.WithError(logErr).WithField("userID", claims.UserID).Warn("Failed to log MFA verification failure")
+		}
+
 		http.Error(w, "Failed to verify MFA", http.StatusInternalServerError)
 		return
+	}
+
+	// Log MFA verification result
+	eventType := "mfa_verify"
+	failureReason := ""
+	if !response.Verified {
+		eventType = "mfa_verify_failed"
+		failureReason = "invalid_code"
+	}
+
+	authEvent := &storage.AuthEvent{
+		UserID:        &claims.UserID,
+		EventType:     eventType,
+		Success:       response.Verified,
+		FailureReason: stringPtr(failureReason),
+		IPAddress:     r.RemoteAddr,
+		UserAgent:     r.Header.Get("User-Agent"),
+	}
+	if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+		h.logger.WithError(logErr).WithField("userID", claims.UserID).Warn("Failed to log MFA verification event")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -215,4 +250,12 @@ func (h *MFAHandler) AdminForceDisableMFA(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "MFA force disabled successfully"})
+}
+
+// stringPtr returns a pointer to the given string
+func stringPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

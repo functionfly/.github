@@ -118,9 +118,9 @@ func TestNewPrometheusClient(t *testing.T) {
 			expectedURL: "http://custom-prometheus:9090",
 		},
 		{
-			name:        "with empty URL uses default",
+			name:        "with empty URL leaves URL unset (Prometheus disabled)",
 			baseURL:     "",
-			expectedURL: "http://prometheus:9090",
+			expectedURL: "",
 		},
 	}
 
@@ -134,6 +134,14 @@ func TestNewPrometheusClient(t *testing.T) {
 			assert.Equal(t, 30*time.Second, client.cacheDuration)
 		})
 	}
+}
+
+func TestPrometheusClient_Query_WhenNotConfigured(t *testing.T) {
+	client := NewPrometheusClient("")
+	ctx := context.Background()
+	resp, err := client.query(ctx, "up")
+	assert.Nil(t, resp)
+	assert.ErrorIs(t, err, ErrPrometheusNotConfigured)
 }
 
 func TestPrometheusCache_GetSet(t *testing.T) {

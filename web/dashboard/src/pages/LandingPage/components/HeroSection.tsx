@@ -41,16 +41,16 @@ export function HeroSection() {
         >
           <span className="text-text-primary text-glow hero-title-main">Serverless Functions</span>
           <br />
-          <span className="gradient-text text-glow-success shine-effect">& AI Agent Infrastructure</span>
+          <span className="gradient-text text-glow-success shine-effect-on-hover">& AI Agent Infrastructure</span>
         </motion.h1>
 
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
           className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto mb-10 text-balance hero-subtitle"
         >
-          {APP_TAGLINE}. Deploy serverless functions to edge, build AI agents with built-in cost controls, and scale with confidence.
+          {APP_TAGLINE}. Deploy to edge infrastructure, build AI agents with cost controls, and scale effortlessly.
         </motion.p>
 
         <motion.div

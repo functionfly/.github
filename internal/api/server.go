@@ -37,21 +37,24 @@ type Server struct {
 	// Repository (unified interface)
 	repo storage.Repository
 
-	router          *mux.Router
-	authSvc         *auth.AuthService
-	routingSvc      *routing.Router
-	deploySvc       *deployment.Orchestrator
-	monitoringSvc   *monitoring.Service
-	realtimeMonitor *monitoring.RealtimeMonitor
-	storageService  *services.StorageService
-	sessionCleanup  *storage.SessionCleanupService
-	healthMonitor   *health.Monitor
-	redisClient     *redis.Client
-	httpServer      *http.Server
-	shutdownTimeout time.Duration
+	router              *mux.Router
+	authSvc             *auth.AuthService
+	routingSvc          *routing.Router
+	deploySvc           *deployment.Orchestrator
+	monitoringSvc       *monitoring.Service
+	realtimeMonitor     *monitoring.RealtimeMonitor
+	storageService      *services.StorageService
+	sessionCleanup      *storage.SessionCleanupService
+	oauthStateCleanup   *storage.OAuthStateCleanupService
+	loginAttemptCleanup *storage.LoginAttemptCleanupService
+	authEventCleanup    *storage.AuthEventCleanupService
+	healthMonitor       *health.Monitor
+	redisClient         *redis.Client
+	httpServer          *http.Server
+	shutdownTimeout     time.Duration
 
 	// Notification service
-	notificationSvc *notification.Service
+	notificationSvc  *notification.Service
 	notificationRepo notification.Repository
 }
 
@@ -138,6 +141,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 
 	// Initialize monitoring services
 	monitoringSvc := monitoring.NewService(repo)
+	monitoringSvc.SetDatabase(db.DB) // Provide database access for uptime calculations
 	realtimeMonitor := monitoring.NewRealtimeMonitor(monitoringSvc)
 
 	// Initialize storage service (local filesystem)
@@ -151,6 +155,15 @@ func NewServer(db *storage.PostgresDB) *Server {
 
 	// Initialize session cleanup service
 	sessionCleanup := storage.NewSessionCleanupService(repo)
+
+	// Initialize OAuth state cleanup service
+	oauthStateCleanup := storage.NewOAuthStateCleanupService(repo)
+
+	// Initialize login attempt cleanup service
+	loginAttemptCleanup := storage.NewLoginAttemptCleanupService(repo)
+
+	// Initialize auth event cleanup service
+	authEventCleanup := storage.NewAuthEventCleanupService(repo)
 
 	// Initialize verification service
 	clamAVURL := os.Getenv("CLAMAV_URL")
@@ -178,21 +191,24 @@ func NewServer(db *storage.PostgresDB) *Server {
 	authSvc.SetNotificationService(notificationSvc)
 
 	s := &Server{
-		postgresDB:       db,
-		repo:             repo,
-		router:           router,
-		authSvc:          authSvc,
-		routingSvc:       routing.NewRouter(repo),
-		deploySvc:        deploySvc,
-		monitoringSvc:    monitoringSvc,
-		realtimeMonitor:  realtimeMonitor,
-		storageService:   storageService,
-		sessionCleanup:   sessionCleanup,
-		healthMonitor:    healthMonitor,
-		redisClient:      redisClient,
-		shutdownTimeout:  shutdownTimeout,
-		notificationSvc:  notificationSvc,
-		notificationRepo: notificationRepo,
+		postgresDB:          db,
+		repo:                repo,
+		router:              router,
+		authSvc:             authSvc,
+		routingSvc:          routing.NewRouter(repo),
+		deploySvc:           deploySvc,
+		monitoringSvc:       monitoringSvc,
+		realtimeMonitor:     realtimeMonitor,
+		storageService:      storageService,
+		sessionCleanup:      sessionCleanup,
+		oauthStateCleanup:   oauthStateCleanup,
+		loginAttemptCleanup: loginAttemptCleanup,
+		authEventCleanup:    authEventCleanup,
+		healthMonitor:       healthMonitor,
+		redisClient:         redisClient,
+		shutdownTimeout:     shutdownTimeout,
+		notificationSvc:     notificationSvc,
+		notificationRepo:    notificationRepo,
 		httpServer: &http.Server{
 			Handler:      router,
 			ReadTimeout:  15 * time.Second,
@@ -203,8 +219,16 @@ func NewServer(db *storage.PostgresDB) *Server {
 
 	s.setupRoutes(s.realtimeMonitor)
 
-	// Wrap router so every response (including 404) gets CORS when origin is localhost
-	s.httpServer.Handler = localhostCORSWrapper(s.router)
+	// Serve /metrics before any wrapper so Prometheus (no Origin, from Docker) can scrape without 403
+	metricsHandler := monitoring.Handler()
+	handlerWithMetrics := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/metrics" && r.Method == http.MethodGet {
+			metricsHandler.ServeHTTP(w, r)
+			return
+		}
+		localhostCORSWrapper(s.router).ServeHTTP(w, r)
+	})
+	s.httpServer.Handler = handlerWithMetrics
 
 	return s
 }
@@ -274,12 +298,24 @@ func (s *Server) ListenAndServe(addr string) error {
 	// Start session cleanup routine (runs every hour)
 	s.sessionCleanup.StartCleanupRoutine(time.Hour)
 
+	// Start OAuth state cleanup routine (runs every 6 hours)
+	s.oauthStateCleanup.StartCleanupRoutine(6 * time.Hour)
+
+	// Start login attempt cleanup routine (runs daily, keeps 30 days of history)
+	s.loginAttemptCleanup.StartCleanupRoutine(24*time.Hour, 30*24*time.Hour)
+
+	// Start auth event cleanup routine (runs daily, keeps 90 days of history for security/compliance)
+	s.authEventCleanup.StartCleanupRoutine(24*time.Hour, 90*24*time.Hour)
+
 	// Start local runtime cleanup routine (runs every 5 minutes)
 	ctx := context.Background()
 	go s.monitoringSvc.StartLocalRuntimeCleanup(ctx, 5*time.Minute, 10*time.Minute)
 
 	// Start health monitor for backend health checks and circuit breaker (MVP gap fix)
 	s.healthMonitor.Start()
+
+	// Start uptime metrics updater
+	s.monitoringSvc.StartUptimeUpdater()
 
 	// Start notification service
 	s.notificationSvc.Start(ctx)

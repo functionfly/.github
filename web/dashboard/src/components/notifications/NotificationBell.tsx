@@ -131,13 +131,14 @@ export function NotificationBell({
 
       try {
         const counts = await notificationsApi.fetchUnreadCounts();
+        const byCategory = counts?.byCategory || {};
         updateUnreadCounts({
-          all: counts.total,
-          trust: counts.byCategory['trust'] || 0,
-          revenue: counts.byCategory['revenue'] || 0,
-          issues: counts.byCategory['issues'] || 0,
-          messages: counts.byCategory['messages'] || 0,
-          security: counts.byCategory['security'] || 0,
+          all: counts?.total || 0,
+          trust: byCategory.trust || 0,
+          revenue: byCategory.revenue || 0,
+          issues: byCategory.issues || 0,
+          messages: byCategory.messages || 0,
+          security: byCategory.security || 0,
         });
       } catch (error) {
         console.error('Failed to fetch unread count:', error);

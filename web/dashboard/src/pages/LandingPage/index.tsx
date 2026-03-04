@@ -21,6 +21,7 @@ import { Navbar } from '@/components/common/Navbar';
 import { MetaTags } from '@/components/seo/MetaTags';
 import { LandingPageStructuredData } from '@/components/seo/StructuredData';
 import { useWebVitals } from '@/hooks/useWebVitals';
+import { PublicAnalytics } from '@/components/common/PublicAnalytics';
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -57,19 +58,24 @@ export function LandingPage() {
       {/* Structured Data */}
       <LandingPageStructuredData />
 
+      {/* Public Analytics (Hotjar for user behavior) */}
+      <PublicAnalytics />
+
       <Navbar variant="landing" />
-      <HeroSection />
-      <TargetUsersSection />
-      <TrustMetricsSection />
-      <ProcessStepsSection />
-      <IntegrationsSection />
-      <SecuritySection />
-      <FeaturesSection />
-      <BuiltForAIAgentsSection />
-      <PricingSection />
-      <InteractiveDemoSection />
-      <PerformanceMetricsDashboard />
-      <FAQSection />
+      <main>
+        <HeroSection />
+        <TargetUsersSection />
+        <TrustMetricsSection />
+        <ProcessStepsSection />
+        <IntegrationsSection />
+        <SecuritySection />
+        <FeaturesSection />
+        <BuiltForAIAgentsSection />
+        <PricingSection />
+        <InteractiveDemoSection />
+        <PerformanceMetricsDashboard />
+        <FAQSection />
+      </main>
       <Footer />
     </div>
   );

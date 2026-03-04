@@ -1,0 +1,82 @@
+package storage
+
+import (
+	"time"
+
+	"github.com/sirupsen/logrus"
+)
+
+// AuthEventCleanupService handles periodic cleanup of old authentication events
+type AuthEventCleanupService struct {
+	repo   Repository
+	logger *logrus.Logger
+}
+
+// NewAuthEventCleanupService creates a new auth event cleanup service
+func NewAuthEventCleanupService(repo Repository) *AuthEventCleanupService {
+	return &AuthEventCleanupService{
+		repo:   repo,
+		logger: logrus.New(),
+	}
+}
+
+// CleanupOldAuthEvents removes authentication events older than the specified retention period
+func (s *AuthEventCleanupService) CleanupOldAuthEvents(retentionPeriod time.Duration) error {
+	cutoff := time.Now().Add(-retentionPeriod)
+
+	start := time.Now()
+	deletedCount, err := s.repo.DeleteOldAuthEvents(cutoff)
+	if err != nil {
+		s.logger.WithError(err).Error("Failed to cleanup old auth events")
+		return err
+	}
+
+	duration := time.Since(start)
+	if deletedCount > 0 {
+		s.logger.WithFields(logrus.Fields{
+			"deleted_count": deletedCount,
+			"retention_period": retentionPeriod.String(),
+			"duration_ms":   duration.Milliseconds(),
+		}).Info("Cleaned up old auth events")
+	} else {
+		s.logger.WithField("duration_ms", duration.Milliseconds()).Debug("Auth event cleanup completed (no old events to clean)")
+	}
+
+	return nil
+}
+
+// StartCleanupRoutine starts a periodic cleanup routine
+func (s *AuthEventCleanupService) StartCleanupRoutine(interval time.Duration, retentionPeriod time.Duration) {
+	if interval <= 0 {
+		interval = 24 * time.Hour // Default to daily cleanup
+	}
+	if retentionPeriod <= 0 {
+		retentionPeriod = 90 * 24 * time.Hour // Default to 90 days retention for auth events
+	}
+
+	s.logger.WithFields(logrus.Fields{
+		"interval": interval.String(),
+		"retention_period": retentionPeriod.String(),
+	}).Info("Starting auth event cleanup routine")
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		// Run cleanup immediately on startup
+		if err := s.CleanupOldAuthEvents(retentionPeriod); err != nil {
+			s.logger.WithError(err).Error("Initial auth event cleanup failed")
+		}
+
+		for range ticker.C {
+			if err := s.CleanupOldAuthEvents(retentionPeriod); err != nil {
+				s.logger.WithError(err).Error("Periodic auth event cleanup failed")
+			}
+		}
+	}()
+}
+
+// StopCleanupRoutine stops the cleanup routine (for testing or graceful shutdown)
+func (s *AuthEventCleanupService) StopCleanupRoutine() {
+	s.logger.Info("Auth event cleanup routine stopped")
+}

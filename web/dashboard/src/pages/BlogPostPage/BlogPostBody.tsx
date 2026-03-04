@@ -8,6 +8,7 @@ import rehypeSanitize from 'rehype-sanitize';
 import DOMPurify from 'dompurify';
 import Prism from 'prismjs';
 import type { Components } from 'react-markdown';
+import { RichTextRenderer, isSlateContent } from '@/components/blog';
 import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-typescript';
@@ -35,10 +36,19 @@ interface BlogPostBodyProps {
 
 export function BlogPostBody({ html, className = '' }: BlogPostBodyProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const isMarkdown = useMemo(() => !looksLikeHtml(html), [html]);
+
+  // Determine content type
+  const contentType = useMemo(() => {
+    if (isSlateContent(html)) return 'slate';
+    if (looksLikeHtml(html)) return 'html';
+    return 'markdown';
+  }, [html]);
+
+  const isMarkdown = contentType === 'markdown';
+  const isSlate = contentType === 'slate';
 
   const sanitizedHtml = useMemo(() => {
-    if (!isMarkdown) {
+    if (contentType === 'html') {
       return DOMPurify.sanitize(html, {
         ALLOWED_TAGS: ALLOWED_HTML_TAGS,
         ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class', 'id'],
@@ -46,14 +56,14 @@ export function BlogPostBody({ html, className = '' }: BlogPostBodyProps) {
       });
     }
     return '';
-  }, [html, isMarkdown]);
+  }, [html, contentType]);
 
   const markdownContent = isMarkdown ? html : '';
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || isSlate) return;
     Prism.highlightAllUnder(containerRef.current);
-  }, [isMarkdown, sanitizedHtml, markdownContent]);
+  }, [isMarkdown, isSlate, sanitizedHtml, markdownContent]);
 
   const markdownComponents: Components = useMemo(
     () => ({
@@ -79,6 +89,11 @@ export function BlogPostBody({ html, className = '' }: BlogPostBodyProps) {
     }),
     []
   );
+
+  // Handle Slate.js rich text format
+  if (isSlate) {
+    return <RichTextRenderer content={html} className={className} />;
+  }
 
   if (isMarkdown) {
     return (

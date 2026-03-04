@@ -1,34 +1,298 @@
 # FunctionFly Staging Caddy Configuration
-# Local development/staging configuration for testing
+# Complete subdomain routing for staging environment
+#
+# Subdomains:
+#   - staging.functionfly.com        (Main staging)
+#   - api.staging.functionfly.com    (API staging)
+#   - edge.staging.functionfly.com   (Edge staging)
+#   - cdn.staging.functionfly.com    (CDN staging)
 
 # Global settings
 {
-    # Disable automatic HTTPS for local development
+    # Enable automatic HTTPS for staging subdomain
     auto_https off
+
     # Log to stdout for Docker
     log {
         output stdout
         format json
     }
+
+    # Email for Let's Encrypt (if enabling HTTPS)
+    email ops@functionfly.com
 }
 
-# Local staging domain - bind to all interfaces for Docker
-:8083 {
-    # Rate limiting (less restrictive for staging)
+# ============================================
+# Staging Main Domain - staging.functionfly.com
+# ============================================
+staging.functionfly.com {
+    # Rate limiting for the entire domain
     rate_limit {
-        zone staging {
+        zone staging_static {
+            key {remote_host}
+            window 1m
+            events 200
+        }
+    }
+
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Health check endpoint (public)
+    /health {
+        respond "Staging OK" 200
+    }
+
+    # API routes - proxy to staging orchestrator
+    /v1/* {
+        # Rate limiting for API calls
+        rate_limit {
+            zone staging_api {
+                key {remote_host}
+                window 1m
+                events 300
+            }
+        }
+
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Staging-Environment "true"
+
+            # Health check settings
+            health_uri /health
+            health_interval 30s
+            health_timeout 10s
+        }
+    }
+
+    # Public routing endpoint: /{appSlug}/*
+    handle /{appSlug}/* {
+        # Rate limiting per app
+        rate_limit {
+            zone staging_per_app {
+                key {path.0}
+                window 1m
+                events 2000
+            }
+        }
+
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Staging-Environment "true"
+            header_up X-App-Slug {path.0}
+        }
+    }
+
+    # @username profile routes - /@/{username}
+    /@/* {
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Staging-Environment "true"
+        }
+    }
+
+    # @username function routes - /@/{username}/v1/fx/{functionName}
+    /@/*/v1/fx/* {
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Staging-Environment "true"
+        }
+    }
+
+    # Playground routes (public) - /run/{appSlug}/{functionName}
+    /run/* {
+        rate_limit {
+            zone staging_playground {
+                key {remote_host}
+                window 1m
+                events 100
+            }
+        }
+
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Staging-Environment "true"
+        }
+    }
+
+    # Function page routes (public) - /fx/{author}/{name}
+    /fx/* {
+        rate_limit {
+            zone staging_function_page {
+                key {remote_host}
+                window 1m
+                events 200
+            }
+        }
+
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Staging-Environment "true"
+        }
+    }
+
+    # Replay routes (public) - /replay/{executionId}
+    /replay/* {
+        rate_limit {
+            zone staging_replay {
+                key {remote_host}
+                window 1m
+                events 200
+            }
+        }
+
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            header_up X-Staging-Environment "true"
+        }
+    }
+
+    # Default response for unmatched routes
+    respond "FunctionFly Staging - Not Found" 404
+}
+
+# ============================================
+# Staging API Subdomain - api.staging.functionfly.com
+# ============================================
+api.staging.functionfly.com {
+    # Stricter rate limiting for API subdomain
+    rate_limit {
+        zone staging_api_subdomain {
             key {remote_host}
             window 1m
             events 500
         }
     }
 
-    # Health check endpoint
-    /health {
-        respond "Staging OK" 200
+    # CORS headers for API
+    header {
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info"
+        Access-Control-Allow-Credentials "true"
     }
 
-    # API routes - proxy to staging orchestrator
+    # Health check endpoint
+    /healthz {
+        respond "OK" 200
+    }
+
+    # Metrics endpoint (internal access only)
+    /metrics {
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # All API routes
+    reverse_proxy orchestrator-api:8080 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+        header_up X-Staging-Environment "true"
+    }
+}
+
+# ============================================
+# Staging Edge Subdomain - edge.staging.functionfly.com
+# ============================================
+edge.staging.functionfly.com {
+    # Cache responses for edge functions
+    @cacheable {
+        path /@*/*
+    }
+
+    cache @cacheable {
+        header_regexp Cache-Control "public"
+        default_max_age 60
+    }
+
+    # High rate limits for edge execution
+    rate_limit {
+        zone staging_edge {
+            key {remote_host}
+            window 1m
+            events 10000
+        }
+    }
+
+    reverse_proxy orchestrator-api:8080 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+        header_up X-Staging-Environment "true"
+        header_up X-Edge-Request "true"
+    }
+}
+
+# ============================================
+# Staging CDN Subdomain - cdn.staging.functionfly.com
+# ============================================
+cdn.staging.functionfly.com {
+    # Enable compression for static assets
+    encode gzip
+
+    # Cache headers for static assets
+    @static {
+        path *.js *.css *.png *.jpg *.jpeg *.gif *.svg *.ico *.woff *.woff2 *.ttf *.eot
+    }
+
+    header @static {
+        Cache-Control "public, max-age=86400, immutable"
+    }
+
+    # Proxy to R2 staging bucket or static file server
+    # In staging, we proxy to the orchestrator API for now
+    # In production, this would be directly to R2/S3
+    reverse_proxy orchestrator-api:8080 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+        header_up X-Staging-Environment "true"
+        header_up X-CDN-Request "true"
+    }
+}
+
+# ============================================
+# Local Development Binding (Docker)
+# ============================================
+:8083 {
+    # Rate limiting (less restrictive for local dev)
+    rate_limit {
+        zone local_staging {
+            key {remote_host}
+            window 1m
+            events 1000
+        }
+    }
+
+    # Health check endpoint
+    /health {
+        respond "Local Staging OK" 200
+    }
+
+    # API routes
     /v1/* {
         reverse_proxy orchestrator-api:8080 {
             header_up X-Forwarded-Host {host}
@@ -38,32 +302,16 @@
         }
     }
 
-    # Public routing endpoint: /{appSlug}/*
+    # Public routing
     handle /{appSlug}/* {
-        # Rate limiting per app (higher limits for staging)
-        rate_limit {
-            zone per_app_staging {
-                key {path.0}
-                window 1m
-                events 2000
-            }
-        }
-
-        # Forward to staging orchestrator API
         reverse_proxy orchestrator-api:8080 {
             header_up X-Forwarded-Host {host}
             header_up X-Forwarded-Proto {scheme}
             header_up X-Real-IP {remote_host}
             header_up X-Staging-Environment "true"
             header_up X-App-Slug {path.0}
-
-            # Health check settings
-            health_uri /health
-            health_interval 30s
-            health_timeout 10s
         }
     }
 
-    # Default response for unmatched routes
-    respond "FunctionFly Staging - Not Found" 404
+    respond "FunctionFly Local Staging - Not Found" 404
 }

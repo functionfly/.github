@@ -74,9 +74,9 @@ func (h *Handler) HandleGetExecutionRate(w http.ResponseWriter, r *http.Request)
 
 	data, err := h.repo.GetExecutionRateByHour(r.Context(), user.TenantID, hours)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to get dashboard execution rate")
-		http.Error(w, "Failed to get execution rate", http.StatusInternalServerError)
-		return
+		logrus.WithError(err).Warn("Failed to get dashboard execution rate, returning empty data")
+		// Return empty data so dashboard still loads (e.g. missing function_logs table or migration)
+		data = nil
 	}
 
 	out := make([]map[string]interface{}, len(data))

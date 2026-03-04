@@ -201,9 +201,13 @@ export default function StatusPage() {
             onRefresh={refetchStatus}
           />
 
-          {/* Component health grid */}
+          {/* Component health grid (fallback to platform status components when dedicated list is empty) */}
           <ComponentStatus
-            components={components || []}
+            components={
+              (components && components.length > 0)
+                ? components
+                : platformStatus?.components ?? []
+            }
             isLoading={isStatusLoading}
           />
 

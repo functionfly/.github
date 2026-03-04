@@ -16,6 +16,8 @@ type Repository interface {
 	GetNotification(ctx context.Context, id uuid.UUID) (*Notification, error)
 	ListNotifications(ctx context.Context, userID uuid.UUID, opts ListOptions) ([]*Notification, error)
 	GetUnreadCount(ctx context.Context, userID uuid.UUID) (int, error)
+	GetUnreadCountsByCategory(ctx context.Context, userID uuid.UUID) (map[string]int, error)
+	GetTotalCount(ctx context.Context, userID uuid.UUID) (int, error)
 	MarkAsRead(ctx context.Context, id uuid.UUID) error
 	MarkAllAsRead(ctx context.Context, userID uuid.UUID) error
 	DeleteNotification(ctx context.Context, id uuid.UUID) error
@@ -140,6 +142,48 @@ func (r *PostgresRepository) GetUnreadCount(ctx context.Context, userID uuid.UUI
 	query := `
 		SELECT COUNT(*) FROM notifications
 		WHERE user_id = $1 AND status != 'read'
+	`
+	var count int
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&count)
+	return count, err
+}
+
+// GetUnreadCountsByCategory returns unread notification counts grouped by category
+func (r *PostgresRepository) GetUnreadCountsByCategory(ctx context.Context, userID uuid.UUID) (map[string]int, error) {
+	query := `
+		SELECT category, COUNT(*) as count
+		FROM notifications
+		WHERE user_id = $1 AND status != 'read'
+		GROUP BY category
+	`
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := make(map[string]int)
+	for rows.Next() {
+		var category string
+		var count int
+		if err := rows.Scan(&category, &count); err != nil {
+			return nil, err
+		}
+		counts[category] = count
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return counts, nil
+}
+
+// GetTotalCount returns the total number of notifications for a user (both read and unread)
+func (r *PostgresRepository) GetTotalCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	query := `
+		SELECT COUNT(*) FROM notifications
+		WHERE user_id = $1
 	`
 	var count int
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(&count)

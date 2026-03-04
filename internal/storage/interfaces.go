@@ -39,6 +39,11 @@ type Repository interface {
 	UpdateUserMFALastUsed(userID uuid.UUID, lastUsed *time.Time) error
 	VerifyPassword(userID uuid.UUID, password string) (bool, error)
 
+	// OAuth state (CSRF) — persisted for multi-instance OAuth flows
+	StoreOAuthState(ctx context.Context, state string, expiresAt time.Time) error
+	ValidateAndConsumeOAuthState(ctx context.Context, state string) (bool, error)
+	DeleteExpiredOAuthStates() (int64, error)
+
 	// Tenant operations
 	CreateTenant(ctx context.Context, name string) (*Tenant, error)
 	GetTenantByID(tenantID uuid.UUID) (*Tenant, error)
@@ -86,6 +91,7 @@ type Repository interface {
 
 	CreateInvoice(ctx context.Context, invoice *Invoice) (*Invoice, error)
 	ListInvoicesByTenant(tenantID uuid.UUID, limit, offset int) ([]*Invoice, error)
+	ListAllInvoices(limit, offset int) ([]*Invoice, error)
 	GetInvoiceByID(id uuid.UUID) (*Invoice, error)
 	UpdateInvoice(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*Invoice, error)
 
@@ -223,6 +229,28 @@ type Repository interface {
 	DeleteExpiredSessions() (int64, error)
 	DeleteUserSessions(userID uuid.UUID) error
 	ListUserSessions(userID uuid.UUID) ([]*Session, error)
+
+	// Refresh token operations
+	CreateRefreshToken(userID uuid.UUID, tokenHash string, ipAddress, userAgent string, expiresAt time.Time) (*RefreshToken, error)
+	GetRefreshTokenByHash(tokenHash string) (*RefreshToken, error)
+	RevokeRefreshToken(tokenID uuid.UUID) error
+	RevokeUserRefreshTokens(userID uuid.UUID) error
+	DeleteExpiredRefreshTokens() (int64, error)
+	ListUserRefreshTokens(userID uuid.UUID) ([]*RefreshToken, error)
+
+	// Login attempt operations (for account lockout protection)
+	CreateLoginAttempt(userID uuid.UUID, ipAddress, userAgent string, successful bool, lockoutUntil *time.Time) (*LoginAttempt, error)
+	GetRecentFailedLoginAttempts(userID uuid.UUID, since time.Time) (int, error)
+	GetUserLockoutStatus(userID uuid.UUID) (*time.Time, error)
+	ClearUserLockout(userID uuid.UUID) error
+	DeleteOldLoginAttempts(before time.Time) (int64, error)
+
+	// Auth event operations (for security auditing)
+	LogAuthEvent(event *AuthEvent) error
+	GetAuthEventsForUser(userID uuid.UUID, limit, offset int) ([]*AuthEvent, error)
+	GetAuthEventsByType(eventType string, limit, offset int) ([]*AuthEvent, error)
+	GetRecentAuthEvents(since time.Time, limit int) ([]*AuthEvent, error)
+	DeleteOldAuthEvents(before time.Time) (int64, error)
 
 	// Dashboard configuration operations
 	CreateDashboardConfig(ctx context.Context, config *DashboardConfig) (*DashboardConfig, error)

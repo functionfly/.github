@@ -101,19 +101,62 @@ func (h *Handler) HandleGetUnreadCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	count, err := h.service.GetUnreadCount(r.Context(), user.UserID)
+	// Get total count (all notifications)
+	totalCount, err := h.service.GetTotalCount(r.Context(), user.UserID)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to get unread count")
-		http.Error(w, "Failed to get unread count", http.StatusInternalServerError)
+		logrus.WithError(err).Error("Failed to get total count")
+		http.Error(w, "Failed to get notification counts", http.StatusInternalServerError)
 		return
 	}
 
-	response := map[string]int{
-		"unread_count": count,
+	// Get unread count
+	unreadCount, err := h.service.GetUnreadCount(r.Context(), user.UserID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get unread count")
+		http.Error(w, "Failed to get notification counts", http.StatusInternalServerError)
+		return
 	}
 
+	// Get unread counts by category
+	categoryCounts, err := h.service.GetUnreadCountsByCategory(r.Context(), user.UserID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get category counts, using defaults")
+		// Don't fail the request, just use empty counts
+		categoryCounts = make(map[string]int)
+	}
+
+	// Ensure categoryCounts is not nil
+	if categoryCounts == nil {
+		categoryCounts = make(map[string]int)
+	}
+
+	// Map backend categories to frontend expected categories
+	frontendCategories := map[string]int{
+		"trust":    categoryCounts["system"],     // System announcements/trust updates
+		"revenue":  categoryCounts["billing"],    // Billing/revenue notifications
+		"issues":   categoryCounts["deployment"], // Deployment issues
+		"messages": categoryCounts["team"],       // Team messages/invitations
+		"security": categoryCounts["security"],   // Security notifications
+	}
+
+	response := map[string]interface{}{
+		"total":      totalCount,
+		"unread":     unreadCount,
+		"byCategory": frontendCategories,
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"total":      totalCount,
+		"unread":     unreadCount,
+		"byCategory": frontendCategories,
+	}).Debug("Sending notification counts response")
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		logrus.WithError(err).Error("Failed to encode notification counts response")
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // HandleMarkAsRead handles PATCH /v1/notifications/{id}/read

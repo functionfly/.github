@@ -1,0 +1,11 @@
+# This is a placeholder file. In production, you would generate actual Open Graph images.
+
+For dynamic Open Graph images, consider using:
+1. Vercel OG (https://vercel.com/docs/functions/og-image-generation)
+2. Puppeteer with a headless browser
+3. Services like og-image.vercel.app
+
+Example implementation:
+- Create an API route that generates images dynamically based on title/content
+- Use HTML/CSS templates with branding
+- Cache generated images for performance

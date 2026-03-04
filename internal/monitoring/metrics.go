@@ -86,6 +86,15 @@ var (
 		[]string{"backend_id", "from_state", "to_state"},
 	)
 
+	// Uptime metrics
+	uptimeRatio = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_uptime_ratio",
+			Help: "Uptime ratio for components and providers (0.0 to 1.0)",
+		},
+		[]string{"component", "provider"},
+	)
+
 	cacheSize = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "functionfly_cache_size",
@@ -337,6 +346,11 @@ func UpdateCircuitBreakerState(backendID, provider, region string, state int) {
 // RecordCircuitBreakerTransition records circuit breaker state transitions
 func RecordCircuitBreakerTransition(backendID, fromState, toState string) {
 	circuitBreakerTransitionsTotal.WithLabelValues(backendID, fromState, toState).Inc()
+}
+
+// UpdateUptimeRatio updates uptime ratio for components and providers
+func UpdateUptimeRatio(component, provider string, ratio float64) {
+	uptimeRatio.WithLabelValues(component, provider).Set(ratio)
 }
 
 // UpdateCacheSize updates cache size metrics

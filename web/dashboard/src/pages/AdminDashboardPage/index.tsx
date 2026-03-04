@@ -45,25 +45,10 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { adminUsersApi } from "@/api/admin";
-import { billingApi } from "@/api/admin";
-import { auditApi } from "@/api/admin";
-import { adminFunctionsApi } from "@/api/admin";
+import { adminUsersApi, billingApi, auditApi, adminFunctionsApi, healthApi, adminDashboardApi } from "@/api/admin";
 import { cn } from "@/lib/utils";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-const revenueData = [
-  { month: "Aug", revenue: 1200 },
-  { month: "Sep", revenue: 1800 },
-  { month: "Oct", revenue: 1500 },
-  { month: "Nov", revenue: 2200 },
-  { month: "Dec", revenue: 2800 },
-  { month: "Jan", revenue: 3100 },
-  { month: "Feb", revenue: 3400 },
-];
-
-const CHART_COLORS = ["#6366f1", "#8b5cf6", "#d946ef", "#10b981", "#f59e0b"];
 
 const adminSections = [
   {
@@ -228,14 +213,6 @@ interface SystemHealthItem {
   uptime?: string;
 }
 
-const systemHealth: SystemHealthItem[] = [
-  { name: "API Gateway", status: "healthy", latency: "12ms", uptime: "99.99%" },
-  { name: "Database", status: "healthy", latency: "3ms", uptime: "99.98%" },
-  { name: "Function Runtime", status: "healthy", latency: "45ms", uptime: "99.95%" },
-  { name: "Registry", status: "healthy", latency: "8ms", uptime: "100%" },
-  { name: "Auth Service", status: "healthy", latency: "15ms", uptime: "99.99%" },
-];
-
 function HealthStatusDot({ status }: { status: SystemHealthItem["status"] }) {
   return (
     <span
@@ -273,56 +250,52 @@ export function AdminDashboardPage() {
     queryFn: () => adminFunctionsApi.listFunctions({ limit: 100 }),
   });
 
-  const end = useMemo(() => new Date(), []);
-  const start = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d;
-  }, []);
+  const { data: dashboardActivity, isLoading: activityLoading } = useQuery({
+    queryKey: ["admin-dashboard-activity", 7],
+    queryFn: () => adminDashboardApi.getActivity({ days: 7 }),
+  });
 
-  const { data: activityAuditData } = useQuery({
-    queryKey: ["admin-audit-activity", start.toISOString(), end.toISOString()],
-    queryFn: () =>
-      auditApi.listAuditEvents({
-        limit: 500,
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-      }),
+  const { data: dashboardRevenue, isLoading: revenueLoading } = useQuery({
+    queryKey: ["admin-dashboard-revenue", 7],
+    queryFn: () => adminDashboardApi.getRevenue({ months: 7 }),
+  });
+
+  const { data: systemHealthData, isLoading: healthLoading } = useQuery({
+    queryKey: ["admin-system-health"],
+    queryFn: () => healthApi.getSystemHealth(),
+  });
+
+  const { data: quickStats } = useQuery({
+    queryKey: ["admin-quick-stats"],
+    queryFn: () => adminDashboardApi.getQuickStats(),
   });
 
   const activityData = useMemo(() => {
-    const events = activityAuditData?.events ?? [];
-    const byDay: Record<string, { users: number; functions: number }> = {};
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      byDay[key] = { users: 0, functions: 0 };
-    }
-    for (const e of events) {
-      const ts = e.timestamp ?? "";
-      const key = ts.slice(0, 10);
-      if (!byDay[key]) continue;
-      const rt = (e.resource_type ?? "").toLowerCase();
-      const action = (e.action ?? "").toLowerCase();
-      if (rt === "user" || action.includes("user") || action.includes("signup") || action.includes("login")) {
-        byDay[key].users += 1;
-      } else if (rt === "function" || rt === "app" || action.includes("function") || action.includes("deploy")) {
-        byDay[key].functions += 1;
-      } else {
-        byDay[key].functions += 1;
-      }
-    }
-    const sorted = Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b));
-    return sorted.map(([dateStr, counts]) => {
-      const d = new Date(dateStr + "Z");
-      return {
-        day: DAY_LABELS[d.getUTCDay()],
-        users: counts.users,
-        functions: counts.functions,
-      };
-    });
-  }, [activityAuditData]);
+    const series = dashboardActivity?.series ?? [];
+    return series.map((p) => ({
+      day: p.day_label,
+      users: p.new_users,
+      functions: p.function_calls,
+    }));
+  }, [dashboardActivity]);
+
+  const revenueData = useMemo(() => {
+    const series = dashboardRevenue?.series ?? [];
+    return series.map((p) => ({
+      month: p.month,
+      revenue: Math.round(p.revenue_cents / 100),
+    }));
+  }, [dashboardRevenue]);
+
+  const systemHealth: SystemHealthItem[] = useMemo(() => {
+    const services = systemHealthData?.services ?? [];
+    return services.map((s) => ({
+      name: s.name,
+      status: (s.status === "unhealthy" ? "down" : s.status === "degraded" ? "degraded" : "healthy") as SystemHealthItem["status"],
+      latency: s.latency_ms != null ? `${s.latency_ms}ms` : undefined,
+      uptime: s.uptime_percent != null ? `${s.uptime_percent.toFixed(2)}%` : undefined,
+    }));
+  }, [systemHealthData]);
 
   const totalUsers = userStats?.total_users ?? 0;
   const activeUsers = userStats?.active_users ?? 0;
@@ -332,6 +305,8 @@ export function AdminDashboardPage() {
   const recentAuditEvents = auditData?.events ?? [];
 
   const isLoading = usersLoading || subsLoading || auditLoading || functionsLoading;
+  const mrrCents = dashboardRevenue?.mrr_cents ?? 0;
+  const mrrDisplay = `$${(mrrCents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
   return (
     <div className="space-y-8">
@@ -451,6 +426,12 @@ export function AdminDashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
+            {activityLoading ? (
+              <div className="h-[200px] flex items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : (
+              <>
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={activityData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <defs>
@@ -489,6 +470,8 @@ export function AdminDashboardPage() {
                 <span className="text-xs text-text-muted">Function Calls</span>
               </div>
             </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -506,28 +489,36 @@ export function AdminDashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={revenueData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
-                <XAxis dataKey="month" tick={{ fill: "var(--text-muted)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "var(--text-muted)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--bg-tertiary)",
-                    border: "1px solid var(--border-default)",
-                    borderRadius: "8px",
-                    color: "var(--text-primary)",
-                    fontSize: "12px",
-                  }}
-                  formatter={(value) => [`$${value}`, "Revenue"]}
-                />
-                <Bar dataKey="revenue" fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-xs text-text-muted">MRR</span>
-              <span className="text-sm font-semibold text-text-primary">$3,400</span>
-            </div>
+            {revenueLoading ? (
+              <div className="h-[200px] flex items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={revenueData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+                    <XAxis dataKey="month" tick={{ fill: "var(--text-muted)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "var(--text-muted)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--bg-tertiary)",
+                        border: "1px solid var(--border-default)",
+                        borderRadius: "8px",
+                        color: "var(--text-primary)",
+                        fontSize: "12px",
+                      }}
+                      formatter={(value) => [`$${value}`, "Revenue"]}
+                    />
+                    <Bar dataKey="revenue" fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-xs text-text-muted">MRR</span>
+                  <span className="text-sm font-semibold text-text-primary">{mrrDisplay}</span>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -543,35 +534,47 @@ export function AdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {systemHealth.map((service) => (
-              <div
-                key={service.name}
-                className="flex items-center justify-between p-3 rounded-lg bg-bg-secondary border border-border-subtle hover:border-border-default transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <HealthStatusDot status={service.status} />
-                  <span className="text-sm font-medium text-text-primary">{service.name}</span>
+            {healthLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))
+            ) : (
+              <>
+                {systemHealth.length === 0 ? (
+                  <div className="text-center py-6 text-text-muted text-sm">No health data</div>
+                ) : (
+                  systemHealth.map((service) => (
+                    <div
+                      key={service.name}
+                      className="flex items-center justify-between p-3 rounded-lg bg-bg-secondary border border-border-subtle hover:border-border-default transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <HealthStatusDot status={service.status} />
+                        <span className="text-sm font-medium text-text-primary">{service.name}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-text-muted">
+                        {service.latency && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {service.latency}
+                          </span>
+                        )}
+                        {service.uptime && (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">{service.uptime}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                <div className="pt-2 flex items-center justify-between text-xs text-text-muted">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                    {systemHealth.every((s) => s.status === "healthy") ? "All services operational" : "Some issues detected"}
+                  </span>
+                  <span>Updated just now</span>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-text-muted">
-                  {service.latency && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {service.latency}
-                    </span>
-                  )}
-                  {service.uptime && (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">{service.uptime}</span>
-                  )}
-                </div>
-              </div>
-            ))}
-            <div className="pt-2 flex items-center justify-between text-xs text-text-muted">
-              <span className="flex items-center gap-1">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                All services operational
-              </span>
-              <span>Updated just now</span>
-            </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -677,10 +680,10 @@ export function AdminDashboardPage() {
       {/* Quick Stats Footer */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5 rounded-xl bg-bg-secondary border border-border-subtle">
         {[
-          { label: "Platform Uptime", value: "99.97%", icon: Globe, color: "text-emerald-500" },
-          { label: "Avg Response Time", value: "45ms", icon: Zap, color: "text-amber-500" },
-          { label: "Functions Executed", value: "1.2M", icon: Code, color: "text-violet-500" },
-          { label: "Data Processed", value: "4.8 TB", icon: Database, color: "text-cyan-500" },
+          { label: "Platform Uptime", value: quickStats ? `${quickStats.platform_uptime_percent}%` : "—", icon: Globe, color: "text-emerald-500" },
+          { label: "Avg Response Time", value: quickStats ? `${quickStats.avg_response_time_ms}ms` : "—", icon: Zap, color: "text-amber-500" },
+          { label: "Functions Executed", value: quickStats?.functions_executed ?? "—", icon: Code, color: "text-violet-500" },
+          { label: "Data Processed", value: quickStats?.data_processed ?? "—", icon: Database, color: "text-cyan-500" },
         ].map((stat) => (
           <div key={stat.label} className="flex items-center gap-3">
             <div className={cn("p-2 rounded-lg bg-bg-tertiary")}>

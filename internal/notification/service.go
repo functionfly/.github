@@ -134,6 +134,16 @@ func (s *Service) GetUnreadCount(ctx context.Context, userID uuid.UUID) (int, er
 	return s.repo.GetUnreadCount(ctx, userID)
 }
 
+// GetUnreadCountsByCategory returns unread notification counts grouped by category
+func (s *Service) GetUnreadCountsByCategory(ctx context.Context, userID uuid.UUID) (map[string]int, error) {
+	return s.repo.GetUnreadCountsByCategory(ctx, userID)
+}
+
+// GetTotalCount returns total notification count for user
+func (s *Service) GetTotalCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	return s.repo.GetTotalCount(ctx, userID)
+}
+
 // ListNotifications lists notifications for a user
 func (s *Service) ListNotifications(ctx context.Context, userID uuid.UUID, opts ListOptions) ([]*Notification, error) {
 	return s.repo.ListNotifications(ctx, userID, opts)

@@ -41,7 +41,7 @@ export function AuthorBio({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <Card className="overflow-hidden rounded-2xl border border-border/50 bg-card/80">
+      <Card className="overflow-hidden rounded-2xl border border-border/50 bg-white dark:bg-slate-900">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-6">
             {/* Avatar */}
@@ -53,7 +53,7 @@ export function AuthorBio({
                   className="w-20 h-20 rounded-full object-cover ring-4 ring-border/30"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-brand-500/15 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold text-2xl ring-4 ring-border/30">
+                <div className="blog-author-avatar-bg w-20 h-20 rounded-full bg-brand-500/15 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold text-2xl ring-4 ring-border/30">
                   {getInitials(name)}
                 </div>
               )}

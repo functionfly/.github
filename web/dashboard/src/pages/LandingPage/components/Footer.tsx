@@ -2,8 +2,10 @@ import { motion } from "framer-motion";
 import { Github, Twitter, Linkedin, MessageCircle, Mail, ArrowUp, Heart } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { DOCS_SITE_URL } from "@/lib/constants";
+import { useAuthStore } from "@/stores/authStore";
 
 export function Footer() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   return (
     <footer className="relative overflow-hidden footer-enhanced" style={{ backgroundColor: 'var(--bg-primary)' }} role="contentinfo" aria-label="Site footer">
@@ -86,7 +88,7 @@ export function Footer() {
                 </li>
                 <li>
                   <a
-                    href="/state-fabric"
+                    href={isAuthenticated ? "/state-fabric" : "/products/state-fabric"}
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
                     State Fabric

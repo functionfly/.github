@@ -13,6 +13,7 @@ export function OAuthCallback() {
       try {
         // Extract OAuth parameters from URL
         const token = searchParams.get("token");
+        const refreshToken = searchParams.get("refresh_token");
         const error = searchParams.get("error");
         const errorDescription = searchParams.get("error_description");
         const newUser = searchParams.get("new_user") === "true";
@@ -66,8 +67,11 @@ export function OAuthCallback() {
           return;
         }
 
-        // Store the JWT token — initialize() will validate it and fetch real user data
-        localStorage.setItem("sb-access-token", token);
+        // Store the JWT token and refresh token — initialize() will validate them and fetch real user data
+        localStorage.setItem("ff-access-token", token);
+        if (refreshToken) {
+          localStorage.setItem("ff-refresh-token", refreshToken);
+        }
 
         // Re-initialize auth store: validates the token against the backend
         // and populates real user data (no placeholder values stored)

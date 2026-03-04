@@ -355,6 +355,12 @@ func (asm *AdvancedSecurityMiddleware) TrafficManagement(next http.HandlerFunc) 
 	return func(w http.ResponseWriter, r *http.Request) {
 		clientIP := getClientIP(r)
 
+		// Skip circuit breaker and queuing for WebSocket upgrade requests
+		if r.Header.Get("Upgrade") == "websocket" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Check circuit breaker
 		if !asm.circuitBreaker.Allow() {
 			asm.logger.Warn("Circuit breaker open, queuing request")

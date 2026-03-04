@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Shield, Check, X, User, Mail, Key, AtSign, Building2 } from "lucide-react";
+import { Eye, EyeOff, Shield, Check, X, User, Mail, Key, AtSign, Building2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { FormError } from "@/components/ui/form-error";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useSignupForm } from "@/hooks/useAuthForms";
 import { useAuthStore } from "@/stores/authStore";
+import { useUsernameValidation } from "@/hooks/useUsernameValidation";
 import { cn } from "@/lib/utils";
 
 // New authentication libraries
@@ -70,7 +71,15 @@ export function SignupForm(): React.JSX.Element {
   } = useSignupForm();
 
   const password = watch('password');
+  const username = watch('username');
   const watchedErrors = Object.keys(errors).length > 0;
+
+  // Real-time username validation
+  const usernameValidation = useUsernameValidation(username || '', {
+    debounceMs: 300, // Faster response for username checking
+    minLength: 1,
+    maxLength: 50,
+  });
 
   // Execute reCAPTCHA when form is valid (only in production)
   useEffect(() => {
@@ -163,11 +172,24 @@ export function SignupForm(): React.JSX.Element {
           )}
         </div>
 
-        {/* Username Field (optional) */}
+        {/* Username Field (required) */}
         <div className="space-y-2">
-          <Label htmlFor="username" className="flex items-center gap-2 text-text-secondary">
+          <Label htmlFor="username" className={cn(
+            'flex items-center gap-2',
+            errors.username && 'text-error',
+            !errors.username && usernameValidation.isValid && usernameValidation.isAvailable && 'text-success'
+          )}>
             <AtSign className="w-4 h-4" />
-            Username <span className="text-text-muted text-xs">(optional)</span>
+            Username <span className="text-error">*</span>
+            {usernameValidation.isLoading && (
+              <Loader2 className="w-3 h-3 animate-spin ml-1" />
+            )}
+            {usernameValidation.isValid && usernameValidation.isAvailable && !usernameValidation.isLoading && (
+              <Check className="w-3 h-3 ml-1" />
+            )}
+            {!usernameValidation.isValid && username && !usernameValidation.isLoading && (
+              <X className="w-3 h-3 ml-1" />
+            )}
           </Label>
           <Input
             id="username"
@@ -176,13 +198,24 @@ export function SignupForm(): React.JSX.Element {
             autoComplete="username"
             className={cn(
               errors.username && 'border-error focus:border-error focus:ring-error',
-              !errors.username && watch('username') && 'border-success focus:border-success focus:ring-success'
+              !errors.username && usernameValidation.isValid && usernameValidation.isAvailable && 'border-success focus:border-success focus:ring-success',
+              !errors.username && !usernameValidation.isValid && username && !usernameValidation.isLoading && 'border-error focus:border-error focus:ring-error'
             )}
             {...register('username')}
           />
           {errors.username && (
             <div className="text-xs text-error">
               {typeof errors.username.message === 'string' ? errors.username.message : 'Invalid username'}
+            </div>
+          )}
+          {usernameValidation.error && (
+            <div className="text-xs text-error">
+              {usernameValidation.error}
+            </div>
+          )}
+          {!usernameValidation.error && usernameValidation.isValid && usernameValidation.isAvailable && (
+            <div className="text-xs text-success">
+              ✓ Username is available
             </div>
           )}
         </div>

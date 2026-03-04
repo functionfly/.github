@@ -3,9 +3,9 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Clock } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { BlogPost } from '@/api/content';
 import { calculateReadingTime, formatReadingTime, getRelativeTime, getAuthorAvatar } from '@/pages/BlogPage/utils';
+import { SpotlightCard, ShinyButton, TextGradient } from '@/components/ui';
 
 interface RelatedPostsProps {
   posts: BlogPost[];
@@ -30,8 +30,14 @@ export function RelatedPosts({ posts, currentPostId, maxPosts = 3 }: RelatedPost
       transition={{ duration: 0.4 }}
       className="mt-16"
     >
-      <h2 className="text-2xl font-bold mb-8">Related Posts</h2>
-      
+      <TextGradient
+        size="subheading"
+        animate={true}
+        className="text-2xl font-bold mb-8"
+      >
+        Related Posts
+      </TextGradient>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {relatedPosts.map((post, index) => (
           <motion.div
@@ -40,7 +46,12 @@ export function RelatedPosts({ posts, currentPostId, maxPosts = 3 }: RelatedPost
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}
           >
-            <Card className="h-full overflow-hidden rounded-2xl border border-border/50 bg-card/80 hover:shadow-lg hover:border-border transition-all duration-300 group">
+            <SpotlightCard
+              className="blog-post-card h-full overflow-hidden rounded-2xl border border-border/50 bg-card/80 hover:shadow-lg hover:border-border transition-all duration-300 group"
+              spotlightColor="rgba(139, 92, 246, 0.1)"
+              spotlightSize={220}
+              hoverOnly={true}
+            >
               {/* Featured Image */}
               <Link to={`/blog/${post.slug}`} className="block relative h-40 overflow-hidden">
                 {post.featured_image ? (
@@ -50,13 +61,13 @@ export function RelatedPosts({ posts, currentPostId, maxPosts = 3 }: RelatedPost
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-brand-500/10 to-brand-600/5 flex items-center justify-center">
+                  <div className="blog-related-card w-full h-full bg-gradient-to-br from-brand-500/10 to-brand-600/5 flex items-center justify-center">
                     <span className="text-4xl">📝</span>
                   </div>
                 )}
               </Link>
 
-              <CardContent className="p-5">
+              <div className="p-5">
                 {/* Title */}
                 <h3 className="text-base font-bold mb-2 line-clamp-2">
                   <Link
@@ -102,18 +113,22 @@ export function RelatedPosts({ posts, currentPostId, maxPosts = 3 }: RelatedPost
                 )}
 
                 {/* Read more */}
-                <Link
-                  to={`/blog/${post.slug}`}
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors"
-                >
-                  Read more
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </CardContent>
-            </Card>
+                <ShinyButton asChild size="sm" variant="ghost">
+                  <Link
+                    to={`/blog/${post.slug}`}
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    Read more
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </ShinyButton>
+              </div>
+            </SpotlightCard>
           </motion.div>
         ))}
       </div>
     </motion.section>
   );
 }
+
+export default RelatedPosts;

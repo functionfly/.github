@@ -2677,6 +2677,233 @@ body {
 }
 
 /* ==========================================================================
+   User Not Found View (profile 404) - theme-aware styles
+   ========================================================================== */
+
+.user-not-found-view__card {
+  background-color: color-mix(in srgb, var(--bg-secondary) 92%, transparent) !important;
+  border: 1px solid var(--border-default) !important;
+  box-shadow: var(--shadow-lg);
+}
+
+.user-not-found-view__icon {
+  background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: var(--color-brand-500);
+}
+
+.user-not-found-view__title {
+  color: var(--text-primary);
+}
+
+.user-not-found-view__message {
+  color: var(--text-secondary);
+}
+
+.user-not-found-view__hint {
+  color: var(--text-muted);
+}
+
+.user-not-found-view__btn-primary {
+  background: linear-gradient(to right, #6366f1, #7c3aed);
+  color: white;
+  box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.25);
+}
+
+.user-not-found-view__btn-primary:hover {
+  background: linear-gradient(to right, #4f46e5, #6d28d9);
+  box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.35);
+}
+
+.user-not-found-view__btn-secondary {
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+
+.user-not-found-view__btn-secondary:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}
+
+/* Light mode overrides */
+[data-theme="light"] .user-not-found-view__card {
+  background-color: #ffffff !important;
+  border-color: rgba(79, 70, 229, 0.2) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .user-not-found-view__card:hover {
+  box-shadow: 0 0 30px rgba(79, 70, 229, 0.12), 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .user-not-found-view__icon {
+  background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.14), rgba(139, 92, 246, 0.14));
+  border-color: rgba(79, 70, 229, 0.3);
+  color: #4f46e5;
+}
+
+[data-theme="light"] .user-not-found-view__title {
+  color: #0f0f1a;
+}
+
+[data-theme="light"] .user-not-found-view__message {
+  color: #3a3a45;
+}
+
+[data-theme="light"] .user-not-found-view__hint {
+  color: #52525f;
+}
+
+[data-theme="light"] .user-not-found-view__btn-secondary {
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #3a3a45;
+}
+
+[data-theme="light"] .user-not-found-view__btn-secondary:hover {
+  color: #0f0f1a;
+  background-color: #f0f0f5;
+}
+
+/* ==========================================================================
+   Blog Page - Light Mode Overrides
+   ========================================================================== */
+
+/* Nav: Blog title and Back to Home link - dark text on light background */
+[data-theme="light"] .blog-page-nav,
+[data-theme="light"] .blog-page-nav a,
+[data-theme="light"] .blog-page-nav span {
+  color: #0f0f1a !important;
+}
+
+/* Section pills (Featured Stories, All Articles) - darker brand text for contrast on light tint */
+[data-theme="light"] .blog-section-pill {
+  color: #4338ca !important;
+  border-color: rgba(67, 56, 202, 0.35) !important;
+}
+
+[data-theme="light"] .blog-section-pill svg {
+  color: #4338ca !important;
+}
+
+/* Category tags on featured card - darker text on light purple background */
+[data-theme="light"] .blog-category-tag {
+  color: #4338ca !important;
+  border-color: rgba(67, 56, 202, 0.3) !important;
+}
+
+/* Carousel scroll (prev/next) arrows - dark icon and clear button in light mode */
+[data-theme="light"] .blog-carousel-arrows {
+  color: #0f0f1a !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .blog-carousel-arrows:hover {
+  color: #4f46e5 !important;
+}
+
+/* Featured card gradients - increase opacity for light mode visibility */
+[data-theme="light"] .blog-featured-card {
+  background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.18), var(--card), rgba(79, 70, 229, 0.12)) !important;
+}
+
+/* Newsletter card gradient - increase opacity for light mode */
+[data-theme="light"] .blog-newsletter-card {
+  background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.15), var(--card), rgba(79, 70, 229, 0.12)) !important;
+}
+
+/* Placeholder backgrounds - ensure visibility in light mode */
+[data-theme="light"] .blog-placeholder-bg {
+  background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.2), rgba(79, 70, 229, 0.15)) !important;
+}
+
+[data-theme="light"] .blog-placeholder-bg-sm {
+  background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.18), rgba(79, 70, 229, 0.12)) !important;
+}
+
+/* Image overlays - replace black with theme-aware colors for light mode */
+[data-theme="light"] .blog-image-overlay {
+  background: linear-gradient(to top, rgba(30, 27, 75, 0.35), transparent, transparent) !important;
+}
+
+[data-theme="light"] .blog-image-overlay-hover {
+  background: linear-gradient(to top, rgba(30, 27, 75, 0.25), transparent) !important;
+}
+
+/* Author avatar background */
+[data-theme="light"] .blog-author-avatar-bg {
+  background: rgba(99, 102, 241, 0.2) !important;
+}
+
+/* Blog card shadows for light mode */
+[data-theme="light"] .blog-card-shadow {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .blog-card-shadow:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Ensure text contrast on blog cards */
+[data-theme="light"] .blog-card-title {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .blog-card-meta {
+  color: #475569 !important;
+}
+
+/* Blog post grid cards - light background and dark text in light mode */
+[data-theme="light"] .blog-post-card {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+[data-theme="light"] .blog-post-card .text-foreground,
+[data-theme="light"] .blog-post-card a[class*="text-foreground"],
+[data-theme="light"] .blog-post-card h3 a {
+  color: #0f0f1a !important;
+}
+
+[data-theme="light"] .blog-post-card .text-muted-foreground,
+[data-theme="light"] .blog-post-card p.text-muted-foreground,
+[data-theme="light"] .blog-post-card .text-xs.text-muted-foreground {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .blog-post-card .bg-muted\/50 {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .blog-post-card [class*="rounded-full"][class*="text-brand"] {
+  color: #4f46e5 !important;
+}
+
+/* Top-of-card tags over image (e.g. "ai", "agents") - readable in light mode */
+[data-theme="light"] .blog-card-top-tags span {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  color: #3730a3 !important;
+  border-color: rgba(67, 56, 202, 0.35) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .blog-card-top-tags span svg {
+  color: #3730a3 !important;
+}
+
+
+/* Featured carousel specific */
+[data-theme="light"] .blog-carousel-card {
+  background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.18), var(--card), rgba(79, 70, 229, 0.12)) !important;
+}
+
+/* Related posts card */
+[data-theme="light"] .blog-related-card {
+  background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.18), rgba(79, 70, 229, 0.12)) !important;
+}
+
+/* ==========================================================================
    Focus Styles
    ========================================================================== */
 

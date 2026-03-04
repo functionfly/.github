@@ -22,6 +22,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
 	"github.com/functionfly/functionfly/internal/api/handlers/enterprise"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
+	flywheelhandler "github.com/functionfly/functionfly/internal/api/handlers/flywheel"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
@@ -36,16 +37,19 @@ import (
 	statushandler "github.com/functionfly/functionfly/internal/api/handlers/status"
 	"github.com/functionfly/functionfly/internal/api/handlers/teams"
 	usersHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/users"
+	"github.com/functionfly/functionfly/internal/api/handlers/vault"
 	"github.com/functionfly/functionfly/internal/api/handlers/wellknown"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/captcha"
+	"github.com/functionfly/functionfly/internal/flywheel"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
 	statefabricrepo "github.com/functionfly/functionfly/internal/storage/statefabric"
+	vaultstorage "github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -152,6 +156,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize state fabric handler (dashboard State Fabric feature)
 	stateFabricRepo := statefabricrepo.NewRepository(s.postgresDB.GORM)
 	stateFabricHandler := statefabric.NewHandler(stateFabricRepo)
+
+	// Initialize vault handler (Secrets Vault feature)
+	vaultRepo := vaultstorage.NewRepository(s.postgresDB.GORM)
+	vaultHandler := vault.NewHandler(vaultRepo, logrus.New())
 
 	// Initialize AEP (Agent Execution Plan) handler
 	aepHandler := agenthandler.NewHandler(s.postgresDB.GORM, s.redisClient, registryRepo)
@@ -290,7 +298,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Auth routes (public)
 	api.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/refresh", authHandler.HandleRefreshToken).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/check-username", authHandler.HandleCheckUsernameAvailability).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/verify-email", authHandler.HandleVerifyEmail).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/resend-verification", authRateLimiter.Limit(authHandler.HandleResendVerification)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/get-session", authHandler.HandleGetSession).Methods("GET", "OPTIONS")
@@ -756,6 +766,19 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/state-fabrics/{id}/replays/{replayId}", authMiddleware.RequireAuth(stateFabricHandler.HandleGetReplay)).Methods("GET", "OPTIONS")
 
 	// ============================================================
+	// Secrets Vault routes (protected)
+	// ============================================================
+	protected.HandleFunc("/vault/secrets", authMiddleware.RequireAuth(vaultHandler.HandleListSecrets)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/secrets", authMiddleware.RequireAuth(vaultHandler.HandleCreateSecret)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultHandler.HandleGetSecret)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultHandler.HandleUpdateSecret)).Methods("PATCH", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultHandler.HandleDeleteSecret)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}/tokens", authMiddleware.RequireAuth(vaultHandler.HandleListTokens)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}/tokens", authMiddleware.RequireAuth(vaultHandler.HandleGenerateToken)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/tokens/{id}", authMiddleware.RequireAuth(vaultHandler.HandleRevokeToken)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/vault/audit", authMiddleware.RequireAuth(vaultHandler.HandleGetAuditLog)).Methods("GET", "OPTIONS")
+
+	// ============================================================
 	// AEP (Agent Execution Plan) routes
 	// ============================================================
 
@@ -800,6 +823,75 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Concurrency stats (protected)
 	protected.HandleFunc("/agent/concurrency/stats", authMiddleware.RequireAuth(aepHandler.HandleGetConcurrencyStats)).Methods("GET", "OPTIONS")
+
+	// ============================================================
+	// Flywheel Network routes (Proof-of-Execution Knowledge Network)
+	// ============================================================
+	// ============================================================
+	// Flywheel Network components (Proof-of-Execution Knowledge Network)
+	// ============================================================
+	flywheelRepo := flywheel.NewRepository(s.postgresDB.GORM)
+	flywheelExecService := flywheel.NewExecutionAdapter(registryRepo, cacheService, logrus.New())
+	flywheelService := flywheel.NewService(flywheelRepo, flywheelExecService, logrus.New())
+
+	// Initialize Flywheel WebSocket hub for real-time updates
+	flywheelWSHub := flywheelhandler.NewWebSocketHub(logrus.New())
+	go flywheelWSHub.Run()
+
+	flywheelHandler := flywheelhandler.NewHandler(flywheelService, flywheelWSHub, logrus.New())
+
+	// Categories (public)
+	api.HandleFunc("/flywheel/categories", flywheelHandler.ListCategories).Methods("GET", "OPTIONS")
+
+	// Threads (public read, protected write)
+	api.HandleFunc("/flywheel/threads", flywheelHandler.ListThreads).Methods("GET", "OPTIONS")
+	api.HandleFunc("/flywheel/threads", authMiddleware.RequireAuth(flywheelHandler.CreateThread)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/flywheel/threads/{id}", flywheelHandler.GetThread).Methods("GET", "OPTIONS")
+	api.HandleFunc("/flywheel/threads/{id}", authMiddleware.RequireAuth(flywheelHandler.UpdateThread)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/flywheel/threads/{id}/resolve", authMiddleware.RequireAuth(flywheelHandler.ResolveThread)).Methods("POST", "OPTIONS")
+
+	// Thread subscriptions (protected)
+	api.HandleFunc("/flywheel/threads/{id}/subscribe", authMiddleware.RequireAuth(flywheelHandler.SubscribeToThread)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/flywheel/threads/{id}/subscribe", authMiddleware.RequireAuth(flywheelHandler.UnsubscribeFromThread)).Methods("DELETE", "OPTIONS")
+
+	// Replies (public read, protected write)
+	api.HandleFunc("/flywheel/threads/{id}/replies", flywheelHandler.ListReplies).Methods("GET", "OPTIONS")
+	api.HandleFunc("/flywheel/threads/{id}/replies", authMiddleware.RequireAuth(flywheelHandler.CreateReply)).Methods("POST", "OPTIONS")
+
+	// Reply execution and verification (protected)
+	api.HandleFunc("/flywheel/replies/{id}/execute", authMiddleware.RequireAuth(flywheelHandler.ExecuteReply)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/flywheel/replies/{id}/verify", authMiddleware.RequireAuth(flywheelHandler.VerifyReply)).Methods("POST", "OPTIONS")
+
+	// Reputation (public read)
+	api.HandleFunc("/flywheel/reputation/me", authMiddleware.RequireAuth(flywheelHandler.GetMyReputation)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/flywheel/reputation/{user_id}", flywheelHandler.GetUserReputation).Methods("GET", "OPTIONS")
+	api.HandleFunc("/flywheel/leaderboards/{score_type}", flywheelHandler.GetLeaderboard).Methods("GET", "OPTIONS")
+
+	// Challenges (public read, protected write/submit)
+	api.HandleFunc("/flywheel/challenges", flywheelHandler.ListChallenges).Methods("GET", "OPTIONS")
+	api.HandleFunc("/flywheel/challenges/{id}", flywheelHandler.GetChallenge).Methods("GET", "OPTIONS")
+	api.HandleFunc("/flywheel/challenges/{id}/submit", authMiddleware.RequireAuth(flywheelHandler.SubmitChallenge)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/flywheel/challenges/{id}/leaderboard", flywheelHandler.GetChallengeLeaderboard).Methods("GET", "OPTIONS")
+
+	// WebSocket endpoint for real-time updates
+	api.HandleFunc("/flywheel/ws", flywheelHandler.HandleWebSocket)
+
+	// Search functionality
+	api.HandleFunc("/flywheel/search", flywheelHandler.Search).Methods("GET", "OPTIONS")
+	api.HandleFunc("/flywheel/solutions/verified", flywheelHandler.ListVerifiedSolutions).Methods("GET", "OPTIONS")
+
+	// Thread replay and timeline
+	api.HandleFunc("/flywheel/threads/{id}/timeline", flywheelHandler.GetThreadTimeline).Methods("GET", "OPTIONS")
+	api.HandleFunc("/flywheel/threads/{id}/replay", flywheelHandler.ReplayThread).Methods("POST", "OPTIONS")
+
+	// Agent collaboration (protected)
+	api.HandleFunc("/flywheel/threads/{id}/agents", authMiddleware.RequireAuth(flywheelHandler.ListThreadAgents)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/flywheel/threads/{id}/agents/{agent_id}/invite", authMiddleware.RequireAuth(flywheelHandler.InviteAgent)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/flywheel/threads/{id}/agents/{agent_id}", authMiddleware.RequireAuth(flywheelHandler.RemoveAgent)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/flywheel/threads/{id}/agents/{agent_id}/respond", authMiddleware.RequireAuth(flywheelHandler.AgentRespond)).Methods("POST", "OPTIONS")
+
+	// Marketplace integration (protected)
+	api.HandleFunc("/flywheel/replies/{id}/publish-to-marketplace", authMiddleware.RequireAuth(flywheelHandler.PublishToMarketplace)).Methods("POST", "OPTIONS")
 
 	// ============================================================
 	// Swarm / Marketplace / Evolution routes (protected)
@@ -910,6 +1002,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// System health
 	adminRoutes.HandleFunc("/health", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleSystemHealth)).Methods("GET")
+
+	// Admin dashboard (activity, revenue, quick stats)
+	adminRoutes.HandleFunc("/dashboard/activity", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleDashboardActivity)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/dashboard/revenue", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleDashboardRevenue)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/dashboard/quick-stats", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleDashboardQuickStats)).Methods("GET", "OPTIONS")
 
 	// Analytics management
 	adminRoutes.HandleFunc("/analytics", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleGetAnalyticsSettings)).Methods("GET", "OPTIONS")
@@ -1072,7 +1169,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Serve the SPA index.html for these reserved paths
 	s.router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
 		// Don't match API routes
-		if strings.HasPrefix(r.URL.Path, "/v1/") || strings.HasPrefix(r.URL.Path, "/content/") || strings.HasPrefix(r.URL.Path, "/admin/") || r.URL.Path == "/health" {
+		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/v1/") || strings.HasPrefix(r.URL.Path, "/content/") || strings.HasPrefix(r.URL.Path, "/admin/") || r.URL.Path == "/health" {
 			return false
 		}
 		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
@@ -1082,13 +1179,13 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Public routing endpoint: /{appSlug}/*
 	// Use a custom matcher to avoid conflicting with API routes
 	s.router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
-		// Don't match API routes
-		if strings.HasPrefix(r.URL.Path, "/v1/") || strings.HasPrefix(r.URL.Path, "/content/") || strings.HasPrefix(r.URL.Path, "/admin/") || r.URL.Path == "/health" {
+		// Don't match API routes or reserved paths
+		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/content/") || strings.HasPrefix(r.URL.Path, "/admin/") || r.URL.Path == "/health" || strings.HasPrefix(r.URL.Path, "/v1/") {
 			return false
 		}
 		// Match app slug pattern: /someSlug/somePath
 		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-		return len(pathParts) >= 2 && pathParts[0] != "" && pathParts[0] != "v1" && pathParts[0] != "content" && pathParts[0] != "health" &&
+		return len(pathParts) >= 2 && pathParts[0] != "" && pathParts[0] != "api" && pathParts[0] != "content" && pathParts[0] != "health" &&
 			pathParts[0] != "fx" && pathParts[0] != "run" && pathParts[0] != "replay"
 	}).HandlerFunc(s.handlePublicRoute)
 }

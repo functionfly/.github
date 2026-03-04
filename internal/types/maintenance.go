@@ -27,6 +27,11 @@ type PlatformMaintenance struct {
 	UpdatedAt         time.Time  `json:"updated_at" db:"updated_at"`
 }
 
+// TableName returns the database table name for PlatformMaintenance
+func (PlatformMaintenance) TableName() string {
+	return "platform_maintenance"
+}
+
 // MaintenancePageTemplate represents a customizable maintenance page template
 type MaintenancePageTemplate struct {
 	ID              uuid.UUID `json:"id" db:"id"`

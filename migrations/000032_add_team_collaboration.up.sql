@@ -46,6 +46,14 @@ CREATE INDEX IF NOT EXISTS idx_team_permissions_resource ON team_permissions(res
 
 -- Update users table to include teams relationship (already done via GORM tags)
 
+-- Create pg_notification_channels table if it doesn't exist
+CREATE TABLE IF NOT EXISTS pg_notification_channels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    channel_name VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Add real-time notification channels for team events
 -- These will be used by the WebSocket system for broadcasting team updates
 INSERT INTO pg_notification_channels (channel_name, description) VALUES

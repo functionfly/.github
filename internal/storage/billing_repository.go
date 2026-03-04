@@ -469,6 +469,37 @@ func (r *BillingRepository) ListInvoicesByTenant(tenantID uuid.UUID, limit, offs
 	return invoices, nil
 }
 
+// ListAllInvoices lists all invoices across tenants (for admin dashboard)
+func (r *BillingRepository) ListAllInvoices(limit, offset int) ([]*Invoice, error) {
+	query := `
+		SELECT id, tenant_id, subscription_id, status, amount_due_cents, amount_paid_cents, currency,
+			   invoice_pdf_url, hosted_invoice_url, period_start, period_end, due_date, paid_at, created_at, updated_at
+		FROM invoices
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2`
+
+	rows, err := r.db.Query(query, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list invoices: %w", err)
+	}
+	defer rows.Close()
+
+	var invoices []*Invoice
+	for rows.Next() {
+		invoice := &Invoice{}
+		err := rows.Scan(&invoice.ID, &invoice.TenantID, &invoice.SubscriptionID, &invoice.Status,
+			&invoice.AmountDueCents, &invoice.AmountPaidCents, &invoice.Currency,
+			&invoice.InvoicePdfURL, &invoice.HostedInvoiceURL, &invoice.PeriodStart,
+			&invoice.PeriodEnd, &invoice.DueDate, &invoice.PaidAt, &invoice.CreatedAt, &invoice.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan invoice: %w", err)
+		}
+		invoices = append(invoices, invoice)
+	}
+
+	return invoices, nil
+}
+
 // GetInvoiceByID retrieves an invoice by ID
 func (r *BillingRepository) GetInvoiceByID(id uuid.UUID) (*Invoice, error) {
 	query := `

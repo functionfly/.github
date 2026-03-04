@@ -28,6 +28,70 @@ export interface ComponentHealth {
   message?: string;
 }
 
+/** Raw component shape from API (type, uptime_24h, response_time_ms) */
+interface ApiComponent {
+  id: string;
+  name: string;
+  type?: string;
+  status: string;
+  description?: string;
+  uptime_24h?: number;
+  uptime_7d?: number;
+  uptime_30d?: number;
+  response_time_ms?: number;
+  last_checked?: string;
+  category?: 'core' | 'provider' | 'infrastructure';
+  latency_ms?: number;
+  uptime_percent?: number;
+  message?: string;
+}
+
+const COMPONENT_TYPE_TO_CATEGORY: Record<string, 'core' | 'provider' | 'infrastructure'> = {
+  api: 'core',
+  database: 'core',
+  cache: 'core',
+  monitoring: 'core',
+  provider: 'provider',
+};
+const API_STATUS_TO_UI: Record<string, ComponentStatusType> = {
+  operational: 'operational',
+  degraded_performance: 'degraded',
+  partial_outage: 'degraded',
+  degraded: 'degraded',
+  major_outage: 'down',
+  maintenance: 'degraded',
+  down: 'down',
+};
+
+const VALID_STATUSES: ComponentStatusType[] = ['operational', 'degraded', 'down'];
+
+function normalizeComponent(c: ApiComponent): ComponentHealth {
+  const category =
+    c.category ?? COMPONENT_TYPE_TO_CATEGORY[c.type ?? ''] ?? 'infrastructure';
+  const rawStatus = API_STATUS_TO_UI[String(c.status ?? '')] ?? 'operational';
+  const status: ComponentStatusType = VALID_STATUSES.includes(rawStatus)
+    ? rawStatus
+    : 'operational';
+  const uptime = c.uptime_percent ?? c.uptime_24h ?? 0; // Default to 0 instead of 99.9
+  const latency = c.latency_ms ?? c.response_time_ms ?? 0;
+  const lastChecked =
+    typeof c.last_checked === 'string'
+      ? c.last_checked
+      : c.last_checked != null
+        ? new Date(c.last_checked).toISOString()
+        : new Date().toISOString();
+  return {
+    id: c.id,
+    name: c.name,
+    category,
+    status,
+    latency_ms: latency,
+    uptime_percent: uptime,
+    last_checked: lastChecked,
+    message: c.message ?? c.description,
+  };
+}
+
 export interface RegionStatus {
   region: string;
   status: ComponentStatusType;
@@ -136,25 +200,106 @@ export interface StatusWebSocketMessage {
 // API Functions
 // ============================================================================
 
+/** Raw platform status from API (updated_at, description) */
+interface ApiPlatformStatus {
+  status: PlatformStatusType;
+  indicator?: string;
+  description?: string;
+  updated_at?: string;
+  components?: ApiComponent[];
+  incidents?: unknown[];
+  maintenance?: unknown[];
+}
+
 /**
- * Get overall platform status
+ * Get overall platform status (normalized: updated_at -> timestamp, description -> message)
  */
 export async function getPlatformStatus(): Promise<PlatformStatus> {
-  return apiClient.get<PlatformStatus>('/v1/status');
+  const raw = await apiClient.get<ApiPlatformStatus>('/v1/status');
+  const timestamp =
+    typeof raw.updated_at === 'string'
+      ? raw.updated_at
+      : raw.updated_at != null
+        ? new Date(String(raw.updated_at)).toISOString()
+        : new Date().toISOString();
+  const components = Array.isArray(raw.components)
+    ? raw.components.map(normalizeComponent)
+    : [];
+  return {
+    status: raw.status,
+    message: raw.description ?? '',
+    timestamp,
+    components,
+  };
 }
 
 /**
- * Get all component health statuses
+ * Get all component health statuses (normalized for UI)
  */
 export async function getComponents(): Promise<ComponentHealth[]> {
-  return apiClient.get<ComponentHealth[]>('/v1/status/components');
+  const raw = await apiClient.get<ApiComponent[]>('/v1/status/components');
+  return Array.isArray(raw) ? raw.map(normalizeComponent) : [];
+}
+
+/** Raw provider/region from API */
+interface ApiProviderStatus {
+  name: string;
+  display_name?: string;
+  overall_status?: string;
+  regions?: { code?: string; name?: string; status?: string; latency_ms?: number; error_rate?: number }[];
+  summary?: { avg_latency_ms?: number; error_rate?: number };
+}
+
+const PROVIDER_NAME_TO_ID: Record<string, ProviderType> = {
+  cloudflare: 'cloudflare',
+  vercel: 'vercel',
+  fly: 'fly',
+  deno: 'deno',
+  functionfly_edge: 'functionfly_edge',
+};
+const OVERALL_STATUS_TO_UI: Record<string, ComponentStatusType> = {
+  operational: 'operational',
+  degraded: 'degraded',
+  outage: 'down',
+  down: 'down',
+};
+
+function normalizeProvider(p: ApiProviderStatus): ProviderStatus {
+  const id = PROVIDER_NAME_TO_ID[p.name?.toLowerCase()] ?? (p.name?.toLowerCase() as ProviderType);
+  const status = OVERALL_STATUS_TO_UI[p.overall_status ?? ''] ?? 'operational';
+  const regions: RegionStatus[] = (p.regions ?? []).map((r) => ({
+    region: r.code ?? r.name ?? '',
+    status: (OVERALL_STATUS_TO_UI[r.status ?? ''] ?? 'operational') as ComponentStatusType,
+    latency_ms: r.latency_ms ?? 0,
+    success_rate: 100 - (r.error_rate ?? 0),
+  }));
+  const summary = p.summary;
+  const avgLatency = summary?.avg_latency_ms ?? 0;
+  const avgError = summary?.error_rate ?? 0;
+  return {
+    id,
+    name: p.display_name ?? p.name,
+    status,
+    regions,
+    avg_latency_ms: avgLatency,
+    avg_success_rate: 100 - avgError,
+    last_updated: new Date().toISOString(),
+  };
+}
+
+/** API response shape for GET /v1/status/providers */
+interface ProvidersResponse {
+  providers?: ApiProviderStatus[];
+  generated_at?: string;
 }
 
 /**
- * Get all provider statuses by region
+ * Get all provider statuses by region (normalized for UI)
  */
 export async function getProviders(): Promise<ProviderStatus[]> {
-  return apiClient.get<ProviderStatus[]>('/v1/status/providers');
+  const raw = await apiClient.get<ProvidersResponse | ApiProviderStatus[]>('/v1/status/providers');
+  const list = Array.isArray(raw) ? raw : raw?.providers ?? [];
+  return list.map(normalizeProvider);
 }
 
 // ============================================================================
@@ -256,7 +401,8 @@ export async function getLatencyMetrics(
  * Get scheduled maintenance windows
  */
 export async function getMaintenance(): Promise<MaintenanceWindow[]> {
-  return apiClient.get<MaintenanceWindow[]>('/v1/maintenance');
+  const response = await apiClient.get<{ maintenance_windows: MaintenanceWindow[] }>('/v1/maintenance');
+  return response.maintenance_windows || [];
 }
 
 // ============================================================================

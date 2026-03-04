@@ -3,6 +3,7 @@ package status
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,6 +12,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 )
+
+// ErrPrometheusNotConfigured is returned when PROMETHEUS_URL is not set and no queries are made.
+var ErrPrometheusNotConfigured = errors.New("prometheus not configured")
 
 // PrometheusClient provides methods to query Prometheus metrics
 type PrometheusClient struct {
@@ -30,16 +34,14 @@ type cacheEntry struct {
 	expiration time.Time
 }
 
-// NewPrometheusClient creates a new Prometheus client
+// NewPrometheusClient creates a new Prometheus client.
+// When baseURL is empty, all queries return ErrPrometheusNotConfigured (no network calls, no DNS lookup).
 func NewPrometheusClient(baseURL string) *PrometheusClient {
-	if baseURL == "" {
-		baseURL = "http://prometheus:9090"
-	}
-
+	timeout := 3 * time.Second // fail fast on DNS/connect when Prometheus is unreachable
 	return &PrometheusClient{
 		baseURL: baseURL,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: timeout,
 		},
 		cacheDuration: 30 * time.Second,
 		cache: &PrometheusCache{
@@ -55,6 +57,9 @@ func (c *PrometheusClient) SetCacheDuration(duration time.Duration) {
 
 // query performs a Prometheus instant query with caching
 func (c *PrometheusClient) query(ctx context.Context, query string) (*PrometheusResponse, error) {
+	if c.baseURL == "" {
+		return nil, ErrPrometheusNotConfigured
+	}
 	// Check cache first
 	if cached := c.cache.get(query); cached != nil {
 		return cached, nil
@@ -99,6 +104,9 @@ func (c *PrometheusClient) query(ctx context.Context, query string) (*Prometheus
 
 // queryRange performs a Prometheus range query with caching
 func (c *PrometheusClient) queryRange(ctx context.Context, query string, start, end time.Time, step time.Duration) (*PrometheusResponse, error) {
+	if c.baseURL == "" {
+		return nil, ErrPrometheusNotConfigured
+	}
 	cacheKey := fmt.Sprintf("%s|%d|%d|%d", query, start.Unix(), end.Unix(), int(step.Seconds()))
 
 	// Check cache first
@@ -188,7 +196,8 @@ func (c *PrometheusClient) GetServiceHealth(ctx context.Context) (map[string]boo
 				valueStr, ok := result.Value[1].(string)
 				if ok {
 					value, _ := strconv.ParseFloat(valueStr, 64)
-					health[job] = value > 0
+					// If multiple targets per job (e.g. container + host.docker.internal), consider up if any is up
+					health[job] = health[job] || value > 0
 				}
 			}
 		}

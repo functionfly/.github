@@ -112,17 +112,19 @@ docker-down: ## Stop docker services
 docker-logs: ## Show docker logs
 	docker compose logs -f
 
-dev: ## Start development environment (local Postgres + Redis, no Docker). Set DB_PORT=5434 for Docker Postgres. For billing portal, set STRIPE_SECRET_KEY (e.g. sk_test_...).
-	@echo "Using local services: DB_PORT=$${DB_PORT:-5432}, REDIS_ADDR=$${REDIS_ADDR:-localhost:6379}"
+dev: ## Start development environment (local Postgres + Redis, no Docker). Set DB_PORT=5434 for Docker Postgres. Start Prometheus with: docker compose up -d prometheus (then status page will show component health).
+	@echo "Using local services: DB_PORT=$${DB_PORT:-5432}, REDIS_ADDR=$${REDIS_ADDR:-localhost:6379}, PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091}"
 	@if command -v infisical >/dev/null 2>&1; then \
 		DEVELOPMENT=true infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
 		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} \
+		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091} \
+		SKIP_MIGRATION_VALIDATION=true \
 		go run ./cmd/orchestrator-api; \
 	else \
 		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
 		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} DEVELOPMENT=true \
+		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091} DEVELOPMENT=true \
+		SKIP_MIGRATION_VALIDATION=true \
 		go run ./cmd/orchestrator-api; \
 	fi
 
@@ -131,6 +133,7 @@ api: ## Run orchestrator API (local services; use infisical if available). Set D
 		infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
 		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
 		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} \
+		SKIP_MIGRATION_VALIDATION=true \
 		go run ./cmd/orchestrator-api; \
 	else \
 		./scripts/run-api-local.sh; \
@@ -141,11 +144,13 @@ health-monitor: ## Run health monitor service (local DB/Redis). Set DB_PORT=5434
 		infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
 		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
 		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} \
+		SKIP_MIGRATION_VALIDATION=true \
 		go run ./cmd/health-monitor; \
 	else \
 		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
 		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
 		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} \
+		SKIP_MIGRATION_VALIDATION=true \
 		go run ./cmd/health-monitor; \
 	fi
 

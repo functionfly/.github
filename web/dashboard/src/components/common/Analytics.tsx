@@ -12,21 +12,9 @@ export function Analytics() {
     const loadAnalyticsSettings = async () => {
       try {
         // Only try to load analytics settings if user is authenticated
-        const token = localStorage.getItem('sb-access-token');
+        const token = localStorage.getItem('ff-access-token');
         if (!token) {
-          // User not authenticated, use fallback settings
-          const fallbackSettings: AnalyticsSettings = {
-            googleAnalytics: {
-              measurementId: import.meta.env.VITE_GOOGLE_ANALYTICS_ID || 'G-XXXXXXXXXX',
-              enabled: import.meta.env.VITE_GOOGLE_ANALYTICS_ID && import.meta.env.VITE_GOOGLE_ANALYTICS_ID !== 'G-XXXXXXXXXX',
-            },
-            hotjar: {
-              siteId: import.meta.env.VITE_HOTJAR_SITE_ID || '0000000',
-              enabled: import.meta.env.VITE_HOTJAR_SITE_ID && import.meta.env.VITE_HOTJAR_SITE_ID !== '0000000',
-            },
-            services: [],
-          };
-          setSettings(fallbackSettings);
+          // User not authenticated, skip loading analytics settings
           setLoaded(true);
           return;
         }
@@ -35,19 +23,7 @@ export function Analytics() {
         setSettings(analyticsSettings);
       } catch (error) {
         console.error('Failed to load analytics settings:', error);
-        // Fallback to environment variables if API fails or user doesn't have permissions
-        const fallbackSettings: AnalyticsSettings = {
-          googleAnalytics: {
-            measurementId: import.meta.env.VITE_GOOGLE_ANALYTICS_ID || 'G-XXXXXXXXXX',
-            enabled: import.meta.env.VITE_GOOGLE_ANALYTICS_ID && import.meta.env.VITE_GOOGLE_ANALYTICS_ID !== 'G-XXXXXXXXXX',
-          },
-          hotjar: {
-            siteId: import.meta.env.VITE_HOTJAR_SITE_ID || '0000000',
-            enabled: import.meta.env.VITE_HOTJAR_SITE_ID && import.meta.env.VITE_HOTJAR_SITE_ID !== '0000000',
-          },
-          services: [],
-        };
-        setSettings(fallbackSettings);
+        // Don't set fallback settings for authenticated users - they'll get default behavior
       } finally {
         setLoaded(true);
       }
@@ -56,7 +32,12 @@ export function Analytics() {
     loadAnalyticsSettings();
   }, []);
 
-  if (!loaded || !settings) {
+  if (!loaded) {
+    return <VercelAnalytics />;
+  }
+
+  // Only load additional analytics for authenticated users with custom settings
+  if (!settings) {
     return <VercelAnalytics />;
   }
 
@@ -67,10 +48,7 @@ export function Analytics() {
        settings.googleAnalytics.measurementId &&
        settings.googleAnalytics.measurementId !== 'G-XXXXXXXXXX' &&
        loadGoogleAnalytics(settings.googleAnalytics.measurementId)}
-      {settings.hotjar?.enabled &&
-       settings.hotjar.siteId &&
-       settings.hotjar.siteId !== '0000000' &&
-       loadHotjar(settings.hotjar.siteId)}
+      {/* Note: Hotjar is handled by PublicAnalytics for public pages */}
     </>
   );
 }

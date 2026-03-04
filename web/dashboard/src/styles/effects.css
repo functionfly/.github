@@ -110,7 +110,7 @@
 }
 
 .text-glow-success {
-  text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
 }
 
 .text-glow-error {
@@ -262,7 +262,7 @@
 
 /* Mesh Gradient Background */
 .mesh-gradient {
-  background: 
+  background:
     radial-gradient(at 40% 20%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
     radial-gradient(at 80% 0%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
     radial-gradient(at 0% 50%, rgba(217, 70, 239, 0.1) 0px, transparent 50%),
@@ -271,7 +271,7 @@
 }
 
 [data-theme="light"] .mesh-gradient {
-  background: 
+  background:
     radial-gradient(at 40% 20%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
     radial-gradient(at 80% 0%, rgba(139, 92, 246, 0.05) 0px, transparent 50%),
     radial-gradient(at 0% 50%, rgba(217, 70, 239, 0.05) 0px, transparent 50%),
@@ -279,12 +279,17 @@
     radial-gradient(at 0% 100%, rgba(139, 92, 246, 0.08) 0px, transparent 50%);
 }
 
-/* Gradient Text */
+/* Gradient Text - Optimized for LCP */
 .gradient-text {
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  /* Optimize for performance - hardware acceleration */
+  transform: translateZ(0);
+  /* Prevent layout shifts with explicit sizing */
+  display: inline-block;
+  min-height: 1.2em;
 }
 
 .gradient-text-success {
@@ -369,7 +374,7 @@
 /* Neon Border */
 .neon-border {
   border: 1px solid rgba(99, 102, 241, 0.5);
-  box-shadow: 
+  box-shadow:
     0 0 5px rgba(99, 102, 241, 0.3),
     0 0 10px rgba(99, 102, 241, 0.2),
     inset 0 0 5px rgba(99, 102, 241, 0.1);
@@ -377,7 +382,7 @@
 
 .neon-border-success {
   border: 1px solid rgba(16, 185, 129, 0.5);
-  box-shadow: 
+  box-shadow:
     0 0 5px rgba(16, 185, 129, 0.3),
     0 0 10px rgba(16, 185, 129, 0.2),
     inset 0 0 5px rgba(16, 185, 129, 0.1);
@@ -385,7 +390,7 @@
 
 .neon-border-error {
   border: 1px solid rgba(239, 68, 68, 0.5);
-  box-shadow: 
+  box-shadow:
     0 0 5px rgba(239, 68, 68, 0.3),
     0 0 10px rgba(239, 68, 68, 0.2),
     inset 0 0 5px rgba(239, 68, 68, 0.1);
@@ -394,7 +399,7 @@
 /* Neon Text */
 .neon-text {
   color: #6366f1;
-  text-shadow: 
+  text-shadow:
     0 0 5px rgba(99, 102, 241, 0.5),
     0 0 10px rgba(99, 102, 241, 0.3),
     0 0 20px rgba(99, 102, 241, 0.2);
@@ -402,7 +407,7 @@
 
 .neon-text-success {
   color: #10b981;
-  text-shadow: 
+  text-shadow:
     0 0 5px rgba(16, 185, 129, 0.5),
     0 0 10px rgba(16, 185, 129, 0.3),
     0 0 20px rgba(16, 185, 129, 0.2);
@@ -429,7 +434,7 @@
 
 .neon-button:hover {
   border-color: rgba(99, 102, 241, 0.8);
-  box-shadow: 
+  box-shadow:
     0 0 10px rgba(99, 102, 241, 0.4),
     0 0 20px rgba(99, 102, 241, 0.2),
     inset 0 0 10px rgba(99, 102, 241, 0.1);
@@ -528,7 +533,7 @@
 
 /* Grid Pattern */
 .grid-pattern {
-  background-image: 
+  background-image:
     linear-gradient(var(--border-subtle) 1px, transparent 1px),
     linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
   background-size: 40px 40px;
@@ -568,6 +573,35 @@
 }
 
 .shine-effect:hover::after {
+  transform: rotate(30deg) translateX(100%);
+}
+
+/* Shine Effect on Hover Only (for LCP optimization) */
+.shine-effect-on-hover {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.shine-effect-on-hover::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  transform: rotate(30deg) translateX(-100%);
+  transition: transform 0.6s ease;
+  pointer-events: none;
+}
+
+.shine-effect-on-hover:hover::after {
   transform: rotate(30deg) translateX(100%);
 }
 

@@ -12,13 +12,14 @@
  */
 
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { User, Package, Activity, BarChart3, BookOpen, Settings } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/common/Navbar";
+import { UserNotFoundView } from "@/components/ui/UserNotFoundView";
 import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { AvatarPicker } from "@/components/profile/AvatarPicker";
 import type {
@@ -36,11 +37,11 @@ import {
   type UserAchievementsResponse,
   type UserActivityResponse,
   type UserSkillsResponse,
+  type MeResponse,
 } from "@/api/users";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import { Footer } from "@/pages/LandingPage/components";
-import { AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 
 import { transformToUserProfile } from "./transformers";
@@ -122,8 +123,33 @@ export function ProfilePage({
         registryApi.getFunctions({ author: username, limit: 100 }),
       ]);
 
+      // Convert MeResponse to PublicUserProfile-like format for transformToUserProfile
+      let profileData: any;
+      if (isOwnProfile) {
+        const meResponse = profileResponse as MeResponse;
+        profileData = {
+          id: meResponse.id,
+          username: meResponse.username,
+          name: meResponse.name,
+          avatar: meResponse.avatar,
+          bio: undefined,
+          location: undefined,
+          website: undefined,
+          jobTitle: undefined,
+          companyName: meResponse.companyName,
+          twitterUrl: undefined,
+          githubUrl: undefined,
+          linkedinUrl: undefined,
+          socialLinks: undefined,
+          createdAt: meResponse.updatedAt, // Use updatedAt as fallback for createdAt
+          publishedFunctions: [],
+        };
+      } else {
+        profileData = profileResponse;
+      }
+
       return transformToUserProfile(
-        profileResponse,
+        profileData,
         functionsResponse.functions || []
       );
     },
@@ -393,24 +419,13 @@ export function ProfilePage({
           )}
 
           {isError && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center py-24 text-center px-4"
-            >
-              <AlertCircle className="w-12 h-12 text-text-muted mb-4" />
-              <h1 className="text-2xl font-bold text-text-primary mb-2">
-                User not found
-              </h1>
-              <p className="text-text-secondary mb-6">
-                {(error as Error)?.message?.includes("404")
-                  ? `No user with username "@${username}" exists.`
-                  : "Failed to load this profile. Please try again."}
-              </p>
-              <Link to="/registry">
-                <Button variant="outline">Browse Functions</Button>
-              </Link>
-            </motion.div>
+            <div className="flex flex-col items-center justify-center py-24 px-4">
+              <UserNotFoundView
+                username={username}
+                is404={(error as Error)?.message?.includes("404")}
+                compact
+              />
+            </div>
           )}
 
           {profile && (

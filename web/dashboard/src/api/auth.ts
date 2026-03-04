@@ -8,6 +8,9 @@ export const authApi = {
   signup: (data: SignupRequest) =>
     apiClient.post<SignupResponse>("/v1/auth/signup", data),
 
+  checkUsernameAvailability: (username: string) =>
+    apiClient.get<{ available: boolean; username: string }>(`/v1/auth/check-username?username=${encodeURIComponent(username)}`),
+
   resendVerification: (email: string) =>
     apiClient.post<{ message: string }>("/v1/auth/resend-verification", { email }),
 

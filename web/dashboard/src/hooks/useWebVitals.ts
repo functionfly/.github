@@ -19,7 +19,7 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
       console.log('CLS:', metric);
       onMetrics?.(metrics);
 
-      // Send to analytics (replace with your analytics service)
+      // Send to Google Analytics 4
       if (typeof window !== 'undefined' && (window as any).gtag) {
         (window as any).gtag('event', 'web_vitals', {
           event_category: 'Web Vitals',
@@ -35,6 +35,16 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
       metrics.INP = metric.value;
       console.log('INP:', metric);
       onMetrics?.(metrics);
+
+      // Send to Google Analytics 4
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'web_vitals', {
+          event_category: 'Web Vitals',
+          event_label: 'INP',
+          value: Math.round(metric.value),
+          custom_map: { metric_value: metric.value }
+        });
+      }
     });
 
     // First Contentful Paint (FCP)
@@ -42,6 +52,16 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
       metrics.FCP = metric.value;
       console.log('FCP:', metric);
       onMetrics?.(metrics);
+
+      // Send to Google Analytics 4
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'web_vitals', {
+          event_category: 'Web Vitals',
+          event_label: 'FCP',
+          value: Math.round(metric.value),
+          custom_map: { metric_value: metric.value }
+        });
+      }
     });
 
     // Largest Contentful Paint (LCP)
@@ -50,7 +70,7 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
       console.log('LCP:', metric);
       onMetrics?.(metrics);
 
-      // Send to analytics
+      // Send to Google Analytics 4
       if (typeof window !== 'undefined' && (window as any).gtag) {
         (window as any).gtag('event', 'web_vitals', {
           event_category: 'Web Vitals',
@@ -66,32 +86,29 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
       metrics.TTFB = metric.value;
       console.log('TTFB:', metric);
       onMetrics?.(metrics);
+
+      // Send to Google Analytics 4
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'web_vitals', {
+          event_category: 'Web Vitals',
+          event_label: 'TTFB',
+          value: Math.round(metric.value),
+          custom_map: { metric_value: metric.value }
+        });
+      }
     });
   }, [onMetrics]);
 }
 
-// Utility function to send metrics to your analytics service
-export function reportWebVitals(metric: any) {
-  // Example: Send to Google Analytics 4
-  if (typeof window !== 'undefined' && (window as any).gtag) {
-    (window as any).gtag('event', 'web_vitals', {
-      event_category: 'Web Vitals',
-      event_label: metric.name,
-      value: Math.round(metric.name === 'CLS' ? metric.value * 1000 : metric.value),
-      custom_map: {
-        metric_id: metric.id,
-        metric_value: metric.value,
-        metric_delta: metric.delta
-      }
-    });
-  }
-
+// Utility function for custom analytics integration
+// This function can be used if you need to send metrics to a custom analytics service
+export function reportWebVitalsToCustomAnalytics(metric: any) {
   // Example: Send to custom analytics endpoint
-  /*
   fetch('/api/analytics/web-vitals', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(metric)
+  }).catch(error => {
+    console.error('Failed to send web vitals to custom analytics:', error);
   });
-  */
 }

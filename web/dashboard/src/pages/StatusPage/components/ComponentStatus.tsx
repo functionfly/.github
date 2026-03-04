@@ -79,7 +79,9 @@ function ComponentCard({
   component: ComponentHealth;
   index: number;
 }) {
-  const status = statusConfig[component.status];
+  const status =
+    statusConfig[component.status as keyof typeof statusConfig] ??
+    statusConfig.operational;
   const Icon = componentIcons[component.id] || Server;
 
   return (

@@ -44,8 +44,11 @@ type PostgresDB struct {
 	contentRepository      *ContentRepository
 	feedbackRepository     *FeedbackRepository
 	monitoringRepository   *MonitoringRepository
-	sessionRepository      *SessionRepository
-	localRuntimeRepository *LocalRuntimeRepository
+	sessionRepository       *SessionRepository
+	refreshTokenRepository  *RefreshTokenRepository
+	loginAttemptRepository  *LoginAttemptRepository
+	authEventRepository     *AuthEventRepository
+	localRuntimeRepository  *LocalRuntimeRepository
 	functionRepository     *FunctionRepository
 	registryRepository     *registry.RegistryRepository
 	incidentRepository     *IncidentRepository
@@ -185,6 +188,9 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 	postgresDB.feedbackRepository = NewFeedbackRepository(postgresDB)
 	postgresDB.monitoringRepository = NewMonitoringRepository(postgresDB)
 	postgresDB.sessionRepository = NewSessionRepository(postgresDB)
+	postgresDB.refreshTokenRepository = NewRefreshTokenRepository(postgresDB)
+	postgresDB.loginAttemptRepository = NewLoginAttemptRepository(postgresDB)
+	postgresDB.authEventRepository = NewAuthEventRepository(postgresDB)
 	postgresDB.localRuntimeRepository = NewLocalRuntimeRepository(postgresDB)
 	postgresDB.functionRepository = NewFunctionRepository(postgresDB.DB)
 	postgresDB.registryRepository = registry.NewRegistryRepository(postgresDB.GORM, nil)

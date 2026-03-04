@@ -490,18 +490,20 @@ describe('Status API', () => {
 
   describe('getMaintenance', () => {
     it('should fetch maintenance windows', async () => {
-      const mockResponse: MaintenanceWindow[] = [
-        {
-          id: 'maint-1',
-          title: 'Scheduled Maintenance',
-          description: 'Database upgrade',
-          scheduled_start: new Date().toISOString(),
-          scheduled_end: new Date(Date.now() + 3600000).toISOString(),
-          affected_components: ['database'],
-          status: 'scheduled',
-          created_at: new Date().toISOString(),
-        },
-      ];
+      const mockResponse = {
+        maintenance_windows: [
+          {
+            id: 'maint-1',
+            title: 'Scheduled Maintenance',
+            description: 'Database upgrade',
+            scheduled_start: new Date().toISOString(),
+            scheduled_end: new Date(Date.now() + 3600000).toISOString(),
+            affected_components: ['database'],
+            status: 'scheduled',
+            created_at: new Date().toISOString(),
+          },
+        ],
+      };
 
       mockedApiClient.get.mockResolvedValueOnce(mockResponse);
 
@@ -513,7 +515,7 @@ describe('Status API', () => {
     });
 
     it('should return empty array when no maintenance', async () => {
-      mockedApiClient.get.mockResolvedValueOnce([]);
+      mockedApiClient.get.mockResolvedValueOnce({ maintenance_windows: [] });
 
       const result = await getMaintenance();
 

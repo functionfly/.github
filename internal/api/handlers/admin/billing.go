@@ -3,8 +3,10 @@ package admin
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
+
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -262,11 +264,25 @@ func (h *Handler) HandleCancelSubscription(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(map[string]string{"status": "canceled"})
 }
 
-// HandleListInvoices lists invoices
+// HandleListInvoices lists all invoices (admin)
 func (h *Handler) HandleListInvoices(w http.ResponseWriter, r *http.Request) {
-	// For now, return empty list - in a real implementation you'd filter by tenant
-	invoices := []*storage.Invoice{}
-
+	limit, offset := 100, 0
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 500 {
+			limit = n
+		}
+	}
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if n, err := strconv.Atoi(o); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+	invoices, err := h.repo.ListAllInvoices(limit, offset)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list invoices")
+		http.Error(w, "Failed to list invoices", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"invoices": invoices,

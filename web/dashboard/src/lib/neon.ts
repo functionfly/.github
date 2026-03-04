@@ -2,8 +2,8 @@ import { createClient, SupabaseAuthAdapter } from '@neondatabase/neon-js';
 
 // Neon Auth configuration — BetterAuth requires an absolute URL (relative paths like /api/v1/auth throw)
 function resolveAuthUrl(): string {
-  const raw = import.meta.env.VITE_NEON_AUTH_URL;
-  if (!raw) throw new Error('VITE_NEON_AUTH_URL is required');
+  const raw = import.meta.env.VITE_API_URL;
+  if (!raw) throw new Error('VITE_API_URL is required');
   if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
   const origin = typeof window !== 'undefined' ? window.location.origin : (import.meta.env.VITE_APP_ORIGIN || 'http://localhost:5173');
   return `${origin}${raw.startsWith('/') ? raw : `/${raw}`}`;

@@ -4,13 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -94,7 +98,78 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := h.authSvc.Login(req.Email, req.Password)
+	// Get client IP and user agent for refresh token tracking
+	ipAddress := getClientIP(r)
+	userAgent := r.Header.Get("User-Agent")
+
+	// Check if the account is currently locked out
+	user, _ := h.authSvc.Repo().GetUserByEmail(req.Email)
+	if user != nil {
+		lockoutUntil, err := h.authSvc.Repo().GetUserLockoutStatus(user.ID)
+		if err != nil {
+			logrus.WithError(err).WithField("userID", user.ID).Warn("Failed to check lockout status")
+		} else if lockoutUntil != nil && time.Now().Before(*lockoutUntil) {
+			remaining := time.Until(*lockoutUntil)
+			minutes := int(remaining.Minutes()) + 1 // Round up
+			message := fmt.Sprintf("Account is temporarily locked due to too many failed login attempts. Try again in %d minutes.", minutes)
+
+			// Log account lockout event
+			failureReason := "account_locked"
+			authEvent := &storage.AuthEvent{
+				UserID:        &user.ID,
+				TenantID:      &user.TenantID,
+				EventType:     "login_failed",
+				Success:       false,
+				FailureReason: &failureReason,
+				IPAddress:     ipAddress,
+				UserAgent:     userAgent,
+			}
+			if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+				logrus.WithError(logErr).WithField("userID", user.ID).Warn("Failed to log lockout auth event")
+			}
+
+			writeJSONError(w, http.StatusTooManyRequests, message)
+			return
+		}
+	}
+
+	response, err := h.authSvc.Login(req.Email, req.Password, ipAddress, userAgent)
+
+	// Record login attempt and log auth event
+	if user != nil {
+		// Record the attempt (success will be determined below)
+		_, recordErr := h.authSvc.Repo().CreateLoginAttempt(user.ID, ipAddress, userAgent, err == nil, nil)
+		if recordErr != nil {
+			logrus.WithError(recordErr).WithField("userID", user.ID).Warn("Failed to record login attempt")
+		}
+
+		// Log auth event
+		eventType := "login"
+		failureReason := ""
+		if err != nil {
+			eventType = "login_failed"
+			failureReason = "invalid_credentials" // Default, will be overridden for lockouts
+		}
+
+		authEvent := &storage.AuthEvent{
+			UserID:        &user.ID,
+			TenantID:      &user.TenantID,
+			EventType:     eventType,
+			Success:       err == nil,
+			FailureReason: &failureReason,
+			IPAddress:     ipAddress,
+			UserAgent:     userAgent,
+		}
+
+		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+			logrus.WithError(logErr).WithField("userID", user.ID).Warn("Failed to log auth event")
+		}
+
+		// Check if we need to implement lockout for failed attempts
+		if err != nil {
+			h.handleFailedLoginAttempt(user.ID, ipAddress, userAgent)
+		}
+	}
 
 	if err != nil {
 		logrus.WithError(err).WithField("email", req.Email).Warn("Login failed")
@@ -143,8 +218,8 @@ func (h *Handler) HandleSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Email == "" || req.Password == "" {
-		writeJSONError(w, http.StatusBadRequest, "Email and password are required")
+	if req.Email == "" || req.Password == "" || req.Username == "" {
+		writeJSONError(w, http.StatusBadRequest, "Email, password, and username are required")
 		return
 	}
 
@@ -161,8 +236,42 @@ func (h *Handler) HandleSignup(w http.ResponseWriter, r *http.Request) {
 	response, err := h.authSvc.Signup(req)
 	if err != nil {
 		logrus.WithError(err).WithField("email", req.Email).Warn("Signup failed")
+
+		// Log signup failure
+		authEvent := &storage.AuthEvent{
+			EventType:     "signup",
+			Success:       false,
+			FailureReason: stringPtr("signup_failed"),
+			IPAddress:     getClientIP(r),
+			UserAgent:     r.Header.Get("User-Agent"),
+			Metadata: map[string]interface{}{
+				"email":    req.Email,
+				"username": req.Username,
+			},
+		}
+		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+			logrus.WithError(logErr).Warn("Failed to log signup failure")
+		}
+
 		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
+	}
+
+	// Log successful signup
+	authEvent := &storage.AuthEvent{
+		EventType: "signup",
+		Success:   true,
+		IPAddress: getClientIP(r),
+		UserAgent: r.Header.Get("User-Agent"),
+		Metadata: map[string]interface{}{
+			"email":                 req.Email,
+			"username":              req.Username,
+			"email_sent":            response.EmailSent,
+			"requires_verification": response.RequiresVerification,
+		},
+	}
+	if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+		logrus.WithError(logErr).Warn("Failed to log signup success")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -272,6 +381,19 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.WithError(err).WithField("provider", provider).Warn("OAuth callback failed")
 
+		// Log OAuth login failure
+		authEvent := &storage.AuthEvent{
+			EventType:     "oauth_login",
+			Success:       false,
+			FailureReason: stringPtr("oauth_callback_failed"),
+			IPAddress:     getClientIP(r),
+			UserAgent:     r.Header.Get("User-Agent"),
+			Provider:      &provider,
+		}
+		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+			logrus.WithError(logErr).Warn("Failed to log OAuth login failure")
+		}
+
 		// Check if it's an OAuthError with structured error handling
 		var oauthErr *auth.OAuthError
 		if errors.As(err, &oauthErr) {
@@ -296,13 +418,32 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Log successful OAuth login
+	if response.User != nil {
+		authEvent := &storage.AuthEvent{
+			UserID:    &response.User.ID,
+			TenantID:  &response.User.TenantID,
+			EventType: "oauth_login",
+			Success:   true,
+			IPAddress: getClientIP(r),
+			UserAgent: r.Header.Get("User-Agent"),
+			Provider:  &provider,
+			Metadata: map[string]interface{}{
+				"new_user": response.NewUser,
+			},
+		}
+		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+			logrus.WithError(logErr).WithField("userID", response.User.ID).Warn("Failed to log OAuth login success")
+		}
+	}
+
 	// Redirect to frontend with success and token
 	frontendURL := os.Getenv("FRONTEND_URL")
 	if frontendURL == "" {
 		frontendURL = "http://localhost:3000"
 	}
-	successRedirectURL := fmt.Sprintf("%s/auth/oauth/callback?token=%s&new_user=%t",
-		frontendURL, response.Token, response.NewUser)
+	successRedirectURL := fmt.Sprintf("%s/auth/oauth/callback?token=%s&refresh_token=%s&new_user=%t",
+		frontendURL, response.Token, response.RefreshToken, response.NewUser)
 	http.Redirect(w, r, successRedirectURL, http.StatusFound)
 }
 
@@ -551,7 +692,24 @@ func (h *Handler) HandlePasswordResetRequest(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Best-effort — don't reveal whether the email exists
-	_ = h.authSvc.RequestPasswordReset(req.Email)
+	err := h.authSvc.RequestPasswordReset(req.Email)
+
+	// Log password reset request (regardless of success/failure to avoid leaking user existence)
+	authEvent := &storage.AuthEvent{
+		EventType: "password_reset_request",
+		Success:   err == nil,
+		IPAddress: getClientIP(r),
+		UserAgent: r.Header.Get("User-Agent"),
+		Metadata: map[string]interface{}{
+			"email": req.Email,
+		},
+	}
+	if err != nil {
+		authEvent.FailureReason = stringPtr("reset_request_failed")
+	}
+	if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+		logrus.WithError(logErr).Warn("Failed to log password reset request")
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{
@@ -574,23 +732,79 @@ func (h *Handler) HandlePasswordResetConfirm(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := h.authSvc.ConfirmPasswordReset(req.Token, req.NewPassword); err != nil {
+	err := h.authSvc.ConfirmPasswordReset(req.Token, req.NewPassword)
+	if err != nil {
 		logrus.WithError(err).Debug("Password reset confirm failed")
+
+		// Log password reset confirmation failure
+		authEvent := &storage.AuthEvent{
+			EventType:     "password_reset_confirm",
+			Success:       false,
+			FailureReason: stringPtr("invalid_token"),
+			IPAddress:     getClientIP(r),
+			UserAgent:     r.Header.Get("User-Agent"),
+		}
+		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+			logrus.WithError(logErr).Warn("Failed to log password reset confirmation failure")
+		}
+
 		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
+	}
+
+	// Log successful password reset
+	authEvent := &storage.AuthEvent{
+		EventType: "password_reset_confirm",
+		Success:   true,
+		IPAddress: getClientIP(r),
+		UserAgent: r.Header.Get("User-Agent"),
+	}
+	if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+		logrus.WithError(logErr).Warn("Failed to log password reset confirmation success")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Password reset successfully"})
 }
 
-// HandleLogout invalidates the current session server-side
+// HandleCheckUsernameAvailability checks if a username is available for registration
+func (h *Handler) HandleCheckUsernameAvailability(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		writeJSONError(w, http.StatusBadRequest, "Username parameter is required")
+		return
+	}
+
+	available, err := h.authSvc.CheckUsernameAvailability(username)
+	if err != nil {
+		logrus.WithError(err).WithField("username", username).Warn("Username availability check failed")
+		writeJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	response := map[string]interface{}{
+		"available": available,
+		"username":  username,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(response)
+}
+
+// HandleLogout invalidates the current session and refresh tokens server-side
 func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from the JWT token
 	authHeader := r.Header.Get("Authorization")
+	var userID *uuid.UUID
+
 	if authHeader != "" {
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) == 2 && parts[0] == "Bearer" {
 			tokenString := parts[1]
+			// Validate token to get user ID
+			if claims, err := h.authSvc.ValidateToken(tokenString); err == nil {
+				userID = &claims.UserID
+			}
 			// Best-effort: delete the session; ignore errors (token may already be expired)
 			if err := h.authSvc.Repo().DeleteSession(tokenString); err != nil {
 				logrus.WithError(err).Debug("Logout: failed to delete session (may already be expired)")
@@ -598,6 +812,226 @@ func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Revoke all refresh tokens for the user
+	if userID != nil {
+		if err := h.authSvc.Repo().RevokeUserRefreshTokens(*userID); err != nil {
+			logrus.WithError(err).WithField("userID", userID).Warn("Logout: failed to revoke refresh tokens")
+		}
+
+		// Log logout event
+		authEvent := &storage.AuthEvent{
+			UserID:    userID,
+			EventType: "logout",
+			Success:   true,
+			IPAddress: getClientIP(r),
+			UserAgent: r.Header.Get("User-Agent"),
+		}
+		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+			logrus.WithError(logErr).WithField("userID", userID).Warn("Failed to log logout event")
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Logged out successfully"})
+}
+
+// HandleRefreshToken handles refresh token requests to get new access tokens
+func (h *Handler) HandleRefreshToken(w http.ResponseWriter, r *http.Request) {
+	// Only allow POST requests
+	if r.Method != http.MethodPost {
+		writeJSONError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.RefreshToken == "" {
+		writeJSONError(w, http.StatusBadRequest, "Refresh token is required")
+		return
+	}
+
+	// Hash the provided refresh token for lookup
+	tokenHash := storage.HashRefreshToken(req.RefreshToken)
+
+	// Get refresh token from database
+	refreshToken, err := h.authSvc.Repo().GetRefreshTokenByHash(tokenHash)
+	if err != nil {
+		logrus.WithError(err).Warn("Refresh token lookup failed")
+		writeJSONError(w, http.StatusUnauthorized, "Invalid refresh token")
+		return
+	}
+
+	if refreshToken == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Invalid refresh token")
+		return
+	}
+
+	if refreshToken.Revoked {
+		logrus.WithField("tokenID", refreshToken.ID).Warn("Attempted to use revoked refresh token")
+		writeJSONError(w, http.StatusUnauthorized, "Refresh token has been revoked")
+		return
+	}
+
+	// Get user associated with the refresh token
+	user, err := h.authSvc.Repo().GetUserByID(refreshToken.UserID)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", refreshToken.UserID).Warn("Failed to get user for refresh token")
+		writeJSONError(w, http.StatusUnauthorized, "User not found")
+		return
+	}
+
+	// Generate new access token
+	newAccessToken, err := h.authSvc.GenerateToken(user)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to generate new access token")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to generate access token")
+		return
+	}
+
+	// Optionally generate new refresh token (token rotation)
+	newRefreshToken, newRefreshTokenHash, err := h.authSvc.GenerateRefreshToken()
+	if err != nil {
+		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to generate new refresh token")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to generate refresh token")
+		return
+	}
+
+	// Revoke old refresh token and create new one
+	if err := h.authSvc.Repo().RevokeRefreshToken(refreshToken.ID); err != nil {
+		logrus.WithError(err).WithField("tokenID", refreshToken.ID).Warn("Failed to revoke old refresh token")
+	}
+
+	// Get client info for new refresh token
+	ipAddress := getClientIP(r)
+	userAgent := r.Header.Get("User-Agent")
+
+	// Store new refresh token
+	newExpiresAt := time.Now().Add(30 * 24 * time.Hour) // 30 days
+	_, err = h.authSvc.Repo().CreateRefreshToken(user.ID, newRefreshTokenHash, ipAddress, userAgent, newExpiresAt)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", user.ID).Error("Failed to store new refresh token")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to store refresh token")
+		return
+	}
+
+	// Build safe user response
+	safeUser := map[string]interface{}{
+		"id":             user.ID,
+		"tenant_id":      user.TenantID,
+		"email":          user.Email,
+		"role":           user.Role,
+		"email_verified": user.EmailVerified,
+		"mfa_enabled":    user.MFAEnabled,
+		"created_at":     user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		"updated_at":     user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+	if user.Username != nil && *user.Username != "" {
+		safeUser["username"] = *user.Username
+	}
+	if user.CompanyName != nil && *user.CompanyName != "" {
+		safeUser["company_name"] = *user.CompanyName
+	}
+
+	// Load tenant for plan
+	if tenant, err := h.authSvc.Repo().GetTenantByID(user.TenantID); err == nil && tenant != nil && tenant.Plan != "" {
+		safeUser["plan"] = tenant.Plan
+	}
+
+	response := map[string]interface{}{
+		"token":         newAccessToken,
+		"refresh_token": newRefreshToken,
+		"user":          safeUser,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(response)
+}
+
+// handleFailedLoginAttempt checks if a user should be locked out after failed attempts
+func (h *Handler) handleFailedLoginAttempt(userID uuid.UUID, ipAddress, userAgent string) {
+	const maxFailedAttempts = 5
+	const lockoutDuration = 15 * time.Minute // 15 minutes lockout
+	const failureWindow = 15 * time.Minute   // Check failures in last 15 minutes
+
+	// Count recent failed attempts
+	failedCount, err := h.authSvc.Repo().GetRecentFailedLoginAttempts(userID, time.Now().Add(-failureWindow))
+	if err != nil {
+		logrus.WithError(err).WithField("userID", userID).Warn("Failed to count recent failed login attempts")
+		return
+	}
+
+	// If we've exceeded the threshold, lock the account
+	if failedCount >= maxFailedAttempts {
+		lockoutUntil := time.Now().Add(lockoutDuration)
+
+		// Record the lockout attempt
+		_, err = h.authSvc.Repo().CreateLoginAttempt(userID, ipAddress, userAgent, false, &lockoutUntil)
+		if err != nil {
+			logrus.WithError(err).WithField("userID", userID).Warn("Failed to record lockout")
+			return
+		}
+
+		// Log account lockout event
+		eventType := "account_locked"
+		authEvent := &storage.AuthEvent{
+			UserID:    &userID,
+			EventType: eventType,
+			Success:   false,
+			IPAddress: ipAddress,
+			UserAgent: userAgent,
+			Metadata: map[string]interface{}{
+				"failed_attempts":          failedCount,
+				"lockout_duration_minutes": 15,
+			},
+		}
+		if logErr := h.authSvc.Repo().LogAuthEvent(authEvent); logErr != nil {
+			logrus.WithError(logErr).WithField("userID", userID).Warn("Failed to log account lockout event")
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"userID":         userID,
+			"failedAttempts": failedCount,
+			"lockoutUntil":   lockoutUntil,
+		}).Warn("Account locked due to too many failed login attempts")
+	}
+}
+
+// stringPtr returns a pointer to the given string
+func stringPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// getClientIP extracts the real client IP address from the request
+func getClientIP(r *http.Request) string {
+	// Check for X-Forwarded-For header (common with proxies/load balancers)
+	xff := r.Header.Get("X-Forwarded-For")
+	if xff != "" {
+		// X-Forwarded-For can contain multiple IPs, take the first one
+		if idx := strings.Index(xff, ","); idx > 0 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return strings.TrimSpace(xff)
+	}
+
+	// Check for X-Real-IP header
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+
+	// Fall back to RemoteAddr
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
 }

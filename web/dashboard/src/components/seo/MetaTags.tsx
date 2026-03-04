@@ -13,7 +13,7 @@ interface MetaTagsProps {
 export function MetaTags({
   title = "FunctionFly - Deploy Functions Anywhere",
   description = "Deploy serverless functions to any cloud provider with FunctionFly. Zero-config deployments, instant scaling, and unified developer experience.",
-  image = "/og-image.jpg",
+  image = "/og-image.svg",
   url,
   type = "website",
   keywords = ["serverless", "functions", "deployment", "cloud", "devops"],

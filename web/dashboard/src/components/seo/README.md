@@ -85,6 +85,36 @@ npm run generate-robots
 npm run seo
 ```
 
+### 6. Hotjar - User Behavior Analytics
+
+**Why chosen:** Industry-leading session recording and user feedback platform with heatmaps, session recordings, and surveys.
+
+**Implementation:** Separate components for public vs authenticated users.
+
+**Public Pages:** `PublicAnalytics` component loads Hotjar immediately for user behavior analysis on public pages.
+
+**Authenticated Users:** `Analytics` component loads Hotjar via admin settings for dashboard analytics.
+
+**Environment Variable:**
+```env
+VITE_HOTJAR_SITE_ID=your_hotjar_site_id
+```
+
+**Usage:**
+```tsx
+// On public pages
+import { PublicAnalytics } from '@/components/common/PublicAnalytics';
+
+<PublicAnalytics /> // Loads Hotjar immediately if configured
+```
+
+**Features:**
+- Session recordings for user behavior analysis
+- Heatmaps and click tracking
+- User feedback collection
+- Conversion funnel analysis
+- Form analytics
+
 ## Implementation Checklist
 
 ### ✅ Completed
@@ -95,15 +125,23 @@ npm run seo
 - [x] Sitemap configuration (`next-sitemap.config.js`)
 - [x] Robots.txt configuration (`robots.config.js`)
 - [x] Landing page SEO integration
+- [x] Blog page SEO integration
+- [x] Blog post SEO integration
+- [x] Agent marketplace SEO integration
+- [x] Function marketplace SEO integration
+- [x] Flywheel network SEO integration
+- [x] Google Analytics integration for Web Vitals
+- [x] Open Graph image setup
+- [x] Hotjar implementation for public pages
+- [x] Hotjar implementation for authenticated users
 - [x] Build scripts updated
 
 ### 🔄 Next Steps
 
-- [ ] Add SEO to other public pages (Pricing, Features, Team)
-- [ ] Create Open Graph images
-- [ ] Set up Google Analytics/Search Console
-- [ ] Add breadcrumb structured data
-- [ ] Implement FAQ structured data for FAQ section
+- [ ] Implement dynamic Open Graph image generation (Vercel OG or similar)
+- [ ] Add more structured data types (Breadcrumbs, FAQ, How-to guides)
+- [ ] Set up Google Search Console verification
+- [ ] Implement schema markup for user profiles and organization pages
 
 ## Performance Benefits
 

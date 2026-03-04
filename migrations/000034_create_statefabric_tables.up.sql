@@ -5,41 +5,41 @@
 CREATE TABLE IF NOT EXISTS states (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id),
-    
+
     -- Naming and addressing
     name VARCHAR(255) NOT NULL,
     full_path VARCHAR(512) NOT NULL, -- "acme/cart"
     function_id UUID REFERENCES registry_functions(id), -- Optional bound function
-    
+
     -- State configuration
     storage_type VARCHAR(50) DEFAULT 'keyvalue' CHECK (storage_type IN ('keyvalue', 'document', 'timeseries', 'graph')),
-    
+
     -- Retention
     ttl_days INTEGER DEFAULT 0, -- 0 = forever
     max_size_mb INTEGER DEFAULT 100,
-    
+
     -- Versioning
     current_version INTEGER DEFAULT 1,
     is_versioned BOOLEAN DEFAULT true,
-    
+
     -- Permissions
     is_public BOOLEAN DEFAULT false,
     allow_cross_tenant BOOLEAN DEFAULT false,
-    
+
     -- Metadata
     description TEXT,
     tags JSONB DEFAULT '[]'::jsonb,
-    
+
     -- Billing and usage
     storage_used_mb BIGINT DEFAULT 0,
     write_ops_month BIGINT DEFAULT 0,
     read_ops_month BIGINT DEFAULT 0,
-    
+
     -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     last_accessed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
+
     CONSTRAINT uq_states_tenant_path UNIQUE (tenant_id, full_path)
 );
 
@@ -54,27 +54,27 @@ CREATE INDEX IF NOT EXISTS idx_states_created_at ON states(created_at);
 CREATE TABLE IF NOT EXISTS state_values (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     state_id UUID NOT NULL REFERENCES states(id) ON DELETE CASCADE,
-    
+
     -- Key supports hierarchical keys like "user/123/profile"
     key VARCHAR(1024) NOT NULL,
-    
+
     -- Value stored as JSON for flexibility
     value JSONB NOT NULL,
-    
+
     -- Versioning
     version INTEGER NOT NULL DEFAULT 1,
     previous_value JSONB,
-    
+
     -- Content addressing (for deduplication)
     content_hash VARCHAR(64),
-    
+
     -- TTL
     expires_at TIMESTAMP WITH TIME ZONE,
-    
+
     -- Metadata
     created_by VARCHAR(255), -- function_id or user_id
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
+
     CONSTRAINT uq_state_values_state_key_version UNIQUE (state_id, key, version)
 );
 
@@ -83,40 +83,40 @@ CREATE INDEX IF NOT EXISTS idx_state_values_state_id ON state_values(state_id);
 CREATE INDEX IF NOT EXISTS idx_state_values_key ON state_values(key);
 CREATE INDEX IF NOT EXISTS idx_state_values_content_hash ON state_values(content_hash);
 CREATE INDEX IF NOT EXISTS idx_state_values_expires_at ON state_values(expires_at) WHERE expires_at IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_state_values_latest ON state_values(state_id, key) WHERE version = (SELECT MAX(version) FROM state_values sv WHERE sv.state_id = state_values.state_id AND sv.key = state_values.key);
+-- CREATE INDEX IF NOT EXISTS idx_state_values_latest ON state_values(state_id, key) WHERE version = (SELECT MAX(version) FROM state_values sv WHERE sv.state_id = state_values.state_id AND sv.key = state_values.key); -- Subqueries not allowed in index predicates
 
 
 -- 3. State events table - Immutable event log for replay
 CREATE TABLE IF NOT EXISTS state_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     state_id UUID NOT NULL REFERENCES states(id) ON DELETE CASCADE,
-    
+
     -- Event types: "set" | "delete" | "snapshot" | "restore" | "merge"
     event_type VARCHAR(50) NOT NULL,
-    
+
     -- Key affected (null for state-level events)
     key VARCHAR(1024),
-    
+
     -- Event data
     previous_value JSONB,
     new_value JSONB,
-    
+
     -- Causality
     causation_id UUID, -- Link to triggering event
     correlation_id VARCHAR(255), -- For distributed tracing
-    
+
     -- Source
     source_type VARCHAR(50), -- "function" | "user" | "system" | "trigger"
     source_id VARCHAR(255), -- function_id or user_id
-    
+
     -- Determinism proof (for replay verification)
     input_hash VARCHAR(64),
     output_hash VARCHAR(64),
     deterministic BOOLEAN DEFAULT false,
-    
+
     -- Sequence (for ordering)
     sequence_num BIGINT NOT NULL,
-    
+
     -- Timestamp
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -134,29 +134,29 @@ CREATE INDEX IF NOT EXISTS idx_state_events_sequence ON state_events(state_id, s
 CREATE TABLE IF NOT EXISTS state_snapshots (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     state_id UUID NOT NULL REFERENCES states(id) ON DELETE CASCADE,
-    
+
     -- Snapshot identification
     snapshot_version INTEGER NOT NULL,
     label VARCHAR(255),
-    
+
     -- Content
     state_data JSONB NOT NULL,
     state_size_bytes BIGINT,
-    
+
     -- Coverage
     key_count INTEGER,
     first_sequence BIGINT,
     last_sequence BIGINT,
-    
+
     -- Determinism
     root_event_id UUID, -- First event in snapshot
-    
+
     -- Compression
     is_compressed BOOLEAN DEFAULT false,
     compression_algo VARCHAR(20), -- "lz4", "zstd", ""
-    
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
+
     CONSTRAINT uq_state_snapshots_state_version UNIQUE (state_id, snapshot_version)
 );
 
@@ -169,23 +169,23 @@ CREATE INDEX IF NOT EXISTS idx_state_snapshots_created_at ON state_snapshots(cre
 CREATE TABLE IF NOT EXISTS state_permissions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     state_id UUID NOT NULL REFERENCES states(id) ON DELETE CASCADE,
-    
+
     -- Principal
     principal_type VARCHAR(50) NOT NULL, -- "user" | "team" | "function" | "tenant"
     principal_id UUID,
-    
+
     -- Permissions
     can_read BOOLEAN DEFAULT false,
     can_write BOOLEAN DEFAULT false,
     can_delete BOOLEAN DEFAULT false,
     can_admin BOOLEAN DEFAULT false,
     can_trigger BOOLEAN DEFAULT false, -- For function triggers
-    
+
     -- Constraints
     ip_whitelist JSONB DEFAULT '[]'::jsonb,
     time_restrictions JSONB,
     rate_limit INTEGER, -- Requests per minute
-    
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -206,32 +206,32 @@ END $$;
 CREATE TABLE IF NOT EXISTS state_triggers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id),
-    
+
     -- Source
     source_state_id UUID REFERENCES states(id) ON DELETE CASCADE,
-    
+
     -- Trigger configuration
     trigger_type trigger_type NOT NULL,
     key_pattern VARCHAR(512), -- Glob pattern for keys
-    
+
     -- Condition (for advanced triggers)
     condition JSONB,
-    
+
     -- Target function
     target_function_id UUID REFERENCES registry_functions(id),
     target_function VARCHAR(255), -- "org/function:version"
-    
+
     -- Payload
     include_previous BOOLEAN DEFAULT false,
     include_new BOOLEAN DEFAULT true,
-    
+
     -- Rate limiting
     max_invocations_per_minute INTEGER DEFAULT 60,
-    
+
     -- Status
     is_active BOOLEAN DEFAULT true,
     last_triggered_at TIMESTAMP WITH TIME ZONE,
-    
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -255,29 +255,29 @@ CREATE TABLE IF NOT EXISTS agent_memories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id),
     agent_id VARCHAR(255) NOT NULL,
-    
+
     -- Memory type
     memory_type memory_type NOT NULL,
-    
+
     -- Content
     content TEXT,
     structured_data JSONB,
-    
+
     -- Embedding (pgvector) - OpenAI ada-002 default dimension
     embedding vector(1536),
-    
+
     -- Metadata
     importance_score REAL DEFAULT 0.5, -- 0.0-1.0 for retention
     access_count INTEGER DEFAULT 0,
     last_accessed_at TIMESTAMP WITH TIME ZONE,
-    
+
     -- Retention
     ttl_days INTEGER DEFAULT 0, -- 0 = forever
     expires_at TIMESTAMP WITH TIME ZONE,
-    
+
     -- Causality
     source_event_id UUID,
-    
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -298,16 +298,16 @@ CREATE TABLE IF NOT EXISTS agent_memory_indexes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id),
     agent_id VARCHAR(255) NOT NULL,
-    
+
     -- Index configuration
     memory_type memory_type NOT NULL,
     dimension INTEGER DEFAULT 1536,
     similarity_metric VARCHAR(20) DEFAULT 'cosine',
-    
+
     -- Index stats
     memory_count INTEGER DEFAULT 0,
     last_indexed_at TIMESTAMP WITH TIME ZONE,
-    
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -319,18 +319,18 @@ CREATE TABLE IF NOT EXISTS state_usage_metrics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id),
     state_id UUID REFERENCES states(id) ON DELETE CASCADE,
-    
+
     -- Metric type
     metric_type VARCHAR(50) NOT NULL, -- "storage" | "write_ops" | "read_ops"
-    
+
     -- Value
     value BIGINT NOT NULL,
     unit VARCHAR(20), -- "bytes" | "ops" | "mb"
-    
+
     -- Time period
     period_start TIMESTAMP WITH TIME ZONE NOT NULL,
     period_end TIMESTAMP WITH TIME ZONE NOT NULL,
-    
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

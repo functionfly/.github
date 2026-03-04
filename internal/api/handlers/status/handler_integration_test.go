@@ -214,6 +214,11 @@ func (m *mockRepository) GetComponentHealthHistory(ctx context.Context, componen
 	return []StatusHistoryPoint{}, nil
 }
 
+func (m *mockRepository) CalculateComponentUptime(ctx context.Context, componentName string, duration time.Duration) (float64, error) {
+	// Return a mock uptime percentage (99.9% for healthy components)
+	return 99.9, nil
+}
+
 func (m *mockRepository) GetProviderStatus(ctx context.Context) ([]ProviderStatus, error) {
 	return m.providerStatus, nil
 }

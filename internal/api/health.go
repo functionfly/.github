@@ -99,13 +99,17 @@ func (s *Server) handleDetailedHealth(w http.ResponseWriter, r *http.Request) {
 
 	health["checks"] = checks
 
-	// Determine overall health status
+	// Determine overall health status: 503 only when DB is down; monitoring/routing failures → degraded, 200
 	overallStatus := "healthy"
 	statusCode := http.StatusOK
 
-	if !dbHealthy || !monitoringHealthy || !routingHealthy {
+	if !dbHealthy {
 		overallStatus = "unhealthy"
 		statusCode = http.StatusServiceUnavailable
+	} else if !monitoringHealthy || !routingHealthy {
+		overallStatus = "degraded"
+		// Keep 200 so load balancers/clients don't treat as down when only monitoring/routing is missing
+		statusCode = http.StatusOK
 	} else {
 		// Check if any critical checks failed
 		for _, check := range checks {
@@ -327,11 +331,11 @@ func (s *Server) checkDiskSpace() map[string]interface{} {
 		"description": description,
 		"timestamp":   time.Now().Format(time.RFC3339),
 		"details": map[string]interface{}{
-			"total_gb":        totalGB,
-			"used_gb":         usedGB,
-			"available_gb":    availableGB,
-			"usage_percent":   usagePercent,
-			"filesystem":      wd,
+			"total_gb":      totalGB,
+			"used_gb":       usedGB,
+			"available_gb":  availableGB,
+			"usage_percent": usagePercent,
+			"filesystem":    wd,
 		},
 	}
 }

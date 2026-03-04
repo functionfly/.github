@@ -1,11 +1,11 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { User, Calendar, Package, ExternalLink, AlertCircle } from "lucide-react";
+import { User, Calendar, Package, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/common/Navbar";
+import { UserNotFoundView } from "@/components/ui/UserNotFoundView";
 import { usersApi } from "@/api/users";
 import type { PublicUserProfile } from "@/types";
 
@@ -105,24 +105,13 @@ export function UserProfilePage() {
         {isLoading && <ProfileSkeleton />}
 
         {isError && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-24 text-center"
-          >
-            <AlertCircle className="w-12 h-12 text-text-muted mb-4" />
-            <h1 className="text-2xl font-bold text-text-primary mb-2">
-              User not found
-            </h1>
-            <p className="text-text-secondary mb-6">
-              {(error as Error)?.message?.includes("404")
-                ? `No user with username "@${username}" exists.`
-                : "Failed to load this profile. Please try again."}
-            </p>
-            <Link to="/registry">
-              <Button variant="outline">Browse Functions</Button>
-            </Link>
-          </motion.div>
+          <div className="flex flex-col items-center justify-center py-24 px-4">
+            <UserNotFoundView
+              username={username}
+              is404={(error as Error)?.message?.includes("404")}
+              compact={false}
+            />
+          </div>
         )}
 
         {profile && (

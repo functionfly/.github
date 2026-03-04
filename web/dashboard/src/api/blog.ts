@@ -116,7 +116,7 @@ class BlogApiClient {
     // Add JWT token from localStorage
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem("sb-access-token");
+        const token = localStorage.getItem("ff-access-token");
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }

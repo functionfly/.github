@@ -128,14 +128,23 @@ case $ROLE in
         ;;
 esac
 
-# Generate password hash using bcrypt
+# Generate password hash: use bcrypt via htpasswd, or Go create-admin (API expects bcrypt/Argon2, not plain SHA256)
 print_info "Generating password hash..."
 if command -v htpasswd >/dev/null 2>&1; then
     PASSWORD_HASH=$(echo -n "$PASSWORD" | htpasswd -bnBC 10 "" | tr -d ':\n' | sed 's/$2y/$2b/')
 else
-    print_warning "htpasswd not found. Using a simple hash method (not recommended for production)"
-    # Fallback: use openssl to generate a basic hash (not as secure as bcrypt)
-    PASSWORD_HASH=$(echo -n "$PASSWORD" | openssl dgst -sha256 | cut -d' ' -f2)
+    print_warning "htpasswd not found. Using Go create-admin (creates user with Argon2 hash compatible with API)."
+    PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+    export DB_HOST DB_PORT DB_USER DB_NAME
+    export DB_PASSWORD="${DB_PASSWORD:-$PGPASSWORD}"
+    export DB_PASSWORD="${DB_PASSWORD:-postgres}"
+    if (cd "$PROJECT_ROOT" && go run ./cmd/create-admin -email "$EMAIL" -password "$PASSWORD" -role "$ROLE"); then
+        print_success "Admin user created via Go (login will work with API)."
+        exit 0
+    else
+        print_error "Go create-admin failed. Install htpasswd (apache2-utils) for bcrypt, or fix DB connection (DB_HOST=$DB_HOST DB_PORT=$DB_PORT)."
+        exit 1
+    fi
 fi
 
 print_info "Connecting to database..."
@@ -175,7 +184,7 @@ else
 
         psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
             INSERT INTO tenants (id, name, plan, status, created_at, updated_at)
-            VALUES ('$TENANT_ID', 'Default Tenant', 'free', 'active', NOW(), NOW())
+            VALUES ('$TENANT_ID', 'Default Tenant', 'enterprise', 'active', NOW(), NOW())
             ON CONFLICT (id) DO NOTHING;
         " >/dev/null 2>&1
     fi
@@ -191,8 +200,8 @@ fi
 # Create the admin user (email_verified = true so login works without verification flow)
 print_info "Creating admin user..."
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
-    INSERT INTO users (id, tenant_id, email, password_hash, role, email_verified, created_at, updated_at)
-    VALUES (gen_random_uuid(), '$TENANT_ID', '$EMAIL', '$PASSWORD_HASH', '$ROLE', true, NOW(), NOW())
+    INSERT INTO users (id, tenant_id, email, username, password_hash, role, email_verified, created_at, updated_at)
+    VALUES (gen_random_uuid(), '$TENANT_ID', '$EMAIL', 'functionfly', '$PASSWORD_HASH', '$ROLE', true, NOW(), NOW())
     ON CONFLICT (email) DO NOTHING;
 " >/dev/null 2>&1
 
@@ -203,7 +212,7 @@ if [ "$USER_CREATED" -gt 0 ]; then
     echo ""
     print_info "User Details:"
     psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
-        SELECT id, email, role, tenant_id, created_at
+        SELECT id, email, username, role, tenant_id, created_at
         FROM users
         WHERE email = '$EMAIL';
     "

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { Navbar } from '@/components/common/Navbar';
 import { Calendar, ArrowLeft, Tag, Loader2, AlertTriangle, Clock } from 'lucide-react';
 import { contentApi, BlogPost } from '@/api/content';
@@ -11,9 +12,19 @@ import { Footer } from '@/pages/LandingPage/components/Footer';
 import { calculateReadingTime, formatReadingTime, getAuthorAvatar } from '@/pages/BlogPage/utils';
 import { BlogPostBody } from './BlogPostBody';
 import { ArticleSkeleton, ShareButtons, NewsletterSignup, AuthorBio, RelatedPosts, TableOfContents, BookmarkButton } from '@/components/blog';
+import { MetaTags } from '@/components/seo/MetaTags';
+import { BlogPostStructuredData, BreadcrumbStructuredData } from '@/components/seo/StructuredData';
+import { useWebVitals } from '@/hooks/useWebVitals';
+import { PublicAnalytics } from '@/components/common/PublicAnalytics';
 import './blog-post.css';
 
 const BlogPostPage = () => {
+  // Monitor Core Web Vitals
+  useWebVitals((metrics) => {
+    // Optional: Send to your analytics service
+    console.log('Web Vitals:', metrics);
+  });
+
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
@@ -28,7 +39,7 @@ const BlogPostPage = () => {
         setLoading(true);
         const blogPost = await contentApi.getPublishedBlogPostBySlug(slug);
         setPost(blogPost);
-        
+
         // Fetch related posts based on tags
         if (blogPost.tags && blogPost.tags.length > 0) {
           const result = await contentApi.getPublishedBlogPosts({
@@ -86,12 +97,61 @@ const BlogPostPage = () => {
   }
 
   const readingMinutes = calculateReadingTime(post.content);
-  
+
   // Get current URL for sharing
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   return (
-    <div className="min-h-screen bg-background">
+    <TooltipProvider>
+      <div className="min-h-screen bg-background">
+        {/* SEO Meta Tags - only render when post is loaded */}
+        {post && (
+          <MetaTags
+            title={`${post.title} | FunctionFly Blog`}
+            description={post.excerpt}
+            keywords={post.tags}
+            image={post.featured_image}
+            url={shareUrl}
+            type="article"
+            author={post.author}
+          />
+        )}
+
+        {/* Structured Data - only render when post is loaded */}
+        {post && (
+          <>
+            <BlogPostStructuredData
+              post={{
+                title: post.title,
+                excerpt: post.excerpt,
+                content: post.content,
+                author: {
+                  name: post.author as string,
+                  bio: undefined,
+                  avatar: undefined
+                },
+                publishedAt: post.published_at || post.created_at,
+                updatedAt: post.updated_at,
+                tags: post.tags,
+                slug: post.slug,
+                readingTime: calculateReadingTime(post.content),
+                image: post.featured_image
+              }}
+              url={shareUrl}
+            />
+            <BreadcrumbStructuredData
+              items={[
+                { name: 'Home', url: window.location.origin },
+                { name: 'Blog', url: `${window.location.origin}/blog` },
+                { name: post.title, url: shareUrl }
+              ]}
+            />
+          </>
+        )}
+
+        {/* Public Analytics (Hotjar for user behavior) */}
+        <PublicAnalytics />
+
       <Navbar variant="landing" />
 
       {/* Reading progress bar */}
@@ -110,6 +170,42 @@ const BlogPostPage = () => {
             transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="max-w-3xl mx-auto text-center"
           >
+            {/* Back to Blog Button */}
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="mb-6"
+            >
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="rounded-full gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Link to="/blog">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Blog
+                </Link>
+              </Button>
+            </motion.div>
+
+            {/* Logo - links to blog home */}
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.15 }}
+              className="mb-6"
+            >
+              <Link to="/blog" className="inline-block">
+                <img
+                  src="/logo/logo-icon.svg"
+                  alt="FunctionFly"
+                  className="h-12 w-auto"
+                />
+              </Link>
+            </motion.div>
+
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.15] text-foreground mb-6">
               {post.title}
             </h1>
@@ -182,7 +278,7 @@ const BlogPostPage = () => {
             transition={{ duration: 0.4, delay: 0.2 }}
             className="flex justify-center mb-10"
           >
-            <ShareButtons 
+            <ShareButtons
               url={shareUrl}
               title={post.title}
               description={post.excerpt || post.content.substring(0, 150)}
@@ -195,12 +291,12 @@ const BlogPostPage = () => {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.25 }}
-            className="rounded-2xl border border-border/50 bg-card/80 shadow-xl shadow-black/3 dark:shadow-none backdrop-blur-sm overflow-hidden"
+            className="rounded-2xl border border-border/50 bg-white dark:bg-slate-900 shadow-xl shadow-black/5 dark:shadow-none overflow-hidden"
           >
             <div className="p-8 sm:p-10 md:p-12">
               <BlogPostBody
                 html={post.content}
-                className="blog-post-prose prose prose-lg dark:prose-invert max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-p:leading-[1.75] prose-p:text-foreground/90 prose-a:text-brand-600 dark:prose-a:text-brand-400 prose-a:no-underline hover:prose-a:underline prose-img:rounded-xl prose-pre:rounded-xl prose-blockquote:border-l-brand-500/50 prose-blockquote:bg-muted/30 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg"
+                className="blog-post-prose prose prose-slate prose-lg dark:prose-invert max-w-none text-foreground prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-foreground prose-p:leading-[1.75] prose-p:text-foreground prose-strong:text-foreground prose-a:text-brand-600 dark:prose-a:text-brand-400 prose-a:no-underline hover:prose-a:underline prose-img:rounded-xl prose-pre:rounded-xl prose-pre:bg-transparent prose-blockquote:border-l-brand-500/50 prose-blockquote:bg-muted/30 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:text-foreground prose-code:text-foreground prose-code:bg-transparent prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground"
               />
             </div>
           </motion.article>
@@ -263,6 +359,7 @@ const BlogPostPage = () => {
 
       <Footer />
     </div>
+    </TooltipProvider>
   );
 };
 

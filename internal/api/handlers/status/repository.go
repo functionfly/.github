@@ -24,6 +24,7 @@ type RepositoryInterface interface {
 	GetUpcomingMaintenance(ctx context.Context) ([]MaintenanceWindow, error)
 	GetSystemHealthChecks(ctx context.Context) ([]Component, error)
 	GetComponentHealthHistory(ctx context.Context, componentName string, since time.Time) ([]StatusHistoryPoint, error)
+	CalculateComponentUptime(ctx context.Context, componentName string, duration time.Duration) (float64, error)
 	GetProviderStatus(ctx context.Context) ([]ProviderStatus, error)
 	GetProviderRegions(ctx context.Context, provider string) ([]RegionStatus, error)
 	GetProviderBackends(ctx context.Context, provider, region string) ([]BackendStatus, error)
@@ -602,6 +603,69 @@ func (r *Repository) GetComponentHealthHistory(ctx context.Context, componentNam
 	}
 
 	return history, rows.Err()
+}
+
+// CalculateComponentUptime calculates uptime percentage for a component over a duration
+func (r *Repository) CalculateComponentUptime(ctx context.Context, componentName string, duration time.Duration) (float64, error) {
+	since := time.Now().Add(-duration)
+
+	history, err := r.GetComponentHealthHistory(ctx, componentName, since)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get health history: %w", err)
+	}
+
+	if len(history) == 0 {
+		return 100.0, nil // Assume 100% uptime if no data
+	}
+
+	// Sort history by timestamp (should already be sorted, but ensure it)
+	for i := 0; i < len(history)-1; i++ {
+		for j := i + 1; j < len(history); j++ {
+			if history[i].Timestamp.After(history[j].Timestamp) {
+				history[i], history[j] = history[j], history[i]
+			}
+		}
+	}
+
+	totalDuration := duration.Seconds()
+	healthyDuration := 0.0
+	currentHealthy := false
+	lastTimestamp := since
+
+	for _, point := range history {
+		// Calculate time spent in previous state
+		timeInState := point.Timestamp.Sub(lastTimestamp).Seconds()
+
+		if currentHealthy {
+			healthyDuration += timeInState
+		}
+
+		// Update state based on current point
+		currentHealthy = point.Status == "operational" || point.Status == "healthy"
+		lastTimestamp = point.Timestamp
+	}
+
+	// Add remaining time until now
+	timeInState := time.Now().Sub(lastTimestamp).Seconds()
+	if currentHealthy {
+		healthyDuration += timeInState
+	}
+
+	if totalDuration <= 0 {
+		return 100.0, nil
+	}
+
+	uptimePercent := (healthyDuration / totalDuration) * 100.0
+
+	// Clamp to reasonable bounds
+	if uptimePercent < 0 {
+		uptimePercent = 0
+	}
+	if uptimePercent > 100 {
+		uptimePercent = 100
+	}
+
+	return uptimePercent, nil
 }
 
 // dbHealthCheckToComponent converts a database health check to API component model

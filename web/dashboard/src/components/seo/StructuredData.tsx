@@ -151,3 +151,154 @@ export function FAQPageStructuredData() {
     />
   );
 }
+
+interface BlogPostStructuredDataProps {
+  post: {
+    title: string;
+    excerpt: string;
+    content: string;
+    author: {
+      name: string;
+      bio?: string;
+      avatar?: string;
+    };
+    publishedAt: string;
+    updatedAt?: string;
+    tags?: string[];
+    slug: string;
+    readingTime?: number;
+    image?: string;
+  };
+  url: string;
+}
+
+export function BlogPostStructuredData({ post, url }: BlogPostStructuredDataProps) {
+  const articleBody = post.content.replace(/<[^>]*>/g, '').substring(0, 5000); // Strip HTML and limit length
+
+  return (
+    <JsonLd
+      item={{
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        'headline': post.title,
+        'description': post.excerpt,
+        'articleBody': articleBody,
+        'author': {
+          '@type': 'Person',
+          'name': post.author.name,
+          'description': post.author.bio,
+          'image': post.author.avatar
+        },
+        'publisher': {
+          '@type': 'Organization',
+          'name': 'FunctionFly',
+          'logo': {
+            '@type': 'ImageObject',
+            'url': 'https://functionfly.com/logo.png'
+          }
+        },
+        'datePublished': post.publishedAt,
+        'dateModified': post.updatedAt || post.publishedAt,
+        'mainEntityOfPage': {
+          '@type': 'WebPage',
+          '@id': url
+        },
+        'image': post.image ? [post.image] : ['https://functionfly.com/og-image.jpg'],
+        'keywords': post.tags?.join(', '),
+        'timeRequired': post.readingTime ? `PT${Math.ceil(post.readingTime)}M` : undefined,
+        'wordCount': articleBody.split(/\s+/).length,
+        'inLanguage': 'en-US',
+        'isPartOf': {
+          '@type': 'Blog',
+          'name': 'FunctionFly Blog',
+          'url': 'https://functionfly.com/blog'
+        }
+      }}
+    />
+  );
+}
+
+interface BreadcrumbStructuredDataProps {
+  items: Array<{
+    name: string;
+    url: string;
+  }>;
+}
+
+export function BreadcrumbStructuredData({ items }: BreadcrumbStructuredDataProps) {
+  return (
+    <JsonLd
+      item={{
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': items.map((item, index) => ({
+          '@type': 'ListItem',
+          'position': index + 1,
+          'name': item.name,
+          'item': item.url
+        }))
+      }}
+    />
+  );
+}
+
+interface BlogPageStructuredDataProps {
+  posts?: Array<{
+    title: string;
+    excerpt: string;
+    author: {
+      name: string;
+    };
+    publishedAt: string;
+    slug: string;
+    tags?: string[];
+  }>;
+}
+
+export function BlogPageStructuredData({ posts }: BlogPageStructuredDataProps) {
+  return (
+    <JsonLd
+      item={{
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'Blog',
+            'name': 'FunctionFly Blog',
+            'description': 'Insights, tutorials, and best practices for serverless functions, edge computing, and AI agents',
+            'url': 'https://functionfly.dev/blog',
+            'publisher': {
+              '@type': 'Organization',
+              'name': 'FunctionFly',
+              'logo': {
+                '@type': 'ImageObject',
+                'url': 'https://functionfly.dev/logo.png'
+              }
+            },
+            'mainEntityOfPage': {
+              '@type': 'WebPage',
+              '@id': 'https://functionfly.dev/blog'
+            }
+          },
+          ...(posts ? posts.slice(0, 10).map((post, index) => ({
+            '@type': 'BlogPosting',
+            'headline': post.title,
+            'description': post.excerpt,
+            'author': {
+              '@type': 'Person',
+              'name': post.author.name
+            },
+            'datePublished': post.publishedAt,
+            'url': `https://functionfly.dev/blog/${post.slug}`,
+            'keywords': post.tags?.join(', '),
+            'position': index + 1,
+            'isPartOf': {
+              '@type': 'Blog',
+              'name': 'FunctionFly Blog',
+              'url': 'https://functionfly.dev/blog'
+            }
+          })) : [])
+        ]
+      }}
+    />
+  );
+}

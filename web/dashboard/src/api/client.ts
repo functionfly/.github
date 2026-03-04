@@ -7,11 +7,11 @@ class ApiClient {
   private token: string | null = null;
 
   constructor() {
-    // Same-origin so Vite proxy handles request (no CORS). Use /api so path is /api/v1/... and proxy rewrites to /v1/...
+    // In development, use direct API URL to avoid Vite proxy issues
     const envUrl = import.meta.env.VITE_API_URL ?? "";
     const baseURL =
-      import.meta.env.DEV && (!envUrl || envUrl === "/api")
-        ? "/api"  // Docker: VITE_API_URL=/api; request /api/v1/... -> proxy -> orchestrator-api:8080/v1/...
+      import.meta.env.DEV
+        ? "http://localhost:8080"  // Direct API connection in development
         : (envUrl || "http://localhost:8080");
     this.client = axios.create({
       baseURL: baseURL || window.location.origin,
@@ -24,7 +24,7 @@ class ApiClient {
     this.client.interceptors.request.use(
       (config) => {
         // Always get the latest token from localStorage
-        const storedToken = localStorage.getItem("sb-access-token");
+        const storedToken = localStorage.getItem("ff-access-token");
 
         if (storedToken) {
           this.token = storedToken;
@@ -37,17 +37,70 @@ class ApiClient {
       }
     );
 
+    // Add response interceptor to handle auth errors
+    this.client.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401) {
+          // Token is invalid or expired - try to refresh first
+          const refreshToken = localStorage.getItem("ff-refresh-token");
+          if (refreshToken) {
+            try {
+              console.log('Attempting token refresh...');
+              const refreshResponse = await fetch(`${import.meta.env.VITE_API_URL}/auth/refresh`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ refresh_token: refreshToken }),
+              });
+
+              if (refreshResponse.ok) {
+                const refreshData = await refreshResponse.json();
+
+                // Store new tokens
+                localStorage.setItem('ff-access-token', refreshData.token);
+                localStorage.setItem('ff-refresh-token', refreshData.refresh_token);
+
+                // Update the request with new token and retry
+                const newToken = refreshData.token;
+                this.token = newToken;
+                error.config.headers.Authorization = `Bearer ${newToken}`;
+
+                // Retry the original request
+                return this.client.request(error.config);
+              }
+            } catch (refreshError) {
+              console.warn('Token refresh failed:', refreshError);
+            }
+          }
+
+          // If refresh failed or no refresh token, clear auth state
+          console.log('Token refresh failed or no refresh token, logging out user');
+          localStorage.removeItem("ff-access-token");
+          localStorage.removeItem("ff-refresh-token");
+
+          // Import auth store dynamically to avoid circular dependencies
+          import('@/stores/authStore').then(({ useAuthStore }) => {
+            useAuthStore.getState().logout();
+          });
+        }
+        return Promise.reject(error);
+      }
+    );
+
     // Load token on initialization
     this.loadToken();
   }
 
   clearToken() {
     this.token = null;
-    localStorage.removeItem("sb-access-token");
+    localStorage.removeItem("ff-access-token");
+    localStorage.removeItem("ff-refresh-token");
   }
 
   loadToken() {
-    const token = localStorage.getItem("sb-access-token");
+    const token = localStorage.getItem("ff-access-token");
     if (token) {
       this.token = token;
     }
@@ -62,7 +115,7 @@ class ApiClient {
   }
 
   checkTokenInStorage() {
-    return localStorage.getItem("sb-access-token");
+    return localStorage.getItem("ff-access-token");
   }
 
   async get<T>(url: string, config?: AxiosRequestConfig) {

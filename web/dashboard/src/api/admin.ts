@@ -32,16 +32,24 @@ export interface AuditEvent {
   success: boolean;
 }
 
+export interface SystemHealthService {
+  name: string;
+  status: 'healthy' | 'unhealthy' | 'degraded';
+  latency_ms?: number;
+  uptime_percent?: number;
+}
+
 export interface SystemHealth {
   status: 'healthy' | 'unhealthy';
-  version: string;
-  timestamp: string;
-  checks: {
+  version?: string;
+  timestamp?: string;
+  checks?: {
     database: { status: string; healthy: boolean; response_time_ms?: number };
     api: { status: string; healthy: boolean };
     repository: { status: string; healthy: boolean; response_time_ms?: number };
     system: { status: string; healthy: boolean; goroutines?: number };
   };
+  services?: SystemHealthService[];
 }
 
 export interface PricingTier {
@@ -167,6 +175,42 @@ export const healthApi = {
   getSystemHealth: async (): Promise<SystemHealth> => {
     const response = await apiClient.get<SystemHealth>('/v1/admin/health');
     return response;
+  },
+};
+
+// Admin dashboard overview API (activity, revenue, quick stats)
+export interface DashboardActivityPoint {
+  date: string;
+  day_label: string;
+  new_users: number;
+  function_calls: number;
+}
+
+export interface DashboardRevenuePoint {
+  month: string;
+  revenue_cents: number;
+}
+
+export interface DashboardQuickStats {
+  platform_uptime_percent: number;
+  avg_response_time_ms: number;
+  functions_executed: string;
+  data_processed: string;
+}
+
+export const adminDashboardApi = {
+  getActivity: async (params?: { days?: number }): Promise<{ series: DashboardActivityPoint[] }> => {
+    const query = params?.days != null ? `?days=${params.days}` : '';
+    return await apiClient.get<{ series: DashboardActivityPoint[] }>(`/v1/admin/dashboard/activity${query}`);
+  },
+
+  getRevenue: async (params?: { months?: number }): Promise<{ series: DashboardRevenuePoint[]; mrr_cents: number }> => {
+    const query = params?.months != null ? `?months=${params.months}` : '';
+    return await apiClient.get<{ series: DashboardRevenuePoint[]; mrr_cents: number }>(`/v1/admin/dashboard/revenue${query}`);
+  },
+
+  getQuickStats: async (): Promise<DashboardQuickStats> => {
+    return await apiClient.get<DashboardQuickStats>('/v1/admin/dashboard/quick-stats');
   },
 };
 
@@ -348,7 +392,7 @@ export const feedbackApi = {
   exportFeedback: async (format: 'csv' | 'json'): Promise<Blob> => {
     const base = (import.meta.env.VITE_API_URL as string) || (import.meta.env.DEV ? '/api' : '');
     const url = `${base}/v1/admin/feedback/export?format=${format}`;
-    const token = apiClient.getToken() || localStorage.getItem('sb-access-token');
+    const token = apiClient.getToken() || localStorage.getItem('ff-access-token');
     const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
     if (!res.ok) throw new Error('Export failed');
     return await res.blob();

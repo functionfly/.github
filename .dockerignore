@@ -18,6 +18,7 @@ runtimes/local/target
 **/target
 
 # cmd/ subdirs not needed for orchestrator-api (saves context size and COPY time)
+# (cmd/health-monitor is needed for health-monitor image, so not excluded)
 cmd/blog-api
 cmd/create-admin
 cmd/fly
@@ -31,7 +32,6 @@ cmd/setup
 cmd/server
 cmd/publish
 cmd/publish-tool
-cmd/health-monitor
 
 # Env and local config (use build args or mount at run)
 .env

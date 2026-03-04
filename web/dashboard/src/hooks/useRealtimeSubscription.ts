@@ -42,24 +42,12 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
   eventTypeRef.current = eventType;
   onEventRef.current = onEvent;
 
-  // Get WebSocket URL: backend route is /v1/monitoring/realtime. With proxy we use /api/v1/... so proxy rewrites to /v1/...
+  // Get WebSocket URL: connect directly to API server
   const getWebSocketUrl = useCallback(() => {
-    const apiUrl = (import.meta.env.VITE_API_URL as string) ?? '';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const realtimePath = '/v1/monitoring/realtime';
+    const href = `${protocol}//localhost:8080/v1/monitoring/realtime`;
 
-    let href: string;
-    if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
-      const base = apiUrl.replace(/^http/, 'ws');
-      href = `${base.endsWith('/') ? base.slice(0, -1) : base}${realtimePath}`;
-    } else {
-      // Same-origin: use /api so Vite proxy forwards; proxy strips /api so backend gets /v1/...
-      const apiPrefix = apiUrl.startsWith('/') ? apiUrl : `/${apiUrl || 'api'}`;
-      href = `${protocol}//${host}${apiPrefix}${realtimePath}`;
-    }
-
-    const token = localStorage.getItem('sb-access-token');
+    const token = localStorage.getItem('ff-access-token');
     const url = new URL(href);
     if (token && token.trim()) {
       url.searchParams.set('token', token);
@@ -103,7 +91,7 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
     }
 
     // Don't connect if no token
-    const token = localStorage.getItem('sb-access-token');
+    const token = localStorage.getItem('ff-access-token');
     if (!token || !token.trim()) {
       return;
     }
@@ -156,7 +144,7 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
           setError('Failed to reconnect after maximum attempts');
         } else if (isAuthFailure) {
           // Clear invalid token on authentication failure
-          localStorage.removeItem('sb-access-token');
+          localStorage.removeItem('ff-access-token');
           if (!errorSetForAttemptRef.current) {
             errorSetForAttemptRef.current = true;
             setError('Authentication failed - please log in again');
@@ -246,7 +234,7 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
   // Effect to manage WebSocket connection
   useEffect(() => {
     const checkAuthAndConnect = async () => {
-      const token = localStorage.getItem('sb-access-token');
+      const token = localStorage.getItem('ff-access-token');
       console.log('WebSocket auth check:', { userId: user?.id, userEmail: user?.email, hasToken: !!token });
 
       // First check basic auth state
@@ -254,7 +242,7 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
         console.log('Skipping WebSocket connection - missing auth data');
         if (token) {
           console.log('Clearing invalid token');
-          localStorage.removeItem('sb-access-token');
+          localStorage.removeItem('ff-access-token');
         }
         disconnect();
         return;
@@ -273,7 +261,7 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
         }
       } catch (error) {
         console.log('Session validation failed, clearing auth state');
-        localStorage.removeItem('sb-access-token');
+        localStorage.removeItem('ff-access-token');
         disconnect();
       }
     };

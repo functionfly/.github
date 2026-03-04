@@ -45,7 +45,7 @@ func NewAuthService(repo storage.Repository, jwtSecret string) *AuthService {
 		repo:           repo,
 		emailSvc:       email.NewMockService(emailConfig), // Default to mock service with config
 		jwtSecret:      []byte(jwtSecret),
-		jwtDuration:    24 * time.Hour, // 24 hours
+		jwtDuration:    30 * time.Minute, // 30 minutes - short lived access tokens
 		oauthProviders: make(map[string]*OAuthProvider),
 		baseURL:        "http://localhost:8080", // Default, can be overridden
 	}
@@ -62,6 +62,11 @@ func NewAuthService(repo storage.Repository, jwtSecret string) *AuthService {
 // GenerateToken creates a JWT token for a user (for debugging)
 func (a *AuthService) GenerateToken(user *storage.User) (string, error) {
 	return a.generateToken(user)
+}
+
+// GenerateRefreshToken creates a new refresh token (for public API)
+func (a *AuthService) GenerateRefreshToken() (token, hash string, err error) {
+	return a.generateRefreshToken()
 }
 
 // SetEmailService sets the email service for the auth service

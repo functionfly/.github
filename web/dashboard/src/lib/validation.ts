@@ -37,10 +37,9 @@ export const signupSchema = z
       .email('Please enter a valid email address'),
     username: z
       .string()
+      .min(1, 'Username is required')
       .max(50, 'Username must be less than 50 characters')
-      .regex(/^[a-zA-Z0-9_-]*$/, 'Username can only contain letters, numbers, underscores and hyphens')
-      .optional()
-      .or(z.literal('')),
+      .regex(/^[a-zA-Z0-9_-]*$/, 'Username can only contain letters, numbers, underscores and hyphens'),
     companyName: z
       .string()
       .max(255, 'Company name must be less than 255 characters')

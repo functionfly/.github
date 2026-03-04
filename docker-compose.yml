@@ -212,7 +212,6 @@ services:
       - "3001:3000"   # host 3001 so local "bun dev" can use 3000
     environment:
       - API_PROXY_TARGET=http://orchestrator-api:8080
-      - VITE_NEON_AUTH_URL=/api/v1/auth
       - VITE_API_URL=/api
     volumes:
       - .:/app
@@ -224,6 +223,26 @@ services:
     profiles:
       - dashboard
 
+  # Prometheus for status page metrics. Start with: docker compose up -d prometheus
+  # Host port 9091 to avoid conflict with other Prometheus on 9090. For make dev set PROMETHEUS_URL=http://127.0.0.1:9091.
+  # When using this stack with prometheus, set PROMETHEUS_URL=http://prometheus:9090 for orchestrator-api (e.g. in .env) to enable status metrics; leave unset to avoid DNS/connect timeouts when Prometheus is not running.
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   caddy_data:
@@ -232,3 +251,4 @@ volumes:
   clamav_data:
   yara_data:
   dashboard_node_modules:
+  prometheus_data:

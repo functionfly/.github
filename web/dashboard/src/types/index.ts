@@ -135,7 +135,7 @@ export interface SignupRequest {
   password: string;
   confirmPassword: string;
   termsAccepted: boolean;
-  username?: string;
+  username: string;
   companyName?: string;
   recaptchaToken?: string;
 }
@@ -1031,3 +1031,9 @@ export interface TrustMetricsVisualization {
     score: number;
   }[];
 }
+
+// ============================================================================
+// Vault Types - Re-export from vault module
+// ============================================================================
+
+export * from "./vault";

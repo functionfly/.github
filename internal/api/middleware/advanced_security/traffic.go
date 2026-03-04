@@ -86,6 +86,12 @@ func (cb *CircuitBreaker) trip() {
 
 // RequestQueue implementation
 func (rq *RequestQueue) QueueRequest(w http.ResponseWriter, r *http.Request, handler http.HandlerFunc) {
+	// Skip queuing for WebSocket upgrade requests as they require the original response writer
+	if r.Header.Get("Upgrade") == "websocket" {
+		handler(w, r)
+		return
+	}
+
 	select {
 	case rq.queue <- &QueuedRequest{
 		request:  r,

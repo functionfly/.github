@@ -2,10 +2,12 @@ package monitoring
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/handlers/status"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -16,6 +18,7 @@ type Service struct {
 	db            storage.Repository
 	alertChans    map[string]chan *storage.Alert // Alert channels for real-time notifications
 	alertEngine   *AlertEngine                   // Automatic alerting engine
+	uptimeUpdater *UptimeUpdater                 // Uptime metrics updater
 	mu            sync.RWMutex
 }
 
@@ -30,6 +33,12 @@ func NewService(db storage.Repository) *Service {
 	service.alertEngine = NewAlertEngine(service)
 
 	return service
+}
+
+// SetDatabase sets the database connection for uptime calculations
+func (s *Service) SetDatabase(db interface{}) {
+	// Initialize uptime updater with database access
+	s.uptimeUpdater = NewUptimeUpdater(s.db, db)
 }
 
 // RecordPerformanceMetric records a performance metric
@@ -304,11 +313,11 @@ func (s *Service) GetLocalRuntimeHealthStatus(ctx context.Context) (map[string]i
 			"runtime_id":     runtime.RuntimeID,
 			"runtime_type":   runtime.RuntimeType,
 			"function_name":  runtime.FunctionName,
-			"host":          runtime.Host,
-			"port":          runtime.Port,
-			"status":        runtime.Status,
-			"health":        runtimeHealth,
-			"uptime":        runtime.Uptime,
+			"host":           runtime.Host,
+			"port":           runtime.Port,
+			"status":         runtime.Status,
+			"health":         runtimeHealth,
+			"uptime":         runtime.Uptime,
 			"last_heartbeat": runtime.LastHeartbeat,
 		}
 
@@ -332,4 +341,105 @@ func (s *Service) GetLocalRuntimeHealthStatus(ctx context.Context) (map[string]i
 	return healthStatus, nil
 }
 
+// StartUptimeUpdater starts the uptime metrics updater
+func (s *Service) StartUptimeUpdater() {
+	if s.uptimeUpdater != nil {
+		s.uptimeUpdater.Start()
+	}
+}
 
+// ============================================================================
+// Uptime Updater
+// ============================================================================
+
+// UptimeUpdater periodically calculates and updates uptime metrics for Prometheus
+type UptimeUpdater struct {
+	db         storage.Repository
+	statusRepo *status.Repository
+	stopChan   chan struct{}
+	running    bool
+	mu         sync.RWMutex
+}
+
+// NewUptimeUpdater creates a new uptime updater
+func NewUptimeUpdater(db storage.Repository, database interface{}) *UptimeUpdater {
+	// Create a status repository for uptime calculations
+	statusRepo := status.NewRepository(database.(*sql.DB))
+
+	return &UptimeUpdater{
+		db:         db,
+		statusRepo: statusRepo,
+		stopChan:   make(chan struct{}),
+	}
+}
+
+// Start begins periodic uptime metric updates
+func (u *UptimeUpdater) Start() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	if u.running {
+		return
+	}
+
+	u.running = true
+	go u.updateLoop()
+	logrus.Info("Started uptime metrics updater")
+}
+
+// Stop stops the uptime metric updates
+func (u *UptimeUpdater) Stop() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	if !u.running {
+		return
+	}
+
+	u.running = false
+	close(u.stopChan)
+	logrus.Info("Stopped uptime metrics updater")
+}
+
+// updateLoop runs the periodic update loop
+func (u *UptimeUpdater) updateLoop() {
+	ticker := time.NewTicker(5 * time.Minute) // Update every 5 minutes
+	defer ticker.Stop()
+
+	// Initial update
+	u.updateUptimeMetrics()
+
+	for {
+		select {
+		case <-u.stopChan:
+			return
+		case <-ticker.C:
+			u.updateUptimeMetrics()
+		}
+	}
+}
+
+// updateUptimeMetrics calculates and updates uptime metrics for all components
+func (u *UptimeUpdater) updateUptimeMetrics() {
+	ctx := context.Background()
+
+	// Define components to monitor
+	components := []string{"api", "database", "cache", "health-monitor"}
+
+	for _, component := range components {
+		// Calculate 24h uptime
+		uptime24h, err := u.statusRepo.CalculateComponentUptime(ctx, component, 24*time.Hour)
+		if err != nil {
+			logrus.WithError(err).WithField("component", component).Warn("Failed to calculate 24h uptime")
+			continue
+		}
+
+		// Update Prometheus metric (convert percentage to ratio)
+		UpdateUptimeRatio(component, "", uptime24h/100.0)
+
+		logrus.WithFields(logrus.Fields{
+			"component":  component,
+			"uptime_24h": uptime24h,
+		}).Debug("Updated uptime metric")
+	}
+}

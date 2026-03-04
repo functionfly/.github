@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -61,6 +63,19 @@ func (a *AuthService) generateToken(user *storage.User) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(a.jwtSecret)
+}
+
+// generateRefreshToken creates a cryptographically secure refresh token
+func (a *AuthService) generateRefreshToken() (token, hash string, err error) {
+	// Generate a 64-byte random token (512 bits of entropy)
+	tokenBytes := make([]byte, 64)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", "", fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+
+	token = hex.EncodeToString(tokenBytes)
+	hash = storage.HashRefreshToken(token)
+	return token, hash, nil
 }
 
 // getPermissionsForRole returns the permissions for a given role

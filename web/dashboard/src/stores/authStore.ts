@@ -42,74 +42,150 @@ const authStore = create<AuthState>()(
       mfaRequired: false,
 
       initialize: async () => {
-        const jwtToken = localStorage.getItem("sb-access-token");
+        const jwtToken = localStorage.getItem("ff-access-token");
+        const refreshToken = localStorage.getItem("ff-refresh-token");
+
         if (!jwtToken) {
           set({ user: null, session: null, isAuthenticated: false });
           return;
         }
 
         try {
-          // Validate JWT token with backend and retrieve safe user data
-          const response = await fetch(`${import.meta.env.VITE_NEON_AUTH_URL}/validate`, {
-            method: "GET",
-            headers: {
-              "Authorization": `Bearer ${jwtToken}`,
-            },
-          });
+          // Check if token is expired locally first
+          const payload = JSON.parse(atob(jwtToken.split('.')[1]));
+          const currentTime = Math.floor(Date.now() / 1000);
+          const expiresAt = payload.exp || 0;
 
-          if (response.ok) {
-            const userData = await response.json();
-            const user: User = {
-              id: userData.user.id,
-              email: userData.user.email,
-              username: userData.user.username,
-              companyName: userData.user.company_name,
-              name: userData.user.name || '',
-              avatar: userData.user.avatar || '',
-              tenantId: userData.user.tenant_id || 'default',
-              plan: userData.user.plan ?? 'starter',
-              role: userData.user.role,
-              createdAt: userData.user.created_at,
-              updatedAt: userData.user.updated_at,
-            };
-
-            const session: Session = {
-              access_token: jwtToken,
-              refresh_token: "",
-              expires_at: Math.floor(Date.now() / 1000) + (24 * 60 * 60),
-              token_type: "bearer",
-              user: {
-                id: user.id,
-                email: user.email,
-                user_metadata: {
-                  name: user.name,
-                  avatar_url: user.avatar,
-                },
-                created_at: user.createdAt,
-                updated_at: user.updatedAt,
+          // If token is still valid, validate with backend
+          if (expiresAt > currentTime) {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/validate`, {
+              method: "GET",
+              headers: {
+                "Authorization": `Bearer ${jwtToken}`,
               },
-            };
+            });
 
-            set({
-              user,
-              session,
-              isAuthenticated: true,
-            });
-          } else {
-            // Token invalid or expired — clear all auth state
-            localStorage.removeItem("sb-access-token");
-            localStorage.removeItem("sb-refresh-token");
-            set({
-              user: null,
-              session: null,
-              isAuthenticated: false,
-              error: null,
-            });
+            if (response.ok) {
+              const userData = await response.json();
+              const user: User = {
+                id: userData.user.id,
+                email: userData.user.email,
+                username: userData.user.username,
+                companyName: userData.user.company_name,
+                name: userData.user.name || '',
+                avatar: userData.user.avatar || '',
+                tenantId: userData.user.tenant_id || 'default',
+                plan: userData.user.plan ?? 'starter',
+                role: userData.user.role,
+                createdAt: userData.user.created_at,
+                updatedAt: userData.user.updated_at,
+              };
+
+              const session: Session = {
+                access_token: jwtToken,
+                refresh_token: refreshToken || "",
+                expires_at: expiresAt,
+                token_type: "bearer",
+                user: {
+                  id: user.id,
+                  email: user.email,
+                  user_metadata: {
+                    name: user.name,
+                    avatar_url: user.avatar,
+                  },
+                  created_at: user.createdAt,
+                  updated_at: user.updatedAt,
+                },
+              };
+
+              set({
+                user,
+                session,
+                isAuthenticated: true,
+              });
+              return;
+            }
           }
+
+          // Token is expired or invalid, try to refresh if we have a refresh token
+          if (refreshToken) {
+            try {
+              const refreshResponse = await fetch(`${import.meta.env.VITE_API_URL}/auth/refresh`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ refresh_token: refreshToken }),
+              });
+
+              if (refreshResponse.ok) {
+                const refreshData = await refreshResponse.json();
+
+                // Store new tokens
+                localStorage.setItem('ff-access-token', refreshData.token);
+                localStorage.setItem('ff-refresh-token', refreshData.refresh_token);
+
+                // Create user object from refresh response
+                const user: User = {
+                  id: refreshData.user.id,
+                  email: refreshData.user.email,
+                  username: refreshData.user.username,
+                  companyName: refreshData.user.company_name,
+                  name: refreshData.user.name || '',
+                  avatar: refreshData.user.avatar || '',
+                  tenantId: refreshData.user.tenant_id || 'default',
+                  plan: refreshData.user.plan ?? 'starter',
+                  role: refreshData.user.role,
+                  createdAt: refreshData.user.created_at,
+                  updatedAt: refreshData.user.updated_at,
+                };
+
+                // Decode new token to get expiration
+                const newPayload = JSON.parse(atob(refreshData.token.split('.')[1]));
+                const newExpiresAt = newPayload.exp || (Math.floor(Date.now() / 1000) + (30 * 60)); // 30 minutes fallback
+
+                const session: Session = {
+                  access_token: refreshData.token,
+                  refresh_token: refreshData.refresh_token,
+                  expires_at: newExpiresAt,
+                  token_type: "bearer",
+                  user: {
+                    id: user.id,
+                    email: user.email,
+                    user_metadata: {
+                      name: user.name,
+                      avatar_url: user.avatar,
+                    },
+                    created_at: user.createdAt,
+                    updated_at: user.updatedAt,
+                  },
+                };
+
+                set({
+                  user,
+                  session,
+                  isAuthenticated: true,
+                });
+                return;
+              }
+            } catch (refreshError) {
+              console.warn('Token refresh failed:', refreshError);
+            }
+          }
+
+          // If we get here, both token validation and refresh failed
+          localStorage.removeItem("ff-access-token");
+          localStorage.removeItem("ff-refresh-token");
+          set({
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            error: null,
+          });
         } catch {
           // Network or parse error during validation — clear auth state
-          localStorage.removeItem("sb-access-token");
-          localStorage.removeItem("sb-refresh-token");
+          localStorage.removeItem("ff-access-token");
+          localStorage.removeItem("ff-refresh-token");
           set({
             user: null,
             session: null,
@@ -128,7 +204,7 @@ const authStore = create<AuthState>()(
       login: async (data) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch(`${import.meta.env.VITE_NEON_AUTH_URL}/login`, {
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -180,8 +256,11 @@ const authStore = create<AuthState>()(
             throw new Error('Authentication response missing token');
           }
 
-          // Store JWT token for future requests
-          localStorage.setItem('sb-access-token', authData.token);
+          // Store JWT token and refresh token for future requests
+          localStorage.setItem('ff-access-token', authData.token);
+          if (authData.refresh_token) {
+            localStorage.setItem('ff-refresh-token', authData.refresh_token);
+          }
 
           // Create user object from response
           const user: User = {
@@ -198,10 +277,14 @@ const authStore = create<AuthState>()(
             updatedAt: authData.user.updated_at,
           };
 
+          // Decode JWT to get actual expiration time
+          const payload = JSON.parse(atob(authData.token.split('.')[1]));
+          const expiresAt = payload.exp || (Math.floor(Date.now() / 1000) + (24 * 60 * 60));
+
           const loginSession: Session = {
             access_token: authData.token,
             refresh_token: '',
-            expires_at: Math.floor(Date.now() / 1000) + (24 * 60 * 60),
+            expires_at: expiresAt,
             token_type: 'bearer',
             user: {
               id: user.id,
@@ -245,7 +328,7 @@ const authStore = create<AuthState>()(
       signup: async (data) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch(`${import.meta.env.VITE_NEON_AUTH_URL}/signup`, {
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/signup`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -286,12 +369,12 @@ const authStore = create<AuthState>()(
       },
 
       logout: async () => {
-        const token = localStorage.getItem('sb-access-token');
+        const token = localStorage.getItem('ff-access-token');
 
         // Invalidate the session server-side (best-effort — don't block local clear on failure)
         if (token) {
           try {
-            await fetch(`${import.meta.env.VITE_NEON_AUTH_URL}/logout`, {
+            await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -304,8 +387,8 @@ const authStore = create<AuthState>()(
         }
 
         // Clear all local auth state
-        localStorage.removeItem('sb-access-token');
-        localStorage.removeItem('sb-provider-token');
+        localStorage.removeItem('ff-access-token');
+        localStorage.removeItem('ff-refresh-token');
         apiClient.clearToken();
 
         set({
@@ -326,8 +409,8 @@ const authStore = create<AuthState>()(
       verifyMFA: async (code: string) => {
         set({ isLoading: true, error: null });
         try {
-          const token = localStorage.getItem('sb-access-token');
-          const response = await fetch(`${import.meta.env.VITE_NEON_AUTH_URL}/mfa/verify`, {
+          const token = localStorage.getItem('ff-access-token');
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/mfa/verify`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -345,7 +428,7 @@ const authStore = create<AuthState>()(
 
           // Update session with new token if provided
           if (authData.token) {
-            localStorage.setItem('sb-access-token', authData.token);
+            localStorage.setItem('ff-access-token', authData.token);
           }
 
           set({

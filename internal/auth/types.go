@@ -9,10 +9,10 @@ import (
 
 // OAuthProvider represents an OAuth provider configuration
 type OAuthProvider struct {
-	Name         string
-	Config       *oauth2.Config
-	UserInfoURL  string
-	Scopes       []string
+	Name        string
+	Config      *oauth2.Config
+	UserInfoURL string
+	Scopes      []string
 }
 
 // OAuthUserInfo represents user information from OAuth providers
@@ -33,9 +33,10 @@ type OAuthCallbackRequest struct {
 
 // OAuthCallbackResponse represents an OAuth callback response
 type OAuthCallbackResponse struct {
-	Token   string             `json:"token"`
-	User    *storage.User      `json:"user"`
-	NewUser bool               `json:"new_user"`
+	Token        string        `json:"token"`
+	RefreshToken string        `json:"refresh_token"`
+	User         *storage.User `json:"user"`
+	NewUser      bool          `json:"new_user"`
 }
 
 // Claims represents JWT claims
@@ -92,8 +93,9 @@ type LoginUser struct {
 
 // LoginResponse represents a login response
 type LoginResponse struct {
-	Token string     `json:"token"`
-	User  *LoginUser `json:"user"`
+	Token        string     `json:"token"`
+	RefreshToken string     `json:"refresh_token"`
+	User         *LoginUser `json:"user"`
 }
 
 // OAuthError represents an OAuth-specific error with user-friendly messages

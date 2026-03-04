@@ -75,7 +75,7 @@ func main() {
 				INSERT INTO tenants (id, name, plan, status, created_at, updated_at)
 				VALUES ($1, $2, $3, $4, NOW(), NOW())
 				ON CONFLICT (id) DO NOTHING`,
-				tenantUUID, "Default Tenant", "starter", "active")
+				tenantUUID, "Default Tenant", "enterprise", "active")
 			if err != nil {
 				log.Fatalf("Failed to create tenant: %v", err)
 			}

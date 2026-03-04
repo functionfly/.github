@@ -3,6 +3,7 @@ package status
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -52,7 +53,9 @@ func (h *Handler) HandleGetPlatformStatus(w http.ResponseWriter, r *http.Request
 
 	healthPercent, prometheusErr = h.prometheus.GetPlatformHealthPercentage(ctx)
 	if prometheusErr != nil {
-		logrus.WithError(prometheusErr).Warn("Failed to get platform health from Prometheus")
+		if !errors.Is(prometheusErr, ErrPrometheusNotConfigured) {
+			logrus.WithError(prometheusErr).Warn("Failed to get platform health from Prometheus")
+		}
 		healthPercent = 100.0 // Default to healthy
 	}
 
@@ -109,12 +112,15 @@ func (h *Handler) HandleGetComponents(w http.ResponseWriter, r *http.Request) {
 	includeHistory := r.URL.Query().Get("include_history") == "true"
 	componentType := r.URL.Query().Get("component_type")
 
-	// Get system health checks
+	// Get system health checks from database; if empty, use default summaries so UI always has data
 	components, err := h.repo.GetSystemHealthChecks(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get system health checks")
 		http.Error(w, "Failed to get component status", http.StatusInternalServerError)
 		return
+	}
+	if len(components) == 0 {
+		components = h.getComponentSummaries(ctx)
 	}
 
 	// Filter by component type if specified
@@ -128,22 +134,33 @@ func (h *Handler) HandleGetComponents(w http.ResponseWriter, r *http.Request) {
 		components = filtered
 	}
 
-	// Add uptime data from Prometheus for each component
+	// Calculate real uptime percentages from health check history
 	for i := range components {
-		// Get uptime percentages
-		uptime24h, err := h.getUptimeForComponent(ctx, components[i].Name, "24h")
+		// Calculate uptime for different periods
+		uptime24h, err := h.repo.CalculateComponentUptime(ctx, components[i].Name, 24*time.Hour)
 		if err == nil {
 			components[i].Uptime24h = uptime24h
+		} else {
+			// Fallback to Prometheus if available
+			if uptime, err := h.getUptimeForComponent(ctx, components[i].Name, "24h"); err == nil {
+				components[i].Uptime24h = uptime
+			} else {
+				components[i].Uptime24h = 99.9 // Final fallback
+			}
 		}
 
-		uptime7d, err := h.getUptimeForComponent(ctx, components[i].Name, "7d")
+		uptime7d, err := h.repo.CalculateComponentUptime(ctx, components[i].Name, 7*24*time.Hour)
 		if err == nil {
 			components[i].Uptime7d = uptime7d
+		} else {
+			components[i].Uptime7d = components[i].Uptime24h // Use 24h as fallback
 		}
 
-		uptime30d, err := h.getUptimeForComponent(ctx, components[i].Name, "30d")
+		uptime30d, err := h.repo.CalculateComponentUptime(ctx, components[i].Name, 30*24*time.Hour)
 		if err == nil {
 			components[i].Uptime30d = uptime30d
+		} else {
+			components[i].Uptime30d = components[i].Uptime7d // Use 7d as fallback
 		}
 
 		// Get history if requested
@@ -487,7 +504,9 @@ func (h *Handler) HandleGetUptimeMetrics(w http.ResponseWriter, r *http.Request)
 	// Query Prometheus for uptime data
 	promResp, err := h.prometheus.GetUptimeRange(ctx, component, start, end, step)
 	if err != nil {
-		logrus.WithError(err).Warn("Failed to get uptime from Prometheus, using fallback")
+		if !errors.Is(err, ErrPrometheusNotConfigured) {
+			logrus.WithError(err).Warn("Failed to get uptime from Prometheus, using fallback")
+		}
 		// Return empty response as fallback
 		promResp = &PrometheusResponse{Status: "success"}
 	}
@@ -597,7 +616,9 @@ func (h *Handler) HandleGetLatencyMetrics(w http.ResponseWriter, r *http.Request
 	// Query Prometheus
 	promResp, err := h.prometheus.GetLatencyRange(ctx, provider, start, end, step, percentileValue)
 	if err != nil {
-		logrus.WithError(err).Warn("Failed to get latency from Prometheus, using fallback")
+		if !errors.Is(err, ErrPrometheusNotConfigured) {
+			logrus.WithError(err).Warn("Failed to get latency from Prometheus, using fallback")
+		}
 		promResp = &PrometheusResponse{Status: "success"}
 	}
 
@@ -792,40 +813,73 @@ func (h *Handler) getComponentSummaries(ctx context.Context) []Component {
 	// Get service health from Prometheus
 	serviceHealth, err := h.prometheus.GetServiceHealth(ctx)
 	if err != nil {
-		logrus.WithError(err).Warn("Failed to get service health from Prometheus")
+		if !errors.Is(err, ErrPrometheusNotConfigured) {
+			logrus.WithError(err).Warn("Failed to get service health from Prometheus")
+		}
 		serviceHealth = make(map[string]bool)
 	}
 
-	// Build component list
+	// When no Prometheus data for a job, treat as operational (avoid showing all Down when Prometheus is unreachable)
+	statusOrDefault := func(key string) string {
+		if v, ok := serviceHealth[key]; ok {
+			return mapBoolStatus(v)
+		}
+		return "operational"
+	}
+
+	// Build component list with real uptime calculations
 	components := []Component{
 		{
 			ID:        "api",
 			Name:      "API",
 			Type:      "api",
-			Status:    mapBoolStatus(serviceHealth["orchestrator-api"]),
-			Uptime24h: 99.9,
+			Status:    statusOrDefault("orchestrator-api"),
+			Uptime24h: 0, // Will be calculated from health history
 		},
 		{
 			ID:        "database",
 			Name:      "Database",
 			Type:      "database",
-			Status:    mapBoolStatus(serviceHealth["postgres"]),
-			Uptime24h: 99.9,
+			Status:    statusOrDefault("postgres"),
+			Uptime24h: 0, // Will be calculated from health history
 		},
 		{
 			ID:        "cache",
 			Name:      "Cache",
 			Type:      "cache",
-			Status:    mapBoolStatus(serviceHealth["redis"]),
-			Uptime24h: 99.9,
+			Status:    statusOrDefault("redis"),
+			Uptime24h: 0, // Will be calculated from health history
 		},
 		{
 			ID:        "health-monitor",
 			Name:      "Health Monitor",
 			Type:      "monitoring",
-			Status:    mapBoolStatus(serviceHealth["health-monitor"]),
-			Uptime24h: 99.9,
+			Status:    statusOrDefault("health-monitor"),
+			Uptime24h: 0, // Will be calculated from health history
 		},
+	}
+
+	// Calculate real uptime for each component
+	for i := range components {
+		// Calculate uptime for different periods
+		uptime24h, err := h.repo.CalculateComponentUptime(ctx, components[i].Name, 24*time.Hour)
+		if err == nil {
+			components[i].Uptime24h = uptime24h
+		}
+
+		uptime7d, err := h.repo.CalculateComponentUptime(ctx, components[i].Name, 7*24*time.Hour)
+		if err == nil {
+			components[i].Uptime7d = uptime7d
+		} else {
+			components[i].Uptime7d = components[i].Uptime24h
+		}
+
+		uptime30d, err := h.repo.CalculateComponentUptime(ctx, components[i].Name, 30*24*time.Hour)
+		if err == nil {
+			components[i].Uptime30d = uptime30d
+		} else {
+			components[i].Uptime30d = components[i].Uptime7d
+		}
 	}
 
 	return components

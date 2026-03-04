@@ -10,10 +10,14 @@ import (
 	"fmt"
 )
 
-func main() {
+func generateKey() {
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(base64.StdEncoding.EncodeToString(priv))
+}
+
+func runKeyGen() {
+	generateKey()
 }

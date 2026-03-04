@@ -96,6 +96,13 @@ import AgentMarketplacePage from '@/pages/AgentMarketplacePage';
 import FunctionMarketplacePage from '@/pages/FunctionMarketplacePage';
 import EvolutionPage from '@/pages/EvolutionPage';
 import EnterpriseSLAPage from '@/pages/EnterpriseSLAPage';
+
+// Flywheel Network imports
+import { FlywheelLayout } from '@/components/flywheel/layout/FlywheelLayout';
+import FlywheelHubPage from '@/pages/flywheel/FlywheelHubPage';
+import ThreadListPage from '@/pages/flywheel/ThreadListPage';
+import ChallengePage from '@/pages/flywheel/ChallengePage';
+import LeaderboardPage from '@/pages/flywheel/LeaderboardPage';
 import { EnterpriseAuditPage } from '@/pages/EnterpriseAuditPage';
 import { EnterpriseSupportPage } from '@/pages/EnterpriseSupportPage';
 import { UsagePage } from '@/pages/UsagePage';
@@ -491,6 +498,18 @@ function AppContent() {
         <Route path="marketplace/functions" element={<FunctionMarketplacePage />} />
         <Route path="evolution" element={<EvolutionPage />} />
         <Route path="evolution/:agentId" element={<EvolutionPage />} />
+
+        {/* Flywheel Network Routes */}
+        <Route path="flywheel" element={<FlywheelLayout />}>
+          <Route index element={<FlywheelHubPage />} />
+          <Route path="threads" element={<ThreadListPage />} />
+          <Route path="threads/new" element={<div>New Thread Page (Coming Soon)</div>} />
+          <Route path="threads/:id" element={<div>Thread Detail Page (Coming Soon)</div>} />
+          <Route path="challenges" element={<ChallengePage />} />
+          <Route path="challenges/:id" element={<div>Challenge Detail Page (Coming Soon)</div>} />
+          <Route path="leaderboards" element={<LeaderboardPage />} />
+          <Route path="reputation/:userId" element={<div>Reputation Page (Coming Soon)</div>} />
+        </Route>
 
         {/* Admin Routes - use Outlet so only one DashboardLayout (parent) is used */}
         <Route

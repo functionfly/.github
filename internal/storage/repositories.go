@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // Repository interface implementation methods
@@ -91,6 +92,36 @@ func (db *PostgresDB) UpdateUserMFALastUsed(userID uuid.UUID, lastUsed *time.Tim
 
 func (db *PostgresDB) VerifyPassword(userID uuid.UUID, password string) (bool, error) {
 	return db.userRepository.VerifyPassword(userID, password)
+}
+
+// OAuth state (CSRF) — persisted for multi-instance OAuth flows
+func (db *PostgresDB) StoreOAuthState(ctx context.Context, state string, expiresAt time.Time) error {
+	row := &OAuthState{State: state, ExpiresAt: expiresAt}
+	return db.GORM.WithContext(ctx).Create(row).Error
+}
+
+func (db *PostgresDB) ValidateAndConsumeOAuthState(ctx context.Context, state string) (bool, error) {
+	var row OAuthState
+	err := db.GORM.WithContext(ctx).Where("state = ? AND expires_at > ?", state, time.Now()).First(&row).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	// Consume: delete so the state can only be used once
+	if err := db.GORM.WithContext(ctx).Where("state = ?", state).Delete(&OAuthState{}).Error; err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (db *PostgresDB) DeleteExpiredOAuthStates() (int64, error) {
+	result := db.GORM.Where("expires_at < ?", time.Now()).Delete(&OAuthState{})
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	return result.RowsAffected, nil
 }
 
 // Audit operations
@@ -191,6 +222,10 @@ func (db *PostgresDB) CreateInvoice(ctx context.Context, invoice *Invoice) (*Inv
 
 func (db *PostgresDB) ListInvoicesByTenant(tenantID uuid.UUID, limit, offset int) ([]*Invoice, error) {
 	return db.billingRepository.ListInvoicesByTenant(tenantID, limit, offset)
+}
+
+func (db *PostgresDB) ListAllInvoices(limit, offset int) ([]*Invoice, error) {
+	return db.billingRepository.ListAllInvoices(limit, offset)
 }
 
 func (db *PostgresDB) GetInvoiceByID(id uuid.UUID) (*Invoice, error) {
@@ -557,6 +592,73 @@ func (db *PostgresDB) DeleteSessionByID(sessionID, userID uuid.UUID) error {
 
 func (db *PostgresDB) ListUserSessions(userID uuid.UUID) ([]*Session, error) {
 	return db.sessionRepository.ListUserSessions(userID)
+}
+
+// Refresh token operations
+func (db *PostgresDB) CreateRefreshToken(userID uuid.UUID, tokenHash string, ipAddress, userAgent string, expiresAt time.Time) (*RefreshToken, error) {
+	return db.refreshTokenRepository.CreateRefreshToken(userID, tokenHash, ipAddress, userAgent, expiresAt)
+}
+
+func (db *PostgresDB) GetRefreshTokenByHash(tokenHash string) (*RefreshToken, error) {
+	return db.refreshTokenRepository.GetRefreshTokenByHash(tokenHash)
+}
+
+func (db *PostgresDB) RevokeRefreshToken(tokenID uuid.UUID) error {
+	return db.refreshTokenRepository.RevokeRefreshToken(tokenID)
+}
+
+func (db *PostgresDB) RevokeUserRefreshTokens(userID uuid.UUID) error {
+	return db.refreshTokenRepository.RevokeUserRefreshTokens(userID)
+}
+
+func (db *PostgresDB) DeleteExpiredRefreshTokens() (int64, error) {
+	return db.refreshTokenRepository.DeleteExpiredRefreshTokens()
+}
+
+func (db *PostgresDB) ListUserRefreshTokens(userID uuid.UUID) ([]*RefreshToken, error) {
+	return db.refreshTokenRepository.ListUserRefreshTokens(userID)
+}
+
+// Login attempt operations
+func (db *PostgresDB) CreateLoginAttempt(userID uuid.UUID, ipAddress, userAgent string, successful bool, lockoutUntil *time.Time) (*LoginAttempt, error) {
+	return db.loginAttemptRepository.CreateLoginAttempt(userID, ipAddress, userAgent, successful, lockoutUntil)
+}
+
+func (db *PostgresDB) GetRecentFailedLoginAttempts(userID uuid.UUID, since time.Time) (int, error) {
+	return db.loginAttemptRepository.GetRecentFailedLoginAttempts(userID, since)
+}
+
+func (db *PostgresDB) GetUserLockoutStatus(userID uuid.UUID) (*time.Time, error) {
+	return db.loginAttemptRepository.GetUserLockoutStatus(userID)
+}
+
+func (db *PostgresDB) ClearUserLockout(userID uuid.UUID) error {
+	return db.loginAttemptRepository.ClearUserLockout(userID)
+}
+
+func (db *PostgresDB) DeleteOldLoginAttempts(before time.Time) (int64, error) {
+	return db.loginAttemptRepository.DeleteOldLoginAttempts(before)
+}
+
+// Auth event operations
+func (db *PostgresDB) LogAuthEvent(event *AuthEvent) error {
+	return db.authEventRepository.LogAuthEvent(event)
+}
+
+func (db *PostgresDB) GetAuthEventsForUser(userID uuid.UUID, limit, offset int) ([]*AuthEvent, error) {
+	return db.authEventRepository.GetAuthEventsForUser(userID, limit, offset)
+}
+
+func (db *PostgresDB) GetAuthEventsByType(eventType string, limit, offset int) ([]*AuthEvent, error) {
+	return db.authEventRepository.GetAuthEventsByType(eventType, limit, offset)
+}
+
+func (db *PostgresDB) GetRecentAuthEvents(since time.Time, limit int) ([]*AuthEvent, error) {
+	return db.authEventRepository.GetRecentAuthEvents(since, limit)
+}
+
+func (db *PostgresDB) DeleteOldAuthEvents(before time.Time) (int64, error) {
+	return db.authEventRepository.DeleteOldAuthEvents(before)
 }
 
 // Dashboard configuration operations

@@ -53,29 +53,32 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
           className
         )}
       >
-        <div className="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center justify-between">
-          {/* Mobile Menu Button (Dashboard only) */}
-          {variant === "dashboard" && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden text-text-secondary hover:text-text-primary mr-2"
-              onClick={onMenuClick}
-              aria-label="Open navigation menu"
-              style={theme === 'light' ? {
-                color: '#1a1a2e',
-              } : {}}
-            >
-              <Menu className="w-5 h-5" />
-            </Button>
-          )}
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center justify-between gap-4">
+          {/* Left: menu button + logo with spacing so nav never touches logo on small screens */}
+          <div className="flex items-center shrink-0 min-w-0">
+            {/* Mobile Menu Button (Dashboard only) */}
+            {variant === "dashboard" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden text-text-secondary hover:text-text-primary mr-2"
+                onClick={onMenuClick}
+                aria-label="Open navigation menu"
+                style={theme === 'light' ? {
+                  color: '#1a1a2e',
+                } : {}}
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+            )}
 
-          {/* Logo */}
-          <Link to={isAuthenticated ? "/dashboard" : "/"} className="shrink-0" aria-label="FunctionFly home">
-            <Logo />
-          </Link>
+            {/* Logo - margin-right keeps space from nav/right section on small screens */}
+            <Link to={isAuthenticated ? "/dashboard" : "/"} className="shrink-0 mr-4 md:mr-6" aria-label="FunctionFly home">
+              <Logo />
+            </Link>
+          </div>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation - gap-4 on parent + logo mr keeps first nav link clear of logo */}
           <div className="hidden md:flex items-center gap-6">
             {isAuthenticated ? (
               <>
@@ -151,8 +154,8 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
             )}
           </div>
 
-          {/* Right Section */}
-          <div className="flex items-center gap-4">
+          {/* Right Section - shrink-0 so it never overlaps logo on small screens */}
+          <div className="flex items-center gap-4 shrink-0">
             {isAuthenticated ? (
               <>
                 {/* Search (Dashboard only) */}

@@ -17,7 +17,7 @@ ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE security_scans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vulnerabilities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dashboard_configs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE function_configs ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE functions ENABLE ROW LEVEL SECURITY; -- table doesn't exist
 ALTER TABLE function_deployments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE function_logs ENABLE ROW LEVEL SECURITY;
 
@@ -169,7 +169,7 @@ CREATE POLICY dashboard_configs_tenant_isolation ON dashboard_configs
     );
 
 -- Row Level Security Policies for Functions
-CREATE POLICY function_configs_tenant_isolation ON function_configs
+CREATE POLICY functions_tenant_isolation ON functions
     FOR ALL USING (
         tenant_id = current_tenant_id()
         OR is_platform_admin()
@@ -178,7 +178,7 @@ CREATE POLICY function_configs_tenant_isolation ON function_configs
 CREATE POLICY function_deployments_tenant_isolation ON function_deployments
     FOR ALL USING (
         function_id IN (
-            SELECT id FROM function_configs WHERE tenant_id = current_tenant_id()
+            SELECT id FROM functions WHERE tenant_id = current_tenant_id()
         )
         OR is_platform_admin()
     );
@@ -186,7 +186,7 @@ CREATE POLICY function_deployments_tenant_isolation ON function_deployments
 CREATE POLICY function_logs_tenant_isolation ON function_logs
     FOR ALL USING (
         function_id IN (
-            SELECT id FROM function_configs WHERE tenant_id = current_tenant_id()
+            SELECT id FROM functions WHERE tenant_id = current_tenant_id()
         )
         OR function_id IS NULL  -- Allow system logs
         OR is_platform_admin()
@@ -221,7 +221,7 @@ BEGIN
     BEGIN
         -- Handle different table structures
         CASE TG_TABLE_NAME
-            WHEN 'users', 'apps', 'subscriptions', 'invoices', 'usage_events', 'dashboard_configs', 'function_configs' THEN
+            WHEN 'users', 'apps', 'subscriptions', 'invoices', 'usage_events', 'dashboard_configs', 'functions' THEN
                 tenant_id := CASE
                     WHEN TG_OP = 'DELETE' THEN (old_row->>'tenant_id')::uuid
                     ELSE (new_row->>'tenant_id')::uuid
@@ -246,7 +246,7 @@ BEGIN
                         WHEN TG_OP = 'DELETE' THEN (old_row->>'function_id')::uuid
                         ELSE (new_row->>'function_id')::uuid
                     END;
-                    SELECT f.tenant_id INTO tenant_id FROM function_configs f WHERE f.id = function_id;
+                    SELECT f.tenant_id INTO tenant_id FROM functions f WHERE f.id = function_id;
                 END;
             ELSE
                 tenant_id := NULL;
@@ -322,8 +322,8 @@ CREATE TRIGGER audit_subscriptions_trigger
     AFTER INSERT OR UPDATE OR DELETE ON subscriptions
     FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
 
-CREATE TRIGGER audit_function_configs_trigger
-    AFTER INSERT OR UPDATE OR DELETE ON function_configs
+CREATE TRIGGER audit_functions_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON functions
     FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
 
 CREATE TRIGGER audit_function_deployments_trigger
@@ -392,8 +392,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
--- Add check constraint to function_configs for security validation
-ALTER TABLE function_configs
+-- Add check constraint to functions for security validation
+ALTER TABLE functions
 ADD CONSTRAINT function_code_security_check
 CHECK (validate_function_security(code));
 
@@ -409,7 +409,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_invoices_tenant_id ON invoices(tenan
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_performance_metrics_tenant_timestamp ON performance_metrics(tenant_id, timestamp DESC);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_security_scans_tenant_id ON security_scans(tenant_id);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dashboard_configs_tenant_id ON dashboard_configs(tenant_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_function_configs_tenant_id ON function_configs(tenant_id);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_functions_tenant_id ON functions(tenant_id);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_function_deployments_function_id ON function_deployments(function_id);
 
 -- Create a view for security monitoring

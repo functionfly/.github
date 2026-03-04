@@ -1,5 +1,18 @@
-# FunctionFly Caddy Dockerfile
+# FunctionFly Caddy Dockerfile with rate_limit plugin
+# This Dockerfile builds Caddy with the necessary plugins for rate limiting
+
+# Builder stage
+FROM caddy:2.7-builder-alpine AS builder
+
+# Build Caddy with rate_limit plugin
+RUN xcaddy build \
+    --with github.com/mholt/caddy-ratelimit
+
+# Final stage
 FROM caddy:2.7-alpine
+
+# Copy the custom-built Caddy binary
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 
 # Copy appropriate Caddyfile based on environment
 ARG CADDY_CONFIG=staging

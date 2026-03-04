@@ -44,6 +44,17 @@ type Vulnerability struct {
 	UpdatedAt     time.Time              `json:"updated_at" db:"updated_at"`
 }
 
+// OAuthState stores OAuth CSRF state tokens for validation on callback (persisted for multi-instance).
+type OAuthState struct {
+	State     string    `gorm:"column:state;primaryKey;size:512"`
+	ExpiresAt time.Time `gorm:"column:expires_at;not null"`
+}
+
+// TableName overrides the default table name for GORM.
+func (OAuthState) TableName() string {
+	return "oauth_states"
+}
+
 // Session represents a user session with MFA verification status
 type Session struct {
 	ID           uuid.UUID  `json:"id" db:"id"`
@@ -57,4 +68,48 @@ type Session struct {
 	LastActivity time.Time  `json:"last_activity" db:"last_activity"`
 	CreatedAt    time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+// RefreshToken represents a refresh token stored in the database
+type RefreshToken struct {
+	ID        uuid.UUID `json:"id" db:"id"`
+	UserID    uuid.UUID `json:"user_id" db:"user_id"`
+	TokenHash string    `json:"token_hash" db:"token_hash"` // SHA-256 hash of the refresh token
+	IPAddress string    `json:"ip_address" db:"ip_address"`
+	UserAgent string    `json:"user_agent" db:"user_agent"`
+	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
+	Revoked   bool      `json:"revoked" db:"revoked"`     // Whether this token has been revoked
+	RevokedAt *time.Time `json:"revoked_at,omitempty" db:"revoked_at"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// LoginAttempt represents a login attempt (successful or failed) for account lockout protection
+type LoginAttempt struct {
+	ID           uuid.UUID  `json:"id" db:"id"`
+	UserID       uuid.UUID  `json:"user_id" db:"user_id"`
+	IPAddress    string     `json:"ip_address" db:"ip_address"`
+	UserAgent    string     `json:"user_agent" db:"user_agent"`
+	Successful   bool       `json:"successful" db:"successful"`
+	AttemptedAt  time.Time  `json:"attempted_at" db:"attempted_at"`
+	LockoutUntil *time.Time `json:"lockout_until,omitempty" db:"lockout_until"`
+	CreatedAt    time.Time  `json:"created_at" db:"created_at"`
+}
+
+// AuthEvent represents an authentication event for security auditing
+type AuthEvent struct {
+	ID            uuid.UUID              `json:"id" db:"id"`
+	UserID        *uuid.UUID             `json:"user_id,omitempty" db:"user_id"`
+	TenantID      *uuid.UUID             `json:"tenant_id,omitempty" db:"tenant_id"`
+	EventType     string                 `json:"event_type" db:"event_type"`
+	Success       bool                   `json:"success" db:"success"`
+	FailureReason *string                `json:"failure_reason,omitempty" db:"failure_reason"`
+	IPAddress     string                 `json:"ip_address" db:"ip_address"`
+	UserAgent     string                 `json:"user_agent" db:"user_agent"`
+	LocationInfo  map[string]interface{} `json:"location_info,omitempty" db:"location_info"`
+	SessionID     *uuid.UUID             `json:"session_id,omitempty" db:"session_id"`
+	Provider      *string                `json:"provider,omitempty" db:"provider"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty" db:"metadata"`
+	SecurityFlags map[string]interface{} `json:"security_flags,omitempty" db:"security_flags"`
+	CreatedAt     time.Time              `json:"created_at" db:"created_at"`
 }

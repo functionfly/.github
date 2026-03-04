@@ -1,10 +1,10 @@
 /**
  * Notifications API
  *
- * API module for notification management using Neon/Supabase.
+ * API module for notification management.
  */
 
-import { supabase } from '@/lib/neon';
+import { apiClient } from '@/api/client';
 import type {
   Notification,
   NotificationCategory,
@@ -35,169 +35,78 @@ export async function fetchNotifications(
   const { category, status, priority, limit = 50, offset = 0 } = params;
 
   try {
-    let query = supabase
-      .from('user_notifications')
-      .select(`
-      id,
-      status,
-      read_at,
-      archived_at,
-      notification:notifications!inner(
-        id,
-        type,
-        category,
-        title,
-        message,
-        priority,
-        metadata,
-        action_url,
-        icon,
-        created_at
-      )
-    `)
-    .order('created_at', { ascending: false, foreignTable: 'notifications' })
-    .range(offset, offset + limit - 1);
+    const queryParams = new URLSearchParams();
+    if (limit) queryParams.set('limit', limit.toString());
+    if (offset) queryParams.set('offset', offset.toString());
+    if (category && category !== 'all') queryParams.set('category', category);
+    if (status) queryParams.set('status', status);
+    // Note: priority filtering might not be supported by backend yet
 
-  if (category && category !== 'all') {
-    query = query.eq('notifications.category', category);
-  }
+    const url = `/v1/notifications${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await apiClient.get(url) as { notifications: any[] };
 
-  if (status) {
-    if (status === 'unread') {
-      query = query.is('read_at', null);
-    } else if (status === 'read') {
-      query = query.not('read_at', 'is', null);
-    } else if (status === 'archived') {
-      query = query.not('archived_at', 'is', null);
-    }
-  }
-
-  if (priority) {
-    query = query.eq('notifications.priority', priority);
-  }
-
-    const { data, error } = await query;
-
-    if (error) {
-      throw new Error(`Failed to fetch notifications: ${error.message}`);
-    }
-
-    // Transform the joined data into Notification objects
-    return (data || []).map((item: any) => ({
-    id: item.id,
-    type: item.notification.type,
-    category: item.notification.category,
-    title: item.notification.title,
-    message: item.notification.message,
-    timestamp: item.notification.created_at,
-    priority: item.notification.priority,
-    status: item.status as NotificationStatus,
-    metadata: item.notification.metadata || {},
-    userId: item.user_id,
-    tenantId: item.tenant_id,
-    actionUrl: item.notification.action_url,
-    icon: item.notification.icon,
-    readAt: item.read_at,
-    archivedAt: item.archived_at,
-  }));
-  } catch (err) {
-    if (err instanceof TypeError && err.message?.includes('URL')) {
-      console.warn(
-        'Notifications: VITE_NEON_DATA_API_URL may be invalid or missing. Set it to a valid Data API URL (e.g. https://...neon.tech).'
-      );
-      return [];
-    }
-    throw err;
+    // Transform the response into Notification objects
+    return (response.notifications || []).map((item: any) => ({
+      id: item.id,
+      type: item.type,
+      category: item.category,
+      title: item.title,
+      message: item.message,
+      timestamp: item.created_at,
+      priority: item.priority,
+      status: item.status as NotificationStatus,
+      metadata: item.metadata || {},
+      userId: item.user_id,
+      tenantId: item.tenant_id,
+      actionUrl: item.action_url,
+      icon: item.icon,
+      readAt: item.read_at,
+      archivedAt: item.archived_at,
+    }));
+  } catch (error: any) {
+    console.error('Failed to fetch notifications:', error);
+    throw new Error(`Failed to fetch notifications: ${error?.message || 'Unknown error'}`);
   }
 }
 
 /**
  * Fetch unread notification counts by category.
- * Returns zeros if Neon/Data API URL is misconfigured (e.g. Invalid URL) so the UI does not break.
  */
 export async function fetchUnreadCounts(): Promise<NotificationCount> {
-  try {
-    const { data, error } = await supabase.rpc('get_notification_counts');
-
-    if (error) {
-      throw new Error(`Failed to fetch notification counts: ${error.message}`);
-    }
-
-    return {
-      total: data?.total ?? 0,
-      unread: data?.unread ?? 0,
-      byCategory: data?.by_category ?? {},
-    };
-  } catch (err) {
-    if (err instanceof TypeError && err.message?.includes('URL')) {
-      console.warn(
-        'Notifications: VITE_NEON_DATA_API_URL may be invalid or missing. Set it to a valid Data API URL (e.g. https://...neon.tech).'
-      );
-      return { total: 0, unread: 0, byCategory: {} };
-    }
-    throw err;
-  }
+  return await apiClient.get('/v1/notifications/unread-count');
 }
 
 /**
  * Mark a notification as read
  */
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
-  const { error } = await supabase
-    .from('user_notifications')
-    .update({
-      status: 'read' as NotificationStatus,
-      read_at: new Date().toISOString(),
-    })
-    .eq('id', notificationId);
-
-  if (error) {
-    throw new Error(`Failed to mark notification as read: ${error.message}`);
-  }
+  await apiClient.patch(`/v1/notifications/${notificationId}/read`);
 }
 
 /**
  * Mark all notifications as read for the current user
  */
 export async function markAllNotificationsAsRead(): Promise<number> {
-  const { data, error } = await supabase.rpc('mark_all_notifications_read');
-
-  if (error) {
-    throw new Error(`Failed to mark all notifications as read: ${error.message}`);
-  }
-
-  return data?.count || 0;
+  const response = await apiClient.post('/v1/notifications/read-all') as { count?: number };
+  return response.count || 0;
 }
 
 /**
  * Archive a notification
  */
 export async function archiveNotification(notificationId: string): Promise<void> {
-  const { error } = await supabase
-    .from('user_notifications')
-    .update({
-      status: 'archived' as NotificationStatus,
-      archived_at: new Date().toISOString(),
-    })
-    .eq('id', notificationId);
-
-  if (error) {
-    throw new Error(`Failed to archive notification: ${error.message}`);
-  }
+  // Note: Archive functionality may need backend support
+  await apiClient.patch(`/v1/notifications/${notificationId}`, {
+    status: 'archived',
+    archived_at: new Date().toISOString(),
+  });
 }
 
 /**
  * Delete a notification
  */
 export async function deleteNotification(notificationId: string): Promise<void> {
-  const { error } = await supabase
-    .from('user_notifications')
-    .delete()
-    .eq('id', notificationId);
-
-  if (error) {
-    throw new Error(`Failed to delete notification: ${error.message}`);
-  }
+  await apiClient.delete(`/v1/notifications/${notificationId}`);
 }
 
 /**
@@ -208,20 +117,12 @@ export async function getNotificationPreferences(): Promise<{
   pushEnabled: boolean;
   categories: Record<string, boolean>;
 }> {
-  const { data, error } = await supabase
-    .from('notification_preferences')
-    .select('*')
-    .single();
-
-  if (error && error.code !== 'PGRST116') {
-    // PGRST116 is "no rows returned" - return defaults
-    throw new Error(`Failed to fetch preferences: ${error.message}`);
-  }
+  const response = await apiClient.get('/v1/users/me/notification-preferences') as { preferences?: any };
 
   return {
-    emailEnabled: data?.email_enabled ?? true,
-    pushEnabled: data?.push_enabled ?? true,
-    categories: data?.category_settings || {},
+    emailEnabled: response.preferences?.email_enabled ?? true,
+    pushEnabled: response.preferences?.push_enabled ?? true,
+    categories: response.preferences?.category_settings || {},
   };
 }
 
@@ -233,18 +134,13 @@ export async function updateNotificationPreferences(preferences: {
   pushEnabled?: boolean;
   categories?: Record<string, boolean>;
 }): Promise<void> {
-  const { error } = await supabase
-    .from('notification_preferences')
-    .upsert({
+  await apiClient.patch('/v1/users/me/notification-preferences', {
+    preferences: [{
       email_enabled: preferences.emailEnabled,
       push_enabled: preferences.pushEnabled,
       category_settings: preferences.categories,
-      updated_at: new Date().toISOString(),
-    });
-
-  if (error) {
-    throw new Error(`Failed to update preferences: ${error.message}`);
-  }
+    }]
+  });
 }
 
 // Export API object for convenience

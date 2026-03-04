@@ -11,3 +11,8 @@ export { ShareButtons } from './ShareButtons';
 export { NewsletterSignup } from './NewsletterSignup';
 export { AuthorBio } from './AuthorBio';
 export { BookmarkButton, useBookmarks } from './BookmarkButton';
+export { BlogCategoriesSidebar } from './BlogCategoriesSidebar';
+export type { BlogCategory } from './BlogCategoriesSidebar';
+export { BlogPostCard } from './BlogPostCard';
+export { RichTextRenderer, isSlateContent, parseContent } from './RichTextRenderer';
+export type { TextNode, ContentNode, RichTextContent, BlockType, CalloutType } from './RichTextRenderer';

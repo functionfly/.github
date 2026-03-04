@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -15,41 +14,6 @@ import (
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
 )
-
-// oauthStateStore is a simple in-memory store for OAuth state tokens.
-// In production, this should be replaced with a Redis-backed store.
-var oauthStateStore = struct {
-	sync.Mutex
-	states map[string]time.Time
-}{
-	states: make(map[string]time.Time),
-}
-
-// storeOAuthState stores an OAuth state token with a 10-minute TTL
-func storeOAuthState(state string) {
-	oauthStateStore.Lock()
-	defer oauthStateStore.Unlock()
-	// Purge expired states
-	now := time.Now()
-	for s, exp := range oauthStateStore.states {
-		if now.After(exp) {
-			delete(oauthStateStore.states, s)
-		}
-	}
-	oauthStateStore.states[state] = now.Add(10 * time.Minute)
-}
-
-// validateAndConsumeOAuthState validates and removes an OAuth state token (one-time use)
-func validateAndConsumeOAuthState(state string) bool {
-	oauthStateStore.Lock()
-	defer oauthStateStore.Unlock()
-	exp, ok := oauthStateStore.states[state]
-	if !ok {
-		return false
-	}
-	delete(oauthStateStore.states, state)
-	return time.Now().Before(exp)
-}
 
 // SetBaseURL sets the base URL for OAuth redirects
 func (a *AuthService) SetBaseURL(baseURL string) {
@@ -116,16 +80,34 @@ func (a *AuthService) GetOAuthURL(provider string) (string, error) {
 		return "", fmt.Errorf("failed to generate OAuth state: %w", err)
 	}
 
-	// Store state server-side so we can validate it on callback
-	storeOAuthState(state)
+	// Store state server-side (persisted for multi-instance) so we can validate it on callback
+	expiresAt := time.Now().Add(10 * time.Minute)
+	if err := a.repo.StoreOAuthState(context.Background(), state, expiresAt); err != nil {
+		return "", fmt.Errorf("failed to store OAuth state: %w", err)
+	}
 
 	return p.Config.AuthCodeURL(state, oauth2.AccessTypeOffline), nil
 }
 
 // HandleOAuthCallback processes OAuth callback and returns user authentication
 func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthCallbackResponse, error) {
-	// Validate CSRF state token — must match one issued by GetOAuthURL
-	if state == "" || !validateAndConsumeOAuthState(state) {
+	// Validate CSRF state token — must match one issued by GetOAuthURL (persisted, one-time use)
+	if state == "" {
+		return nil, &OAuthError{
+			Type:        "invalid_state",
+			Message:     "Invalid or expired OAuth state",
+			Description: "The OAuth state parameter is invalid or has expired. Please try signing in again.",
+		}
+	}
+	valid, err := a.repo.ValidateAndConsumeOAuthState(context.Background(), state)
+	if err != nil {
+		return nil, &OAuthError{
+			Type:        "invalid_state",
+			Message:     "Invalid or expired OAuth state",
+			Description: "The OAuth state could not be validated. Please try signing in again.",
+		}
+	}
+	if !valid {
 		return nil, &OAuthError{
 			Type:        "invalid_state",
 			Message:     "Invalid or expired OAuth state",
@@ -285,14 +267,36 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 		}
 	}
 
+	// Generate refresh token for OAuth login
+	refreshToken, refreshTokenHash, err := a.generateRefreshToken()
+	if err != nil {
+		return nil, &OAuthError{
+			Type:        "token_generation_failed",
+			Message:     "Authentication token error",
+			Description: "Could not generate refresh token. Please try again.",
+		}
+	}
+
+	// Store refresh token in database (expires in 30 days)
+	refreshExpiresAt := time.Now().Add(30 * 24 * time.Hour)
+	_, err = a.repo.CreateRefreshToken(user.ID, refreshTokenHash, "oauth", "oauth-callback", refreshExpiresAt)
+	if err != nil {
+		return nil, &OAuthError{
+			Type:        "token_storage_failed",
+			Message:     "Authentication token error",
+			Description: "Could not store refresh token. Please try again.",
+		}
+	}
+
 	if newUser {
 		a.sendWelcomeNotification(context.Background(), user.ID)
 	}
 
 	return &OAuthCallbackResponse{
-		Token:   jwtToken,
-		User:    user,
-		NewUser: newUser,
+		Token:        jwtToken,
+		RefreshToken: refreshToken,
+		User:         user,
+		NewUser:      newUser,
 	}, nil
 }
 

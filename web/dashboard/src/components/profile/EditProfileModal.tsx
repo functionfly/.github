@@ -303,7 +303,11 @@ export function EditProfileModal({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button type="button" className="absolute -bottom-1 -right-1 w-7 h-7 bg-brand-500 hover:bg-brand-600 rounded-full flex items-center justify-center text-white shadow-lg transition-colors">
+                        <button
+                          type="button"
+                          className="absolute -bottom-1 -right-1 w-7 h-7 bg-brand-500 hover:bg-brand-600 rounded-full flex items-center justify-center text-white shadow-lg transition-colors"
+                          aria-label="Avatar is synced from your social login"
+                        >
                           <Camera className="w-3.5 h-3.5" />
                         </button>
                       </TooltipTrigger>

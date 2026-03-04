@@ -12,29 +12,32 @@ alerting:
           - alertmanager:9093
 
 scrape_configs:
-  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  # Job names must match status handler: orchestrator-api, health-monitor, postgres, redis
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
-  - job_name: 'functionfly-api'
+  # Orchestrator API: host when make dev; orchestrator-api:8080 when full stack in Docker
+  - job_name: 'orchestrator-api'
     static_configs:
-      - targets: ['orchestrator-api:8080']
+      - targets: ['orchestrator-api:8080', 'host.docker.internal:8080']
     scrape_interval: 10s
     metrics_path: /metrics
 
-  - job_name: 'functionfly-health-monitor'
+  # Health monitor: only in Docker (no host process)
+  - job_name: 'health-monitor'
     static_configs:
       - targets: ['health-monitor:8080']
     scrape_interval: 30s
     metrics_path: /metrics
 
+  # Optional: when postgres-exporter / redis-exporter are running (e.g. docker-compose.monitoring)
   - job_name: 'postgres'
     static_configs:
-      - targets: ['postgres:5432']
+      - targets: ['postgres-exporter:9187']
     scrape_interval: 30s
 
   - job_name: 'redis'
     static_configs:
-      - targets: ['redis:6379']
+      - targets: ['redis-exporter:9121']
     scrape_interval: 30s

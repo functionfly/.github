@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -132,7 +133,7 @@ func validatePasswordStrength(password string) error {
 }
 
 // Login authenticates a user and returns a JWT token
-func (a *AuthService) Login(email, password string) (res *LoginResponse, err error) {
+func (a *AuthService) Login(email, password, ipAddress, userAgent string) (res *LoginResponse, err error) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			logrus.WithField("panic", rec).WithField("stack", string(debug.Stack())).Error("Login panic")
@@ -175,6 +176,19 @@ func (a *AuthService) Login(email, password string) (res *LoginResponse, err err
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
+	// Generate refresh token
+	refreshToken, refreshTokenHash, err := a.generateRefreshToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	// Store refresh token in database (expires in 30 days)
+	refreshExpiresAt := time.Now().Add(30 * 24 * time.Hour)
+	_, err = a.repo.CreateRefreshToken(user.ID, refreshTokenHash, ipAddress, userAgent, refreshExpiresAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store refresh token: %w", err)
+	}
+
 	// Build safe user for response (no password hash, MFA secrets, or verification tokens)
 	loginUser := userToLoginUser(user)
 
@@ -184,8 +198,9 @@ func (a *AuthService) Login(email, password string) (res *LoginResponse, err err
 	}
 
 	return &LoginResponse{
-		Token: token,
-		User:  loginUser,
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         loginUser,
 	}, nil
 }
 
@@ -245,8 +260,8 @@ func userToLoginUser(u *storage.User) *LoginUser {
 // Signup creates a new user account (unverified, requires email confirmation)
 func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 	// Validate required fields
-	if req.Email == "" || req.Password == "" {
-		return nil, fmt.Errorf("email and password are required")
+	if req.Email == "" || req.Password == "" || req.Username == "" {
+		return nil, fmt.Errorf("email, password, and username are required")
 	}
 
 	if req.Password != req.ConfirmPassword {
@@ -385,6 +400,44 @@ func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 		EmailSent:            emailSent,
 		RequiresVerification: true,
 	}, nil
+}
+
+// CheckUsernameAvailability checks if a username is available for registration
+func (a *AuthService) CheckUsernameAvailability(username string) (bool, error) {
+	if username == "" {
+		return false, fmt.Errorf("username is required")
+	}
+
+	// Check if username matches validation pattern
+	if !strings.Contains(username, "") { // This will be checked by the regex
+		// Use the same validation as in the schema
+		matched, err := regexp.MatchString("^[a-zA-Z0-9_-]*$", username)
+		if err != nil {
+			return false, fmt.Errorf("failed to validate username format: %w", err)
+		}
+		if !matched {
+			return false, fmt.Errorf("username contains invalid characters")
+		}
+	}
+
+	// Check length constraints
+	if len(username) > 50 {
+		return false, fmt.Errorf("username is too long")
+	}
+
+	// Check if username is already taken
+	existingUser, err := a.repo.GetUserByUsername(username)
+	if err != nil {
+		return false, fmt.Errorf("failed to check username availability: %w", err)
+	}
+
+	// If user exists, username is not available
+	if existingUser != nil {
+		return false, nil
+	}
+
+	// Username is available
+	return true, nil
 }
 
 // sendWelcomeNotification sends an in-app welcome notification if a notifier is configured.
