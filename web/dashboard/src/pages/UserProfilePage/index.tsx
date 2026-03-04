@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/common/Navbar";
 import { UserNotFoundView } from "@/components/ui/UserNotFoundView";
 import { usersApi } from "@/api/users";
+import { FollowUserButton, FollowStats } from "@/components/follow";
+import { useUserFollowStatus } from "@/hooks/useFollow";
+import { useAuth } from "@/hooks/useAuth";
 import type { PublicUserProfile } from "@/types";
 
 function ProfileSkeleton() {
@@ -76,6 +79,7 @@ function FunctionCard({ fn }: { fn: PublicUserProfile["publishedFunctions"][0] }
 
 export function UserProfilePage() {
   const { username } = useParams<{ username: string }>();
+  const { user: currentUser } = useAuth();
 
   const {
     data: profile,
@@ -90,12 +94,18 @@ export function UserProfilePage() {
     retry: 1,
   });
 
+  // Get follow status
+  const { data: followStatus } = useUserFollowStatus(username ?? "");
+
   const joinedDate = profile?.createdAt
     ? new Date(profile.createdAt).toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
       })
     : null;
+
+  // Check if viewing own profile
+  const isOwnProfile = currentUser?.username === username;
 
   return (
     <div className="min-h-screen bg-bg-primary">
@@ -138,14 +148,22 @@ export function UserProfilePage() {
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-text-primary">
-                  {profile.name || profile.username}
-                </h1>
-                <p className="text-brand-400 font-medium">@{profile.username}</p>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold text-text-primary">
+                      {profile.name || profile.username}
+                    </h1>
+                    <p className="text-brand-400 font-medium">@{profile.username}</p>
+                  </div>
+                  {/* Follow Button - only show if not viewing own profile */}
+                  {!isOwnProfile && currentUser && (
+                    <FollowUserButton username={profile.username} />
+                  )}
+                </div>
                 {profile.bio && (
                   <p className="text-text-secondary mt-2 text-sm">{profile.bio}</p>
                 )}
-                <div className="flex items-center gap-4 mt-3 text-xs text-text-muted">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-text-muted">
                   {joinedDate && (
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
@@ -157,6 +175,12 @@ export function UserProfilePage() {
                     {profile.publishedFunctions.length} function
                     {profile.publishedFunctions.length !== 1 ? "s" : ""}
                   </span>
+                  {/* Follow Stats */}
+                  <FollowStats
+                    username={profile.username}
+                    followerCount={followStatus?.follower_count ?? 0}
+                    followingCount={followStatus?.following_count ?? 0}
+                  />
                 </div>
               </div>
             </div>

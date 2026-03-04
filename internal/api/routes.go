@@ -23,6 +23,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/enterprise"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
 	flywheelhandler "github.com/functionfly/functionfly/internal/api/handlers/flywheel"
+	followHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/follow"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
@@ -42,6 +43,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/cache"
+	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/captcha"
 	"github.com/functionfly/functionfly/internal/flywheel"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
@@ -76,6 +78,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	maintenanceMiddleware := middleware.NewMaintenanceMiddleware(maintenanceRepo)
 	contentHandler := content.NewHandler(s.repo)
 	feedbackHandler := feedbackHandlerPkg.NewHandler(s.repo, s.storageService)
+
+	// Initialize follow handler
+	followService := services.NewFollowService(s.postgresDB, s.repo)
+	followHandler := followHandlerPkg.NewHandler(followService, s.repo, s.authSvc)
+
 	// Initialize monitoring handler
 	monitoringHandler := monitoring.NewHandler(s.repo, s.monitoringSvc, s.realtimeMonitor, s.authSvc)
 	mfaHandler := mfaHandlerPkg.NewMFAHandler(s.authSvc)
@@ -338,6 +345,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/users/{username}/settings/profile", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsProfile)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/notifications", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsNotifications)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/privacy", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsPrivacy)).Methods("PATCH", "OPTIONS")
+<<<<<<< HEAD
 	api.HandleFunc("/users/{username}/settings/visibility", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsVisibility)).Methods("PATCH", "OPTIONS")
 
 	// User profile analytics (public)
@@ -353,6 +361,26 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// User skills management (protected)
 	api.HandleFunc("/users/me/skills", authMiddleware.RequireAuth(usersHandler.HandleAddUserSkill)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/users/me/skills/{id}", authMiddleware.RequireAuth(usersHandler.HandleRemoveUserSkill)).Methods("DELETE", "OPTIONS")
+=======
+
+	// Follow routes (protected for write, public for read where noted)
+	// User follows
+	api.HandleFunc("/v1/follow/users/{username}/follow", authMiddleware.RequireAuth(followHandler.HandleFollowUser)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/v1/follow/users/{username}/follow", authMiddleware.RequireAuth(followHandler.HandleUnfollowUser)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/v1/follow/users/{username}/followers", followHandler.HandleGetUserFollowers).Methods("GET", "OPTIONS")
+	api.HandleFunc("/v1/follow/users/{username}/following", followHandler.HandleGetUserFollowing).Methods("GET", "OPTIONS")
+	api.HandleFunc("/v1/follow/users/{username}/status", authMiddleware.RequireAuth(followHandler.HandleCheckFollowingStatus)).Methods("GET", "OPTIONS")
+
+	// Function follows
+	api.HandleFunc("/v1/follow/functions/{functionID}/follow", authMiddleware.RequireAuth(followHandler.HandleFollowFunction)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/v1/follow/functions/{functionID}/follow", authMiddleware.RequireAuth(followHandler.HandleUnfollowFunction)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/v1/follow/functions/{functionID}/followers", followHandler.HandleGetFunctionFollowers).Methods("GET", "OPTIONS")
+	api.HandleFunc("/v1/follow/functions/{functionID}/status", authMiddleware.RequireAuth(followHandler.HandleCheckFunctionFollowingStatus)).Methods("GET", "OPTIONS")
+
+	// My follows (protected)
+	api.HandleFunc("/v1/follow/me/functions", authMiddleware.RequireAuth(followHandler.HandleGetMyFollowedFunctions)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/v1/follow/me/stats", authMiddleware.RequireAuth(followHandler.HandleGetMyFollowStats)).Methods("GET", "OPTIONS")
+>>>>>>> session/agent_963a0a21-8900-4cab-893d-76ce37c78ed5
 
 	// Billing portal (Stripe Customer Portal)
 	api.HandleFunc("/billing/portal-session", authMiddleware.RequireAuth(billingHandler.HandleCreatePortalSession)).Methods("POST", "OPTIONS")

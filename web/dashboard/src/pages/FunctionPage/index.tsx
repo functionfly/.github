@@ -39,6 +39,7 @@ import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { DeterministicReliabilityBadge } from "@/components/dre";
 import { FunctionHeader, FunctionCard, TrustScoreBadge } from "@/components/functions";
 import type { FunctionHeaderData, TrustTier, FunctionCardData, TrustMetrics, FraudRiskLevel } from "@/types";
+import { FollowFunctionButton } from "@/components/follow";
 import { useState } from "react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -47,6 +48,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface FunctionInfo {
+  id: string;
   author: string;
   name: string;
   version: string;
@@ -480,6 +482,11 @@ print(result)`,
                 View on GitHub
               </Button>
               <ShareButton functionInfo={functionInfo} />
+              <FollowFunctionButton
+                functionId={functionInfo.id}
+                functionName={functionInfo.name}
+                size="lg"
+              />
             </motion.div>
           </motion.div>
 
@@ -535,6 +542,15 @@ print(result)`,
               </div>
             </div>
           </motion.div>
+=======
+                <ShareButton functionInfo={functionInfo} />
+                <FollowFunctionButton
+                  functionId={functionInfo.id}
+                  functionName={functionInfo.name}
+                  size="lg"
+                />
+              </motion.div>
+>>>>>>> session/agent_963a0a21-8900-4cab-893d-76ce37c78ed5
 
               {/* Auto-generated Documentation — directly under Try it Now */}
               <motion.div

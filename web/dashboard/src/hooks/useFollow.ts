@@ -1,0 +1,179 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { followApi, type FollowUserRequest, type FollowFunctionRequest } from "@/api/follow";
+import { useToast } from "@/components/ui/use-toast";
+
+const FOLLOW_QUERY_KEYS = {
+  userStatus: (username: string) => ["follow", "user", username, "status"] as const,
+  userFollowers: (username: string, page: number) => ["follow", "user", username, "followers", page] as const,
+  userFollowing: (username: string, page: number) => ["follow", "user", username, "following", page] as const,
+  functionStatus: (functionId: string) => ["follow", "function", functionId, "status"] as const,
+  functionFollowers: (functionId: string, page: number) => ["follow", "function", functionId, "followers", page] as const,
+  myFollowedFunctions: (page: number) => ["follow", "me", "functions", page] as const,
+  myStats: () => ["follow", "me", "stats"] as const,
+};
+
+export function useUserFollowStatus(username: string) {
+  return useQuery({
+    queryKey: FOLLOW_QUERY_KEYS.userStatus(username),
+    queryFn: () => followApi.getUserFollowStatus(username),
+    enabled: !!username,
+    staleTime: 30 * 1000, // 30 seconds
+  });
+}
+
+export function useFollowUser(username: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data?: FollowUserRequest) => followApi.followUser(username, data),
+    onSuccess: () => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.userStatus(username) });
+      queryClient.invalidateQueries({ queryKey: ["follow", "user", username, "followers"] });
+      queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.myStats() });
+      
+      toast({
+        title: "Success",
+        description: `You are now following @${username}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to follow user",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useUnfollowUser(username: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: () => followApi.unfollowUser(username),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.userStatus(username) });
+      queryClient.invalidateQueries({ queryKey: ["follow", "user", username, "followers"] });
+      queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.myStats() });
+      
+      toast({
+        title: "Success",
+        description: `You have unfollowed @${username}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to unfollow user",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useUserFollowers(username: string, page = 1, pageSize = 20) {
+  return useQuery({
+    queryKey: FOLLOW_QUERY_KEYS.userFollowers(username, page),
+    queryFn: () => followApi.getUserFollowers(username, page, pageSize),
+    enabled: !!username,
+    staleTime: 60 * 1000, // 1 minute
+  });
+}
+
+export function useUserFollowing(username: string, page = 1, pageSize = 20) {
+  return useQuery({
+    queryKey: FOLLOW_QUERY_KEYS.userFollowing(username, page),
+    queryFn: () => followApi.getUserFollowing(username, page, pageSize),
+    enabled: !!username,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useFunctionFollowStatus(functionId: string) {
+  return useQuery({
+    queryKey: FOLLOW_QUERY_KEYS.functionStatus(functionId),
+    queryFn: () => followApi.getFunctionFollowStatus(functionId),
+    enabled: !!functionId,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useFollowFunction(functionId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data?: FollowFunctionRequest) => followApi.followFunction(functionId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.functionStatus(functionId) });
+      queryClient.invalidateQueries({ queryKey: ["follow", "function", functionId, "followers"] });
+      queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.myStats() });
+      
+      toast({
+        title: "Success",
+        description: "You are now following this function",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to follow function",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useUnfollowFunction(functionId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: () => followApi.unfollowFunction(functionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.functionStatus(functionId) });
+      queryClient.invalidateQueries({ queryKey: ["follow", "function", functionId, "followers"] });
+      queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.myStats() });
+      
+      toast({
+        title: "Success",
+        description: "You have unfollowed this function",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to unfollow function",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useFunctionFollowers(functionId: string, page = 1, pageSize = 20) {
+  return useQuery({
+    queryKey: FOLLOW_QUERY_KEYS.functionFollowers(functionId, page),
+    queryFn: () => followApi.getFunctionFollowers(functionId, page, pageSize),
+    enabled: !!functionId,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useMyFollowedFunctions(page = 1, pageSize = 20) {
+  return useQuery({
+    queryKey: FOLLOW_QUERY_KEYS.myFollowedFunctions(page),
+    queryFn: () => followApi.getMyFollowedFunctions(page, pageSize),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useMyFollowStats() {
+  return useQuery({
+    queryKey: FOLLOW_QUERY_KEYS.myStats(),
+    queryFn: () => followApi.getMyFollowStats(),
+    staleTime: 30 * 1000,
+  });
+}

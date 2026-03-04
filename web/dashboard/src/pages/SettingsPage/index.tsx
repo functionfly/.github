@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { apiClient } from "@/api/client";
 import { usersApi } from "@/api/users";
 import { useQuery } from "@tanstack/react-query";
+import { MyFollowStats } from "@/components/follow";
+import { Users } from "lucide-react";
 
 export function SettingsPage() {
   const location = useLocation();
@@ -252,6 +254,22 @@ export function SettingsPage() {
               <Button onClick={handleUpdatePassword} disabled={isUpdatingPassword}>
                 {isUpdatingPassword ? "Updating..." : "Update Password"}
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Follow Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-brand-500" />
+                Follow Stats
+              </CardTitle>
+              <CardDescription className="text-text-secondary">
+                Your followers, following, and followed functions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MyFollowStats />
             </CardContent>
           </Card>
         </TabsContent>

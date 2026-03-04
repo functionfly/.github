@@ -336,6 +336,24 @@ type Repository interface {
 	GetTeamByUserID(userID uuid.UUID) (*Team, error)
 	IsTeamAdmin(userID uuid.UUID, teamID string) (bool, error)
 
+	// Follow operations
+	// User follows
+	FollowUser(ctx context.Context, followerID, followedUserID uuid.UUID, reason *string, notifyOnNewFunction, notifyOnFunctionUpdate, notifyOnNewVersion bool) (*UserFollow, error)
+	UnfollowUser(ctx context.Context, followerID, followedUserID uuid.UUID) error
+	IsFollowingUser(ctx context.Context, followerID, followedUserID uuid.UUID) (bool, error)
+	GetUserFollowers(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*UserFollow, int, error)
+	GetUserFollowing(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*UserFollow, int, error)
+	GetUserFollowerCount(ctx context.Context, userID uuid.UUID) (int, error)
+	GetUserFollowingCount(ctx context.Context, userID uuid.UUID) (int, error)
+
+	// Function follows
+	FollowFunction(ctx context.Context, userID, functionID uuid.UUID, reason *string, notifyOnNewVersion, notifyOnRatingChange, notifyOnTrustChange, notifyOnVerification bool) (*FunctionFollow, error)
+	UnfollowFunction(ctx context.Context, userID, functionID uuid.UUID) error
+	IsFollowingFunction(ctx context.Context, userID, functionID uuid.UUID) (bool, error)
+	GetFunctionFollowers(ctx context.Context, functionID uuid.UUID, limit, offset int) ([]*FunctionFollow, int, error)
+	GetUserFunctionFollows(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*FunctionFollow, int, error)
+	GetFunctionFollowerCount(ctx context.Context, functionID uuid.UUID) (int, error)
+
 	// User profile operations
 	GetUserSkills(userID uuid.UUID) ([]*UserSkill, error)
 	AddUserSkill(skill *UserSkill) error
