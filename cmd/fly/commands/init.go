@@ -55,16 +55,25 @@ func runInit(name, template string, force bool) error {
 	if err := os.MkdirAll(projectDir, 0755); err != nil {
 		return fmt.Errorf("could not create directory: %w", err)
 	}
-	files, err := generateTemplateFiles(name, template)
+
+	var err error
+	// Generate template files with spinner
+	err = WithSpinner("Generating template files", func() error {
+		files, err := generateTemplateFiles(name, template)
+		if err != nil {
+			return err
+		}
+		for filename, content := range files {
+			path := filepath.Join(projectDir, filename)
+			if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+				return fmt.Errorf("could not write %s: %w", filename, err)
+			}
+			fmt.Printf("  ✓ %s\n", filepath.Join(name, filename))
+		}
+		return nil
+	})
 	if err != nil {
 		return err
-	}
-	for filename, content := range files {
-		path := filepath.Join(projectDir, filename)
-		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-			return fmt.Errorf("could not write %s: %w", filename, err)
-		}
-		fmt.Printf("  ✓ %s\n", filepath.Join(name, filename))
 	}
 	fmt.Printf("\n✅ Created %s/\n\n", name)
 	fmt.Println("Next steps:")

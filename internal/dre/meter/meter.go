@@ -275,5 +275,5 @@ func (s *StartTime) Duration() time.Duration {
 // IsExpired checks if the duration exceeds the limit.
 func (s *StartTime) IsExpired(limitMs int64) bool {
 	d := s.Duration()
-	return d.Milliseconds() > limitMs
+	return d.Milliseconds() >= limitMs
 }

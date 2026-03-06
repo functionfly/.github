@@ -127,7 +127,7 @@ export function ThreadReplyComposer({
             >
               <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <FileCode className="h-4 w-4 text-slate-500" />
+                  <FileCode className="h-4 w-4 text-slate-400" />
                   <span className="text-sm text-slate-400">
                     {block.filename || `${block.language}.${getExtension(block.language)}`}
                   </span>
@@ -135,8 +135,9 @@ export function ThreadReplyComposer({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-slate-500 hover:text-slate-300"
+                  className="h-6 w-6 text-slate-400 hover:text-slate-300"
                   onClick={() => handleRemoveCodeBlock(block.id)}
+                  aria-label="Remove code block"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -231,7 +232,7 @@ export function ThreadReplyComposer({
               placeholder="Filename (optional)"
               value={currentFilename}
               onChange={(e) => setCurrentFilename(e.target.value)}
-              className="flex-1 min-w-[150px] rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 min-w-[150px] rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <Textarea
@@ -268,7 +269,7 @@ export function ThreadReplyComposer({
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="Write your reply... Use markdown for formatting"
-        className="min-h-[150px] border-slate-800 bg-slate-900 text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
+        className="min-h-[150px] border-slate-800 bg-slate-900 text-slate-200 placeholder:text-slate-400 focus-visible:ring-indigo-500"
       />
 
       {/* Submit Button */}

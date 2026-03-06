@@ -747,6 +747,7 @@ export function Playground() {
                         variant="outline"
                         size="icon"
                         onClick={handleCopyShareableLink}
+                        aria-label={copied ? 'Link copied' : 'Copy shareable link'}
                       >
                         {copied ? (
                           <Check className="h-4 w-4 text-green-500" />

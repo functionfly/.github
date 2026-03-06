@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -28,34 +26,6 @@ type Handler struct {
 	upgrader        websocket.Upgrader
 }
 
-// isOriginAllowed checks if the WebSocket origin is allowed
-func isOriginAllowed(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		// Allow requests without Origin header (same-origin or direct requests)
-		return true
-	}
-
-	// Get allowed origins from environment (same as CORS configuration)
-	allowedOriginsStr := os.Getenv("CORS_ALLOWED_ORIGINS")
-	allowedOrigins := []string{"*"} // default to allow all
-	if allowedOriginsStr != "" {
-		allowedOrigins = strings.Split(allowedOriginsStr, ",")
-		for i, o := range allowedOrigins {
-			allowedOrigins[i] = strings.TrimSpace(o)
-		}
-	}
-
-	// Check if origin is in allowed list
-	for _, allowedOrigin := range allowedOrigins {
-		if allowedOrigin == "*" || allowedOrigin == origin {
-			return true
-		}
-	}
-
-	return false
-}
-
 // NewHandler creates a new monitoring handler
 func NewHandler(repo storage.Repository, monitoringSvc *monitoring.Service, realtimeMonitor *monitoring.RealtimeMonitor, authSvc *auth.AuthService) *Handler {
 	return &Handler{
@@ -64,7 +34,7 @@ func NewHandler(repo storage.Repository, monitoringSvc *monitoring.Service, real
 		realtimeMonitor: realtimeMonitor,
 		authSvc:         authSvc,
 		upgrader: websocket.Upgrader{
-			CheckOrigin: isOriginAllowed,
+			CheckOrigin: middleware.IsOriginAllowedForRequest,
 		},
 	}
 }

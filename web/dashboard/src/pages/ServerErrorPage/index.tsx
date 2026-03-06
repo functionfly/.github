@@ -15,7 +15,7 @@ export function ServerErrorPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-primary p-4">
+    <main className="min-h-screen flex items-center justify-center bg-bg-primary p-4">
       <div className="max-w-md w-full text-center">
         <div className="mb-8">
           <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-error/10 flex items-center justify-center">
@@ -58,7 +58,7 @@ export function ServerErrorPage() {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 

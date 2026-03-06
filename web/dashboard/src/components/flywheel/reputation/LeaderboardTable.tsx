@@ -28,15 +28,15 @@ export function LeaderboardTable({
       <table className="w-full">
         <thead>
           <tr className="border-b border-slate-800 bg-slate-950/50">
-            <th className="px-4 py-3 text-left text-xs font-medium text-slate-500">Rank</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-slate-500">User</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">Rank</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">User</th>
             {!compact && (
               <>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500">Tier</th>
-                {showTrend && <th className="px-4 py-3 text-center text-xs font-medium text-slate-500">Trend</th>}
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">Tier</th>
+                {showTrend && <th className="px-4 py-3 text-center text-xs font-medium text-slate-400">Trend</th>}
               </>
             )}
-            <th className="px-4 py-3 text-right text-xs font-medium text-slate-500">Score</th>
+            <th className="px-4 py-3 text-right text-xs font-medium text-slate-400">Score</th>
           </tr>
         </thead>
         <tbody>
@@ -89,7 +89,7 @@ function LeaderboardRow({
   const trendIcons = {
     up: { icon: '↑', color: 'text-emerald-400' },
     down: { icon: '↓', color: 'text-red-400' },
-    same: { icon: '→', color: 'text-slate-500' },
+    same: { icon: '→', color: 'text-slate-400' },
   };
   const trend = trendIcons[entry.trend];
 
@@ -105,7 +105,7 @@ function LeaderboardRow({
           {entry.rank <= 3 ? (
             <span className="text-xl">{rankIcons[entry.rank - 1]}</span>
           ) : (
-            <span className="w-6 text-center text-sm text-slate-500">{entry.rank}</span>
+            <span className="w-6 text-center text-sm text-slate-400">{entry.rank}</span>
           )}
         </div>
       </td>
@@ -184,7 +184,7 @@ export function LeaderboardCompact({
           to={`/flywheel/reputation/${entry.user.id}`}
           className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-2 transition-colors hover:border-slate-700"
         >
-          <span className="w-6 text-center text-sm font-medium text-slate-500">
+          <span className="w-6 text-center text-sm font-medium text-slate-400">
             {index < 3 ? ['🥇', '🥈', '🥉'][index] : entry.rank}
           </span>
           <Avatar className="h-8 w-8 border border-slate-800">

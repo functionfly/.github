@@ -272,13 +272,14 @@ func replaceAll(s, old, new string) string {
 
 // Queue manages the notification processing queue
 type Queue struct {
-	repo    Repository
-	logger  *logrus.Logger
-	queue   chan *Notification
-	wg      sync.WaitGroup
-	ctx     context.Context
-	cancel  context.CancelFunc
-	workers int
+	repo     Repository
+	logger   *logrus.Logger
+	queue    chan *Notification
+	wg       sync.WaitGroup
+	ctx      context.Context
+	cancel   context.CancelFunc
+	workers  int
+	stopOnce sync.Once
 }
 
 // NewQueue creates a new notification queue
@@ -315,12 +316,14 @@ func (q *Queue) Start(ctx context.Context, dispatcher *Dispatcher) {
 
 // Stop stops the queue processing
 func (q *Queue) Stop() {
-	if q.cancel != nil {
-		q.cancel()
-	}
-	close(q.queue)
-	q.wg.Wait()
-	q.logger.Info("Notification queue stopped")
+	q.stopOnce.Do(func() {
+		if q.cancel != nil {
+			q.cancel()
+		}
+		close(q.queue)
+		q.wg.Wait()
+		q.logger.Info("Notification queue stopped")
+	})
 }
 
 // worker processes notifications from the queue

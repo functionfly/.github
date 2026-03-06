@@ -26,6 +26,11 @@
 # Staging Main Domain - staging.functionfly.com
 # ============================================
 staging.functionfly.com {
+    # Serve static marketing site
+    root * /var/www/functionfly-staging
+    try_files {path} /index.html
+    file_server
+
     # Rate limiting for the entire domain
     rate_limit {
         zone staging_static {
@@ -271,6 +276,24 @@ cdn.staging.functionfly.com {
         header_up X-Real-IP {remote_host}
         header_up X-Staging-Environment "true"
         header_up X-CDN-Request "true"
+    }
+}
+
+# ============================================
+# Documentation Subdomain - docs.staging.functionfly.com
+# ============================================
+docs.staging.functionfly.com {
+    # Serve static docs site
+    root * /var/www/docs-staging
+    try_files {path} /index.html
+    file_server
+
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
     }
 }
 

@@ -1,0 +1,406 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="FunctionFly - Deploy Serverless Functions to the Global Edge">
+  <section class="hero">
+    <div class="hero-content">
+      <h1>Deploy Serverless Functions to the <span class="gradient-text">Global Edge</span></h1>
+      <p class="hero-subtitle">
+        Run your code closer to your users with the fastest serverless platform.
+        Deploy functions in seconds to 35+ edge locations worldwide.
+      </p>
+      <div class="hero-actions">
+        <a href="https://app.functionfly.com" class="btn btn-primary">Get Started Free</a>
+        <a href="/docs" class="btn btn-secondary">Read Documentation</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-value">35+</span>
+          <span class="stat-label">Edge Locations</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value"><50ms</span>
+          <span class="stat-label">Global Latency</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">99.99%</span>
+          <span class="stat-label">Uptime SLA</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="container">
+      <h2>Everything you need to deploy edge functions</h2>
+      <p class="section-subtitle">Built for developers who need speed, reliability, and simplicity.</p>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+          </div>
+          <h3>Lightning Fast Deploys</h3>
+          <p>Deploy your functions to the edge in seconds, not minutes. Our global CDN ensures your code runs closest to your users.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <h3>Enterprise Security</h3>
+          <p>Built-in malware scanning, signature verification, and trust levels ensure your functions are safe and secure.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 20V10M12 20V4M6 20v-6"/>
+            </svg>
+          </div>
+          <h3>Real-time Analytics</h3>
+          <p>Monitor function performance with detailed metrics, execution timelines, and instant alerts.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+          </div>
+          <h3>Multi-runtime Support</h3>
+          <p>Write functions in JavaScript, TypeScript, Python, or Go. We support the languages you love.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+          </div>
+          <h3>Easy Integrations</h3>
+          <p>Connect to GitHub, Slack, Stripe, and 100+ other services with pre-built adapters and triggers.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+          </div>
+          <h3>Instant Scaling</h3>
+          <p>Functions scale automatically from zero to millions of requests. Pay only for what you use.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="code-example">
+    <div class="container">
+      <h2>Deploy in seconds</h2>
+      <p class="section-subtitle">Simple CLI to deploy your first function</p>
+      <div class="code-block">
+        <pre><code><span class="code-comment"># Install the CLI</span>
+<span class="code-prompt">$</span> npm install -g @functionfly/cli
+
+<span class="code-comment"># Initialize a new function</span>
+<span class="code-prompt">$</span> fly init my-function
+
+<span class="code-comment"># Deploy to the edge</span>
+<span class="code-prompt">$</span> fly deploy
+
+🚀 Deployed to 35 edge locations!
+⏱️ Average latency: 23ms</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="container">
+      <h2>Ready to go global?</h2>
+      <p>Start deploying your functions to the edge today. Free tier includes 100,000 requests per month.</p>
+      <div class="cta-actions">
+        <a href="https://app.functionfly.com" class="btn btn-primary btn-large">Get Started Free</a>
+        <a href="/contact" class="btn btn-outline">Contact Sales</a>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    padding: 8rem 2rem 6rem;
+    text-align: center;
+    background:
+      radial-gradient(ellipse at top, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+      var(--color-bg);
+  }
+
+  .hero-content {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 3.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #6366F1 0%, #10B981 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--color-text-muted);
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 4rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 1rem;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--color-primary);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: var(--color-primary-dark);
+    transform: translateY(-2px);
+  }
+
+  .btn-secondary {
+    background: var(--color-bg-light);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+  }
+
+  .btn-secondary:hover {
+    background: var(--color-border);
+  }
+
+  .btn-large {
+    padding: 1rem 2rem;
+    font-size: 1.125rem;
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+  }
+
+  .btn-outline:hover {
+    background: var(--color-bg-light);
+  }
+
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 4rem;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  .features {
+    padding: 6rem 0;
+    background: var(--color-bg-light);
+  }
+
+  .features h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .section-subtitle {
+    text-align: center;
+    font-size: 1.125rem;
+    color: var(--color-text-muted);
+    margin-bottom: 4rem;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+
+  .feature-card {
+    background: var(--color-bg);
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    transition: transform 0.2s, border-color 0.2s;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--color-primary);
+  }
+
+  .feature-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    color: var(--color-primary);
+  }
+
+  .feature-card h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .feature-card p {
+    color: var(--color-text-muted);
+    line-height: 1.6;
+    font-size: 0.9375rem;
+  }
+
+  .code-example {
+    padding: 6rem 0;
+    background: var(--color-bg);
+  }
+
+  .code-example h2 {
+    text-align: center;
+    font.5rem;
+-size: 2    margin-bottom: 1rem;
+  }
+
+  .code-block {
+    max-width: 600px;
+    margin: 3rem auto 0;
+    background: #1a1f2e;
+    border-radius: 12px;
+    padding: 2rem;
+    border: 1px solid var(--color-border);
+    text-align: left;
+  }
+
+  .code-block pre {
+    margin: 0;
+  }
+
+  .code-block code {
+    font-family: var(--font-mono);
+    font-size: 0.9375rem;
+    line-height: 1.8;
+    color: var(--color-text);
+  }
+
+  .code-comment {
+    color: var(--color-text-muted);
+  }
+
+  .code-prompt {
+    color: var(--color-primary);
+  }
+
+  .cta {
+    padding: 6rem 0;
+    background:
+      radial-gradient(ellipse at center, rgba(99, 102, 241, 0.2) 0%, transparent 60%),
+      var(--color-bg-light);
+    text-align: center;
+  }
+
+  .cta h2 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .cta p {
+    font-size: 1.125rem;
+    color: var(--color-text-muted);
+    margin-bottom: 2rem;
+  }
+
+  .cta-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+
+  @media (max-width: 1024px) {
+    .features-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    h1 {
+      font-size: 2.5rem;
+    }
+
+    .hero-stats {
+      gap: 2rem;
+    }
+
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero-actions,
+    .cta-actions {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .btn {
+      width: 100%;
+      max-width: 280px;
+      justify-content: center;
+    }
+  }
+</style>

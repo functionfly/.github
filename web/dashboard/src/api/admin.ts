@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { getApiBaseUrl } from '@/lib/constants';
 import type {
   FunctionConfig,
   FunctionDeployment,
@@ -390,7 +391,7 @@ export const feedbackApi = {
   },
 
   exportFeedback: async (format: 'csv' | 'json'): Promise<Blob> => {
-    const base = (import.meta.env.VITE_API_URL as string) || (import.meta.env.DEV ? '/api' : '');
+    const base = getApiBaseUrl();
     const url = `${base}/v1/admin/feedback/export?format=${format}`;
     const token = apiClient.getToken() || localStorage.getItem('ff-access-token');
     const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });

@@ -19,8 +19,8 @@ func NewPublishCmd() *cobra.Command {
 	var dryRun bool
 	var asJSON bool
 	cmd := &cobra.Command{
-		Use:   "publish",
-		Short: "Publish your function to the FunctionFly registry",
+		Use:     "publish",
+		Short:   "Publish your function to the FunctionFly registry",
 		Example: "  fly publish\n  fly publish --access private\n  fly publish --build\n  fly publish --dry-run\n  fly publish --json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPublish(access, force, build, dryRun, asJSON)
@@ -44,6 +44,7 @@ type PublishResult struct {
 }
 
 func runPublish(access string, force, build, dryRun, asJSON bool) error {
+	var bundle []byte
 	manifest, err := LoadManifest("")
 	if err != nil {
 		return err
@@ -67,19 +68,21 @@ func runPublish(access string, force, build, dryRun, asJSON bool) error {
 	if err != nil {
 		return err
 	}
-	if !asJSON {
-		fmt.Printf("✓ Validating manifest...\n")
-	}
-	if err := validateManifest(manifest); err != nil {
+
+	// Validate manifest with spinner
+	err = WithSpinner("Validating manifest", func() error {
+		return validateManifest(manifest)
+	})
+	if err != nil {
 		return fmt.Errorf("manifest validation failed: %w", err)
 	}
-	if !asJSON {
-		fmt.Printf("✓ Bundling code...\n")
-	}
-	bundle, err := bundleFunction(funcFile, manifest)
+
+	// Bundle code
+	bundle, err = bundleFunction(funcFile, manifest)
 	if err != nil {
 		return fmt.Errorf("bundling failed: %w", err)
 	}
+
 	hash := computeHash(bundle)
 	if !asJSON {
 		fmt.Printf("✓ Computing hash: %s...\n", hash[:8])
@@ -105,9 +108,55 @@ func runPublish(access string, force, build, dryRun, asJSON bool) error {
 			return nil
 		}
 	}
-	if !asJSON {
-		fmt.Printf("✓ Uploading to registry...\n")
+
+	// Upload to registry with file progress
+	err = WithFileProgress("Uploading to registry", int64(len(bundle)), func(updater FileProgressUpdater) error {
+		updater(int64(len(bundle)), int64(len(bundle))) // Mark as complete
+
+		client := NewAPIClientWithToken(creds.Token)
+		publishReq := map[string]interface{}{
+			"author":   creds.User.Username,
+			"name":     manifest.Name,
+			"version":  manifest.Version,
+			"runtime":  manifest.Runtime,
+			"bundle":   base64.StdEncoding.EncodeToString(bundle),
+			"hash":     hash,
+			"public":   isPublic,
+			"manifest": manifest,
+		}
+		var result PublishResult
+		if err := client.Post("/v1/registry/publish", publishReq, &result); err != nil {
+			return fmt.Errorf("publish failed: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
+
+	if !asJSON {
+		fmt.Printf("✓ Deploying to edge...\n")
+	}
+	if asJSON {
+		client := NewAPIClientWithToken(creds.Token)
+		publishReq := map[string]interface{}{
+			"author":   creds.User.Username,
+			"name":     manifest.Name,
+			"version":  manifest.Version,
+			"runtime":  manifest.Runtime,
+			"bundle":   base64.StdEncoding.EncodeToString(bundle),
+			"hash":     hash,
+			"public":   isPublic,
+			"manifest": manifest,
+		}
+		var result PublishResult
+		if err := client.Post("/v1/registry/publish", publishReq, &result); err != nil {
+			return fmt.Errorf("publish failed: %w", err)
+		}
+		printJSON(map[string]interface{}{"success": true, "function_id": result.FunctionID, "version": result.Version, "url": result.URL, "hash": result.Hash, "deployed_regions": result.DeployedRegions, "deployed_at": result.DeployedAt})
+		return nil
+	}
+	// Get the result again for display
 	client := NewAPIClientWithToken(creds.Token)
 	publishReq := map[string]interface{}{
 		"author":   creds.User.Username,
@@ -122,13 +171,6 @@ func runPublish(access string, force, build, dryRun, asJSON bool) error {
 	var result PublishResult
 	if err := client.Post("/v1/registry/publish", publishReq, &result); err != nil {
 		return fmt.Errorf("publish failed: %w", err)
-	}
-	if !asJSON {
-		fmt.Printf("✓ Deploying to edge...\n")
-	}
-	if asJSON {
-		printJSON(map[string]interface{}{"success": true, "function_id": result.FunctionID, "version": result.Version, "url": result.URL, "hash": result.Hash, "deployed_regions": result.DeployedRegions, "deployed_at": result.DeployedAt})
-		return nil
 	}
 	fmt.Printf("\n✅ Published %s/%s@%s\n\n", creds.User.Username, manifest.Name, manifest.Version)
 	fmt.Printf("Public URL:\n  %s\n\n", result.URL)

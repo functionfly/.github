@@ -548,6 +548,7 @@ export function SecretRotationModal({
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => setShowSecret(!showSecret)}
+                    aria-label={showSecret ? 'Hide secret' : 'Show secret'}
                   >
                     {showSecret ? (
                       <EyeOff className="h-4 w-4" />
@@ -844,6 +845,7 @@ export function SecretRotationModal({
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => setShowSecret(!showSecret)}
+                    aria-label={showSecret ? 'Hide secret' : 'Show secret'}
                   >
                     {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>

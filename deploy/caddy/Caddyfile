@@ -5,7 +5,7 @@
 # - Rate limiting per app
 # - Proxy to orchestrator for route decisions and backend proxying
 # - @username profile and function routes
-# - Subdomain routing for account, run, registry, docs
+# - Subdomain routing for app, admin, run, registry, docs
 
 # Global settings
 {
@@ -18,8 +18,13 @@
     }
 }
 
-# Main domain - replace with your actual domain
+# Main domain - serve marketing site from static files
 functionfly.com {
+    # Serve static marketing site
+    root * /var/www/functionfly
+    try_files {path} /index.html
+    file_server
+
     # Rate limiting for the entire domain
     rate_limit {
         zone static {
@@ -152,10 +157,17 @@ functionfly.com {
     respond "FunctionFly - Not Found" 404
 }
 
-# Dashboard subdomain - account.functionfly.com
-account.functionfly.com {
-    # Require authentication for all routes
-    # In production, add auth middleware here
+# App (dashboard) subdomain - app.functionfly.com
+app.functionfly.com {
+    reverse_proxy dashboard:3000 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+# Admin UI subdomain - admin.functionfly.com (separate origin from app)
+admin.functionfly.com {
     reverse_proxy dashboard:3000 {
         header_up X-Forwarded-Host {host}
         header_up X-Forwarded-Proto {scheme}
@@ -202,9 +214,8 @@ registry.functionfly.com {
 
 # Documentation subdomain - docs.functionfly.com
 docs.functionfly.com {
-    reverse_proxy orchestrator-api:8080 {
-        header_up X-Forwarded-Host {host}
-        header_up X-Forwarded-Proto {scheme}
-        header_up X-Real-IP {remote_host}
-    }
+    # Serve static docs site
+    root * /var/www/docs
+    try_files {path} /index.html
+    file_server
 }

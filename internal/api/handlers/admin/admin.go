@@ -2,7 +2,10 @@ package admin
 
 import (
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -571,6 +574,169 @@ func (h *Handler) HandleSystemHealth(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 	json.NewEncoder(w).Encode(health)
+}
+
+// HandleCheckIPAccess checks whether the caller IP is allowed for admin access.
+// Allowlist is configured through ADMIN_IP_ALLOWLIST with comma-separated values
+// containing single IPs or CIDRs.
+func (h *Handler) HandleCheckIPAccess(w http.ResponseWriter, r *http.Request) {
+	clientIP := extractClientIP(r)
+	allowed, reason := isAdminIPAllowed(clientIP, os.Getenv("ADMIN_IP_ALLOWLIST"))
+
+	resp := map[string]interface{}{
+		"allowed":   allowed,
+		"reason":    reason,
+		"source_ip": clientIP,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if !allowed {
+		w.WriteHeader(http.StatusForbidden)
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+// HandleGetAdminSession returns normalized session + user payload for admin SPA bootstrap.
+func (h *Handler) HandleGetAdminSession(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := h.repo.GetUserByID(claims.UserID)
+	if err != nil || user == nil {
+		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("Failed to resolve admin user for session bootstrap")
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	plan := ""
+	if tenant, terr := h.repo.GetTenantByID(user.TenantID); terr == nil && tenant != nil {
+		plan = tenant.Plan
+	}
+
+	token := ""
+	authHeader := r.Header.Get("Authorization")
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+		token = parts[1]
+	}
+
+	now := time.Now().UTC()
+	expiresAt := now.Add(30 * time.Minute)
+	if claims.ExpiresAt != nil {
+		expiresAt = claims.ExpiresAt.Time.UTC()
+	}
+
+	name := ""
+	avatar := ""
+	if user.ProviderData != nil {
+		if v, ok := user.ProviderData["name"].(string); ok {
+			name = v
+		}
+		if v, ok := user.ProviderData["avatar_url"].(string); ok {
+			avatar = v
+		}
+	}
+
+	username := ""
+	if user.Username != nil {
+		username = *user.Username
+	}
+
+	session := map[string]interface{}{
+		"id":                fmt.Sprintf("jwt-%s", claims.UserID.String()),
+		"user_id":           claims.UserID.String(),
+		"session_token_hash": "jwt",
+		"access_token":      token,
+		"ip_address":        extractClientIP(r),
+		"user_agent":        r.UserAgent(),
+		"created_at":        now.Format(time.RFC3339),
+		"last_activity_at":  now.Format(time.RFC3339),
+		"expires_at":        expiresAt.Format(time.RFC3339),
+	}
+
+	respUser := map[string]interface{}{
+		"id":          user.ID.String(),
+		"email":       user.Email,
+		"name":        name,
+		"avatar":      avatar,
+		"username":    username,
+		"tenant_id":   user.TenantID.String(),
+		"plan":        plan,
+		"role":        claims.Role,
+		"permissions": claims.Permissions,
+		"mfa_enabled": user.MFAEnabled,
+		"created_at":  user.CreatedAt.Format(time.RFC3339),
+		"updated_at":  user.UpdatedAt.Format(time.RFC3339),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"session": session,
+		"user":    respUser,
+	})
+}
+
+func extractClientIP(r *http.Request) string {
+	if xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xff != "" {
+		first := xff
+		if idx := strings.Index(xff, ","); idx >= 0 {
+			first = strings.TrimSpace(xff[:idx])
+		}
+		return stripPort(first)
+	}
+
+	if xri := strings.TrimSpace(r.Header.Get("X-Real-IP")); xri != "" {
+		return stripPort(xri)
+	}
+
+	return stripPort(r.RemoteAddr)
+}
+
+func stripPort(addr string) string {
+	if host, _, err := net.SplitHostPort(addr); err == nil {
+		return host
+	}
+	return addr
+}
+
+func isAdminIPAllowed(clientIP string, allowlistRaw string) (bool, string) {
+	if strings.TrimSpace(clientIP) == "" {
+		return false, "missing_client_ip"
+	}
+
+	ip := net.ParseIP(clientIP)
+	if ip == nil {
+		return false, "invalid_client_ip"
+	}
+
+	allowlistRaw = strings.TrimSpace(allowlistRaw)
+	if allowlistRaw == "" {
+		return true, "allowlist_not_configured"
+	}
+
+	entries := strings.Split(allowlistRaw, ",")
+	for _, entry := range entries {
+		candidate := strings.TrimSpace(entry)
+		if candidate == "" {
+			continue
+		}
+
+		if strings.Contains(candidate, "/") {
+			if _, network, err := net.ParseCIDR(candidate); err == nil && network.Contains(ip) {
+				return true, "allowlist_match_cidr"
+			}
+			continue
+		}
+
+		if parsed := net.ParseIP(candidate); parsed != nil && parsed.Equal(ip) {
+			return true, "allowlist_match_ip"
+		}
+	}
+
+	return false, "ip_not_whitelisted"
 }
 
 // HandleGetAnalyticsSettings returns current analytics configuration

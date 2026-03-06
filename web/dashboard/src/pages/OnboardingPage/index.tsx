@@ -143,7 +143,7 @@ export function OnboardingPage() {
             <HelpTooltip
               content="Need help? FunctionFly deploys your functions across multiple cloud providers for high availability. Each step connects a new provider and tests failover automatically."
             >
-              <Button variant="ghost" size="sm" className="text-text-muted">
+              <Button variant="ghost" size="sm" className="text-text-muted" aria-label="Help">
                 <HelpCircle className="w-4 h-4" />
               </Button>
             </HelpTooltip>

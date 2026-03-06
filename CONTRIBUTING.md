@@ -22,7 +22,7 @@ git push -u origin feature/my-change
 
 ## Issues and PRs
 
-- **New issue:** Use a template (Bug report, Feature request, or Chore) from the [Issues](https://github.com/olyntar/functionfly-web/issues/new/choose) page.
+- **New issue:** Use a template (Bug report, Feature request, or Chore) from the [Issues](https://github.com/functionfly/functionfly/issues/new/choose) page.
 - **Pull requests:** Use the PR template; pick the type (Feature, Bug fix, etc.) and ensure the checklist is done.
 
 ## CI

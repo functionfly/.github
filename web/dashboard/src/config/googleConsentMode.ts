@@ -61,9 +61,6 @@ export function updateGoogleConsentFromCategories() {
 export function updateGoogleConsent(consentState: ConsentState) {
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('consent', 'update', consentState);
-    console.log('Google Consent Mode updated:', consentState);
-  } else {
-    console.warn('Google Tag Manager (gtag) not available. Consent update skipped.');
   }
 }
 
@@ -91,7 +88,6 @@ export function setDefaultGoogleConsent() {
     };
 
     window.gtag('consent', 'default', defaultConsent);
-    console.log('Google Consent Mode default set:', defaultConsent);
   }
 }
 
@@ -118,13 +114,10 @@ export function initializeGoogleAnalytics(measurementId: string) {
     // Configure Google Analytics
     window.gtag('js', new Date());
     window.gtag('config', measurementId, {
-      // Additional GA4 configuration options can be added here
       anonymize_ip: true,
       allow_google_signals: false,
       allow_ad_personalization_signals: false,
     });
-
-    console.log(`Google Analytics initialized with ID: ${measurementId}`);
   }
 }
 

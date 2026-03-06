@@ -82,7 +82,7 @@ export function ThreadHeader({
   return (
     <div className={cn('space-y-4', className)}>
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-slate-500">
+      <nav className="flex items-center gap-2 text-sm text-slate-400">
         <Link to="/flywheel" className="hover:text-slate-300">
           Flywheel
         </Link>
@@ -132,7 +132,7 @@ export function ThreadHeader({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="border-slate-700">
+              <Button variant="outline" size="icon" className="border-slate-700" aria-label="More options">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -182,7 +182,7 @@ export function ThreadHeader({
             >
               @{thread.author.username}
             </Link>
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-slate-400">
               <span>Posted {formatTimeAgo(thread.createdAt)}</span>
               {thread.createdAt !== thread.updatedAt && (
                 <span>(edited)</span>

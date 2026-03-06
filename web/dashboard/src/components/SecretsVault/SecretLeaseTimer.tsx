@@ -367,6 +367,7 @@ export function SecretLeaseTimer({
                   className="h-5 w-5 ml-1"
                   onClick={handleRenew}
                   disabled={isRenewing}
+                  aria-label="Renew lease"
                 >
                   <RefreshCw className={cn("h-3 w-3", isRenewing && "animate-spin")} />
                 </Button>

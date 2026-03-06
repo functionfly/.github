@@ -293,6 +293,8 @@ export function SecretRow({
               size="icon"
               className="h-6 w-6 shrink-0 p-0"
               onClick={toggleExpand}
+              aria-label={isExpanded ? 'Collapse secret details' : 'Expand secret details'}
+              aria-expanded={isExpanded}
             >
               {isExpanded ? (
                 <ChevronDown className="h-4 w-4 text-(--color-text-muted)" />
@@ -408,7 +410,7 @@ export function SecretRow({
             {/* More Actions Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="More actions">
                   <MoreHorizontal className="h-4 w-4 text-(--color-text-muted)" />
                 </Button>
               </DropdownMenuTrigger>

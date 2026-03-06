@@ -221,12 +221,17 @@ func NewServer(db *storage.PostgresDB) *Server {
 
 	// Serve /metrics before any wrapper so Prometheus (no Origin, from Docker) can scrape without 403
 	metricsHandler := monitoring.Handler()
+	isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
+	var mainHandler http.Handler = s.router
+	if isDev {
+		mainHandler = localhostCORSWrapper(s.router)
+	}
 	handlerWithMetrics := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/metrics" && r.Method == http.MethodGet {
 			metricsHandler.ServeHTTP(w, r)
 			return
 		}
-		localhostCORSWrapper(s.router).ServeHTTP(w, r)
+		mainHandler.ServeHTTP(w, r)
 	})
 	s.httpServer.Handler = handlerWithMetrics
 

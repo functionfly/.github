@@ -65,6 +65,22 @@ export { HelpTooltip } from "./help-tooltip";
 export { FileUpload } from "./file-upload";
 
 // ============================================================================
+// Toast Components
+// ============================================================================
+
+export {
+  Toast,
+  ToastAction,
+  ToastClose,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+} from "./toast";
+
+export { useToast, toast } from "./use-toast";
+
+// ============================================================================
 // Custom "Wow" Effect Components
 // ============================================================================
 

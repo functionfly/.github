@@ -43,10 +43,10 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/cache"
-	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/captcha"
 	"github.com/functionfly/functionfly/internal/flywheel"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
+	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
@@ -80,7 +80,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	feedbackHandler := feedbackHandlerPkg.NewHandler(s.repo, s.storageService)
 
 	// Initialize follow handler
-	followService := services.NewFollowService(s.postgresDB, s.repo)
+	followService := services.NewFollowService(s.repo)
 	followHandler := followHandlerPkg.NewHandler(followService, s.repo, s.authSvc)
 
 	// Initialize monitoring handler
@@ -102,15 +102,48 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize cache configuration from environment
 	cacheConfiguration := cache.LoadCacheConfiguration()
 	if err := cacheConfiguration.Validate(); err != nil {
-		logrus.WithError(err).Error("Invalid cache configuration")
-		panic("Invalid cache configuration: " + err.Error())
+		// Log the validation error and disable all caching features
+		// Cache is an optimization, not a hard requirement - server should continue
+		logrus.WithError(err).Error("Invalid cache configuration, disabling all caching features")
+		// Disable all cache features
+		cacheConfiguration.DiskEnabled = false
+		cacheConfiguration.RedisEnabled = false
+		cacheConfiguration.CDNEnabled = false
+		cacheConfiguration.EdgeCacheEnabled = false
+		// Set sane fallback defaults for positive-integer fields
+		if cacheConfiguration.MemoryMaxMB <= 0 {
+			cacheConfiguration.MemoryMaxMB = 100
+		}
+		if cacheConfiguration.DefaultTTL <= 0 {
+			cacheConfiguration.DefaultTTL = 3600 // 1 hour
+		}
+		if cacheConfiguration.RedisRegistryTTL <= 0 {
+			cacheConfiguration.RedisRegistryTTL = 600 // 10 minutes
+		}
 	}
 
 	// Initialize cache service with comprehensive configuration
 	cacheService, err := cache.NewCacheService(s.postgresDB.GORM, s.redisClient, cacheConfiguration.ToCacheConfig())
 	if err != nil {
-		// Handle cache service initialization error
-		panic("Failed to initialize cache service: " + err.Error())
+		// Cache service initialization failed - try with minimal fallback config
+		logrus.WithError(err).Error("Failed to initialize cache service, attempting fallback configuration")
+		// Create fallback config with minimal in-memory-only settings
+		fallbackConfig := &cache.CacheConfig{
+			MaxMemoryMB:      100,
+			EnableDiskCache:  false,
+			EnableRedisCache: false,
+			EnableCDNCaching: false,
+			DefaultTTL:       3600,
+			RedisRegistryTTL: 600,
+		}
+		cacheService, err = cache.NewCacheService(s.postgresDB.GORM, s.redisClient, fallbackConfig)
+		if err != nil {
+			// Even fallback failed - this should be effectively impossible with safe defaults
+			// but we panic to ensure we don't continue with a nil cache service
+			logrus.WithError(err).Error("Failed to initialize fallback cache service")
+			panic("Failed to initialize cache service even with fallback configuration: " + err.Error())
+		}
+		logrus.Warn("Cache service initialized with fallback in-memory-only configuration")
 	}
 
 	// Initialize CDN service
@@ -303,19 +336,19 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Configurable via AUTH_RATE_LIMIT_REQUESTS / AUTH_RATE_LIMIT_WINDOW_SECONDS env vars.
 	authRateLimiter := middleware.NewAuthRateLimiter()
 
-	// Auth routes (public)
-	api.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/auth/refresh", authHandler.HandleRefreshToken).Methods("POST", "OPTIONS")
-	api.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/auth/check-username", authHandler.HandleCheckUsernameAvailability).Methods("GET", "OPTIONS")
-	api.HandleFunc("/auth/verify-email", authHandler.HandleVerifyEmail).Methods("GET", "OPTIONS")
-	api.HandleFunc("/auth/resend-verification", authRateLimiter.Limit(authHandler.HandleResendVerification)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/auth/get-session", authHandler.HandleGetSession).Methods("GET", "OPTIONS")
+	// Auth routes (public) - on main router, not /v1 subrouter
+	s.router.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
+	s.router.HandleFunc("/auth/refresh", authHandler.HandleRefreshToken).Methods("POST", "OPTIONS")
+	s.router.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
+	s.router.HandleFunc("/auth/check-username", authHandler.HandleCheckUsernameAvailability).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/auth/verify-email", authHandler.HandleVerifyEmail).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/auth/resend-verification", authRateLimiter.Limit(authHandler.HandleResendVerification)).Methods("POST", "OPTIONS")
+	s.router.HandleFunc("/auth/get-session", authHandler.HandleGetSession).Methods("GET", "OPTIONS")
 
-	// OAuth routes (public)
-	api.HandleFunc("/auth/oauth/providers", authHandler.HandleGetOAuthProviders).Methods("GET", "OPTIONS")
-	api.HandleFunc("/auth/oauth/url", authHandler.HandleGetOAuthURL).Methods("GET", "OPTIONS")
-	api.HandleFunc("/auth/oauth/{provider}/callback", authHandler.HandleOAuthCallback).Methods("GET", "OPTIONS")
+	// OAuth routes (public) - on main router, not /v1 subrouter
+	s.router.HandleFunc("/auth/oauth/providers", authHandler.HandleGetOAuthProviders).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/auth/oauth/url", authHandler.HandleGetOAuthURL).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/auth/oauth/{provider}/callback", authHandler.HandleOAuthCallback).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/validate", authMiddleware.RequireAuth(authHandler.HandleValidateToken)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/logout", authMiddleware.RequireAuth(authHandler.HandleLogout)).Methods("POST", "OPTIONS")
 
@@ -345,7 +378,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/users/{username}/settings/profile", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsProfile)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/notifications", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsNotifications)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/privacy", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsPrivacy)).Methods("PATCH", "OPTIONS")
-<<<<<<< HEAD
 	api.HandleFunc("/users/{username}/settings/visibility", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsVisibility)).Methods("PATCH", "OPTIONS")
 
 	// User profile analytics (public)
@@ -361,7 +393,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// User skills management (protected)
 	api.HandleFunc("/users/me/skills", authMiddleware.RequireAuth(usersHandler.HandleAddUserSkill)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/users/me/skills/{id}", authMiddleware.RequireAuth(usersHandler.HandleRemoveUserSkill)).Methods("DELETE", "OPTIONS")
-=======
 
 	// Follow routes (protected for write, public for read where noted)
 	// User follows
@@ -380,7 +411,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// My follows (protected)
 	api.HandleFunc("/v1/follow/me/functions", authMiddleware.RequireAuth(followHandler.HandleGetMyFollowedFunctions)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/v1/follow/me/stats", authMiddleware.RequireAuth(followHandler.HandleGetMyFollowStats)).Methods("GET", "OPTIONS")
->>>>>>> session/agent_963a0a21-8900-4cab-893d-76ce37c78ed5
 
 	// Billing portal (Stripe Customer Portal)
 	api.HandleFunc("/billing/portal-session", authMiddleware.RequireAuth(billingHandler.HandleCreatePortalSession)).Methods("POST", "OPTIONS")
@@ -980,6 +1010,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	adminRoutes := api.PathPrefix("/admin").Subrouter()
 
 	// Note: MFA middleware is applied per-route after auth middleware to ensure claims are available
+	adminRoutes.HandleFunc("/auth/session", authMiddleware.RequireAuth(adminHandler.HandleGetAdminSession)).Methods("GET", "OPTIONS")
 
 	// Tenant management
 	adminRoutes.HandleFunc("/tenants", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleListTenants)).Methods("GET", "OPTIONS")
@@ -1083,6 +1114,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Security routes (admin only)
 	adminRoutes.HandleFunc("/security/metrics", authMiddleware.RequirePermission(auth.PermSystemRead)(securityHandler.HandleGetSecurityMetrics)).Methods("GET")
+	adminRoutes.HandleFunc("/security/check-ip", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleCheckIPAccess)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/security/services", authMiddleware.RequirePermission(auth.PermSystemRead)(securityHandler.HandleGetServiceStatus)).Methods("GET")
 	adminRoutes.HandleFunc("/security/certificates", authMiddleware.RequirePermission(auth.PermSystemRead)(securityHandler.HandleGetSSLCertificates)).Methods("GET")
 	adminRoutes.HandleFunc("/security/incidents", authMiddleware.RequirePermission(auth.PermSystemRead)(securityHandler.HandleGetRecentIncidents)).Methods("GET")

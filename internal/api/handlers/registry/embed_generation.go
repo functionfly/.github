@@ -52,12 +52,13 @@ func generateEmbedScript(fn *registry.RegistryFunction, fnVersion *registry.Regi
 		description = fn.Description.String
 	}
 
+	publicURL := getPublicSiteURL()
 	return fmt.Sprintf(`/**
  * FunctionFly Embed — %s/%s@%s
  * %s
  *
  * Usage:
- *   <script src="https://functionfly.com/embed/%s/%s.js"></script>
+ *   <script src="%s/embed/%s/%s.js"></script>
  *   <script>
  *     const result = await %s.run({ key: "value" });
  *   </script>
@@ -180,7 +181,7 @@ func generateEmbedScript(fn *registry.RegistryFunction, fnVersion *registry.Regi
       '<div class="ff-widget" data-theme="' + theme + '" style="font-family:sans-serif;border:1px solid #ddd;border-radius:8px;padding:16px;max-width:480px">',
       '  <h3 style="margin:0 0 12px;font-size:14px;font-weight:600">' + title + '</h3>',
       '  <textarea class="ff-input" placeholder="' + placeholder + '" rows="4"',
-      '    style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:13px;resize:vertical"></textarea>',
+      '    style="width:100%%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:13px;resize:vertical"></textarea>',
       '  <button class="ff-btn" style="margin-top:8px;padding:8px 16px;background:#0070f3;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px">' + buttonText + '</button>',
       '  <pre class="ff-output" style="margin-top:12px;padding:8px;background:#f5f5f5;border-radius:4px;font-size:12px;overflow:auto;display:none"></pre>',
       '</div>',
@@ -249,7 +250,7 @@ func generateEmbedScript(fn *registry.RegistryFunction, fnVersion *registry.Regi
 `,
 		fn.Author, fn.Name, resolvedVersion,
 		description,
-		fn.Author, fn.Name,
+		publicURL, fn.Author, fn.Name,
 		opts.Namespace,
 		baseURL,
 		fn.Author,

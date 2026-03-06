@@ -224,6 +224,7 @@ export function SnapshotManager({ fabricId, snapshots }: SnapshotManagerProps) {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(snapshot.id)}
+                        aria-label="Delete snapshot"
                       >
                         <Trash2 className="w-4 h-4 text-red-400" />
                       </Button>

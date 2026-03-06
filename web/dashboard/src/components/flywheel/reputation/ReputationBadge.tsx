@@ -156,7 +156,7 @@ export function ReputationBadge({
       <p className="text-sm text-slate-400">
         Tier: {tierNames[tier]} ({tier}/5)
       </p>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-400">
         Next tier: {(tier * 1000 + 1000).toLocaleString()} points
       </p>
     </div>
@@ -176,7 +176,7 @@ export function ReputationBadge({
                   </span>
                 )}
                 {showTier && (
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-slate-400">
                     {tierNames[tier]}
                   </span>
                 )}

@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FormError } from "@/components/ui/form-error";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { cn } from "@/lib/utils";
+import { getApiBaseUrl } from "@/lib/constants";
 import { useLoginForm } from "@/hooks/useAuthForms";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
@@ -31,7 +32,8 @@ interface RateLimitError {
 // Fetch available OAuth providers
 async function fetchOAuthProviders(): Promise<OAuthProvider[]> {
   try {
-    const response = await fetch(`/v1/auth/oauth/providers`);
+    const base = getApiBaseUrl();
+    const response = await fetch(`${base}/v1/auth/oauth/providers`);
     if (!response.ok) return [];
     const data = await response.json();
     return data.providers || [];
@@ -43,7 +45,8 @@ async function fetchOAuthProviders(): Promise<OAuthProvider[]> {
 // Handle social login
 const handleSocialLogin = async (provider: string) => {
   try {
-    const response = await fetch(`/v1/auth/oauth/url?provider=${provider}`);
+    const base = getApiBaseUrl();
+    const response = await fetch(`${base}/v1/auth/oauth/url?provider=${provider}`);
     if (!response.ok) {
       throw new Error(`Failed to get OAuth URL: ${response.statusText}`);
     }

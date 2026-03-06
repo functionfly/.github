@@ -224,6 +224,7 @@ export function AdminFunctionDetailPage() {
             size="icon"
             onClick={() => navigate("/admin/registry/functions")}
             className="text-text-secondary hover:text-text-primary"
+            aria-label="Back to functions"
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>

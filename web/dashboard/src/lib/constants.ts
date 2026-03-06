@@ -450,7 +450,19 @@ export const STATUS_COLORS = {
   },
 } as const;
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+/**
+ * Canonical API base URL (no trailing slash). Use for all API and WebSocket calls.
+ * - Set VITE_API_URL in production (e.g. https://api.functionfly.com) and staging.
+ * - In dev, falls back to /api (Vite proxy). In production build without env, uses canonical default.
+ */
+export function getApiBaseUrl(): string {
+  const env = import.meta.env.VITE_API_URL ?? "";
+  if (env) return env.replace(/\/$/, "");
+  if (import.meta.env.DEV) return "/api";
+  return "https://api.functionfly.com";
+}
+
+export const API_BASE_URL = getApiBaseUrl();
 
 /** Path for the AI/LLM discovery manifest (GET). Full URL: ${API_BASE_URL}/.well-known/functionfly.json */
 export const WELL_KNOWN_DISCOVERY_PATH = "/.well-known/functionfly.json";

@@ -213,7 +213,7 @@ func (h *PlaygroundHandler) HandlePlaygroundShare(w http.ResponseWriter, r *http
 
 	response := map[string]interface{}{
 		"share_url": shareURL,
-		"full_url":  fmt.Sprintf("https://functionfly.dev%s", shareURL),
+		"full_url":  fmt.Sprintf("%s%s", getPublicSiteURL(), shareURL),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -648,7 +648,7 @@ func (h *PlaygroundHandler) HandleFunctionPage(w http.ResponseWriter, r *http.Re
 	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
 
 	// Generate combined function page with docs + playground
-	html := h.generateFunctionPageHTML(fn, fnVersion, rating)
+	html := h.generateFunctionPageHTML(r, fn, fnVersion, rating)
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
 }
@@ -681,7 +681,7 @@ func (h *PlaygroundHandler) HandleFunctionPageAt(w http.ResponseWriter, r *http.
 	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
 
 	// Generate combined function page with docs + playground
-	html := h.generateFunctionPageHTML(fn, fnVersion, rating)
+	html := h.generateFunctionPageHTML(r, fn, fnVersion, rating)
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
 }
@@ -716,7 +716,7 @@ func (h *PlaygroundHandler) HandleFunctionPageAtVersion(w http.ResponseWriter, r
 	rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
 
 	// Generate combined function page with docs + playground
-	html := h.generateFunctionPageHTML(fn, fnVersion, rating)
+	html := h.generateFunctionPageHTML(r, fn, fnVersion, rating)
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
 }
@@ -843,11 +843,8 @@ func (h *PlaygroundHandler) HandleCodeExamples(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Build API URL
-	baseURL := "https://api.functionfly.com"
-	if r.TLS == nil {
-		baseURL = "http://localhost:8080"
-	}
+	// Build API URL (env-derived or request-derived for staging/dev)
+	baseURL := getAPIBaseFromRequest(r)
 	apiURL := fmt.Sprintf("%s/v1/fx/%s/%s", baseURL, author, name)
 
 	// Get example input from manifest
@@ -920,7 +917,7 @@ func (h *PlaygroundHandler) HandleAIToolSchema(w http.ResponseWriter, r *http.Re
 }
 
 // generateFunctionPageHTML generates the combined function page (docs + playground)
-func (h *PlaygroundHandler) generateFunctionPageHTML(fn *registry.RegistryFunction, fnVersion *registry.RegistryFunctionVersion, rating *registry.RegistryFunctionRating) string {
+func (h *PlaygroundHandler) generateFunctionPageHTML(r *http.Request, fn *registry.RegistryFunction, fnVersion *registry.RegistryFunctionVersion, rating *registry.RegistryFunctionRating) string {
 	var manifest functionregistry.FunctionManifest
 	json.Unmarshal(fnVersion.Manifest, &manifest)
 
@@ -942,8 +939,8 @@ func (h *PlaygroundHandler) generateFunctionPageHTML(fn *registry.RegistryFuncti
 		}
 	}
 
-	// Build API URL
-	apiURL := fmt.Sprintf("https://api.functionfly.com/v1/fx/%s/%s", fn.Author, fn.Name)
+	// Build API URL (env-derived or request-derived for staging/dev)
+	apiURL := fmt.Sprintf("%s/v1/fx/%s/%s", getAPIBaseFromRequest(r), fn.Author, fn.Name)
 
 	trustScore := 0.0
 	if rating != nil {

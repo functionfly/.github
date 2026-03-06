@@ -4,7 +4,7 @@ import { Home, ArrowLeft } from "lucide-react";
 
 export function NotFoundPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-primary p-4">
+    <main className="min-h-screen flex items-center justify-center bg-bg-primary p-4">
       <div className="text-center space-y-6 max-w-md">
         <div className="space-y-2">
           <h1 className="text-8xl font-bold text-brand-500">404</h1>
@@ -28,6 +28,6 @@ export function NotFoundPage() {
           </Button>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

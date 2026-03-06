@@ -542,15 +542,6 @@ print(result)`,
               </div>
             </div>
           </motion.div>
-=======
-                <ShareButton functionInfo={functionInfo} />
-                <FollowFunctionButton
-                  functionId={functionInfo.id}
-                  functionName={functionInfo.name}
-                  size="lg"
-                />
-              </motion.div>
->>>>>>> session/agent_963a0a21-8900-4cab-893d-76ce37c78ed5
 
               {/* Auto-generated Documentation — directly under Try it Now */}
               <motion.div

@@ -96,7 +96,7 @@ func (t *Trace) Record(entryType string, timestamp uint64, data []byte) {
 	currentChunk.Entries = append(currentChunk.Entries, entry)
 	
 	// If chunk is full, create new chunk
-	if len(currentChunk.Entries) >= t.chunkSize {
+	if len(currentChunk.Entries) > t.chunkSize {
 		// Hash the full chunk
 		currentChunk.Hash = t.hashChunk(currentChunk)
 		

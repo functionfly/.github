@@ -41,6 +41,7 @@ export function TopBar({ onMenuClick, className }: TopBarProps) {
             size="icon"
             className="lg:hidden text-text-secondary hover:text-text-primary"
             onClick={onMenuClick}
+            aria-label="Open navigation menu"
           >
             <Menu className="w-5 h-5" />
           </Button>
@@ -83,6 +84,7 @@ export function TopBar({ onMenuClick, className }: TopBarProps) {
             variant="ghost"
             size="icon"
             className="relative text-text-secondary hover:text-text-primary hover:bg-bg-hover"
+            aria-label={totalNotifications > 0 ? `Notifications (${totalNotifications} unread)` : 'Notifications'}
           >
             <Bell className="w-5 h-5" />
             {totalNotifications > 0 && (

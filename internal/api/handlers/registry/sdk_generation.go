@@ -2,19 +2,68 @@ package registry
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 )
 
-// getBaseURL returns the base URL for API calls, configurable via environment
-func getBaseURL() string {
+// getAPIBase returns the API base URL (no path) from env, or canonical production default.
+func getAPIBase() string {
 	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
-		// Remove trailing slash if present
-		baseURL = strings.TrimSuffix(baseURL, "/")
-		return baseURL + "/v1/fx"
+		return strings.TrimSuffix(strings.TrimSpace(baseURL), "/")
 	}
-	// Default to production URL
-	return "https://api.functionfly.com/v1/fx"
+	return "https://api.functionfly.com"
+}
+
+// getBaseURL returns the base URL for API /v1/fx calls, configurable via environment.
+func getBaseURL() string {
+	return getAPIBase() + "/v1/fx"
+}
+
+// getAPIBaseFromRequest returns the API base URL using BASE_URL or request-derived scheme+host.
+func getAPIBaseFromRequest(r *http.Request) string {
+	if base := os.Getenv("BASE_URL"); base != "" {
+		return strings.TrimSuffix(strings.TrimSpace(base), "/")
+	}
+	scheme := "https"
+	if r != nil && r.TLS == nil {
+		if proto := r.Header.Get("X-Forwarded-Proto"); proto == "http" {
+			scheme = "http"
+		} else if host := r.Host; host != "" && (strings.HasPrefix(host, "localhost") || strings.HasPrefix(host, "127.0.0.1")) {
+			scheme = "http"
+		}
+	}
+	host := ""
+	if r != nil {
+		host = r.Header.Get("X-Forwarded-Host")
+		if host == "" {
+			host = r.Host
+		}
+	}
+	if host == "" {
+		return getAPIBase()
+	}
+	return scheme + "://" + host
+}
+
+// getPublicSiteURL returns the public/marketing site URL for share links and embed docs.
+func getPublicSiteURL() string {
+	if u := os.Getenv("PUBLIC_SITE_URL"); u != "" {
+		return strings.TrimSuffix(strings.TrimSpace(u), "/")
+	}
+	if u := os.Getenv("FRONTEND_URL"); u != "" {
+		return strings.TrimSuffix(strings.TrimSpace(u), "/")
+	}
+	// Derive root from BASE_URL (e.g. https://api.functionfly.com -> https://functionfly.com)
+	base := getAPIBase()
+	if idx := strings.Index(base, "://"); idx != -1 {
+		scheme := base[:idx+3]
+		rest := base[idx+3:]
+		if firstDot := strings.Index(rest, "."); firstDot != -1 {
+			return scheme + rest[firstDot+1:] // e.g. api.functionfly.com -> functionfly.com
+		}
+	}
+	return "https://functionfly.com"
 }
 
 // SDK generation functions (production-ready implementations)

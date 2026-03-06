@@ -1,5 +1,5 @@
 /* Custom Cookie Consent Styling */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Note: Inter is already loaded via index.html preload — no duplicate import needed */
 
 /* Base Cookie Consent Overrides */
 :root {

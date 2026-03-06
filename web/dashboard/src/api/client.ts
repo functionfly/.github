@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 import { ZodSchema } from "zod";
+import { getApiBaseUrl } from "@/lib/constants";
 import { safeParse, ValidationResult } from "@/lib/validation-utils";
 
 class ApiClient {
@@ -7,12 +8,7 @@ class ApiClient {
   private token: string | null = null;
 
   constructor() {
-    // In development, use direct API URL to avoid Vite proxy issues
-    const envUrl = import.meta.env.VITE_API_URL ?? "";
-    const baseURL =
-      import.meta.env.DEV
-        ? "http://localhost:8080"  // Direct API connection in development
-        : (envUrl || "http://localhost:8080");
+    const baseURL = getApiBaseUrl();
     this.client = axios.create({
       baseURL: baseURL || window.location.origin,
       headers: {
@@ -47,7 +43,8 @@ class ApiClient {
           if (refreshToken) {
             try {
               console.log('Attempting token refresh...');
-              const refreshResponse = await fetch(`${import.meta.env.VITE_API_URL}/auth/refresh`, {
+              const apiUrl = getApiBaseUrl();
+              const refreshResponse = await fetch(`${apiUrl}/v1/auth/refresh`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',

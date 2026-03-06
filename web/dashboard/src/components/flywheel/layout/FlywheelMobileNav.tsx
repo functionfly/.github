@@ -63,6 +63,7 @@ export function FlywheelMobileNav({ isOpen, onOpenChange }: FlywheelMobileNavPro
               size="icon"
               onClick={() => onOpenChange(false)}
               className="text-slate-400"
+              aria-label="Close navigation"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -86,7 +87,7 @@ export function FlywheelMobileNav({ isOpen, onOpenChange }: FlywheelMobileNavPro
           <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-2">
             {/* Main Nav */}
             <div className="space-y-1">
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Main
               </p>
               {mainNavItems.map((item) => (
@@ -111,7 +112,7 @@ export function FlywheelMobileNav({ isOpen, onOpenChange }: FlywheelMobileNavPro
 
             {/* Discovery Nav */}
             <div className="space-y-1">
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Discovery
               </p>
               {discoveryNavItems.map((item) => (
@@ -136,7 +137,7 @@ export function FlywheelMobileNav({ isOpen, onOpenChange }: FlywheelMobileNavPro
 
             {/* Popular Tags */}
             <div className="space-y-2">
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Popular Tags
               </p>
               <div className="flex flex-wrap gap-2 px-3">
@@ -156,7 +157,7 @@ export function FlywheelMobileNav({ isOpen, onOpenChange }: FlywheelMobileNavPro
 
           {/* Footer */}
           <div className="border-t border-slate-800 p-4">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               Flywheel Network™
               <br />
               Proof-of-Execution Knowledge Network

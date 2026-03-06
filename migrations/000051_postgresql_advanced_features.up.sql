@@ -157,13 +157,12 @@ $$ LANGUAGE plpgsql;
 -- Advanced Views for Analytics
 -- ============================================
 
--- Create a view for function performance analytics (search_rank_score optional)
+-- Create a view for function performance analytics (trust_score will be added later)
 CREATE OR REPLACE VIEW function_performance_analytics AS
 SELECT
     f.id,
     f.author,
     f.name,
-    f.trust_score,
     f.popularity_score,
     COUNT(e.id) as total_executions,
     AVG(e.duration_ms) as avg_execution_time,
@@ -175,7 +174,7 @@ SELECT
 FROM registry_functions f
 LEFT JOIN registry_function_executions e ON f.id = e.function_id
 WHERE f.visibility = 'public'
-GROUP BY f.id, f.author, f.name, f.trust_score, f.popularity_score;
+GROUP BY f.id, f.author, f.name, f.popularity_score;
 
 -- Create a view for tenant usage analytics
 CREATE OR REPLACE VIEW tenant_usage_analytics AS

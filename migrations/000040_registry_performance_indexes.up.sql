@@ -18,9 +18,7 @@ CREATE INDEX IF NOT EXISTS idx_registry_functions_reliability_popularity
 ON registry_functions(reliability_score DESC, popularity_score DESC)
 WHERE visibility = 'public';
 
-CREATE INDEX IF NOT EXISTS idx_registry_functions_trust_popularity
-ON registry_functions(trust_score DESC, popularity_score DESC)
-WHERE visibility = 'public';
+-- Trust score index will be created in a later migration after the column is added
 
 -- Full-text search optimization (composite with popularity for ranking)
 CREATE INDEX IF NOT EXISTS idx_registry_functions_search_popularity
@@ -93,14 +91,7 @@ CREATE INDEX IF NOT EXISTS idx_registry_executions_geo_country_timestamp
 ON registry_function_executions(geo_country, timestamp DESC)
 WHERE geo_country IS NOT NULL;
 
--- Verification queries (for determinism verification)
-CREATE INDEX IF NOT EXISTS idx_registry_executions_verified_at
-ON registry_function_executions(verified_at DESC)
-WHERE verified_at IS NOT NULL;
-
-CREATE INDEX IF NOT EXISTS idx_registry_executions_verification_status
-ON registry_function_executions(verification_status)
-WHERE verification_status IS NOT NULL;
+-- Verification queries will be indexed in a later migration after the columns are added
 
 -- Cached execution queries (for cache hit analysis)
 CREATE INDEX IF NOT EXISTS idx_registry_executions_cached_timestamp
@@ -124,9 +115,7 @@ ON registry_function_ratings(reliability_score DESC);
 CREATE INDEX IF NOT EXISTS idx_registry_function_ratings_latency
 ON registry_function_ratings(p95_latency_ms ASC, avg_latency_ms ASC);
 
--- Trust score components for analytics
-CREATE INDEX IF NOT EXISTS idx_registry_function_ratings_trust_components
-ON registry_function_ratings(trust_score DESC, reliability_score DESC, consumer_diversity DESC);
+-- Trust score components index will be created in a later migration after the columns are added
 
 -- ============================================
 -- Registry Executions Public Indexes
@@ -140,10 +129,7 @@ WHERE shareable = true;
 CREATE INDEX IF NOT EXISTS idx_registry_executions_public_function_created
 ON registry_executions_public(function_id, created_at DESC);
 
--- Replay verification queries
-CREATE INDEX IF NOT EXISTS idx_registry_executions_public_verified
-ON registry_executions_public(verified_at DESC)
-WHERE verified_at IS NOT NULL;
+-- Replay verification index will be created in a later migration after the verified_at column is added
 
 -- ============================================
 -- Execution Resource Usage Indexes
@@ -252,7 +238,4 @@ CREATE INDEX IF NOT EXISTS idx_registry_function_versions_deterministic_runtime
 ON registry_function_versions(runtime)
 WHERE deterministic = true;
 
--- High-trust functions (for enterprise features)
-CREATE INDEX IF NOT EXISTS idx_registry_functions_high_trust
-ON registry_functions(trust_score DESC)
-WHERE trust_score >= 0.8 AND visibility = 'public';
+-- High-trust functions index will be created in a later migration after the trust_score column is added

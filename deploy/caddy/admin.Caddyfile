@@ -1,0 +1,60 @@
+# Caddyfile for Admin Dashboard
+# Deploy at admin.functionfly.com or admin-staging.functionfly.com
+
+admin.{$DOMAIN:-functionfly.com} {
+    # Redirect HTTP to HTTPS
+    redir http:// https:// permanent
+
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.{$DOMAIN:-functionfly.com}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
+        -Server
+    }
+
+    # Compression
+    encode gzip
+
+    # Rate limiting (60 requests per minute per IP)
+    rate_limit 60 /admin* 60s
+
+    # Root and SPA routing
+    root * /var/www/admin-dashboard
+    file_server {
+        # Serve index.html for SPA routing
+        pass
+    }
+
+    # SPA catch-all
+    try_files {path} {path}/ /index.html
+
+    # Health check
+    handle /health {
+        respond "OK" 200
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/admin-access.log {
+            roll_size 100mb
+            roll_keep 5
+            roll_keep_for 720h
+        }
+        format json
+    }
+
+    # Error logging
+    log {
+        level error
+        output file /var/log/caddy/admin-error.log {
+            roll_size 50mb
+            roll_keep 3
+            roll_keep_for 720h
+        }
+    }
+}

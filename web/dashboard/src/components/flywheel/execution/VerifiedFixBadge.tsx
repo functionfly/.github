@@ -44,7 +44,7 @@ export function VerifiedFixBadge({
             <Badge
               variant="outline"
               className={cn(
-                'gap-1.5 border-slate-700 bg-slate-800/50 text-slate-500',
+                'gap-1.5 border-slate-700 bg-slate-800/50 text-slate-400',
                 size === 'sm' && 'text-xs',
                 size === 'lg' && 'text-base px-3 py-1',
                 className
@@ -115,7 +115,7 @@ export function VerifiedFixBadge({
               </p>
             )}
             {verifiedAt && (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 Verified {new Date(verifiedAt).toLocaleDateString()}
               </p>
             )}
@@ -138,7 +138,7 @@ export function VerificationIcon({
 }) {
   if (!isVerified) {
     return (
-      <AlertCircle className={cn('h-4 w-4 text-slate-500', className)} />
+      <AlertCircle className={cn('h-4 w-4 text-slate-400', className)} />
     );
   }
 
@@ -193,7 +193,7 @@ export function VerificationChecklist({
             ) : (
               <div className="h-3.5 w-3.5 rounded-full border border-slate-600" />
             )}
-            <span className={item.pass ? 'text-slate-300' : 'text-slate-500'}>
+            <span className={item.pass ? 'text-slate-300' : 'text-slate-400'}>
               {item.label}
             </span>
           </div>

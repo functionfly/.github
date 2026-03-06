@@ -1,6 +1,10 @@
 package commands
 
 import (
+	"fmt"
+	"os"
+
+	"github.com/functionfly/functionfly/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -30,6 +34,27 @@ Go from idea → global API in under 60 seconds.
 		SilenceErrors: true,
 	}
 
+	// Add --version flag (Cobra's built-in version support)
+	root.Version = version.Short()
+	root.Flags().Bool("version", false, "Show fly CLI version")
+
+	// Add persistent flags for debug/verbose/trace modes
+	// These are available to all subcommands
+	root.PersistentFlags().BoolVar(&DebugMode, "debug", false, "Enable full debug output")
+	root.PersistentFlags().BoolVarP(&VerboseMode, "verbose", "v", false, "Enable verbose API calls")
+	root.PersistentFlags().BoolVar(&TraceMode, "trace", false, "Enable HTTP trace with request/response bodies")
+
+	// Set up persistent pre-run to handle debug mode
+	root.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if DebugMode {
+			Debug("Debug mode enabled")
+			Debug("Version: %s", version.Info())
+		}
+	}
+
+	// Add version command
+	root.AddCommand(NewVersionCmd())
+
 	root.AddCommand(
 		NewLoginCmd(),
 		NewWhoamiCmd(),
@@ -52,4 +77,49 @@ Go from idea → global API in under 60 seconds.
 	)
 
 	return root
+}
+
+// NewVersionCmd creates the version command.
+func NewVersionCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "version",
+		Short: "Show the fly CLI version",
+		Long: `Show version information for the fly CLI.
+
+This displays the semantic version, git commit hash, and build date.
+Use this to verify which version of fly you have installed.`,
+		Example: `  fly version
+  fly version --short  # Show only version number`,
+		Run: func(cmd *cobra.Command, args []string) {
+			short, _ := cmd.Flags().GetBool("short")
+			if short {
+				fmt.Println(version.Short())
+			} else {
+				PrintVersion()
+			}
+		},
+	}
+
+	cmd.Flags().Bool("short", false, "Show only version number")
+
+	return cmd
+}
+
+// handleError handles errors from command execution.
+// It prints the error message and exits with the appropriate code.
+func handleError(err error) {
+	if err == nil {
+		return
+	}
+
+	// In debug mode, also print stack trace or additional context
+	if DebugMode {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Error: %v\n", err)
+	} else {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+	}
+
+	// Get the appropriate exit code
+	code := GetExitCode(err)
+	os.Exit(code)
 }

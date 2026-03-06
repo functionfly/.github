@@ -53,14 +53,14 @@ export const initialRecentIncidents: SecurityIncident[] = [
 export const initialSSLCertificates: SSLCertificate[] = [
   {
     domain: 'api.functionfly.com',
-    issuer: 'Let\'s Encrypt',
+    issuer: "Let's Encrypt",
     expiryDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000), // 45 days from now
     status: 'valid',
     autoRenewal: true
   },
   {
-    domain: 'dashboard.functionfly.com',
-    issuer: 'Let\'s Encrypt',
+    domain: 'app.functionfly.com',
+    issuer: "Let's Encrypt",
     expiryDate: new Date(Date.now() + 52 * 24 * 60 * 60 * 1000), // 52 days from now
     status: 'valid',
     autoRenewal: true

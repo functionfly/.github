@@ -223,10 +223,10 @@ func (h *Handler) HandleGetUserFollowers(w http.ResponseWriter, r *http.Request)
 
 	for i, follow := range follows {
 		resp := UserFollowResponse{
-			ID:        follow.ID.String(),
+			ID:         follow.ID.String(),
 			FollowerID: follow.FollowerID.String(),
 			FollowedID: follow.FollowedUserID.String(),
-			CreatedAt: follow.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			CreatedAt:  follow.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		}
 		if follow.FollowReason != nil {
 			resp.Reason = *follow.FollowReason
@@ -355,8 +355,8 @@ func (h *Handler) HandleCheckFollowingStatus(w http.ResponseWriter, r *http.Requ
 	followingCount, _ := h.followService.GetUserFollowingCount(r.Context(), targetUser.ID)
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"is_following":   isFollowing,
-		"follower_count": followerCount,
+		"is_following":    isFollowing,
+		"follower_count":  followerCount,
 		"following_count": followingCount,
 	})
 }
@@ -664,14 +664,14 @@ func (h *Handler) HandleGetMyFollowStats(w http.ResponseWriter, r *http.Request)
 	// Get stats
 	followerCount, _ := h.followService.GetUserFollowerCount(r.Context(), currentUserID)
 	followingCount, _ := h.followService.GetUserFollowingCount(r.Context(), currentUserID)
-	functionFollows, _ := h.followService.GetUserFunctionFollows(r.Context(), currentUserID, 1, 1)
+	functionFollows, _, _ := h.followService.GetUserFunctionFollows(r.Context(), currentUserID, 1, 1)
 	_, functionFollowCount, _ := h.followService.GetUserFunctionFollows(r.Context(), currentUserID, 1, 1000)
 
 	_ = functionFollows // Suppress unused variable warning
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"followers":        followerCount,
-		"following":        followingCount,
+		"followers":          followerCount,
+		"following":          followingCount,
 		"functions_followed": functionFollowCount,
 	})
 }
