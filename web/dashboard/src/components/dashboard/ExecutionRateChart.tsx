@@ -37,6 +37,26 @@ export function ExecutionRateChart({
 }: ExecutionRateChartProps) {
   const strokeColor = "var(--color-brand-500)";
 
+  // Don't render chart if no data
+  if (!data || data.length === 0) {
+    return (
+      <Card className={cn("border-theme bg-card", className)}>
+        {title && (
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold text-text-primary">
+              {title}
+            </CardTitle>
+          </CardHeader>
+        )}
+        <CardContent className={title ? "pt-0" : undefined}>
+          <div className="h-[200px] min-h-[200px] w-full min-w-0 flex items-center justify-center">
+            <p className="text-text-muted">No data available</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className={cn("border-theme bg-card", className)}>
       {title && (
@@ -48,7 +68,7 @@ export function ExecutionRateChart({
       )}
       <CardContent className={title ? "pt-0" : undefined}>
         <div className="h-[200px] min-h-[200px] w-full min-w-0">
-          <ResponsiveContainer width="100%" height="100%" minHeight={200}>
+          <ResponsiveContainer width="100%" height={200} minWidth={300}>
             <LineChart
               data={data}
               margin={{ top: 8, right: 8, left: 0, bottom: 0 }}

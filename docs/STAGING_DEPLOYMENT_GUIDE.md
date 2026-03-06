@@ -83,6 +83,7 @@ You'll need to create these DNS records in Cloudflare (the setup script can help
 | `edge.staging.functionfly.com` | CNAME | `functionfly-staging-edge.iad.fly.dev` | Edge functions |
 | `cdn.staging.functionfly.com` | CNAME | `functionfly-staging-cdn.r2.cloudflarestorage.com` | Static assets |
 | `app.staging.functionfly.com` | CNAME | `functionfly-staging-dashboard.pages.dev` | Dashboard |
+| `admin.staging.functionfly.com` | CNAME | (e.g. same as app or dedicated) | Admin UI |
 
 ---
 
@@ -369,7 +370,7 @@ RATE_LIMIT_REQUESTS=200
 RATE_LIMIT_WINDOW_SECONDS=60
 
 # CORS origins (include localhost for local development)
-CORS_ALLOWED_ORIGINS=https://staging.functionfly.com,https://app.staging.functionfly.com,http://localhost:3000
+CORS_ALLOWED_ORIGINS=https://staging.functionfly.com,https://app.staging.functionfly.com,https://admin.staging.functionfly.com,https://api.staging.functionfly.com,http://localhost:3000
 ```
 
 ### URL Configuration

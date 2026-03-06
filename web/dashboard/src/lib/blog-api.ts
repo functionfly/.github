@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getApiBaseUrl } from '@/lib/constants';
 
 // Types matching the NestJS API response
 export interface BlogPost {
@@ -85,7 +86,7 @@ export interface PaginatedResponse<T> {
 }
 
 const blogApi = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  baseURL: getApiBaseUrl(),
 });
 
 // Helper function to get published blog posts

@@ -277,6 +277,7 @@ export function TriggerConfiguration({ fabricId }: TriggerConfigurationProps) {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(trigger.id)}
+                      aria-label="Delete trigger"
                     >
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </Button>

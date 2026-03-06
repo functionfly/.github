@@ -1,0 +1,173 @@
+# Docker Compose Runtime Configuration
+# Server 2: Function Execution and Security Scanning
+#
+# This configuration runs alongside the main App Stack on Server 1
+# Provides isolated function execution environments and security scanning
+#
+# Usage:
+#   docker-compose -f docker-compose.runtime.yml up -d
+#   docker-compose -f docker-compose.runtime.yml down
+
+version: "3.8"
+
+services:
+  # Local Runtime Service - Default function execution environment
+  runtime-local:
+    image: functionfly/runtimes/local:latest
+    container_name: functionfly-runtime-local
+    ports:
+      - "8081:8081"
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - MAX_WORKERS=${MAX_WORKERS:-10}
+      - PORT=8081
+    networks:
+      - functionfly-runtime
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # Node.js Runtime Service - Node.js function execution
+  runtime-nodejs:
+    image: functionfly/runtimes/nodejs:latest
+    container_name: functionfly-runtime-nodejs
+    ports:
+      - "8082:8082"
+    environment:
+      - NODE_ENV=production
+      - MAX_CONCURRENT=${MAX_CONCURRENT:-50}
+      - PORT=8082
+    networks:
+      - functionfly-runtime
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # Python Runtime Service - Python function execution
+  runtime-python:
+    image: functionfly/runtimes/python:latest
+    container_name: functionfly-runtime-python
+    ports:
+      - "8083:8083"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MAX_WORKERS=${MAX_WORKERS:-20}
+      - PORT=8083
+    networks:
+      - functionfly-runtime
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # ClamAV - Virus scanning service
+  clamav:
+    image: clamav/clamav:latest
+    container_name: functionfly-clamav
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav-data:/var/lib/clamav
+    environment:
+      - CLAMD_STARTUP_TIMEOUT=600
+      - FRESHCLAM_CHECKS=24
+    networks:
+      - functionfly-runtime
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # YARA - Malware pattern matching service
+  yara:
+    build:
+      context: ./deploy/yara
+      dockerfile: Dockerfile
+    container_name: functionfly-yara
+    ports:
+      - "8084:8080"
+    environment:
+      - RULES_PATH=${YARA_RULES_PATH:-/rules}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PORT=8080
+    volumes:
+      - yara-rules:/rules:ro
+    networks:
+      - functionfly-runtime
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  functionfly-runtime:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+volumes:
+  clamav-data:
+    driver: local
+  yara-rules:
+    driver: local

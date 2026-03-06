@@ -206,6 +206,7 @@ export function StoreConfiguration({ fabricId, stores }: StoreConfigurationProps
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(store.id)}
+                      aria-label="Delete store"
                     >
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </Button>

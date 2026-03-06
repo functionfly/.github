@@ -390,13 +390,14 @@ export function SecretAuditDrawer({
                   size="icon"
                   onClick={onRefresh}
                   disabled={isLoading}
+                  aria-label="Refresh audit log"
                 >
                   <Loader2
                     className={cn("h-4 w-4", isLoading && "animate-spin")}
                   />
                 </Button>
               )}
-              <Button variant="ghost" size="icon" onClick={onClose}>
+              <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close audit drawer">
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -720,6 +721,7 @@ export function SecretAuditDrawer({
                   className="h-8 w-8"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
+                  aria-label="Previous page"
                 >
                   <ChevronDown className="h-4 w-4 rotate-90" />
                 </Button>
@@ -732,6 +734,7 @@ export function SecretAuditDrawer({
                   className="h-8 w-8"
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
+                  aria-label="Next page"
                 >
                   <ChevronDown className="h-4 w-4 -rotate-90" />
                 </Button>

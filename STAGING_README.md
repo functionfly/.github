@@ -44,8 +44,8 @@ DB_SSLMODE=require
 
 1. **Clone the repository** (if not already done):
    ```bash
-   git clone https://github.com/olyntar/functionfly-web.git
-   cd functionfly-web
+   git clone https://github.com/functionfly/functionfly.git
+   cd functionfly
    ```
 
 2. **Configure environment**:

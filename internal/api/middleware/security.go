@@ -176,16 +176,63 @@ func (sm *SecurityMiddleware) RateLimit(next http.HandlerFunc) http.HandlerFunc 
 	}
 }
 
+// getCORSAllowedOrigins parses CORS_ALLOWED_ORIGINS. In production, empty env means
+// no origins allowed (fail closed). In development, empty env defaults to ["*"].
+func getCORSAllowedOrigins() []string {
+	allowedOriginsStr := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS"))
+	isProd := os.Getenv("ENVIRONMENT") == "production" || os.Getenv("NODE_ENV") == "production"
+	if allowedOriginsStr == "" {
+		if isProd {
+			return nil // fail closed: no wildcard in production
+		}
+		return []string{"*"}
+	}
+	parts := strings.Split(allowedOriginsStr, ",")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	return parts
+}
+
+// IsOriginAllowedForRequest returns true if the request's Origin is allowed (for CORS/WebSocket).
+// Empty origin (same-origin or non-browser) is allowed. In production, empty allowlist denies all.
+func IsOriginAllowedForRequest(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+	allowed := getCORSAllowedOrigins()
+	isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
+	if len(allowed) == 0 {
+		// Production with no CORS_ALLOWED_ORIGINS: deny cross-origin
+		if isDev && (strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")) {
+			return true
+		}
+		return false
+	}
+	for _, o := range allowed {
+		if o == "*" || o == origin {
+			return true
+		}
+	}
+	if isDev && (strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")) {
+		return true
+	}
+	return false
+}
+
 // CORSMiddleware adds CORS headers to responses
 func (sm *SecurityMiddleware) CORSMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Get allowed origins from environment (comma-separated)
-		allowedOriginsStr := os.Getenv("CORS_ALLOWED_ORIGINS")
-		allowedOrigins := []string{"*"} // default to allow all
-		if allowedOriginsStr != "" {
-			allowedOrigins = strings.Split(allowedOriginsStr, ",")
-			for i, origin := range allowedOrigins {
-				allowedOrigins[i] = strings.TrimSpace(origin)
+		allowedOrigins := getCORSAllowedOrigins()
+		origin := r.Header.Get("Origin")
+		// In production, empty allowlist must not result in allowing any origin
+		if len(allowedOrigins) == 0 && origin != "" {
+			isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
+			if !isDev {
+				logrus.Error("CORS_ALLOWED_ORIGINS is empty in production — rejecting cross-origin request")
+				http.Error(w, "CORS not configured", http.StatusForbidden)
+				return
 			}
 		}
 
@@ -203,23 +250,9 @@ func (sm *SecurityMiddleware) CORSMiddleware(next http.HandlerFunc) http.Handler
 			allowedHeaders = allowedHeadersStr
 		}
 
-		// Check if origin is allowed
-		origin := r.Header.Get("Origin")
+		// Set Allow-Origin only when origin is allowed (shared logic with WebSocket CheckOrigin)
 		if origin != "" {
-			allowed := false
-			for _, allowedOrigin := range allowedOrigins {
-				if allowedOrigin == "*" || allowedOrigin == origin {
-					allowed = true
-					break
-				}
-			}
-			// Allow localhost/127.0.0.1 only in development mode so the local dashboard
-			// can reach the API. In production CORS_ALLOWED_ORIGINS must be set explicitly.
-			isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
-			if !allowed && isDev && (strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")) {
-				allowed = true
-			}
-			if allowed {
+			if IsOriginAllowedForRequest(r) {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 			}
 		} else if len(allowedOrigins) == 1 && allowedOrigins[0] == "*" {
@@ -258,7 +291,7 @@ func (sm *SecurityMiddleware) SecurityHeaders(next http.HandlerFunc) http.Handle
 		// Content Security Policy (basic)
 		csp := os.Getenv("CONTENT_SECURITY_POLICY")
 		if csp == "" {
-			csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self';"
+			csp = "default-src 'self'; script-src 'self' https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://va.vercel-scripts.com https: wss:;"
 		}
 		w.Header().Set("Content-Security-Policy", csp)
 

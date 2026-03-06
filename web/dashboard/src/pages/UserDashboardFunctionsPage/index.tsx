@@ -122,6 +122,7 @@ export function UserDashboardFunctionsPage() {
             size="icon"
             onClick={() => navigate(`/u/${username}`)}
             className="text-text-secondary hover:text-text-primary"
+            aria-label="Back to profile"
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
@@ -230,6 +231,7 @@ export function UserDashboardFunctionsPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => navigate(`/fx/${fn.author}/${fn.name}`)}
+                      aria-label={`View function ${fn.name}`}
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
@@ -237,6 +239,7 @@ export function UserDashboardFunctionsPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => navigate(`/functions/${fn.id}/edit`)}
+                      aria-label={`Edit function ${fn.name}`}
                     >
                       <Edit className="w-4 h-4" />
                     </Button>

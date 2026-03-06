@@ -7,6 +7,7 @@ import { Navbar } from "@/components/common/Navbar";
 import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
 import { toast } from "sonner";
+import { getApiBaseUrl } from "@/lib/constants";
 
 // OAuth Provider type
 interface OAuthProvider {
@@ -18,7 +19,8 @@ interface OAuthProvider {
 // Fetch available OAuth providers
 async function fetchOAuthProviders(): Promise<OAuthProvider[]> {
   try {
-    const response = await fetch(`/v1/auth/oauth/providers`);
+    const base = getApiBaseUrl();
+    const response = await fetch(`${base}/v1/auth/oauth/providers`);
     if (!response.ok) return [];
     const data = await response.json();
     return data.providers || [];
@@ -29,7 +31,8 @@ async function fetchOAuthProviders(): Promise<OAuthProvider[]> {
 
 async function handleSocialLogin(provider: string) {
   try {
-    const response = await fetch(`/v1/auth/oauth/url?provider=${provider}`);
+    const base = getApiBaseUrl();
+    const response = await fetch(`${base}/v1/auth/oauth/url?provider=${provider}`);
     if (!response.ok) throw new Error(`Failed to get OAuth URL: ${response.statusText}`);
     const data = await response.json();
     if (data.url) {
@@ -116,7 +119,7 @@ export function AuthPage() {
       <Navbar variant="landing" />
 
       {/* Main Content */}
-      <div className="flex-1 flex pt-16">
+      <main className="flex-1 flex pt-16">
         {/* Left Side - Form */}
         <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:px-8 xl:px-12 py-12">
         <div className="auth-form-section w-full max-w-md mx-auto">
@@ -203,9 +206,9 @@ export function AuthPage() {
               <p className="text-sm text-text-secondary">Founder, TechStart</p>
             </div>
           </div>
+          </div>
         </div>
-      </div>
-      </div>
+      </main>
 
       {/* Minimal Footer for Auth Pages */}
       <footer className="auth-footer">

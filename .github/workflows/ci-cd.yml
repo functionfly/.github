@@ -270,11 +270,18 @@ jobs:
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     environment: staging
     steps:
+    - uses: actions/checkout@v4
     - name: Deploy to staging
+      env:
+        CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       run: |
-        echo "Deploying to staging environment..."
-        # Add your deployment commands here
-        # Example: kubectl apply -f k8s/staging/ or docker-compose up -d
+        echo "Deploying to staging (app.staging, admin.staging, api.staging)..."
+        if [ -f ./scripts/deploy-staging.sh ]; then
+          ./scripts/deploy-staging.sh
+        else
+          echo "scripts/deploy-staging.sh not found; skipping deploy."
+        fi
 
   # Deploy to Production
   deploy-production:
@@ -283,11 +290,14 @@ jobs:
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     environment: production
     steps:
+    - uses: actions/checkout@v4
     - name: Deploy to production
       run: |
-        echo "Deploying to production environment..."
-        # Add your deployment commands here
-        # Example: kubectl apply -f k8s/production/ or docker stack deploy
+        echo "Deploying to production (app.functionfly.com, admin.functionfly.com, api.functionfly.com)..."
+        echo "Configure deploy via secrets and run your production deploy script or docker compose."
+        if [ -f ./scripts/deploy-production.sh ]; then
+          ./scripts/deploy-production.sh
+        fi
 
   # Security Scan
   security:

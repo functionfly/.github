@@ -164,7 +164,7 @@ function MetricCard({
         <Icon className="h-4 w-4" />
       </div>
       <div>
-        <p className="text-xs text-slate-500">{label}</p>
+        <p className="text-xs text-slate-400">{label}</p>
         <p className={cn('font-mono text-sm font-medium', color)}>{value}</p>
       </div>
     </div>

@@ -46,6 +46,9 @@ export function ThemeToggle({ className, variant = 'button' }: ThemeToggleProps)
       <div className={cn("flex items-center gap-2", className)}>
         <Sun className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
         <button
+          role="switch"
+          aria-checked={theme === 'dark'}
+          aria-label="Toggle dark mode"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           className={cn(
             "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",

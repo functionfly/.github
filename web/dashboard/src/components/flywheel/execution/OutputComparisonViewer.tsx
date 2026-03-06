@@ -85,14 +85,14 @@ export function OutputComparisonViewer({
         </div>
         <div className="flex items-center gap-2">
           {testResult.executionTimeMs && (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-slate-400">
               {testResult.executionTimeMs.toFixed(2)}ms
             </span>
           )}
           {isExpanded ? (
-            <ChevronUp className="h-4 w-4 text-slate-500" />
+            <ChevronUp className="h-4 w-4 text-slate-400" />
           ) : (
-            <ChevronDown className="h-4 w-4 text-slate-500" />
+            <ChevronDown className="h-4 w-4 text-slate-400" />
           )}
         </div>
       </button>
@@ -113,11 +113,11 @@ export function OutputComparisonViewer({
               {testResult.input && (
                 <div className="bg-slate-900/50 p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-slate-500">Input</span>
+                    <span className="text-xs font-medium text-slate-400">Input</span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 px-2 text-xs text-slate-500 hover:text-slate-300"
+                      className="h-6 px-2 text-xs text-slate-400 hover:text-slate-300"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleCopy(testResult.input || '', 'input');
@@ -136,11 +136,11 @@ export function OutputComparisonViewer({
               {testResult.expectedOutput && (
                 <div className="bg-slate-900/50 p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-slate-500">Expected Output</span>
+                    <span className="text-xs font-medium text-slate-400">Expected Output</span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 px-2 text-xs text-slate-500 hover:text-slate-300"
+                      className="h-6 px-2 text-xs text-slate-400 hover:text-slate-300"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleCopy(testResult.expectedOutput || '', 'expected');
@@ -171,7 +171,7 @@ export function OutputComparisonViewer({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 px-2 text-xs text-slate-500 hover:text-slate-300"
+                      className="h-6 px-2 text-xs text-slate-400 hover:text-slate-300"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleCopy(testResult.actualOutput || '', 'actual');
@@ -195,7 +195,7 @@ export function OutputComparisonViewer({
           {testResult.matchScore !== undefined && (
             <div className="border-t border-slate-800 px-3 py-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500">Match Score:</span>
+                <span className="text-slate-400">Match Score:</span>
                 <span className={cn(
                   'font-medium',
                   testResult.matchScore >= 90 ? 'text-emerald-400' :
@@ -245,7 +245,7 @@ export function TestResultsSummary({ results, className }: TestResultsSummaryPro
         </span>
       )}
       <span className="text-slate-600">•</span>
-      <span className="text-slate-500">{total} total</span>
+      <span className="text-slate-400">{total} total</span>
     </div>
   );
 }

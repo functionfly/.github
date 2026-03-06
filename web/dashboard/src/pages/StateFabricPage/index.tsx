@@ -359,6 +359,7 @@ export function StateFabricPage() {
                         variant="ghost"
                         size="icon"
                         className="text-text-secondary"
+                        aria-label="More options"
                       >
                         <MoreVertical className="w-4 h-4" />
                       </Button>

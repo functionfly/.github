@@ -30,73 +30,21 @@ function proxyConfigure(proxy: any) {
 // Log proxy target at startup so we can confirm what the dashboard will use
 console.log('[Vite] API proxy target:', apiProxyTarget)
 
-// Middleware to disable all caching in dev (avoids ERR_CACHE_READ_FAILURE in WSL/some browsers)
-function noCacheMiddleware() {
-  return {
-    name: 'no-cache',
-    configureServer(server: any) {
-      server.middlewares.use((_req: any, res: any, next: () => void) => {
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-        res.setHeader('Pragma', 'no-cache')
-        res.setHeader('Expires', '0')
-        next()
-      })
-    },
-  }
-}
-
-// Security headers middleware for auth pages and sensitive routes
-function securityHeadersMiddleware() {
-  return {
-    name: 'security-headers',
-    configureServer(server: any) {
-      server.middlewares.use((req: any, res: any, next: () => void) => {
-        // Apply strict security headers to all routes, especially auth pages
-        res.setHeader('X-Frame-Options', 'DENY')
-        res.setHeader('X-Content-Type-Options', 'nosniff')
-        res.setHeader('X-XSS-Protection', '1; mode=block')
-        res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-
-        // Strict CSP for auth pages and API routes
-        const isAuthPage = req.url?.includes('/login') || req.url?.includes('/signup') || req.url?.includes('/auth')
-        if (isAuthPage) {
-          // Very restrictive CSP for auth pages
-          res.setHeader('Content-Security-Policy',
-            "default-src 'self'; " +
-            "script-src 'self' 'unsafe-inline'; " +
-            "style-src 'self' 'unsafe-inline'; " +
-            "img-src 'self' data: https:; " +
-            "font-src 'self'; " +
-            "connect-src 'self'; " +
-            "frame-ancestors 'none';"
-          )
-        } else {
-          // Standard CSP for other pages
-          res.setHeader('Content-Security-Policy',
-            "default-src 'self'; " +
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-            "style-src 'self' 'unsafe-inline'; " +
-            "img-src 'self' data: https: blob:; " +
-            "font-src 'self' https:; " +
-            "connect-src 'self' https: wss:;"
-          )
-        }
-
-        // HSTS for HTTPS
-        if (req.headers['x-forwarded-proto'] === 'https' || req.protocol === 'https') {
-          res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
-        }
-
-        next()
-      })
-    },
-  }
-}
+// Dev CSP: permissive enough for local tools (Vercel Analytics, Google Fonts, HMR).
+// Production CSP is enforced via public/_headers (Vercel/CF deployments) and the Go backend middleware.
+const DEV_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' data: https: blob:",
+  "font-src 'self' https://fonts.gstatic.com",
+  "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://va.vercel-scripts.com http://localhost:8080 https: ws: wss:",
+  "worker-src 'self' blob:",
+  "frame-ancestors 'none'",
+].join('; ')
 
 export default defineConfig({
   plugins: [
-    noCacheMiddleware(),
-    securityHeadersMiddleware(),
     react(),
     tailwindcss(),
     // Upload source maps to Sentry when SENTRY_AUTH_TOKEN is set (e.g. in CI)
@@ -161,22 +109,54 @@ export default defineConfig({
       'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
       'Expires': '0',
+      'Content-Security-Policy': DEV_CSP,
+      'X-Frame-Options': 'DENY',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
     },
     proxy: {
-      // /api/v1/... -> backend /v1/... (dashboard uses VITE_API_URL=/api)
-      // In Docker set API_PROXY_TARGET=http://orchestrator-api:8080
+      // /api/health/... -> backend /health/... (health check endpoints)
+      '/api/health': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/health/, '/health'),
+        configure: proxyConfigure,
+      },
+      // /api/users/... -> backend /users/... (user endpoints without v1 prefix)
+      '/api/users': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/users/, '/users'),
+        configure: proxyConfigure,
+      },
+      // /api/auth/... -> backend /auth/... (auth endpoints without v1 prefix)
+      '/api/auth': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/auth/, '/auth'),
+        configure: proxyConfigure,
+      },
+      // /api/billing/... -> backend /billing/... (billing endpoints without v1 prefix)
+      '/api/billing': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/billing/, '/billing'),
+        configure: proxyConfigure,
+      },
+      // /api/v1/... -> backend /v1/... (API client calls with v1 prefix)
+      '/api/v1': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/v1/, '/v1'),
+        configure: proxyConfigure,
+      },
+      // /api/... -> backend /v1/... (fallback for other API calls)
       '/api': {
         target: apiProxyTarget,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        rewrite: (path) => path.replace(/^\/api/, '/v1'),
         configure: proxyConfigure,
         ws: true, // Enable WebSocket proxying for realtime connections
-      },
-      // Fallback: /v1/... -> backend /v1/...
-      '/v1': {
-        target: apiProxyTarget,
-        changeOrigin: true,
-        configure: proxyConfigure,
       },
     },
   },

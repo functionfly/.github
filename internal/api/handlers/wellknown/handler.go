@@ -36,7 +36,6 @@ const (
 	maxDescriptionLen  = 4000 // OpenAI tool description guidance
 	schemaVersion      = "1.0"
 	provider           = "functionfly"
-	providerURL        = "https://functionfly.com"
 	cacheMaxAgeSeconds = 300
 )
 
@@ -212,7 +211,7 @@ func (h *Handler) HandleWellKnown(w http.ResponseWriter, r *http.Request) {
 	manifest := FunctionFlyManifest{
 		SchemaVersion:     schemaVersion,
 		Provider:          provider,
-		ProviderURL:       providerURL,
+		ProviderURL:       getProviderURL(),
 		APIBase:           apiBase + "/v1",
 		ExecutionEndpoint: "POST /v1/fx/{author}/{name}",
 		AgentEndpoint:     "POST /v1/agent/execute/{author}/{name}",
@@ -278,6 +277,24 @@ func getAPIBase(r *http.Request) string {
 		host = "api.functionfly.com"
 	}
 	return scheme + "://" + host
+}
+
+// getProviderURL returns the public/marketing site URL for the manifest (env-derived, staging-safe).
+func getProviderURL() string {
+	if u := os.Getenv("PUBLIC_SITE_URL"); u != "" {
+		return strings.TrimSuffix(strings.TrimSpace(u), "/")
+	}
+	base := strings.TrimSpace(os.Getenv("BASE_URL"))
+	if base != "" {
+		if idx := strings.Index(base, "://"); idx != -1 {
+			scheme := base[:idx+3]
+			rest := base[idx+3:]
+			if firstDot := strings.Index(rest, "."); firstDot != -1 {
+				return scheme + rest[firstDot+1:]
+			}
+		}
+	}
+	return "https://functionfly.com"
 }
 
 func trimAndCap(s string, max int) string {

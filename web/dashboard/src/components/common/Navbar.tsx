@@ -208,6 +208,8 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
               size="icon"
               className="md:hidden text-text-secondary hover:text-text-primary"
               onClick={toggleMobileMenu}
+              aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={isMobileMenuOpen}
               style={theme === 'light' ? {
                 color: '#1a1a2e',
               } : {}}

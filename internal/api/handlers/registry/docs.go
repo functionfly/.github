@@ -632,7 +632,7 @@ func (h *DocumentationHandler) generateFunctionHTMLDocs(fn *registry.RegistryFun
         <h2 class="section-title">API Usage</h2>
         <p>Execute this function using the following API endpoint:</p>
         <div class="code-block">
-curl -X POST %s://%s/execute/%s/%s \\
+curl -X POST %s/v1/fx/%s/%s \\
   -H "Content-Type: application/json" \\
   -d '{"input": "your-input-here"}'
         </div>
@@ -650,7 +650,7 @@ curl -X POST %s://%s/execute/%s/%s \\
 		docs.Function.Description,
 		docs.Runtime,
 		docs.TrustScore,
-		"https", "api.functionfly.dev", docs.Function.Author, docs.Function.Name)
+		getAPIBase(), docs.Function.Author, docs.Function.Name)
 
 	if len(docs.Examples) > 0 {
 		for i, example := range docs.Examples {

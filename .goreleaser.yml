@@ -1,0 +1,133 @@
+# .goreleaser.yml
+# GoReleaser configuration for FunctionFly CLI
+# Cross-platform builds for Linux, macOS, and Windows
+
+project_name: fly
+
+env:
+  - GORELEASER_KEY={{ .Env.GORELEASER_KEY }}
+
+# Build configuration
+builds:
+  - id: fly
+    # Path to the main package
+    dir: ./cmd/fly
+    # Binary name
+    binary: fly
+    # Go version to use
+    go: "1.24"
+    # Operating systems to build for
+    goos:
+      - linux
+      - darwin
+      - windows
+    # Architectures to build for
+    goarch:
+      - amd64
+      - arm64
+    # Windows doesn't support arm64 in the same way
+    # arm64 for windows is still experimental
+    ignore:
+      - goos: windows
+        goarch: arm64
+    # Add suffix for Windows executables
+    ldflags:
+      - -s -w
+      - -X github.com/functionfly/functionfly/internal/version.Version={{ .Version }}
+      - -X github.com/functionfly/functionfly/internal/version.Commit={{ .Commit }}
+      - -X github.com/functionfly/functionfly/internal/version.Date={{ .Date }}
+    # Environment variables
+    env:
+      - CGO_ENABLED=0
+
+# Archive formats
+archives:
+  - id: default
+    # Format: tar.gz for Linux/macOS, zip for Windows
+    formats:
+      - tar.gz
+      - zip
+    # Replacements for OS/arch in the archive name
+    replacements:
+      amd64: x86_64
+      arm64: arm64
+      darwin: macos
+      linux: linux
+      windows: windows
+    # Wrap in directory
+    wrap_in_directory: true
+
+# Package formats (Linux)
+dockers:
+  # Skip docker builds - not needed for CLI only
+  []
+
+# Linux package formats
+nfpms:
+  - id: linux-packages
+    # Package name
+    package_name: fly
+    # Maintainer
+    maintainer: FunctionFly <support@functionfly.com>
+    # Homepage
+    homepage: https://functionfly.com
+    # Description
+    description: FunctionFly CLI - Go from idea to global API in under 60 seconds
+    # License
+    license: Apache-2.0
+    # Formats to create
+    formats:
+      - deb
+      - rpm
+      - apk
+    # Architecture
+    archs:
+      - amd64
+      - arm64
+    # Replacements
+    replacements:
+      amd64: x86_64
+      arm64: arm64
+
+# Checksums
+checksum:
+  # Create checksums for all archives
+  ids:
+    - default
+    - linux-packages
+  # Algorithm
+  algorithm: sha256
+
+# GitHub release
+github:
+  # Owner/Repository
+  owner: functionfly
+  name: functionfly
+  # Draft release (set to false to publish directly)
+  draft: false
+  # Pre-release (set to true for beta releases)
+  prerelease: auto
+  # Create release discussion
+  discussion_category_name: General
+
+# Release notes
+release:
+  # Disable release notes generation (use GitHub's auto-generated notes instead)
+  disable: true
+
+# Snapshot configuration
+snapshot:
+  # Name template for snapshot builds
+  name_template: "{{ .Tag }}-next"
+
+# Changelog
+changelog:
+  # Sort order
+  sort: asc
+  # Filters
+  filters:
+    # Exclude these patterns
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"

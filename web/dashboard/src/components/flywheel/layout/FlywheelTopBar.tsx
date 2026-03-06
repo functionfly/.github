@@ -89,13 +89,13 @@ export function FlywheelTopBar({
         {/* Center - Search */}
         <form onSubmit={handleSearch} className="mx-4 hidden max-w-md flex-1 md:block">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               type="search"
               placeholder="Search threads, users, solutions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-10 border-slate-800 bg-slate-900 pl-10 text-sm text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
+              className="h-10 border-slate-800 bg-slate-900 pl-10 text-sm text-slate-200 placeholder:text-slate-400 focus-visible:ring-indigo-500"
             />
           </div>
         </form>
@@ -135,7 +135,7 @@ export function FlywheelTopBar({
               </div>
               <DropdownMenuSeparator className="bg-slate-800" />
               <div className="max-h-64 overflow-y-auto">
-                <div className="px-3 py-4 text-center text-sm text-slate-500">
+                <div className="px-3 py-4 text-center text-sm text-slate-400">
                   No new notifications
                 </div>
               </div>

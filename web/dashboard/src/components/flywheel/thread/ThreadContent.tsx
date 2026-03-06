@@ -51,7 +51,7 @@ function TestCaseCard({ testCase, index }: { testCase: TestCase; index: number }
           )}
         </div>
         {testCase.isPublic && (
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-slate-400">
             {isExpanded ? 'Hide' : 'Show'}
           </span>
         )}
@@ -64,13 +64,13 @@ function TestCaseCard({ testCase, index }: { testCase: TestCase; index: number }
           )}
           <div className="grid gap-2 sm:grid-cols-2">
             <div>
-              <p className="text-xs font-medium text-slate-500 mb-1">Input:</p>
+              <p className="text-xs font-medium text-slate-400 mb-1">Input:</p>
               <pre className="rounded bg-slate-950 p-2 text-xs text-slate-300 overflow-x-auto">
                 {testCase.input}
               </pre>
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-500 mb-1">Expected Output:</p>
+              <p className="text-xs font-medium text-slate-400 mb-1">Expected Output:</p>
               <pre className="rounded bg-slate-950 p-2 text-xs text-slate-300 overflow-x-auto">
                 {testCase.expectedOutput}
               </pre>
@@ -113,7 +113,7 @@ export function ThreadContent({
           <div className="grid gap-3 sm:grid-cols-2">
             {problemData.constraints.timeComplexity && (
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-slate-500" />
+                <Clock className="h-4 w-4 text-slate-400" />
                 <span className="text-sm text-slate-400">Time Complexity:</span>
                 <Badge variant="outline" className="border-slate-700 text-slate-300">
                   {problemData.constraints.timeComplexity}
@@ -122,7 +122,7 @@ export function ThreadContent({
             )}
             {problemData.constraints.spaceComplexity && (
               <div className="flex items-center gap-2">
-                <HardDrive className="h-4 w-4 text-slate-500" />
+                <HardDrive className="h-4 w-4 text-slate-400" />
                 <span className="text-sm text-slate-400">Space Complexity:</span>
                 <Badge variant="outline" className="border-slate-700 text-slate-300">
                   {problemData.constraints.spaceComplexity}
@@ -154,25 +154,25 @@ export function ThreadContent({
           </h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">Runtime:</span>
+              <span className="text-sm text-slate-400">Runtime:</span>
               <Badge variant="outline" className="border-slate-700 text-slate-300">
                 {environmentSpecs.runtime} {environmentSpecs.runtimeVersion}
               </Badge>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">Timeout:</span>
+              <span className="text-sm text-slate-400">Timeout:</span>
               <Badge variant="outline" className="border-slate-700 text-slate-300">
                 {environmentSpecs.timeoutMs / 1000}s
               </Badge>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">Memory:</span>
+              <span className="text-sm text-slate-400">Memory:</span>
               <Badge variant="outline" className="border-slate-700 text-slate-300">
                 {environmentSpecs.memoryMb}MB
               </Badge>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">Network:</span>
+              <span className="text-sm text-slate-400">Network:</span>
               <Badge variant="outline" className="border-slate-700 text-slate-300">
                 <Globe className="mr-1 h-3 w-3" />
                 {environmentSpecs.networkAccess === 'full' ? 'Allowed' : 'Restricted'}

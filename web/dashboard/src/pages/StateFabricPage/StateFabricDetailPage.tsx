@@ -164,6 +164,7 @@ export function StateFabricDetailPage() {
             size="icon"
             onClick={() => navigate("/state-fabric")}
             className="shrink-0"
+            aria-label="Back to State Fabric"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>

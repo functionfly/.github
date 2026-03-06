@@ -5,25 +5,14 @@
 -- Registry Function Search and Filtering
 -- ============================================
 
--- Composite index for function search with trust score ordering
-CREATE INDEX IF NOT EXISTS idx_registry_functions_search_trust
-ON registry_functions(author, name, visibility, trust_score DESC)
-WHERE visibility = 'public';
+-- Trust score search index will be created in a later migration
 
 -- Composite index for function search with popularity ordering
 CREATE INDEX IF NOT EXISTS idx_registry_functions_search_popular
 ON registry_functions(author, name, visibility, popularity_score DESC)
 WHERE visibility = 'public';
 
--- Composite index for function search with multiple criteria
-CREATE INDEX IF NOT EXISTS idx_registry_functions_multi_criteria
-ON registry_functions(visibility, category, tags, trust_score DESC, popularity_score DESC)
-WHERE visibility = 'public';
-
--- Partial index for high-trust functions only
-CREATE INDEX IF NOT EXISTS idx_registry_functions_high_trust
-ON registry_functions(id, author, name, trust_score DESC)
-WHERE trust_score >= 0.8 AND visibility = 'public';
+-- Multi-criteria and high-trust indexes will be created in a later migration
 
 -- ============================================
 -- Function Version Queries
@@ -179,10 +168,7 @@ ON registry_functions USING gin(search_vector);
 -- Covering Indexes for Common Query Patterns
 -- ============================================
 
--- Covering index for function listing (includes frequently selected columns)
-CREATE INDEX IF NOT EXISTS idx_registry_functions_listing_covering
-ON registry_functions(author, name, description, popularity_score, trust_score, created_at DESC)
-WHERE visibility = 'public';
+-- Covering index for function listing will be created in a later migration
 
 -- Covering index for function version listing
 CREATE INDEX IF NOT EXISTS idx_registry_function_versions_listing_covering

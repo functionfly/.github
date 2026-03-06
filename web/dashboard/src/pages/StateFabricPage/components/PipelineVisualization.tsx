@@ -150,6 +150,7 @@ export function PipelineVisualization({ fabricId, pipelines }: PipelineVisualiza
                       variant="ghost"
                       size="icon"
                       onClick={() => handleToggleStatus(pipeline)}
+                      aria-label={pipeline.status === "active" ? 'Pause pipeline' : 'Start pipeline'}
                     >
                       {pipeline.status === "active" ? (
                         <Pause className="w-4 h-4" />
@@ -164,6 +165,7 @@ export function PipelineVisualization({ fabricId, pipelines }: PipelineVisualiza
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(pipeline.id)}
+                      aria-label="Delete pipeline"
                     >
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </Button>

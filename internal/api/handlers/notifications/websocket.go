@@ -12,15 +12,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// WebSocket upgrader configuration
+// WebSocket upgrader configuration (origin check aligned with CORS allowlist)
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		// Allow connections from any origin in development
-		// In production, this should be restricted to your domain
-		return true
-	},
+	CheckOrigin:     middleware.IsOriginAllowedForRequest,
 }
 
 // WebSocketClient represents a connected WebSocket client

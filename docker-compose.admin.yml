@@ -1,0 +1,52 @@
+# Docker Compose configuration for Admin Dashboard
+# Development and staging environment
+
+version: '3.8'
+
+services:
+  admin-dashboard:
+    build:
+      context: ./web/admin-dashboard
+      dockerfile: Dockerfile
+    container_name: functionfly-admin-dashboard
+    restart: unless-stopped
+    ports:
+      - "3002:80"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+    networks:
+      - functionfly-admin
+    labels:
+      - "com.functionfly.service=admin-dashboard"
+      - "com.functionfly.version=1.0.0"
+
+  # Optional: Caddy reverse proxy for staging/production
+  admin-proxy:
+    image: caddy:2-alpine
+    container_name: functionfly-admin-proxy
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./deploy/caddy/admin.Caddyfile:/etc/caddy/Caddyfile:ro
+      - admin-caddy-data:/data
+      - admin-caddy-config:/config
+    environment:
+      DOMAIN: ${DOMAIN:-functionfly.local}
+    networks:
+      - functionfly-admin
+    depends_on:
+      - admin-dashboard
+    labels:
+      - "com.functionfly.service=admin-proxy"
+
+networks:
+  functionfly-admin:
+    driver: bridge
+
+volumes:
+  admin-caddy-data:
+    driver: local
+  admin-caddy-config:
+    driver: local

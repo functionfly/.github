@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { followApi, type FollowUserRequest, type FollowFunctionRequest } from "@/api/follow";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 const FOLLOW_QUERY_KEYS = {
   userStatus: (username: string) => ["follow", "user", username, "status"] as const,
@@ -23,7 +23,6 @@ export function useUserFollowStatus(username: string) {
 
 export function useFollowUser(username: string) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: (data?: FollowUserRequest) => followApi.followUser(username, data),
@@ -33,24 +32,16 @@ export function useFollowUser(username: string) {
       queryClient.invalidateQueries({ queryKey: ["follow", "user", username, "followers"] });
       queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.myStats() });
       
-      toast({
-        title: "Success",
-        description: `You are now following @${username}`,
-      });
+      toast.success(`You are now following @${username}`);
     },
     onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to follow user",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to follow user");
     },
   });
 }
 
 export function useUnfollowUser(username: string) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: () => followApi.unfollowUser(username),
@@ -59,17 +50,10 @@ export function useUnfollowUser(username: string) {
       queryClient.invalidateQueries({ queryKey: ["follow", "user", username, "followers"] });
       queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.myStats() });
       
-      toast({
-        title: "Success",
-        description: `You have unfollowed @${username}`,
-      });
+      toast.success(`You have unfollowed @${username}`);
     },
     onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to unfollow user",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to unfollow user");
     },
   });
 }
@@ -103,7 +87,6 @@ export function useFunctionFollowStatus(functionId: string) {
 
 export function useFollowFunction(functionId: string) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: (data?: FollowFunctionRequest) => followApi.followFunction(functionId, data),
@@ -112,24 +95,16 @@ export function useFollowFunction(functionId: string) {
       queryClient.invalidateQueries({ queryKey: ["follow", "function", functionId, "followers"] });
       queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.myStats() });
       
-      toast({
-        title: "Success",
-        description: "You are now following this function",
-      });
+      toast.success("You are now following this function");
     },
     onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to follow function",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to follow function");
     },
   });
 }
 
 export function useUnfollowFunction(functionId: string) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: () => followApi.unfollowFunction(functionId),
@@ -138,17 +113,10 @@ export function useUnfollowFunction(functionId: string) {
       queryClient.invalidateQueries({ queryKey: ["follow", "function", functionId, "followers"] });
       queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.myStats() });
       
-      toast({
-        title: "Success",
-        description: "You have unfollowed this function",
-      });
+      toast.success("You have unfollowed this function");
     },
     onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to unfollow function",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to unfollow function");
     },
   });
 }

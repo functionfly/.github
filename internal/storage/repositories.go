@@ -534,7 +534,10 @@ func (db *PostgresDB) PgNotify(channel, payload string) error {
 }
 
 func (db *PostgresDB) PgListen(ctx context.Context, channel string) error {
-	return db.monitoringRepository.PgListen(ctx, channel)
+if db == nil || db.monitoringRepository == nil {
+return fmt.Errorf("monitoring repository not initialized")
+}
+return db.monitoringRepository.PgListen(ctx, channel)
 }
 
 func (db *PostgresDB) PgWaitForNotification(ctx context.Context) (*PgNotification, error) {

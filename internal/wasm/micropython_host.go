@@ -188,24 +188,5 @@ func DefineMicropythonHostFunctions(linker *wasmtime.Linker, store *wasmtime.Sto
 		return err
 	}
 
-	// wasi_snapshot_preview1 stubs - micropython.wasm needs these
-	if err := linker.DefineFunc(store, "wasi_snapshot_preview1", "fd_close", func(caller *wasmtime.Caller, fd int32) int32 { return 0 }); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "wasi_snapshot_preview1", "fd_sync", func(caller *wasmtime.Caller, fd int32) int32 { return 0 }); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "wasi_snapshot_preview1", "fd_seek", func(caller *wasmtime.Caller, fd int32, offset_hi int32, offset_lo int32, whence int32, result_ptr int32) int32 {
-		return 0
-	}); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "wasi_snapshot_preview1", "fd_read", func(caller *wasmtime.Caller, fd int32, iovs int32, iovs_len int32, nread int32) int32 { return 0 }); err != nil {
-		return err
-	}
-	if err := linker.DefineFunc(store, "wasi_snapshot_preview1", "fd_write", func(caller *wasmtime.Caller, fd int32, iovs int32, iovs_len int32, nwritten int32) int32 { return 0 }); err != nil {
-		return err
-	}
-
-	return nil
+return nil
 }

@@ -3,6 +3,7 @@ package security
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -24,6 +25,49 @@ func NewHandler(repo storage.Repository, authSvc *auth.AuthService) *Handler {
 		repo:    repo,
 		authSvc: authSvc,
 	}
+}
+
+// domainFromURL returns the host part of a URL, or default if empty/invalid.
+func domainFromURL(envKey, defaultDomain string) string {
+	u := strings.TrimSpace(os.Getenv(envKey))
+	if u == "" {
+		return defaultDomain
+	}
+	if idx := strings.Index(u, "://"); idx != -1 {
+		u = u[idx+3:]
+	}
+	if slash := strings.Index(u, "/"); slash != -1 {
+		u = u[:slash]
+	}
+	if u != "" {
+		return u
+	}
+	return defaultDomain
+}
+
+// rootDomainFromBase derives root domain from BASE_URL (e.g. api.functionfly.com -> functionfly.com).
+func rootDomainFromBase() string {
+	base := strings.TrimSpace(os.Getenv("BASE_URL"))
+	if base == "" {
+		return "functionfly.com"
+	}
+	if idx := strings.Index(base, "://"); idx != -1 {
+		base = base[idx+3:]
+	}
+	if slash := strings.Index(base, "/"); slash != -1 {
+		base = base[:slash]
+	}
+	if firstDot := strings.Index(base, "."); firstDot != -1 {
+		return base[firstDot+1:]
+	}
+	return "functionfly.com"
+}
+
+func getCertificateDomains() (apiDomain, appDomain, rootDomain string) {
+	apiDomain = domainFromURL("BASE_URL", "api.functionfly.com")
+	appDomain = domainFromURL("FRONTEND_URL", "app.functionfly.com")
+	rootDomain = rootDomainFromBase()
+	return apiDomain, appDomain, rootDomain
 }
 
 // ServiceStatus represents the status of a service
@@ -125,24 +169,25 @@ func (h *Handler) HandleGetSecurityMetrics(w http.ResponseWriter, r *http.Reques
 		{Name: "Monitoring", Status: "operational", Uptime: "100.00%", ResponseTime: "23ms"},
 	}
 
-	// Mock SSL certificates (in real implementation, this would come from certificate storage)
+	// Mock SSL certificates (domains from env for staging/prod consistency)
+	apiDomain, appDomain, rootDomain := getCertificateDomains()
 	certificates := []SSLCertificate{
 		{
-			Domain:      "api.functionfly.com",
+			Domain:      apiDomain,
 			Issuer:      "Let's Encrypt",
 			ExpiryDate:  time.Now().AddDate(0, 0, 45).Format(time.RFC3339),
 			Status:      "valid",
 			AutoRenewal: true,
 		},
 		{
-			Domain:      "dashboard.functionfly.com",
+			Domain:      appDomain,
 			Issuer:      "Let's Encrypt",
 			ExpiryDate:  time.Now().AddDate(0, 0, 52).Format(time.RFC3339),
 			Status:      "valid",
 			AutoRenewal: true,
 		},
 		{
-			Domain:      "functionfly.com",
+			Domain:      rootDomain,
 			Issuer:      "DigiCert",
 			ExpiryDate:  time.Now().AddDate(0, 0, 180).Format(time.RFC3339),
 			Status:      "valid",
@@ -242,23 +287,24 @@ func (h *Handler) HandleGetServiceStatus(w http.ResponseWriter, r *http.Request)
 
 // HandleGetSSLCertificates returns SSL certificate information
 func (h *Handler) HandleGetSSLCertificates(w http.ResponseWriter, r *http.Request) {
+	apiDomain, appDomain, rootDomain := getCertificateDomains()
 	certificates := []SSLCertificate{
 		{
-			Domain:      "api.functionfly.com",
+			Domain:      apiDomain,
 			Issuer:      "Let's Encrypt",
 			ExpiryDate:  time.Now().AddDate(0, 0, 45).Format(time.RFC3339),
 			Status:      "valid",
 			AutoRenewal: true,
 		},
 		{
-			Domain:      "dashboard.functionfly.com",
+			Domain:      appDomain,
 			Issuer:      "Let's Encrypt",
 			ExpiryDate:  time.Now().AddDate(0, 0, 52).Format(time.RFC3339),
 			Status:      "valid",
 			AutoRenewal: true,
 		},
 		{
-			Domain:      "functionfly.com",
+			Domain:      rootDomain,
 			Issuer:      "DigiCert",
 			ExpiryDate:  time.Now().AddDate(0, 0, 180).Format(time.RFC3339),
 			Status:      "valid",

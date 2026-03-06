@@ -3,6 +3,8 @@
  * Given an author, function name, and input value, generates ready-to-use code.
  */
 
+import { getApiBaseUrl } from '@/lib/constants';
+
 export type SnippetLanguage = 'curl' | 'javascript' | 'typescript' | 'python' | 'go' | 'php';
 
 export interface SnippetOptions {
@@ -14,7 +16,7 @@ export interface SnippetOptions {
 }
 
 function getBaseUrl(options: SnippetOptions): string {
-  return options.baseUrl || 'https://api.functionfly.dev';
+  return options.baseUrl ?? getApiBaseUrl();
 }
 
 function getInputBody(input: unknown): string {

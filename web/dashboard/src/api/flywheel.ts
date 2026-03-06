@@ -6,6 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './client';
+import { getApiBaseUrl } from '@/lib/constants';
 import type {
   Thread,
   ThreadFilters,
@@ -464,18 +465,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   }, [options]);
 
   const connect = useCallback(() => {
-    // Get the WebSocket URL based on the API URL
-    const apiUrl = import.meta.env.VITE_API_URL ?? '';
-    let wsUrl: string;
-
-    if (import.meta.env.DEV && (!apiUrl || apiUrl === '/api')) {
-      // Development: use the same origin with ws protocol
-      wsUrl = `ws://${window.location.host}/api/v1/flywheel/ws`;
-    } else {
-      // Production: convert http to ws
-      const baseUrl = apiUrl || window.location.origin;
-      wsUrl = baseUrl.replace(/^http/, 'ws') + '/v1/flywheel/ws';
-    }
+    const apiBase = getApiBaseUrl();
+    const wsUrl = apiBase.startsWith('http')
+      ? apiBase.replace(/^http/, 'ws').replace(/\/$/, '') + '/v1/flywheel/ws'
+      : `ws://${window.location.host}${apiBase}/v1/flywheel/ws`;
 
     const ws = new WebSocket(wsUrl);
 

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { User, Session, LoginRequest, SignupRequest, SignupResponse } from "@/types";
 import { apiClient } from "@/api/client";
+import { getApiBaseUrl } from "@/lib/constants";
 
 // Extend window interface
 declare global {
@@ -58,7 +59,8 @@ const authStore = create<AuthState>()(
 
           // If token is still valid, validate with backend
           if (expiresAt > currentTime) {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/validate`, {
+            const apiUrl = getApiBaseUrl();
+          const response = await fetch(`${apiUrl}/v1/auth/validate`, {
               method: "GET",
               headers: {
                 "Authorization": `Bearer ${jwtToken}`,
@@ -110,7 +112,8 @@ const authStore = create<AuthState>()(
           // Token is expired or invalid, try to refresh if we have a refresh token
           if (refreshToken) {
             try {
-              const refreshResponse = await fetch(`${import.meta.env.VITE_API_URL}/auth/refresh`, {
+              const apiUrl = getApiBaseUrl();
+              const refreshResponse = await fetch(`${apiUrl}/auth/refresh`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -204,7 +207,8 @@ const authStore = create<AuthState>()(
       login: async (data) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+          const apiUrl = getApiBaseUrl();
+          const response = await fetch(`${apiUrl}/auth/login`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -328,7 +332,8 @@ const authStore = create<AuthState>()(
       signup: async (data) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/signup`, {
+          const apiUrl = getApiBaseUrl();
+          const response = await fetch(`${apiUrl}/auth/signup`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -374,7 +379,8 @@ const authStore = create<AuthState>()(
         // Invalidate the session server-side (best-effort — don't block local clear on failure)
         if (token) {
           try {
-            await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
+            const apiUrl = getApiBaseUrl();
+            await fetch(`${apiUrl}/auth/logout`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -410,7 +416,8 @@ const authStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const token = localStorage.getItem('ff-access-token');
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/mfa/verify`, {
+          const apiUrl = getApiBaseUrl();
+          const response = await fetch(`${apiUrl}/auth/mfa/verify`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

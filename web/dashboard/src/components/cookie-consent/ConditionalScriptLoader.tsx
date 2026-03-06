@@ -91,8 +91,6 @@ export function loadGoogleAnalytics(trackingId: string) {
       category="analytics"
       id="google-analytics"
       onLoad={() => {
-        console.log('Google Analytics loaded successfully');
-        // Initialize gtag if available
         if (window.gtag) {
           window.gtag('config', trackingId);
         }
@@ -121,9 +119,7 @@ export function loadHotjar(siteId: string) {
     <ConditionalScriptLoader
       category="analytics"
       id="hotjar-analytics"
-      onLoad={() => {
-        console.log('Hotjar loaded successfully');
-      }}
+      onLoad={() => {}}
     >
       {`
         (function(h,o,t,j,a,r){

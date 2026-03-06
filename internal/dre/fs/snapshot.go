@@ -71,6 +71,20 @@ func (s *FilesystemSnapshot) AddFile(filePath string, content []byte) error {
 	// Normalize path
 	filePath = path.Clean(filePath)
 	
+	// Create parent directories if they don't exist
+	dirPath := path.Dir(filePath)
+	if dirPath != "." && dirPath != "/" {
+		if _, ok := s.tree[dirPath]; !ok {
+			dirNode := &FileNode{
+				Name:     path.Base(dirPath),
+				IsDir:    true,
+				Mode:     0755,
+				Children: make([]*FileNode, 0),
+			}
+			s.tree[dirPath] = dirNode
+		}
+	}
+
 	// Create the file node
 	node := &FileNode{
 		Name:    path.Base(filePath),
@@ -223,14 +237,18 @@ func (s *FilesystemSnapshot) EphemeralHash() string {
 // FullHash returns the full filesystem hash including both snapshot and ephemeral.
 func (s *FilesystemSnapshot) FullHash() string {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-	
+	snapshotHash := s.hash
+	s.mu.RUnlock()
+
+	ephemerHash := s.EphemeralHash()
+
 	h := sha256.New()
-	h.Write([]byte(s.hash))
-	h.Write([]byte(s.EphemeralHash()))
-	
+	h.Write([]byte(snapshotHash))
+	h.Write([]byte(ephemerHash))
+
 	return hex.EncodeToString(h.Sum(nil))
 }
+
 
 // JSON returns the snapshot as JSON.
 func (s *FilesystemSnapshot) JSON() (string, error) {

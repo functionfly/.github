@@ -22,6 +22,7 @@ type Monitor struct {
 	probeInterval time.Duration
 	stopChan      chan struct{}
 	wg            sync.WaitGroup
+	stopOnce      sync.Once
 }
 
 // NewMonitor creates a new health monitor
@@ -43,10 +44,12 @@ func (m *Monitor) Start() {
 
 // Stop gracefully stops the health monitoring
 func (m *Monitor) Stop() {
-	logrus.Info("Stopping health monitor")
-	close(m.stopChan)
-	m.wg.Wait()
-	logrus.Info("Health monitor stopped")
+	m.stopOnce.Do(func() {
+		logrus.Info("Stopping health monitor")
+		close(m.stopChan)
+		m.wg.Wait()
+		logrus.Info("Health monitor stopped")
+	})
 }
 
 // monitorLoop runs the continuous health monitoring

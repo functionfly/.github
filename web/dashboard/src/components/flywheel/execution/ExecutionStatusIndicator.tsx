@@ -115,7 +115,7 @@ export function ExecutionStatusIndicator({
               value={progress}
               className="h-1 w-24 bg-slate-800"
             />
-            <span className="text-xs text-slate-500">{progress}%</span>
+            <span className="text-xs text-slate-400">{progress}%</span>
           </div>
         )}
       </div>
@@ -166,7 +166,7 @@ export function VerifiedStatusIndicator({
 }) {
   if (!isVerified) {
     return (
-      <div className={cn('flex items-center gap-2 text-slate-500', className)}>
+      <div className={cn('flex items-center gap-2 text-slate-400', className)}>
         <AlertCircle className="h-4 w-4" />
         <span className="text-sm">Not Verified</span>
       </div>

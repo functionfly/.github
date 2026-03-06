@@ -92,7 +92,7 @@ export function ThreadCard({ thread, className }: ThreadCardProps) {
             )}
 
             <span className="text-slate-600">•</span>
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-slate-400">
               {formatTimeAgo(thread.createdAt)}
             </span>
           </div>
@@ -138,7 +138,7 @@ export function ThreadCard({ thread, className }: ThreadCardProps) {
             </span>
           ))}
           {thread.tags.length > 4 && (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-slate-400">
               +{thread.tags.length - 4}
             </span>
           )}
@@ -147,17 +147,17 @@ export function ThreadCard({ thread, className }: ThreadCardProps) {
 
       {/* Footer Stats */}
       <div className="mt-4 flex items-center gap-4 border-t border-slate-800 pt-3">
-        <div className="flex items-center gap-1.5 text-sm text-slate-500">
+        <div className="flex items-center gap-1.5 text-sm text-slate-400">
           <MessageCircle className="h-4 w-4" />
           <span>{thread.replyCount}</span>
         </div>
 
-        <div className="flex items-center gap-1.5 text-sm text-slate-500">
+        <div className="flex items-center gap-1.5 text-sm text-slate-400">
           <Eye className="h-4 w-4" />
           <span>{thread.viewCount.toLocaleString()}</span>
         </div>
 
-        <div className="flex items-center gap-1.5 text-sm text-slate-500">
+        <div className="flex items-center gap-1.5 text-sm text-slate-400">
           <Clock className="h-4 w-4" />
           <span>{formatTimeAgo(thread.updatedAt)}</span>
         </div>

@@ -11,6 +11,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -122,12 +123,12 @@ func writeJSONError(w http.ResponseWriter, status int, msg string) {
 // GET /v1/billing/subscription
 func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
-	if claims == nil || claims.TenantID == nil {
+	if claims == nil || claims.TenantID == uuid.Nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	subscription, err := h.repo.GetSubscriptionByTenantID(*claims.TenantID)
+	subscription, err := h.repo.GetSubscriptionByTenantID(claims.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get subscription")
 		writeJSONError(w, http.StatusNotFound, "No subscription found")
@@ -143,7 +144,7 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 // GET /v1/billing/invoices
 func (h *Handler) HandleListInvoices(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
-	if claims == nil || claims.TenantID == nil {
+	if claims == nil || claims.TenantID == uuid.Nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
@@ -161,11 +162,17 @@ func (h *Handler) HandleListInvoices(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	invoices, err := h.repo.ListInvoicesByTenant(*claims.TenantID, limit, offset)
+	invoices, err := h.repo.ListInvoicesByTenant(claims.TenantID, limit, offset)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to list invoices")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve invoices")
 		return
+	}
+
+	// Convert []*storage.Invoice to []storage.Invoice
+	invoiceList := make([]storage.Invoice, len(invoices))
+	for i, invoice := range invoices {
+		invoiceList[i] = *invoice
 	}
 
 	response := struct {
@@ -173,7 +180,7 @@ func (h *Handler) HandleListInvoices(w http.ResponseWriter, r *http.Request) {
 		Limit    int               `json:"limit"`
 		Offset   int               `json:"offset"`
 	}{
-		Invoices: invoices,
+		Invoices: invoiceList,
 		Limit:    limit,
 		Offset:   offset,
 	}
@@ -187,7 +194,7 @@ func (h *Handler) HandleListInvoices(w http.ResponseWriter, r *http.Request) {
 // GET /v1/billing/usage
 func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
-	if claims == nil || claims.TenantID == nil {
+	if claims == nil || claims.TenantID == uuid.Nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
@@ -207,7 +214,7 @@ func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	usage, err := h.repo.GetUsageByTenant(*claims.TenantID, "", start, end)
+	usage, err := h.repo.GetUsageByTenant(claims.TenantID, "", start, end)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get usage")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve usage")

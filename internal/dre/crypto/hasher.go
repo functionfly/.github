@@ -56,7 +56,7 @@ func MerkleRoot(leaves [][]byte) []byte {
 		return nil
 	}
 	if len(leaves) == 1 {
-		return leaves[0]
+		return Hash(TagNode, leaves[0])
 	}
 
 	// Work on a copy to avoid mutating the input

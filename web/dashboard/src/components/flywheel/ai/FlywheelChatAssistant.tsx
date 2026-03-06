@@ -124,7 +124,7 @@ export function FlywheelChatAssistant({ className }: FlywheelChatAssistantProps)
           </div>
           <div>
             <p className="text-sm font-medium text-white">Flywheel AI</p>
-            <p className="text-xs text-slate-500">Always here to help</p>
+            <p className="text-xs text-slate-400">Always here to help</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -133,6 +133,8 @@ export function FlywheelChatAssistant({ className }: FlywheelChatAssistantProps)
             size="icon"
             className="h-8 w-8 text-slate-400 hover:text-slate-200"
             onClick={() => setIsMinimized(!isMinimized)}
+            aria-label={isMinimized ? 'Expand chat' : 'Minimize chat'}
+            aria-expanded={!isMinimized}
           >
             <ChevronDown
               className={cn('h-4 w-4 transition-transform', isMinimized && 'rotate-180')}
@@ -143,6 +145,7 @@ export function FlywheelChatAssistant({ className }: FlywheelChatAssistantProps)
             size="icon"
             className="h-8 w-8 text-slate-400 hover:text-slate-200"
             onClick={() => setIsOpen(false)}
+            aria-label="Close chat"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -247,7 +250,7 @@ export function FlywheelChatAssistant({ className }: FlywheelChatAssistantProps)
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask anything..."
-                className="flex-1 border-slate-700 bg-slate-800 text-sm text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
+                className="flex-1 border-slate-700 bg-slate-800 text-sm text-slate-200 placeholder:text-slate-400 focus-visible:ring-indigo-500"
               />
               <Button
                 onClick={handleSend}

@@ -122,7 +122,7 @@ function TimeUnit({ value, label }: { value: number; label: string }) {
   return (
     <span className="flex items-baseline gap-0.5">
       <span className="tabular-nums">{String(value).padStart(2, '0')}</span>
-      <span className="text-xs font-normal text-slate-500">{label}</span>
+      <span className="text-xs font-normal text-slate-400">{label}</span>
     </span>
   );
 }
@@ -170,7 +170,7 @@ export function ChallengeCard({ challenge, className }: ChallengeCardProps) {
               )}>
                 {statusConfig[challenge.status]}
               </Badge>
-              <p className={cn('text-xs font-medium', 'text-slate-500')}>
+              <p className={cn('text-xs font-medium', 'text-slate-400')}>
                 {type.label} Challenge
               </p>
             </div>
@@ -178,7 +178,7 @@ export function ChallengeCard({ challenge, className }: ChallengeCardProps) {
 
           {/* Prize Pool */}
           <div className="text-right">
-            <p className="text-xs text-slate-500">Prize Pool</p>
+            <p className="text-xs text-slate-400">Prize Pool</p>
             <p className="text-lg font-bold text-white">
               ${challenge.rewards.totalPool.toLocaleString()}
             </p>
@@ -196,7 +196,7 @@ export function ChallengeCard({ challenge, className }: ChallengeCardProps) {
         {/* Countdown Timer */}
         {(isActive || isUpcoming) && (
           <div className="mt-4">
-            <p className="mb-2 text-xs text-slate-500">
+            <p className="mb-2 text-xs text-slate-400">
               {isActive ? 'Ends in:' : 'Starts in:'}
             </p>
             <CountdownTimer endTime={challenge.schedule.endTime} />
@@ -204,7 +204,7 @@ export function ChallengeCard({ challenge, className }: ChallengeCardProps) {
             {isActive && (
               <div className="mt-3">
                 <Progress value={progress} className="h-1 bg-slate-800" />
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-slate-400">
                   {progress.toFixed(0)}% complete
                 </p>
               </div>
@@ -228,7 +228,7 @@ export function ChallengeCard({ challenge, className }: ChallengeCardProps) {
 
         {/* Stats & Actions */}
         <div className="mt-4 flex items-center justify-between border-t border-slate-800 pt-4">
-          <div className="flex items-center gap-4 text-sm text-slate-500">
+          <div className="flex items-center gap-4 text-sm text-slate-400">
             <span className="flex items-center gap-1">
               <Users className="h-4 w-4" />
               {challenge.statistics.participantCount}
@@ -293,7 +293,7 @@ export function ChallengeCardCompact({ challenge }: { challenge: Challenge }) {
         <h4 className="truncate text-sm font-medium text-white">
           {challenge.title}
         </h4>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-400">
           ${challenge.rewards.totalPool.toLocaleString()} • {challenge.statistics.participantCount} participants
         </p>
       </div>

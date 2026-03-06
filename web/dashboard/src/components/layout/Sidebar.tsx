@@ -270,6 +270,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           <Logo size="sm" />
           <button
             onClick={onClose}
+            aria-label="Close navigation"
             className="lg:hidden p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-text-primary"
           >
             <X className="w-5 h-5" />

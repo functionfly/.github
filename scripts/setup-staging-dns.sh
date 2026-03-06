@@ -153,6 +153,9 @@ declare -a DNS_RECORDS=(
 
     # Dashboard/App Staging Subdomain
     "CNAME|app.staging|$STAGING_DASHBOARD_TARGET|300|true|Staging Dashboard - Cloudflare Pages"
+
+    # Admin UI Staging Subdomain (separate origin)
+    "CNAME|admin.staging|$STAGING_DASHBOARD_TARGET|300|true|Staging Admin UI - Cloudflare Pages"
 )
 
 # ============================================================================

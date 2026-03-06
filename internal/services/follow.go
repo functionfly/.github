@@ -27,50 +27,28 @@ var (
 
 // FollowService handles follow business logic
 type FollowService struct {
-	followRepo    storage.FollowRepositoryInterface
-	userRepo     storage.Repository
+	repo         storage.Repository
 	functionRepo interface {
 		GetFunctionByID(ctx context.Context, id uuid.UUID) (*storage.RegistryFunction, error)
 	}
 }
 
-// FollowRepositoryInterface defines the follow repository interface
-type FollowRepositoryInterface interface {
-	// User Follows
-	FollowUser(ctx context.Context, followerID, followedUserID uuid.UUID, reason *string, notifyOnNewFunction, notifyOnFunctionUpdate, notifyOnNewVersion bool) (*storage.UserFollow, error)
-	UnfollowUser(ctx context.Context, followerID, followedUserID uuid.UUID) error
-	IsFollowingUser(ctx context.Context, followerID, followedUserID uuid.UUID) (bool, error)
-	GetUserFollowers(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*storage.UserFollow, int, error)
-	GetUserFollowing(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*storage.UserFollow, int, error)
-	GetUserFollowerCount(ctx context.Context, userID uuid.UUID) (int, error)
-	GetUserFollowingCount(ctx context.Context, userID uuid.UUID) (int, error)
-
-	// Function Follows
-	FollowFunction(ctx context.Context, userID, functionID uuid.UUID, reason *string, notifyOnNewVersion, notifyOnRatingChange, notifyOnTrustChange, notifyOnVerification bool) (*storage.FunctionFollow, error)
-	UnfollowFunction(ctx context.Context, userID, functionID uuid.UUID) error
-	IsFollowingFunction(ctx context.Context, userID, functionID uuid.UUID) (bool, error)
-	GetFunctionFollowers(ctx context.Context, functionID uuid.UUID, limit, offset int) ([]*storage.FunctionFollow, int, error)
-	GetUserFunctionFollows(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*storage.FunctionFollow, int, error)
-	GetFunctionFollowerCount(ctx context.Context, functionID uuid.UUID) (int, error)
-}
-
 // NewFollowService creates a new follow service
-func NewFollowService(followRepo storage.FollowRepositoryInterface, userRepo storage.Repository) *FollowService {
+func NewFollowService(repo storage.Repository) *FollowService {
 	return &FollowService{
-		followRepo: followRepo,
-		userRepo:   userRepo,
+		repo: repo,
 	}
 }
 
 // FollowUserRequest represents a request to follow a user
 type FollowUserRequest struct {
-	FollowerID            uuid.UUID
-	FollowedUserID        uuid.UUID
-	FollowedUsername      string // Optional: can use username instead of ID
-	Reason                *string
-	NotifyOnNewFunction   *bool
+	FollowerID             uuid.UUID
+	FollowedUserID         uuid.UUID
+	FollowedUsername       string // Optional: can use username instead of ID
+	Reason                 *string
+	NotifyOnNewFunction    *bool
 	NotifyOnFunctionUpdate *bool
-	NotifyOnNewVersion    *bool
+	NotifyOnNewVersion     *bool
 }
 
 // FollowUser allows a user to follow another user
@@ -80,7 +58,7 @@ func (s *FollowService) FollowUser(ctx context.Context, req FollowUserRequest) (
 
 	// Resolve target user ID from username if provided
 	if req.FollowedUsername != "" {
-		targetUser, err := s.userRepo.GetUserByUsername(req.FollowedUsername)
+		targetUser, err := s.repo.GetUserByUsername(req.FollowedUsername)
 		if err != nil {
 			return nil, ErrUserNotFound
 		}
@@ -95,7 +73,7 @@ func (s *FollowService) FollowUser(ctx context.Context, req FollowUserRequest) (
 	}
 
 	// Check if already following
-	exists, err := s.followRepo.IsFollowingUser(ctx, req.FollowerID, targetUserID)
+	exists, err := s.repo.IsFollowingUser(ctx, req.FollowerID, targetUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +82,7 @@ func (s *FollowService) FollowUser(ctx context.Context, req FollowUserRequest) (
 	}
 
 	// Check if target user exists
-	if _, err := s.userRepo.GetUserByID(targetUserID); err != nil {
+	if _, err := s.repo.GetUserByID(targetUserID); err != nil {
 		return nil, ErrUserNotFound
 	}
 
@@ -123,7 +101,7 @@ func (s *FollowService) FollowUser(ctx context.Context, req FollowUserRequest) (
 	}
 
 	// Create follow relationship
-	follow, err := s.followRepo.FollowUser(ctx, req.FollowerID, targetUserID, req.Reason, notifyOnNewFunction, notifyOnFunctionUpdate, notifyOnNewVersion)
+	follow, err := s.repo.FollowUser(ctx, req.FollowerID, targetUserID, req.Reason, notifyOnNewFunction, notifyOnFunctionUpdate, notifyOnNewVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +111,7 @@ func (s *FollowService) FollowUser(ctx context.Context, req FollowUserRequest) (
 
 // UnfollowUser allows a user to unfollow another user
 func (s *FollowService) UnfollowUser(ctx context.Context, followerID, followedUserID uuid.UUID) error {
-	exists, err := s.followRepo.IsFollowingUser(ctx, followerID, followedUserID)
+	exists, err := s.repo.IsFollowingUser(ctx, followerID, followedUserID)
 	if err != nil {
 		return err
 	}
@@ -141,23 +119,23 @@ func (s *FollowService) UnfollowUser(ctx context.Context, followerID, followedUs
 		return ErrNotFollowingUser
 	}
 
-	return s.followRepo.UnfollowUser(ctx, followerID, followedUserID)
+	return s.repo.UnfollowUser(ctx, followerID, followedUserID)
 }
 
 // FollowFunctionRequest represents a request to follow a function
 type FollowFunctionRequest struct {
-	UserID                 uuid.UUID
-	FunctionID             uuid.UUID
-	Reason                 *string
-	NotifyOnNewVersion     *bool
-	NotifyOnRatingChange   *bool
-	NotifyOnTrustChange   *bool
-	NotifyOnVerification  *bool
+	UserID               uuid.UUID
+	FunctionID           uuid.UUID
+	Reason               *string
+	NotifyOnNewVersion   *bool
+	NotifyOnRatingChange *bool
+	NotifyOnTrustChange  *bool
+	NotifyOnVerification *bool
 }
 
 // FollowFunction allows a user to follow a function
 func (s *FollowService) FollowFunction(ctx context.Context, req FollowFunctionRequest) (*storage.FunctionFollow, error) {
-	exists, err := s.followRepo.IsFollowingFunction(ctx, req.UserID, req.FunctionID)
+	exists, err := s.repo.IsFollowingFunction(ctx, req.UserID, req.FunctionID)
 	if err != nil {
 		return nil, err
 	}
@@ -183,12 +161,12 @@ func (s *FollowService) FollowFunction(ctx context.Context, req FollowFunctionRe
 		notifyOnVerification = *req.NotifyOnVerification
 	}
 
-	return s.followRepo.FollowFunction(ctx, req.UserID, req.FunctionID, req.Reason, notifyOnNewVersion, notifyOnRatingChange, notifyOnTrustChange, notifyOnVerification)
+	return s.repo.FollowFunction(ctx, req.UserID, req.FunctionID, req.Reason, notifyOnNewVersion, notifyOnRatingChange, notifyOnTrustChange, notifyOnVerification)
 }
 
 // UnfollowFunction allows a user to unfollow a function
 func (s *FollowService) UnfollowFunction(ctx context.Context, userID, functionID uuid.UUID) error {
-	exists, err := s.followRepo.IsFollowingFunction(ctx, userID, functionID)
+	exists, err := s.repo.IsFollowingFunction(ctx, userID, functionID)
 	if err != nil {
 		return err
 	}
@@ -196,7 +174,7 @@ func (s *FollowService) UnfollowFunction(ctx context.Context, userID, functionID
 		return ErrNotFollowingFunction
 	}
 
-	return s.followRepo.UnfollowFunction(ctx, userID, functionID)
+	return s.repo.UnfollowFunction(ctx, userID, functionID)
 }
 
 // GetUserFollowers returns followers of a user
@@ -208,7 +186,7 @@ func (s *FollowService) GetUserFollowers(ctx context.Context, userID uuid.UUID, 
 		pageSize = 20
 	}
 	offset := (page - 1) * pageSize
-	return s.followRepo.GetUserFollowers(ctx, userID, pageSize, offset)
+	return s.repo.GetUserFollowers(ctx, userID, pageSize, offset)
 }
 
 // GetUserFollowing returns users that a user is following
@@ -220,7 +198,7 @@ func (s *FollowService) GetUserFollowing(ctx context.Context, userID uuid.UUID, 
 		pageSize = 20
 	}
 	offset := (page - 1) * pageSize
-	return s.followRepo.GetUserFollowing(ctx, userID, pageSize, offset)
+	return s.repo.GetUserFollowing(ctx, userID, pageSize, offset)
 }
 
 // GetFunctionFollowers returns followers of a function
@@ -232,7 +210,7 @@ func (s *FollowService) GetFunctionFollowers(ctx context.Context, functionID uui
 		pageSize = 20
 	}
 	offset := (page - 1) * pageSize
-	return s.followRepo.GetFunctionFollowers(ctx, functionID, pageSize, offset)
+	return s.repo.GetFunctionFollowers(ctx, functionID, pageSize, offset)
 }
 
 // GetUserFunctionFollows returns functions that a user is following
@@ -244,30 +222,30 @@ func (s *FollowService) GetUserFunctionFollows(ctx context.Context, userID uuid.
 		pageSize = 20
 	}
 	offset := (page - 1) * pageSize
-	return s.followRepo.GetUserFunctionFollows(ctx, userID, pageSize, offset)
+	return s.repo.GetUserFunctionFollows(ctx, userID, pageSize, offset)
 }
 
 // IsFollowingUser checks if a user is following another user
 func (s *FollowService) IsFollowingUser(ctx context.Context, followerID, followedUserID uuid.UUID) (bool, error) {
-	return s.followRepo.IsFollowingUser(ctx, followerID, followedUserID)
+	return s.repo.IsFollowingUser(ctx, followerID, followedUserID)
 }
 
 // IsFollowingFunction checks if a user is following a function
 func (s *FollowService) IsFollowingFunction(ctx context.Context, userID, functionID uuid.UUID) (bool, error) {
-	return s.followRepo.IsFollowingFunction(ctx, userID, functionID)
+	return s.repo.IsFollowingFunction(ctx, userID, functionID)
 }
 
 // GetUserFollowerCount returns the follower count for a user
 func (s *FollowService) GetUserFollowerCount(ctx context.Context, userID uuid.UUID) (int, error) {
-	return s.followRepo.GetUserFollowerCount(ctx, userID)
+	return s.repo.GetUserFollowerCount(ctx, userID)
 }
 
 // GetUserFollowingCount returns the following count for a user
 func (s *FollowService) GetUserFollowingCount(ctx context.Context, userID uuid.UUID) (int, error) {
-	return s.followRepo.GetUserFollowingCount(ctx, userID)
+	return s.repo.GetUserFollowingCount(ctx, userID)
 }
 
 // GetFunctionFollowerCount returns the follower count for a function
 func (s *FollowService) GetFunctionFollowerCount(ctx context.Context, functionID uuid.UUID) (int, error) {
-	return s.followRepo.GetFunctionFollowerCount(ctx, functionID)
+	return s.repo.GetFunctionFollowerCount(ctx, functionID)
 }

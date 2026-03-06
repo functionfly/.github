@@ -125,7 +125,7 @@ CREATE INDEX IF NOT EXISTS idx_secrets_vault_active ON secrets_vault(tenant_id, 
 CREATE INDEX IF NOT EXISTS idx_secret_access_tokens_secret ON secret_access_tokens(secret_id);
 CREATE INDEX IF NOT EXISTS idx_secret_access_tokens_expires ON secret_access_tokens(expires_at);
 CREATE INDEX IF NOT EXISTS idx_secret_access_tokens_hash ON secret_access_tokens(token_hash);
-CREATE INDEX IF NOT EXISTS idx_secret_access_tokens_active ON secret_access_tokens(secret_id, is_revoked, expires_at) WHERE is_revoked = false AND expires_at > NOW();
+CREATE INDEX IF NOT EXISTS idx_secret_access_tokens_active ON secret_access_tokens(secret_id, is_revoked, expires_at) WHERE is_revoked = false;
 
 -- =====================================================
 -- Indexes for secrets_audit_log

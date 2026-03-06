@@ -398,19 +398,19 @@ ADD CONSTRAINT function_code_security_check
 CHECK (validate_function_security(code));
 
 -- Create indexes to support RLS policies efficiently
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_tenant_id ON users(tenant_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_apps_tenant_id ON apps(tenant_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_backends_app_id ON backends(app_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_deployments_app_id ON deployments(app_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_events_tenant_timestamp ON audit_events(tenant_id, timestamp DESC);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_usage_events_tenant_timestamp ON usage_events(tenant_id, timestamp DESC);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_subscriptions_tenant_id ON subscriptions(tenant_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_invoices_tenant_id ON invoices(tenant_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_performance_metrics_tenant_timestamp ON performance_metrics(tenant_id, timestamp DESC);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_security_scans_tenant_id ON security_scans(tenant_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dashboard_configs_tenant_id ON dashboard_configs(tenant_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_functions_tenant_id ON functions(tenant_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_function_deployments_function_id ON function_deployments(function_id);
+CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_apps_tenant_id ON apps(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_backends_app_id ON backends(app_id);
+CREATE INDEX IF NOT EXISTS idx_deployments_app_id ON deployments(app_id);
+CREATE INDEX IF NOT EXISTS idx_audit_events_tenant_timestamp ON audit_events(tenant_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_events_tenant_timestamp ON usage_events(tenant_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_tenant_id ON subscriptions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_tenant_id ON invoices(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_performance_metrics_tenant_timestamp ON performance_metrics(tenant_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_security_scans_tenant_id ON security_scans(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_dashboard_configs_tenant_id ON dashboard_configs(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_functions_tenant_id ON functions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_function_deployments_function_id ON function_deployments(function_id);
 
 -- Create a view for security monitoring
 CREATE OR REPLACE VIEW security_monitoring AS
