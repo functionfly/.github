@@ -99,10 +99,17 @@ const (
 	TypeFunctionPublished     = "function.published"
 	TypeFunctionUpdated       = "function.updated"
 	TypeFunctionDeprecated    = "function.deprecated"
+	TypeFunctionExecuted     = "function.executed"
+	TypeFunctionError        = "function.error"
 
 	// Registry notifications
 	TypeRegistryNewVersion    = "registry.new_version"
 	TypeRegistryFunctionRated = "registry.function_rated"
+
+	// Follow notifications
+	TypeFollowStarted          = "follow.started"
+	TypeFollowFunctionUpdated = "follow.function_updated"
+	TypeFollowNewVersion      = "follow.function_new_version"
 )
 
 // Analytics status values
