@@ -1,0 +1,59 @@
+{
+  "name": "blog-api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "cmd/blog-api/src",
+  "projectType": "application",
+  "tags": ["type:api", "platform:nestjs"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/dist"],
+      "options": {
+        "command": "nest build",
+        "cwd": "cmd/blog-api"
+      }
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nest start --watch",
+        "cwd": "cmd/blog-api"
+      }
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node dist/main",
+        "cwd": "cmd/blog-api"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+        "cwd": "cmd/blog-api"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "jest",
+        "cwd": "cmd/blog-api"
+      }
+    },
+    "test:watch": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "jest --watch",
+        "cwd": "cmd/blog-api"
+      }
+    },
+    "test:e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "jest --config ./test/jest-e2e.json",
+        "cwd": "cmd/blog-api"
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+node_modules
+.git
+.env
+.env.*
+dist
+build
+target
+bin
+uploads
+logs
+emsdk
+edge-targets
+.venv
+__pycache__
+*.pyc
+migrations_backup
+.nx

@@ -1,0 +1,12 @@
+# Exclude source files and development artifacts
+*
+
+# Include only the admin dashboard build
+!web/admin-dashboard/
+
+# Exclude specific files that shouldn't be deployed
+index.js
+example-*.js
+*.log
+.env*
+!.env.production

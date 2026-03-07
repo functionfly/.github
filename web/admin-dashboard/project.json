@@ -1,0 +1,42 @@
+{
+  "name": "admin-dashboard",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "web/admin-dashboard/src",
+  "projectType": "application",
+  "tags": ["type:app", "platform:web"],
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{projectRoot}/dist"],
+      "options": {
+        "outputPath": "web/admin-dashboard/dist"
+      },
+      "configurations": {
+        "production": {
+          "mode": "production"
+        }
+      }
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vite",
+        "cwd": "web/admin-dashboard"
+      }
+    },
+    "preview": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vite preview",
+        "cwd": "web/admin-dashboard"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["web/admin-dashboard/**/*.{ts,tsx,js,jsx}"]
+      }
+    }
+  }
+}

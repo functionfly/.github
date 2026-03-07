@@ -1,0 +1,33 @@
+{
+  "name": "@functionfly/monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FunctionFly - Serverless Function Platform",
+  "workspaces": [
+    "web/*",
+    "cmd/blog-api",
+    "sdk/js/packages/*"
+  ],
+  "scripts": {
+    "dev": "nx run-many --target=dev --all --parallel=4",
+    "build": "nx run-many --target=build --all",
+    "build:affected": "nx affected --target=build",
+    "test": "nx run-many --target=test --all",
+    "test:affected": "nx affected --target=test",
+    "lint": "nx run-many --target=lint --all",
+    "format": "nx format:write",
+    "graph": "nx graph",
+    "clean-install": "bun pm cache rm && rm -rf node_modules bun.lockb && mv .env .env.tmp 2>/dev/null; mv .env.production .env.production.tmp 2>/dev/null; bun install && mv .env.tmp .env 2>/dev/null; mv .env.production.tmp .env.production 2>/dev/null; true"
+  },
+  "devDependencies": {
+    "nx": "^22.5.4",
+    "@nx/js": "^22.5.4",
+    "@nx/vite": "^22.5.4",
+    "@nx/eslint": "^22.5.4",
+    "@nx/jest": "^22.5.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

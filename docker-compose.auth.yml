@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  auth-service:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+      target: production
+    container_name: functionfly-auth
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=${DATABASE_URL}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3001}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8080}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    networks:
+      - functionfly-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=Host(`auth.localhost`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.services.auth.loadbalancer.server.port=3001"
+
+  # Auth service for development with hot reload
+  auth-service-dev:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile.dev
+    container_name: functionfly-auth-dev
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/functionfly?sslmode=disable}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-dev-secret-do-not-use-in-production}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3001}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8080,http://localhost:3002}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+    volumes:
+      - ./services/auth/src:/app/src:ro
+      - /app/node_modules
+    networks:
+      - functionfly-network
+    profiles:
+      - dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: functionfly-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-functionfly}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./services/auth/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - functionfly-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-functionfly}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for session caching (optional, for future use)
+  redis:
+    image: redis:7-alpine
+    container_name: functionfly-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - functionfly-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    profiles:
+      - cache
+      - full
+
+networks:
+  functionfly-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
