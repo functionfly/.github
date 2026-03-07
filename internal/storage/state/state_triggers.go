@@ -38,6 +38,16 @@ func (r *StateRepository) GetTriggers(ctx context.Context, stateID uuid.UUID) ([
 	return triggers, nil
 }
 
+// GetTrigger retrieves a single trigger by ID
+func (r *StateRepository) GetTrigger(ctx context.Context, triggerID uuid.UUID) (*StateTrigger, error) {
+	var trigger StateTrigger
+	err := r.db.WithContext(ctx).Where("id = ?", triggerID).First(&trigger).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get trigger: %w", err)
+	}
+	return &trigger, nil
+}
+
 // ListTriggersByTenant retrieves all triggers for a tenant with pagination
 func (r *StateRepository) ListTriggersByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*StateTrigger, int64, error) {
 	var triggers []*StateTrigger

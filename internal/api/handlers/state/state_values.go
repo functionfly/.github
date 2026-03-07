@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	staterepo "github.com/functionfly/functionfly/internal/storage/state"
 )
 
 // HandleSetValue handles PUT /v1/state/{path}
@@ -45,11 +46,25 @@ func (h *Handler) HandleSetValue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get old value for trigger
+	oldValue, _ := h.stateRepo.GetStateValue(r.Context(), state.ID, key)
+	var oldValPtr *staterepo.JSONMap
+	if oldValue != nil {
+		oldVal := staterepo.JSONMap(oldValue.Value)
+		oldValPtr = &oldVal
+	}
+
 	value, err := h.stateRepo.SetStateValue(r.Context(), state.ID, key, req.Value, "user", claims.UserID.String())
 	if err != nil {
 		logrus.Errorf("failed to set value: %v", err)
 		http.Error(w, "failed to set value", http.StatusInternalServerError)
 		return
+	}
+
+	// Trigger async processing if engine is available
+	if h.triggerEngine != nil {
+		newVal := staterepo.JSONMap(req.Value)
+		go h.triggerEngine.ProcessStateChange(r.Context(), state.ID, key, "set", oldValPtr, &newVal)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -124,11 +139,24 @@ func (h *Handler) HandleDeleteValue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get old value for trigger
+	oldValue, _ := h.stateRepo.GetStateValue(r.Context(), state.ID, key)
+	var oldValPtr *staterepo.JSONMap
+	if oldValue != nil {
+		oldVal := staterepo.JSONMap(oldValue.Value)
+		oldValPtr = &oldVal
+	}
+
 	err = h.stateRepo.DeleteStateValue(r.Context(), state.ID, key, "user", claims.UserID.String())
 	if err != nil {
 		logrus.Errorf("failed to delete value: %v", err)
 		http.Error(w, "failed to delete value", http.StatusInternalServerError)
 		return
+	}
+
+	// Trigger async processing if engine is available
+	if h.triggerEngine != nil {
+		go h.triggerEngine.ProcessStateChange(r.Context(), state.ID, key, "delete", oldValPtr, nil)
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -225,6 +253,13 @@ func (h *Handler) HandlePatchValue(w http.ResponseWriter, r *http.Request) {
 		logrus.Errorf("failed to patch value: %v", err)
 		http.Error(w, "failed to patch value", http.StatusInternalServerError)
 		return
+	}
+
+	// Trigger async processing if engine is available
+	if h.triggerEngine != nil {
+		newVal := staterepo.JSONMap(currentMap)
+		oldValPtr := &previousValue
+		go h.triggerEngine.ProcessStateChange(r.Context(), state.ID, key, "patch", oldValPtr, &newVal)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

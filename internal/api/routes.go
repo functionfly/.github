@@ -193,6 +193,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	stateRepo := staterepo.NewStateRepository(s.postgresDB.GORM)
 	stateHandler := state.NewHandler(stateRepo)
 
+	// Initialize agent memory handler
+	memoryRepo := state.NewAgentMemoryRepository(s.postgresDB.GORM)
+	memoryHandler := state.NewAgentMemoryHandler(memoryRepo)
+
 	// Initialize state fabric handler (dashboard State Fabric feature)
 	stateFabricRepo := statefabricrepo.NewRepository(s.postgresDB.GORM)
 	stateFabricHandler := statefabric.NewHandler(stateFabricRepo)
@@ -803,6 +807,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/triggers", authMiddleware.RequireAuth(stateHandler.HandleGetTriggers)).Methods("GET")
 	protected.HandleFunc("/triggers", authMiddleware.RequireAuth(stateHandler.HandleCreateTrigger)).Methods("POST")
 	protected.HandleFunc("/triggers/{id}", authMiddleware.RequireAuth(stateHandler.HandleDeleteTrigger)).Methods("DELETE")
+
+	// Agent Memory routes (State Fabric - AI memory with embeddings)
+	protected.HandleFunc("/memories", authMiddleware.RequireAuth(memoryHandler.HandleListMemories)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/memories", authMiddleware.RequireAuth(memoryHandler.HandleCreateMemory)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/memories/search", authMiddleware.RequireAuth(memoryHandler.HandleSearchMemories)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/memories/{id}", authMiddleware.RequireAuth(memoryHandler.HandleGetMemory)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/memories/{id}", authMiddleware.RequireAuth(memoryHandler.HandleUpdateMemory)).Methods("PATCH", "OPTIONS")
+	protected.HandleFunc("/memories/{id}", authMiddleware.RequireAuth(memoryHandler.HandleDeleteMemory)).Methods("DELETE", "OPTIONS")
 
 	// State Fabric routes (dashboard State Fabric feature)
 	protected.HandleFunc("/state-fabrics", authMiddleware.RequireAuth(stateFabricHandler.HandleList)).Methods("GET", "OPTIONS")
