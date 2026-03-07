@@ -223,6 +223,61 @@ func (c *FlyDeploymentClient) SetSecrets(ctx context.Context, appName string, se
 	return nil
 }
 
+// UnsetSecret removes a secret from a Fly.io app
+func (c *FlyDeploymentClient) UnsetSecret(ctx context.Context, appName, secretName string) error {
+	secretsURL := fmt.Sprintf("%s/apps/%s/secrets/%s", flyAPIBase, appName, secretName)
+	req, err := http.NewRequestWithContext(ctx, "DELETE", secretsURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create unset secret request: %w", err)
+	}
+	c.setAuthHeaders(req)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to unset secret: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unset secret failed with status %d: %s", resp.StatusCode, string(body))
+	}
+	return nil
+}
+
+// ListSecrets lists all secrets for a Fly.io app (returns only secret names, not values)
+func (c *FlyDeploymentClient) ListSecrets(ctx context.Context, appName string) (map[string]string, error) {
+	secretsURL := fmt.Sprintf("%s/apps/%s/secrets", flyAPIBase, appName)
+	req, err := http.NewRequestWithContext(ctx, "GET", secretsURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create list secrets request: %w", err)
+	}
+	c.setAuthHeaders(req)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list secrets: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("list secrets failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Secrets []struct {
+			Name  string `json:"name"`
+			Type  string `json:"type"`
+		} `json:"secrets"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode secrets response: %w", err)
+	}
+
+	secrets := make(map[string]string)
+	for _, s := range result.Secrets {
+		secrets[s.Name] = s.Type
+	}
+	return secrets, nil
+}
+
 // AddCertificate adds a custom domain certificate to a Fly.io app
 func (c *FlyDeploymentClient) AddCertificate(ctx context.Context, appName, hostname string) error {
 	certURL := fmt.Sprintf("%s/apps/%s/certificates", flyAPIBase, appName)

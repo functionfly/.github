@@ -130,16 +130,26 @@ func (a *FlyAdapter) HealthCheck(ctx context.Context, backend *storage.Backend) 
 	req.Header.Set("User-Agent", "FunctionFly-HealthCheck/1.0")
 	req.Header.Set("fly-client-ip", "0.0.0.0")
 
-	resp, err := a.client.Do(req)
+	// Add request signing
+	err = a.SignRequest(req, backend, startTime)
 	if err != nil {
 		return &common.HealthCheckResult{
 			OK:           false,
-			ErrorMessage: fmt.Sprintf("health check request failed: %v", err),
+			ErrorMessage: fmt.Sprintf("failed to sign request: %v", err),
+		}, nil
+	}
+
+	resp, err := a.client.Do(req)
+	latencyMs := int(time.Since(startTime).Milliseconds())
+
+	if err != nil {
+		return &common.HealthCheckResult{
+			OK:           false,
+			LatencyMs:    latencyMs,
+			ErrorMessage: fmt.Sprintf("health check failed: %v", err),
 		}, nil
 	}
 	defer resp.Body.Close()
-
-	latencyMs := int(time.Since(startTime).Milliseconds())
 
 	// Fly.io should return 200 for healthy
 	result := &common.HealthCheckResult{
@@ -150,7 +160,15 @@ func (a *FlyAdapter) HealthCheck(ctx context.Context, backend *storage.Backend) 
 	}
 
 	if !result.OK {
-		result.ErrorMessage = fmt.Sprintf("health check returned status %d", resp.StatusCode)
+		result.ErrorMessage = fmt.Sprintf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	// Extract Fly.io specific headers
+	if region := resp.Header.Get("fly-region"); region != "" {
+		result.Region = region
+	}
+	if version := resp.Header.Get("fly-deployment-id"); version != "" {
+		result.Version = version
 	}
 
 	return result, nil
@@ -333,4 +351,119 @@ func (a *FlyAdapter) Rollback(ctx context.Context, spec *common.DeploymentSpec) 
 	}
 	client := NewFlyDeploymentClient(apiToken)
 	return client.Rollback(ctx, appName, spec.Version)
+}
+
+// SetSecrets implements ExtendedDeploymentAdapter - sets secrets for a Fly.io app
+func (a *FlyAdapter) SetSecrets(ctx context.Context, providerConfig map[string]interface{}, secrets map[string]string) (*common.DeploymentResult, error) {
+	var apiToken, appName string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := providerConfig["app_name"].(string); ok {
+			appName = name
+		}
+	}
+	if apiToken == "" || appName == "" {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "missing required Fly.io config: api_token, app_name",
+		}, fmt.Errorf("missing required Fly.io config: api_token, app_name")
+	}
+
+	client := NewFlyDeploymentClient(apiToken)
+	if err := client.SetSecrets(ctx, appName, secrets); err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to set secrets: %v", err),
+		}, fmt.Errorf("failed to set secrets: %w", err)
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID: appName,
+		Status:        common.DeploymentStatusSuccess,
+		Message:       fmt.Sprintf("Successfully set %d secrets for app %s", len(secrets), appName),
+		Metadata: map[string]interface{}{
+			"app_name":      appName,
+			"secrets_count": len(secrets),
+			"updated_at":   time.Now().Format(time.RFC3339),
+		},
+	}, nil
+}
+
+// UnsetSecret implements ExtendedDeploymentAdapter - removes a secret from a Fly.io app
+func (a *FlyAdapter) UnsetSecret(ctx context.Context, providerConfig map[string]interface{}, secretName string) (*common.DeploymentResult, error) {
+	var apiToken, appName string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := providerConfig["app_name"].(string); ok {
+			appName = name
+		}
+	}
+	if apiToken == "" || appName == "" {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "missing required Fly.io config: api_token, app_name",
+		}, fmt.Errorf("missing required Fly.io config: api_token, app_name")
+	}
+
+	client := NewFlyDeploymentClient(apiToken)
+	if err := client.UnsetSecret(ctx, appName, secretName); err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to unset secret %s: %v", secretName, err),
+		}, fmt.Errorf("failed to unset secret: %w", err)
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID: appName,
+		Status:        common.DeploymentStatusSuccess,
+		Message:       fmt.Sprintf("Successfully unset secret %s for app %s", secretName, appName),
+		Metadata: map[string]interface{}{
+			"app_name":    appName,
+			"secret_name": secretName,
+			"removed_at":  time.Now().Format(time.RFC3339),
+		},
+	}, nil
+}
+
+// ListSecrets implements ExtendedDeploymentAdapter - lists secrets for a Fly.io app
+func (a *FlyAdapter) ListSecrets(ctx context.Context, providerConfig map[string]interface{}) (*common.DeploymentResult, error) {
+	var apiToken, appName string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := providerConfig["app_name"].(string); ok {
+			appName = name
+		}
+	}
+	if apiToken == "" || appName == "" {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "missing required Fly.io config: api_token, app_name",
+		}, fmt.Errorf("missing required Fly.io config: api_token, app_name")
+	}
+
+	client := NewFlyDeploymentClient(apiToken)
+	secrets, err := client.ListSecrets(ctx, appName)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to list secrets: %v", err),
+		}, fmt.Errorf("failed to list secrets: %w", err)
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID: appName,
+		Status:        common.DeploymentStatusSuccess,
+		Message:       fmt.Sprintf("Found %d secrets for app %s", len(secrets), appName),
+		Metadata: map[string]interface{}{
+			"app_name":      appName,
+			"secrets":       secrets,
+			"secrets_count": len(secrets),
+		},
+	}, nil
 }
