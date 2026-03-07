@@ -191,7 +191,26 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Initialize state handler
 	stateRepo := staterepo.NewStateRepository(s.postgresDB.GORM)
-	stateHandler := state.NewHandler(stateRepo)
+
+	// Initialize trigger engine for state changes
+	triggerExecutor := staterepo.NewHTTPTriggerExecutor(
+		os.Getenv("FUNCTION_EXECUTION_URL"),
+		os.Getenv("FUNCTION_API_KEY"),
+		logrus.New(),
+	)
+	triggerEngineConfig := staterepo.DefaultTriggerEngineConfig()
+	if envEnabled := os.Getenv("TRIGGER_ENGINE_ENABLED"); envEnabled != "" {
+		triggerEngineConfig.Enabled = envEnabled == "true"
+	}
+	triggerEngine := staterepo.NewTriggerEngine(
+		s.postgresDB.GORM,
+		triggerEngineConfig,
+		triggerExecutor,
+		logrus.New(),
+	)
+	s.triggerEngine = triggerEngine
+
+	stateHandler := state.NewHandlerWithTriggerEngine(stateRepo, triggerEngine)
 
 	// Initialize agent memory handler
 	memoryRepo := state.NewAgentMemoryRepository(s.postgresDB.GORM)
