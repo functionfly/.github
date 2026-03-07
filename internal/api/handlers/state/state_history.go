@@ -32,6 +32,10 @@ func (h *Handler) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !h.requirePermission(w, r, state.ID, claims.UserID, "can_read") {
+		return
+	}
+
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit == 0 {
 		limit = 50
@@ -79,6 +83,10 @@ func (h *Handler) HandleCreateSnapshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !h.requirePermission(w, r, state.ID, claims.UserID, "can_admin") {
+		return
+	}
+
 	snapshot, err := h.stateRepo.CreateSnapshot(r.Context(), state.ID, req.Label)
 	if err != nil {
 		logrus.Errorf("failed to create snapshot: %v", err)
@@ -106,6 +114,10 @@ func (h *Handler) HandleListSnapshots(w http.ResponseWriter, r *http.Request) {
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
 		http.Error(w, "state not found", http.StatusNotFound)
+		return
+	}
+
+	if !h.requirePermission(w, r, state.ID, claims.UserID, "can_read") {
 		return
 	}
 
@@ -159,6 +171,10 @@ func (h *Handler) HandleRestoreSnapshot(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if !h.requirePermission(w, r, state.ID, claims.UserID, "can_admin") {
+		return
+	}
+
 	err = h.stateRepo.RestoreSnapshot(r.Context(), state.ID, req.SnapshotVersion, "user", "user-001")
 	if err != nil {
 		logrus.Errorf("failed to restore snapshot: %v", err)
@@ -204,6 +220,10 @@ func (h *Handler) HandleTimeTravel(w http.ResponseWriter, r *http.Request) {
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
 		http.Error(w, "state not found", http.StatusNotFound)
+		return
+	}
+
+	if !h.requirePermission(w, r, state.ID, claims.UserID, "can_read") {
 		return
 	}
 

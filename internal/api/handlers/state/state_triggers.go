@@ -29,6 +29,43 @@ func (h *Handler) HandleCreateTrigger(w http.ResponseWriter, r *http.Request) {
 
 	tenantID := claims.TenantID
 
+	if req.StatePath != "" {
+		state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, req.StatePath)
+		if err != nil {
+			http.Error(w, "state not found", http.StatusNotFound)
+			return
+		}
+
+		if !h.requirePermission(w, r, state.ID, claims.UserID, "can_trigger") {
+			return
+		}
+
+		trigger := &staterepo.StateTrigger{
+			TenantID:                tenantID,
+			SourceStateID:           &state.ID,
+			TriggerType:             req.TriggerType,
+			KeyPattern:              strPtr(req.KeyPattern),
+			Condition:               req.Condition,
+			TargetFunctionID:        req.TargetFunctionID,
+			TargetFunction:          req.TargetFunction,
+			IncludePrevious:         req.IncludePrevious,
+			IncludeNew:              req.IncludeNew,
+			MaxInvocationsPerMinute: req.MaxInvocationsPerMinute,
+			IsActive:                req.IsActive,
+		}
+
+		created, err := h.stateRepo.CreateTrigger(r.Context(), trigger)
+		if err != nil {
+			logrus.Errorf("failed to create trigger: %v", err)
+			http.Error(w, "failed to create trigger", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(created)
+		return
+	}
+
 	trigger := &staterepo.StateTrigger{
 		TenantID:                tenantID,
 		TriggerType:             req.TriggerType,
@@ -66,12 +103,16 @@ func (h *Handler) HandleGetTriggers(w http.ResponseWriter, r *http.Request) {
 	tenantID := claims.TenantID
 
 	if statePath != "" {
-		// Get triggers for a specific state
 		state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, statePath)
 		if err != nil {
 			http.Error(w, "state not found", http.StatusNotFound)
 			return
 		}
+
+		if !h.requirePermission(w, r, state.ID, claims.UserID, "can_read") {
+			return
+		}
+
 		triggers, err := h.stateRepo.GetTriggers(r.Context(), state.ID)
 		if err != nil {
 			logrus.Errorf("failed to get triggers: %v", err)
@@ -120,10 +161,22 @@ func (h *Handler) HandleDeleteTrigger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := r.Context().Value("user")
-	if user == nil {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
+	}
+
+	trigger, err := h.stateRepo.GetTrigger(r.Context(), triggerUUID)
+	if err != nil {
+		http.Error(w, "trigger not found", http.StatusNotFound)
+		return
+	}
+
+	if trigger.SourceStateID != nil {
+		if !h.requirePermission(w, r, *trigger.SourceStateID, claims.UserID, "can_trigger") {
+			return
+		}
 	}
 
 	err = h.stateRepo.DeleteTrigger(r.Context(), triggerUUID)

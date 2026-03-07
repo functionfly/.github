@@ -51,6 +51,7 @@ type GrantPermissionRequest struct {
 }
 
 type CreateTriggerRequest struct {
+	StatePath                string                 `json:"state_path,omitempty"`
 	TriggerType             string                 `json:"trigger_type"`
 	KeyPattern              string                 `json:"key_pattern,omitempty"`
 	Condition               map[string]interface{} `json:"condition,omitempty"`
