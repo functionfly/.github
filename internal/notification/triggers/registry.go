@@ -22,6 +22,8 @@ func NewTriggerRegistry() *TriggerRegistry {
 	registry.Register(NewBillingTrigger())
 	registry.Register(NewSecurityTrigger())
 	registry.Register(NewTeamTrigger())
+	registry.Register(NewFunctionTrigger())
+	registry.Register(NewFollowTrigger())
 
 	return registry
 }
