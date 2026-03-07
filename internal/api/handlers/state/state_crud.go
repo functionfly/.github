@@ -31,16 +31,17 @@ func (h *Handler) HandleCreateState(w http.ResponseWriter, r *http.Request) {
 	tenantID := claims.TenantID
 
 	state := &staterepo.State{
-		TenantID:    tenantID,
-		Name:        req.Name,
-		FullPath:    fmt.Sprintf("%s/%s", tenantID.String()[:8], req.Name),
-		StorageType: req.StorageType,
-		TTLDays:     req.TTLDays,
-		MaxSizeMB:   req.MaxSizeMB,
-		IsVersioned: req.IsVersioned,
-		IsPublic:    req.IsPublic,
-		Description: strPtr(req.Description),
-		Tags:        req.Tags,
+		TenantID:     tenantID,
+		Name:         req.Name,
+		FullPath:     fmt.Sprintf("%s/%s", tenantID.String()[:8], req.Name),
+		StorageType:  req.StorageType,
+		TTLDays:      req.TTLDays,
+		MaxSizeMB:    req.MaxSizeMB,
+		IsVersioned:  req.IsVersioned,
+		IsEncrypted:   req.IsEncrypted,
+		IsPublic:     req.IsPublic,
+		Description:  strPtr(req.Description),
+		Tags:         req.Tags,
 	}
 
 	created, err := h.stateRepo.CreateState(r.Context(), state)
@@ -200,6 +201,9 @@ func (h *Handler) HandleUpdateState(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.IsPublic != nil {
 		state.IsPublic = *req.IsPublic
+	}
+	if req.IsEncrypted != nil {
+		state.IsEncrypted = *req.IsEncrypted
 	}
 
 	updated, err := h.stateRepo.UpdateState(r.Context(), state)

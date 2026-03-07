@@ -21,7 +21,7 @@ type State struct {
 	TenantID   uuid.UUID  `json:"tenant_id" gorm:"type:uuid;not null;index"`
 	Name       string     `json:"name" gorm:"not null;size:255"`
 	FullPath   string     `json:"full_path" gorm:"uniqueIndex;not null;size:500"` // "acme/cart"
-	FunctionID *uuid.UUID `json:"function_id,omitempty" gorm:"type:uuid;index"`   // Optional bound function
+	FunctionID *uuid.UUID `json:"function_id,omitempty" gorm:"type:uuid;index"`     // Optional bound function
 
 	// State Configuration
 	StorageType string `json:"storage_type" gorm:"not null;default:'keyvalue';size:50"` // "keyvalue" | "document" | "timeseries" | "graph"
@@ -33,6 +33,9 @@ type State struct {
 	// Versioning
 	CurrentVersion int  `json:"current_version" gorm:"not null;default:1"`
 	IsVersioned    bool `json:"is_versioned" gorm:"not null;default:true"`
+
+	// Security
+	IsEncrypted bool `json:"is_encrypted" gorm:"not null;default:false"` // Enable encryption at rest
 
 	// Permissions
 	IsPublic         bool `json:"is_public" gorm:"not null;default:false"`
@@ -83,13 +86,17 @@ type StateValue struct {
 	StateID uuid.UUID `json:"state_id" gorm:"type:uuid;not null;index"`
 
 	// Key (supports hierarchical keys like "user/123/profile")
-	Key string `json:"key" gorm:"not null;index;size:500"`
+	Key string `json:"key" gorm:"not null:index;size:500"`
 
 	// Value (JSON for flexibility)
 	Value JSONMap `json:"value" gorm:"type:jsonb;not null"`
 
+	// Encryption support
+	IsEncrypted bool   `json:"is_encrypted" gorm:"not null;default:false"`
+	EncryptedVal []byte `json:"-" gorm:"type:bytea"` // Encrypted value (never serialized to JSON)
+
 	// Versioning
-	Version       int      `json:"version" gorm:"not null;index"`
+	Version       int      `json:"version" gorm:"not null:index"`
 	PreviousValue *JSONMap `json:"previous_value,omitempty" gorm:"type:jsonb"`
 
 	// Content Addressing (for deduplication)

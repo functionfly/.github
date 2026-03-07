@@ -5,18 +5,21 @@ import "github.com/google/uuid"
 // Request/Response types
 
 type CreateStateRequest struct {
-	Name        string                 `json:"name"`
-	StorageType string                 `json:"storage_type,omitempty"`
-	TTLDays     int                    `json:"ttl_days,omitempty"`
-	MaxSizeMB   int                    `json:"max_size_mb,omitempty"`
-	IsVersioned bool                   `json:"is_versioned,omitempty"`
-	IsPublic    bool                   `json:"is_public,omitempty"`
-	Description string                 `json:"description,omitempty"`
-	Tags        map[string]interface{} `json:"tags,omitempty"`
+	Name          string                 `json:"name"`
+	StorageType   string                 `json:"storage_type,omitempty"`
+	TTLDays       int                    `json:"ttl_days,omitempty"`
+	MaxSizeMB     int                    `json:"max_size_mb,omitempty"`
+	IsVersioned   bool                   `json:"is_versioned,omitempty"`
+	IsEncrypted   bool                   `json:"is_encrypted,omitempty"`
+	IsPublic      bool                   `json:"is_public,omitempty"`
+	Description   string                 `json:"description,omitempty"`
+	Tags          map[string]interface{} `json:"tags,omitempty"`
 }
 
 type SetValueRequest struct {
-	Value map[string]interface{} `json:"value"`
+	Value        map[string]interface{} `json:"value"`
+	IsEncrypted  bool                   `json:"is_encrypted,omitempty"`
+	ExpiresInDays int                   `json:"expires_in_days,omitempty"`
 }
 
 type PatchValueRequest struct {
@@ -24,12 +27,13 @@ type PatchValueRequest struct {
 }
 
 type UpdateStateRequest struct {
-	Name        string                 `json:"name,omitempty"`
-	Description string                 `json:"description,omitempty"`
-	Tags        map[string]interface{} `json:"tags,omitempty"`
-	TTLDays     *int                   `json:"ttl_days,omitempty"`
-	MaxSizeMB   *int                   `json:"max_size_mb,omitempty"`
-	IsPublic    *bool                  `json:"is_public,omitempty"`
+	Name          string                 `json:"name,omitempty"`
+	Description   string                 `json:"description,omitempty"`
+	Tags          map[string]interface{} `json:"tags,omitempty"`
+	TTLDays       *int                   `json:"ttl_days,omitempty"`
+	MaxSizeMB     *int                   `json:"max_size_mb,omitempty"`
+	IsPublic      *bool                  `json:"is_public,omitempty"`
+	IsEncrypted   *bool                  `json:"is_encrypted,omitempty"`
 }
 
 type CreateSnapshotRequest struct {
