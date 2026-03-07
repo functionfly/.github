@@ -23,13 +23,39 @@ type Service interface {
 
 // Config holds email service configuration
 type Config struct {
+	Provider      string // "resend" or "smtp"
 	SMTPHost     string
 	SMTPPort     int
 	SMTPUsername string
 	SMTPPassword string
+	ResendAPIKey string
 	FromEmail    string
 	FromName     string
 	BaseURL      string
+	ReplyToEmail string
+}
+
+// NewService creates an email service based on configuration
+func NewService(config Config) Service {
+	if config.Provider == "resend" && config.ResendAPIKey != "" {
+		return NewResendService(ResendConfig{
+			APIKey:      config.ResendAPIKey,
+			FromEmail:   config.FromEmail,
+			FromName:    config.FromName,
+			BaseURL:     config.BaseURL,
+			ReplyToEmail: config.ReplyToEmail,
+		})
+	}
+	// Default to SMTP
+	return NewSMTPService(Config{
+		SMTPHost:     config.SMTPHost,
+		SMTPPort:     config.SMTPPort,
+		SMTPUsername: config.SMTPUsername,
+		SMTPPassword: config.SMTPPassword,
+		FromEmail:    config.FromEmail,
+		FromName:     config.FromName,
+		BaseURL:      config.BaseURL,
+	})
 }
 
 // SMTPService implements the Service interface using SMTP
