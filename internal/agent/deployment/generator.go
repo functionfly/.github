@@ -57,6 +57,7 @@ type FunctionSpec struct {
 	Name         string           `json:"name" validate:"required"`
 	Title        string           `json:"title"`
 	Description  string           `json:"description" validate:"required"`
+	Prompt       string           `json:"prompt"`
 	InputSchema  map[string]any   `json:"input_schema"`
 	OutputSchema map[string]any   `json:"output_schema"`
 	Category     string           `json:"category"`
@@ -185,14 +186,35 @@ def %s(data: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         dict: Output result
     """
-    # TODO: Implement the function logic based on the specification
+    # Parse input data
+    input_data = data
+
+    # Implement function logic based on specification
     # %s
+
+    # Process the input and generate output
+    result = process_input(input_data)
 
     return {
         "success": True,
-        "result": {}
+        "result": result
     }
-`, req.FunctionSpec.Title, funcName, req.FunctionSpec.Description, req.FunctionSpec.Description)
+
+
+def process_input(input_data):
+    """
+    Process the input data and return the result.
+    Modify this function to implement your specific logic.
+    """
+    # Default implementation: echo back the input with basic transformation
+    if isinstance(input_data, dict):
+        return {
+            "processed": True,
+            "data": input_data,
+            "message": "Processed successfully"
+        }
+    return {"processed": True, "data": str(input_data)}
+`, req.FunctionSpec.Title, funcName, req.FunctionSpec.Description, req.FunctionSpec.Prompt)
 
 	return template, nil
 }
@@ -224,15 +246,39 @@ func (g *Generator) generateJavaScriptTemplate(req *GenerationRequest) (string, 
  * @returns {Promise<HandlerResult>} - Output result
  */
 export async function %s(data) {
-  // TODO: Implement the function logic based on the specification
+  // Parse input data
+  const inputData = data;
+
+  // Implement function logic based on the specification
   // %s
+
+  // Process the input and generate output
+  const result = processInput(inputData);
 
   return {
     success: true,
-    result: {}
+    result
   };
 }
-`, req.FunctionSpec.Title, funcName, req.FunctionSpec.Description)
+
+/**
+ * Process the input data and return the result.
+ * Modify this function to implement your specific logic.
+ * @param {any} inputData - The input data to process
+ * @returns {Object} - The processed result
+ */
+function processInput(inputData) {
+  // Default implementation: echo back the input with basic transformation
+  if (typeof inputData === 'object' && inputData !== null) {
+    return {
+      processed: true,
+      data: inputData,
+      message: 'Processed successfully'
+    };
+  }
+  return { processed: true, data: String(inputData) };
+}
+`, req.FunctionSpec.Title, funcName, req.FunctionSpec.Description, req.FunctionSpec.Prompt)
 
 	return template, nil
 }
