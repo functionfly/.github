@@ -17,6 +17,7 @@ type Service interface {
 	SendVerificationEmail(user *storage.User, verificationToken string) error
 	SendPasswordResetEmail(user *storage.User, resetToken string) error
 	SendBreachNotification(recipients []string, breachDetails map[string]interface{}) error
+	SendEmail(to, subject, textBody, htmlBody string) error
 	ValidateConfiguration() error
 }
 
@@ -305,6 +306,11 @@ This notification is sent in compliance with GDPR Article 33.
 `, breachType, detectionTime, affectedUsers, riskLevel)
 
 	return s.sendEmailToMultiple(recipients, subject, textBody, htmlBody)
+}
+
+// SendEmail sends a generic email with the given subject and body
+func (s *SMTPService) SendEmail(to, subject, textBody, htmlBody string) error {
+	return s.sendEmail(to, subject, textBody, htmlBody)
 }
 
 // ValidateConfiguration checks if the email service is properly configured
@@ -618,6 +624,11 @@ This notification is sent in compliance with GDPR Article 33.
 `, breachType, detectionTime, affectedUsers, riskLevel)
 
 	return m.sendEmailToMultiple(recipients, subject, textBody, htmlBody)
+}
+
+// SendEmail sends a generic email with the given subject and body
+func (m *MockService) SendEmail(to, subject, textBody, htmlBody string) error {
+	return m.sendEmail(to, subject, textBody, htmlBody)
 }
 
 // sendEmail sends an email using SMTP for the mock service
