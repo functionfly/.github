@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Play, Pause, Settings, Trash2, ArrowRight, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, Play, Pause, Trash2, ArrowRight, CheckCircle, AlertCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,12 +13,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   useCreatePipeline,
   useDeletePipeline,
   useUpdatePipeline,
+  useExecutePipeline,
 } from "@/hooks/useStateFabric";
 import type { Pipeline, PipelineStep } from "@/types";
+import { PipelineStepEditor } from "./PipelineStepEditor";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 
 interface PipelineVisualizationProps {
   fabricId: string;
@@ -44,10 +48,15 @@ export function PipelineVisualization({ fabricId, pipelines }: PipelineVisualiza
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newPipelineName, setNewPipelineName] = useState("");
   const [newPipelineDescription, setNewPipelineDescription] = useState("");
+  const [editingPipeline, setEditingPipeline] = useState<Pipeline | null>(null);
+  const [runningPipeline, setRunningPipeline] = useState<Pipeline | null>(null);
+  const [executionInput, setExecutionInput] = useState("{}");
+  const [executionResult, setExecutionResult] = useState<any>(null);
 
   const createPipeline = useCreatePipeline(fabricId);
   const deletePipeline = useDeletePipeline(fabricId);
   const updatePipeline = useUpdatePipeline(fabricId);
+  const executePipeline = useExecutePipeline(fabricId, runningPipeline?.id || "");
 
   const handleCreate = async () => {
     if (!newPipelineName.trim()) return;
@@ -74,6 +83,30 @@ export function PipelineVisualization({ fabricId, pipelines }: PipelineVisualiza
     if (confirm("Are you sure you want to delete this pipeline?")) {
       await deletePipeline.mutateAsync(pipelineId);
     }
+  };
+
+  const handleRunPipeline = async () => {
+    if (!runningPipeline) return;
+    
+    try {
+      let inputData: Record<string, any> = {};
+      try {
+        inputData = JSON.parse(executionInput);
+      } catch {
+        inputData = { raw: executionInput };
+      }
+      
+      const result = await executePipeline.mutateAsync(inputData);
+      setExecutionResult(result);
+    } catch (err) {
+      setExecutionResult({ error: err instanceof Error ? err.message : "Execution failed" });
+    }
+  };
+
+  const openRunDialog = (pipeline: Pipeline) => {
+    setRunningPipeline(pipeline);
+    setExecutionInput("{}");
+    setExecutionResult(null);
   };
 
   return (
@@ -147,19 +180,33 @@ export function PipelineVisualization({ fabricId, pipelines }: PipelineVisualiza
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openRunDialog(pipeline)}
+                      disabled={pipeline.status !== "active"}
+                    >
+                      <Zap className="w-4 h-4 mr-1" />
+                      Run
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingPipeline(pipeline)}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Steps
+                    </Button>
+                    <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleToggleStatus(pipeline)}
-                      aria-label={pipeline.status === "active" ? 'Pause pipeline' : 'Start pipeline'}
+                      aria-label={pipeline.status === 'active' ? 'Pause pipeline' : 'Start pipeline'}
                     >
                       {pipeline.status === "active" ? (
                         <Pause className="w-4 h-4" />
                       ) : (
                         <Play className="w-4 h-4" />
                       )}
-                    </Button>
-                    <Button variant="ghost" size="icon" aria-label="Pipeline settings">
-                      <Settings className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -230,6 +277,85 @@ export function PipelineVisualization({ fabricId, pipelines }: PipelineVisualiza
           ))}
         </div>
       )}
+
+      {/* Step Editor Dialog */}
+      <Dialog open={!!editingPipeline} onOpenChange={(open) => !open && setEditingPipeline(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Steps: {editingPipeline?.name}</DialogTitle>
+          </DialogHeader>
+          {editingPipeline && (
+            <PipelineStepEditor
+              fabricId={fabricId}
+              pipeline={editingPipeline}
+              onUpdate={async (steps) => {
+                await updatePipeline.mutateAsync({
+                  pipelineId: editingPipeline.id,
+                  data: { steps },
+                });
+                setEditingPipeline({ ...editingPipeline, steps });
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Pipeline Execution Dialog */}
+      <Dialog open={!!runningPipeline} onOpenChange={(open) => !open && setRunningPipeline(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Run Pipeline: {runningPipeline?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Input Data (JSON)</Label>
+              <Textarea
+                value={executionInput}
+                onChange={(e) => setExecutionInput(e.target.value)}
+                placeholder='{"key": "value"}'
+                rows={8}
+                className="font-mono text-sm"
+                disabled={executePipeline.isPending}
+              />
+              <p className="text-xs text-text-muted">
+                Enter the input data for the pipeline as JSON
+              </p>
+            </div>
+
+            {executionResult && (
+              <div className="space-y-2">
+                <Label>Result</Label>
+                <div className={`p-4 rounded-lg ${executionResult.error ? "bg-red-500/10 border border-red-500/20" : "bg-green-500/10 border border-green-500/20"}`}>
+                  <pre className="text-sm font-mono overflow-x-auto">
+                    {JSON.stringify(executionResult, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRunningPipeline(null)}>
+              Close
+            </Button>
+            <Button 
+              onClick={handleRunPipeline} 
+              disabled={executePipeline.isPending || !executionInput.trim()}
+            >
+              {executePipeline.isPending ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Running...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 mr-2" />
+                  Execute
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

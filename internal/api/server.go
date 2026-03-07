@@ -25,6 +25,7 @@ import (
 	"github.com/functionfly/functionfly/internal/routing"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
+	staterepo "github.com/functionfly/functionfly/internal/storage/state"
 	"github.com/gorilla/mux"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
@@ -56,6 +57,9 @@ type Server struct {
 	// Notification service
 	notificationSvc  *notification.Service
 	notificationRepo notification.Repository
+
+	// Trigger engine for state changes
+	triggerEngine *staterepo.TriggerEngine
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -326,6 +330,12 @@ func (s *Server) ListenAndServe(addr string) error {
 	s.notificationSvc.Start(ctx)
 	logrus.Info("Notification service started")
 
+	// Start trigger engine for state changes
+	if s.triggerEngine != nil {
+		s.triggerEngine.Start(ctx)
+		logrus.Info("Trigger engine started")
+	}
+
 	// Channel to listen for interrupt signals
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -344,6 +354,12 @@ func (s *Server) ListenAndServe(addr string) error {
 
 	// Stop health monitor first
 	s.healthMonitor.Stop()
+
+	// Stop trigger engine
+	if s.triggerEngine != nil {
+		s.triggerEngine.Stop()
+		logrus.Info("Trigger engine stopped")
+	}
 
 	// Create shutdown context with configured timeout
 	ctx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
