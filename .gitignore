@@ -14,7 +14,7 @@ api-test
 ffly
 fly
 !cmd/fly/
-functionfly
+/functionfly
 health-monitor
 migrate
 
@@ -23,7 +23,10 @@ migrate
 
 # Output of the go coverage tool
 *.out
-*.html
+# Go coverage HTML output (but allow web HTML files)
+/*.html
+coverage*.html
+!web/**/*.html
 
 # Go workspace file
 go.work
@@ -108,7 +111,7 @@ Cargo.lock
 server
 setup-bin
 statefabric-sdk/
-statefabric/
+/statefabric/
 tools/
 sdk/js/
 
