@@ -45,19 +45,18 @@ func (c *EmailChannel) Send(ctx context.Context, n *Notification, user *storage.
 	bodyHTML := c.buildHTMLBody(n)
 	bodyText := c.buildTextBody(n)
 
-	// For now, we'll log the email instead of actually sending
-	// In production, this would integrate with the email service
+	// Send the email using the email service
+	err := c.emailSvc.SendEmail(userEmail, subject, bodyText, bodyHTML)
+	if err != nil {
+		c.logger.WithError(err).Error("Failed to send email notification")
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
 	c.logger.WithFields(logrus.Fields{
 		"to":                userEmail,
 		"subject":           subject,
 		"notification_type": n.Type,
-	}).Info("Would send email notification")
-
-	// TODO: Integrate with email service to send actual emails
-	// This would require extending the email.Service interface
-	// to support custom email sending with subject/body
-	_ = bodyHTML
-	_ = bodyText
+	}).Info("Email notification sent successfully")
 
 	return nil
 }

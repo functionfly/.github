@@ -17,18 +17,45 @@ type Service interface {
 	SendVerificationEmail(user *storage.User, verificationToken string) error
 	SendPasswordResetEmail(user *storage.User, resetToken string) error
 	SendBreachNotification(recipients []string, breachDetails map[string]interface{}) error
+	SendEmail(to, subject, textBody, htmlBody string) error
 	ValidateConfiguration() error
 }
 
 // Config holds email service configuration
 type Config struct {
+	Provider      string // "resend" or "smtp"
 	SMTPHost     string
 	SMTPPort     int
 	SMTPUsername string
 	SMTPPassword string
+	ResendAPIKey string
 	FromEmail    string
 	FromName     string
 	BaseURL      string
+	ReplyToEmail string
+}
+
+// NewService creates an email service based on configuration
+func NewService(config Config) Service {
+	if config.Provider == "resend" && config.ResendAPIKey != "" {
+		return NewResendService(ResendConfig{
+			APIKey:      config.ResendAPIKey,
+			FromEmail:   config.FromEmail,
+			FromName:    config.FromName,
+			BaseURL:     config.BaseURL,
+			ReplyToEmail: config.ReplyToEmail,
+		})
+	}
+	// Default to SMTP
+	return NewSMTPService(Config{
+		SMTPHost:     config.SMTPHost,
+		SMTPPort:     config.SMTPPort,
+		SMTPUsername: config.SMTPUsername,
+		SMTPPassword: config.SMTPPassword,
+		FromEmail:    config.FromEmail,
+		FromName:     config.FromName,
+		BaseURL:      config.BaseURL,
+	})
 }
 
 // SMTPService implements the Service interface using SMTP
@@ -305,6 +332,11 @@ This notification is sent in compliance with GDPR Article 33.
 `, breachType, detectionTime, affectedUsers, riskLevel)
 
 	return s.sendEmailToMultiple(recipients, subject, textBody, htmlBody)
+}
+
+// SendEmail sends a generic email with the given subject and body
+func (s *SMTPService) SendEmail(to, subject, textBody, htmlBody string) error {
+	return s.sendEmail(to, subject, textBody, htmlBody)
 }
 
 // ValidateConfiguration checks if the email service is properly configured
@@ -618,6 +650,11 @@ This notification is sent in compliance with GDPR Article 33.
 `, breachType, detectionTime, affectedUsers, riskLevel)
 
 	return m.sendEmailToMultiple(recipients, subject, textBody, htmlBody)
+}
+
+// SendEmail sends a generic email with the given subject and body
+func (m *MockService) SendEmail(to, subject, textBody, htmlBody string) error {
+	return m.sendEmail(to, subject, textBody, htmlBody)
 }
 
 // sendEmail sends an email using SMTP for the mock service
