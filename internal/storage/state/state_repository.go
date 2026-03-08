@@ -1,12 +1,6 @@
 package state
 
 import (
-	"encoding/json"
-	"fmt"
-	"time"
-
-	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 

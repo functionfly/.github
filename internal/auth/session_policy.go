@@ -60,14 +60,20 @@ func (s *SessionPolicyService) GetSessionPolicy(ctx context.Context, tenantID uu
 		return nil, errors.New("tenant not found")
 	}
 
-	// Convert from minutes to time.Duration
-	return &SessionPolicy{
-		MaxDuration:       time.Duration(tenant.SessionMaxDuration) * time.Minute,
-		IdleTimeout:       time.Duration(tenant.SessionIdleTimeout) * time.Minute,
-		MaxConcurrent:     tenant.ConcurrentSessions,
-		RequireMFA:        tenant.MFAPolicy == "required",
-		DevicePersistence: tenant.SessionPersistence == "device",
-	}, nil
+	policy := DefaultSessionPolicy()
+	if tenant.SessionMaxDuration != nil {
+		policy.MaxDuration = *tenant.SessionMaxDuration
+	}
+	if tenant.SessionIdleTimeout != nil {
+		policy.IdleTimeout = *tenant.SessionIdleTimeout
+	}
+	if tenant.ConcurrentSessions != nil {
+		policy.MaxConcurrent = *tenant.ConcurrentSessions
+	}
+	policy.RequireMFA = tenant.MFAPolicy == "required"
+	policy.DevicePersistence = tenant.SessionPersistence
+
+	return policy, nil
 }
 
 // UpdateSessionPolicy updates the session policy for a tenant
@@ -174,7 +180,7 @@ func (s *SessionPolicyService) IsSessionIdle(session *storage.Session, tenantID 
 
 // GetActiveSessions returns all active sessions for a tenant
 func (s *SessionPolicyService) GetActiveSessions(ctx context.Context, tenantID uuid.UUID) ([]*storage.Session, error) {
-	sessions, err := s.repo.ListTenantSessions(tenantID)
+	sessions, err := s.repo.ListTenantSessions(tenantID, 1000, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tenant sessions: %w", err)
 	}
@@ -199,7 +205,7 @@ func (s *SessionPolicyService) RevokeSession(ctx context.Context, sessionID, use
 
 // RevokeSessionByID revokes a specific session by ID only (for admin operations)
 func (s *SessionPolicyService) RevokeSessionByID(ctx context.Context, sessionID uuid.UUID) error {
-	err := s.repo.DeleteSessionByIDOnly(sessionID)
+	err := s.repo.DeleteSessionByIDOnly(sessionID, uuid.Nil)
 	if err != nil {
 		return fmt.Errorf("failed to revoke session: %w", err)
 	}
@@ -211,7 +217,7 @@ func (s *SessionPolicyService) RevokeSessionByID(ctx context.Context, sessionID 
 
 // RevokeAllSessions revokes all sessions for a tenant
 func (s *SessionPolicyService) RevokeAllSessions(ctx context.Context, tenantID uuid.UUID) error {
-	sessions, err := s.repo.ListTenantSessions(tenantID)
+	sessions, err := s.repo.ListTenantSessions(tenantID, 1000, 0)
 	if err != nil {
 		return fmt.Errorf("failed to list tenant sessions: %w", err)
 	}

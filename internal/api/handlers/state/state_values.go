@@ -258,8 +258,8 @@ func (h *Handler) HandlePatchValue(w http.ResponseWriter, r *http.Request) {
 	// Trigger async processing if engine is available
 	if h.triggerEngine != nil {
 		newVal := staterepo.JSONMap(currentMap)
-		oldValPtr := &previousValue
-		go h.triggerEngine.ProcessStateChange(r.Context(), state.ID, key, "patch", oldValPtr, &newVal)
+		oldVal := staterepo.JSONMap(previousValue)
+		go h.triggerEngine.ProcessStateChange(r.Context(), state.ID, key, "patch", &oldVal, &newVal)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

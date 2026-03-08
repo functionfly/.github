@@ -14,7 +14,10 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/storage"
 )
+
+type AgentMemory = storage.AgentMemory
 
 type AgentMemoryHandler struct {
 	memoryRepo *AgentMemoryRepository
@@ -43,6 +46,7 @@ type UpdateMemoryRequest struct {
 
 type SearchMemoryRequest struct {
 	Query      string    `json:"query"`
+	AgentID    string    `json:"agent_id,omitempty"`
 	Embedding  []float32 `json:"embedding,omitempty"`
 	MemoryType string    `json:"memory_type,omitempty"`
 	Limit      int       `json:"limit,omitempty"`
@@ -219,9 +223,9 @@ func (h *AgentMemoryHandler) HandleListMemories(w http.ResponseWriter, r *http.R
 	var err error
 
 	if agentID != "" && memoryType != "" {
-		memories, total, err = h.memoryRepo.ListMemoriesByAgentAndType(r.Context(), claims.TenantID, agentID, memoryType, limit, offset)
+		memories, total, err = h.memoryRepo.ListMemoriesByAgentAndType(r.Context(), claims.TenantID.String(), agentID, memoryType, limit, offset)
 	} else if agentID != "" {
-		memories, total, err = h.memoryRepo.ListMemoriesByAgent(r.Context(), claims.TenantID, agentID, limit, offset)
+		memories, total, err = h.memoryRepo.ListMemoriesByAgent(r.Context(), claims.TenantID.String(), agentID, limit, offset)
 	} else {
 		memories, total, err = h.memoryRepo.ListMemoriesByTenant(r.Context(), claims.TenantID, limit, offset)
 	}
@@ -424,9 +428,3 @@ func (r *AgentMemoryRepository) SearchMemories(ctx context.Context, tenantID uui
 	return memories, nil
 }
 
-func strPtr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
