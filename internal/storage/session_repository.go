@@ -241,3 +241,85 @@ func (r *SessionRepository) ListUserSessions(userID uuid.UUID) ([]*Session, erro
 
 	return sessions, nil
 }
+
+// CountActiveUserSessions counts the number of active sessions for a user
+func (r *SessionRepository) CountActiveUserSessions(userID uuid.UUID) (int, error) {
+	var count int
+	err := r.db.QueryRow(`
+		SELECT COUNT(*)
+		FROM sessions
+		WHERE user_id = $1 AND expires_at > NOW()`,
+		userID).Scan(&count)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to count active user sessions: %w", err)
+	}
+
+	return count, nil
+}
+
+// ListTenantSessions retrieves sessions for all users in a tenant
+func (r *SessionRepository) ListTenantSessions(tenantID uuid.UUID, limit, offset int) ([]*Session, error) {
+	query := `
+		SELECT s.id, s.user_id, s.session_token, s.mfa_verified, s.mfa_last_used, s.ip_address, s.user_agent, s.expires_at, s.last_activity, s.created_at, s.updated_at
+		FROM sessions s
+		JOIN users u ON s.user_id = u.id
+		WHERE u.tenant_id = $1 AND s.expires_at > NOW()
+		ORDER BY s.last_activity DESC`
+
+	args := []interface{}{tenantID}
+
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET %d", offset)
+	}
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tenant sessions: %w", err)
+	}
+	defer rows.Close()
+
+	var sessions []*Session
+	for rows.Next() {
+		var session Session
+		var mfaLastUsed sql.NullTime
+
+		err := rows.Scan(
+			&session.ID, &session.UserID, &session.SessionToken, &session.MFAVerified,
+			&mfaLastUsed, &session.IPAddress, &session.UserAgent, &session.ExpiresAt,
+			&session.LastActivity, &session.CreatedAt, &session.UpdatedAt)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan session: %w", err)
+		}
+
+		if mfaLastUsed.Valid {
+			session.MFALastUsed = &mfaLastUsed.Time
+		}
+
+		sessions = append(sessions, &session)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating sessions: %w", err)
+	}
+
+	return sessions, nil
+}
+
+// DeleteSessionByIDOnly deletes a session by ID without checking user ownership
+func (r *SessionRepository) DeleteSessionByIDOnly(sessionID uuid.UUID, userID uuid.UUID) error {
+	_, err := r.db.Exec(`
+		DELETE FROM sessions
+		WHERE id = $1 AND user_id = $2`,
+		sessionID, userID)
+
+	if err != nil {
+		return fmt.Errorf("failed to delete session by ID: %w", err)
+	}
+
+	return nil
+}

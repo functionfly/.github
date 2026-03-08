@@ -101,11 +101,17 @@ type Tenant struct {
 	Plan             string    `json:"plan" gorm:"not null"`
 	Status           string    `json:"status" gorm:"not null;default:'active'"` // 'active', 'suspended'
 	StripeCustomerID *string   `json:"stripe_customer_id,omitempty" gorm:"column:stripe_customer_id;size:255"`
-	Users            []User    `json:"users,omitempty" gorm:"foreignKey:TenantID"`
-	Apps             []App     `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
-	Teams            []Team    `json:"teams,omitempty" gorm:"foreignKey:TenantID"`
-	CreatedAt        time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt        time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	// Session policy fields
+	SessionMaxDuration *time.Duration `json:"session_max_duration,omitempty"`          // Maximum session duration
+	SessionIdleTimeout *time.Duration `json:"session_idle_timeout,omitempty"`          // Idle timeout before session expires
+	ConcurrentSessions *int           `json:"concurrent_sessions,omitempty"`           // Maximum concurrent sessions per user
+	MFAPolicy          string         `json:"mfa_policy" gorm:"default:'optional'"`    // 'disabled', 'optional', 'required'
+	SessionPersistence bool           `json:"session_persistence" gorm:"default:true"` // Whether sessions persist across browser restarts
+	Users              []User         `json:"users,omitempty" gorm:"foreignKey:TenantID"`
+	Apps               []App          `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
+	Teams              []Team         `json:"teams,omitempty" gorm:"foreignKey:TenantID"`
+	CreatedAt          time.Time      `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt          time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // Team represents a team within a tenant
@@ -258,4 +264,27 @@ type SocialLinks struct {
 	Twitter  string `json:"twitter,omitempty"`
 	Github   string `json:"github,omitempty"`
 	LinkedIn string `json:"linkedin,omitempty"`
+}
+
+// EmailEvent represents an email delivery event from Resend webhooks
+type EmailEvent struct {
+	ID           int64                  `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserID       *uuid.UUID             `json:"user_id,omitempty" gorm:"type:uuid;index"`
+	User         *User                  `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	UserEmail    string                 `json:"user_email" gorm:"size:255;index"`
+	EmailID      string                 `json:"email_id" gorm:"size:255;index"`          // Resend email ID for deduplication
+	EventType    string                 `json:"event_type" gorm:"size:50;index"`         // email.sent, email.delivered, email.bounced, email.complained, etc.
+	EventData    map[string]interface{} `json:"event_data,omitempty" gorm:"type:jsonb"`  // Raw webhook data
+	Metadata     map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb"`    // Additional metadata (alias for EventData for compatibility)
+	BounceReason string                 `json:"bounce_reason,omitempty" gorm:"size:255"` // Bounce reason for bounce events
+	Timestamp    time.Time              `json:"timestamp" gorm:"index"`
+	Reviewed     bool                   `json:"reviewed" gorm:"default:false;index"`
+	ReviewedBy   *uuid.UUID             `json:"reviewed_by,omitempty" gorm:"type:uuid"`
+	ReviewedAt   *time.Time             `json:"reviewed_at,omitempty"`
+	CreatedAt    time.Time              `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time              `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+func (EmailEvent) TableName() string {
+	return "email_events"
 }

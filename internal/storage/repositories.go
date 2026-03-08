@@ -534,10 +534,10 @@ func (db *PostgresDB) PgNotify(channel, payload string) error {
 }
 
 func (db *PostgresDB) PgListen(ctx context.Context, channel string) error {
-if db == nil || db.monitoringRepository == nil {
-return fmt.Errorf("monitoring repository not initialized")
-}
-return db.monitoringRepository.PgListen(ctx, channel)
+	if db == nil || db.monitoringRepository == nil {
+		return fmt.Errorf("monitoring repository not initialized")
+	}
+	return db.monitoringRepository.PgListen(ctx, channel)
 }
 
 func (db *PostgresDB) PgWaitForNotification(ctx context.Context) (*PgNotification, error) {
@@ -595,6 +595,18 @@ func (db *PostgresDB) DeleteSessionByID(sessionID, userID uuid.UUID) error {
 
 func (db *PostgresDB) ListUserSessions(userID uuid.UUID) ([]*Session, error) {
 	return db.sessionRepository.ListUserSessions(userID)
+}
+
+func (db *PostgresDB) CountActiveUserSessions(userID uuid.UUID) (int, error) {
+	return db.sessionRepository.CountActiveUserSessions(userID)
+}
+
+func (db *PostgresDB) ListTenantSessions(tenantID uuid.UUID, limit, offset int) ([]*Session, error) {
+	return db.sessionRepository.ListTenantSessions(tenantID, limit, offset)
+}
+
+func (db *PostgresDB) DeleteSessionByIDOnly(sessionID uuid.UUID, userID uuid.UUID) error {
+	return db.sessionRepository.DeleteSessionByIDOnly(sessionID, userID)
 }
 
 // Refresh token operations

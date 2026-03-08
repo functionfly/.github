@@ -1,0 +1,6 @@
+{
+  "buildCommand": "nx build dashboard",
+  "outputDirectory": "web/dashboard/dist",
+  "installCommand": "npm install",
+  "framework": null
+}

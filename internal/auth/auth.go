@@ -36,7 +36,7 @@ func NewAuthService(repo storage.Repository, jwtSecret string) *AuthService {
 		SMTPPort:     1025, // Mailpit default port
 		SMTPUsername: "",
 		SMTPPassword: "",
-		FromEmail:    "noreply@functionfly.dev",
+		FromEmail:    "noreply@functionfly.com",
 		FromName:     "FunctionFly",
 		BaseURL:      "http://localhost:8080",
 	}

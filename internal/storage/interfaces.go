@@ -226,9 +226,12 @@ type Repository interface {
 	UpdateSessionActivity(sessionToken string) error
 	DeleteSession(sessionToken string) error
 	DeleteSessionByID(sessionID, userID uuid.UUID) error
+	DeleteSessionByIDOnly(sessionID uuid.UUID, userID uuid.UUID) error
 	DeleteExpiredSessions() (int64, error)
 	DeleteUserSessions(userID uuid.UUID) error
 	ListUserSessions(userID uuid.UUID) ([]*Session, error)
+	CountActiveUserSessions(userID uuid.UUID) (int, error)
+	ListTenantSessions(tenantID uuid.UUID, limit, offset int) ([]*Session, error)
 
 	// Refresh token operations
 	CreateRefreshToken(userID uuid.UUID, tokenHash string, ipAddress, userAgent string, expiresAt time.Time) (*RefreshToken, error)
@@ -375,4 +378,11 @@ type Repository interface {
 	GetUserPopularFunctions(userID uuid.UUID, limit int) ([]map[string]interface{}, error)
 	GetUserGeographicStats(userID uuid.UUID) (map[string]interface{}, error)
 	GetUserDeviceStats(userID uuid.UUID) (map[string]interface{}, error)
+
+	// Email event operations
+	CreateEmailEvent(ctx context.Context, event *EmailEvent) error
+	GetEmailEvents(ctx context.Context, filters map[string]interface{}, limit, offset int) ([]*EmailEvent, error)
+	GetPendingBounceReviews(ctx context.Context, limit, offset int) ([]*EmailEvent, error)
+	MarkEmailEventReviewed(ctx context.Context, eventID int64, reviewedBy uuid.UUID) error
+	GetEmailEventStats(ctx context.Context, filters map[string]interface{}) (map[string]interface{}, error)
 }
