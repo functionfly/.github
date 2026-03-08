@@ -244,7 +244,7 @@ func (s *ResendService) SendEmail(to, subject, textBody, htmlBody string) error 
 	}
 
 	if s.config.ReplyToEmail != "" {
-		params.ReplyTo = &s.config.ReplyToEmail
+		params.ReplyTo = s.config.ReplyToEmail
 	}
 
 	_, err := s.client.Emails.SendWithContext(ctx, params)
@@ -267,7 +267,7 @@ func (s *ResendService) SendEmailToMultiple(to []string, subject, textBody, html
 	}
 
 	if s.config.ReplyToEmail != "" {
-		params.ReplyTo = &s.config.ReplyToEmail
+		params.ReplyTo = s.config.ReplyToEmail
 	}
 
 	_, err := s.client.Emails.SendWithContext(ctx, params)
@@ -284,14 +284,6 @@ func (s *ResendService) ValidateConfiguration() error {
 	}
 	if s.config.FromEmail == "" {
 		return fmt.Errorf("from email not configured")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	_, err := s.client.Keys.Get(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to validate Resend API key: %w", err)
 	}
 
 	return nil
