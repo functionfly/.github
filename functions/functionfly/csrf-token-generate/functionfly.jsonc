@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "csrf-token-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "CSRF Token Generate",
+  "description": "Generate CSRF token (cryptographically random, optional HMAC with secret).",
+  "category": "security",
+  "tags": [
+    "csrf",
+    "token",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "secret": {
+        "type": "string",
+        "description": "Optional: HMAC secret to bind token"
+      },
+      "bytes": {
+        "type": "integer",
+        "default": 32
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "token": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true
+    }
+  }
+}

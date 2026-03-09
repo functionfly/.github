@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "array-sample",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Sample",
+  "description": "Get random sample of n elements from array (without replacement).",
+  "category": "arrays",
+  "tags": ["array", "sample", "random", "pick"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Source array" },
+      "n": { "type": "integer", "description": "Number of elements to sample", "minimum": 1 },
+      "seed": { "type": ["integer", "null"], "description": "Optional seed" }
+    },
+    "required": ["items", "n"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5], "n": 2, "seed": 99 },
+    "output": { "ok": true }
+  }
+}

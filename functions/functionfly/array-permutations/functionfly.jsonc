@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "array-permutations",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Permutations",
+  "description": "Generate all permutations of an array.",
+  "category": "arrays",
+  "tags": ["array", "permutations", "combinations", "math"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to generate permutations from" },
+      "r": { "type": "integer", "description": "Length of each permutation (optional, defaults to full length)", "minimum": 0 }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "items": { "type": "array" } },
+      "count": { "type": "integer", "description": "Number of permutations generated" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 5000,
+  "memory_mb": 256,
+  "example": {
+    "input": { "items": [1, 2, 3], "r": 2 },
+    "output": {
+      "ok": true,
+      "result": [[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]],
+      "count": 6
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "author": "functionfly",
+  "name": "pdf-page-count",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "PDF Page Count",
+  "description": "Get the number of pages in a PDF. Requires pypdf.",
+  "category": "media",
+  "tags": [
+    "pdf",
+    "pages",
+    "count",
+    "media"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "pdf": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "pdf"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "pages": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 10000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "pdf": "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKL01lZGlhQm94IFswIDAgNjEyIDc5Ml0KPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovQ29udGVudHMgNCAwIFIKPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0xlbmd0aCA0NAo+PgpzdHJlYW0KQlQKL0YxIDEyIFRmCjEwMCA3MDAgVGQKKEhlbGxvKSBUCkVUCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDUKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDAwIDAwMDAwIG4gCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA2NCAwMDAwMCBuIAowMDAwMDAwMTMxIDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgNQovUm9vdCAxIDAgUgo+PgpzdGFydHhyZWYKMTcyCiUlRU9G"
+    },
+    "output": {
+      "ok": true,
+      "pages": 1
+    }
+  }
+}

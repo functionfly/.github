@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "quarter-of-year",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Quarter of Year",
+  "description": "Get quarter of year (1-4).",
+  "category": "datetime",
+  "tags": [
+    "quarter",
+    "year"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "date": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "date"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "quarter": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "date": "2024-01-15"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "author": "functionfly",
+  "name": "array-repeat",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Repeat",
+  "description": "Repeat an array multiple times.",
+  "category": "arrays",
+  "tags": ["array", "repeat", "duplicate", "multiply"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to repeat", "default": [] },
+      "count": { "type": "integer", "description": "Number of times to repeat", "default": 1, "minimum": 0 }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "description": "Repeated array" },
+      "original_length": { "type": "integer", "description": "Length of original array" },
+      "count": { "type": "integer", "description": "Number of repetitions" },
+      "total_length": { "type": "integer", "description": "Total length of result" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2], "count": 3 },
+    "output": {
+      "ok": true,
+      "result": [1, 2, 1, 2, 1, 2],
+      "original_length": 2,
+      "count": 3,
+      "total_length": 6
+    }
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "author": "functionfly",
+  "name": "build-cookies",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Build HTTP Cookies",
+  "description": "Build HTTP cookies with proper formatting and attributes.",
+  "category": "http",
+  "tags": ["http", "cookies", "build", "secure", "httponly"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cookies": { "type": "array", "description": "Array of cookie objects to build", "default": [], "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Cookie name" },
+          "value": { "description": "Cookie value" },
+          "path": { "type": "string", "description": "Cookie path" },
+          "domain": { "type": "string", "description": "Cookie domain" },
+          "max_age": { "type": "integer", "description": "Max age in seconds" },
+          "expires": { "description": "Expiration date (timestamp or string)" },
+          "secure": { "type": "boolean", "description": "Secure flag" },
+          "httponly": { "type": "boolean", "description": "HttpOnly flag" },
+          "samesite": { "type": "string", "description": "SameSite attribute" }
+        },
+        "required": ["name", "value"]
+      }},
+      "format": { "type": "string", "description": "Output format", "enum": ["string", "object", "array", "all"], "default": "string" }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "cookies_string": { "type": "string", "description": "Cookies as Set-Cookie header string" },
+          "cookies_object": { "type": "object", "description": "Cookies as name-value object" },
+          "cookies_array": { "type": "array", "description": "Cookies as input array" },
+          "count": { "type": "integer", "description": "Number of cookies" },
+          "has_secure": { "type": "boolean", "description": "Whether any cookies have Secure flag" },
+          "has_httponly": { "type": "boolean", "description": "Whether any cookies have HttpOnly flag" },
+          "has_expires": { "type": "boolean", "description": "Whether any cookies have expiration" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "cookies": [
+        {
+          "name": "session_id",
+          "value": "abc123",
+          "path": "/",
+          "secure": true,
+          "httponly": true,
+          "max_age": 3600
+        },
+        {
+          "name": "user_pref",
+          "value": "dark_mode",
+          "path": "/app",
+          "samesite": "Strict"
+        }
+      ],
+      "format": "all"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "cookies_string": "session_id=abc123; Path=/; Max-Age=3600; Secure; HttpOnly, user_pref=dark_mode; Path=/app; SameSite=Strict",
+        "cookies_object": {
+          "session_id": "abc123",
+          "user_pref": "dark_mode"
+        },
+        "cookies_array": [
+          {
+            "name": "session_id",
+            "value": "abc123",
+            "path": "/",
+            "secure": true,
+            "httponly": true,
+            "max_age": 3600
+          },
+          {
+            "name": "user_pref",
+            "value": "dark_mode",
+            "path": "/app",
+            "samesite": "Strict"
+          }
+        ],
+        "count": 2,
+        "has_secure": true,
+        "has_httponly": true,
+        "has_expires": true
+      }
+    }
+  }
+}

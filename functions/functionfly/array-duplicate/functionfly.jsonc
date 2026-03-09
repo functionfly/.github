@@ -1,0 +1,34 @@
+{
+  "author": "functionfly",
+  "name": "array-duplicate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Duplicate",
+  "description": "Find duplicate elements in array (appearing more than once).",
+  "category": "arrays",
+  "tags": ["array", "duplicate", "find", "repeated"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to check" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "duplicates": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 2, 3, 1, 4] },
+    "output": { "ok": true, "duplicates": [2, 1] }
+  }
+}

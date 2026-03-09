@@ -1,0 +1,62 @@
+{
+  "author": "functionfly",
+  "name": "clamp",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Clamp",
+  "description": "Clamp number between min and max.",
+  "category": "math",
+  "tags": [
+    "clamp",
+    "number",
+    "bound"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": {
+        "type": "number"
+      },
+      "min": {
+        "type": "number"
+      },
+      "max": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "value",
+      "min",
+      "max"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "number"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "value": 1,
+      "min": 1,
+      "max": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

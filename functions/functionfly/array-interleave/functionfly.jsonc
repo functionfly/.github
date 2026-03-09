@@ -1,0 +1,44 @@
+{
+  "author": "functionfly",
+  "name": "array-interleave",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Interleave",
+  "description": "Interleave multiple arrays together.",
+  "category": "arrays",
+  "tags": ["array", "interleave", "merge", "combine", "zip"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "arrays": { "type": "array", "description": "Array of arrays to interleave", "items": { "type": "array" } },
+      "method": { "type": "string", "description": "Interleaving method", "enum": ["round_robin", "zip"], "default": "round_robin" }
+    },
+    "required": ["arrays"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "description": "Interleaved array" },
+      "count": { "type": "integer", "description": "Total number of elements in result" },
+      "method": { "type": "string", "description": "Method used for interleaving" },
+      "array_count": { "type": "integer", "description": "Number of input arrays" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "arrays": [[1, 2, 3], ["a", "b", "c"]], "method": "round_robin" },
+    "output": {
+      "ok": true,
+      "result": [1, "a", 2, "b", 3, "c"],
+      "count": 6,
+      "method": "round_robin",
+      "array_count": 2
+    }
+  }
+}

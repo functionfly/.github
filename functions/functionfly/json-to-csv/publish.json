@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "json-to-csv",
+  "version": "1.0.0",
+  "manifest": {
+    "name": "json-to-csv",
+    "version": "1.0.0",
+    "runtime": "python3.12",
+    "title": "JSON to CSV Converter",
+    "description": "Convert a JSON array of objects to CSV format. Supports custom columns, delimiters, and null value handling.",
+    "category": "data-formatting",
+    "tags": ["json", "csv", "convert", "data", "formatting"],
+    "input": {
+      "type": "object"
+    },
+    "output": {
+      "type": "object"
+    },
+    "deterministic": true,
+    "idempotent": true,
+    "cache_ttl": 3600,
+    "timeout_ms": 5000,
+    "memory_mb": 128
+  },
+  "source": {
+    "code": "import json\nimport csv\nimport io\n\n\ndef handler(event):\n    \"\"\"\n    Convert JSON array to CSV string.\n    \n    Input:\n        - data: JSON array of objects (required)\n        - columns: Optional list of columns to include (in order)\n        - delimiter: Optional delimiter character (default: comma)\n        - include_header: Whether to include header row (default: true)\n        - null_value: Value to use for null values (default: empty string)\n    \n    Returns:\n        - csv: CSV string\n        - row_count: Number of data rows\n        - column_count: Number of columns\n    \"\"\"\n    # Parse input\n    if isinstance(event, dict):\n        data = event.get(\"data\", [])\n        columns = event.get(\"columns\", None)\n        delimiter = event.get(\"delimiter\", \",\")\n        include_header = event.get(\"include_header\", True)\n        null_value = event.get(\"null_value\", \"\")\n    else:\n        # Try parsing as JSON if string\n        try:\n            parsed = json.loads(str(event))\n            if isinstance(parsed, dict):\n                data = parsed.get(\"data\", [])\n                columns = parsed.get(\"columns\", None)\n                delimiter = parsed.get(\"delimiter\", \",\")\n                include_header = parsed.get(\"include_header\", True)\n                null_value = parsed.get(\"null_value\", \"\")\n            else:\n                data = parsed\n                columns = None\n                delimiter = \",\"\n                include_header = True\n                null_value = \"\"\n        except:\n            return {\n                \"ok\": False,\n                \"error\": \"Invalid input. Expected JSON array or object with data field.\"\n            }\n    \n    # Validate input\n    if not isinstance(data, list):\n        return {\n            \"ok\": False,\n            \"error\": \"Input data must be an array of objects\"\n        }\n    \n    if len(data) == 0:\n        return {\n            \"ok\": True,\n            \"csv\": \"\",\n            \"row_count\": 0,\n            \"column_count\": 0\n        }\n    \n    # Determine columns from first object if not specified\n    if columns is None:\n        first_item = data[0]\n        if isinstance(first_item, dict):\n            columns = list(first_item.keys())\n        else:\n            return {\n                \"ok\": False,\n                \"error\": \"Data must be an array of objects\"\n            }\n    \n    # Validate all items\n    for i, item in enumerate(data):\n        if not isinstance(item, dict):\n            return {\n                \"ok\": False,\n                \"error\": f\"Item at index {i} is not an object\"\n            }\n        for col in columns:\n            if col not in item:\n                return {\n                    \"ok\": False,\n                    \"error\": f\"Column {col} not found in item at index {i}\"\n                }\n    \n    # Build CSV\n    output = io.StringIO()\n    writer = csv.writer(output, delimiter=delimiter)\n    \n    if include_header:\n        writer.writerow(columns)\n    \n    for item in data:\n        row = []\n        for col in columns:\n            value = item.get(col)\n            if value is None:\n                row.append(null_value)\n            elif isinstance(value, (dict, list)):\n                row.append(json.dumps(value))\n            else:\n                row.append(str(value))\n        writer.writerow(row)\n    \n    csv_string = output.getvalue()\n    \n    return {\n        \"ok\": True,\n        \"csv\": csv_string,\n        \"row_count\": len(data),\n        \"column_count\": len(columns)\n    }",
+    "runtime": "python3.12"
+  }
+}

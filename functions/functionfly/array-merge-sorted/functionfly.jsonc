@@ -1,0 +1,43 @@
+{
+  "author": "functionfly",
+  "name": "array-merge-sorted",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Merge Sorted",
+  "description": "Merge multiple sorted arrays into a single sorted array.",
+  "category": "arrays",
+  "tags": ["array", "merge", "sorted", "combine", "heap"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "arrays": { "type": "array", "description": "Array of sorted arrays to merge", "items": { "type": "array" } }
+    },
+    "required": ["arrays"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "description": "Merged and sorted array" },
+      "count": { "type": "integer", "description": "Total number of elements in result" },
+      "array_count": { "type": "integer", "description": "Number of input arrays" },
+      "total_input_elements": { "type": "integer", "description": "Total elements from all input arrays" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": { "arrays": [[1, 3, 5], [2, 4, 6], [0, 7, 8]] },
+    "output": {
+      "ok": true,
+      "result": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      "count": 9,
+      "array_count": 3,
+      "total_input_elements": 9
+    }
+  }
+}

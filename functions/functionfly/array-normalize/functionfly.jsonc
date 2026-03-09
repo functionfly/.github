@@ -1,0 +1,42 @@
+{
+  "author": "functionfly",
+  "name": "array-normalize",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Normalization",
+  "description": "Normalize array values to a standard range using various methods.",
+  "category": "arrays",
+  "tags": ["array", "normalize", "scaling", "statistics", "preprocessing"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to normalize", "items": { "type": "number" } },
+      "method": { "type": "string", "description": "Normalization method", "enum": ["minmax", "zscore", "robust", "l1", "l2"], "default": "minmax" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "items": { "type": "number" }, "description": "Normalized values" },
+      "count": { "type": "integer", "description": "Number of values normalized" },
+      "method": { "type": "string", "description": "Method used for normalization" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5], "method": "minmax" },
+    "output": {
+      "ok": true,
+      "result": [0.0, 0.25, 0.5, 0.75, 1.0],
+      "count": 5,
+      "method": "minmax"
+    }
+  }
+}

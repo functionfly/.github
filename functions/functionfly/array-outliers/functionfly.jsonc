@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "array-outliers",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Outlier Detection",
+  "description": "Detect outliers in an array using statistical methods.",
+  "category": "arrays",
+  "tags": ["array", "outliers", "statistics", "iqr", "zscore", "anomaly-detection"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to detect outliers in", "items": { "type": "number" }, "minItems": 3 },
+      "method": { "type": "string", "description": "Outlier detection method", "enum": ["iqr", "zscore", "modified_zscore"], "default": "iqr" },
+      "threshold": { "type": "number", "description": "Threshold for outlier detection (method-specific)" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "description": "Detected outlier values" },
+      "outlier_indices": { "type": "array", "items": { "type": "integer" }, "description": "Indices of outliers in original array" },
+      "count": { "type": "integer", "description": "Number of outliers detected" },
+      "method": { "type": "string", "description": "Method used for detection" },
+      "threshold": { "description": "Threshold used for detection" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5, 100], "method": "iqr" },
+    "output": {
+      "ok": true,
+      "result": [100],
+      "outlier_indices": [5],
+      "count": 1,
+      "method": "iqr",
+      "threshold": null
+    }
+  }
+}

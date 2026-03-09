@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "array-rotate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Rotate",
+  "description": "Rotate array elements by n positions (positive = right, negative = left).",
+  "category": "arrays",
+  "tags": ["array", "rotate", "shift"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to rotate" },
+      "n": { "type": "integer", "description": "Positions to rotate (positive right, negative left)" }
+    },
+    "required": ["items", "n"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5], "n": 2 },
+    "output": { "ok": true, "result": [4, 5, 1, 2, 3] }
+  }
+}

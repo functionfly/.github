@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "array-pluck-deep",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Pluck Deep",
+  "description": "Extract nested values by dot-separated path (e.g. user.name).",
+  "category": "arrays",
+  "tags": ["array", "pluck", "deep", "path", "nested"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array of objects" },
+      "path": { "type": "string", "description": "Dot-separated path (e.g. user.name)" }
+    },
+    "required": ["items", "path"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [{"user": {"name": "Alice"}}, {"user": {"name": "Bob"}}], "path": "user.name" },
+    "output": { "ok": true, "result": ["Alice", "Bob"] }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "author": "functionfly",
+  "name": "timestamp-to-date",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Timestamp to Date",
+  "description": "Convert Unix timestamp to date (ISO or format).",
+  "category": "datetime",
+  "tags": [
+    "timestamp",
+    "date",
+    "convert"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "number"
+      },
+      "timezone": {
+        "type": "string",
+        "default": "UTC"
+      },
+      "format": {
+        "type": "string",
+        "default": "iso"
+      }
+    },
+    "required": [
+      "timestamp"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "date": {
+        "type": "string"
+      },
+      "iso": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "timestamp": 1705312800
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "uuid-generate",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "title": "UUID Generate",
+  "description": "Generate UUID v4 (random) identifiers.",
+  "category": "Utility",
+  "tags": ["uuid", "generate", "id", "random", "identifier"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "count": {
+        "type": "integer",
+        "description": "Number of UUIDs to generate (1-100)",
+        "default": 1
+      }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "uuid": { "type": "string", "description": "Single UUID (when count=1)" },
+      "uuids": { "type": "array", "items": { "type": "string" }, "description": "List of UUIDs (when count>1)" },
+      "error": { "type": "string", "description": "Error message if ok is false" }
+    }
+  },
+  "example": {
+    "input": {},
+    "output": { "ok": true, "uuid": "550e8400-e29b-41d4-a716-446655440000" }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128
+}

@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "jwt-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "JWT Decode",
+  "description": "Decode JWT payload without verification (header and payload only).",
+  "category": "security",
+  "tags": [
+    "jwt",
+    "decode",
+    "token",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "token": {
+        "type": "string",
+        "description": "JWT string"
+      }
+    },
+    "required": [
+      "token"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "header": {
+        "type": "object"
+      },
+      "payload": {
+        "type": "object"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
+    },
+    "output": {
+      "ok": true,
+      "header": {
+        "alg": "HS256",
+        "typ": "JWT"
+      },
+      "payload": {
+        "sub": "1234567890"
+      }
+    }
+  }
+}

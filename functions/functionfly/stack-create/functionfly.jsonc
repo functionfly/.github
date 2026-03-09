@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "stack-create",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Stack Create",
+  "description": "Create and manipulate a stack data structure with push, pop, peek operations.",
+  "category": "arrays",
+  "tags": ["stack", "data-structure", "lifo", "push", "pop"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Initial items for the stack", "default": [] },
+      "operations": { "type": "array", "description": "Operations to perform", "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["push", "pop", "peek", "size", "is_empty"] },
+          "value": { "description": "Value to push (required for push action)" }
+        },
+        "required": ["action"]
+      }}
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "final_stack": { "type": "array" },
+          "operations": { "type": "array" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "items": [1, 2],
+      "operations": [
+        {"action": "push", "value": 3},
+        {"action": "pop"},
+        {"action": "peek"}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "final_stack": [1, 2],
+        "operations": [
+          {"action": "push", "value": 3, "success": true},
+          {"action": "pop", "result": 3, "success": true},
+          {"action": "peek", "result": 2}
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "user-agent-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "User Agent Parse",
+  "description": "Parse user agent string (browser, OS, device). Uses stdlib; optional user-agents for details.",
+  "category": "security",
+  "tags": [
+    "user-agent",
+    "parse",
+    "browser",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "user_agent": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "user_agent"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "browser": {
+        "type": "string"
+      },
+      "os": {
+        "type": "string"
+      },
+      "device": {
+        "type": "string"
+      },
+      "is_bot": {
+        "type": "boolean"
+      },
+      "raw": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "user_agent": "test"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "author": "functionfly",
+  "name": "timestamp-now",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Timestamp Now",
+  "description": "Get current Unix timestamp.",
+  "category": "datetime",
+  "tags": [
+    "timestamp",
+    "unix",
+    "time"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {}
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "timestamp": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true
+    }
+  }
+}

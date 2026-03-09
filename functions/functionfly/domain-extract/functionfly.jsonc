@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "domain-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Domain Extract",
+  "description": "Extract domain name from URL or text.",
+  "category": "http",
+  "tags": ["domain", "extract", "url", "hostname", "tld"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string", "description": "URL to extract domain from" },
+      "domain": { "type": "string", "description": "Domain string to process" },
+      "text": { "type": "string", "description": "Text to search for domains" }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "domain": { "type": "string", "description": "Extracted domain name" },
+          "original_input": { "type": "string", "description": "Original input text" },
+          "is_from_url": { "type": "boolean", "description": "Whether domain was extracted from URL" },
+          "has_www": { "type": "boolean", "description": "Whether domain has www prefix" },
+          "tld": { "type": "string", "description": "Top-level domain" },
+          "domain_name": { "type": "string", "description": "Domain name without TLD" },
+          "subdomain": { "type": "string", "description": "Subdomain if present" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "url": "https://www.api.github.com/users/octocat"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "domain": "api.github.com",
+        "original_input": "https://www.api.github.com/users/octocat",
+        "is_from_url": true,
+        "has_www": false,
+        "tld": "com",
+        "domain_name": "api.github",
+        "subdomain": "api"
+      }
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "cidr-contains",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "CIDR Contains",
+  "description": "Check if an IP address is contained within a CIDR network.",
+  "category": "http",
+  "tags": ["cidr", "contains", "network", "ip", "subnet", "membership"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cidr": { "type": "string", "description": "CIDR notation (e.g., '192.168.1.0/24')" },
+      "ip": { "type": "string", "description": "IP address to check" }
+    },
+    "required": ["cidr", "ip"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "cidr": { "type": "string", "description": "CIDR notation" },
+          "ip": { "type": "string", "description": "IP address checked" },
+          "contains": { "type": "boolean", "description": "Whether IP is in CIDR network" },
+          "version": { "type": "integer", "description": "IP version (4 or 6)" },
+          "network_address": { "type": "string", "description": "Network address" },
+          "prefix_length": { "type": "integer", "description": "Prefix length" },
+          "subnet_mask": { "type": "string", "description": "Subnet mask" },
+          "host_number": { "type": "integer", "description": "Host number within subnet (IPv4)" },
+          "is_network_address": { "type": "boolean", "description": "Whether IP is the network address" },
+          "is_broadcast_address": { "type": "boolean", "description": "Whether IP is the broadcast address (IPv4)" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "cidr": "192.168.1.0/24",
+      "ip": "192.168.1.100"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "cidr": "192.168.1.0/24",
+        "ip": "192.168.1.100",
+        "contains": true,
+        "version": 4,
+        "network_address": "192.168.1.0",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0",
+        "host_number": 100,
+        "is_network_address": false,
+        "is_broadcast_address": false
+      }
+    }
+  }
+}

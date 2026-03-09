@@ -1,0 +1,45 @@
+{
+  "author": "functionfly",
+  "name": "array-move-element",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Move Element",
+  "description": "Move an element from one position to another in an array.",
+  "category": "arrays",
+  "tags": ["array", "move", "reorder", "element"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to modify" },
+      "from_index": { "type": "integer", "description": "Index of element to move", "minimum": 0 },
+      "to_index": { "type": "integer", "description": "Index to move element to", "minimum": 0 }
+    },
+    "required": ["items", "from_index", "to_index"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "description": "Array with element moved" },
+      "moved_element": { "description": "The element that was moved" },
+      "from_index": { "type": "integer", "description": "Original index of moved element" },
+      "to_index": { "type": "integer", "description": "New index of moved element" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5], "from_index": 1, "to_index": 3 },
+    "output": {
+      "ok": true,
+      "result": [1, 3, 4, 2, 5],
+      "moved_element": 2,
+      "from_index": 1,
+      "to_index": 3
+    }
+  }
+}

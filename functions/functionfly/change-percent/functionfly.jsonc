@@ -1,0 +1,56 @@
+{
+  "author": "functionfly",
+  "name": "change-percent",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Change Percent",
+  "description": "Calculate percentage change between two values.",
+  "category": "math",
+  "tags": [
+    "percentage",
+    "change"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "old": {
+        "type": "number"
+      },
+      "new": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "old",
+      "new"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "change_percent": {
+        "type": "number"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "old": 1,
+      "new": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

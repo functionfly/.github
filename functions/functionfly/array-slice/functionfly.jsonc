@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "array-slice",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Slice",
+  "description": "Slice array by start and end index (negative indices supported).",
+  "category": "arrays",
+  "tags": ["array", "slice", "subarray", "range"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Source array" },
+      "start": { "type": "integer", "description": "Start index (inclusive)" },
+      "end": { "type": "integer", "description": "End index (exclusive); omit for rest" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [10, 20, 30, 40, 50], "start": 1, "end": 4 },
+    "output": { "ok": true, "result": [20, 30, 40] }
+  }
+}

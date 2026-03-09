@@ -1,0 +1,63 @@
+{
+  "author": "functionfly",
+  "name": "blurhash-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "BlurHash Generate",
+  "description": "Generate BlurHash for image placeholder. Requires blurhash and Pillow.",
+  "category": "media",
+  "tags": [
+    "blurhash",
+    "image",
+    "placeholder",
+    "media"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": {
+        "type": "string"
+      },
+      "x_components": {
+        "type": "integer",
+        "default": 4
+      },
+      "y_components": {
+        "type": "integer",
+        "default": 3
+      }
+    },
+    "required": [
+      "image"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "blurhash": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 5000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "x_components": 4,
+      "y_components": 3
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

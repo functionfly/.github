@@ -1,0 +1,63 @@
+{
+  "author": "functionfly",
+  "name": "rsa-decrypt",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "RSA Decrypt",
+  "description": "Decrypt with RSA private key. Requires cryptography.",
+  "category": "security",
+  "tags": [
+    "rsa",
+    "decrypt",
+    "private-key",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "ciphertext": {
+        "type": "string",
+        "description": "Base64"
+      },
+      "private_key": {
+        "type": "string"
+      },
+      "padding": {
+        "type": "string",
+        "default": "OAEP"
+      }
+    },
+    "required": [
+      "ciphertext",
+      "private_key"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "data": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "ciphertext": "placeholder",
+      "private_key": "placeholder"
+    },
+    "output": {
+      "ok": false
+    }
+  }
+}

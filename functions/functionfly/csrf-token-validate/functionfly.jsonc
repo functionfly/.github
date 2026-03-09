@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "csrf-token-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "CSRF Token Validate",
+  "description": "Validate CSRF token (constant-time compare; optional HMAC verify).",
+  "category": "security",
+  "tags": [
+    "csrf",
+    "validate",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "token": {
+        "type": "string"
+      },
+      "expected": {
+        "type": "string",
+        "description": "Token to compare (e.g. from session)"
+      },
+      "secret": {
+        "type": "string",
+        "description": "If token was HMAC-signed"
+      }
+    },
+    "required": [
+      "token",
+      "expected"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "valid": {
+        "type": "boolean"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "token": "placeholder",
+      "expected": "test",
+      "secret": "s"
+    },
+    "output": {
+      "ok": true,
+      "valid": false
+    }
+  }
+}

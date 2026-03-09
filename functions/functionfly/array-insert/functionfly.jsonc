@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "array-insert",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Insert Element",
+  "description": "Insert an element at a specified index in an array.",
+  "category": "arrays",
+  "tags": ["array", "insert", "add", "element"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to modify", "default": [] },
+      "index": { "type": "integer", "description": "Index to insert at (default: end of array)", "default": null },
+      "value": { "description": "Value to insert" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "description": "Array with element inserted" },
+      "inserted_value": { "description": "The value that was inserted" },
+      "insert_index": { "type": "integer", "description": "Index where element was inserted" },
+      "original_length": { "type": "integer", "description": "Original array length" },
+      "new_length": { "type": "integer", "description": "New array length" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 4, 5], "index": 2, "value": 3 },
+    "output": {
+      "ok": true,
+      "result": [1, 2, 3, 4, 5],
+      "inserted_value": 3,
+      "insert_index": 2,
+      "original_length": 4,
+      "new_length": 5
+    }
+  }
+}

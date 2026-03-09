@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "jwt-verify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "JWT Verify",
+  "description": "Verify JWT token validity and signature. Requires PyJWT.",
+  "category": "security",
+  "tags": [
+    "jwt",
+    "verify",
+    "token",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "token": {
+        "type": "string"
+      },
+      "secret": {
+        "type": "string",
+        "description": "Secret or public key"
+      },
+      "algorithms": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Allowed algorithms (default HS256)"
+      }
+    },
+    "required": [
+      "token",
+      "secret"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "payload": {
+        "type": "object"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
+      "secret": "your-256-bit-secret"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

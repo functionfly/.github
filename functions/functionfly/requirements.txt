@@ -1,0 +1,18 @@
+# Optional dependencies for full behavior of Security (1.4) and related functions.
+# Date & Time (1.5) uses only the standard library; no extra deps needed.
+# Pinned to latest stable minimums (as of 2026-02).
+
+# Security (1.4): AES and RSA (latest 46.x)
+cryptography>=46.0
+
+# Security (1.4): stronger HTML sanitization (sanitize-html)
+bleach>=6.3.0
+
+# Security (1.4): richer user-agent parsing (user-agent-parse)
+user-agents>=2.2.0
+
+# Security (1.4): JWT (jwt-verify, jwt-decode, jwt-encode)
+PyJWT>=2.11.0
+
+# Security (1.4): password hashing (password-hash, password-verify)
+bcrypt>=5.0.0

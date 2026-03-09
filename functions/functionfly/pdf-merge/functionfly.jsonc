@@ -1,0 +1,62 @@
+{
+  "author": "functionfly",
+  "name": "pdf-merge",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "PDF Merge",
+  "description": "Merge multiple PDFs into one. Input is array of base64 PDF strings. Requires pypdf.",
+  "category": "media",
+  "tags": [
+    "pdf",
+    "merge",
+    "combine",
+    "media"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "pdfs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Array of PDF files as base64 strings"
+      }
+    },
+    "required": [
+      "pdfs"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "pdf_base64": {
+        "type": "string"
+      },
+      "pages_total": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 20000,
+  "memory_mb": 512,
+  "example": {
+    "input": {
+      "pdfs": [
+        "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKL01lZGlhQm94IFswIDAgNjEyIDc5Ml0KPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovQ29udGVudHMgNCAwIFIKPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0xlbmd0aCA0NAo+PgpzdHJlYW0KQlQKL0YxIDEyIFRmCjEwMCA3MDAgVGQKKEhlbGxvKSBUCkVUCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDUKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDAwIDAwMDAwIG4gCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA2NCAwMDAwMCBuIAowMDAwMDAwMTMxIDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgNQovUm9vdCAxIDAgUgo+PgpzdGFydHhyZWYKMTcyCiUlRU9G"
+      ]
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

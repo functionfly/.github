@@ -1,0 +1,56 @@
+{
+  "author": "functionfly",
+  "name": "tld-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "TLD Extract",
+  "description": "Extract top-level domain (TLD) from a domain name.",
+  "category": "http",
+  "tags": ["tld", "domain", "extract", "top-level", "ccTLD", "gTLD"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "domain": { "type": "string", "description": "Domain name to parse" }
+    },
+    "required": ["domain"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "domain": { "type": "string", "description": "Original domain" },
+          "tld": { "type": "string", "description": "Extracted TLD" },
+          "domain_without_tld": { "type": "string", "description": "Domain without TLD" },
+          "is_known_tld": { "type": "boolean", "description": "Whether TLD is in known list" },
+          "tld_parts": { "type": "array", "items": { "type": "string" }, "description": "TLD split into parts" },
+          "tld_length": { "type": "integer", "description": "Number of TLD parts" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "domain": "example.co.uk"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "domain": "example.co.uk",
+        "tld": "co.uk",
+        "domain_without_tld": "example",
+        "is_known_tld": true,
+        "tld_parts": ["co", "uk"],
+        "tld_length": 2
+      }
+    }
+  }
+}

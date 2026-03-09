@@ -1,0 +1,76 @@
+{
+  "author": "functionfly",
+  "name": "ip-geolocation",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "IP Geolocation",
+  "description": "Get geolocation from IP (offline: private/local detection; optional API key for lookup).",
+  "category": "security",
+  "tags": [
+    "ip",
+    "geolocation",
+    "geo",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "ip": {
+        "type": "string"
+      },
+      "api_provider": {
+        "type": "string",
+        "default": "none",
+        "description": "none|ip-api (free, no key)"
+      }
+    },
+    "required": [
+      "ip"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "ip": {
+        "type": "string"
+      },
+      "country": {
+        "type": "string"
+      },
+      "city": {
+        "type": "string"
+      },
+      "region": {
+        "type": "string"
+      },
+      "lat": {
+        "type": "number"
+      },
+      "lon": {
+        "type": "number"
+      },
+      "is_private": {
+        "type": "boolean"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "ip": "8.8.8.8"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

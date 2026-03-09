@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "random-number",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Random Number",
+  "description": "Generate random number in range.",
+  "category": "math",
+  "tags": [
+    "random",
+    "number",
+    "integer"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "min": {
+        "type": "number",
+        "default": 0
+      },
+      "max": {
+        "type": "number",
+        "default": 100
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "value": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true
+    }
+  }
+}

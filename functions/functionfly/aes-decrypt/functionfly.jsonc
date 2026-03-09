@@ -1,0 +1,70 @@
+{
+  "author": "functionfly",
+  "name": "aes-decrypt",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "AES Decrypt",
+  "description": "Decrypt AES-encrypted data (GCM or CBC). Requires cryptography.",
+  "category": "security",
+  "tags": [
+    "aes",
+    "decrypt",
+    "cipher",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "ciphertext": {
+        "type": "string"
+      },
+      "key": {
+        "type": "string"
+      },
+      "iv": {
+        "type": "string"
+      },
+      "tag": {
+        "type": "string",
+        "description": "GCM auth tag (base64)"
+      },
+      "mode": {
+        "type": "string",
+        "default": "GCM"
+      }
+    },
+    "required": [
+      "ciphertext",
+      "key"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "data": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "ciphertext": "placeholder",
+      "key": "00000000000000000000000000000000",
+      "iv": "000000000000000000000000"
+    },
+    "output": {
+      "ok": false
+    }
+  }
+}

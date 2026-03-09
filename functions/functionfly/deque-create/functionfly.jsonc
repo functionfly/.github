@@ -1,0 +1,72 @@
+{
+  "author": "functionfly",
+  "name": "deque-create",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Deque Create",
+  "description": "Create and manipulate a double-ended queue (deque) data structure.",
+  "category": "arrays",
+  "tags": ["deque", "double-ended-queue", "data-structure", "fifo", "lifo"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Initial items for the deque", "default": [] },
+      "maxlen": { "type": "integer", "description": "Maximum length (optional)", "minimum": 1 },
+      "operations": { "type": "array", "description": "Operations to perform", "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["append", "appendleft", "pop", "popleft", "peek", "peekleft", "extend", "extendleft", "rotate", "clear", "size", "is_empty", "is_full", "reverse"] },
+          "value": { "description": "Value for append/appendleft operations" },
+          "values": { "type": "array", "description": "Values for extend/extendleft operations" },
+          "n": { "type": "integer", "description": "Rotation amount for rotate operation", "default": 1 }
+        },
+        "required": ["action"]
+      }}
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "final_deque": { "type": "array", "description": "Final deque as array" },
+          "maxlen": { "type": "integer" },
+          "operations": { "type": "array" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "items": [1, 2],
+      "maxlen": 5,
+      "operations": [
+        {"action": "append", "value": 3},
+        {"action": "appendleft", "value": 0},
+        {"action": "pop"},
+        {"action": "rotate", "n": 1}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "final_deque": [1, 2, 0, 3],
+        "maxlen": 5,
+        "operations": [
+          {"action": "append", "value": 3, "success": true},
+          {"action": "appendleft", "value": 0, "success": true},
+          {"action": "pop", "result": 3, "success": true},
+          {"action": "rotate", "n": 1, "success": true}
+        ]
+      }
+    }
+  }
+}

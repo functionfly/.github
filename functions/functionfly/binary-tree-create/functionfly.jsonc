@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "binary-tree-create",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Binary Tree Create",
+  "description": "Create and manipulate a binary search tree data structure.",
+  "category": "arrays",
+  "tags": ["binary-tree", "bst", "data-structure", "tree", "insert", "search"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "root": { "description": "Root value for the tree" },
+      "operations": { "type": "array", "description": "Operations to perform", "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["insert", "find", "inorder", "preorder", "postorder", "min", "max", "height", "is_empty"] },
+          "value": { "description": "Value for insert/find operations" }
+        },
+        "required": ["action"]
+      }}
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "inorder_traversal": { "type": "array", "description": "In-order traversal of final tree" },
+          "operations": { "type": "array" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "root": 5,
+      "operations": [
+        {"action": "insert", "value": 3},
+        {"action": "insert", "value": 7},
+        {"action": "find", "value": 3},
+        {"action": "inorder"}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "inorder_traversal": [3, 5, 7],
+        "operations": [
+          {"action": "insert", "value": 3, "success": true},
+          {"action": "insert", "value": 7, "success": true},
+          {"action": "find", "value": 3, "result": true},
+          {"action": "inorder", "result": [3, 5, 7]}
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "standard-deviation",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Standard Deviation",
+  "description": "Standard deviation of numbers.",
+  "category": "math",
+  "tags": [
+    "stdev",
+    "stats"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "values": {
+        "type": "array"
+      },
+      "sample": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "values"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "stdev": {
+        "type": "number"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "values": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

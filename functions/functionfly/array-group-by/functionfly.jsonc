@@ -1,0 +1,44 @@
+{
+  "author": "functionfly",
+  "name": "array-group-by",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Group By",
+  "description": "Group array of objects by key or by result of key function.",
+  "category": "arrays",
+  "tags": ["array", "group", "groupBy", "key"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array of objects to group" },
+      "key": { "type": "string", "description": "Property name to group by (e.g. 'type')" }
+    },
+    "required": ["items", "key"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "object" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "items": [{"a": 1, "type": "x"}, {"a": 2, "type": "y"}, {"a": 3, "type": "x"}],
+      "key": "type"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "x": [{"a": 1, "type": "x"}, {"a": 3, "type": "x"}],
+        "y": [{"a": 2, "type": "y"}]
+      }
+    }
+  }
+}

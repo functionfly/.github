@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "array-rank",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Rank",
+  "description": "Assign ranks to elements in an array with various ranking methods.",
+  "category": "arrays",
+  "tags": ["array", "rank", "ranking", "statistics", "competition"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to rank" },
+      "order": { "type": "string", "description": "Sort order", "enum": ["asc", "desc"], "default": "asc" },
+      "method": { "type": "string", "description": "Ranking method", "enum": ["standard", "min", "max", "dense", "ordinal"], "default": "standard" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "items": { "type": "integer" }, "description": "Ranks in original array order" },
+      "count": { "type": "integer", "description": "Number of ranks assigned" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [3, 1, 4, 1, 5], "method": "standard" },
+    "output": {
+      "ok": true,
+      "result": [3, 1, 5, 1, 4],
+      "count": 5
+    }
+  }
+}

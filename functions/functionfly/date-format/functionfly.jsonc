@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "date-format",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Date Format",
+  "description": "Format date to custom string.",
+  "category": "datetime",
+  "tags": [
+    "date",
+    "format"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "date": {
+        "type": "string"
+      },
+      "format": {
+        "type": "string"
+      },
+      "timezone": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "date",
+      "format"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "formatted": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "date": "2024-01-15T12:00:00",
+      "format": "%Y-%m-%d"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

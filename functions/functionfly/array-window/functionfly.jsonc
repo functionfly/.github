@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "array-window",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Sliding Window",
+  "description": "Generate sliding windows of specified size from an array.",
+  "category": "arrays",
+  "tags": ["array", "sliding-window", "window", "chunks"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to create windows from" },
+      "size": { "type": "integer", "description": "Size of each window", "default": 2, "minimum": 1 },
+      "step": { "type": "integer", "description": "Step size between windows", "default": 1, "minimum": 1 }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "items": { "type": "array" } },
+      "count": { "type": "integer", "description": "Number of windows generated" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5], "size": 3, "step": 2 },
+    "output": {
+      "ok": true,
+      "result": [[1, 2, 3], [3, 4, 5]],
+      "count": 2
+    }
+  }
+}

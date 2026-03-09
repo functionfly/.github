@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "slugify",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "title": "Slugify",
+  "description": "Convert text to a URL-friendly slug (lowercase, hyphens, no special chars).",
+  "category": "Utility",
+  "tags": ["slug", "slugify", "url", "text", "format", "seo"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string",
+        "description": "Text to convert to a slug"
+      },
+      "separator": {
+        "type": "string",
+        "description": "Character between words",
+        "default": "-"
+      },
+      "max_length": {
+        "type": "integer",
+        "description": "Maximum slug length (0 = no limit)",
+        "default": 0
+      }
+    },
+    "required": ["text"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "slug": { "type": "string", "description": "URL-friendly slug" },
+      "error": { "type": "string", "description": "Error message if ok is false" }
+    }
+  },
+  "example": {
+    "input": { "text": "Hello World! How are you?" },
+    "output": { "ok": true, "slug": "hello-world-how-are-you" }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 5000,
+  "memory_mb": 128
+}

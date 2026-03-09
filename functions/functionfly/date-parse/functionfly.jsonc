@@ -1,0 +1,56 @@
+{
+  "author": "functionfly",
+  "name": "date-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Date Parse",
+  "description": "Parse date string to ISO format.",
+  "category": "datetime",
+  "tags": [
+    "date",
+    "parse",
+    "iso"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "date_string": {
+        "type": "string"
+      },
+      "timezone": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "date_string"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "iso": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "date_string": "2024-01-15"
+    },
+    "output": {
+      "ok": true,
+      "iso": "2024-01-15T00:00:00"
+    }
+  }
+}

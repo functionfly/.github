@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "array-find-index",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Find Index",
+  "description": "Find first index of element (or -1 if not found).",
+  "category": "arrays",
+  "tags": ["array", "find", "index", "search"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to search" },
+      "value": { "description": "Value to find" },
+      "from_index": { "type": "integer", "description": "Start search from index", "default": 0 }
+    },
+    "required": ["items", "value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "index": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [10, 20, 30, 20], "value": 20 },
+    "output": { "ok": true, "index": 1 }
+  }
+}

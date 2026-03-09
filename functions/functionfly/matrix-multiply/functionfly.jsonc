@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "matrix-multiply",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Matrix Multiply",
+  "description": "Multiply two matrices together.",
+  "category": "arrays",
+  "tags": ["matrix", "multiply", "math", "linear-algebra"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "matrix_a": { "type": "array", "description": "First matrix (2D array)", "items": { "type": "array", "items": { "type": "number" } } },
+      "matrix_b": { "type": "array", "description": "Second matrix (2D array)", "items": { "type": "array", "items": { "type": "number" } } }
+    },
+    "required": ["matrix_a", "matrix_b"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "items": { "type": "array", "items": { "type": "number" } } },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "matrix_a": [[1, 2], [3, 4]], "matrix_b": [[5, 6], [7, 8]] },
+    "output": { "ok": true, "result": [[19, 22], [43, 50]] }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "image-grayscale",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Grayscale",
+  "description": "Convert image to grayscale. Requires Pillow.",
+  "category": "media",
+  "tags": [
+    "image",
+    "grayscale",
+    "media"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": {
+        "type": "string",
+        "description": "Image as base64 string"
+      }
+    },
+    "required": [
+      "image"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "image_base64": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 10000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

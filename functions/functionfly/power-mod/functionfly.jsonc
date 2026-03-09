@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "power-mod",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Power Mod",
+  "description": "Modular exponentiation.",
+  "category": "math",
+  "tags": [
+    "modular"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "base": {
+        "type": "integer"
+      },
+      "exp": {
+        "type": "integer"
+      },
+      "mod": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "base",
+      "exp",
+      "mod"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "base": 1,
+      "exp": 1,
+      "mod": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

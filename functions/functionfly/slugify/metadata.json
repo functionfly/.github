@@ -1,0 +1,1 @@
+{"name":"slugify","version":"1.0.0","entry_point":"handler","runtime":"flypy","description":"Convert text to a URL-friendly slug (lowercase, hyphens, no special chars).","author":"functionfly"}

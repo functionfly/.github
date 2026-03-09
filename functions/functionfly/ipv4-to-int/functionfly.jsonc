@@ -1,0 +1,56 @@
+{
+  "author": "functionfly",
+  "name": "ipv4-to-int",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "IPv4 to Integer",
+  "description": "Convert IPv4 address to 32-bit integer representation.",
+  "category": "http",
+  "tags": ["ipv4", "integer", "convert", "network", "binary"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "ipv4": { "type": "string", "description": "IPv4 address (e.g., '192.168.1.1')" }
+    },
+    "required": ["ipv4"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "ipv4": { "type": "string", "description": "Original IPv4 address" },
+          "integer_value": { "type": "integer", "description": "32-bit integer representation" },
+          "hex_value": { "type": "string", "description": "Hexadecimal representation" },
+          "binary_value": { "type": "string", "description": "Binary representation" },
+          "octets": { "type": "array", "items": { "type": "integer" }, "description": "Individual octets as integers" },
+          "big_endian_bytes": { "type": "array", "items": { "type": "integer" }, "description": "Bytes in big-endian order" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "ipv4": "192.168.1.1"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "ipv4": "192.168.1.1",
+        "integer_value": 3232235777,
+        "hex_value": "0xc0a80101",
+        "binary_value": "0b11000000101010000000000100000001",
+        "octets": [192, 168, 1, 1],
+        "big_endian_bytes": [192, 168, 1, 1]
+      }
+    }
+  }
+}

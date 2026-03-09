@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "local-time",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Local Time",
+  "description": "Convert UTC to local time.",
+  "category": "datetime",
+  "tags": [
+    "local",
+    "timezone",
+    "convert"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "utc": {
+        "type": "string"
+      },
+      "timezone": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "utc",
+      "timezone"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "local_iso": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "utc": "2024-01-15T12:00:00Z",
+      "timezone": "America/New_York"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

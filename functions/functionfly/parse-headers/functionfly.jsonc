@@ -1,0 +1,72 @@
+{
+  "author": "functionfly",
+  "name": "parse-headers",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse HTTP Headers",
+  "description": "Parse HTTP headers from various formats and extract useful information.",
+  "category": "http",
+  "tags": ["http", "headers", "parse", "content-type", "authorization"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "headers": { "description": "Headers to parse (string, object, or array)" },
+      "format": { "type": "string", "description": "Output format", "enum": ["object", "array"], "default": "object" }
+    },
+    "required": ["headers"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "headers": { "type": "object", "description": "Parsed headers as object" },
+          "headers_array": { "type": "array", "description": "Headers as array of [key, value] pairs" },
+          "content_type": { "type": "string", "description": "Parsed Content-Type media type" },
+          "charset": { "type": "string", "description": "Character encoding from Content-Type" },
+          "content_length": { "type": "integer", "description": "Content-Length as integer" },
+          "user_agent": { "type": "string", "description": "User-Agent string" },
+          "authorization": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "description": "Auth type (Bearer, Basic, etc.)" },
+              "credentials": { "type": "string", "description": "Auth credentials" }
+            }
+          }
+        }
+      },
+      "header_count": { "type": "integer", "description": "Number of headers parsed" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "headers": "Content-Type: application/json; charset=utf-8\nAuthorization: Bearer token123\nUser-Agent: MyApp/1.0"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "headers": {
+          "content-type": "application/json; charset=utf-8",
+          "authorization": "Bearer token123",
+          "user-agent": "MyApp/1.0"
+        },
+        "content_type": "application/json",
+        "charset": "utf-8",
+        "user_agent": "MyApp/1.0",
+        "authorization": {
+          "type": "Bearer",
+          "credentials": "token123"
+        }
+      },
+      "header_count": 3
+    }
+  }
+}

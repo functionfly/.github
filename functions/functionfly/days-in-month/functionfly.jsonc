@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "days-in-month",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Days in Month",
+  "description": "Get number of days in month.",
+  "category": "datetime",
+  "tags": [
+    "days",
+    "month",
+    "calendar"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "year": {
+        "type": "integer"
+      },
+      "month": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "year",
+      "month"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "days": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "year": 1,
+      "month": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

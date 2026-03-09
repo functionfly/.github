@@ -1,0 +1,8 @@
+# Test dependencies for functions/functionfly
+-r requirements.txt
+pytest>=7.0.0
+pytest-xdist>=3.0.0
+Pillow>=10.0.0
+pypdf>=4.0.0
+blurhash>=1.1.4
+numpy>=1.24.0

@@ -1,0 +1,55 @@
+{
+  "author": "functionfly",
+  "name": "ceil-to",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Ceil To",
+  "description": "Ceil number to precision.",
+  "category": "math",
+  "tags": [
+    "ceil",
+    "precision"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": {
+        "type": "number"
+      },
+      "decimals": {
+        "type": "integer",
+        "default": 0
+      }
+    },
+    "required": [
+      "value"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "number"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "value": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

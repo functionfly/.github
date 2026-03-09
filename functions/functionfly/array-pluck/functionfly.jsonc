@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "array-pluck",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Pluck",
+  "description": "Extract values by key from array of objects.",
+  "category": "arrays",
+  "tags": ["array", "pluck", "extract", "map"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array of objects" },
+      "key": { "type": "string", "description": "Property name to pluck" }
+    },
+    "required": ["items", "key"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [{"id": 1, "name": "a"}, {"id": 2, "name": "b"}], "key": "name" },
+    "output": { "ok": true, "result": ["a", "b"] }
+  }
+}

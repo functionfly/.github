@@ -1,0 +1,56 @@
+{
+  "author": "functionfly",
+  "name": "webpage-meta",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Webpage Meta",
+  "description": "Extract meta tags from webpage.",
+  "category": "media",
+  "tags": [
+    "webpage",
+    "meta",
+    "og",
+    "media"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "url"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "meta": {
+        "type": "object"
+      },
+      "title": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 3600,
+  "timeout_ms": 10000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "url": "https://example.com"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

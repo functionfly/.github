@@ -1,0 +1,80 @@
+{
+  "author": "functionfly",
+  "name": "rate-limit-check",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Rate Limit Check",
+  "description": "Check if request would exceed rate limit (sliding or fixed window). Stateless: pass current count and window.",
+  "category": "security",
+  "tags": [
+    "rate-limit",
+    "throttle",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "key": {
+        "type": "string",
+        "description": "Identifier (e.g. user or IP)"
+      },
+      "limit": {
+        "type": "integer"
+      },
+      "window_seconds": {
+        "type": "integer"
+      },
+      "current_count": {
+        "type": "integer"
+      },
+      "window_start": {
+        "type": "number",
+        "description": "Unix ts of window start"
+      },
+      "now": {
+        "type": "number",
+        "description": "Current Unix ts"
+      }
+    },
+    "required": [
+      "key",
+      "limit",
+      "current_count"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "allowed": {
+        "type": "boolean"
+      },
+      "remaining": {
+        "type": "integer"
+      },
+      "reset_in_seconds": {
+        "type": "number"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "key": "test",
+      "limit": 1,
+      "current_count": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

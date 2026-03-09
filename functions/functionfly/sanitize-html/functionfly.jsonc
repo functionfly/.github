@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "sanitize-html",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Sanitize HTML",
+  "description": "Sanitize HTML to prevent XSS. Uses bleach or stdlib strip.",
+  "category": "security",
+  "tags": [
+    "sanitize",
+    "html",
+    "xss",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "html": {
+        "type": "string"
+      },
+      "allowed_tags": {
+        "type": "array",
+        "description": "e.g. ['b','i','a']"
+      },
+      "allowed_attrs": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "html"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "sanitized": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "html": "test"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

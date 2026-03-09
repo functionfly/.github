@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "array-first",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array First",
+  "description": "Get first element of array.",
+  "category": "arrays",
+  "tags": ["array", "first", "head"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Source array" },
+      "default": { "description": "Value if array is empty" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {},
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [10, 20, 30] },
+    "output": { "ok": true, "result": 10 }
+  }
+}

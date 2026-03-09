@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "array-diff",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Diff",
+  "description": "Elements in first array that are not in second (set difference).",
+  "category": "arrays",
+  "tags": ["array", "diff", "difference", "set"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Primary array" },
+      "other": { "type": "array", "description": "Values to exclude" }
+    },
+    "required": ["items", "other"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4], "other": [2, 4, 5] },
+    "output": { "ok": true, "result": [1, 3] }
+  }
+}

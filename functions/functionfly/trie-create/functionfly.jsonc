@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "trie-create",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Trie Create",
+  "description": "Create and manipulate a trie (prefix tree) data structure for efficient string operations.",
+  "category": "arrays",
+  "tags": ["trie", "prefix-tree", "data-structure", "string-search", "autocomplete"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "words": { "type": "array", "description": "Initial words to insert into the trie", "items": { "type": "string" }, "default": [] },
+      "operations": { "type": "array", "description": "Operations to perform", "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["insert", "search", "starts_with", "get_words_with_prefix", "delete", "prefix_count", "is_empty", "clear"] },
+          "word": { "type": "string", "description": "Word for insert/search/delete operations" },
+          "prefix": { "type": "string", "description": "Prefix for prefix operations" }
+        },
+        "required": ["action"]
+      }}
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "word_count": { "type": "integer", "description": "Total number of words in the trie" },
+          "operations": { "type": "array" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "words": ["apple", "app", "application"],
+      "operations": [
+        {"action": "starts_with", "prefix": "app"},
+        {"action": "get_words_with_prefix", "prefix": "app"},
+        {"action": "search", "word": "apple"}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "word_count": 3,
+        "operations": [
+          {"action": "starts_with", "prefix": "app", "result": true},
+          {"action": "get_words_with_prefix", "prefix": "app", "result": ["app", "apple", "application"]},
+          {"action": "search", "word": "apple", "result": true}
+        ]
+      }
+    }
+  }
+}

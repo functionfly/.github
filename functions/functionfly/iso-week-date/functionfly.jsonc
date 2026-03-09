@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "iso-week-date",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "ISO Week Date",
+  "description": "Get ISO week date.",
+  "category": "datetime",
+  "tags": [
+    "iso",
+    "week"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "date": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "date"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "iso_year": {
+        "type": "integer"
+      },
+      "iso_week": {
+        "type": "integer"
+      },
+      "iso_weekday": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "date": "2024-01-15"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

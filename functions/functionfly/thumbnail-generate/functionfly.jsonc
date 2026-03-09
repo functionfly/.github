@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "thumbnail-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Thumbnail Generate",
+  "description": "Generate a thumbnail from an image (max size while preserving aspect ratio). Requires Pillow.",
+  "category": "media",
+  "tags": [
+    "image",
+    "thumbnail",
+    "preview",
+    "media"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": {
+        "type": "string",
+        "description": "Image as base64 string"
+      },
+      "max_size": {
+        "type": "integer",
+        "description": "Max width and height in pixels (default 128)",
+        "default": 128
+      }
+    },
+    "required": [
+      "image"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "image_base64": {
+        "type": "string"
+      },
+      "width": {
+        "type": "integer"
+      },
+      "height": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 10000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "size": 64
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "author": "functionfly",
+  "name": "distance-haversine",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Distance Haversine",
+  "description": "Distance between two lat/lon points in km.",
+  "category": "math",
+  "tags": [
+    "haversine",
+    "distance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat1": {
+        "type": "number"
+      },
+      "lon1": {
+        "type": "number"
+      },
+      "lat2": {
+        "type": "number"
+      },
+      "lon2": {
+        "type": "number"
+      },
+      "radius_km": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "lat1",
+      "lon1",
+      "lat2",
+      "lon2"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "distance_km": {
+        "type": "number"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat1": 1,
+      "lon1": 1,
+      "lat2": 1,
+      "lon2": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

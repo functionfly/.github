@@ -1,0 +1,42 @@
+{
+  "author": "functionfly",
+  "name": "array-cartesian-product",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Cartesian Product",
+  "description": "Generate the Cartesian product of multiple arrays.",
+  "category": "arrays",
+  "tags": ["array", "cartesian-product", "math", "combinations"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "arrays": { "type": "array", "description": "Array of arrays to compute Cartesian product", "items": { "type": "array" } }
+    },
+    "required": ["arrays"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "items": { "type": "array" } },
+      "count": { "type": "integer", "description": "Number of combinations generated" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 5000,
+  "memory_mb": 256,
+  "example": {
+    "input": { "arrays": [["a", "b"], [1, 2], ["x", "y"]] },
+    "output": {
+      "ok": true,
+      "result": [
+        ["a", 1, "x"], ["a", 1, "y"], ["a", 2, "x"], ["a", 2, "y"],
+        ["b", 1, "x"], ["b", 1, "y"], ["b", 2, "x"], ["b", 2, "y"]
+      ],
+      "count": 8
+    }
+  }
+}

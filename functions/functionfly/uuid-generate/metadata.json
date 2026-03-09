@@ -1,0 +1,1 @@
+{"name":"uuid-generate","version":"1.0.0","entry_point":"handler","runtime":"flypy","description":"Generate UUID v4 (random) identifiers.","author":"functionfly"}

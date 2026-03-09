@@ -1,0 +1,55 @@
+{
+  "author": "functionfly",
+  "name": "http-delete",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "HTTP DELETE",
+  "description": "Perform an HTTP DELETE request to a URL.",
+  "category": "http",
+  "tags": ["http", "delete", "request", "api", "web", "remove"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string", "description": "URL to request" },
+      "headers": { "type": "object", "description": "HTTP headers to send", "default": {} },
+      "params": { "type": "object", "description": "Query parameters to append to URL" },
+      "timeout": { "type": "integer", "description": "Request timeout in seconds", "default": 30, "minimum": 1 },
+      "follow_redirects": { "type": "boolean", "description": "Whether to follow redirects", "default": true }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "status_code": { "type": "integer" },
+      "headers": { "type": "object" },
+      "content_type": { "type": "string" },
+      "content_length": { "type": "integer" },
+      "result": { "description": "Response content (parsed if JSON, string otherwise, may be null)" },
+      "url": { "type": "string", "description": "Final URL after redirects" },
+      "error": { "type": "string" },
+      "error_data": { "description": "Parsed error response data" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 35000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "url": "https://httpbin.org/delete",
+      "headers": { "Authorization": "Bearer token123" }
+    },
+    "output": {
+      "ok": true,
+      "status_code": 200,
+      "headers": { "content-type": "application/json" },
+      "content_type": "application/json",
+      "content_length": 123,
+      "result": { "method": "DELETE" },
+      "url": "https://httpbin.org/delete"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "csv-to-json",
+  "version": "1.0.0",
+  "entry_point": "handler",
+  "runtime": "flypy",
+  "description": "Convert CSV string to JSON array of objects. Automatically detects and converts data types.",
+  "author": "functionfly"
+}

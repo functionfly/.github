@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "array-count-by",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Count By",
+  "description": "Count elements by key or condition (e.g. by property value).",
+  "category": "arrays",
+  "tags": ["array", "count", "frequency", "group"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to count" },
+      "key": { "type": "string", "description": "Property name for objects; omit to count primitives" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "object" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "items": [{"type": "a"}, {"type": "b"}, {"type": "a"}],
+      "key": "type"
+    },
+    "output": { "ok": true, "result": { "a": 2, "b": 1 } }
+  }
+}

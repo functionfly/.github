@@ -1,0 +1,82 @@
+{
+  "author": "functionfly",
+  "name": "content-type-detect",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Content Type Detection",
+  "description": "Detect MIME content type from content and/or filename.",
+  "category": "http",
+  "tags": ["content-type", "mime-type", "detection", "file-type", "media-type"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "content": { "type": "string", "description": "Content to analyze" },
+      "filename": { "type": "string", "description": "Filename for extension-based detection" },
+      "analyze_content": { "type": "boolean", "description": "Whether to analyze content structure", "default": true }
+    },
+    "required": ["content"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "detected_types": { "type": "array", "items": {
+            "type": "object",
+            "properties": {
+              "method": { "type": "string", "description": "Detection method used" },
+              "mime_type": { "type": "string", "description": "Detected MIME type" },
+              "encoding": { "type": "string", "description": "Detected encoding" },
+              "confidence": { "type": "string", "description": "Confidence level" }
+            }
+          }},
+          "best_match": { "description": "Best detection result" },
+          "mime_type": { "type": "string", "description": "Recommended MIME type" },
+          "confidence": { "type": "string", "description": "Confidence of best match" },
+          "content_length": { "type": "integer", "description": "Length of content" },
+          "has_content": { "type": "boolean", "description": "Whether content is non-empty" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "content": "{\"name\": \"test\", \"value\": 123}",
+      "filename": "data.json"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "detected_types": [
+          {
+            "method": "filename",
+            "mime_type": "application/json",
+            "confidence": "high"
+          },
+          {
+            "method": "content_analysis",
+            "mime_type": "application/json",
+            "confidence": "high"
+          }
+        ],
+        "best_match": {
+          "method": "filename",
+          "mime_type": "application/json",
+          "confidence": "high"
+        },
+        "mime_type": "application/json",
+        "confidence": "high",
+        "content_length": 28,
+        "has_content": true
+      }
+    }
+  }
+}

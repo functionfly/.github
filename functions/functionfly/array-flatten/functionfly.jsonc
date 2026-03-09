@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "array-flatten",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Flatten",
+  "description": "Flatten nested arrays to a single level.",
+  "category": "arrays",
+  "tags": ["array", "flatten", "nested"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Nested array to flatten" },
+      "depth": { "type": "integer", "description": "Flatten depth (1 = one level, -1 = fully)", "default": 1 }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [[1, 2], [3, [4, 5]]], "depth": 1 },
+    "output": { "ok": true, "result": [1, 2, 3, [4, 5]] }
+  }
+}

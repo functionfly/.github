@@ -1,0 +1,211 @@
+package statefabric
+
+import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+// JSONMap for JSONB columns
+type JSONMap map[string]interface{}
+
+// Scan implements sql.Scanner so the DB driver can read JSONB into JSONMap.
+func (m *JSONMap) Scan(value interface{}) error {
+	if value == nil {
+		*m = nil
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal JSONB value: %v", value)
+	}
+	if len(bytes) == 0 {
+		*m = JSONMap{}
+		return nil
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal(bytes, &out); err != nil {
+		return err
+	}
+	*m = out
+	return nil
+}
+
+// Value implements driver.Valuer so JSONMap is stored as JSON in JSONB columns.
+func (m JSONMap) Value() (driver.Value, error) {
+	if m == nil {
+		return []byte("{}"), nil
+	}
+	return json.Marshal(m)
+}
+
+// StateFabric is the top-level fabric container
+type StateFabric struct {
+	ID            uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TenantID      uuid.UUID  `gorm:"type:uuid;not null;index"`
+	Name          string     `gorm:"not null;size:255"`
+	Description   string     `gorm:"type:text"`
+	Status        string     `gorm:"not null;size:50;default:pending"`
+	Type          string     `gorm:"not null;size:50;default:custom"`
+	Settings      JSONMap    `gorm:"type:jsonb;not null;default:'{}'"`
+	Throughput    int64      `gorm:"not null;default:0"`
+	LatencyMs     int64      `gorm:"not null;default:0"`
+	LastUpdated   time.Time  `gorm:"autoUpdateTime"`
+	CreatedAt     time.Time  `gorm:"autoCreateTime"`
+	UpdatedAt     time.Time  `gorm:"autoUpdateTime"`
+	SuspendedAt   *time.Time `gorm:"column:suspended_at"`
+	SuspendReason *string    `gorm:"column:suspend_reason;type:text"`
+}
+
+func (StateFabric) TableName() string { return "state_fabrics" }
+
+// StateFabricStore is a store within a fabric
+type StateFabricStore struct {
+	ID         uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FabricID   uuid.UUID `gorm:"type:uuid;not null;index"`
+	Name       string    `gorm:"not null;size:255"`
+	Type       string    `gorm:"not null;size:50"`
+	Status     string    `gorm:"not null;size:50;default:active"`
+	Size       int64     `gorm:"not null;default:0"`
+	MaxSize    int64     `gorm:"not null;default:0"`
+	Region     string    `gorm:"not null;size:100;default:default"`
+	Provider   string    `gorm:"not null;size:100;default:local"`
+	Throughput int64     `gorm:"not null;default:0"`
+	LatencyMs  int64     `gorm:"not null;default:0"`
+	CreatedAt  time.Time `gorm:"autoCreateTime"`
+	UpdatedAt  time.Time `gorm:"autoUpdateTime"`
+}
+
+func (StateFabricStore) TableName() string { return "state_fabric_stores" }
+
+// StateFabricPipeline is a pipeline within a fabric
+type StateFabricPipeline struct {
+	ID             uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FabricID       uuid.UUID  `gorm:"type:uuid;not null;index"`
+	Name           string     `gorm:"not null;size:255"`
+	Description    string     `gorm:"type:text"`
+	Status         string     `gorm:"not null;size:50;default:draft"`
+	Steps          JSONMap    `gorm:"type:jsonb;not null;default:'[]'"`
+	InputSchema    JSONMap    `gorm:"type:jsonb;column:input_schema"`
+	OutputSchema   JSONMap    `gorm:"type:jsonb;column:output_schema"`
+	Throughput     int64      `gorm:"not null;default:0"`
+	ErrorRate      float64    `gorm:"not null;default:0"`
+	LastExecutedAt *time.Time `gorm:"column:last_executed_at"`
+	CreatedAt      time.Time  `gorm:"autoCreateTime"`
+	UpdatedAt      time.Time  `gorm:"autoUpdateTime"`
+}
+
+func (StateFabricPipeline) TableName() string { return "state_fabric_pipelines" }
+
+// StateFabricEvent is an event log entry
+type StateFabricEvent struct {
+	ID             uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FabricID       uuid.UUID  `gorm:"type:uuid;not null;index"`
+	StoreID        *uuid.UUID `gorm:"type:uuid;index"`
+	EventType      string     `gorm:"not null;size:50"`
+	Payload        JSONMap    `gorm:"type:jsonb;not null;default:'{}'"`
+	SequenceNumber int64      `gorm:"not null"`
+	CorrelationID  string     `gorm:"size:255"`
+	Timestamp      time.Time  `gorm:"default:now()"`
+}
+
+func (StateFabricEvent) TableName() string { return "state_fabric_events" }
+
+// StateFabricSnapshot is a snapshot of fabric/store state
+type StateFabricSnapshot struct {
+	ID          uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FabricID    uuid.UUID  `gorm:"type:uuid;not null;index"`
+	StoreID     *uuid.UUID `gorm:"type:uuid;index"`
+	Name        string     `gorm:"not null;size:255"`
+	Description string     `gorm:"type:text"`
+	StateData   JSONMap    `gorm:"type:jsonb;column:state_data;not null;default:'{}'"`
+	EventCount  int        `gorm:"not null;default:0"`
+	SizeBytes   int64      `gorm:"not null;default:0"`
+	CreatedAt   time.Time  `gorm:"autoCreateTime"`
+	ExpiresAt   *time.Time `gorm:"column:expires_at"`
+}
+
+func (StateFabricSnapshot) TableName() string { return "state_fabric_snapshots" }
+
+// StateFabricReplay is a replay session
+type StateFabricReplay struct {
+	ID             uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FabricID       uuid.UUID  `gorm:"type:uuid;not null;index"`
+	SnapshotID     *uuid.UUID `gorm:"type:uuid"`
+	StartEventID   *uuid.UUID `gorm:"type:uuid;column:start_event_id"`
+	EndEventID     *uuid.UUID `gorm:"type:uuid;column:end_event_id"`
+	Status         string     `gorm:"not null;size:50;default:pending"`
+	Progress       int        `gorm:"not null;default:0"`
+	EventsReplayed int64      `gorm:"not null;default:0"`
+	StartedAt      time.Time  `gorm:"autoCreateTime"`
+	CompletedAt    *time.Time `gorm:"column:completed_at"`
+	ErrorMessage   *string    `gorm:"column:error_message;type:text"`
+}
+
+func (StateFabricReplay) TableName() string { return "state_fabric_replays" }
+
+// StateFabricPipelineExecution records a pipeline run
+type StateFabricPipelineExecution struct {
+	ID         uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	PipelineID uuid.UUID `gorm:"type:uuid;not null;index"`
+	Status     string    `gorm:"not null;size:50;default:pending"`
+	InputData  JSONMap   `gorm:"type:jsonb;column:input_data"`
+	OutputData JSONMap   `gorm:"type:jsonb;column:output_data"`
+	CreatedAt  time.Time `gorm:"autoCreateTime"`
+}
+
+func (StateFabricPipelineExecution) TableName() string { return "state_fabric_pipeline_executions" }
+
+// BeforeCreate sets UUIDs
+func (s *StateFabric) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
+}
+
+func (s *StateFabricStore) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
+}
+
+func (s *StateFabricPipeline) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
+}
+
+func (s *StateFabricEvent) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
+}
+
+func (s *StateFabricSnapshot) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
+}
+
+func (s *StateFabricReplay) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
+}
+
+func (s *StateFabricPipelineExecution) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
+}

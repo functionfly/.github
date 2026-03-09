@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "verify-certificate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Verify Certificate",
+  "description": "SSL certificate validation for hostname (checks expiry and chain).",
+  "category": "security",
+  "tags": [
+    "ssl",
+    "certificate",
+    "tls",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "hostname": {
+        "type": "string"
+      },
+      "port": {
+        "type": "integer",
+        "default": 443
+      }
+    },
+    "required": [
+      "hostname"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "valid": {
+        "type": "boolean"
+      },
+      "expires_at": {
+        "type": "string"
+      },
+      "issuer": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 60,
+  "timeout_ms": 10000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "hostname": "test",
+      "host": "example.com",
+      "port": 443
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

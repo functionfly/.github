@@ -1,0 +1,68 @@
+{
+  "author": "functionfly",
+  "name": "cors-headers",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "CORS Headers",
+  "description": "Generate CORS headers for a given origin and method.",
+  "category": "security",
+  "tags": [
+    "cors",
+    "headers",
+    "security",
+    "web"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "origin": {
+        "type": "string"
+      },
+      "allow_origin": {
+        "type": "string",
+        "description": "Override allowed origin (* or specific)"
+      },
+      "methods": {
+        "type": "array",
+        "description": "Allowed methods"
+      },
+      "allow_credentials": {
+        "type": "boolean",
+        "default": false
+      },
+      "max_age": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "origin"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "headers": {
+        "type": "object"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "origin": "test"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

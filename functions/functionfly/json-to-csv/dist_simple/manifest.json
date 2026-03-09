@@ -1,0 +1,29 @@
+{
+  "build_time": "2026-02-25T17:43:35-06:00",
+  "capabilities": {
+    "approved": [],
+    "requested": [],
+    "restricted": true
+  },
+  "cold_start_optimized": true,
+  "compiler_version": "1.0.0",
+  "description": "Convert a JSON array of objects to CSV format. Supports custom columns, delimiters, and null value handling.",
+  "determinism_proof": {
+    "capabilities": [],
+    "ir_hash": "5c033a04b0f64d4e49081eb9ea22fca5fe71dc13936c810c645127657ca41a03",
+    "timestamp": ""
+  },
+  "entry_point": "handler",
+  "hashes": {
+    "determinism_hash": "5c033a04b0f64d4e49081eb9ea22fca5fe71dc13936c810c645127657ca41a03",
+    "wasm_sha256": "5c033a04b0f64d4e49081eb9ea22fca5fe71dc13936c810c645127657ca41a03"
+  },
+  "mode": "deterministic",
+  "name": "json-to-csv",
+  "optimization_level": "balanced",
+  "runtime": "flypy",
+  "source_size_bytes": 164,
+  "version": "1.0.0",
+  "wasm_file": "function.wasm",
+  "wasm_size_bytes": 102597
+}

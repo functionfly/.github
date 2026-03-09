@@ -1,0 +1,88 @@
+{
+  "author": "functionfly",
+  "name": "url-build",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "URL Build",
+  "description": "Build a URL from its constituent components.",
+  "category": "http",
+  "tags": ["url", "build", "construct", "components", "assemble"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "components": { "type": "object", "description": "URL components", "default": {}, "properties": {
+        "scheme": { "type": "string", "description": "URL scheme" },
+        "netloc": { "type": "string", "description": "Network location" },
+        "hostname": { "type": "string", "description": "Hostname" },
+        "port": { "type": "integer", "description": "Port number" },
+        "username": { "type": "string", "description": "Username" },
+        "password": { "type": "string", "description": "Password" },
+        "path": { "type": "string", "description": "Path" },
+        "params": { "type": "string", "description": "Parameters" },
+        "query": { "type": "string", "description": "Query string" },
+        "fragment": { "type": "string", "description": "Fragment" }
+      }},
+      "query_params": { "description": "Query parameters (object or array)" }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string", "description": "Built URL" },
+          "components_used": { "type": "object", "description": "Components that were used" },
+          "has_scheme": { "type": "boolean", "description": "Whether URL has scheme" },
+          "has_netloc": { "type": "boolean", "description": "Whether URL has netloc" },
+          "has_path": { "type": "boolean", "description": "Whether URL has path" },
+          "has_query": { "type": "boolean", "description": "Whether URL has query" },
+          "has_fragment": { "type": "boolean", "description": "Whether URL has fragment" },
+          "is_absolute": { "type": "boolean", "description": "Whether built URL is absolute" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "components": {
+        "scheme": "https",
+        "hostname": "api.example.com",
+        "port": 8080,
+        "path": "/v1/users",
+        "fragment": "section1"
+      },
+      "query_params": {
+        "limit": "10",
+        "offset": "20"
+      }
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "url": "https://api.example.com:8080/v1/users?limit=10&offset=20#section1",
+        "components_used": {
+          "scheme": "https",
+          "netloc": "api.example.com:8080",
+          "path": "/v1/users",
+          "params": "",
+          "query": "limit=10&offset=20",
+          "fragment": "section1"
+        },
+        "has_scheme": true,
+        "has_netloc": true,
+        "has_path": true,
+        "has_query": true,
+        "has_fragment": true,
+        "is_absolute": true
+      }
+    }
+  }
+}

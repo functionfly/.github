@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "password-strength",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Password Strength",
+  "description": "Check password strength (length, uppercase, lowercase, digit, special).",
+  "category": "security",
+  "tags": [
+    "password",
+    "strength",
+    "validation",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "password"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "score": {
+        "type": "integer"
+      },
+      "label": {
+        "type": "string"
+      },
+      "checks": {
+        "type": "object"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "password": "test"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "author": "functionfly",
+  "name": "json-prettify",
+  "version": "1.0.0",
+  "runtime": "python3.11",
+  "title": "JSON Prettify",
+  "description": "Pretty-print JSON with indentation.",
+  "category": "Data Format",
+  "tags": ["json", "prettify", "format", "indent", "data"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "string",
+        "description": "JSON string or object to prettify"
+      },
+      "indent": {
+        "type": "integer",
+        "description": "Spaces for indentation",
+        "default": 2
+      }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "json": { "type": "string", "description": "Pretty-printed JSON" },
+      "error": { "type": "string", "description": "Error message if ok is false" }
+    }
+  },
+  "example": {
+    "input": { "data": "{\"a\":1,\"b\":2}" },
+    "output": { "ok": true, "json": "{\n  \"a\": 1,\n  \"b\": 2\n}" }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 5000,
+  "memory_mb": 128
+}

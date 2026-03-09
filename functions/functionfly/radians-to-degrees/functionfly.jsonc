@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "radians-to-degrees",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Radians to Degrees",
+  "description": "Convert radians to degrees.",
+  "category": "math",
+  "tags": [
+    "radians",
+    "degrees"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "radians": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "radians"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "degrees": {
+        "type": "number"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "radians": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

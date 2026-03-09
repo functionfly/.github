@@ -1,0 +1,8 @@
+{
+  "name": "json-to-csv",
+  "version": "1.0.0",
+  "entry_point": "handler",
+  "runtime": "flypy",
+  "description": "Convert a JSON array of objects to CSV format. Supports custom columns, delimiters, and null value handling.",
+  "author": "functionfly"
+}

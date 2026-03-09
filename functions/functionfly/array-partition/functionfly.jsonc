@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "array-partition",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Partition",
+  "description": "Partition array into two arrays: elements that pass a predicate and those that do not.",
+  "category": "arrays",
+  "tags": ["array", "partition", "filter", "split"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to partition" },
+      "key": { "type": "string", "description": "Object property to test (truthy/falsy)" },
+      "value": { "description": "If set, partition by key == value; else by truthiness of key" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "pass": { "type": "array" },
+      "fail": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 0, 2, false, 3], "key": null, "value": null },
+    "output": { "ok": true, "pass": [1, 2, 3], "fail": [0, false] }
+  }
+}

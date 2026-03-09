@@ -1,0 +1,50 @@
+{
+  "author": "functionfly",
+  "name": "generate-random-token",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Random Token",
+  "description": "Generate a cryptographically secure random token (URL-safe base64).",
+  "category": "security",
+  "tags": [
+    "token",
+    "random",
+    "secure",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "bytes": {
+        "type": "integer",
+        "default": 32
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "token": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true
+    }
+  }
+}

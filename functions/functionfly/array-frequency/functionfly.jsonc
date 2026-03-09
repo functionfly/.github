@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "array-frequency",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Frequency Count",
+  "description": "Count the frequency of each element in an array.",
+  "category": "arrays",
+  "tags": ["array", "frequency", "count", "statistics"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to count frequencies in" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "items": { "type": "array", "items": [{ "description": "item" }, { "type": "integer", "description": "count" }] } },
+      "unique_count": { "type": "integer", "description": "Number of unique items" },
+      "total_count": { "type": "integer", "description": "Total number of items" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 2, 3, 3, 3, 4] },
+    "output": {
+      "ok": true,
+      "result": [[1, 1], [2, 2], [3, 3], [4, 1]],
+      "unique_count": 4,
+      "total_count": 7
+    }
+  }
+}

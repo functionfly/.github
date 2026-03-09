@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "mac-address-format",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "MAC Address Format",
+  "description": "Parse and format MAC addresses in various standard formats.",
+  "category": "http",
+  "tags": ["mac", "address", "format", "network", "ethernet"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "mac": { "type": "string", "description": "MAC address to format" },
+      "output_format": { "type": "string", "description": "Output format", "enum": ["colon", "dash", "dot", "none"], "default": "colon" }
+    },
+    "required": ["mac"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "original_mac": { "type": "string", "description": "Original MAC address input" },
+          "normalized_mac": { "type": "string", "description": "Normalized MAC address (uppercase hex)" },
+          "formatted_mac": { "type": "string", "description": "MAC address in requested format" },
+          "output_format": { "type": "string", "description": "Format used for output" },
+          "octets": { "type": "array", "items": { "type": "string" }, "description": "MAC address as array of octets" },
+          "oui": { "type": "string", "description": "Organizationally Unique Identifier (first 3 octets)" },
+          "is_multicast": { "type": "boolean", "description": "Whether this is a multicast MAC" },
+          "is_locally_administered": { "type": "boolean", "description": "Whether this is locally administered" },
+          "is_broadcast": { "type": "boolean", "description": "Whether this is the broadcast MAC" },
+          "is_unicast": { "type": "boolean", "description": "Whether this is a unicast MAC" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "mac": "aa-bb-cc-dd-ee-ff",
+      "output_format": "colon"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "original_mac": "aa-bb-cc-dd-ee-ff",
+        "normalized_mac": "AABBCCDDEEFF",
+        "formatted_mac": "aa:bb:cc:dd:ee:ff",
+        "output_format": "colon",
+        "octets": ["aa", "bb", "cc", "dd", "ee", "ff"],
+        "oui": "aa:bb:cc",
+        "is_multicast": false,
+        "is_locally_administered": false,
+        "is_broadcast": false,
+        "is_unicast": true
+      }
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "author": "functionfly",
+  "name": "array-standardize",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Standardization",
+  "description": "Standardize array values to z-scores (mean=0, std=1).",
+  "category": "arrays",
+  "tags": ["array", "standardize", "zscore", "normalization", "statistics"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to standardize", "items": { "type": "number" } }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "items": { "type": "number" }, "description": "Standardized values (z-scores)" },
+      "count": { "type": "integer", "description": "Number of values standardized" },
+      "mean": { "type": "number", "description": "Mean of original values" },
+      "std": { "type": "number", "description": "Standard deviation of original values" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5] },
+    "output": {
+      "ok": true,
+      "result": [-1.414, -0.707, 0.0, 0.707, 1.414],
+      "count": 5,
+      "mean": 3.0,
+      "std": 1.414
+    }
+  }
+}

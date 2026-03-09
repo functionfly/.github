@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "array-quartiles",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Quartiles",
+  "description": "Calculate quartiles and five-number summary of an array.",
+  "category": "arrays",
+  "tags": ["array", "quartiles", "statistics", "five-number-summary", "iqr"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to calculate quartiles from", "items": { "type": "number" } },
+      "method": { "type": "string", "description": "Interpolation method for quantiles", "enum": ["linear", "lower", "higher", "midpoint", "nearest"], "default": "linear" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "q0": { "type": "number", "description": "Minimum (0th percentile)" },
+          "q1": { "type": "number", "description": "First quartile (25th percentile)" },
+          "q2": { "type": "number", "description": "Second quartile/median (50th percentile)" },
+          "q3": { "type": "number", "description": "Third quartile (75th percentile)" },
+          "q4": { "type": "number", "description": "Maximum (100th percentile)" },
+          "iqr": { "type": "number", "description": "Interquartile range (Q3 - Q1)" }
+        }
+      },
+      "method": { "type": "string", "description": "Interpolation method used" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+    "output": {
+      "ok": true,
+      "result": {
+        "q0": 1,
+        "q1": 3.25,
+        "q2": 5.5,
+        "q3": 7.75,
+        "q4": 10,
+        "iqr": 4.5
+      },
+      "method": "linear"
+    }
+  }
+}

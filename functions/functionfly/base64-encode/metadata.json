@@ -1,0 +1,1 @@
+{"name":"base64-encode","version":"1.0.0","entry_point":"handler","runtime":"flypy","description":"Encode a string to Base64. Optional URL-safe encoding.","author":"functionfly"}

@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "set-create",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Set Create",
+  "description": "Create and manipulate a set data structure with mathematical set operations.",
+  "category": "arrays",
+  "tags": ["set", "data-structure", "union", "intersection", "difference"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Initial items for the set", "default": [] },
+      "operations": { "type": "array", "description": "Operations to perform", "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["add", "remove", "contains", "union", "intersection", "difference", "symmetric_difference", "is_subset", "is_superset", "is_disjoint", "clear", "size", "is_empty"] },
+          "value": { "description": "Value for add/remove/contains operations" },
+          "set": { "type": "array", "description": "Other set for set operations" }
+        },
+        "required": ["action"]
+      }}
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "final_set": { "type": "array", "description": "Final set as sorted array" },
+          "operations": { "type": "array" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "items": [1, 2, 3],
+      "operations": [
+        {"action": "add", "value": 4},
+        {"action": "union", "set": [3, 4, 5]},
+        {"action": "contains", "value": 5}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "final_set": [1, 2, 3, 4, 5],
+        "operations": [
+          {"action": "add", "value": 4, "success": true},
+          {"action": "union", "set": [3, 4, 5], "success": true},
+          {"action": "contains", "value": 5, "result": true}
+        ]
+      }
+    }
+  }
+}

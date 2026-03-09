@@ -1,0 +1,87 @@
+{
+  "author": "functionfly",
+  "name": "accept-language-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Accept-Language Header",
+  "description": "Parse HTTP Accept-Language header and extract language preferences with quality values.",
+  "category": "http",
+  "tags": ["accept-language", "language", "locale", "i18n", "header"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "accept_language": { "type": "string", "description": "Accept-Language header value" }
+    },
+    "required": ["accept_language"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "languages": { "type": "array", "items": {
+            "type": "object",
+            "properties": {
+              "full": { "type": "string", "description": "Full language tag" },
+              "primary": { "type": "string", "description": "Primary language code" },
+              "country": { "type": "string", "description": "Country/region code" },
+              "quality": { "type": "number", "description": "Quality value (0-1)" }
+            }
+          }},
+          "preferred_language": { "type": "string", "description": "Most preferred language" },
+          "language_count": { "type": "integer", "description": "Number of languages specified" },
+          "has_country_specifier": { "type": "boolean", "description": "Whether any languages have country specifiers" },
+          "quality_sorted": { "type": "array", "items": { "type": "string" }, "description": "Languages sorted by quality value" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "accept_language": "en-US;q=0.9,fr-FR;q=0.8,de;q=0.7,en;q=0.6"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "languages": [
+          {
+            "full": "en-US",
+            "primary": "en",
+            "country": "US",
+            "quality": 0.9
+          },
+          {
+            "full": "fr-FR",
+            "primary": "fr",
+            "country": "FR",
+            "quality": 0.8
+          },
+          {
+            "full": "de",
+            "primary": "de",
+            "country": null,
+            "quality": 0.7
+          },
+          {
+            "full": "en",
+            "primary": "en",
+            "country": null,
+            "quality": 0.6
+          }
+        ],
+        "preferred_language": "en-US",
+        "language_count": 4,
+        "has_country_specifier": true,
+        "quality_sorted": ["en-US", "fr-FR", "de", "en"]
+      }
+    }
+  }
+}

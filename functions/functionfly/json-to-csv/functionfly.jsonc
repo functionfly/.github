@@ -1,0 +1,70 @@
+{
+  "author": "functionfly",
+  "name": "json-to-csv",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "JSON to CSV Converter",
+  "description": "Convert a JSON array of objects to CSV format. Supports custom columns, delimiters, and null value handling.",
+  "category": "Data Format",
+  "tags": ["json", "csv", "convert", "data", "formatting"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array",
+        "description": "Array of objects to convert to CSV",
+        "example": [{"name": "John", "age": 30, "city": "NYC"}, {"name": "Jane", "age": 25, "city": "LA"}]
+      },
+      "columns": {
+        "type": "array",
+        "description": "Optional list of columns to include (in order)",
+        "example": ["name", "age", "city"]
+      },
+      "delimiter": {
+        "type": "string",
+        "description": "CSV delimiter character",
+        "default": ","
+      },
+      "include_header": {
+        "type": "boolean",
+        "description": "Include header row",
+        "default": true
+      },
+      "null_value": {
+        "type": "string",
+        "description": "Value to use for null values",
+        "default": ""
+      }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "csv": { "type": "string", "description": "The CSV output string" },
+      "row_count": { "type": "number", "description": "Number of data rows" },
+      "column_count": { "type": "number", "description": "Number of columns" },
+      "error": { "type": "string", "description": "Error message if ok is false" }
+    }
+  },
+  "example": {
+    "input": {
+      "data": [
+        {"name": "John Doe", "age": 30, "email": "john@example.com"},
+        {"name": "Jane Smith", "age": 25, "email": "jane@example.com"}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "csv": "name,age,email\nJohn Doe,30,john@example.com\nJane Smith,25,jane@example.com\n",
+      "row_count": 2,
+      "column_count": 3
+    }
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 5000,
+  "memory_mb": 128
+}

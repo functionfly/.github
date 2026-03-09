@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "charset-convert",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Charset Conversion",
+  "description": "Convert text content between different character encodings.",
+  "category": "http",
+  "tags": ["charset", "encoding", "conversion", "unicode", "text"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "content": { "description": "Content to convert (string or bytes)" },
+      "from_encoding": { "type": "string", "description": "Source encoding (optional, auto-detect if not specified)" },
+      "to_encoding": { "type": "string", "description": "Target encoding", "default": "utf-8" },
+      "errors": { "type": "string", "description": "Error handling mode", "enum": ["strict", "ignore", "replace"], "default": "strict" }
+    },
+    "required": ["content", "to_encoding"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string", "description": "Converted content as string" },
+      "conversion_info": {
+        "type": "object",
+        "properties": {
+          "original_type": { "type": "string", "description": "Original content type" },
+          "original_length": { "type": "integer", "description": "Original content length" },
+          "from_encoding": { "type": "string", "description": "Source encoding used" },
+          "to_encoding": { "type": "string", "description": "Target encoding used" },
+          "errors_handling": { "type": "string", "description": "Error handling mode used" },
+          "converted_length": { "type": "integer", "description": "Converted content length" },
+          "was_converted": { "type": "boolean", "description": "Whether actual conversion occurred" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "content": "Hello, wörld! Café",
+      "from_encoding": "utf-8",
+      "to_encoding": "iso-8859-1",
+      "errors": "replace"
+    },
+    "output": {
+      "ok": true,
+      "result": "Hello, wörld! Café",
+      "conversion_info": {
+        "original_type": "string",
+        "original_length": 18,
+        "from_encoding": "utf-8",
+        "to_encoding": "iso-8859-1",
+        "errors_handling": "replace",
+        "converted_length": 18,
+        "was_converted": true
+      }
+    }
+  }
+}

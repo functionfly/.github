@@ -1,0 +1,80 @@
+{
+  "author": "functionfly",
+  "name": "parse-cookies",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse HTTP Cookies",
+  "description": "Parse HTTP cookies from header string and extract attributes.",
+  "category": "http",
+  "tags": ["http", "cookies", "parse", "session", "secure"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cookies": { "type": "string", "description": "Cookie header string to parse" },
+      "format": { "type": "string", "description": "Output format", "enum": ["object", "array"], "default": "object" }
+    },
+    "required": ["cookies"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "cookies": { "description": "Parsed cookies (object or array)" },
+          "count": { "type": "integer", "description": "Number of cookies parsed" },
+          "session_cookies": { "type": "array", "items": { "type": "string" }, "description": "Names of session cookies" },
+          "persistent_cookies": { "type": "array", "items": { "type": "string" }, "description": "Names of persistent cookies" },
+          "has_secure": { "type": "boolean", "description": "Whether any cookies have Secure flag" },
+          "has_httponly": { "type": "boolean", "description": "Whether any cookies have HttpOnly flag" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "cookies": "session_id=abc123; Path=/; Secure; HttpOnly, user_pref=dark_mode; Max-Age=86400"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "cookies": {
+          "session_id": {
+            "name": "session_id",
+            "value": "abc123",
+            "path": "/",
+            "domain": "",
+            "secure": true,
+            "httponly": true,
+            "max_age": null,
+            "expires": "",
+            "samesite": ""
+          },
+          "user_pref": {
+            "name": "user_pref",
+            "value": "dark_mode",
+            "path": "",
+            "domain": "",
+            "secure": false,
+            "httponly": false,
+            "max_age": "86400",
+            "expires": "",
+            "samesite": ""
+          }
+        },
+        "count": 2,
+        "session_cookies": ["session_id"],
+        "persistent_cookies": ["user_pref"],
+        "has_secure": true,
+        "has_httponly": true
+      }
+    }
+  }
+}

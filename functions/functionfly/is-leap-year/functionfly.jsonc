@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "is-leap-year",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Leap Year",
+  "description": "Check if year is leap year.",
+  "category": "datetime",
+  "tags": [
+    "leap",
+    "year"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "year": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "year"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "is_leap_year": {
+        "type": "boolean"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "year": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

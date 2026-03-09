@@ -1,0 +1,62 @@
+{
+  "author": "functionfly",
+  "name": "url-resolve",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "URL Resolve",
+  "description": "Resolve a relative URL against a base URL.",
+  "category": "http",
+  "tags": ["url", "resolve", "relative", "absolute", "join"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "base_url": { "type": "string", "description": "Base URL for resolution" },
+      "relative_url": { "type": "string", "description": "Relative URL to resolve" }
+    },
+    "required": ["base_url", "relative_url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "resolved_url": { "type": "string", "description": "Fully resolved absolute URL" },
+          "base_url": { "type": "string", "description": "Original base URL" },
+          "relative_url": { "type": "string", "description": "Original relative URL" },
+          "was_modified": { "type": "boolean", "description": "Whether the URL was changed during resolution" },
+          "is_absolute_result": { "type": "boolean", "description": "Whether result is an absolute URL" },
+          "scheme_preserved": { "type": "boolean", "description": "Whether scheme was preserved" },
+          "host_preserved": { "type": "boolean", "description": "Whether host was preserved" },
+          "changes": { "type": "array", "items": { "type": "string" }, "description": "Description of changes made during resolution" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "base_url": "https://example.com/api/v1/",
+      "relative_url": "../users/profile"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "resolved_url": "https://example.com/users/profile",
+        "base_url": "https://example.com/api/v1/",
+        "relative_url": "../users/profile",
+        "was_modified": true,
+        "is_absolute_result": true,
+        "scheme_preserved": true,
+        "host_preserved": true,
+        "changes": ["relative path was resolved against base path"]
+      }
+    }
+  }
+}

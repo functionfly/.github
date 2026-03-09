@@ -1,0 +1,52 @@
+{
+  "author": "functionfly",
+  "name": "random-float",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Random Float",
+  "description": "Generate random float in range.",
+  "category": "math",
+  "tags": [
+    "random",
+    "float"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "min": {
+        "type": "number",
+        "default": 0
+      },
+      "max": {
+        "type": "number",
+        "default": 1
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "value": {
+        "type": "number"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true
+    }
+  }
+}

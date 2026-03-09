@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "array-sort-by",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Sort By",
+  "description": "Sort array of objects by key (or by numeric/string value).",
+  "category": "arrays",
+  "tags": ["array", "sort", "key", "order"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to sort" },
+      "key": { "type": "string", "description": "Property to sort by (objects); omit to sort primitives" },
+      "order": { "type": "string", "enum": ["asc", "desc"], "default": "asc" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [{"x": 3}, {"x": 1}, {"x": 2}], "key": "x", "order": "asc" },
+    "output": { "ok": true, "result": [{"x": 1}, {"x": 2}, {"x": 3}] }
+  }
+}

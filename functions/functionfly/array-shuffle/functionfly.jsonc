@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "array-shuffle",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Shuffle",
+  "description": "Shuffle array randomly (Fisher-Yates).",
+  "category": "arrays",
+  "tags": ["array", "shuffle", "random", "permute"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to shuffle" },
+      "seed": { "type": ["integer", "null"], "description": "Optional seed for reproducibility" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5], "seed": 42 },
+    "output": { "ok": true }
+  }
+}

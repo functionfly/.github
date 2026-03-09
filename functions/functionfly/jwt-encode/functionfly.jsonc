@@ -1,0 +1,67 @@
+{
+  "author": "functionfly",
+  "name": "jwt-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "JWT Encode",
+  "description": "Encode payload into JWT. Requires PyJWT.",
+  "category": "security",
+  "tags": [
+    "jwt",
+    "encode",
+    "token",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "payload": {
+        "type": "object"
+      },
+      "secret": {
+        "type": "string"
+      },
+      "algorithm": {
+        "type": "string",
+        "default": "HS256"
+      },
+      "headers": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "payload",
+      "secret"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "token": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "payload": {
+        "sub": "123"
+      },
+      "secret": "secret"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

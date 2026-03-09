@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "image-metadata",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Metadata",
+  "description": "Extract EXIF and basic metadata from image (dimensions, format). Requires Pillow.",
+  "category": "media",
+  "tags": [
+    "image",
+    "exif",
+    "metadata",
+    "media"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": {
+        "type": "string",
+        "description": "Image as base64 string"
+      }
+    },
+    "required": [
+      "image"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "width": {
+        "type": "integer"
+      },
+      "height": {
+        "type": "integer"
+      },
+      "format": {
+        "type": "string"
+      },
+      "exif": {
+        "type": "object"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "example": {
+    "input": {
+      "image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    },
+    "output": {
+      "ok": true,
+      "width": 1,
+      "height": 1,
+      "format": "PNG"
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 10000,
+  "memory_mb": 256
+}

@@ -1,0 +1,45 @@
+{
+  "author": "functionfly",
+  "name": "array-swap",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Swap Elements",
+  "description": "Swap two elements in an array by their indices.",
+  "category": "arrays",
+  "tags": ["array", "swap", "exchange", "elements"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to modify" },
+      "index1": { "type": "integer", "description": "Index of first element to swap", "minimum": 0 },
+      "index2": { "type": "integer", "description": "Index of second element to swap", "minimum": 0 }
+    },
+    "required": ["items", "index1", "index2"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "description": "Array with elements swapped" },
+      "swapped_elements": { "type": "array", "items": [{}], "description": "The two elements that were swapped [element1, element2]" },
+      "index1": { "type": "integer", "description": "Index of first element" },
+      "index2": { "type": "integer", "description": "Index of second element" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5], "index1": 1, "index2": 3 },
+    "output": {
+      "ok": true,
+      "result": [1, 4, 3, 2, 5],
+      "swapped_elements": [2, 4],
+      "index1": 1,
+      "index2": 3
+    }
+  }
+}

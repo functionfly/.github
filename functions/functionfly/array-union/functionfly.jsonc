@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "array-union",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Union",
+  "description": "Unique elements from both arrays (order: first array then second).",
+  "category": "arrays",
+  "tags": ["array", "union", "merge", "unique", "set"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "First array" },
+      "other": { "type": "array", "description": "Second array" }
+    },
+    "required": ["items", "other"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3], "other": [2, 3, 4] },
+    "output": { "ok": true, "result": [1, 2, 3, 4] }
+  }
+}

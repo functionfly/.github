@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "queue-create",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Queue Create",
+  "description": "Create and manipulate a queue data structure with enqueue, dequeue, peek operations.",
+  "category": "arrays",
+  "tags": ["queue", "data-structure", "fifo", "enqueue", "dequeue"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Initial items for the queue", "default": [] },
+      "operations": { "type": "array", "description": "Operations to perform", "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["enqueue", "dequeue", "peek", "size", "is_empty"] },
+          "value": { "description": "Value to enqueue (required for enqueue action)" }
+        },
+        "required": ["action"]
+      }}
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "final_queue": { "type": "array" },
+          "operations": { "type": "array" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "items": [1, 2],
+      "operations": [
+        {"action": "enqueue", "value": 3},
+        {"action": "dequeue"},
+        {"action": "peek"}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "final_queue": [2, 3],
+        "operations": [
+          {"action": "enqueue", "value": 3, "success": true},
+          {"action": "dequeue", "result": 1, "success": true},
+          {"action": "peek", "result": 2}
+        ]
+      }
+    }
+  }
+}

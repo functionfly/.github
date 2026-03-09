@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "factorial",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Factorial",
+  "description": "Calculate factorial.",
+  "category": "math",
+  "tags": [
+    "factorial",
+    "math"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "n": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "n"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "n": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

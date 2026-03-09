@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "http-post",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "HTTP POST",
+  "description": "Perform an HTTP POST request to a URL with data.",
+  "category": "http",
+  "tags": ["http", "post", "request", "api", "web", "data"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string", "description": "URL to request" },
+      "data": { "description": "Data to send in request body" },
+      "headers": { "type": "object", "description": "HTTP headers to send", "default": {} },
+      "content_type": { "type": "string", "description": "Content-Type header", "default": "application/json", "enum": ["application/json", "application/x-www-form-urlencoded", "text/plain", "application/octet-stream"] },
+      "timeout": { "type": "integer", "description": "Request timeout in seconds", "default": 30, "minimum": 1 },
+      "follow_redirects": { "type": "boolean", "description": "Whether to follow redirects", "default": true }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "status_code": { "type": "integer" },
+      "headers": { "type": "object" },
+      "content_type": { "type": "string" },
+      "content_length": { "type": "integer" },
+      "result": { "description": "Response content (parsed if JSON, string otherwise)" },
+      "url": { "type": "string", "description": "Final URL after redirects" },
+      "error": { "type": "string" },
+      "error_data": { "description": "Parsed error response data" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 35000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "url": "https://httpbin.org/post",
+      "data": { "name": "test", "value": 123 },
+      "headers": { "Authorization": "Bearer token123" }
+    },
+    "output": {
+      "ok": true,
+      "status_code": 200,
+      "headers": { "content-type": "application/json" },
+      "content_type": "application/json",
+      "content_length": 456,
+      "result": { "data": { "name": "test", "value": 123 } },
+      "url": "https://httpbin.org/post"
+    }
+  }
+}

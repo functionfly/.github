@@ -1,0 +1,56 @@
+{
+  "author": "functionfly",
+  "name": "percentage-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Percentage Calculate",
+  "description": "Calculate percentage (part/whole * 100).",
+  "category": "math",
+  "tags": [
+    "percentage",
+    "ratio"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "part": {
+        "type": "number"
+      },
+      "whole": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "part",
+      "whole"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "percentage": {
+        "type": "number"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "part": 1,
+      "whole": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

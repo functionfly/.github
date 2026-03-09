@@ -1,0 +1,58 @@
+{
+  "author": "functionfly",
+  "name": "rsa-generate-keypair",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "RSA Generate Key Pair",
+  "description": "Generate RSA key pair (PEM). Requires cryptography.",
+  "category": "security",
+  "tags": [
+    "rsa",
+    "keypair",
+    "keys",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "bits": {
+        "type": "integer",
+        "default": 2048
+      },
+      "format": {
+        "type": "string",
+        "default": "pem",
+        "description": "pem or der"
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "private_key": {
+        "type": "string"
+      },
+      "public_key": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 10000,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "author": "functionfly",
+  "name": "percentage-of",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Percentage Of",
+  "description": "Get percentage of number.",
+  "category": "math",
+  "tags": [
+    "percentage",
+    "of"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": {
+        "type": "number"
+      },
+      "percentage": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "value",
+      "percentage"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "number"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "value": 1,
+      "percentage": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

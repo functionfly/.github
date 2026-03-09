@@ -1,0 +1,46 @@
+{
+  "author": "functionfly",
+  "name": "array-wedge",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Wedge",
+  "description": "Insert elements from one array into another at regular intervals.",
+  "category": "arrays",
+  "tags": ["array", "wedge", "insert", "interleave", "merge"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "base_array": { "type": "array", "description": "Base array to insert into", "default": [] },
+      "wedge_array": { "type": "array", "description": "Array to wedge in", "default": [] },
+      "interval": { "type": "integer", "description": "Interval between wedge insertions", "default": 1, "minimum": 1 }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "description": "Wedged array" },
+      "count": { "type": "integer", "description": "Total number of elements in result" },
+      "base_length": { "type": "integer", "description": "Length of base array" },
+      "wedge_length": { "type": "integer", "description": "Length of wedge array" },
+      "interval": { "type": "integer", "description": "Interval used" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "base_array": [1, 2, 3, 4, 5], "wedge_array": ["a", "b"], "interval": 2 },
+    "output": {
+      "ok": true,
+      "result": [1, 2, "a", 3, 4, "b", 5],
+      "count": 7,
+      "base_length": 5,
+      "wedge_length": 2,
+      "interval": 2
+    }
+  }
+}

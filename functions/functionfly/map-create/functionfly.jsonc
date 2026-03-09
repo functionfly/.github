@@ -1,0 +1,67 @@
+{
+  "author": "functionfly",
+  "name": "map-create",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Map Create",
+  "description": "Create and manipulate a map/dictionary data structure.",
+  "category": "arrays",
+  "tags": ["map", "dictionary", "key-value", "data-structure"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "object", "description": "Initial key-value pairs for the map", "default": {} },
+      "operations": { "type": "array", "description": "Operations to perform", "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["set", "get", "delete", "has", "keys", "values", "entries", "clear", "size", "is_empty", "merge"] },
+          "key": { "description": "Key for operations" },
+          "value": { "description": "Value for set operation" },
+          "default": { "description": "Default value for get operation" },
+          "map": { "description": "Map to merge (object or array of [key,value] pairs)" }
+        },
+        "required": ["action"]
+      }}
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "final_map": { "type": "object", "description": "Final map as object" },
+          "operations": { "type": "array" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "items": {"a": 1, "b": 2},
+      "operations": [
+        {"action": "set", "key": "c", "value": 3},
+        {"action": "get", "key": "b"},
+        {"action": "delete", "key": "a"}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "final_map": {"b": 2, "c": 3},
+        "operations": [
+          {"action": "set", "key": "c", "value": 3, "success": true},
+          {"action": "get", "key": "b", "result": 2},
+          {"action": "delete", "key": "a", "deleted": true}
+        ]
+      }
+    }
+  }
+}

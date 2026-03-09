@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "heap-min",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Min Heap",
+  "description": "Create and manipulate a min-heap data structure.",
+  "category": "arrays",
+  "tags": ["heap", "min-heap", "data-structure", "priority-queue"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Initial items for the min heap", "default": [] },
+      "operations": { "type": "array", "description": "Operations to perform", "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["push", "pop", "peek", "size", "is_empty"] },
+          "value": { "description": "Value to push (required for push action)" }
+        },
+        "required": ["action"]
+      }}
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "final_heap": { "type": "array", "description": "Final heap as sorted array (smallest to largest)" },
+          "operations": { "type": "array" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "items": [3, 1, 2],
+      "operations": [
+        {"action": "push", "value": 0},
+        {"action": "pop"},
+        {"action": "peek"}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "final_heap": [0, 1, 2, 3],
+        "operations": [
+          {"action": "push", "value": 0, "success": true},
+          {"action": "pop", "result": 0, "success": true},
+          {"action": "peek", "result": 1}
+        ]
+      }
+    }
+  }
+}

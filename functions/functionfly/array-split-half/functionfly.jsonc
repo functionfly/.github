@@ -1,0 +1,45 @@
+{
+  "author": "functionfly",
+  "name": "array-split-half",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Split Half",
+  "description": "Split an array into two halves.",
+  "category": "arrays",
+  "tags": ["array", "split", "half", "divide"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to split" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "items": { "type": "array" }, "description": "Array containing [first_half, second_half]" },
+      "first_half": { "type": "array", "description": "First half of the array" },
+      "second_half": { "type": "array", "description": "Second half of the array" },
+      "total_length": { "type": "integer", "description": "Total length of original array" },
+      "midpoint": { "type": "integer", "description": "Midpoint index used for splitting" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5] },
+    "output": {
+      "ok": true,
+      "result": [[1, 2], [3, 4, 5]],
+      "first_half": [1, 2],
+      "second_half": [3, 4, 5],
+      "total_length": 5,
+      "midpoint": 2
+    }
+  }
+}

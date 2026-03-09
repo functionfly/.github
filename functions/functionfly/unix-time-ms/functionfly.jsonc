@@ -1,0 +1,42 @@
+{
+  "author": "functionfly",
+  "name": "unix-time-ms",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Unix Time MS",
+  "description": "Get current Unix timestamp in milliseconds.",
+  "category": "datetime",
+  "tags": [
+    "unix",
+    "timestamp",
+    "milliseconds"
+  ],
+  "input": {
+    "type": "object"
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "timestamp_ms": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "timezone-list",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Timezone List",
+  "description": "List all available timezones.",
+  "category": "datetime",
+  "tags": [
+    "timezone",
+    "list"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "filter": {
+        "type": "string"
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "timezones": {
+        "type": "array"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true
+    }
+  }
+}

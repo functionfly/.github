@@ -1,0 +1,46 @@
+{
+  "author": "functionfly",
+  "name": "array-delete",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Delete Element",
+  "description": "Delete an element at a specified index from an array.",
+  "category": "arrays",
+  "tags": ["array", "delete", "remove", "element"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to modify", "minItems": 1 },
+      "index": { "type": "integer", "description": "Index of element to delete" }
+    },
+    "required": ["items", "index"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "description": "Array with element deleted" },
+      "deleted_value": { "description": "The value that was deleted" },
+      "delete_index": { "type": "integer", "description": "Index where element was deleted" },
+      "original_length": { "type": "integer", "description": "Original array length" },
+      "new_length": { "type": "integer", "description": "New array length" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5], "index": 2 },
+    "output": {
+      "ok": true,
+      "result": [1, 2, 4, 5],
+      "deleted_value": 3,
+      "delete_index": 2,
+      "original_length": 5,
+      "new_length": 4
+    }
+  }
+}

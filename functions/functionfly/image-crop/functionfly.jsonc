@@ -1,0 +1,74 @@
+{
+  "author": "functionfly",
+  "name": "image-crop",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Crop",
+  "description": "Crop image to specified region. Requires Pillow.",
+  "category": "media",
+  "tags": [
+    "image",
+    "crop",
+    "media"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": {
+        "type": "string"
+      },
+      "left": {
+        "type": "integer"
+      },
+      "top": {
+        "type": "integer"
+      },
+      "width": {
+        "type": "integer"
+      },
+      "height": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "image",
+      "left",
+      "top",
+      "width",
+      "height"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "image_base64": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 10000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "left": 1,
+      "top": 1,
+      "width": 1,
+      "height": 1,
+      "x": 0,
+      "y": 0
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

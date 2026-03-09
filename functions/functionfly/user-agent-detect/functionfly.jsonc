@@ -1,0 +1,72 @@
+{
+  "author": "functionfly",
+  "name": "user-agent-detect",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "User Agent Detection",
+  "description": "Parse and analyze User-Agent strings to detect browser, OS, and device information.",
+  "category": "http",
+  "tags": ["user-agent", "browser", "os", "device", "mobile", "bot"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "user_agent": { "type": "string", "description": "User-Agent string to parse" }
+    },
+    "required": ["user_agent"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "browser": { "type": "string", "description": "Browser name" },
+          "browser_version": { "type": "string", "description": "Browser version" },
+          "os": { "type": "string", "description": "Operating system" },
+          "os_version": { "type": "string", "description": "OS version" },
+          "device": { "type": "string", "description": "Device type" },
+          "device_brand": { "type": "string", "description": "Device brand" },
+          "device_model": { "type": "string", "description": "Device model" },
+          "is_mobile": { "type": "boolean", "description": "Whether device is mobile" },
+          "is_tablet": { "type": "boolean", "description": "Whether device is tablet" },
+          "is_touch_capable": { "type": "boolean", "description": "Whether device supports touch" },
+          "is_pc": { "type": "boolean", "description": "Whether device is PC" },
+          "is_bot": { "type": "boolean", "description": "Whether this is a bot/crawler" },
+          "is_legacy_browser": { "type": "boolean", "description": "Whether browser is considered legacy" },
+          "user_agent_string": { "type": "string", "description": "Original User-Agent string" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "browser": "Chrome",
+        "browser_version": "91.0.4472.124",
+        "os": "Windows",
+        "os_version": "10",
+        "device": "Other",
+        "device_brand": null,
+        "device_model": null,
+        "is_mobile": false,
+        "is_tablet": false,
+        "is_touch_capable": false,
+        "is_pc": true,
+        "is_bot": false,
+        "is_legacy_browser": false,
+        "user_agent_string": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+      }
+    }
+  }
+}

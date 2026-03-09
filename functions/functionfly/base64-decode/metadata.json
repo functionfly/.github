@@ -1,0 +1,1 @@
+{"name":"base64-decode","version":"1.0.0","entry_point":"handler","runtime":"flypy","description":"Decode a Base64 string to plain text. Optional URL-safe input.","author":"functionfly"}

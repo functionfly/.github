@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "array-chunk",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Chunk",
+  "description": "Split array into chunks of given size.",
+  "category": "arrays",
+  "tags": ["array", "chunk", "split", "batch"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to chunk" },
+      "size": { "type": "integer", "description": "Chunk size", "minimum": 1 }
+    },
+    "required": ["items", "size"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "chunks": { "type": "array", "items": { "type": "array" } },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5], "size": 2 },
+    "output": { "ok": true, "chunks": [[1, 2], [3, 4], [5]] }
+  }
+}

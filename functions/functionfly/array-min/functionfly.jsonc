@@ -1,0 +1,34 @@
+{
+  "author": "functionfly",
+  "name": "array-min",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Min",
+  "description": "Find minimum value in array.",
+  "category": "arrays",
+  "tags": ["array", "min", "minimum"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array of comparable values" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {},
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [3, 1, 4, 1, 5] },
+    "output": { "ok": true, "result": 1 }
+  }
+}

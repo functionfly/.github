@@ -1,0 +1,52 @@
+{
+  "author": "functionfly",
+  "name": "parse-rfc2822",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse RFC 2822",
+  "description": "Parse RFC 2822 date format.",
+  "category": "datetime",
+  "tags": [
+    "rfc2822",
+    "parse",
+    "email"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "date_string": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "date_string"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "iso": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "date_string": "Mon, 15 Jan 2024 12:00:00 +0000"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

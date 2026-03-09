@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "subdomain-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Subdomain Extract",
+  "description": "Extract subdomain from a domain name.",
+  "category": "http",
+  "tags": ["subdomain", "domain", "extract", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "domain": { "type": "string", "description": "Domain name to parse" }
+    },
+    "required": ["domain"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "domain": { "type": "string", "description": "Original domain" },
+          "subdomain": { "type": "string", "description": "Subdomain part (null if none)" },
+          "main_domain": { "type": "string", "description": "Main domain name" },
+          "tld": { "type": "string", "description": "Top-level domain" },
+          "full_domain": { "type": "string", "description": "Main domain + TLD" },
+          "subdomain_parts": { "type": "array", "items": { "type": "string" }, "description": "Individual subdomain parts" },
+          "has_subdomain": { "type": "boolean", "description": "Whether domain has subdomain" },
+          "subdomain_count": { "type": "integer", "description": "Number of subdomain levels" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "domain": "api.github.com"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "domain": "api.github.com",
+        "subdomain": "api",
+        "main_domain": "github",
+        "tld": "com",
+        "full_domain": "github.com",
+        "subdomain_parts": ["api"],
+        "has_subdomain": true,
+        "subdomain_count": 1
+      }
+    }
+  }
+}

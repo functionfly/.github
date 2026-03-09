@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "linked-list-create",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Linked List Create",
+  "description": "Create and manipulate a singly linked list data structure.",
+  "category": "arrays",
+  "tags": ["linked-list", "data-structure", "nodes", "insert", "remove"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Initial items for the linked list", "default": [] },
+      "operations": { "type": "array", "description": "Operations to perform", "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["insert_front", "insert_back", "remove_front", "remove_back", "get_front", "get_back", "size", "is_empty"] },
+          "value": { "description": "Value for insert operations" }
+        },
+        "required": ["action"]
+      }}
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "final_list": { "type": "array", "description": "Final linked list as array" },
+          "operations": { "type": "array" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "items": [1, 2],
+      "operations": [
+        {"action": "insert_front", "value": 0},
+        {"action": "insert_back", "value": 3},
+        {"action": "remove_front"}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "final_list": [1, 2, 3],
+        "operations": [
+          {"action": "insert_front", "value": 0, "success": true},
+          {"action": "insert_back", "value": 3, "success": true},
+          {"action": "remove_front", "result": 0, "success": true}
+        ]
+      }
+    }
+  }
+}

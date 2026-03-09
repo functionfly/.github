@@ -1,0 +1,1 @@
+{"name":"json-prettify","version":"1.0.0","entry_point":"handler","runtime":"flypy","description":"Pretty-print JSON with indentation.","author":"functionfly"}

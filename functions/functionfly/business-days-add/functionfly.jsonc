@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "business-days-add",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Business Days Add",
+  "description": "Add business days to date (exclude weekends).",
+  "category": "datetime",
+  "tags": [
+    "business",
+    "days",
+    "workday"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "date": {
+        "type": "string"
+      },
+      "days": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "date",
+      "days"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      },
+      "iso": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "date": "2024-01-15",
+      "days": 2
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

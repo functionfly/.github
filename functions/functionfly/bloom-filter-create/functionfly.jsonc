@@ -1,0 +1,83 @@
+{
+  "author": "functionfly",
+  "name": "bloom-filter-create",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Bloom Filter Create",
+  "description": "Create and manipulate a Bloom filter for probabilistic set membership testing.",
+  "category": "arrays",
+  "tags": ["bloom-filter", "probabilistic", "data-structure", "set-membership", "space-efficient"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "size": { "type": "integer", "description": "Size of the bit array", "default": 1000, "minimum": 1 },
+      "hash_functions": { "type": "integer", "description": "Number of hash functions to use", "default": 3, "minimum": 1 },
+      "items": { "type": "array", "description": "Initial items to add to the filter", "default": [] },
+      "operations": { "type": "array", "description": "Operations to perform", "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["add", "contains", "clear", "stats"] },
+          "item": { "description": "Item for add/contains operations" }
+        },
+        "required": ["action"]
+      }}
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "stats": {
+            "type": "object",
+            "properties": {
+              "size": { "type": "integer" },
+              "hash_functions": { "type": "integer" },
+              "set_bits": { "type": "integer" },
+              "fill_ratio": { "type": "number" }
+            }
+          },
+          "operations": { "type": "array" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "size": 100,
+      "hash_functions": 2,
+      "items": ["apple", "banana"],
+      "operations": [
+        {"action": "contains", "item": "apple"},
+        {"action": "contains", "item": "cherry"},
+        {"action": "add", "item": "cherry"},
+        {"action": "stats"}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "stats": {
+          "size": 100,
+          "hash_functions": 2,
+          "set_bits": 6,
+          "fill_ratio": 0.06
+        },
+        "operations": [
+          {"action": "contains", "item": "apple", "result": true},
+          {"action": "contains", "item": "cherry", "result": false},
+          {"action": "add", "item": "cherry", "success": true},
+          {"action": "stats", "result": {"size": 100, "hash_functions": 2, "set_bits": 6, "fill_ratio": 0.06}}
+        ]
+      }
+    }
+  }
+}

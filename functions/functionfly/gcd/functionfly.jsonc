@@ -1,0 +1,55 @@
+{
+  "author": "functionfly",
+  "name": "gcd",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "GCD",
+  "description": "Greatest common divisor.",
+  "category": "math",
+  "tags": [
+    "gcd"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "a": {
+        "type": "integer"
+      },
+      "b": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "a",
+      "b"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "a": 1,
+      "b": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

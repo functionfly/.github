@@ -1,0 +1,46 @@
+{
+  "author": "functionfly",
+  "name": "array-missing",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Missing Values Analysis",
+  "description": "Analyze missing/null/NaN values in an array.",
+  "category": "arrays",
+  "tags": ["array", "missing", "null", "nan", "data-analysis"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to analyze for missing values" },
+      "method": { "type": "string", "description": "Analysis method", "enum": ["count", "indices", "values", "mask"], "default": "count" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "description": "Analysis result (varies by method)" },
+      "method": { "type": "string", "description": "Method used for analysis" },
+      "total_count": { "type": "integer", "description": "Total number of items" },
+      "missing_count": { "type": "integer", "description": "Number of missing values" },
+      "missing_percentage": { "type": "number", "description": "Percentage of missing values" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, null, 3, "NaN", 5], "method": "indices" },
+    "output": {
+      "ok": true,
+      "result": [1, 3],
+      "method": "indices",
+      "total_count": 5,
+      "missing_count": 2,
+      "missing_percentage": 40.0
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "secure-random",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Secure Random",
+  "description": "Generate cryptographically secure random numbers (integer in range or bytes).",
+  "category": "security",
+  "tags": [
+    "random",
+    "crypto",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "min": {
+        "type": "integer",
+        "default": 0
+      },
+      "max": {
+        "type": "integer",
+        "default": 999999
+      },
+      "count": {
+        "type": "integer",
+        "default": 1
+      },
+      "bytes": {
+        "type": "integer",
+        "description": "If set, return base64 random bytes instead"
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "values": {
+        "type": "array"
+      },
+      "bytes_base64": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true
+    }
+  }
+}

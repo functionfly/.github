@@ -1,0 +1,44 @@
+{
+  "author": "functionfly",
+  "name": "array-percentile",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Percentile",
+  "description": "Calculate percentiles of an array.",
+  "category": "arrays",
+  "tags": ["array", "percentile", "statistics", "quantile"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to calculate percentiles from", "items": { "type": "number" } },
+      "percentiles": { "type": "array", "description": "Percentiles to calculate (0-100)", "items": { "type": "number", "minimum": 0, "maximum": 100 }, "default": [50] }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "items": { "type": "object", "properties": { "percentile": { "type": "number" }, "value": { "type": "number" } } } },
+      "count": { "type": "integer", "description": "Number of percentiles calculated" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 2, 3, 4, 5], "percentiles": [25, 50, 75] },
+    "output": {
+      "ok": true,
+      "result": [
+        { "percentile": 25, "value": 2 },
+        { "percentile": 50, "value": 3 },
+        { "percentile": 75, "value": 4 }
+      ],
+      "count": 3
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "author": "functionfly",
+  "name": "port-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Port Validate",
+  "description": "Validate port number and provide metadata about well-known ports.",
+  "category": "http",
+  "tags": ["port", "validate", "network", "tcp", "udp"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "port": { "description": "Port number to validate (integer or string)" }
+    },
+    "required": ["port"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "port": { "description": "Port number" },
+          "is_valid": { "type": "boolean", "description": "Whether port is valid" },
+          "is_well_known": { "type": "boolean", "description": "Whether port is well-known" },
+          "service": { "type": "string", "description": "Service name for well-known ports" },
+          "category": { "type": "string", "description": "Port category (well_known, registered, dynamic)" },
+          "reason": { "type": "string", "description": "Reason for invalidity" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "port": 443
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "port": 443,
+        "is_valid": true,
+        "is_well_known": true,
+        "service": "HTTPS",
+        "category": "well_known"
+      }
+    }
+  }
+}

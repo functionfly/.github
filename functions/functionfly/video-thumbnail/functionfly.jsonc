@@ -1,0 +1,56 @@
+{
+  "author": "functionfly",
+  "name": "video-thumbnail",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Video Thumbnail",
+  "description": "Extract thumbnail from video (first frame or at offset). Requires opencv-python or ffmpeg.",
+  "category": "media",
+  "tags": [
+    "video",
+    "thumbnail",
+    "media"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "video_base64": {
+        "type": "string"
+      },
+      "offset_seconds": {
+        "type": "number",
+        "default": 0
+      }
+    },
+    "required": [
+      "video_base64"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "image_base64": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 15000,
+  "memory_mb": 512,
+  "example": {
+    "input": {
+      "video_base64": "AAAA"
+    },
+    "output": {
+      "ok": false
+    }
+  }
+}

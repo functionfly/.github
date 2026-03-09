@@ -1,0 +1,70 @@
+{
+  "author": "functionfly",
+  "name": "image-compress",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Compress",
+  "description": "Compress image to reduce file size. Optional quality and max dimension. Requires Pillow.",
+  "category": "media",
+  "tags": [
+    "image",
+    "compress",
+    "quality",
+    "media"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": {
+        "type": "string"
+      },
+      "quality": {
+        "type": "integer",
+        "default": 85
+      },
+      "max_width": {
+        "type": "integer"
+      },
+      "max_height": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "image"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "image_base64": {
+        "type": "string"
+      },
+      "bytes_original": {
+        "type": "integer"
+      },
+      "bytes_compressed": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 3600,
+  "timeout_ms": 15000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "quality": 80
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

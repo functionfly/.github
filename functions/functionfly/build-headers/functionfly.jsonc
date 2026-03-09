@@ -1,0 +1,72 @@
+{
+  "author": "functionfly",
+  "name": "build-headers",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Build HTTP Headers",
+  "description": "Build HTTP headers in various formats with proper formatting.",
+  "category": "http",
+  "tags": ["http", "headers", "build", "format", "content-type"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "headers": { "type": "object", "description": "Headers to build", "default": {} },
+      "format": { "type": "string", "description": "Output format", "enum": ["object", "string", "array", "all"], "default": "object" }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "headers_object": { "type": "object", "description": "Headers as normalized object" },
+          "headers_string": { "type": "string", "description": "Headers as HTTP string" },
+          "headers_array": { "type": "array", "description": "Headers as array of [key, value] pairs" },
+          "content_type_header": { "type": "string", "description": "Properly formatted Content-Type header" },
+          "has_authorization": { "type": "boolean", "description": "Whether Authorization header is present" },
+          "header_count": { "type": "integer", "description": "Number of headers" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "headers": {
+        "content_type": "application/json",
+        "charset": "utf-8",
+        "authorization": "Bearer token123",
+        "user_agent": "MyApp/1.0"
+      },
+      "format": "all"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "headers_object": {
+          "Content-Type": "application/json",
+          "Charset": "utf-8",
+          "Authorization": "Bearer token123",
+          "User-Agent": "MyApp/1.0"
+        },
+        "headers_string": "Content-Type: application/json\nCharset: utf-8\nAuthorization: Bearer token123\nUser-Agent: MyApp/1.0",
+        "headers_array": [
+          ["Content-Type", "application/json"],
+          ["Charset", "utf-8"],
+          ["Authorization", "Bearer token123"],
+          ["User-Agent", "MyApp/1.0"]
+        ],
+        "content_type_header": "application/json; charset=utf-8",
+        "has_authorization": true,
+        "header_count": 4
+      }
+    }
+  }
+}

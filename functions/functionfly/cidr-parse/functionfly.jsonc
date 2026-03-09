@@ -1,0 +1,74 @@
+{
+  "author": "functionfly",
+  "name": "cidr-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "CIDR Parse",
+  "description": "Parse CIDR notation and extract network information.",
+  "category": "http",
+  "tags": ["cidr", "subnet", "network", "ipv4", "ipv6", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cidr": { "type": "string", "description": "CIDR notation (e.g., '192.168.1.0/24')" }
+    },
+    "required": ["cidr"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "cidr": { "type": "string", "description": "Original CIDR notation" },
+          "version": { "type": "integer", "description": "IP version (4 or 6)" },
+          "is_ipv4": { "type": "boolean", "description": "Whether it's IPv4" },
+          "is_ipv6": { "type": "boolean", "description": "Whether it's IPv6" },
+          "network_address": { "type": "string", "description": "Network address" },
+          "prefix_length": { "type": "integer", "description": "Prefix length (/24)" },
+          "subnet_mask": { "type": "string", "description": "Subnet mask" },
+          "broadcast_address": { "type": "string", "description": "Broadcast address (IPv4 only)" },
+          "first_usable_address": { "type": "string", "description": "First usable IP address" },
+          "last_usable_address": { "type": "string", "description": "Last usable IP address" },
+          "total_addresses": { "type": "integer", "description": "Total number of addresses in subnet" },
+          "usable_addresses": { "type": "integer", "description": "Number of usable addresses" },
+          "subnet_class": { "type": "string", "description": "IPv4 subnet class (A, B, C)" },
+          "subnet_mask_binary": { "type": "string", "description": "Subnet mask in binary" },
+          "subnet_mask_hex": { "type": "string", "description": "Subnet mask in hex" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "cidr": "192.168.1.0/24"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "cidr": "192.168.1.0/24",
+        "version": 4,
+        "is_ipv4": true,
+        "is_ipv6": false,
+        "network_address": "192.168.1.0",
+        "prefix_length": 24,
+        "subnet_mask": "255.255.255.0",
+        "broadcast_address": "192.168.1.255",
+        "first_usable_address": "192.168.1.1",
+        "last_usable_address": "192.168.1.254",
+        "total_addresses": 256,
+        "usable_addresses": 254,
+        "subnet_class": "C",
+        "subnet_mask_binary": "0b11111111111111111111111100000000",
+        "subnet_mask_hex": "0xffffff00"
+      }
+    }
+  }
+}

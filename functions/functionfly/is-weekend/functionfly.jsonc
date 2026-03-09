@@ -1,0 +1,55 @@
+{
+  "author": "functionfly",
+  "name": "is-weekend",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Weekend",
+  "description": "Check if date falls on weekend.",
+  "category": "datetime",
+  "tags": [
+    "date",
+    "weekend"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "date": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "date"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "is_weekend": {
+        "type": "boolean"
+      },
+      "weekday": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "date": "2024-01-15"
+    },
+    "output": {
+      "ok": true,
+      "weekend": false
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "html-entities-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "HTML Entities Encode",
+  "description": "Encode HTML entities to prevent XSS.",
+  "category": "security",
+  "tags": [
+    "html",
+    "entities",
+    "encode",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      },
+      "quote": {
+        "type": "boolean",
+        "default": true
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "encoded": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "text": "test"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

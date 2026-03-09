@@ -1,0 +1,74 @@
+{
+  "author": "functionfly",
+  "name": "aes-encrypt",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "AES Encrypt",
+  "description": "Encrypt data with AES (GCM or CBC). Requires cryptography.",
+  "category": "security",
+  "tags": [
+    "aes",
+    "encrypt",
+    "cipher",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "string",
+        "description": "Plaintext or base64"
+      },
+      "key": {
+        "type": "string",
+        "description": "Base64 or hex key (16/24/32 bytes for AES)"
+      },
+      "iv": {
+        "type": "string",
+        "description": "Optional IV (base64/hex); generated if omitted for GCM"
+      },
+      "mode": {
+        "type": "string",
+        "default": "GCM"
+      }
+    },
+    "required": [
+      "data",
+      "key"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "ciphertext": {
+        "type": "string"
+      },
+      "iv": {
+        "type": "string"
+      },
+      "tag": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "data": "hello",
+      "key": "00000000000000000000000000000000"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

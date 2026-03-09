@@ -1,0 +1,83 @@
+{
+  "author": "functionfly",
+  "name": "lru-cache-create",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "LRU Cache Create",
+  "description": "Create and manipulate an LRU (Least Recently Used) cache with automatic eviction.",
+  "category": "arrays",
+  "tags": ["lru", "cache", "data-structure", "eviction", "memory-management"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "capacity": { "type": "integer", "description": "Maximum number of items in cache", "default": 10, "minimum": 1 },
+      "items": { "type": "object", "description": "Initial key-value pairs for the cache", "default": {} },
+      "operations": { "type": "array", "description": "Operations to perform", "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["get", "put", "delete", "contains", "clear", "size", "is_empty", "keys", "values", "items", "set_capacity", "stats"] },
+          "key": { "description": "Key for operations" },
+          "value": { "description": "Value for put operation" },
+          "capacity": { "type": "integer", "description": "New capacity for set_capacity operation" }
+        },
+        "required": ["action"]
+      }}
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "final_cache": { "type": "object", "description": "Final cache contents" },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "capacity": { "type": "integer" },
+              "size": { "type": "integer" },
+              "utilization": { "type": "number" }
+            }
+          },
+          "operations": { "type": "array" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "capacity": 3,
+      "items": {"a": 1, "b": 2},
+      "operations": [
+        {"action": "put", "key": "c", "value": 3},
+        {"action": "get", "key": "a"},
+        {"action": "put", "key": "d", "value": 4},
+        {"action": "stats"}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "final_cache": {"a": 1, "c": 3, "d": 4},
+        "stats": {
+          "capacity": 3,
+          "size": 3,
+          "utilization": 1.0
+        },
+        "operations": [
+          {"action": "put", "key": "c", "value": 3, "success": true},
+          {"action": "get", "key": "a", "result": 1},
+          {"action": "put", "key": "d", "value": 4, "success": true},
+          {"action": "stats", "result": {"capacity": 3, "size": 3, "utilization": 1.0}}
+        ]
+      }
+    }
+  }
+}

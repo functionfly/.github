@@ -1,0 +1,78 @@
+{
+  "author": "functionfly",
+  "name": "ip-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "IP Address Validate",
+  "description": "Validate IPv4 or IPv6 address and provide detailed information.",
+  "category": "http",
+  "tags": ["ip", "validate", "ipv4", "ipv6", "network", "address"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "ip": { "type": "string", "description": "IP address to validate" }
+    },
+    "required": ["ip"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "ip": { "type": "string", "description": "Original IP address" },
+          "is_valid": { "type": "boolean", "description": "Whether IP is valid" },
+          "version": { "type": "integer", "description": "IP version (4 or 6)" },
+          "is_ipv4": { "type": "boolean", "description": "Whether it's IPv4" },
+          "is_ipv6": { "type": "boolean", "description": "Whether it's IPv6" },
+          "is_private": { "type": "boolean", "description": "Whether it's a private address" },
+          "is_loopback": { "type": "boolean", "description": "Whether it's a loopback address" },
+          "is_multicast": { "type": "boolean", "description": "Whether it's a multicast address" },
+          "is_link_local": { "type": "boolean", "description": "Whether it's a link-local address" },
+          "is_reserved": { "type": "boolean", "description": "Whether it's a reserved address" },
+          "integer_value": { "type": "integer", "description": "Integer representation" },
+          "hex_value": { "type": "string", "description": "Hexadecimal representation" },
+          "binary_value": { "type": "string", "description": "Binary representation" },
+          "packed_bytes": { "type": "string", "description": "Packed bytes as hex" },
+          "octets": { "type": "array", "items": { "type": "integer" }, "description": "IPv4 octets" },
+          "class": { "type": "string", "description": "IPv4 class (A, B, C, D, E)" },
+          "compressed": { "type": "string", "description": "IPv6 compressed form" },
+          "exploded": { "type": "string", "description": "IPv6 exploded form" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "ip": "192.168.1.1"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "ip": "192.168.1.1",
+        "is_valid": true,
+        "version": 4,
+        "is_ipv4": true,
+        "is_ipv6": false,
+        "is_private": true,
+        "is_loopback": false,
+        "is_multicast": false,
+        "is_link_local": false,
+        "is_reserved": false,
+        "integer_value": 3232235777,
+        "hex_value": "0xc0a80101",
+        "binary_value": "0b11000000101010000000000100000001",
+        "packed_bytes": "c0a80101",
+        "octets": [192, 168, 1, 1],
+        "class": "C"
+      }
+    }
+  }
+}

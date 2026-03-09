@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FunctionFly Logo Preview</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+    }
+    
+    .section {
+      padding: 60px 40px;
+    }
+    
+    .section-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 30px;
+      color: #0f172a;
+    }
+    
+    .logo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+    
+    .logo-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px;
+      border-radius: 12px;
+      border: 2px solid #e2e8f0;
+    }
+    
+    .logo-item.dark {
+      background: #0f172a;
+      border-color: #1e293b;
+    }
+    
+    .logo-item.gradient {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+      border: none;
+    }
+    
+    .logo-item img {
+      max-width: 100%;
+      height: auto;
+    }
+    
+    .logo-item label {
+      margin-top: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #64748b;
+    }
+    
+    .logo-item.dark label {
+      color: #94a3b8;
+    }
+    
+    .logo-item.gradient label {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .size-row {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    
+    .size-label {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      min-width: 60px;
+    }
+    
+    .icon-grid {
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .icon-item {
+      text-align: center;
+    }
+    
+    .icon-item img {
+      display: block;
+      margin: 0 auto 10px;
+    }
+    
+    .icon-item span {
+      font-size: 12px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Light Background Section -->
+  <section class="section" style="background: #ffffff;">
+    <h2 class="section-title">Full Color Logo (Light Background)</h2>
+    <div class="logo-grid">
+      <div class="logo-item">
+        <img src="logo/functionfly-logo-horizontal-fullcolor.svg" alt="Horizontal Full Color" height="48">
+        <label>Horizontal Full Color</label>
+      </div>
+      <div class="logo-item">
+        <img src="logo/functionfly-logo-symbol-fullcolor.svg" alt="Symbol Full Color" width="48" height="48">
+        <label>Symbol Only</label>
+      </div>
+    </div>
+    
+    <h2 class="section-title">Size Variations</h2>
+    <div class="size-row">
+      <span class="size-label">16px</span>
+      <img src="logo/functionfly-logo-symbol-fullcolor.svg" alt="16px" width="16" height="16">
+    </div>
+    <div class="size-row">
+      <span class="size-label">24px</span>
+      <img src="logo/functionfly-logo-symbol-fullcolor.svg" alt="24px" width="24" height="24">
+    </div>
+    <div class="size-row">
+      <span class="size-label">32px</span>
+      <img src="logo/functionfly-logo-symbol-fullcolor.svg" alt="32px" width="32" height="32">
+    </div>
+    <div class="size-row">
+      <span class="size-label">48px</span>
+      <img src="logo/functionfly-logo-symbol-fullcolor.svg" alt="48px" width="48" height="48">
+    </div>
+    <div class="size-row">
+      <span class="size-label">64px</span>
+      <img src="logo/functionfly-logo-symbol-fullcolor.svg" alt="64px" width="64" height="64">
+    </div>
+  </section>
+
+  <!-- Dark Background Section -->
+  <section class="section" style="background: #0f172a;">
+    <h2 class="section-title" style="color: #ffffff;">Dark Mode Logo</h2>
+    <div class="logo-grid">
+      <div class="logo-item dark">
+        <img src="logo/functionfly-logo-horizontal-darkmode.svg" alt="Horizontal Dark Mode" height="48">
+        <label>Horizontal Dark Mode</label>
+      </div>
+      <div class="logo-item dark">
+        <img src="logo/functionfly-logo-symbol-darkmode.svg" alt="Symbol Dark Mode" width="48" height="48">
+        <label>Symbol Dark Mode</label>
+      </div>
+    </div>
+    
+    <h2 class="section-title" style="color: #ffffff;">Monochrome White</h2>
+    <div class="logo-grid">
+      <div class="logo-item dark">
+        <img src="logo/functionfly-logo-symbol-white.svg" alt="Symbol White" width="48" height="48">
+        <label>Symbol White</label>
+      </div>
+      <div class="logo-item dark">
+        <img src="logo/functionfly-logo-symbol-white.svg" alt="Symbol White Large" width="96" height="96">
+        <label>Symbol White (96px)</label>
+      </div>
+    </div>
+  </section>
+
+  <!-- Brand Gradient Background Section -->
+  <section class="section" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);">
+    <h2 class="section-title" style="color: #ffffff;">On Brand Gradient</h2>
+    <div class="logo-grid">
+      <div class="logo-item gradient">
+        <img src="logo/functionfly-logo-symbol-white.svg" alt="Symbol White on Gradient" width="64" height="64">
+        <label>White Symbol on Gradient</label>
+      </div>
+    </div>
+  </section>
+
+  <!-- Monochrome Section -->
+  <section class="section" style="background: #f8fafc;">
+    <h2 class="section-title">Monochrome Variations</h2>
+    <div class="logo-grid">
+      <div class="logo-item">
+        <img src="logo/functionfly-logo-symbol-indigo.svg" alt="Symbol Indigo" width="48" height="48">
+        <label>Single Color (Indigo)</label>
+      </div>
+      <div class="logo-item">
+        <img src="logo/functionfly-logo-symbol-dark.svg" alt="Symbol Dark" width="48" height="48">
+        <label>Dark Monochrome (Slate 900)</label>
+      </div>
+      <div class="logo-item">
+        <img src="logo/functionfly-logo-wordmark-indigo.svg" alt="Wordmark Indigo" height="32">
+        <label>Wordmark Only (Indigo)</label>
+      </div>
+    </div>
+  </section>
+
+  <!-- App Icons Section -->
+  <section class="section" style="background: #ffffff;">
+    <h2 class="section-title">App Icons</h2>
+    <div class="icon-grid">
+      <div class="icon-item">
+        <img src="icons/app-icon-1024.svg" alt="App Icon 1024" width="120" height="120">
+        <span>1024×1024 (iOS/macOS)</span>
+      </div>
+      <div class="icon-item">
+        <img src="icons/social-avatar.svg" alt="Social Avatar" width="120" height="120">
+        <span>400×400 (Social Media)</span>
+      </div>
+      <div class="icon-item">
+        <img src="favicons/apple-touch-icon.svg" alt="Apple Touch" width="120" height="120">
+        <span>180×180 (Apple Touch)</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Favicons Section -->
+  <section class="section" style="background: #f8fafc;">
+    <h2 class="section-title">Favicons</h2>
+    <div class="icon-grid">
+      <div class="icon-item">
+        <img src="favicons/favicon-16x16.svg" alt="Favicon 16x16" width="32" height="32" style="image-rendering: pixelated;">
+        <span>16×16</span>
+      </div>
+      <div class="icon-item">
+        <img src="favicons/favicon-32x32.svg" alt="Favicon 32x32" width="32" height="32">
+        <span>32×32</span>
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>

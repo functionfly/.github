@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "password-hash",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Password Hash",
+  "description": "Hash password using bcrypt. Requires bcrypt.",
+  "category": "security",
+  "tags": [
+    "password",
+    "bcrypt",
+    "hash",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": {
+        "type": "string"
+      },
+      "rounds": {
+        "type": "integer",
+        "description": "Cost factor (default 12)",
+        "default": 12
+      }
+    },
+    "required": [
+      "password"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "hash": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "password": "test",
+      "rounds": 4
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

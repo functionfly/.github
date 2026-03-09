@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "date-add",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Date Add",
+  "description": "Add time units to date.",
+  "category": "datetime",
+  "tags": [
+    "date",
+    "add",
+    "delta"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "date": {
+        "type": "string"
+      },
+      "amount": {
+        "type": "integer"
+      },
+      "unit": {
+        "type": "string",
+        "default": "days",
+        "description": "days|weeks|months|years|hours|minutes|seconds"
+      }
+    },
+    "required": [
+      "date",
+      "amount"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {
+        "type": "string"
+      },
+      "iso": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "date": "2024-01-15",
+      "days": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

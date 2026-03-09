@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "array-bsearch-closest",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Binary Search Closest",
+  "description": "Find the element closest to a target value using binary search.",
+  "category": "arrays",
+  "tags": ["array", "binary-search", "closest", "search", "numeric"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Sorted array to search in", "items": { "type": "number" }, "minItems": 1 },
+      "target": { "type": "number", "description": "Target value to find closest element to" }
+    },
+    "required": ["items", "target"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "index": { "type": "integer", "description": "Index of closest element" },
+          "value": { "description": "Value of closest element" },
+          "target": { "description": "Target value searched for" },
+          "difference": { "type": "number", "description": "Absolute difference from target" }
+        }
+      },
+      "exact_match": { "type": "boolean", "description": "Whether an exact match was found" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [1, 3, 5, 7, 9], "target": 6 },
+    "output": {
+      "ok": true,
+      "result": {
+        "index": 3,
+        "value": 7,
+        "target": 6,
+        "difference": 1
+      },
+      "exact_match": false
+    }
+  }
+}

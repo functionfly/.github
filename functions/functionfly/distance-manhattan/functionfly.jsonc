@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "distance-manhattan",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Manhattan Distance",
+  "description": "Manhattan distance between two points.",
+  "category": "math",
+  "tags": [
+    "manhattan",
+    "distance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "x1": {
+        "type": "number"
+      },
+      "y1": {
+        "type": "number"
+      },
+      "x2": {
+        "type": "number"
+      },
+      "y2": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "x1",
+      "y1",
+      "x2",
+      "y2"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "distance": {
+        "type": "number"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "x1": 1,
+      "y1": 1,
+      "x2": 1,
+      "y2": 1
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

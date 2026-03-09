@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "path-normalize",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Path Normalize",
+  "description": "Normalize file paths or URL paths by resolving . and .. references.",
+  "category": "http",
+  "tags": ["path", "normalize", "resolve", "url", "file"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "path": { "type": "string", "description": "Path to normalize" },
+      "base_url": { "type": "string", "description": "Base URL for relative path resolution" }
+    },
+    "required": ["path"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "original_path": { "type": "string", "description": "Original path" },
+          "normalized_path": { "type": "string", "description": "Normalized path" },
+          "was_modified": { "type": "boolean", "description": "Whether path was changed" },
+          "is_absolute": { "type": "boolean", "description": "Whether path is absolute" },
+          "segments": { "type": "array", "items": { "type": "string" }, "description": "Path segments" },
+          "depth": { "type": "integer", "description": "Path depth (number of segments)" },
+          "has_trailing_slash": { "type": "boolean", "description": "Whether path ends with slash" },
+          "is_root": { "type": "boolean", "description": "Whether path is root (/)" },
+          "base_url": { "type": "string", "description": "Base URL used" },
+          "full_url": { "type": "string", "description": "Full URL with normalized path" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "path": "/api/../users/./profile/",
+      "base_url": "https://api.example.com/v1/"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "original_path": "/api/../users/./profile/",
+        "normalized_path": "/users/profile",
+        "was_modified": true,
+        "is_absolute": true,
+        "segments": ["users", "profile"],
+        "depth": 2,
+        "has_trailing_slash": false,
+        "is_root": false,
+        "base_url": "https://api.example.com/v1/",
+        "full_url": "https://api.example.com/users/profile"
+      }
+    }
+  }
+}

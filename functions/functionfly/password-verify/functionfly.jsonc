@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "password-verify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Password Verify",
+  "description": "Verify password against bcrypt hash. Requires bcrypt.",
+  "category": "security",
+  "tags": [
+    "password",
+    "bcrypt",
+    "verify",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": {
+        "type": "string"
+      },
+      "hash": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "password",
+      "hash"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "valid": {
+        "type": "boolean"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "password": "test",
+      "hash": "$2b$04$z6gqau/eiIWVJlgLf1z7eus9FgTeDhtYYKpA24xF3dsKml5S.hluu"
+    },
+    "output": {
+      "ok": true,
+      "valid": true
+    }
+  }
+}

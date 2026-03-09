@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "array-fill",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Fill",
+  "description": "Create an array filled with a specified value.",
+  "category": "arrays",
+  "tags": ["array", "fill", "initialize", "create"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "size": { "type": "integer", "description": "Size of the array to create", "default": 0, "minimum": 0 },
+      "value": { "description": "Value to fill the array with", "default": 0 },
+      "start": { "type": "integer", "description": "Start index for filling (optional)", "default": 0, "minimum": 0 },
+      "end": { "type": "integer", "description": "End index for filling (optional)", "minimum": 0 }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array", "description": "Filled array" },
+      "size": { "type": "integer", "description": "Size of the created array" },
+      "value": { "description": "Value used for filling" },
+      "start": { "type": "integer", "description": "Start index used" },
+      "end": { "description": "End index used" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "size": 5, "value": "hello", "start": 1, "end": 4 },
+    "output": {
+      "ok": true,
+      "result": [0, "hello", "hello", "hello", 0],
+      "size": 5,
+      "value": "hello",
+      "start": 1,
+      "end": 4
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "author": "functionfly",
+  "name": "graph-adjacency",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Graph Adjacency List",
+  "description": "Create and manipulate a graph using adjacency list representation.",
+  "category": "arrays",
+  "tags": ["graph", "adjacency-list", "data-structure", "vertices", "edges"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "directed": { "type": "boolean", "description": "Whether the graph is directed", "default": false },
+      "edges": { "type": "array", "description": "Initial edges for the graph", "items": {
+        "type": "object",
+        "properties": {
+          "from": { "description": "Source vertex" },
+          "to": { "description": "Target vertex" },
+          "vertex1": { "description": "Alternative source vertex field" },
+          "vertex2": { "description": "Alternative target vertex field" },
+          "weight": { "description": "Edge weight (optional)" }
+        }
+      }, "default": [] },
+      "operations": { "type": "array", "description": "Operations to perform", "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["add_vertex", "add_edge", "get_neighbors", "get_edges", "has_vertex", "has_edge", "vertices", "edge_count"] }
+        },
+        "required": ["action"]
+      }}
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "adjacency_list": { "type": "object", "description": "Final graph as adjacency list" },
+          "directed": { "type": "boolean" },
+          "operations": { "type": "array" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "edges": [
+        {"from": "A", "to": "B"},
+        {"from": "B", "to": "C"}
+      ],
+      "operations": [
+        {"action": "add_vertex", "vertex": "D"},
+        {"action": "add_edge", "from": "C", "to": "D"},
+        {"action": "get_neighbors", "vertex": "B"}
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "adjacency_list": {
+          "A": [{"to": "B"}],
+          "B": [{"to": "A"}, {"to": "C"}],
+          "C": [{"to": "B"}, {"to": "D"}],
+          "D": [{"to": "C"}]
+        },
+        "directed": false,
+        "operations": [
+          {"action": "add_vertex", "vertex": "D", "success": true},
+          {"action": "add_edge", "from": "C", "to": "D", "weight": null, "success": true},
+          {"action": "get_neighbors", "vertex": "B", "result": ["A", "C"]}
+        ]
+      }
+    }
+  }
+}

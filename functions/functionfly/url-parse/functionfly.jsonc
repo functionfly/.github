@@ -1,0 +1,93 @@
+{
+  "author": "functionfly",
+  "name": "url-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "URL Parse",
+  "description": "Parse a URL into its constituent components.",
+  "category": "http",
+  "tags": ["url", "parse", "components", "query", "domain"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string", "description": "URL to parse" },
+      "parse_query": { "type": "boolean", "description": "Whether to parse query parameters", "default": true },
+      "query_format": { "type": "string", "description": "Query params format", "enum": ["object", "array"], "default": "object" }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "scheme": { "type": "string", "description": "URL scheme (http, https, etc.)" },
+          "netloc": { "type": "string", "description": "Network location (host:port)" },
+          "hostname": { "type": "string", "description": "Hostname/domain" },
+          "port": { "type": "integer", "description": "Port number" },
+          "path": { "type": "string", "description": "URL path" },
+          "params": { "type": "string", "description": "URL parameters" },
+          "query": { "type": "string", "description": "Query string" },
+          "fragment": { "type": "string", "description": "URL fragment" },
+          "username": { "type": "string", "description": "Username for authentication" },
+          "password": { "type": "string", "description": "Password for authentication" },
+          "query_params": { "description": "Parsed query parameters" },
+          "path_segments": { "type": "array", "items": { "type": "string" }, "description": "Path split into segments" },
+          "path_depth": { "type": "integer", "description": "Number of path segments" },
+          "is_https": { "type": "boolean", "description": "Whether URL uses HTTPS" },
+          "is_http": { "type": "boolean", "description": "Whether URL uses HTTP" },
+          "has_port": { "type": "boolean", "description": "Whether port is specified" },
+          "has_query": { "type": "boolean", "description": "Whether query string exists" },
+          "has_fragment": { "type": "boolean", "description": "Whether fragment exists" },
+          "has_credentials": { "type": "boolean", "description": "Whether credentials are present" },
+          "is_absolute": { "type": "boolean", "description": "Whether URL is absolute" },
+          "domain": { "type": "string", "description": "Domain name" }
+        }
+      },
+      "original_url": { "type": "string", "description": "Original URL that was parsed" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "url": "https://user:pass@example.com:8080/path/to/resource?param1=value1&param2=value2#section"
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "scheme": "https",
+        "netloc": "user:pass@example.com:8080",
+        "hostname": "example.com",
+        "port": 8080,
+        "path": "/path/to/resource",
+        "params": "",
+        "query": "param1=value1&param2=value2",
+        "fragment": "section",
+        "username": "user",
+        "password": "pass",
+        "query_params": {
+          "param1": "value1",
+          "param2": "value2"
+        },
+        "path_segments": ["path", "to", "resource"],
+        "path_depth": 3,
+        "is_https": true,
+        "is_http": false,
+        "has_port": true,
+        "has_query": true,
+        "has_fragment": true,
+        "has_credentials": true,
+        "is_absolute": true,
+        "domain": "example.com"
+      },
+      "original_url": "https://user:pass@example.com:8080/path/to/resource?param1=value1&param2=value2#section"
+    }
+  }
+}

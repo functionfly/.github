@@ -29,6 +29,14 @@ func NewHandler(repo *versioning.Repository) *Handler {
 }
 
 // HandleListVersions handles GET /api/versions - list available API versions
+// @Summary List API versions
+// @Description Returns a list of all available API versions with their status and deprecation information
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]string
+// @Router /api/versions [get]
 func (h *Handler) HandleListVersions(w http.ResponseWriter, r *http.Request) {
 	params := versioning.ListAPIVersionsParams{
 		Status: r.URL.Query().Get("status"),
@@ -88,6 +96,16 @@ func (h *Handler) HandleListVersions(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleGetVersion handles GET /api/versions/{version} - get specific API version details
+// @Summary Get API version details
+// @Description Returns detailed information about a specific API version
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param version path string true "API version (e.g., v1, v2)"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/versions/{version} [get]
 func (h *Handler) HandleGetVersion(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	versionStr := vars["version"]
@@ -136,6 +154,17 @@ func (h *Handler) HandleGetVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleListFunctionVersions handles GET /functions/{functionId}/versions - list function versions
+// @Summary List function versions
+// @Description Returns a list of all versions for a specific function
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param status query string false "Filter by status (active, deprecated, archived)"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/versions [get]
 func (h *Handler) HandleListFunctionVersions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]
@@ -195,6 +224,18 @@ func (h *Handler) HandleListFunctionVersions(w http.ResponseWriter, r *http.Requ
 }
 
 // HandleGetFunctionVersion handles GET /functions/{functionId}/versions/{version} - get specific function version
+// @Summary Get function version
+// @Description Returns detailed information about a specific function version
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param version path string true "Function version"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/versions/{version} [get]
 func (h *Handler) HandleGetFunctionVersion(w http.ResponseWriter, r *http.Request) {
 	// This would typically query the registry_function_versions table
 	// For now, return a placeholder response
@@ -205,6 +246,18 @@ func (h *Handler) HandleGetFunctionVersion(w http.ResponseWriter, r *http.Reques
 }
 
 // HandleCreateChangelog handles POST /functions/{functionId}/versions/{version}/changelog - create changelog entry
+// @Summary Create changelog entry
+// @Description Creates a new changelog entry for a function version
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param version path string true "Function version"
+// @Param body body struct{} true "Changelog entry details"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/versions/{version}/changelog [post]
 func (h *Handler) HandleCreateChangelog(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]
@@ -261,6 +314,16 @@ func (h *Handler) HandleCreateChangelog(w http.ResponseWriter, r *http.Request) 
 }
 
 // HandleGetChangelogs handles GET /functions/{functionId}/changelogs - get function changelogs
+// @Summary Get function changelogs
+// @Description Returns all changelog entries for a function
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/changelogs [get]
 func (h *Handler) HandleGetChangelogs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]
@@ -285,6 +348,18 @@ func (h *Handler) HandleGetChangelogs(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleDeprecateVersion handles POST /api/versions/{version}/deprecate - deprecate an API version
+// @Summary Deprecate API version
+// @Description Marks an API version as deprecated with optional sunset information
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param version path string true "API version (e.g., v1, v2)"
+// @Param body body struct{ SunsetMessage string "json:\"sunsetMessage\"" } true "Deprecation details"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/versions/{version}/deprecate [post]
 func (h *Handler) HandleDeprecateVersion(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	versionStr := vars["version"]
@@ -342,6 +417,19 @@ func isPrerelease(version string) bool {
 }
 
 // HandlePublishVersion handles POST /functions/{functionId}/versions/{version}/publish - publish a function version
+// @Summary Publish function version
+// @Description Publishes a function version, making it available for use
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param version path string true "Function version"
+// @Param body body versioning.PublishVersionRequest false "Publish options"
+// @Success 200 {object} versioning.PublishVersionResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/versions/{version}/publish [post]
 func (h *Handler) HandlePublishVersion(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]
@@ -415,6 +503,19 @@ func (h *Handler) HandlePublishVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleArchiveVersion handles POST /functions/{functionId}/versions/{version}/archive - archive a function version
+// @Summary Archive function version
+// @Description Archives a function version, removing it from active use
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param version path string true "Function version"
+// @Param body body versioning.ArchiveVersionRequest false "Archive details"
+// @Success 200 {object} versioning.ArchiveVersionResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/versions/{version}/archive [post]
 func (h *Handler) HandleArchiveVersion(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]
@@ -464,6 +565,19 @@ func (h *Handler) HandleArchiveVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleDeprecateFunctionVersion handles POST /functions/{functionId}/versions/{version}/deprecate - deprecate a function version
+// @Summary Deprecate function version
+// @Description Marks a function version as deprecated with migration information
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param version path string true "Function version"
+// @Param body body versioning.DeprecateVersionRequest true "Deprecation details"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/versions/{version}/deprecate [post]
 func (h *Handler) HandleDeprecateFunctionVersion(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]
@@ -521,7 +635,20 @@ func (h *Handler) HandleDeprecateFunctionVersion(w http.ResponseWriter, r *http.
 	})
 }
 
-// HandleSetAlias handles POST /functions/{functionId}/versions/{version}/alias - set version alias
+// HandleSetAlias handles POST /functions/{functionId}/versions/{version}/alias/{alias} - set version alias
+// @Summary Set version alias
+// @Description Sets an alias (latest, stable) for a function version
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param version path string true "Function version"
+// @Param alias path string true "Alias type (latest or stable)"
+// @Success 200 {object} versioning.SetAliasResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/versions/{version}/alias/{alias} [post]
 func (h *Handler) HandleSetAlias(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]
@@ -578,6 +705,19 @@ func (h *Handler) HandleSetAlias(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleRollbackVersion handles POST /functions/{functionId}/versions/{version}/rollback - rollback to specific version
+// @Summary Rollback function version
+// @Description Rolls back a function to a specific version
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param version path string true "Target version for rollback"
+// @Param body body versioning.RollbackVersionRequest false "Rollback options"
+// @Success 200 {object} versioning.RollbackVersionResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/versions/{version}/rollback [post]
 func (h *Handler) HandleRollbackVersion(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]
@@ -696,6 +836,18 @@ func (h *Handler) HandleRollbackVersion(w http.ResponseWriter, r *http.Request) 
 }
 
 // HandleRollbackLatest handles POST /functions/{functionId}/rollback - rollback to previous version
+// @Summary Rollback to previous version
+// @Description Rolls back a function to its previous version
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param body body versioning.RollbackVersionRequest false "Rollback options"
+// @Success 200 {object} versioning.RollbackVersionResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/rollback [post]
 func (h *Handler) HandleRollbackLatest(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]
@@ -793,6 +945,17 @@ func (h *Handler) HandleRollbackLatest(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleGetRollbackHistory handles GET /functions/{functionId}/rollbacks - get rollback history
+// @Summary Get rollback history
+// @Description Returns the rollback history for a function
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param limit query int false "Maximum number of records to return"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/rollbacks [get]
 func (h *Handler) HandleGetRollbackHistory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]
@@ -824,6 +987,16 @@ func (h *Handler) HandleGetRollbackHistory(w http.ResponseWriter, r *http.Reques
 }
 
 // HandleCreateAPIVersion handles POST /api/versions - create a new API version
+// @Summary Create API version
+// @Description Creates a new API version
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param body body versioning.CreateAPIVersionRequest true "API version details"
+// @Success 201 {object} versioning.APIVersion
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/versions [post]
 func (h *Handler) HandleCreateAPIVersion(w http.ResponseWriter, r *http.Request) {
 	var req versioning.CreateAPIVersionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -867,6 +1040,18 @@ func (h *Handler) HandleCreateAPIVersion(w http.ResponseWriter, r *http.Request)
 }
 
 // HandleUpdateAPIVersion handles PATCH /api/versions/{version} - update an API version
+// @Summary Update API version
+// @Description Updates an existing API version
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param version path string true "API version (e.g., v1, v2)"
+// @Param body body versioning.UpdateAPIVersionRequest true "Update details"
+// @Success 200 {object} versioning.APIVersion
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/versions/{version} [patch]
 func (h *Handler) HandleUpdateAPIVersion(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	versionStr := vars["version"]
@@ -922,6 +1107,16 @@ func (h *Handler) HandleUpdateAPIVersion(w http.ResponseWriter, r *http.Request)
 }
 
 // HandleSetDefaultAPIVersion handles POST /api/versions/{version}/set-default - set default API version
+// @Summary Set default API version
+// @Description Sets a specific API version as the default
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param version path string true "API version (e.g., v1, v2)"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/versions/{version}/set-default [post]
 func (h *Handler) HandleSetDefaultAPIVersion(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	versionStr := vars["version"]
@@ -956,6 +1151,19 @@ func (h *Handler) HandleSetDefaultAPIVersion(w http.ResponseWriter, r *http.Requ
 // ==================== Phase 3: Deployment Endpoints ====================
 
 // HandleListDeployments handles GET /functions/{functionId}/versions/{version}/deployments - list deployments
+// @Summary List deployments
+// @Description Returns a list of deployments for a specific function version
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param version path string true "Function version"
+// @Param status query string false "Filter by deployment status"
+// @Param limit query int false "Maximum number of records to return"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/versions/{version}/deployments [get]
 func (h *Handler) HandleListDeployments(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]
@@ -1021,6 +1229,19 @@ func (h *Handler) HandleListDeployments(w http.ResponseWriter, r *http.Request) 
 }
 
 // HandleGetDeployment handles GET /functions/{functionId}/versions/{version}/deployments/{deploymentId} - get deployment details
+// @Summary Get deployment details
+// @Description Returns detailed information about a specific deployment
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param version path string true "Function version"
+// @Param deploymentId path string true "Deployment ID"
+// @Success 200 {object} versioning.DeploymentVersionResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/versions/{version}/deployments/{deploymentId} [get]
 func (h *Handler) HandleGetDeployment(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	deploymentIDStr := vars["deploymentId"]
@@ -1071,6 +1292,16 @@ func (h *Handler) HandleGetDeployment(w http.ResponseWriter, r *http.Request) {
 // ==================== Phase 3: Service Contract Endpoints ====================
 
 // HandleListServiceContracts handles GET /api/internal/contracts - list all service contracts
+// @Summary List service contracts
+// @Description Returns a list of all service contracts, optionally filtered by service name
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param service query string false "Filter by service name"
+// @Param status query string false "Filter by contract status"
+// @Success 200 {object} versioning.ContractListResponse
+// @Failure 500 {object} map[string]string
+// @Router /api/internal/contracts [get]
 func (h *Handler) HandleListServiceContracts(w http.ResponseWriter, r *http.Request) {
 	serviceName := r.URL.Query().Get("service")
 
@@ -1129,6 +1360,17 @@ func (h *Handler) HandleListServiceContracts(w http.ResponseWriter, r *http.Requ
 }
 
 // HandleGetServiceContracts handles GET /api/internal/contracts/{service} - get contract versions for a service
+// @Summary Get service contracts
+// @Description Returns all contract versions for a specific service
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param service path string true "Service name"
+// @Param status query string false "Filter by contract status"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/internal/contracts/{service} [get]
 func (h *Handler) HandleGetServiceContracts(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	serviceName := vars["service"]
@@ -1184,6 +1426,16 @@ func (h *Handler) HandleGetServiceContracts(w http.ResponseWriter, r *http.Reque
 }
 
 // HandleNegotiateContractVersion handles POST /api/internal/contracts/negotiate - negotiate contract version
+// @Summary Negotiate contract version
+// @Description Negotiates a compatible contract version between consumer and provider services
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param body body versioning.ContractVersionNegotiationRequest true "Negotiation request"
+// @Success 200 {object} versioning.ContractVersionNegotiationResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/internal/contracts/negotiate [post]
 func (h *Handler) HandleNegotiateContractVersion(w http.ResponseWriter, r *http.Request) {
 	var req versioning.ContractVersionNegotiationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1231,6 +1483,18 @@ func (h *Handler) HandleNegotiateContractVersion(w http.ResponseWriter, r *http.
 // ==================== Phase 3: Version Lineage Endpoints ====================
 
 // HandleGetVersionLineage handles GET /functions/{functionId}/versions/{version}/lineage - version history
+// @Summary Get version lineage
+// @Description Returns the version history/lineage for a function
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param version path string true "Function version"
+// @Param limit query int false "Maximum number of lineage entries to return"
+// @Success 200 {object} versioning.VersionLineageResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/versions/{version}/lineage [get]
 func (h *Handler) HandleGetVersionLineage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]
@@ -1264,6 +1528,18 @@ func (h *Handler) HandleGetVersionLineage(w http.ResponseWriter, r *http.Request
 }
 
 // HandleCompareVersions handles GET /functions/{functionId}/versions/compare - compare two versions
+// @Summary Compare versions
+// @Description Compares two versions of a function and returns the differences
+// @Tags Versioning
+// @Accept json
+// @Produce json
+// @Param functionId path string true "Function ID"
+// @Param v1 query string true "First version to compare"
+// @Param v2 query string true "Second version to compare"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /functions/{functionId}/versions/compare [get]
 func (h *Handler) HandleCompareVersions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionIDStr := vars["functionId"]

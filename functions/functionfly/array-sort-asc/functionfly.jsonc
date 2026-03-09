@@ -1,0 +1,34 @@
+{
+  "author": "functionfly",
+  "name": "array-sort-asc",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Sort Ascending",
+  "description": "Sort array in ascending order.",
+  "category": "arrays",
+  "tags": ["array", "sort", "ascending", "order"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Array to sort" }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "items": [3, 1, 4, 1, 5] },
+    "output": { "ok": true, "result": [1, 1, 3, 4, 5] }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "author": "functionfly",
+  "name": "rsa-encrypt",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "RSA Encrypt",
+  "description": "Encrypt data with RSA public key. Requires cryptography.",
+  "category": "security",
+  "tags": [
+    "rsa",
+    "encrypt",
+    "public-key",
+    "security"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "string"
+      },
+      "public_key": {
+        "type": "string",
+        "description": "PEM public key"
+      },
+      "padding": {
+        "type": "string",
+        "default": "OAEP"
+      }
+    },
+    "required": [
+      "data",
+      "public_key"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "ciphertext": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "data": "hi",
+      "public_key": "placeholder"
+    },
+    "output": {
+      "ok": false
+    }
+  }
+}

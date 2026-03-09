@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "blurhash-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "BlurHash Decode",
+  "description": "Decode BlurHash to small image. Requires blurhash and Pillow.",
+  "category": "media",
+  "tags": [
+    "blurhash",
+    "decode",
+    "media"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "blurhash": {
+        "type": "string"
+      },
+      "width": {
+        "type": "integer",
+        "default": 32
+      },
+      "height": {
+        "type": "integer",
+        "default": 32
+      },
+      "punch": {
+        "type": "number",
+        "default": 1
+      }
+    },
+    "required": [
+      "blurhash"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "image_base64": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 5000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "blurhash": "LEHV6nWB2yk8pyo0adR*.7kCMdnj"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

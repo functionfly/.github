@@ -1,0 +1,56 @@
+{
+  "author": "functionfly",
+  "name": "age-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Age Calculate",
+  "description": "Calculate age from birthdate.",
+  "category": "datetime",
+  "tags": [
+    "age",
+    "birthdate"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "birthdate": {
+        "type": "string"
+      },
+      "as_of": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "birthdate"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "age": {
+        "type": "integer"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "birthdate": "2000-01-01",
+      "as_of": "2024-01-15"
+    },
+    "output": {
+      "ok": true,
+      "age": 24
+    }
+  }
+}
