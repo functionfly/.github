@@ -24,7 +24,7 @@ export {
   type Subscription,
   type Invoice,
   type Coupon
-} from "./admin";
+} from "./admin.js";
 export { notificationsApi } from "./notifications";
 export type {
   FetchNotificationsParams,

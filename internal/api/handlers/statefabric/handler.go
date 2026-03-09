@@ -72,6 +72,19 @@ func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
+func writeErr(w http.ResponseWriter, status int, message string) {
+	writeJSON(w, status, map[string]string{"error": message})
+}
+
+func (h *Handler) fabricToAPI(f repo.Fabric, stores []repo.FabricStore, pipelines []repo.Pipeline) map[string]interface{} {
+	data, _ := json.Marshal(f)
+	var out map[string]interface{}
+	_ = json.Unmarshal(data, &out)
+	out["stores"] = stores
+	out["pipelines"] = pipelines
+	return out
+}
+
 func getClaims(r *http.Request) (*middleware.AuthMiddleware, *uuid.UUID, *uuid.UUID, bool) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
@@ -558,56 +571,3 @@ func (h *Handler) HandleGetReplay(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, item)
 }
 
-func (h *Handler) HandleGetStats(w http.ResponseWriter, r *http.Request) {
-	stats, err := h.repo.Stats(r.Context())
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, http.StatusOK, stats)
-}
-
-func (h *Handler) HandleListAll(w http.ResponseWriter, r *http.Request) {
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
-	var tenantID *uuid.UUID
-	if raw := r.URL.Query().Get("tenantId"); raw != "" {
-		if parsed, err := uuid.Parse(raw); err == nil {
-			tenantID = &parsed
-		}
-	}
-	items, total, err := h.repo.ListAllFabrics(r.Context(), limit, offset, tenantID, r.URL.Query().Get("status"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]interface{}{"fabrics": items, "total": total, "limit": limit, "offset": offset})
-}
-
-func (h *Handler) HandleSuspendFabric(w http.ResponseWriter, r *http.Request) {
-	fabricID, parsed := parseID(w, mux.Vars(r)["id"], "state fabric id")
-	if !parsed {
-		return
-	}
-	var payload struct {
-		Reason string `json:"reason"`
-	}
-	_ = json.NewDecoder(r.Body).Decode(&payload)
-	if err := h.repo.SetFabricSuspended(r.Context(), fabricID, true, payload.Reason); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (h *Handler) HandleResumeFabric(w http.ResponseWriter, r *http.Request) {
-	fabricID, parsed := parseID(w, mux.Vars(r)["id"], "state fabric id")
-	if !parsed {
-		return
-	}
-	if err := h.repo.SetFabricSuspended(r.Context(), fabricID, false, ""); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}

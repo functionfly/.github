@@ -864,6 +864,56 @@ func (r *Repository) GetReplay(ctx context.Context, tenantID, fabricID uuid.UUID
 	return nil, fmt.Errorf("replay not found")
 }
 
+// ListFabricsAdmin lists all fabrics for admin (optional tenant filter).
+func (r *Repository) ListFabricsAdmin(ctx context.Context, tenantID *uuid.UUID, status string, limit, offset int) ([]Fabric, int64, error) {
+	return r.ListAllFabrics(ctx, limit, offset, tenantID, status)
+}
+
+// ListStoresByFabric returns the store(s) for a fabric by ID (admin, no tenant check).
+func (r *Repository) ListStoresByFabric(ctx context.Context, fabricID uuid.UUID) ([]FabricStore, error) {
+	state, err := r.stateRepo.GetStateByID(ctx, fabricID)
+	if err != nil {
+		return nil, err
+	}
+	return []FabricStore{buildStore(state)}, nil
+}
+
+// ListPipelinesByFabric returns pipelines for a fabric by ID.
+func (r *Repository) ListPipelinesByFabric(ctx context.Context, fabricID uuid.UUID) ([]Pipeline, error) {
+	return r.ListPipelines(ctx, fabricID)
+}
+
+// GetFabricByID returns a fabric by ID without tenant check (admin).
+func (r *Repository) GetFabricByID(ctx context.Context, fabricID uuid.UUID) (*Fabric, error) {
+	state, err := r.stateRepo.GetStateByID(ctx, fabricID)
+	if err != nil {
+		return nil, err
+	}
+	metrics, _ := r.GetMetrics(ctx, state.ID, "")
+	pipelines, _ := r.ListPipelines(ctx, state.ID)
+	fabric := buildFabric(state, metrics, pipelines)
+	return &fabric, nil
+}
+
+// GetAdminStats returns admin dashboard counts.
+func (r *Repository) GetAdminStats(ctx context.Context) (totalFabrics, activeFabrics, totalStores, totalPipelines, totalEvents, storageUsed int64, err error) {
+	if err = r.db.WithContext(ctx).Model(&statestore.State{}).Count(&totalFabrics).Error; err != nil {
+		return 0, 0, 0, 0, 0, 0, err
+	}
+	activeFabrics = totalFabrics
+	totalStores = totalFabrics
+	if err = r.db.WithContext(ctx).Model(&statestore.StateTrigger{}).Count(&totalPipelines).Error; err != nil {
+		return 0, 0, 0, 0, 0, 0, err
+	}
+	if err = r.db.WithContext(ctx).Model(&statestore.StateEvent{}).Count(&totalEvents).Error; err != nil {
+		return 0, 0, 0, 0, 0, 0, err
+	}
+	if err = r.db.WithContext(ctx).Model(&statestore.State{}).Select("COALESCE(SUM(storage_used_mb), 0)").Scan(&storageUsed).Error; err != nil {
+		return 0, 0, 0, 0, 0, 0, err
+	}
+	return totalFabrics, activeFabrics, totalStores, totalPipelines, totalEvents, storageUsed, nil
+}
+
 func (r *Repository) ListAllFabrics(ctx context.Context, limit, offset int, tenantID *uuid.UUID, status string) ([]Fabric, int64, error) {
 	query := r.db.WithContext(ctx).Model(&statestore.State{})
 	if tenantID != nil {

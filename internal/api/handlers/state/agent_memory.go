@@ -223,9 +223,9 @@ func (h *AgentMemoryHandler) HandleListMemories(w http.ResponseWriter, r *http.R
 	var err error
 
 	if agentID != "" && memoryType != "" {
-		memories, total, err = h.memoryRepo.ListMemoriesByAgentAndType(r.Context(), claims.TenantID.String(), agentID, memoryType, limit, offset)
+		memories, total, err = h.memoryRepo.ListMemoriesByAgentAndType(r.Context(), claims.TenantID, agentID, memoryType, limit, offset)
 	} else if agentID != "" {
-		memories, total, err = h.memoryRepo.ListMemoriesByAgent(r.Context(), claims.TenantID.String(), agentID, limit, offset)
+		memories, total, err = h.memoryRepo.ListMemoriesByAgent(r.Context(), claims.TenantID, agentID, limit, offset)
 	} else {
 		memories, total, err = h.memoryRepo.ListMemoriesByTenant(r.Context(), claims.TenantID, limit, offset)
 	}

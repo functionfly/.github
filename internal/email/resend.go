@@ -3,6 +3,7 @@ package email
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -27,6 +28,15 @@ func NewResendService(config ResendConfig) *ResendService {
 		client: resend.NewClient(config.APIKey),
 		config: config,
 	}
+}
+
+// isRetryableError reports whether the error is a transient one (e.g. 429, 5xx) that callers may retry.
+func (s *ResendService) isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "429") || strings.Contains(msg, "500") || strings.Contains(msg, "503")
 }
 
 func (s *ResendService) SendVerificationEmail(user *storage.User, verificationToken string) error {

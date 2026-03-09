@@ -11,7 +11,6 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Clock,
   Package,
   Search,
@@ -45,7 +44,7 @@ export function AdminFactoryPage() {
     refetch: refetchStatus,
   } = useQuery({
     queryKey: ['factory-status'],
-    queryFn: async () => {
+    queryFn: async (): Promise<FactoryStatus | null> => {
       const data = await factoryApi.getStatus();
       return data ?? null;
     },
@@ -132,14 +131,14 @@ export function AdminFactoryPage() {
       case 'healthy':
       case 'completed':
       case 'approved':
-        return 'text-green-600';
+        return 'bg-green-100 text-green-800';
       case 'running':
-        return 'text-blue-600';
+        return 'bg-blue-100 text-blue-800';
       case 'failed':
       case 'rejected':
-        return 'text-red-600';
+        return 'bg-red-100 text-red-800';
       default:
-        return 'text-yellow-600';
+        return 'bg-yellow-100 text-yellow-800';
     }
   };
 
@@ -298,11 +297,7 @@ export function AdminFactoryPage() {
                         <span
                           className={clsx(
                             'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                            factoryStatus.latest_run.status === 'completed'
-                              ? 'bg-green-100 text-green-800'
-                              : factoryStatus.latest_run.status === 'running'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-red-100 text-red-800'
+                            getStatusColor(factoryStatus.latest_run.status)
                           )}
                         >
                           {factoryStatus.latest_run.status}
@@ -417,11 +412,21 @@ export function AdminFactoryPage() {
       {/* Reviews Tab */}
       {activeTab === 'reviews' && (
         <div className="bg-white border border-gray-200 rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Pending Reviews</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Opportunities awaiting manual review before publishing
-            </p>
+          <div className="px-6 py-4 border-b border-gray-200 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Pending Reviews</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Opportunities awaiting manual review before publishing
+              </p>
+            </div>
+            <button
+              onClick={() => refetchReviews()}
+              disabled={reviewsLoading}
+              className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 shrink-0"
+            >
+              <RefreshCw className={clsx('h-4 w-4', reviewsLoading && 'animate-spin')} />
+              Refresh
+            </button>
           </div>
           <div className="px-6 py-4">
             {reviewsLoading ? (

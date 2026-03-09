@@ -2,6 +2,7 @@ package security
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -115,11 +116,17 @@ func (c *ClamAVScanner) GetEngineInfo() (version, databaseVersion string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return version, databaseVersion
+		}
 		var info struct {
 			Version string `json:"version"`
 			DBVer   string `json:"database_version"`
 		}
-		if body, err := io.ReadAll(resp.Body); err == nil {
+		if json.Unmarshal(body, &info) == nil && (info.Version != "" || info.DBVer != "") {
+			version, databaseVersion = info.Version, info.DBVer
+		} else {
 			fmt.Sscanf(string(body), "ClamAV %s/%s", &version, &databaseVersion)
 		}
 	}
@@ -303,11 +310,11 @@ func (c *ClamAVScanner) doScan(filename string, fileContent []byte, startTime ti
 }
 
 func parseClamAVResponse(body []byte, result *struct {
-	Status    string `json:"status"`
-	VirusName string `json:"virus_name,omitempty"`
-	Version   string `json:"version,omitempty"`
-	DBVersion string `json:"db_version,omitempty"`
-	ScanTimeMs int64 `json:"scan_time_ms,omitempty"`
+	Status     string `json:"status"`
+	VirusName  string `json:"virus_name,omitempty"`
+	Version    string `json:"version,omitempty"`
+	DBVersion  string `json:"db_version,omitempty"`
+	ScanTimeMs int64  `json:"scan_time_ms,omitempty"`
 }) error {
 	result.Status = "OK"
 
