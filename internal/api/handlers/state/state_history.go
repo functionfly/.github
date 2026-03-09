@@ -175,7 +175,7 @@ func (h *Handler) HandleRestoreSnapshot(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = h.stateRepo.RestoreSnapshot(r.Context(), state.ID, req.SnapshotVersion, "user", "user-001")
+	err = h.stateRepo.RestoreSnapshot(r.Context(), state.ID, req.SnapshotVersion, "user", claims.UserID.String())
 	if err != nil {
 		logrus.Errorf("failed to restore snapshot: %v", err)
 		http.Error(w, "failed to restore snapshot", http.StatusInternalServerError)

@@ -36,6 +36,10 @@ func (h *Handler) HandleGrantPermission(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if !h.requirePermission(w, r, state.ID, claims.UserID, "can_admin") {
+		return
+	}
+
 	perm := &staterepo.StatePermission{
 		StateID:       state.ID,
 		PrincipalType: req.PrincipalType,
@@ -74,6 +78,10 @@ func (h *Handler) HandleGetPermissions(w http.ResponseWriter, r *http.Request) {
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
 		http.Error(w, "state not found", http.StatusNotFound)
+		return
+	}
+
+	if !h.requirePermission(w, r, state.ID, claims.UserID, "can_admin") {
 		return
 	}
 
