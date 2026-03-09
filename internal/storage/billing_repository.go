@@ -411,6 +411,31 @@ func (r *BillingRepository) CancelSubscription(ctx context.Context, id uuid.UUID
 	return nil
 }
 
+// ListAllSubscriptions lists all subscriptions across tenants (for admin).
+func (r *BillingRepository) ListAllSubscriptions(limit, offset int) ([]*Subscription, error) {
+	query := `
+		SELECT id, tenant_id, pricing_tier_id, status, current_period_start, current_period_end, trial_end, cancel_at_period_end, canceled_at, created_at, updated_at
+		FROM subscriptions
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2`
+	rows, err := r.db.Query(query, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list subscriptions: %w", err)
+	}
+	defer rows.Close()
+	var subs []*Subscription
+	for rows.Next() {
+		sub := &Subscription{}
+		err := rows.Scan(&sub.ID, &sub.TenantID, &sub.PricingTierID, &sub.Status, &sub.CurrentPeriodStart, &sub.CurrentPeriodEnd,
+			&sub.TrialEnd, &sub.CancelAtPeriodEnd, &sub.CanceledAt, &sub.CreatedAt, &sub.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan subscription: %w", err)
+		}
+		subs = append(subs, sub)
+	}
+	return subs, nil
+}
+
 // CreateInvoice creates a new invoice
 func (r *BillingRepository) CreateInvoice(ctx context.Context, invoice *Invoice) (*Invoice, error) {
 	invoice.ID = uuid.New()

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -75,33 +74,20 @@ func RunMigrationsWithValidation(db *PostgresDB) (*MigrationResult, error) {
 	}
 	needRepair := false
 	var forceVer int
-	if verErr == nil && (dirty || curVer == 0) {
+	if verErr == nil && dirty {
+		// Dirty at curVer: set to previous migration so the failed one re-runs
 		needRepair = true
 		var prevVer uint
-		if dirty {
-			// Dirty at curVer: set to previous migration so the failed one re-runs
-			for _, mig := range available {
-				v, _ := strconv.ParseUint(mig.Version, 10, 64)
-				if v < uint64(curVer) && uint(v) > prevVer {
-					prevVer = uint(v)
-				}
-			}
-		} else {
-			// Version 0 with no migration file for 0: set to second-to-last so only last migration runs (or -1 if single migration)
-			var versions []uint
-			for _, mig := range available {
-				v, _ := strconv.ParseUint(mig.Version, 10, 64)
-				versions = append(versions, uint(v))
-			}
-			if len(versions) >= 2 {
-				sort.Slice(versions, func(i, j int) bool { return versions[i] > versions[j] })
-				prevVer = versions[1]
+		for _, mig := range available {
+			v, _ := strconv.ParseUint(mig.Version, 10, 64)
+			if v < uint64(curVer) && uint(v) > prevVer {
+				prevVer = uint(v)
 			}
 		}
 		forceVer = int(prevVer)
-		if curVer == 0 && prevVer == 0 && len(available) > 0 {
-			forceVer = -1
-		}
+	} else if verErr == nil && curVer == 0 && !dirty {
+		// Version 0 and clean: do not repair; let Up() run all migrations from the start
+		needRepair = false
 	} else if verErr == nil && curVer > 0 && !dirty {
 		// DB has a version that may not have a migration file (e.g. old timestamp format or deleted file)
 		hasCurrentVersion := false

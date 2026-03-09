@@ -4,13 +4,11 @@ package mfa
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"os"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -177,25 +175,6 @@ func getEnvOrDefault(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
-}
-
-// hashSecret encrypts a secret using bcrypt for storage
-// Note: In production, use proper encryption (e.g., AES) with a master key
-func hashSecret(secret string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(hash), nil
-}
-
-// verifySecretHash verifies a secret against its hash
-func verifySecretHash(secret, hash string) bool {
-	hashBytes, err := base64.StdEncoding.DecodeString(hash)
-	if err != nil {
-		return false
-	}
-	return bcrypt.CompareHashAndPassword(hashBytes, []byte(secret)) == nil
 }
 
 // User is a minimal interface for the user model

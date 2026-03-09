@@ -116,19 +116,19 @@ func (r *RegistryRepository) UpsertFunctionVersion(v *RegistryFunctionVersion, s
 			v.UpdatedAt = time.Now()
 			if err := r.db.Model(existing).Updates(map[string]interface{}{
 				"manifest":      v.Manifest,
-				"runtime":      v.Runtime,
-				"timeout_ms":   v.TimeoutMs,
-				"memory_mb":    v.MemoryMB,
+				"runtime":       v.Runtime,
+				"timeout_ms":    v.TimeoutMs,
+				"memory_mb":     v.MemoryMB,
 				"deterministic": v.Deterministic,
-				"side_effects": v.SideEffects,
-				"idempotent":   v.Idempotent,
-				"cache_ttl":   v.CacheTTL,
-				"capabilities": v.Capabilities,
-				"wasm_binary":  v.WasmBinary,
-				"source_hash":  v.SourceHash,
-				"bundle_size":  v.BundleSize,
-				"source_code":  v.SourceCode,
-				"updated_at":   v.UpdatedAt,
+				"side_effects":  v.SideEffects,
+				"idempotent":    v.Idempotent,
+				"cache_ttl":     v.CacheTTL,
+				"capabilities":  v.Capabilities,
+				"wasm_binary":   v.WasmBinary,
+				"source_hash":   v.SourceHash,
+				"bundle_size":   v.BundleSize,
+				"source_code":   v.SourceCode,
+				"updated_at":    v.UpdatedAt,
 			}).Error; err != nil {
 				return false, fmt.Errorf("failed to overwrite function version: %w", err)
 			}
@@ -152,4 +152,84 @@ func (r *RegistryRepository) UpsertFunctionVersion(v *RegistryFunctionVersion, s
 		return false, fmt.Errorf("failed to create function version: %w", err)
 	}
 	return true, nil
+}
+
+// ============================================
+// Function Version Changelog Methods
+// ============================================
+
+// CreateFunctionVersionChangelog creates a new changelog entry for a function version
+func (r *RegistryRepository) CreateFunctionVersionChangelog(c *FunctionVersionChangelog) error {
+	c.ID = uuid.New()
+	c.CreatedAt = time.Now()
+
+	if err := r.db.Create(c).Error; err != nil {
+		return fmt.Errorf("failed to create function version changelog: %w", err)
+	}
+
+	return nil
+}
+
+// GetFunctionVersionChangelogs retrieves all changelogs for a function
+func (r *RegistryRepository) GetFunctionVersionChangelogs(functionID uuid.UUID) ([]FunctionVersionChangelog, error) {
+	var changelogs []FunctionVersionChangelog
+	if err := r.db.Where("function_id = ?", functionID).Order("created_at DESC").Find(&changelogs).Error; err != nil {
+		return nil, fmt.Errorf("failed to get function version changelogs: %w", err)
+	}
+
+	return changelogs, nil
+}
+
+// GetFunctionVersionChangelog retrieves a specific changelog by ID
+func (r *RegistryRepository) GetFunctionVersionChangelog(id uuid.UUID) (*FunctionVersionChangelog, error) {
+	var changelog FunctionVersionChangelog
+	if err := r.db.First(&changelog, id).Error; err != nil {
+		return nil, fmt.Errorf("failed to get function version changelog: %w", err)
+	}
+
+	return &changelog, nil
+}
+
+// GetChangelogByFunctionVersionID retrieves changelog for a specific function version
+func (r *RegistryRepository) GetChangelogByFunctionVersionID(functionVersionID uuid.UUID) (*FunctionVersionChangelog, error) {
+	var changelog FunctionVersionChangelog
+	if err := r.db.Where("function_version_id = ?", functionVersionID).First(&changelog).Error; err != nil {
+		return nil, fmt.Errorf("failed to get changelog by function version ID: %w", err)
+	}
+
+	return &changelog, nil
+}
+
+// GetChangelogsByVersion retrieves all changelogs for a specific version
+func (r *RegistryRepository) GetChangelogsByVersion(functionID uuid.UUID, version string) ([]FunctionVersionChangelog, error) {
+	var changelogs []FunctionVersionChangelog
+	if err := r.db.Where("function_id = ? AND version = ?", functionID, version).Find(&changelogs).Error; err != nil {
+		return nil, fmt.Errorf("failed to get changelogs by version: %w", err)
+	}
+
+	return changelogs, nil
+}
+
+// GetChangelogsByCategory retrieves changelogs filtered by category
+func (r *RegistryRepository) GetChangelogsByCategory(functionID uuid.UUID, category ChangeCategory) ([]FunctionVersionChangelog, error) {
+	var changelogs []FunctionVersionChangelog
+	if err := r.db.Where("function_id = ? AND category = ?", functionID, category).Order("created_at DESC").Find(&changelogs).Error; err != nil {
+		return nil, fmt.Errorf("failed to get changelogs by category: %w", err)
+	}
+
+	return changelogs, nil
+}
+
+// GetPreviousVersion retrieves the previous version for a function
+func (r *RegistryRepository) GetPreviousVersion(functionID uuid.UUID, currentVersion string) (*RegistryFunctionVersion, error) {
+	var version RegistryFunctionVersion
+	// Get the version immediately before the current version based on published_at
+	if err := r.db.Where("function_id = ? AND published_at < (SELECT published_at FROM registry_function_versions WHERE function_id = ? AND version = ?)",
+		functionID, functionID, currentVersion).
+		Order("published_at DESC").
+		First(&version).Error; err != nil {
+		return nil, fmt.Errorf("failed to get previous version: %w", err)
+	}
+
+	return &version, nil
 }

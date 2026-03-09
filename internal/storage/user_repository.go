@@ -448,38 +448,54 @@ func (r *UserRepository) GetUserByID(userID uuid.UUID) (*User, error) {
 	return user, nil
 }
 
-// ListUsers lists all users
+// ListUsers lists all users across all tenants (for admin dashboard).
+// Tries with role column first; if that fails (e.g. column missing), falls back to minimal columns.
 func (r *UserRepository) ListUsers() ([]*User, error) {
-	query := `SELECT id, tenant_id, username, email, password_hash, role, company_name, created_at, updated_at FROM users ORDER BY created_at DESC`
+	users, err := r.listUsersWithRole()
+	if err == nil {
+		return users, nil
+	}
+	// Fallback: schema may lack "role" (e.g. pre-000004); list with minimal columns
+	return r.listUsersMinimal()
+}
 
+func (r *UserRepository) listUsersWithRole() ([]*User, error) {
+	query := `SELECT id, tenant_id, email, password_hash, role, created_at, updated_at FROM users ORDER BY created_at DESC`
 	rows, err := r.db.Query(query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list users: %w", err)
+		return nil, err
 	}
 	defer rows.Close()
-
 	var users []*User
 	for rows.Next() {
 		user := &User{}
-		var username sql.NullString
-		var companyName sql.NullString
 		var role sql.NullString
-		err := rows.Scan(&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &companyName, &user.CreatedAt, &user.UpdatedAt)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan user: %w", err)
-		}
-		if username.Valid {
-			user.Username = &username.String
-		}
-		if companyName.Valid {
-			user.CompanyName = &companyName.String
+		if err := rows.Scan(&user.ID, &user.TenantID, &user.Email, &user.PasswordHash, &role, &user.CreatedAt, &user.UpdatedAt); err != nil {
+			return nil, err
 		}
 		if role.Valid {
 			user.Role = role.String
 		}
 		users = append(users, user)
 	}
+	return users, nil
+}
 
+func (r *UserRepository) listUsersMinimal() ([]*User, error) {
+	query := `SELECT id, tenant_id, email, password_hash, created_at, updated_at FROM users ORDER BY created_at DESC`
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list users: %w", err)
+	}
+	defer rows.Close()
+	var users []*User
+	for rows.Next() {
+		user := &User{}
+		if err := rows.Scan(&user.ID, &user.TenantID, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		users = append(users, user)
+	}
 	return users, nil
 }
 

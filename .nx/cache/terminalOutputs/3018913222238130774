@@ -1,0 +1,9 @@
+> nx run functionfly-marketing:dev
+
+> bun run dev -- 
+
+[0m[2m[35m$[0m [2m[1mbun run astro dev[0m
+[0m[2m[35m$[0m [2m[1mastro dev[0m
+/usr/bin/bash: line 1: astro: command not found
+[0m[31merror[0m[2m:[0m script [1m"astro"[0m exited with code 127[0m
+[0m[31merror[0m[2m:[0m script [1m"dev"[0m exited with code 127[0m

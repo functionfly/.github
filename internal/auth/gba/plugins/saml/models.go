@@ -16,6 +16,7 @@ type SAMLConfig struct {
 	Enabled        bool           `gorm:"default:false"`
 	IDPEntityID    string         `gorm:"type:varchar(500);not null;column:idp_entity_id"`
 	IDPSSOURL      string         `gorm:"type:varchar(500);not null;column:idp_sso_url"`
+	IDPSLOURL      string         `gorm:"type:varchar(500);column:idp_slo_url"` // optional Single Logout URL
 	IDPCertificate string         `gorm:"type:text;not null;column:idp_certificate"` // PEM encoded
 	SPEntityID     string         `gorm:"type:varchar(500);not null;column:sp_entity_id"`
 	ACSURL         string         `gorm:"type:varchar(500);not null;column:acs_url"`
@@ -235,6 +236,7 @@ func containsHelper(s, substr string) bool {
 type SAMLConfigRequest struct {
 	IDPEntityID    string `json:"idp_entity_id" validate:"required"`
 	IDPSSOURL      string `json:"idp_sso_url" validate:"required,url"`
+	IDPSLOURL      string `json:"idp_slo_url,omitempty"`
 	IDPCertificate string `json:"idp_certificate" validate:"required"`
 	SPEntityID     string `json:"sp_entity_id,omitempty"`
 	ACSURL         string `json:"acs_url,omitempty"`
@@ -248,6 +250,7 @@ type SAMLConfigResponse struct {
 	Enabled      bool      `json:"enabled"`
 	IDPEntityID  string    `json:"idp_entity_id"`
 	IDPSSOURL    string    `json:"idp_sso_url"`
+	IDPSLOURL    string    `json:"idp_slo_url,omitempty"`
 	SPEntityID   string    `json:"sp_entity_id"`
 	ACSURL       string    `json:"acs_url"`
 	NameIDFormat string    `json:"name_id_format"`

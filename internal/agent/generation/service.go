@@ -40,27 +40,31 @@ func NewServiceWithGenerator(db *gorm.DB, codeGen CodeGenerator) *Service {
 
 // GenerationRequest represents a request to generate a function
 type GenerationRequest struct {
-	AgentID        string                 `json:"agent_id"`
-	Name           string                 `json:"name"`
-	Description    string                 `json:"description"`
-	Category       string                 `json:"category"`
-	InputSchema    map[string]any         `json:"input_schema"`
-	OutputSchema   map[string]any          `json:"output_schema"`
-	Runtime        string                 `json:"runtime"` // python3.11, nodejs20, etc.
-	Prompt         string                 `json:"prompt"`
-	Model          string                 `json:"model"`
-	Deterministic  bool                   `json:"deterministic"`
-	Tags           []string               `json:"tags"`
+	AgentID       string         `json:"agent_id"`
+	Name          string         `json:"name"`
+	Description   string         `json:"description"`
+	Category      string         `json:"category"`
+	InputSchema   map[string]any `json:"input_schema"`
+	OutputSchema  map[string]any `json:"output_schema"`
+	Runtime       string         `json:"runtime"` // python3.11, nodejs20, etc.
+	Prompt        string         `json:"prompt"`
+	Model         string         `json:"model"`
+	Deterministic bool           `json:"deterministic"`
+	Tags          []string       `json:"tags"`
 }
 
 // GenerationResult represents the result of function generation
 type GenerationResult struct {
-	FunctionID     uuid.UUID  `json:"function_id"`
-	Code          string     `json:"code"`
-	Manifest      string     `json:"manifest"`
-	CertHash      string     `json:"cert_hash,omitempty"`
-	Success       bool       `json:"success"`
-	Error         string     `json:"error,omitempty"`
+	FunctionID     uuid.UUID `json:"function_id"`
+	Code           string    `json:"code"`
+	Manifest       string    `json:"manifest"`
+	CertHash       string    `json:"cert_hash,omitempty"`
+	ModelUsed      string    `json:"model_used,omitempty"`
+	Complexity     int       `json:"complexity,omitempty"`
+	ReviewRequired bool      `json:"review_required,omitempty"`
+	ReviewReason   string    `json:"review_reason,omitempty"`
+	Success        bool      `json:"success"`
+	Error          string    `json:"error,omitempty"`
 }
 
 // GenerateFunction generates a new function based on specifications
@@ -71,6 +75,11 @@ func (s *Service) GenerateFunction(ctx context.Context, req *GenerationRequest) 
 	}
 	if req.Runtime == "" {
 		req.Runtime = "python3.11"
+	}
+	selector := HeuristicModelSelector{}
+	selection := selector.SelectModel(req)
+	if req.Model == "" {
+		req.Model = selection.Model
 	}
 
 	// 2. Generate the function code (uses injected CodeGenerator if set, else template stub)
@@ -102,9 +111,9 @@ func (s *Service) GenerateFunction(ctx context.Context, req *GenerationRequest) 
 		AgentGenerated:       true,
 		GenerationPromptHash: &promptHash,
 		GenerationModel:      &req.Model,
-		RevenueTotalUSD:     0,
-		CreatedAt:           time.Now(),
-		UpdatedAt:           time.Now(),
+		RevenueTotalUSD:      0,
+		CreatedAt:            time.Now(),
+		UpdatedAt:            time.Now(),
 	}
 
 	if err := s.db.WithContext(ctx).Create(function).Error; err != nil {
@@ -129,11 +138,15 @@ func (s *Service) GenerateFunction(ctx context.Context, req *GenerationRequest) 
 	}
 
 	return &GenerationResult{
-		FunctionID: functionID,
-		Code:       code,
-		Manifest:   manifest,
-		CertHash:   certHash,
-		Success:    true,
+		FunctionID:     functionID,
+		Code:           code,
+		Manifest:       manifest,
+		CertHash:       certHash,
+		ModelUsed:      req.Model,
+		Complexity:     selection.Complexity,
+		ReviewRequired: selection.Review.Required,
+		ReviewReason:   selection.Review.Reason,
+		Success:        true,
 	}, nil
 }
 
@@ -314,14 +327,14 @@ func (s *Service) generateDeterministicCert(ctx context.Context, functionID uuid
 // createManifest creates the function manifest
 func (s *Service) createManifest(req *GenerationRequest, functionID uuid.UUID) (string, error) {
 	manifest := map[string]any{
-		"name":        req.Name,
-		"version":     "1.0.0",
-		"description": req.Description,
-		"runtime":     req.Runtime,
-		"input":       req.InputSchema,
-		"output":       req.OutputSchema,
-		"category":    req.Category,
-		"tags":        req.Tags,
+		"name":          req.Name,
+		"version":       "1.0.0",
+		"description":   req.Description,
+		"runtime":       req.Runtime,
+		"input":         req.InputSchema,
+		"output":        req.OutputSchema,
+		"category":      req.Category,
+		"tags":          req.Tags,
 		"deterministic": req.Deterministic,
 	}
 

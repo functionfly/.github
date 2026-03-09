@@ -1,26 +1,37 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/agent/autonomy"
+	"github.com/functionfly/functionfly/internal/agent/categorization"
+	agentdeployment "github.com/functionfly/functionfly/internal/agent/deployment"
+	"github.com/functionfly/functionfly/internal/agent/discovery"
 	"github.com/functionfly/functionfly/internal/agent/economy"
 	"github.com/functionfly/functionfly/internal/agent/evolution"
+	factorysvc "github.com/functionfly/functionfly/internal/agent/factory"
+	"github.com/functionfly/functionfly/internal/agent/generation"
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/functionfly/functionfly/internal/agent/marketplace"
 	"github.com/functionfly/functionfly/internal/agent/swarm"
+	"github.com/functionfly/functionfly/internal/agent/testing"
+	"github.com/functionfly/functionfly/internal/analytics"
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
+	analyticshandler "github.com/functionfly/functionfly/internal/api/handlers/analytics"
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
 	authHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/auth"
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
 	"github.com/functionfly/functionfly/internal/api/handlers/billing"
+	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
 	"github.com/functionfly/functionfly/internal/api/handlers/enterprise"
+	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
 	flywheelhandler "github.com/functionfly/functionfly/internal/api/handlers/flywheel"
 	followHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/follow"
@@ -30,6 +41,7 @@ import (
 	notificationHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	"github.com/functionfly/functionfly/internal/api/handlers/playground"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
+	"github.com/functionfly/functionfly/internal/api/handlers/recommendations"
 	registryhandler "github.com/functionfly/functionfly/internal/api/handlers/registry"
 	drehandler "github.com/functionfly/functionfly/internal/api/handlers/registry/dre"
 	"github.com/functionfly/functionfly/internal/api/handlers/security"
@@ -39,6 +51,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/teams"
 	usersHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/users"
 	"github.com/functionfly/functionfly/internal/api/handlers/vault"
+	versionhandler "github.com/functionfly/functionfly/internal/api/handlers/version"
 	"github.com/functionfly/functionfly/internal/api/handlers/wellknown"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
@@ -46,15 +59,19 @@ import (
 	"github.com/functionfly/functionfly/internal/captcha"
 	"github.com/functionfly/functionfly/internal/flywheel"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
+	"github.com/functionfly/functionfly/internal/scheduler"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
 	statefabricrepo "github.com/functionfly/functionfly/internal/storage/statefabric"
 	vaultstorage "github.com/functionfly/functionfly/internal/storage/vault"
+	"github.com/functionfly/functionfly/internal/versioning"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 // setupRoutes configures all API routes
@@ -95,6 +112,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		notificationHandlerPkg.NewWebSocketHub(logrus.New()),
 		logrus.New(),
 	)
+
+	// Initialize version handler
+	versionRepo := versioning.NewRepository(s.postgresDB.DB)
+	versionHandler := versionhandler.NewHandler(versionRepo)
 
 	// Initialize app-based playground handler
 	appPlaygroundHandler := playground.NewHandler(s.repo)
@@ -210,7 +231,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	)
 	s.triggerEngine = triggerEngine
 
-	stateHandler := state.NewHandlerWithTriggerEngine(stateRepo, triggerEngine)
+	stateHandler := state.NewHandlerWithTriggerEngine(stateRepo, triggerEngine).
+		WithUserTenantResolver(state.RepoUserTenantResolver(s.repo))
 
 	// Initialize agent memory handler
 	memoryRepo := state.NewAgentMemoryRepository(s.postgresDB.GORM)
@@ -243,9 +265,57 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	statusRepo.SetGormDB(s.postgresDB.GORM)
 	prometheusURL := os.Getenv("PROMETHEUS_URL")
 	if prometheusURL == "" {
-		prometheusURL = "http://prometheus:9090"
+		prometheusURL = "http://127.0.0.1:9091"
 	}
 	statusHandler := statushandler.NewHandler(statusRepo, prometheusURL, s.authSvc)
+
+	factoryConfig := factorysvc.DefaultConfig("factory-agent")
+	factoryDiscovery := discovery.NewService(s.postgresDB.GORM)
+
+	// Initialize generation service with Redis-backed cache if available
+	factoryGeneration := initializeGenerationServiceWithCache(s.postgresDB.GORM, s.redisClient)
+
+	factoryTesting := testing.NewService(s.postgresDB.GORM, nil, nil)
+	factoryPublisher := agentdeployment.NewPublisher(s.postgresDB.GORM)
+	factoryService := factorysvc.NewService(s.postgresDB.GORM, factoryConfig, factoryDiscovery, factoryGeneration, factoryTesting, factoryPublisher)
+
+	// Load factory config from database on startup (creates default if not exists)
+	loadedFactoryConfig, err := factoryService.GetConfig(context.Background())
+	if err != nil {
+		logrus.WithError(err).Warn("failed to load factory config from database, using defaults")
+	} else {
+		factoryConfig = loadedFactoryConfig
+		logrus.Info("loaded factory config from database")
+	}
+
+	// Initialize factory pipeline scheduler
+	factoryPipelineScheduler := scheduler.NewFactoryPipelineScheduler(factoryService)
+	// Start scheduler with config from database (respects enabled flag)
+	scheduleConfig := scheduler.FactoryScheduleConfig{
+		Enabled:  factoryConfig.ScheduleEnabled,
+		Cron:     factoryConfig.ScheduleCron,
+		Timezone: factoryConfig.ScheduleTimezone,
+	}
+	if err := factoryPipelineScheduler.Start(context.Background(), scheduleConfig); err != nil {
+		logrus.WithError(err).Error("failed to start factory pipeline scheduler")
+	} else if factoryConfig.ScheduleEnabled {
+		logrus.Infof("factory pipeline scheduler started with cron: %s", factoryConfig.ScheduleCron)
+	}
+
+	factoryHandler := factoryhandler.NewHandler(s.postgresDB.GORM, factoryService, factoryDiscovery, factoryPublisher, &factoryConfig, factoryPipelineScheduler)
+
+	// Initialize experiment service and handler
+	experimentService := factorysvc.NewExperimentService(s.postgresDB.GORM)
+	experimentAdapter := factorysvc.NewGenerationExperimentAdapter(s.postgresDB.GORM, experimentService)
+	experimentHandler := factoryhandler.NewExperimentHandler(s.postgresDB.GORM, experimentService, experimentAdapter)
+
+	// Initialize categorization service and handler
+	categorizationSvc := categorization.NewService(s.postgresDB.GORM)
+	categorizationHandler := categorizationhandler.NewHandler(s.postgresDB.GORM, categorizationSvc)
+
+	// Initialize analytics service for factory metrics
+	analyticsSvc := analytics.NewService(s.postgresDB.GORM, analytics.DefaultServiceConfig(factoryConfig.AgentID))
+	analyticsHandler := analyticshandler.NewHandler(analyticsSvc, s.authSvc)
 
 	// Initialize Swarm handler (for swarm/marketplace/evolution features)
 	swarmHandler := agenthandler.NewSwarmHandler(
@@ -589,6 +659,69 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// POST /api/v1/maintenance - Create maintenance window (admin only)
 	api.HandleFunc("/maintenance", authMiddleware.RequireAuth(statusHandler.HandleCreateMaintenance)).Methods("POST", "OPTIONS")
 
+	// API Version management routes (public)
+	api.HandleFunc("/api/versions", versionHandler.HandleListVersions).Methods("GET", "OPTIONS")
+	api.HandleFunc("/api/versions/{version}", versionHandler.HandleGetVersion).Methods("GET", "OPTIONS")
+	// Deprecate API version (admin only)
+	api.HandleFunc("/api/versions/{version}/deprecate", authMiddleware.RequireAuth(versionHandler.HandleDeprecateVersion)).Methods("POST", "OPTIONS")
+
+	// API Version Lifecycle Management (Phase 2)
+	api.HandleFunc("/api/versions", authMiddleware.RequireAuth(versionHandler.HandleCreateAPIVersion)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/api/versions/{version}", authMiddleware.RequireAuth(versionHandler.HandleUpdateAPIVersion)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/api/versions/{version}/set-default", authMiddleware.RequireAuth(versionHandler.HandleSetDefaultAPIVersion)).Methods("POST", "OPTIONS")
+
+	api.HandleFunc("/factory/status", factoryHandler.HandleStatus).Methods("GET", "OPTIONS")
+	api.HandleFunc("/factory/opportunities", factoryHandler.HandleListOpportunities).Methods("GET", "OPTIONS")
+	api.HandleFunc("/factory/opportunities/{id}", factoryHandler.HandleGetOpportunity).Methods("GET", "OPTIONS")
+	api.HandleFunc("/factory/opportunities/{id}/approve", authMiddleware.RequireAuth(factoryHandler.HandleApproveOpportunity)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/factory/opportunities/{id}/reject", authMiddleware.RequireAuth(factoryHandler.HandleRejectOpportunity)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/factory/reviews/pending", factoryHandler.HandleListPendingReviews).Methods("GET", "OPTIONS")
+	api.HandleFunc("/factory/pipeline/run", authMiddleware.RequireAuth(factoryHandler.HandleRunPipeline)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/factory/functions", factoryHandler.HandleListFunctions).Methods("GET", "OPTIONS")
+	api.HandleFunc("/factory/config", authMiddleware.RequireAuth(factoryHandler.HandleGetConfig)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/factory/config", authMiddleware.RequireAuth(factoryHandler.HandleUpdateConfig)).Methods("PUT", "PATCH", "OPTIONS")
+	api.HandleFunc("/factory/schedule/status", factoryHandler.HandleGetScheduleStatus).Methods("GET", "OPTIONS")
+
+	// Experiment (A/B testing) routes
+	api.HandleFunc("/factory/experiments", experimentHandler.HandleListExperiments).Methods("GET", "OPTIONS")
+	api.HandleFunc("/factory/experiments", authMiddleware.RequireAuth(experimentHandler.HandleCreateExperiment)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/factory/experiments/{id}", experimentHandler.HandleGetExperiment).Methods("GET", "OPTIONS")
+	api.HandleFunc("/factory/experiments/{id}/status", authMiddleware.RequireAuth(experimentHandler.HandleUpdateExperimentStatus)).Methods("PUT", "PATCH", "OPTIONS")
+	api.HandleFunc("/factory/experiments/{id}/stats", experimentHandler.HandleGetExperimentStats).Methods("GET", "OPTIONS")
+	api.HandleFunc("/factory/experiments/{id}/winner", authMiddleware.RequireAuth(experimentHandler.HandleDetermineWinner)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/factory/experiments/{id}/variants", authMiddleware.RequireAuth(experimentHandler.HandleAddVariant)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/factory/experiments/{expID}/variants/{variantID}", authMiddleware.RequireAuth(experimentHandler.HandleUpdateVariant)).Methods("PUT", "PATCH", "OPTIONS")
+	api.HandleFunc("/factory/experiments/{expID}/variants/{variantID}", authMiddleware.RequireAuth(experimentHandler.HandleDeleteVariant)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/factory/experiments/{expID}/variants/{variantID}/metrics", experimentHandler.HandleGetVariantMetrics).Methods("GET", "OPTIONS")
+	api.HandleFunc("/factory/experiments/metrics", experimentHandler.HandleRecordMetric).Methods("POST", "OPTIONS")
+
+	// Categorization routes
+	// GET /api/v1/categorization/taxonomy - Get full category and tag taxonomy
+	api.HandleFunc("/categorization/taxonomy", categorizationHandler.HandleGetTaxonomy).Methods("GET", "OPTIONS")
+	// GET /api/v1/categorization/categories - List all categories
+	api.HandleFunc("/categorization/categories", categorizationHandler.HandleGetCategories).Methods("GET", "OPTIONS")
+	// GET /api/v1/categorization/categories/{id} - Get specific category
+	api.HandleFunc("/categorization/categories/{id}", categorizationHandler.HandleGetCategory).Methods("GET", "OPTIONS")
+	// GET /api/v1/categorization/tags - List all tags
+	api.HandleFunc("/categorization/tags", categorizationHandler.HandleGetTags).Methods("GET", "OPTIONS")
+	// POST /api/v1/categorization/categorize - Categorize a function spec (without storing)
+	api.HandleFunc("/categorization/categorize", categorizationHandler.HandleCategorize).Methods("POST", "OPTIONS")
+	// POST /api/v1/categorization/analyze - Analyze code patterns
+	api.HandleFunc("/categorization/analyze", categorizationHandler.HandleAnalyzeCode).Methods("POST", "OPTIONS")
+	// GET /api/v1/categorization/functions/{id} - Get categorization for a function
+	api.HandleFunc("/categorization/functions/{id}", categorizationHandler.HandleGetFunctionCategory).Methods("GET", "OPTIONS")
+	// PUT /api/v1/categorization/functions/{id} - Update function categorization (manual override)
+	api.HandleFunc("/categorization/functions/{id}", authMiddleware.RequireAuth(categorizationHandler.HandleUpdateFunctionCategory)).Methods("PUT", "OPTIONS")
+	// POST /api/v1/categorization/functions/{id}/recategorize - Re-categorize a function
+	api.HandleFunc("/categorization/functions/{id}/recategorize", authMiddleware.RequireAuth(categorizationHandler.HandleReCategorize)).Methods("POST", "OPTIONS")
+	// GET /api/v1/categorization/category/{category} - Get functions by category
+	api.HandleFunc("/categorization/category/{category}", categorizationHandler.HandleGetFunctionsByCategory).Methods("GET", "OPTIONS")
+	// GET /api/v1/categorization/tag/{tag} - Get functions by tag
+	api.HandleFunc("/categorization/tag/{tag}", categorizationHandler.HandleGetFunctionsByTag).Methods("GET", "OPTIONS")
+
+	// Analytics routes for factory metrics
+	analyticsHandler.RegisterRoutes(api, authMiddleware)
+
 	// Content management (public - for frontend consumption)
 	api.HandleFunc("/content/changelog", contentHandler.HandleGetPublishedChangelogEntries).Methods("GET")
 	api.HandleFunc("/content/blog", contentHandler.HandleGetPublishedBlogPosts).Methods("GET")
@@ -606,13 +739,62 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/registry/functions/{author}/{name}", registryHandler.HandleGetFunction).Methods("GET")
 	api.HandleFunc("/registry/functions/{author}/{name}", registryHandler.HandleDeleteFunction).Methods("DELETE")
 	api.HandleFunc("/registry/functions/{author}/{name}/versions", registryHandler.HandleListVersions).Methods("GET")
+	api.HandleFunc("/registry/functions/{author}/{name}/changelogs", registryHandler.HandleGetChangelogs).Methods("GET")
+	api.HandleFunc("/registry/functions/{author}/{name}/changelogs/{version}", registryHandler.HandleGetChangelogByVersion).Methods("GET")
+	api.HandleFunc("/registry/functions/{author}/{name}/changelogs/category/{category}", registryHandler.HandleGetChangelogByCategory).Methods("GET")
+	api.HandleFunc("/registry/functions/{author}/{name}/history", registryHandler.HandleGetVersionHistory).Methods("GET")
 	api.HandleFunc("/registry/search", registryHandler.HandleSearchFunctions).Methods("GET")
+
+	// Function version routes (public)
+	api.HandleFunc("/functions/{functionId}/versions", versionHandler.HandleListFunctionVersions).Methods("GET", "OPTIONS")
+	api.HandleFunc("/functions/{functionId}/versions/{version}", versionHandler.HandleGetFunctionVersion).Methods("GET", "OPTIONS")
+	// Function version changelog
+	api.HandleFunc("/functions/{functionId}/versions/{version}/changelog", authMiddleware.RequireAuth(versionHandler.HandleCreateChangelog)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/functions/{functionId}/changelogs", versionHandler.HandleGetChangelogs).Methods("GET", "OPTIONS")
+
+	// Function Version Lifecycle Management (Phase 2)
+	// Publish, Archive, Deprecate
+	api.HandleFunc("/functions/{functionId}/versions/{version}/publish", authMiddleware.RequireAuth(versionHandler.HandlePublishVersion)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/functions/{functionId}/versions/{version}/archive", authMiddleware.RequireAuth(versionHandler.HandleArchiveVersion)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/functions/{functionId}/versions/{version}/deprecate", authMiddleware.RequireAuth(versionHandler.HandleDeprecateFunctionVersion)).Methods("POST", "OPTIONS")
+
+	// Version aliases
+	api.HandleFunc("/functions/{functionId}/versions/{version}/alias/{alias}", authMiddleware.RequireAuth(versionHandler.HandleSetAlias)).Methods("POST", "OPTIONS")
+
+	// Rollback endpoints
+	api.HandleFunc("/functions/{functionId}/versions/{version}/rollback", authMiddleware.RequireAuth(versionHandler.HandleRollbackVersion)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/functions/{functionId}/rollback", authMiddleware.RequireAuth(versionHandler.HandleRollbackLatest)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/functions/{functionId}/rollbacks", versionHandler.HandleGetRollbackHistory).Methods("GET", "OPTIONS")
+
+	// Phase 3: Deployment Version Tracking
+	api.HandleFunc("/functions/{functionId}/versions/{version}/deployments", versionHandler.HandleListDeployments).Methods("GET", "OPTIONS")
+	api.HandleFunc("/functions/{functionId}/versions/{version}/deployments/{deploymentId}", versionHandler.HandleGetDeployment).Methods("GET", "OPTIONS")
+
+	// Phase 3: Version Lineage
+	api.HandleFunc("/functions/{functionId}/versions/{version}/lineage", versionHandler.HandleGetVersionLineage).Methods("GET", "OPTIONS")
+	api.HandleFunc("/functions/{functionId}/versions/compare", versionHandler.HandleCompareVersions).Methods("GET", "OPTIONS")
+
+	// Phase 3: Service Contract Versioning (internal API)
+	api.HandleFunc("/internal/contracts", versionHandler.HandleListServiceContracts).Methods("GET", "OPTIONS")
+	api.HandleFunc("/internal/contracts/{service}", versionHandler.HandleGetServiceContracts).Methods("GET", "OPTIONS")
+	api.HandleFunc("/internal/contracts/negotiate", versionHandler.HandleNegotiateContractVersion).Methods("POST", "OPTIONS")
+
+	// Recommendations routes (public)
+	recommendationHandler := recommendations.NewHandler(s.recommendationSvc)
+	api.HandleFunc("/recommendations", recommendationHandler.HandleGetRecommendations).Methods("GET", "OPTIONS")
+	api.HandleFunc("/recommendations/interactions", recommendationHandler.HandleRecordInteraction).Methods("POST", "OPTIONS")
+	api.HandleFunc("/recommendations/executions", recommendationHandler.HandleRecordExecution).Methods("POST", "OPTIONS")
+	api.HandleFunc("/recommendations/feedback", recommendationHandler.HandleRecordFeedback).Methods("POST", "OPTIONS")
+	api.HandleFunc("/recommendations/refresh", recommendationHandler.HandleRefreshRecommendations).Methods("POST", "OPTIONS")
 
 	// Function Registry v2 routes (with camelCase response format)
 	apiV2 := s.router.PathPrefix("/v2").Subrouter()
 	apiV2.HandleFunc("/registry/functions", registryHandler.HandleListFunctions).Methods("GET")
 	apiV2.HandleFunc("/registry/functions/{author}/{name}", registryHandler.HandleGetFunction).Methods("GET")
 	apiV2.HandleFunc("/registry/functions/{author}/{name}/versions", registryHandler.HandleListVersions).Methods("GET")
+	apiV2.HandleFunc("/registry/functions/{author}/{name}/changelogs", registryHandler.HandleGetChangelogs).Methods("GET")
+	apiV2.HandleFunc("/registry/functions/{author}/{name}/changelogs/{version}", registryHandler.HandleGetChangelogByVersion).Methods("GET")
+	apiV2.HandleFunc("/registry/functions/{author}/{name}/history", registryHandler.HandleGetVersionHistory).Methods("GET")
 	apiV2.HandleFunc("/registry/search", registryHandler.HandleSearchFunctions).Methods("GET")
 
 	// Canary deployment routes
@@ -1042,6 +1224,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Note: MFA middleware is applied per-route after auth middleware to ensure claims are available
 	adminRoutes.HandleFunc("/auth/session", authMiddleware.RequireAuth(adminHandler.HandleGetAdminSession)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/auth/session", authMiddleware.RequireAuth(adminHandler.HandleExtendAdminSession)).Methods("POST", "OPTIONS")
 
 	// Tenant management
 	adminRoutes.HandleFunc("/tenants", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleListTenants)).Methods("GET", "OPTIONS")
@@ -1094,8 +1277,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	adminRoutes.HandleFunc("/incidents/{incidentId}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleUpdateIncident))).Methods("PATCH")
 	adminRoutes.HandleFunc("/incidents/{incidentId}/resolve", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleResolveIncident))).Methods("POST")
 
-	// System health
+	// System health and metrics
 	adminRoutes.HandleFunc("/health", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleSystemHealth)).Methods("GET")
+	adminRoutes.HandleFunc("/system/metrics", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleSystemMetrics)).Methods("GET", "OPTIONS")
 
 	// Admin dashboard (activity, revenue, quick stats)
 	adminRoutes.HandleFunc("/dashboard/activity", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleDashboardActivity)).Methods("GET", "OPTIONS")
@@ -1107,6 +1291,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	adminRoutes.HandleFunc("/analytics", authMiddleware.RequirePermission(auth.PermSystemWrite)(adminHandler.HandleUpdateAnalyticsSettings)).Methods("PATCH", "OPTIONS")
 
 	// Billing management
+	adminRoutes.HandleFunc("/billing/summary", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleBillingSummary)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/billing/tiers", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListPricingTiers)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/billing/tiers", authMiddleware.RequirePermission(auth.PermBillingWrite)(adminHandler.HandleCreatePricingTier)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/billing/tiers/{tierId}", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleGetPricingTier)).Methods("GET", "OPTIONS")
@@ -1198,6 +1383,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	adminRoutes.HandleFunc("/oversight/block/{type}/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(oversightHandler.HandleBlockEntity)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/oversight/investigate/{type}/{id}", authMiddleware.RequirePermission(auth.PermSystemRead)(oversightHandler.HandleInvestigateEntity)).Methods("POST", "OPTIONS")
 
+	// Admin factory (same handlers as /v1/factory, for admin dashboard calling /v1/admin/factory/*)
+	adminRoutes.HandleFunc("/factory/status", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleStatus)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/factory/reviews/pending", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleListPendingReviews)).Methods("GET", "OPTIONS")
+
 	// Admin state fabrics (stats before {id} for route precedence)
 	adminRoutes.HandleFunc("/state-fabrics/stats", authMiddleware.RequirePermission(auth.PermTenantsRead)(stateFabricHandler.HandleGetStats)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics", authMiddleware.RequirePermission(auth.PermTenantsRead)(stateFabricHandler.HandleListAll)).Methods("GET", "OPTIONS")
@@ -1283,4 +1472,39 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		return len(pathParts) >= 2 && pathParts[0] != "" && pathParts[0] != "api" && pathParts[0] != "content" && pathParts[0] != "health" &&
 			pathParts[0] != "fx" && pathParts[0] != "run" && pathParts[0] != "replay"
 	}).HandlerFunc(s.handlePublicRoute)
+}
+
+// initializeGenerationServiceWithCache creates a generation service with Redis-backed cache
+// when Redis is available and configured. Falls back to in-memory cache otherwise.
+func initializeGenerationServiceWithCache(db *gorm.DB, redisClient *redis.Client) *generation.Service {
+	// Check if we should use Redis for generation cache
+	useRedisCache := os.Getenv("GENERATION_CACHE_REDIS_ENABLED") == "true"
+
+	// Also check if OPENROUTER_API_KEY is set - if not, there's no point using LLM
+	apiKey := os.Getenv("OPENROUTER_API_KEY")
+
+	if apiKey == "" {
+		// No API key, use template-based generation
+		return generation.NewService(db)
+	}
+
+	// Determine if we should use Redis cache
+	// Default to true if Redis client is available and not explicitly disabled
+	if !useRedisCache && redisClient != nil {
+		useRedisCache = os.Getenv("GENERATION_CACHE_REDIS_ENABLED") != "false"
+	}
+
+	var codeGen generation.CodeGenerator
+
+	if useRedisCache && redisClient != nil {
+		// Use Redis-backed OpenRouter client
+		logrus.Info("Initializing generation service with Redis-backed cache")
+		codeGen = generation.NewOpenRouterClientWithRedis(apiKey, nil, redisClient, true, nil)
+	} else {
+		// Use in-memory cache
+		logrus.Info("Initializing generation service with in-memory cache")
+		codeGen = generation.NewOpenRouterClient(apiKey, nil, nil, nil)
+	}
+
+	return generation.NewServiceWithGenerator(db, codeGen)
 }

@@ -37,5 +37,6 @@ CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_feedback_attachments_feedback_id ON feedback_attachments(feedback_id);
 
 -- Updated timestamp trigger for feedback
+DROP TRIGGER IF EXISTS update_feedback_updated_at ON feedback;
 CREATE TRIGGER update_feedback_updated_at BEFORE UPDATE ON feedback
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

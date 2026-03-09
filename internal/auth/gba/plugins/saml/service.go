@@ -2,6 +2,7 @@
 package saml
 
 import (
+	"bytes"
 	"compress/flate"
 	"context"
 	"crypto/rand"
@@ -13,6 +14,7 @@ import (
 	"encoding/pem"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"math/big"
 	"net/url"
 	"strings"
@@ -176,6 +178,7 @@ func (s *SAMLService) CreateConfig(ctx context.Context, tenantID uuid.UUID, req 
 		Enabled:        true,
 		IDPEntityID:    req.IDPEntityID,
 		IDPSSOURL:      req.IDPSSOURL,
+		IDPSLOURL:      req.IDPSLOURL,
 		IDPCertificate: req.IDPCertificate,
 		SPEntityID:     spEntityID,
 		ACSURL:         acsURL,
@@ -209,6 +212,7 @@ func (s *SAMLService) UpdateConfig(ctx context.Context, configID uuid.UUID, req 
 	config.IDPEntityID = req.IDPEntityID
 	config.IDPSSOURL = req.IDPSSOURL
 	config.IDPCertificate = req.IDPCertificate
+	config.IDPSLOURL = req.IDPSLOURL
 
 	if req.SPEntityID != "" {
 		config.SPEntityID = req.SPEntityID
@@ -420,6 +424,157 @@ func (s *SAMLService) DeleteSession(ctx context.Context, sessionIndex string) er
 	return nil
 }
 
+// ParseLogoutRequest decodes and parses a SAML LogoutRequest (base64, optionally deflate-compressed).
+// Returns the NameID and zero or more SessionIndex values from the request.
+func (s *SAMLService) ParseLogoutRequest(samlRequest string) (nameID string, sessionIndices []string, err error) {
+	if samlRequest == "" {
+		return "", nil, fmt.Errorf("empty SAMLRequest")
+	}
+	decoded, err := base64.StdEncoding.DecodeString(samlRequest)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to decode SAMLRequest: %w", err)
+	}
+	raw := decoded
+	// Try deflate decompression if XML unmarshal fails (many IdPs send deflate-compressed)
+	var req LogoutRequest
+	if err := xml.Unmarshal(raw, &req); err != nil {
+		// Try raw deflate (no zlib header)
+		deflateReader := flate.NewReader(bytes.NewReader(decoded))
+		decompressed, errRead := io.ReadAll(deflateReader)
+		deflateReader.Close()
+		if errRead != nil {
+			return "", nil, fmt.Errorf("failed to parse SAML LogoutRequest: %w", err)
+		}
+		raw = decompressed
+		if err := xml.Unmarshal(raw, &req); err != nil {
+			return "", nil, fmt.Errorf("failed to parse SAML LogoutRequest: %w", err)
+		}
+	}
+	nameID = strings.TrimSpace(req.NameID.Value)
+	for _, si := range req.SessionIndex {
+		if v := strings.TrimSpace(si.Value); v != "" {
+			sessionIndices = append(sessionIndices, v)
+		}
+	}
+	return nameID, sessionIndices, nil
+}
+
+// GetSessionsForLogout finds SAML sessions for a tenant matching the logout request.
+// If sessionIndices is non-empty, sessions are matched by session_index; otherwise by name_id.
+func (s *SAMLService) GetSessionsForLogout(ctx context.Context, tenantID uuid.UUID, nameID string, sessionIndices []string) ([]SAMLSession, error) {
+	var sessions []SAMLSession
+	q := s.db.WithContext(ctx).Model(&SAMLSession{}).Where("tenant_id = ? AND expires_at > ?", tenantID, time.Now())
+	if len(sessionIndices) > 0 {
+		q = q.Where("session_index IN ?", sessionIndices)
+	} else {
+		q = q.Where("name_id = ?", nameID)
+	}
+	if err := q.Find(&sessions).Error; err != nil {
+		return nil, fmt.Errorf("failed to find SAML sessions: %w", err)
+	}
+	return sessions, nil
+}
+
+// InvalidateSessionByToken deletes the gba_sessions row for the given session token (used when initiating SLO).
+func (s *SAMLService) InvalidateSessionByToken(ctx context.Context, token string) error {
+	if token == "" {
+		return nil
+	}
+	result := s.db.WithContext(ctx).Exec("DELETE FROM gba_sessions WHERE session_token = ?", token)
+	if result.Error != nil {
+		return fmt.Errorf("failed to invalidate session: %w", result.Error)
+	}
+	return nil
+}
+
+// GetUserFromSessionToken returns user_id and tenant_id for a valid session token, or error if not found.
+func (s *SAMLService) GetUserFromSessionToken(ctx context.Context, token string) (userID, tenantID uuid.UUID, err error) {
+	if token == "" {
+		return uuid.Nil, uuid.Nil, fmt.Errorf("empty session token")
+	}
+	var out struct {
+		UserID   uuid.UUID
+		TenantID uuid.UUID
+	}
+	err = s.db.WithContext(ctx).Raw(
+		"SELECT user_id, tenant_id FROM gba_sessions WHERE session_token = ? AND expires_at > ?",
+		token, time.Now(),
+	).Scan(&out).Error
+	if err != nil || out.UserID == uuid.Nil {
+		return uuid.Nil, uuid.Nil, fmt.Errorf("session not found or expired")
+	}
+	return out.UserID, out.TenantID, nil
+}
+
+// GetSAMLSessionForUser returns one SAML session for the given tenant and user (for building LogoutRequest).
+func (s *SAMLService) GetSAMLSessionForUser(ctx context.Context, tenantID, userID uuid.UUID) (*SAMLSession, error) {
+	var sess SAMLSession
+	err := s.db.WithContext(ctx).Where("tenant_id = ? AND user_id = ? AND expires_at > ?", tenantID, userID, time.Now()).First(&sess).Error
+	if err != nil {
+		return nil, err
+	}
+	return &sess, nil
+}
+
+// BuildLogoutRequestRedirectURL builds a SAML LogoutRequest and returns the IdP SLO redirect URL (HTTP-Redirect binding).
+func (s *SAMLService) BuildLogoutRequestRedirectURL(ctx context.Context, tenantID uuid.UUID, nameID, sessionIndex string) (string, error) {
+	config, err := s.GetConfig(ctx, tenantID)
+	if err != nil {
+		return "", err
+	}
+	if config.IDPSLOURL == "" {
+		return "", fmt.Errorf("IdP SLO URL not configured")
+	}
+	req := &LogoutRequest{
+		XMLName:      xml.Name{Local: "LogoutRequest"},
+		ID:           generateRequestID(),
+		Version:      "2.0",
+		IssueInstant: time.Now().UTC().Format(time.RFC3339),
+		Issuer:       Issuer{Value: config.SPEntityID},
+		NameID:       NameID{Value: nameID},
+		SessionIndex: []LogoutRequestSessionIndex{{Value: sessionIndex}},
+	}
+	xmlData, err := xml.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal LogoutRequest: %w", err)
+	}
+	// Deflate and base64 encode
+	var compressedBuf strings.Builder
+	flateWriter, _ := flate.NewWriter(&compressedBuf, flate.DefaultCompression)
+	flateWriter.Write(xmlData)
+	flateWriter.Close()
+	encodedRequest := base64.StdEncoding.EncodeToString([]byte(compressedBuf.String()))
+	u, err := url.Parse(config.IDPSLOURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid IdP SLO URL: %w", err)
+	}
+	q := u.Query()
+	q.Set("SAMLRequest", encodedRequest)
+	u.RawQuery = q.Encode()
+	return u.String(), nil
+}
+
+// InvalidateGBASessionsForUsers deletes all gba_sessions for the given user IDs (used on SLO).
+func (s *SAMLService) InvalidateGBASessionsForUsers(ctx context.Context, userIDs []uuid.UUID) error {
+	if len(userIDs) == 0 {
+		return nil
+	}
+	// Use raw SQL to avoid importing gba package (avoids circular dependency)
+	placeholders := make([]string, len(userIDs))
+	args := make([]interface{}, len(userIDs))
+	for i, id := range userIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	query := "DELETE FROM gba_sessions WHERE user_id IN (" + strings.Join(placeholders, ",") + ")"
+	result := s.db.WithContext(ctx).Exec(query, args...)
+	if result.Error != nil {
+		return fmt.Errorf("failed to invalidate GBA sessions: %w", result.Error)
+	}
+	s.logger.WithField("user_count", len(userIDs)).WithField("rows_affected", result.RowsAffected).Info("Invalidated GBA sessions for SLO")
+	return nil
+}
+
 // CleanupExpiredSessions removes expired SAML sessions
 func (s *SAMLService) CleanupExpiredSessions(ctx context.Context) error {
 	result := s.db.WithContext(ctx).Where("expires_at < ?", time.Now()).Delete(&SAMLSession{})
@@ -545,6 +700,22 @@ type NameIDPolicy struct {
 	XMLName     xml.Name `xml:"samlp:NameIDPolicy"`
 	Format      string   `xml:"Format,attr"`
 	AllowCreate string   `xml:"AllowCreate,attr,omitempty"`
+}
+
+// LogoutRequest represents a SAML 2.0 LogoutRequest (Single Logout)
+type LogoutRequest struct {
+	XMLName      xml.Name               `xml:"LogoutRequest"`
+	ID           string                 `xml:"ID,attr"`
+	Version      string                 `xml:"Version,attr"`
+	IssueInstant string                 `xml:"IssueInstant,attr"`
+	Issuer       Issuer                 `xml:"Issuer"`
+	NameID       NameID                 `xml:"NameID"`
+	SessionIndex []LogoutRequestSessionIndex `xml:"SessionIndex"`
+}
+
+// LogoutRequestSessionIndex is the SessionIndex element in a LogoutRequest
+type LogoutRequestSessionIndex struct {
+	Value string `xml:",chardata"`
 }
 
 // SAMLResponse represents a SAML response

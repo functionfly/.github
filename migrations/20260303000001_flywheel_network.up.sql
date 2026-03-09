@@ -2,7 +2,7 @@
 -- This migration creates all tables for the Flywheel Network feature
 
 -- Flywheel Problems
-CREATE TABLE flywheel_problems (
+CREATE TABLE IF NOT EXISTS flywheel_problems (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     author_id UUID NOT NULL REFERENCES users(id),
     tenant_id UUID NOT NULL REFERENCES tenants(id),
@@ -39,16 +39,16 @@ CREATE TABLE flywheel_problems (
     CONSTRAINT uq_flywheel_problems_slug UNIQUE (slug)
 );
 
-CREATE INDEX idx_flywheel_problems_author ON flywheel_problems(author_id);
-CREATE INDEX idx_flywheel_problems_category ON flywheel_problems(category);
-CREATE INDEX idx_flywheel_problems_difficulty ON flywheel_problems(difficulty);
-CREATE INDEX idx_flywheel_problems_status ON flywheel_problems(status);
-CREATE INDEX idx_flywheel_problems_tags ON flywheel_problems USING GIN(tags);
-CREATE INDEX idx_flywheel_problems_search ON flywheel_problems
+CREATE INDEX IF NOT EXISTS idx_flywheel_problems_author ON flywheel_problems(author_id);
+CREATE INDEX IF NOT EXISTS idx_flywheel_problems_category ON flywheel_problems(category);
+CREATE INDEX IF NOT EXISTS idx_flywheel_problems_difficulty ON flywheel_problems(difficulty);
+CREATE INDEX IF NOT EXISTS idx_flywheel_problems_status ON flywheel_problems(status);
+CREATE INDEX IF NOT EXISTS idx_flywheel_problems_tags ON flywheel_problems USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_flywheel_problems_search ON flywheel_problems
     USING gin(to_tsvector('english', title || ' ' || COALESCE(description, '')));
 
 -- Flywheel Solutions
-CREATE TABLE flywheel_solutions (
+CREATE TABLE IF NOT EXISTS flywheel_solutions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     problem_id UUID NOT NULL REFERENCES flywheel_problems(id),
     author_id UUID NOT NULL REFERENCES users(id),
@@ -77,14 +77,14 @@ CREATE TABLE flywheel_solutions (
     submitted_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_flywheel_solutions_problem ON flywheel_solutions(problem_id);
-CREATE INDEX idx_flywheel_solutions_author ON flywheel_solutions(author_id);
-CREATE INDEX idx_flywheel_solutions_parent ON flywheel_solutions(parent_id);
-CREATE INDEX idx_flywheel_solutions_type ON flywheel_solutions(type);
-CREATE INDEX idx_flywheel_solutions_status ON flywheel_solutions(status);
+CREATE INDEX IF NOT EXISTS idx_flywheel_solutions_problem ON flywheel_solutions(problem_id);
+CREATE INDEX IF NOT EXISTS idx_flywheel_solutions_author ON flywheel_solutions(author_id);
+CREATE INDEX IF NOT EXISTS idx_flywheel_solutions_parent ON flywheel_solutions(parent_id);
+CREATE INDEX IF NOT EXISTS idx_flywheel_solutions_type ON flywheel_solutions(type);
+CREATE INDEX IF NOT EXISTS idx_flywheel_solutions_status ON flywheel_solutions(status);
 
 -- Reputation Profiles
-CREATE TABLE reputation_profiles (
+CREATE TABLE IF NOT EXISTS reputation_profiles (
     user_id UUID PRIMARY KEY REFERENCES users(id),
     tenant_id UUID NOT NULL REFERENCES tenants(id),
 
@@ -106,11 +106,11 @@ CREATE TABLE reputation_profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_reputation_overall_score ON reputation_profiles(overall_score DESC);
-CREATE INDEX idx_reputation_tier ON reputation_profiles(tier);
+CREATE INDEX IF NOT EXISTS idx_reputation_overall_score ON reputation_profiles(overall_score DESC);
+CREATE INDEX IF NOT EXISTS idx_reputation_tier ON reputation_profiles(tier);
 
 -- Agent Attachments
-CREATE TABLE agent_attachments (
+CREATE TABLE IF NOT EXISTS agent_attachments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     thread_id UUID NOT NULL,
     agent_id VARCHAR(255) NOT NULL,
@@ -130,11 +130,11 @@ CREATE TABLE agent_attachments (
     last_activity_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_agent_attachments_thread ON agent_attachments(thread_id);
-CREATE INDEX idx_agent_attachments_agent ON agent_attachments(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_attachments_thread ON agent_attachments(thread_id);
+CREATE INDEX IF NOT EXISTS idx_agent_attachments_agent ON agent_attachments(agent_id);
 
 -- Debates
-CREATE TABLE debates (
+CREATE TABLE IF NOT EXISTS debates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     thread_id UUID NOT NULL,
     problem_id UUID REFERENCES flywheel_problems(id),
@@ -154,11 +154,11 @@ CREATE TABLE debates (
     ended_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_debates_thread ON debates(thread_id);
-CREATE INDEX idx_debates_status ON debates(status);
+CREATE INDEX IF NOT EXISTS idx_debates_thread ON debates(thread_id);
+CREATE INDEX IF NOT EXISTS idx_debates_status ON debates(status);
 
 -- Challenges
-CREATE TABLE challenges (
+CREATE TABLE IF NOT EXISTS challenges (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     slug VARCHAR(255) UNIQUE NOT NULL,
     title VARCHAR(255) NOT NULL,
@@ -186,11 +186,11 @@ CREATE TABLE challenges (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_challenges_status ON challenges(status);
-CREATE INDEX idx_challenges_time ON challenges(start_time, end_time);
+CREATE INDEX IF NOT EXISTS idx_challenges_status ON challenges(status);
+CREATE INDEX IF NOT EXISTS idx_challenges_time ON challenges(start_time, end_time);
 
 -- Executable Threads
-CREATE TABLE flywheel_threads (
+CREATE TABLE IF NOT EXISTS flywheel_threads (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     parent_id UUID REFERENCES flywheel_threads(id),
 
@@ -224,13 +224,13 @@ CREATE TABLE flywheel_threads (
     last_activity_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_flywheel_threads_creator ON flywheel_threads(creator_id);
-CREATE INDEX idx_flywheel_threads_problem ON flywheel_threads(problem_id);
-CREATE INDEX idx_flywheel_threads_challenge ON flywheel_threads(challenge_id);
-CREATE INDEX idx_flywheel_threads_status ON flywheel_threads(status);
+CREATE INDEX IF NOT EXISTS idx_flywheel_threads_creator ON flywheel_threads(creator_id);
+CREATE INDEX IF NOT EXISTS idx_flywheel_threads_problem ON flywheel_threads(problem_id);
+CREATE INDEX IF NOT EXISTS idx_flywheel_threads_challenge ON flywheel_threads(challenge_id);
+CREATE INDEX IF NOT EXISTS idx_flywheel_threads_status ON flywheel_threads(status);
 
 -- Thread Messages
-CREATE TABLE flywheel_messages (
+CREATE TABLE IF NOT EXISTS flywheel_messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     thread_id UUID NOT NULL REFERENCES flywheel_threads(id),
 
@@ -258,13 +258,13 @@ CREATE TABLE flywheel_messages (
     edited_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_flywheel_messages_thread ON flywheel_messages(thread_id);
-CREATE INDEX idx_flywheel_messages_author ON flywheel_messages(author_id);
-CREATE INDEX idx_flywheel_messages_type ON flywheel_messages(type);
-CREATE INDEX idx_flywheel_messages_created ON flywheel_messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_flywheel_messages_thread ON flywheel_messages(thread_id);
+CREATE INDEX IF NOT EXISTS idx_flywheel_messages_author ON flywheel_messages(author_id);
+CREATE INDEX IF NOT EXISTS idx_flywheel_messages_type ON flywheel_messages(type);
+CREATE INDEX IF NOT EXISTS idx_flywheel_messages_created ON flywheel_messages(created_at);
 
 -- Challenge Submissions
-CREATE TABLE challenge_submissions (
+CREATE TABLE IF NOT EXISTS challenge_submissions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     challenge_id UUID NOT NULL REFERENCES challenges(id),
     user_id UUID NOT NULL REFERENCES users(id),
@@ -289,12 +289,12 @@ CREATE TABLE challenge_submissions (
     evaluated_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_challenge_submissions_challenge ON challenge_submissions(challenge_id);
-CREATE INDEX idx_challenge_submissions_user ON challenge_submissions(user_id);
-CREATE INDEX idx_challenge_submissions_score ON challenge_submissions(composite_score DESC);
+CREATE INDEX IF NOT EXISTS idx_challenge_submissions_challenge ON challenge_submissions(challenge_id);
+CREATE INDEX IF NOT EXISTS idx_challenge_submissions_user ON challenge_submissions(user_id);
+CREATE INDEX IF NOT EXISTS idx_challenge_submissions_score ON challenge_submissions(composite_score DESC);
 
 -- Agent Reputation
-CREATE TABLE agent_reputations (
+CREATE TABLE IF NOT EXISTS agent_reputations (
     agent_id VARCHAR(255) PRIMARY KEY,
     owner_id UUID NOT NULL REFERENCES users(id),
 
@@ -321,11 +321,11 @@ CREATE TABLE agent_reputations (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_agent_reputations_owner ON agent_reputations(owner_id);
-CREATE INDEX idx_agent_reputations_trust ON agent_reputations(trust_score DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_reputations_owner ON agent_reputations(owner_id);
+CREATE INDEX IF NOT EXISTS idx_agent_reputations_trust ON agent_reputations(trust_score DESC);
 
 -- Replays
-CREATE TABLE flywheel_replays (
+CREATE TABLE IF NOT EXISTS flywheel_replays (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     original_thread_id UUID NOT NULL REFERENCES flywheel_threads(id),
 
@@ -344,11 +344,11 @@ CREATE TABLE flywheel_replays (
     replayed_by UUID NOT NULL REFERENCES users(id)
 );
 
-CREATE INDEX idx_flywheel_replays_original ON flywheel_replays(original_thread_id);
-CREATE INDEX idx_flywheel_replays_new_thread ON flywheel_replays(new_thread_id);
+CREATE INDEX IF NOT EXISTS idx_flywheel_replays_original ON flywheel_replays(original_thread_id);
+CREATE INDEX IF NOT EXISTS idx_flywheel_replays_new_thread ON flywheel_replays(new_thread_id);
 
 -- Abuse Tracking
-CREATE TABLE abuse_tracking (
+CREATE TABLE IF NOT EXISTS abuse_tracking (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id),
 
@@ -365,11 +365,11 @@ CREATE TABLE abuse_tracking (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_abuse_tracking_user ON abuse_tracking(user_id);
-CREATE INDEX idx_abuse_tracking_risk ON abuse_tracking(risk_level);
+CREATE INDEX IF NOT EXISTS idx_abuse_tracking_user ON abuse_tracking(user_id);
+CREATE INDEX IF NOT EXISTS idx_abuse_tracking_risk ON abuse_tracking(risk_level);
 
 -- Suspensions
-CREATE TABLE suspensions (
+CREATE TABLE IF NOT EXISTS suspensions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id),
 
@@ -385,6 +385,6 @@ CREATE TABLE suspensions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_suspensions_user ON suspensions(user_id);
-CREATE INDEX idx_suspensions_status ON suspensions(status);
-CREATE INDEX idx_suspensions_time ON suspensions(starts_at, ends_at);
+CREATE INDEX IF NOT EXISTS idx_suspensions_user ON suspensions(user_id);
+CREATE INDEX IF NOT EXISTS idx_suspensions_status ON suspensions(status);
+CREATE INDEX IF NOT EXISTS idx_suspensions_time ON suspensions(starts_at, ends_at);

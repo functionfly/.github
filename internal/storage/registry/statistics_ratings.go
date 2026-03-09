@@ -307,16 +307,15 @@ type TrustDistribution struct {
 }
 
 // GetTrustDistribution returns the count of registry functions in each trust bucket.
-// Uses COALESCE(r.trust_score, 0) so functions without a rating count as poor.
+// Uses reliability_score only (base schema: 0-100 scale, normalized to 0-1 for buckets). Run migration 000036 for trust_score.
 func (r *RegistryRepository) GetTrustDistribution() (TrustDistribution, error) {
 	var out TrustDistribution
-	// Count functions by joining with ratings; use subquery or raw SQL for clarity.
 	query := `
 		SELECT
-			COUNT(*) FILTER (WHERE COALESCE(rat.trust_score, 0) >= 0.8) AS excellent,
-			COUNT(*) FILTER (WHERE COALESCE(rat.trust_score, 0) >= 0.6 AND COALESCE(rat.trust_score, 0) < 0.8) AS good,
-			COUNT(*) FILTER (WHERE COALESCE(rat.trust_score, 0) >= 0.4 AND COALESCE(rat.trust_score, 0) < 0.6) AS fair,
-			COUNT(*) FILTER (WHERE COALESCE(rat.trust_score, 0) < 0.4) AS poor
+			COUNT(*) FILTER (WHERE COALESCE(rat.reliability_score, 0) / 100.0 >= 0.8) AS excellent,
+			COUNT(*) FILTER (WHERE COALESCE(rat.reliability_score, 0) / 100.0 >= 0.6 AND COALESCE(rat.reliability_score, 0) / 100.0 < 0.8) AS good,
+			COUNT(*) FILTER (WHERE COALESCE(rat.reliability_score, 0) / 100.0 >= 0.4 AND COALESCE(rat.reliability_score, 0) / 100.0 < 0.6) AS fair,
+			COUNT(*) FILTER (WHERE COALESCE(rat.reliability_score, 0) / 100.0 < 0.4) AS poor
 		FROM registry_functions f
 		LEFT JOIN registry_function_ratings rat ON rat.function_id = f.id
 	`
@@ -339,6 +338,7 @@ type HighRiskFunctionRow struct {
 }
 
 // GetHighRiskFunctions returns functions with low trust score (e.g. < 0.35), ordered by trust ascending, limit n.
+// Uses reliability_score only (0-100 → 0-1) so base schema works; run migration 000036 for trust_score/error_rate/timeout_rate/tenant_diversity.
 func (r *RegistryRepository) GetHighRiskFunctions(limit int) ([]HighRiskFunctionRow, error) {
 	if limit <= 0 {
 		limit = 20
@@ -352,15 +352,15 @@ func (r *RegistryRepository) GetHighRiskFunctions(limit int) ([]HighRiskFunction
 			f.id AS function_id,
 			f.author,
 			f.name,
-			COALESCE(rat.trust_score, 0) AS trust_score,
-			COALESCE(rat.error_rate, 0) AS error_rate,
-			COALESCE(rat.timeout_rate, 0) AS timeout_rate,
-			COALESCE(rat.tenant_diversity, 0) AS tenant_diversity,
-			rat.trust_updated_at
+			COALESCE(rat.reliability_score, 0) / 100.0 AS trust_score,
+			0::float AS error_rate,
+			0::float AS timeout_rate,
+			0::integer AS tenant_diversity,
+			rat.updated_at AS trust_updated_at
 		FROM registry_functions f
 		LEFT JOIN registry_function_ratings rat ON rat.function_id = f.id
-		WHERE COALESCE(rat.trust_score, 0) < 0.35
-		ORDER BY COALESCE(rat.trust_score, 0) ASC NULLS LAST, f.created_at ASC
+		WHERE COALESCE(rat.reliability_score, 0) / 100.0 < 0.35
+		ORDER BY COALESCE(rat.reliability_score, 0) ASC NULLS LAST, f.created_at ASC
 		LIMIT ?
 	`
 	if err := r.db.Raw(query, limit).Scan(&rows).Error; err != nil {

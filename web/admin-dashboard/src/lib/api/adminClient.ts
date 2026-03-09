@@ -6,7 +6,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { HMACRequestSigner } from './hmacSigner';
 import type { AdminAPIResponse } from '@/types';
-import { getAdminApiBaseUrl } from '@/lib/constants';
+import { getAdminApiBaseUrl, CACHE_KEYS } from '@/lib/constants';
 import { getCsrfToken } from '@/lib/security/csrf';
 
 class AdminAPIClient {
@@ -17,6 +17,12 @@ class AdminAPIClient {
 
   constructor() {
     const baseURL = getAdminApiBaseUrl();
+    try {
+      const stored = sessionStorage.getItem(CACHE_KEYS.ADMIN_ACCESS_TOKEN);
+      if (stored) this.sessionToken = stored;
+    } catch {
+      /* sessionStorage unavailable */
+    }
 
     this.client = axios.create({
       baseURL,

@@ -11,6 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+
+	"github.com/functionfly/functionfly/internal/storage"
 )
 
 // Handler contains HTTP handlers for GoBetterAuth
@@ -150,10 +152,15 @@ func (h *Handler) HandleSignUp(w http.ResponseWriter, r *http.Request) {
 		Message: "User created successfully. Please check your email for verification instructions.",
 	}
 
-	// In a real implementation, send email with verification link
-	// For now, log the verification URL
-	verificationURL := fmt.Sprintf("https://%s/verify-email?token=%s", r.Host, verificationToken)
-	h.logger.WithField("user_id", user.ID).WithField("verification_url", verificationURL).Info("Verification email would be sent")
+	if svc := h.auth.EmailService(); svc != nil {
+		storageUser := &storage.User{Email: user.Email, VerificationToken: &verificationToken}
+		if err := svc.SendVerificationEmail(storageUser, verificationToken); err != nil {
+			h.logger.WithError(err).WithField("user_id", user.ID).Warn("Failed to send verification email")
+		}
+	} else {
+		verificationURL := fmt.Sprintf("https://%s/verify-email?token=%s", r.Host, verificationToken)
+		h.logger.WithField("user_id", user.ID).WithField("verification_url", verificationURL).Info("Verification email not sent (no email service); URL for development")
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -475,7 +482,7 @@ func (h *Handler) extractTenantID(r *http.Request) uuid.UUID {
 				return uuid.Nil
 			}
 		}
-		// In production, look up tenant by subdomain
+		// Look up active tenant by subdomain
 		var tenant Tenant
 		if err := h.db.Where("subdomain = ? AND status = ?", subdomain, "active").First(&tenant).Error; err == nil {
 			return tenant.ID
@@ -716,8 +723,6 @@ func (h *Handler) HandleResendVerification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// In a real implementation, this would send an email
-	// For now, we'll generate a verification token and store it
 	verificationToken, err := generateSessionToken()
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to generate verification token")
@@ -745,9 +750,15 @@ func (h *Handler) HandleResendVerification(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Log the verification URL
-	verificationURL := fmt.Sprintf("https://%s/verify-email?token=%s", r.Host, verificationToken)
-	h.logger.WithField("user_id", user.ID).WithField("verification_url", verificationURL).Info("Verification email would be sent")
+	if svc := h.auth.EmailService(); svc != nil {
+		storageUser := &storage.User{Email: user.Email, VerificationToken: &verificationToken}
+		if err := svc.SendVerificationEmail(storageUser, verificationToken); err != nil {
+			h.logger.WithError(err).WithField("user_id", user.ID).Warn("Failed to send resend verification email")
+		}
+	} else {
+		verificationURL := fmt.Sprintf("https://%s/verify-email?token=%s", r.Host, verificationToken)
+		h.logger.WithField("user_id", user.ID).WithField("verification_url", verificationURL).Info("Resend verification email not sent (no email service); URL for development")
+	}
 
 	// Run after:resendVerification hooks
 	if err := h.auth.hooks.Execute(r.Context(), "after:resendVerification", hookReq); err != nil {

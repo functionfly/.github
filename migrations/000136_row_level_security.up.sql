@@ -96,24 +96,28 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================
 
 -- Policy: Users can view public functions from any tenant
+DROP POLICY IF EXISTS registry_functions_select_public ON registry_functions;
 CREATE POLICY registry_functions_select_public ON registry_functions
 FOR SELECT USING (
     visibility = 'public'
 );
 
 -- Policy: Users can view functions from their own tenant
+DROP POLICY IF EXISTS registry_functions_select_tenant ON registry_functions;
 CREATE POLICY registry_functions_select_tenant ON registry_functions
 FOR SELECT USING (
     tenant_id = current_tenant_id()
 );
 
 -- Policy: Tenant admins can view all functions in their tenant
+DROP POLICY IF EXISTS registry_functions_select_tenant_admin ON registry_functions;
 CREATE POLICY registry_functions_select_tenant_admin ON registry_functions
 FOR SELECT USING (
     tenant_id = current_tenant_id() AND is_tenant_admin()
 );
 
 -- Policy: Users can insert functions for their tenant
+DROP POLICY IF EXISTS registry_functions_insert ON registry_functions;
 CREATE POLICY registry_functions_insert ON registry_functions
 FOR INSERT WITH CHECK (
     tenant_id = current_tenant_id()
@@ -121,6 +125,7 @@ FOR INSERT WITH CHECK (
 );
 
 -- Policy: Function owners can update their functions
+DROP POLICY IF EXISTS registry_functions_update_owner ON registry_functions;
 CREATE POLICY registry_functions_update_owner ON registry_functions
 FOR UPDATE USING (
     owner_user_id = current_user_id()
@@ -128,6 +133,7 @@ FOR UPDATE USING (
 );
 
 -- Policy: Function owners can delete their functions
+DROP POLICY IF EXISTS registry_functions_delete_owner ON registry_functions;
 CREATE POLICY registry_functions_delete_owner ON registry_functions
 FOR DELETE USING (
     owner_user_id = current_user_id()
@@ -139,6 +145,7 @@ FOR DELETE USING (
 -- ============================================
 
 -- Policy: Users can view versions of public functions
+DROP POLICY IF EXISTS registry_function_versions_select_public ON registry_function_versions;
 CREATE POLICY registry_function_versions_select_public ON registry_function_versions
 FOR SELECT USING (
     EXISTS (
@@ -149,6 +156,7 @@ FOR SELECT USING (
 );
 
 -- Policy: Users can view versions of functions in their tenant
+DROP POLICY IF EXISTS registry_function_versions_select_tenant ON registry_function_versions;
 CREATE POLICY registry_function_versions_select_tenant ON registry_function_versions
 FOR SELECT USING (
     EXISTS (
@@ -159,6 +167,7 @@ FOR SELECT USING (
 );
 
 -- Policy: Function owners can insert new versions
+DROP POLICY IF EXISTS registry_function_versions_insert_owner ON registry_function_versions;
 CREATE POLICY registry_function_versions_insert_owner ON registry_function_versions
 FOR INSERT WITH CHECK (
     user_owns_function(function_id)
@@ -171,6 +180,7 @@ FOR INSERT WITH CHECK (
 );
 
 -- Policy: Function owners can update their versions
+DROP POLICY IF EXISTS registry_function_versions_update_owner ON registry_function_versions;
 CREATE POLICY registry_function_versions_update_owner ON registry_function_versions
 FOR UPDATE USING (
     user_owns_function(function_id)
@@ -187,6 +197,7 @@ FOR UPDATE USING (
 -- ============================================
 
 -- Policy: Users can view executions of public functions
+DROP POLICY IF EXISTS registry_function_executions_select_public ON registry_function_executions;
 CREATE POLICY registry_function_executions_select_public ON registry_function_executions
 FOR SELECT USING (
     EXISTS (
@@ -197,6 +208,7 @@ FOR SELECT USING (
 );
 
 -- Policy: Users can view executions in their tenant
+DROP POLICY IF EXISTS registry_function_executions_select_tenant ON registry_function_executions;
 CREATE POLICY registry_function_executions_select_tenant ON registry_function_executions
 FOR SELECT USING (
     tenant_id = current_tenant_id()
@@ -208,6 +220,7 @@ FOR SELECT USING (
 );
 
 -- Policy: System can insert executions (this would be done by the execution engine)
+DROP POLICY IF EXISTS registry_function_executions_insert_system ON registry_function_executions;
 CREATE POLICY registry_function_executions_insert_system ON registry_function_executions
 FOR INSERT WITH CHECK (true);  -- Allow system to insert, validation happens at application level
 
@@ -216,6 +229,7 @@ FOR INSERT WITH CHECK (true);  -- Allow system to insert, validation happens at 
 -- ============================================
 
 -- Policy: Users can view ratings of public functions
+DROP POLICY IF EXISTS registry_function_ratings_select_public ON registry_function_ratings;
 CREATE POLICY registry_function_ratings_select_public ON registry_function_ratings
 FOR SELECT USING (
     EXISTS (
@@ -226,6 +240,7 @@ FOR SELECT USING (
 );
 
 -- Policy: Users can view ratings of functions in their tenant
+DROP POLICY IF EXISTS registry_function_ratings_select_tenant ON registry_function_ratings;
 CREATE POLICY registry_function_ratings_select_tenant ON registry_function_ratings
 FOR SELECT USING (
     EXISTS (
@@ -236,6 +251,7 @@ FOR SELECT USING (
 );
 
 -- Policy: Authenticated users can insert/update ratings
+DROP POLICY IF EXISTS registry_function_ratings_upsert ON registry_function_ratings;
 CREATE POLICY registry_function_ratings_upsert ON registry_function_ratings
 FOR ALL USING (
     EXISTS (
@@ -250,6 +266,7 @@ FOR ALL USING (
 -- ============================================
 
 -- Policy: Only function owners and tenant admins can view signatures
+DROP POLICY IF EXISTS registry_function_signatures_select_owner ON registry_function_signatures;
 CREATE POLICY registry_function_signatures_select_owner ON registry_function_signatures
 FOR SELECT USING (
     user_owns_function(
@@ -267,6 +284,7 @@ FOR SELECT USING (
 );
 
 -- Policy: Only function owners and tenant admins can view malware scans
+DROP POLICY IF EXISTS registry_function_malware_scans_select_owner ON registry_function_malware_scans;
 CREATE POLICY registry_function_malware_scans_select_owner ON registry_function_malware_scans
 FOR SELECT USING (
     user_owns_function(
@@ -284,6 +302,7 @@ FOR SELECT USING (
 );
 
 -- Policy: Only reviewers can view approvals
+DROP POLICY IF EXISTS registry_function_approvals_select_reviewer ON registry_function_approvals;
 CREATE POLICY registry_function_approvals_select_reviewer ON registry_function_approvals
 FOR SELECT USING (
     requested_by = current_user_id()

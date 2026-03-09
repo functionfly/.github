@@ -14,10 +14,10 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
-	"github.com/functionfly/functionfly/internal/storage"
+	storagestate "github.com/functionfly/functionfly/internal/storage/state"
 )
 
-type AgentMemory = storage.AgentMemory
+type AgentMemory = storagestate.AgentMemory
 
 type AgentMemoryHandler struct {
 	memoryRepo *AgentMemoryRepository
@@ -45,8 +45,8 @@ type UpdateMemoryRequest struct {
 }
 
 type SearchMemoryRequest struct {
-	Query      string    `json:"query"`
 	AgentID    string    `json:"agent_id,omitempty"`
+	Query      string    `json:"query"`
 	Embedding  []float32 `json:"embedding,omitempty"`
 	MemoryType string    `json:"memory_type,omitempty"`
 	Limit      int       `json:"limit,omitempty"`
@@ -71,15 +71,15 @@ func (h *AgentMemoryHandler) HandleCreateMemory(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	memory := &AgentMemory{
+	memory := &storagestate.AgentMemory{
 		TenantID:        claims.TenantID,
 		AgentID:         req.AgentID,
 		MemoryType:      req.MemoryType,
 		Content:         strPtr(req.Content),
 		StructuredData:  req.StructuredData,
-		Embedding:      req.Embedding,
+		Embedding:       req.Embedding,
 		ImportanceScore: req.ImportanceScore,
-		TTLDays:        req.TTLDays,
+		TTLDays:         req.TTLDays,
 	}
 
 	if req.TTLDays > 0 {
@@ -218,7 +218,7 @@ func (h *AgentMemoryHandler) HandleListMemories(w http.ResponseWriter, r *http.R
 		limit = 20
 	}
 
-	var memories []*AgentMemory
+	var memories []*storagestate.AgentMemory
 	var total int64
 	var err error
 
@@ -284,7 +284,7 @@ func NewAgentMemoryRepository(db *gorm.DB) *AgentMemoryRepository {
 	return &AgentMemoryRepository{db: db}
 }
 
-func (r *AgentMemoryRepository) CreateMemory(ctx context.Context, memory *AgentMemory) (*AgentMemory, error) {
+func (r *AgentMemoryRepository) CreateMemory(ctx context.Context, memory *storagestate.AgentMemory) (*storagestate.AgentMemory, error) {
 	if memory.ID == uuid.Nil {
 		memory.ID = uuid.New()
 	}
@@ -301,8 +301,8 @@ func (r *AgentMemoryRepository) CreateMemory(ctx context.Context, memory *AgentM
 	return memory, nil
 }
 
-func (r *AgentMemoryRepository) GetMemory(ctx context.Context, tenantID, memoryID uuid.UUID) (*AgentMemory, error) {
-	var memory AgentMemory
+func (r *AgentMemoryRepository) GetMemory(ctx context.Context, tenantID, memoryID uuid.UUID) (*storagestate.AgentMemory, error) {
+	var memory storagestate.AgentMemory
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND tenant_id = ?", memoryID, tenantID).
 		First(&memory).Error
@@ -312,7 +312,7 @@ func (r *AgentMemoryRepository) GetMemory(ctx context.Context, tenantID, memoryI
 	return &memory, nil
 }
 
-func (r *AgentMemoryRepository) UpdateMemory(ctx context.Context, memory *AgentMemory) (*AgentMemory, error) {
+func (r *AgentMemoryRepository) UpdateMemory(ctx context.Context, memory *storagestate.AgentMemory) (*storagestate.AgentMemory, error) {
 	memory.UpdatedAt = time.Now()
 	err := r.db.WithContext(ctx).Save(memory).Error
 	if err != nil {
@@ -324,15 +324,15 @@ func (r *AgentMemoryRepository) UpdateMemory(ctx context.Context, memory *AgentM
 func (r *AgentMemoryRepository) DeleteMemory(ctx context.Context, tenantID, memoryID uuid.UUID) error {
 	result := r.db.WithContext(ctx).
 		Where("id = ? AND tenant_id = ?", memoryID, tenantID).
-		Delete(&AgentMemory{})
+		Delete(&storagestate.AgentMemory{})
 	return result.Error
 }
 
-func (r *AgentMemoryRepository) ListMemoriesByAgent(ctx context.Context, tenantID, agentID string, limit, offset int) ([]*AgentMemory, int64, error) {
-	var memories []*AgentMemory
+func (r *AgentMemoryRepository) ListMemoriesByAgent(ctx context.Context, tenantID uuid.UUID, agentID string, limit, offset int) ([]*storagestate.AgentMemory, int64, error) {
+	var memories []*storagestate.AgentMemory
 	var total int64
 
-	err := r.db.WithContext(ctx).Model(&AgentMemory{}).
+	err := r.db.WithContext(ctx).Model(&storagestate.AgentMemory{}).
 		Where("tenant_id = ? AND agent_id = ?", tenantID, agentID).
 		Count(&total).Error
 	if err != nil {
@@ -352,11 +352,11 @@ func (r *AgentMemoryRepository) ListMemoriesByAgent(ctx context.Context, tenantI
 	return memories, total, nil
 }
 
-func (r *AgentMemoryRepository) ListMemoriesByAgentAndType(ctx context.Context, tenantID, agentID, memoryType string, limit, offset int) ([]*AgentMemory, int64, error) {
-	var memories []*AgentMemory
+func (r *AgentMemoryRepository) ListMemoriesByAgentAndType(ctx context.Context, tenantID uuid.UUID, agentID, memoryType string, limit, offset int) ([]*storagestate.AgentMemory, int64, error) {
+	var memories []*storagestate.AgentMemory
 	var total int64
 
-	err := r.db.WithContext(ctx).Model(&AgentMemory{}).
+	err := r.db.WithContext(ctx).Model(&storagestate.AgentMemory{}).
 		Where("tenant_id = ? AND agent_id = ? AND memory_type = ?", tenantID, agentID, memoryType).
 		Count(&total).Error
 	if err != nil {
@@ -376,11 +376,11 @@ func (r *AgentMemoryRepository) ListMemoriesByAgentAndType(ctx context.Context, 
 	return memories, total, nil
 }
 
-func (r *AgentMemoryRepository) ListMemoriesByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*AgentMemory, int64, error) {
-	var memories []*AgentMemory
+func (r *AgentMemoryRepository) ListMemoriesByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*storagestate.AgentMemory, int64, error) {
+	var memories []*storagestate.AgentMemory
 	var total int64
 
-	err := r.db.WithContext(ctx).Model(&AgentMemory{}).
+	err := r.db.WithContext(ctx).Model(&storagestate.AgentMemory{}).
 		Where("tenant_id = ?", tenantID).
 		Count(&total).Error
 	if err != nil {
@@ -400,8 +400,8 @@ func (r *AgentMemoryRepository) ListMemoriesByTenant(ctx context.Context, tenant
 	return memories, total, nil
 }
 
-func (r *AgentMemoryRepository) SearchMemories(ctx context.Context, tenantID uuid.UUID, agentID, memoryType string, embedding []float32, limit int, threshold float32) ([]*AgentMemory, error) {
-	var memories []*AgentMemory
+func (r *AgentMemoryRepository) SearchMemories(ctx context.Context, tenantID uuid.UUID, agentID, memoryType string, embedding []float32, limit int, threshold float32) ([]*storagestate.AgentMemory, error) {
+	var memories []*storagestate.AgentMemory
 
 	query := r.db.WithContext(ctx).
 		Where("tenant_id = ?", tenantID).

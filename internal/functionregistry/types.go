@@ -140,29 +140,29 @@ func (r *RequiredField) IsRequired() bool {
 
 // Function represents a function in the registry
 type Function struct {
-	ID                  string    `json:"id"`
-	Author              string    `json:"author"`
-	Name                string    `json:"name"`
-	LatestVersion       string    `json:"latest_version,omitempty"`
-	Title               string    `json:"title,omitempty"`
-	Description         string    `json:"description,omitempty"`
-	Category            string    `json:"category,omitempty"`
-	Tags                []string  `json:"tags,omitempty"`
-	Visibility          string    `json:"visibility"`
-	PricePerCall        float64   `json:"price_per_call"`
-	PopularityScore     int       `json:"popularity_score"`
-	ReliabilityScore    float64   `json:"reliability_score"`
-	DeterministicScore  float64   `json:"deterministic_score"`
-	TenantID            *string   `json:"tenant_id,omitempty"`
-	OwnerUserID         *string   `json:"owner_user_id,omitempty"`
-	OwnerAgentID        *string   `json:"owner_agent_id,omitempty"` // Agent that generated this function
-	AgentGenerated      bool      `json:"agent_generated"`
-	GenerationPromptHash *string  `json:"generation_prompt_hash,omitempty"`
-	GenerationModel    *string   `json:"generation_model,omitempty"`
-	DeterministicCertHash *string `json:"deterministic_cert_hash,omitempty"`
-	RevenueTotalUSD     float64   `json:"revenue_total_usd"`
-	CreatedAt           time.Time `json:"created_at"`
-	UpdatedAt           time.Time `json:"updated_at"`
+	ID                    string    `json:"id"`
+	Author                string    `json:"author"`
+	Name                  string    `json:"name"`
+	LatestVersion         string    `json:"latest_version,omitempty"`
+	Title                 string    `json:"title,omitempty"`
+	Description           string    `json:"description,omitempty"`
+	Category              string    `json:"category,omitempty"`
+	Tags                  []string  `json:"tags,omitempty"`
+	Visibility            string    `json:"visibility"`
+	PricePerCall          float64   `json:"price_per_call"`
+	PopularityScore       int       `json:"popularity_score"`
+	ReliabilityScore      float64   `json:"reliability_score"`
+	DeterministicScore    float64   `json:"deterministic_score"`
+	TenantID              *string   `json:"tenant_id,omitempty"`
+	OwnerUserID           *string   `json:"owner_user_id,omitempty"`
+	OwnerAgentID          *string   `json:"owner_agent_id,omitempty"` // Agent that generated this function
+	AgentGenerated        bool      `json:"agent_generated"`
+	GenerationPromptHash  *string   `json:"generation_prompt_hash,omitempty"`
+	GenerationModel       *string   `json:"generation_model,omitempty"`
+	DeterministicCertHash *string   `json:"deterministic_cert_hash,omitempty"`
+	RevenueTotalUSD       float64   `json:"revenue_total_usd"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
 
 // FunctionVersion represents a specific version of a function
@@ -256,6 +256,24 @@ type PublishRequest struct {
 	Source     *FunctionSource `json:"source,omitempty"` // Source code for sandbox execution
 	Deployment *DeploymentRef  `json:"deployment,omitempty"`
 	TrustLevel string          `json:"trust_level,omitempty"` // "standard", "high", "enterprise"
+	Changelog  *ChangelogInput `json:"changelog,omitempty"`   // Optional changelog for this version
+}
+
+// ChangelogInput represents the changelog input for a function version
+type ChangelogInput struct {
+	Category    string                 `json:"category"`    // "feature", "bug_fix", "performance", etc.
+	Title       string                 `json:"title"`       // Summary of changes
+	Description string                 `json:"description"` // Detailed description
+	Changes     []ChangelogChangeInput `json:"changes"`     // Detailed list of changes
+}
+
+// ChangelogChangeInput represents a single change in the changelog
+type ChangelogChangeInput struct {
+	Component   string `json:"component"`   // e.g., "input schema", "output schema"
+	Field       string `json:"field"`       // e.g., "timeout", "memory"
+	Before      any    `json:"before"`      // previous value
+	After       any    `json:"after"`       // new value
+	Description string `json:"description"` // human-readable description
 }
 
 // FunctionSource represents the source code for a function

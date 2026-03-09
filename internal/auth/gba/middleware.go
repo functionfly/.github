@@ -3,10 +3,13 @@ package gba
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+
+	apimiddleware "github.com/functionfly/functionfly/internal/api/middleware"
 )
 
 // ContextKey is a type for context keys
@@ -130,12 +133,34 @@ func (m *Middleware) hasPermission(role, permission string) bool {
 	return false
 }
 
-// nextWithLegacyAuth handles fallback to legacy auth system
+// nextWithLegacyAuth handles fallback to legacy auth system (JWT claims from upstream middleware)
 func (m *Middleware) nextWithLegacyAuth(w http.ResponseWriter, r *http.Request, permission string, next http.Handler) {
-	// For now, allow all requests in legacy mode
-	// TODO: Integrate with legacy permission system
 	w.Header().Set("X-Auth-Mode", "legacy")
-	next.ServeHTTP(w, r)
+	claims := apimiddleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, `{"message": "Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	if claims.Role == "super_admin" || claims.Role == "admin" {
+		next.ServeHTTP(w, r)
+		return
+	}
+	if os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development" {
+		m.logger.WithFields(logrus.Fields{"user_id": claims.UserID, "email": claims.Email}).
+			Debug("Legacy permission check bypassed for development")
+		next.ServeHTTP(w, r)
+		return
+	}
+	for _, p := range claims.Permissions {
+		if p == permission {
+			next.ServeHTTP(w, r)
+			return
+		}
+	}
+	m.logger.WithFields(logrus.Fields{
+		"user_id": claims.UserID, "email": claims.Email, "permission": permission,
+	}).Warn("Legacy permission denied")
+	http.Error(w, `{"message": "Forbidden"}`, http.StatusForbidden)
 }
 
 // ExtractTenant middleware extracts and validates tenant context
@@ -195,7 +220,11 @@ func (m *Middleware) extractTenantID(r *http.Request) uuid.UUID {
 				return uuid.Nil
 			}
 		}
-		// TODO: Look up tenant by subdomain in database
+		// Look up active tenant by subdomain
+		var tenant Tenant
+		if err := m.auth.GetDB().Where("subdomain = ? AND status = ?", subdomain, "active").First(&tenant).Error; err == nil {
+			return tenant.ID
+		}
 	}
 
 	return uuid.Nil

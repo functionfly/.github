@@ -75,3 +75,21 @@ export async function bootstrapAdminSession(token: string): Promise<AdminSession
     user: payload.user,
   };
 }
+
+/** Call POST /v1/admin/auth/session to get a new JWT with extended expiry (same shape as bootstrap). */
+export async function extendAdminSession(token: string): Promise<AdminSessionBootstrapResponse> {
+  const apiBaseUrl = getApiBaseUrl();
+  const response = await fetch(`${apiBaseUrl}/v1/admin/auth/session`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  return response.json() as Promise<AdminSessionBootstrapResponse>;
+}

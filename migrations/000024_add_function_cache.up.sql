@@ -28,16 +28,16 @@ CREATE TABLE IF NOT EXISTS function_cache (
 );
 
 -- Index for fast cache key lookups (primary lookup path)
-CREATE INDEX idx_cache_key ON function_cache(cache_key);
+CREATE INDEX IF NOT EXISTS idx_cache_key ON function_cache(cache_key);
 
 -- Index for function+version lookups (invalidation queries)
-CREATE INDEX idx_function_version ON function_cache(function_id, version);
+CREATE INDEX IF NOT EXISTS idx_function_version ON function_cache(function_id, version);
 
 -- Index for TTL-based cleanup queries
-CREATE INDEX idx_expires_at ON function_cache(expires_at);
+CREATE INDEX IF NOT EXISTS idx_expires_at ON function_cache(expires_at);
 
 -- Index for hit count queries
-CREATE INDEX idx_last_hit_at ON function_cache(last_hit_at);
+CREATE INDEX IF NOT EXISTS idx_last_hit_at ON function_cache(last_hit_at);
 
 -- Index for monitoring queries (function_id with expires)
-CREATE INDEX idx_function_version_expires ON function_cache(function_id, version, expires_at);
+CREATE INDEX IF NOT EXISTS idx_function_version_expires ON function_cache(function_id, version, expires_at);

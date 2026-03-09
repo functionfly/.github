@@ -1,21 +1,9 @@
 {
   "run": {
-    "command": "nx build admin-dashboard",
-    "startTime": "2026-03-06T21:03:35.143Z",
-    "endTime": "2026-03-06T21:03:37.240Z",
+    "command": "nx run-many --target=dev --all --parallel=4",
+    "startTime": "2026-03-08T17:04:18.224Z",
+    "endTime": "2026-03-08T21:06:16.676Z",
     "inner": false
   },
-  "tasks": [
-    {
-      "taskId": "admin-dashboard:build",
-      "target": "build",
-      "projectName": "admin-dashboard",
-      "hash": "3605767412484328582",
-      "startTime": "2026-03-06T21:03:35.155Z",
-      "endTime": "2026-03-06T21:03:36.378Z",
-      "params": "",
-      "cacheStatus": "cache-miss",
-      "status": 1
-    }
-  ]
+  "tasks": []
 }

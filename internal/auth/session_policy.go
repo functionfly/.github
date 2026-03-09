@@ -180,7 +180,11 @@ func (s *SessionPolicyService) IsSessionIdle(session *storage.Session, tenantID 
 
 // GetActiveSessions returns all active sessions for a tenant
 func (s *SessionPolicyService) GetActiveSessions(ctx context.Context, tenantID uuid.UUID) ([]*storage.Session, error) {
+<<<<<<< HEAD
 	sessions, err := s.repo.ListTenantSessions(tenantID, 1000, 0)
+=======
+	sessions, err := s.repo.ListTenantSessions(tenantID, 10000, 0)
+>>>>>>> 4b330227 (WIP: agent factory, versioning, migrations consolidation, admin and dashboard updates)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tenant sessions: %w", err)
 	}
@@ -205,8 +209,18 @@ func (s *SessionPolicyService) RevokeSession(ctx context.Context, sessionID, use
 
 // RevokeSessionByID revokes a specific session by ID only (for admin operations)
 func (s *SessionPolicyService) RevokeSessionByID(ctx context.Context, sessionID uuid.UUID) error {
+<<<<<<< HEAD
 	err := s.repo.DeleteSessionByIDOnly(sessionID, uuid.Nil)
+=======
+	session, err := s.repo.GetSessionByID(sessionID)
+>>>>>>> 4b330227 (WIP: agent factory, versioning, migrations consolidation, admin and dashboard updates)
 	if err != nil {
+		return fmt.Errorf("session not found: %w", err)
+	}
+	if session == nil {
+		return errors.New("session not found")
+	}
+	if err := s.repo.DeleteSessionByIDOnly(sessionID, session.UserID); err != nil {
 		return fmt.Errorf("failed to revoke session: %w", err)
 	}
 
@@ -217,7 +231,11 @@ func (s *SessionPolicyService) RevokeSessionByID(ctx context.Context, sessionID 
 
 // RevokeAllSessions revokes all sessions for a tenant
 func (s *SessionPolicyService) RevokeAllSessions(ctx context.Context, tenantID uuid.UUID) error {
+<<<<<<< HEAD
 	sessions, err := s.repo.ListTenantSessions(tenantID, 1000, 0)
+=======
+	sessions, err := s.repo.ListTenantSessions(tenantID, 10000, 0)
+>>>>>>> 4b330227 (WIP: agent factory, versioning, migrations consolidation, admin and dashboard updates)
 	if err != nil {
 		return fmt.Errorf("failed to list tenant sessions: %w", err)
 	}

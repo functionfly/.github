@@ -184,6 +184,10 @@ func (db *PostgresDB) CancelSubscription(ctx context.Context, id uuid.UUID) erro
 	return db.billingRepository.CancelSubscription(ctx, id)
 }
 
+func (db *PostgresDB) ListAllSubscriptions(limit, offset int) ([]*Subscription, error) {
+	return db.billingRepository.ListAllSubscriptions(limit, offset)
+}
+
 func (db *PostgresDB) CreatePricingTier(ctx context.Context, tier *PricingTier) (*PricingTier, error) {
 	return db.billingRepository.CreatePricingTier(ctx, tier)
 }

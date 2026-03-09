@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"net/http"
+	"os"
 
+	"github.com/functionfly/functionfly/internal/auth/gba"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -286,9 +288,33 @@ func (h *Handler) HandleSLO(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		samlRequest := r.FormValue("SAMLRequest")
 		if samlRequest != "" {
-			// Parse and handle logout request
 			h.logger.WithField("tenant_id", tenantID).Info("Received SAML logout request")
-			// TODO: Parse logout request and terminate sessions
+			nameID, sessionIndices, err := h.plugin.service.ParseLogoutRequest(samlRequest)
+			if err != nil {
+				h.logger.WithError(err).Warn("Failed to parse SAML logout request")
+				h.respondError(w, http.StatusBadRequest, "Invalid SAML logout request")
+				return
+			}
+			sessions, err := h.plugin.service.GetSessionsForLogout(r.Context(), tenantID, nameID, sessionIndices)
+			if err != nil {
+				h.logger.WithError(err).Warn("Failed to find sessions for logout")
+				h.respondError(w, http.StatusInternalServerError, "Failed to process logout")
+				return
+			}
+			userIDSet := make(map[uuid.UUID]struct{})
+			for _, sess := range sessions {
+				userIDSet[sess.UserID] = struct{}{}
+				if err := h.plugin.service.DeleteSession(r.Context(), sess.SessionIndex); err != nil {
+					h.logger.WithError(err).WithField("session_index", sess.SessionIndex).Warn("Failed to delete SAML session")
+				}
+			}
+			userIDs := make([]uuid.UUID, 0, len(userIDSet))
+			for id := range userIDSet {
+				userIDs = append(userIDs, id)
+			}
+			if err := h.plugin.service.InvalidateGBASessionsForUsers(r.Context(), userIDs); err != nil {
+				h.logger.WithError(err).Warn("Failed to invalidate GBA sessions on SLO")
+			}
 			h.respondJSON(w, http.StatusOK, map[string]string{"status": "logged_out"})
 			return
 		}
@@ -302,11 +328,56 @@ func (h *Handler) HandleSLO(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Initiate logout - clear local session and redirect to IdP
+	// Initiate logout - clear local session and redirect to IdP or login
 	h.logger.WithField("tenant_id", tenantID).Info("Initiating SAML logout")
 
-	// TODO: Clear session and redirect to IdP SLO URL
-	http.Redirect(w, r, "/login?logged_out=1", http.StatusFound)
+	sessionCookieName := os.Getenv("SESSION_COOKIE_NAME")
+	if sessionCookieName == "" {
+		sessionCookieName = "ff_session"
+	}
+	var sessionToken string
+	if c, _ := r.Cookie(sessionCookieName); c != nil {
+		sessionToken = c.Value
+	}
+	if sessionToken == "" && r.Header.Get("Authorization") != "" {
+		const prefix = "Bearer "
+		if len(r.Header.Get("Authorization")) > len(prefix) {
+			sessionToken = r.Header.Get("Authorization")[len(prefix):]
+		}
+	}
+
+	redirectURL := "/login?logged_out=1"
+	if sessionToken != "" {
+		userID, resolvedTenantID, err := h.plugin.service.GetUserFromSessionToken(r.Context(), sessionToken)
+		if err == nil && resolvedTenantID == tenantID {
+			if err := h.plugin.service.InvalidateSessionByToken(r.Context(), sessionToken); err != nil {
+				h.logger.WithError(err).Warn("Failed to invalidate session on SLO initiate")
+			}
+			config, _ := h.plugin.service.GetConfig(r.Context(), tenantID)
+			if config != nil && config.IDPSLOURL != "" {
+				samlSess, err := h.plugin.service.GetSAMLSessionForUser(r.Context(), tenantID, userID)
+				if err == nil && samlSess != nil {
+					if url, err := h.plugin.service.BuildLogoutRequestRedirectURL(r.Context(), tenantID, samlSess.NameID, samlSess.SessionIndex); err == nil {
+						redirectURL = url
+					}
+				}
+			}
+		} else if err == nil {
+			_ = h.plugin.service.InvalidateSessionByToken(r.Context(), sessionToken)
+		}
+	}
+
+	// Clear session cookie so the browser drops it
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
 // HandleStatus handles GET /v1/auth/saml/status/{tenant_id}
@@ -344,6 +415,32 @@ func (h *Handler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// requireAdminTenantScope ensures the request has an authenticated user and that the path tenant_id
+// matches the context tenant (set by RequirePermission middleware). Call after parsing tenant_id from path.
+// Returns false and sends 401/403 if not authorized.
+func (h *Handler) requireAdminTenantScope(w http.ResponseWriter, r *http.Request, pathTenantID uuid.UUID) bool {
+	userID, ok := r.Context().Value(gba.ContextKeyUserID).(uuid.UUID)
+	if !ok || userID == uuid.Nil {
+		h.respondError(w, http.StatusUnauthorized, "Authentication required")
+		return false
+	}
+	ctxTenantID, ok := r.Context().Value(gba.ContextKeyTenantID).(uuid.UUID)
+	if !ok {
+		h.respondError(w, http.StatusForbidden, "Access denied")
+		return false
+	}
+	if ctxTenantID != pathTenantID {
+		h.logger.WithFields(logrus.Fields{
+			"user_id":       userID,
+			"path_tenant":   pathTenantID,
+			"context_tenant": ctxTenantID,
+		}).Warn("SAML admin access denied: tenant scope mismatch")
+		h.respondError(w, http.StatusForbidden, "Access denied to this tenant")
+		return false
+	}
+	return true
+}
+
 // HandleAdminGetConfig handles GET /v1/auth/saml/admin/config/{tenant_id}
 // Returns SAML configuration (admin only)
 func (h *Handler) HandleAdminGetConfig(w http.ResponseWriter, r *http.Request) {
@@ -352,11 +449,13 @@ func (h *Handler) HandleAdminGetConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Verify admin permissions
 	tenantIDStr := r.PathValue("tenant_id")
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
 		h.respondError(w, http.StatusBadRequest, "Invalid tenant ID")
+		return
+	}
+	if !h.requireAdminTenantScope(w, r, tenantID) {
 		return
 	}
 
@@ -376,6 +475,7 @@ func (h *Handler) HandleAdminGetConfig(w http.ResponseWriter, r *http.Request) {
 		Enabled:      config.Enabled,
 		IDPEntityID:  config.IDPEntityID,
 		IDPSSOURL:    config.IDPSSOURL,
+		IDPSLOURL:    config.IDPSLOURL,
 		SPEntityID:   config.SPEntityID,
 		ACSURL:       config.ACSURL,
 		NameIDFormat: config.NameIDFormat,
@@ -392,11 +492,13 @@ func (h *Handler) HandleAdminUpdateConfig(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// TODO: Verify admin permissions
 	tenantIDStr := r.PathValue("tenant_id")
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
 		h.respondError(w, http.StatusBadRequest, "Invalid tenant ID")
+		return
+	}
+	if !h.requireAdminTenantScope(w, r, tenantID) {
 		return
 	}
 
@@ -444,6 +546,7 @@ func (h *Handler) HandleAdminUpdateConfig(w http.ResponseWriter, r *http.Request
 		Enabled:      config.Enabled,
 		IDPEntityID:  config.IDPEntityID,
 		IDPSSOURL:    config.IDPSSOURL,
+		IDPSLOURL:    config.IDPSLOURL,
 		SPEntityID:   config.SPEntityID,
 		ACSURL:       config.ACSURL,
 		NameIDFormat: config.NameIDFormat,
@@ -460,11 +563,13 @@ func (h *Handler) HandleAdminDeleteConfig(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// TODO: Verify admin permissions
 	tenantIDStr := r.PathValue("tenant_id")
 	tenantID, err := uuid.Parse(tenantIDStr)
 	if err != nil {
 		h.respondError(w, http.StatusBadRequest, "Invalid tenant ID")
+		return
+	}
+	if !h.requireAdminTenantScope(w, r, tenantID) {
 		return
 	}
 

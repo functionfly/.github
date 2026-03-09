@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
-.PHONY: help build build-local-runtime test clean docker-up docker-down dev api health-monitor migrate migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv
+.PHONY: help build build-local-runtime test clean docker-up docker-down dev api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -139,6 +139,9 @@ api: ## Run orchestrator API (local services; use infisical if available). Set D
 		./scripts/run-api-local.sh; \
 	fi
 
+api-local: ## Run orchestrator API without Infisical (uses run-api-local.sh). Use when Infisical returns 403 or is unavailable.
+	./scripts/run-api-local.sh
+
 health-monitor: ## Run health monitor service (local DB/Redis). Set DB_PORT=5434 for Docker Postgres.
 	@if command -v infisical >/dev/null 2>&1; then \
 		infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
@@ -164,6 +167,9 @@ migrate: ## Run database migrations (up). Uses local DB by default (DB_PORT=5432
 		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
 		go run ./cmd/migrate up; \
 	fi
+
+migrate-local: ## Run database migrations (up) without Infisical. Use when Infisical returns 403 or is unavailable.
+	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} go run ./cmd/migrate up
 
 migrate-down: ## Rollback database migrations
 	@if command -v infisical >/dev/null 2>&1; then \
@@ -192,6 +198,9 @@ migrate-version: ## Show current migration version
 		go run ./cmd/migrate version; \
 	fi
 
+reset-db: ## Drop DB, recreate, and run migrations (clean slate). Use when DB is dirty or inconsistent.
+	@./scripts/reset-db.sh
+
 setup: ## Setup initial data (tenant, user)
 	@if command -v infisical >/dev/null 2>&1; then \
 		infisical run --env=dev -- go run ./cmd/setup; \
@@ -217,9 +226,6 @@ update-blog-from-md-docker: ## Same as update-blog-from-md but for Docker Postgr
 
 fmt: ## Format Go code
 	go fmt ./...
-
-lint: ## Run linter
-	golangci-lint run
 
 deps: ## Download dependencies
 	go mod download

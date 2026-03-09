@@ -1,11 +1,14 @@
 /**
  * Admin Authentication Store
- * Manages admin user session, authentication state, and security checks
+ * Manages admin user session, authentication state, and security checks.
+ * Access token is persisted in sessionStorage so the session survives page refresh.
  */
 
 import { create } from 'zustand';
 import type { AdminUser, AdminSession } from '@/types';
 import { adminApiClient } from '@/lib/api/adminClient';
+import { extendAdminSession } from '@/lib/api/adminAuth';
+import { CACHE_KEYS } from '@/lib/constants';
 
 interface AdminAuthState {
   user: AdminUser | null;
@@ -22,6 +25,8 @@ interface AdminAuthState {
   logout: () => void;
   verifyMFA: () => void;
   updateActivity: () => void;
+  /** Extend session: calls backend for new JWT and updates store. Returns a promise that rejects on failure. */
+  extendSession: () => Promise<void>;
   checkSession: () => boolean;
   setUser: (user: AdminUser) => void;
   setSession: (session: AdminSession) => void;
@@ -40,9 +45,13 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
   ipCheckReason: null,
 
   login: (session, user) => {
-    // Store in memory only, not localStorage
     if (session.access_token) {
       adminApiClient.setSessionToken(session.access_token);
+      try {
+        sessionStorage.setItem(CACHE_KEYS.ADMIN_ACCESS_TOKEN, session.access_token);
+      } catch {
+        // sessionStorage may be unavailable (private mode, etc.)
+      }
     }
 
     set({
@@ -58,6 +67,11 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
   logout: () => {
     adminApiClient.clearSessionToken();
     adminApiClient.clearDeviceFingerprint();
+    try {
+      sessionStorage.removeItem(CACHE_KEYS.ADMIN_ACCESS_TOKEN);
+    } catch {
+      /* ignore */
+    }
 
     // Clear all state on logout
     set({
@@ -94,6 +108,32 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
     }
 
     set({ lastActivity: now });
+  },
+
+  extendSession: async () => {
+    const state = get();
+    const token =
+      state.session?.access_token ??
+      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(CACHE_KEYS.ADMIN_ACCESS_TOKEN) : null);
+    if (!token) {
+      get().logout();
+      return;
+    }
+    const bootstrap = await extendAdminSession(token);
+    const newToken = bootstrap.session?.access_token ?? token;
+    if (bootstrap.session) {
+      adminApiClient.setSessionToken(newToken);
+      try {
+        sessionStorage.setItem(CACHE_KEYS.ADMIN_ACCESS_TOKEN, newToken);
+      } catch {
+        /* ignore */
+      }
+      set({
+        session: bootstrap.session as AdminSession,
+        user: bootstrap.user as AdminUser,
+        lastActivity: Date.now(),
+      });
+    }
   },
 
   checkSession: () => {

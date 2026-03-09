@@ -1,6 +1,6 @@
 /**
  * Admin Users Page
- * Manage all platform users
+ * Manage all platform users across tenants (admin and regular users).
  */
 
 import { useState } from 'react';
@@ -19,20 +19,21 @@ export function AdminUsersPage() {
   const [inviteRole, setInviteRole] = useState('admin');
   const queryClient = useQueryClient();
 
-  // Fetch users
-  const { data: usersResponse, isLoading, isError } = useQuery({
+  // Fetch users (accept both { data: [] } and { users: [] } from API)
+  const { data: usersResponse, isLoading, isError, error } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      try {
-        return await adminApiClient.get<AdminUser[]>('/users');
-      } catch {
-        return { data: [], success: false };
-      }
+      const res = await adminApiClient.get<AdminUser[] | { users?: AdminUser[] }>('/users');
+      return res;
     },
     staleTime: 1000 * 60, // 1 minute
   });
 
-  const users = usersResponse?.data || [];
+  const users: AdminUser[] = Array.isArray(usersResponse)
+    ? usersResponse
+    : (usersResponse as { data?: AdminUser[] })?.data ??
+      (usersResponse as { users?: AdminUser[] })?.users ??
+      [];
 
   // Invite user mutation
   const inviteMutation = useMutation({
@@ -80,10 +81,12 @@ export function AdminUsersPage() {
   }
 
   if (isError) {
+    const errMsg = error instanceof Error ? error.message : 'Failed to fetch user data.';
     return (
       <div className="p-8 bg-red-50 border border-red-200 rounded-lg">
         <h3 className="font-semibold text-red-900">Error loading users</h3>
-        <p className="text-red-700 mt-2">Failed to fetch user data.</p>
+        <p className="text-red-700 mt-2">{errMsg}</p>
+        <p className="text-red-600 text-sm mt-2">Ensure the API is running and you have permission to list users.</p>
       </div>
     );
   }
@@ -101,7 +104,7 @@ export function AdminUsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-          <p className="mt-2 text-gray-600">Manage admin users and their permissions</p>
+          <p className="mt-2 text-gray-600">Manage all platform users across tenants and their permissions</p>
         </div>
 
         {/* Invite Button */}
@@ -184,6 +187,7 @@ export function AdminUsersPage() {
           <option value="super_admin">Super Admin</option>
           <option value="admin">Admin</option>
           <option value="moderator">Moderator</option>
+          <option value="user">User</option>
         </select>
       </div>
 
@@ -212,7 +216,7 @@ export function AdminUsersPage() {
                 <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
                     <Link to={`/users/${user.id}`} className="text-blue-700 hover:text-blue-800 hover:underline">
-                      {user.name}
+                      {user.name || user.email}
                     </Link>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>

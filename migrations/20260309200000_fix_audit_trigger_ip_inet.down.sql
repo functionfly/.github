@@ -1,0 +1,2 @@
+-- Restore original audit trigger (ip_address as text expression; may fail on strict INET)
+-- No-op: revert would require original function body from 000244.

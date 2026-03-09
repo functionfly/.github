@@ -95,11 +95,25 @@ func (h *Handler) requirePermission(w http.ResponseWriter, r *http.Request, stat
 // checkStateAccess checks if user can access the state (owner or has permission)
 // Returns: hasAccess bool, isOwner bool, error
 func (h *Handler) checkStateAccess(ctx context.Context, state *staterepo.State, userID uuid.UUID) (bool, bool, error) {
-	// Check if user is the owner (via tenant)
 	if state.TenantID == uuid.Nil {
 		return false, false, nil
 	}
-	// For now, all tenant users have full access
-	// In production, you'd check if user belongs to the tenant
-	return true, true, nil
+	if h.userTenant != nil {
+		userTenantID, err := h.userTenant.GetUserTenantID(ctx, userID)
+		if err != nil {
+			logrus.WithError(err).WithField("user_id", userID).Debug("failed to resolve user tenant for state access")
+			return false, false, err
+		}
+		if userTenantID != state.TenantID {
+			// User is not in this tenant; deny unless they have explicit permission on this state
+			allowed, err := h.stateRepo.CheckPermission(ctx, state.ID, "user", userID, "read")
+			if err != nil {
+				return false, false, err
+			}
+			return allowed, false, nil
+		}
+		return true, true, nil
+	}
+	// No resolver configured: deny by default (production-safe)
+	return false, false, nil
 }

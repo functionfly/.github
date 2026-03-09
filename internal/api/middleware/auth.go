@@ -81,9 +81,17 @@ func GetActingTenantID(r *http.Request) *uuid.UUID {
 	return nil
 }
 
-// setActingTenantID sets the tenant context for tenant-scoped operations
+// SetActingTenantID sets the tenant context for tenant-scoped operations
 func SetActingTenantID(r *http.Request, tenantID *uuid.UUID) *http.Request {
 	ctx := context.WithValue(r.Context(), contextKeyActingTenantID, tenantID)
+	return r.WithContext(ctx)
+}
+
+// SetUserInContext injects auth claims into the request context.
+// Intended for use in tests that need to simulate an authenticated request
+// without going through the full JWT middleware.
+func SetUserInContext(r *http.Request, claims *auth.Claims) *http.Request {
+	ctx := context.WithValue(r.Context(), contextKeyUser, claims)
 	return r.WithContext(ctx)
 }
 

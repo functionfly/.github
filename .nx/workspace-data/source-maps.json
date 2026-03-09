@@ -1642,11 +1642,23 @@
       "web/docs/package.json",
       "nx/core/package-json"
     ],
-    "tags.npm:private": [
+    "tags.npm:public": [
       "web/docs/package.json",
       "nx/core/package-json"
     ],
     "metadata.targetGroups": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.0": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.1": [
       "web/docs/package.json",
       "nx/core/package-json"
     ],
@@ -1667,6 +1679,78 @@
       "nx/core/package-json"
     ],
     "targets": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start.executor": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start.options": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start.metadata": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start.options.script": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start.metadata.scriptContent": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start.metadata.runCommand": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro.executor": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro.options": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro.metadata": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro.options.script": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro.metadata.scriptContent": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro.metadata.runCommand": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.executor": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.dependsOn": [
+      "web/docs/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.options": [
       "web/docs/package.json",
       "nx/core/package-json"
     ],
@@ -1815,6 +1899,252 @@
       "nx/target-defaults"
     ],
     "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  },
+  "web/site": {
+    "root": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "name": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "tags": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "tags.npm:public": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.0": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.1": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.2": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.3": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.4": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageName": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageVersion": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.isInPackageManagerWorkspaces": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.dev": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.dev.executor": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.dev.options": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.dev.metadata": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.dev.options.script": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.dev.metadata.scriptContent": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.dev.metadata.runCommand": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start.executor": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start.options": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start.metadata": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start.options.script": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start.metadata.scriptContent": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.start.metadata.runCommand": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build.executor": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build.options": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build.metadata": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build.options.script": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build.metadata.scriptContent": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build.metadata.runCommand": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.preview": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.preview.executor": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.preview.options": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.preview.metadata": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.preview.options.script": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.preview.metadata.scriptContent": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.preview.metadata.runCommand": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro.executor": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro.options": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro.metadata": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro.options.script": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro.metadata.scriptContent": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.astro.metadata.runCommand": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.executor": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.dependsOn": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.options": [
+      "web/site/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.dev.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.dev.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.dependsOn": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.parallelism": [
       "nx.json",
       "nx/target-defaults"
     ]

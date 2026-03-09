@@ -263,8 +263,8 @@ CREATE TABLE IF NOT EXISTS agent_memories (
     content TEXT,
     structured_data JSONB,
 
-    -- Embedding (pgvector) - OpenAI ada-002 default dimension
-    embedding vector(1536),
+    -- Embedding (BYTEA when pgvector not installed; use vector(1536) if you have CREATE EXTENSION vector)
+    embedding BYTEA,
 
     -- Metadata
     importance_score REAL DEFAULT 0.5, -- 0.0-1.0 for retention
@@ -288,9 +288,6 @@ CREATE INDEX IF NOT EXISTS idx_agent_memories_agent_id ON agent_memories(agent_i
 CREATE INDEX IF NOT EXISTS idx_agent_memories_memory_type ON agent_memories(memory_type);
 CREATE INDEX IF NOT EXISTS idx_agent_memories_expires_at ON agent_memories(expires_at) WHERE expires_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_agent_memories_importance ON agent_memories(importance_score);
-
--- Vector similarity search index for agent memories
-CREATE INDEX IF NOT EXISTS idx_agent_memories_embedding_cosine ON agent_memories USING ivfflat (embedding vector_cosine_ops);
 
 
 -- 10. Agent memory index table - Track index configuration per agent

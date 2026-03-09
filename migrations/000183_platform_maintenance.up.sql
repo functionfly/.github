@@ -2,7 +2,7 @@
 -- Provides platform-wide maintenance mode functionality
 
 -- Main maintenance mode configuration table
-CREATE TABLE platform_maintenance (
+CREATE TABLE IF NOT EXISTS platform_maintenance (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     enabled BOOLEAN NOT NULL DEFAULT false,
     name VARCHAR(255) NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE platform_maintenance (
 );
 
 -- Customizable maintenance page templates
-CREATE TABLE maintenance_page_templates (
+CREATE TABLE IF NOT EXISTS maintenance_page_templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL UNIQUE,
     title VARCHAR(255),
@@ -49,7 +49,7 @@ CREATE TABLE maintenance_page_templates (
 );
 
 -- Audit log for maintenance mode changes
-CREATE TABLE maintenance_audit_log (
+CREATE TABLE IF NOT EXISTS maintenance_audit_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     maintenance_id UUID REFERENCES platform_maintenance(id),
     action VARCHAR(50) NOT NULL,
@@ -62,10 +62,10 @@ CREATE TABLE maintenance_audit_log (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_platform_maintenance_enabled ON platform_maintenance(enabled) WHERE enabled = true;
-CREATE INDEX idx_platform_maintenance_scheduled ON platform_maintenance(scheduled_start) WHERE is_scheduled = true;
-CREATE INDEX idx_maintenance_audit_log_maintenance_id ON maintenance_audit_log(maintenance_id);
-CREATE INDEX idx_maintenance_audit_log_changed_at ON maintenance_audit_log(changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_platform_maintenance_enabled ON platform_maintenance(enabled) WHERE enabled = true;
+CREATE INDEX IF NOT EXISTS idx_platform_maintenance_scheduled ON platform_maintenance(scheduled_start) WHERE is_scheduled = true;
+CREATE INDEX IF NOT EXISTS idx_maintenance_audit_log_maintenance_id ON maintenance_audit_log(maintenance_id);
+CREATE INDEX IF NOT EXISTS idx_maintenance_audit_log_changed_at ON maintenance_audit_log(changed_at DESC);
 
 -- Insert default maintenance template
 INSERT INTO maintenance_page_templates (
@@ -88,7 +88,7 @@ INSERT INTO maintenance_page_templates (
     true,
     true,
     true
-);
+) ON CONFLICT (name) DO NOTHING;
 
 -- Insert default maintenance record (disabled by default)
 INSERT INTO platform_maintenance (
@@ -97,10 +97,11 @@ INSERT INTO platform_maintenance (
     message,
     enabled,
     rollout_percentage
-) VALUES (
+)
+SELECT
     'Default Maintenance',
     'Default maintenance configuration',
     'We''re performing scheduled maintenance. We''ll be back shortly.',
     false,
     100
-);
+WHERE NOT EXISTS (SELECT 1 FROM platform_maintenance LIMIT 1);

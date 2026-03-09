@@ -81,27 +81,34 @@ ALTER TABLE user_activity ENABLE ROW LEVEL SECURITY;
 ALTER TABLE achievements ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for user_skills
+DROP POLICY IF EXISTS user_skills_owner_access ON user_skills;
 CREATE POLICY user_skills_owner_access ON user_skills
     FOR ALL USING (user_id = current_user_id());
 
+DROP POLICY IF EXISTS user_skills_public_read ON user_skills;
 CREATE POLICY user_skills_public_read ON user_skills
     FOR SELECT USING (true); -- Public for profile viewing
 
 -- RLS Policies for user_achievements
+DROP POLICY IF EXISTS user_achievements_owner_access ON user_achievements;
 CREATE POLICY user_achievements_owner_access ON user_achievements
     FOR ALL USING (user_id = current_user_id());
 
+DROP POLICY IF EXISTS user_achievements_public_read ON user_achievements;
 CREATE POLICY user_achievements_public_read ON user_achievements
     FOR SELECT USING (true); -- Public for profile viewing
 
 -- RLS Policies for user_activity
+DROP POLICY IF EXISTS user_activity_owner_access ON user_activity;
 CREATE POLICY user_activity_owner_access ON user_activity
     FOR ALL USING (user_id = current_user_id());
 
+DROP POLICY IF EXISTS user_activity_public_read ON user_activity;
 CREATE POLICY user_activity_public_read ON user_activity
     FOR SELECT USING (is_public = true); -- Only public activities visible
 
 -- RLS Policies for achievements (public read-only)
+DROP POLICY IF EXISTS achievements_public_read ON achievements;
 CREATE POLICY achievements_public_read ON achievements
     FOR SELECT USING (true);
 

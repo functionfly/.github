@@ -2,7 +2,7 @@
 -- +migrate Up
 
 -- Table for registered local runtime instances
-CREATE TABLE local_runtime_instances (
+CREATE TABLE IF NOT EXISTS local_runtime_instances (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     runtime_id VARCHAR(255) UNIQUE NOT NULL,
     runtime_type VARCHAR(50) NOT NULL,
@@ -19,12 +19,12 @@ CREATE TABLE local_runtime_instances (
 );
 
 -- Index for efficient heartbeat queries
-CREATE INDEX idx_local_runtime_instances_last_heartbeat ON local_runtime_instances(last_heartbeat);
-CREATE INDEX idx_local_runtime_instances_status ON local_runtime_instances(status);
-CREATE INDEX idx_local_runtime_instances_runtime_type ON local_runtime_instances(runtime_type);
+CREATE INDEX IF NOT EXISTS idx_local_runtime_instances_last_heartbeat ON local_runtime_instances(last_heartbeat);
+CREATE INDEX IF NOT EXISTS idx_local_runtime_instances_status ON local_runtime_instances(status);
+CREATE INDEX IF NOT EXISTS idx_local_runtime_instances_runtime_type ON local_runtime_instances(runtime_type);
 
 -- Table for local runtime metrics snapshots
-CREATE TABLE local_runtime_metrics (
+CREATE TABLE IF NOT EXISTS local_runtime_metrics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     runtime_instance_id UUID NOT NULL REFERENCES local_runtime_instances(id) ON DELETE CASCADE,
     timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -46,11 +46,11 @@ CREATE TABLE local_runtime_metrics (
 );
 
 -- Indexes for efficient metrics queries
-CREATE INDEX idx_local_runtime_metrics_instance_timestamp ON local_runtime_metrics(runtime_instance_id, timestamp DESC);
-CREATE INDEX idx_local_runtime_metrics_timestamp ON local_runtime_metrics(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_local_runtime_metrics_instance_timestamp ON local_runtime_metrics(runtime_instance_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_local_runtime_metrics_timestamp ON local_runtime_metrics(timestamp DESC);
 
 -- Table for local runtime health checks
-CREATE TABLE local_runtime_health (
+CREATE TABLE IF NOT EXISTS local_runtime_health (
     runtime_instance_id UUID PRIMARY KEY REFERENCES local_runtime_instances(id) ON DELETE CASCADE,
     timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     status VARCHAR(50) NOT NULL,
@@ -60,10 +60,10 @@ CREATE TABLE local_runtime_health (
 );
 
 -- Index for health queries
-CREATE INDEX idx_local_runtime_health_timestamp ON local_runtime_health(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_local_runtime_health_timestamp ON local_runtime_health(timestamp DESC);
 
 -- Create a view for aggregated runtime metrics
-CREATE VIEW local_runtime_aggregated_metrics AS
+CREATE OR REPLACE VIEW local_runtime_aggregated_metrics AS
 SELECT
     DATE_TRUNC('minute', m.timestamp) as time_bucket,
     COUNT(DISTINCT m.runtime_instance_id) as active_instances,

@@ -103,8 +103,6 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   const status = useNavigationStatus();
   const unreadCount = useNotificationStore((state) => state.unreadCounts.all);
 
-  const isAdmin = user?.role && ["super_admin", "support", "billing_admin", "developer_admin"].includes(user.role);
-
   const [mobileSearchQuery, setMobileSearchQuery] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [isLg, setIsLg] = useState(() => typeof window !== "undefined" && window.innerWidth >= LG_BREAKPOINT);
@@ -130,29 +128,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     onSwipeLeft: () => onClose(), // Close sidebar on swipe left
   });
 
-  const adminSection: NavSection | null = isAdmin ? {
-    title: "Admin",
-    items: [
-      { path: ROUTES.ADMIN_TENANTS, label: "Tenants", icon: Building2 },
-      { path: ROUTES.ADMIN_USERS, label: "Users", icon: Users },
-      { path: ROUTES.ADMIN_BILLING, label: "Billing", icon: CreditCard },
-      { path: ROUTES.ADMIN_AUDIT, label: "Audit Log", icon: Shield },
-      { path: ROUTES.ADMIN_SYSTEM, label: "System", icon: Wrench },
-      { path: ROUTES.ADMIN_BACKENDS, label: "Platform Backends", icon: Server },
-      { path: ROUTES.ADMIN_PROVIDERS, label: "Providers", icon: Cloud },
-      { path: ROUTES.ADMIN_CONTENT, label: "Content", icon: FileText },
-      { path: ROUTES.ADMIN_REDIRECTS, label: "Redirects", icon: RotateCcw },
-      { path: ROUTES.ADMIN_NEWSLETTER, label: "Newsletter", icon: Mail },
-      { path: ROUTES.ADMIN_CONTENT_CALENDAR, label: "Content Calendar", icon: Calendar },
-      { path: ROUTES.ADMIN_FEEDBACK, label: "Feedback", icon: MessageSquare },
-      { path: ROUTES.ADMIN_FUNCTIONS, label: "Functions", icon: Code },
-      { path: ROUTES.ADMIN_REGISTRY, label: "Registry", icon: Database },
-      { path: ROUTES.ADMIN_STATE_FABRIC, label: "State Fabric", icon: Layers },
-      { path: "/admin/status/incidents", label: "Status Incidents", icon: AlertTriangle },
-    ]
-  } : null;
-
-  const allSections = adminSection ? [...navigationSections, adminSection] : navigationSections;
+  const allSections = navigationSections;
 
   // Build path -> nav item map and derive recent items from stored paths (only show items that exist in current nav)
   const pathToItem = new Map(
@@ -162,14 +138,10 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     .map((path) => pathToItem.get(path))
     .filter((item): item is NonNullable<typeof item> => item != null);
 
-  // Initialize expanded state - all sections expanded by default except admin (collapsed by default)
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(() => {
-    const initial = new Set(allSections.map(section => section.title));
-    if (adminSection) {
-      initial.delete("Admin"); // Collapse admin section by default
-    }
-    return initial;
-  });
+  // Initialize expanded state - all sections expanded by default
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(() =>
+    new Set(allSections.map(section => section.title))
+  );
 
   const toggleSection = (sectionTitle: string) => {
     setExpandedSections(prev => {

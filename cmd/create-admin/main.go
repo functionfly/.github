@@ -86,6 +86,12 @@ func main() {
 		}
 	}
 
+	// Ensure tenant has enterprise plan for admin access
+	_, err = db.ExecContext(ctx, `UPDATE tenants SET plan = 'enterprise', updated_at = NOW() WHERE id = $1`, tenantUUID)
+	if err != nil {
+		log.Fatalf("Failed to set tenant plan to enterprise: %v", err)
+	}
+
 	var n int
 	err = db.QueryRowContext(ctx, `SELECT 1 FROM users WHERE email = $1`, *email).Scan(&n)
 	if err == nil {

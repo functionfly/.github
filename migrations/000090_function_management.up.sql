@@ -1,5 +1,5 @@
 -- Create functions table
-CREATE TABLE functions (
+CREATE TABLE IF NOT EXISTS functions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE functions (
 );
 
 -- Create function_deployments table
-CREATE TABLE function_deployments (
+CREATE TABLE IF NOT EXISTS function_deployments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     function_id UUID NOT NULL REFERENCES functions(id) ON DELETE CASCADE,
     version VARCHAR(50) NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE function_deployments (
 );
 
 -- Create function_logs table
-CREATE TABLE function_logs (
+CREATE TABLE IF NOT EXISTS function_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     function_id UUID REFERENCES functions(id) ON DELETE CASCADE,
     deployment_id UUID REFERENCES function_deployments(id) ON DELETE CASCADE,
@@ -40,14 +40,14 @@ CREATE TABLE function_logs (
 );
 
 -- Create indexes for better performance
-CREATE INDEX idx_functions_tenant_id ON functions(tenant_id);
-CREATE INDEX idx_functions_status ON functions(status);
-CREATE INDEX idx_function_deployments_function_id ON function_deployments(function_id);
-CREATE INDEX idx_function_deployments_status ON function_deployments(status);
-CREATE INDEX idx_function_logs_function_id ON function_logs(function_id);
-CREATE INDEX idx_function_logs_deployment_id ON function_logs(deployment_id);
-CREATE INDEX idx_function_logs_timestamp ON function_logs(timestamp);
-CREATE INDEX idx_function_logs_level ON function_logs(level);
+CREATE INDEX IF NOT EXISTS idx_functions_tenant_id ON functions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_functions_status ON functions(status);
+CREATE INDEX IF NOT EXISTS idx_function_deployments_function_id ON function_deployments(function_id);
+CREATE INDEX IF NOT EXISTS idx_function_deployments_status ON function_deployments(status);
+CREATE INDEX IF NOT EXISTS idx_function_logs_function_id ON function_logs(function_id);
+CREATE INDEX IF NOT EXISTS idx_function_logs_deployment_id ON function_logs(deployment_id);
+CREATE INDEX IF NOT EXISTS idx_function_logs_timestamp ON function_logs(timestamp);
+CREATE INDEX IF NOT EXISTS idx_function_logs_level ON function_logs(level);
 
 -- Create updated_at trigger function if it doesn't exist
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -59,8 +59,10 @@ END;
 $$ language 'plpgsql';
 
 -- Create triggers for updated_at
+DROP TRIGGER IF EXISTS update_functions_updated_at ON functions;
 CREATE TRIGGER update_functions_updated_at BEFORE UPDATE ON functions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_function_deployments_updated_at ON function_deployments;
 CREATE TRIGGER update_function_deployments_updated_at BEFORE UPDATE ON function_deployments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

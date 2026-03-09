@@ -22,6 +22,12 @@ type (
 	RegistryFunctionApprovalComment    = registry.RegistryFunctionApprovalComment
 	RegistryFunctionVerificationStatus = registry.RegistryFunctionVerificationStatus
 
+	// Function version changelog
+	FunctionVersionChangelog = registry.FunctionVersionChangelog
+	ChangeType               = registry.ChangeType
+	ChangeCategory           = registry.ChangeCategory
+	FunctionChangelogChange  = registry.FunctionChangelogChange
+
 	// DRE 2.0 type aliases
 	MEGRecord            = registry.MEGRecord
 	ExecutionCertificate = registry.ExecutionCertificate

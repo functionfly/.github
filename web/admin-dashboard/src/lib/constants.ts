@@ -24,10 +24,15 @@ export const ROUTES = {
   ADMIN_FEEDBACK: '/feedback',
   ADMIN_FEATURES: '/features',
   ADMIN_STATUS: '/status',
+  ADMIN_STATUS_INCIDENTS: '/status/incidents',
   ADMIN_TRUST_DASHBOARD: '/trust-dashboard',
   ADMIN_EXECUTION_AUDIT: '/execution-audit',
   ADMIN_FRAUD_DETECTION: '/fraud-detection',
   ADMIN_ECONOMIC_LEADERBOARD: '/economic-leaderboard',
+  ADMIN_REDIRECTS: '/redirects',
+  ADMIN_NEWSLETTER: '/newsletter',
+  ADMIN_CONTENT_CALENDAR: '/content-calendar',
+  ADMIN_FACTORY: '/factory',
 };
 
 export const API_ROUTES = {
@@ -68,6 +73,7 @@ export const SECURITY = {
 export const CACHE_KEYS = {
   ADMIN_USER: 'admin_user',
   ADMIN_SESSION: 'admin_session',
+  ADMIN_ACCESS_TOKEN: 'admin_access_token',
   ADMIN_PERMISSIONS: 'admin_permissions',
 };
 

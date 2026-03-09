@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/resend/resend-go/v2"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/resend/resend-go/v2"
 )
 
 type ResendConfig struct {
-	APIKey      string
-	FromEmail   string
-	FromName    string
-	BaseURL     string
+	APIKey       string
+	FromEmail    string
+	FromName     string
+	BaseURL      string
 	ReplyToEmail string
 }
 
 type ResendService struct {
-	client   *resend.Client
-	config   ResendConfig
+	client *resend.Client
+	config ResendConfig
 }
 
 func NewResendService(config ResendConfig) *ResendService {
@@ -284,6 +284,14 @@ func (s *ResendService) ValidateConfiguration() error {
 	}
 	if s.config.FromEmail == "" {
 		return fmt.Errorf("from email not configured")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := s.client.ApiKeys.ListWithContext(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to validate Resend API key: %w", err)
 	}
 
 	return nil

@@ -159,6 +159,9 @@ END;
 $$ language 'plpgsql';
 
 -- Add triggers for updated_at
+DROP TRIGGER IF EXISTS update_user_execution_quotas_updated_at ON user_execution_quotas;
 CREATE TRIGGER update_user_execution_quotas_updated_at BEFORE UPDATE ON user_execution_quotas FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_abuse_patterns_updated_at ON abuse_patterns;
 CREATE TRIGGER update_abuse_patterns_updated_at BEFORE UPDATE ON abuse_patterns FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_function_input_schemas_updated_at ON function_input_schemas;
 CREATE TRIGGER update_function_input_schemas_updated_at BEFORE UPDATE ON function_input_schemas FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

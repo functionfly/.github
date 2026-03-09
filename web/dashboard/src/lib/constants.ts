@@ -28,24 +28,6 @@ export const ROUTES = {
   MARKETPLACE_AGENTS: "/marketplace/agents",
   MARKETPLACE_FUNCTIONS: "/marketplace/functions",
   EVOLUTION: "/evolution",
-  // Admin routes
-  ADMIN: "/admin",
-  ADMIN_TENANTS: "/admin/tenants",
-  ADMIN_USERS: "/admin/users",
-  ADMIN_BILLING: "/admin/billing",
-  ADMIN_AUDIT: "/admin/audit",
-  ADMIN_SYSTEM: "/admin/system",
-  ADMIN_BACKENDS: "/admin/backends",
-  ADMIN_PROVIDERS: "/admin/providers",
-  // Blog & Content Admin
-  ADMIN_CONTENT: "/admin/content",
-  ADMIN_REDIRECTS: "/admin/redirects",
-  ADMIN_NEWSLETTER: "/admin/newsletter",
-  ADMIN_CONTENT_CALENDAR: "/admin/content-calendar",
-  ADMIN_FEEDBACK: "/admin/feedback",
-  ADMIN_FUNCTIONS: "/admin/functions",
-  ADMIN_REGISTRY: "/admin/registry",
-  ADMIN_STATE_FABRIC: "/admin/state-fabric",
   // Enterprise routes
   ENTERPRISE: "/enterprise",
   ENTERPRISE_SLA: "/enterprise/sla",
@@ -57,24 +39,9 @@ export const ROUTES = {
 
 /**
  * All sidebar main nav paths (for recent-tab tracking).
- * Sorted by path length descending so longer paths match first (e.g. /admin/tenants/1 -> /admin/tenants).
+ * Sorted by path length descending so longer paths match first.
  */
 export const MAIN_NAV_PATHS: string[] = [
-  ROUTES.ADMIN_TENANTS,
-  ROUTES.ADMIN_USERS,
-  ROUTES.ADMIN_BILLING,
-  ROUTES.ADMIN_AUDIT,
-  ROUTES.ADMIN_SYSTEM,
-  ROUTES.ADMIN_BACKENDS,
-  ROUTES.ADMIN_PROVIDERS,
-  ROUTES.ADMIN_CONTENT,
-  ROUTES.ADMIN_REDIRECTS,
-  ROUTES.ADMIN_NEWSLETTER,
-  ROUTES.ADMIN_CONTENT_CALENDAR,
-  ROUTES.ADMIN_FEEDBACK,
-  ROUTES.ADMIN_FUNCTIONS,
-  ROUTES.ADMIN_REGISTRY,
-  ROUTES.ADMIN_STATE_FABRIC,
   ROUTES.STATE_FABRIC,
   ROUTES.MARKETPLACE_AGENTS,
   ROUTES.MARKETPLACE_FUNCTIONS,
@@ -149,11 +116,6 @@ export const ROUTE_BUILDERS = {
   // User dashboard sections
   userFunctions: (username: string) => `/dashboard/${username}/functions`,
   userSettings: (username: string) => `/u/${username}/settings`,
-
-  // Admin dynamic routes
-  adminTenant: (tenantId: string) => `/admin/tenants/${tenantId}`,
-  adminUser: (userId: string) => `/admin/users/${userId}`,
-  adminFunction: (functionId: string) => `/admin/functions/${functionId}`,
 
   // Agent dynamic routes
   agent: (agentId: string) => `/agents/${agentId}`,

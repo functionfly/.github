@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -52,7 +53,7 @@ func (r *AuditRepository) ListAuditEvents(limit, offset int) ([]*AuditEvent, err
 func (r *AuditRepository) ListAuditEventsFiltered(limit, offset int, filters map[string]interface{}) ([]*AuditEvent, error) {
 	baseQuery := `
 		SELECT id, actor_user_id, actor_email, tenant_id, action, resource_type, resource_id,
-			   request_id, before_state, after_state, ip_address, user_agent, timestamp, success
+			   request_id, before_state, after_state, COALESCE(ip_address::text, ''), user_agent, timestamp, success
 		FROM audit_events WHERE 1=1`
 
 	var args []interface{}
@@ -127,13 +128,20 @@ func (r *AuditRepository) ListAuditEventsFiltered(limit, offset int, filters map
 	for rows.Next() {
 		event := &AuditEvent{}
 		var beforeState, afterState []byte
+		var ipAddr, userAgent sql.NullString
 		err := rows.Scan(
 			&event.ID, &event.ActorUserID, &event.ActorEmail, &event.TenantID,
 			&event.Action, &event.ResourceType, &event.ResourceID, &event.RequestID,
-			&beforeState, &afterState, &event.IPAddress, &event.UserAgent,
+			&beforeState, &afterState, &ipAddr, &userAgent,
 			&event.Timestamp, &event.Success)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan audit event: %w", err)
+		}
+		if ipAddr.Valid {
+			event.IPAddress = ipAddr.String
+		}
+		if userAgent.Valid {
+			event.UserAgent = userAgent.String
 		}
 
 		// Parse JSON states

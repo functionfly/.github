@@ -95,7 +95,7 @@ func New(db *gorm.DB, config *WebAuthnConfig, logger *logrus.Logger, userGetter 
 	wconfig := &webauthn.Config{
 		RPDisplayName: config.RPDisplayName,
 		RPID:          config.RPID,
-		RPOrigin:      config.RPOrigin,
+		RPOrigins:     []string{config.RPOrigin},
 	}
 
 	w, err := webauthn.New(wconfig)

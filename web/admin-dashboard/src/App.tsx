@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { AdminAuthRestore } from '@/components/auth/AdminAuthRestore';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
 
 // Pages
@@ -38,6 +39,11 @@ const AdminTrustDashboardPage = lazy(() => import('@/pages/AdminTrustDashboardPa
 const AdminExecutionAuditPage = lazy(() => import('@/pages/AdminExecutionAuditPage').then((m) => ({ default: m.AdminExecutionAuditPage })));
 const AdminFraudDetectionPage = lazy(() => import('@/pages/AdminFraudDetectionPage').then((m) => ({ default: m.AdminFraudDetectionPage })));
 const AdminEconomicLeaderboardPage = lazy(() => import('@/pages/AdminEconomicLeaderboardPage').then((m) => ({ default: m.AdminEconomicLeaderboardPage })));
+const AdminRedirectsPage = lazy(() => import('@/pages/AdminRedirectsPage').then((m) => ({ default: m.AdminRedirectsPage })));
+const AdminNewsletterPage = lazy(() => import('@/pages/AdminNewsletterPage').then((m) => ({ default: m.AdminNewsletterPage })));
+const AdminContentCalendarPage = lazy(() => import('@/pages/AdminContentCalendarPage').then((m) => ({ default: m.AdminContentCalendarPage })));
+const AdminIncidentsPage = lazy(() => import('@/pages/AdminIncidentsPage').then((m) => ({ default: m.AdminIncidentsPage })));
+const AdminFactoryPage = lazy(() => import('@/pages/AdminFactoryPage').then((m) => ({ default: m.AdminFactoryPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,14 +58,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <AdminAuthRestore>
         <Routes>
-          {/* Public routes */}
-          <Route path="/auth/login" element={<AdminLoginPage />} />
-          <Route path="/auth/*" element={<Navigate to="/auth/login" replace />} />
+          {/* All admin routes use dashboard layout (sidebar + header) */}
+          <Route element={<AdminLayout />}>
+            {/* Public: login page inside same layout */}
+            <Route path="/auth/login" element={<AdminLoginPage />} />
+            <Route path="/auth/*" element={<Navigate to="/auth/login" replace />} />
 
-          {/* Protected admin routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AdminLayout />}>
+            {/* Protected admin routes */}
+            <Route element={<ProtectedRoute />}>
               <Route
                 index
                 element={
@@ -210,6 +218,38 @@ function App() {
                 }
               />
               <Route
+                path="status/incidents"
+                element={
+                  <Suspense fallback={<LoadingScreen />}>
+                    <AdminIncidentsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="redirects"
+                element={
+                  <Suspense fallback={<LoadingScreen />}>
+                    <AdminRedirectsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="newsletter"
+                element={
+                  <Suspense fallback={<LoadingScreen />}>
+                    <AdminNewsletterPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="content-calendar"
+                element={
+                  <Suspense fallback={<LoadingScreen />}>
+                    <AdminContentCalendarPage />
+                  </Suspense>
+                }
+              />
+              <Route
                 path="trust-dashboard"
                 element={
                   <Suspense fallback={<LoadingScreen />}>
@@ -241,12 +281,21 @@ function App() {
                   </Suspense>
                 }
               />
+              <Route
+                path="factory"
+                element={
+                  <Suspense fallback={<LoadingScreen />}>
+                    <AdminFactoryPage />
+                  </Suspense>
+                }
+              />
             </Route>
           </Route>
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </AdminAuthRestore>
       </BrowserRouter>
     </QueryClientProvider>
   );

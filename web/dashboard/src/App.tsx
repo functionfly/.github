@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster, toast } from 'sonner';
 import { Bell, Shield, DollarSign, AlertTriangle, MessageSquare } from 'lucide-react';
@@ -10,7 +10,6 @@ import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
 import { CookieConsentProvider } from '@/components/cookie-consent';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { DevA11y } from '@/components/dev/DevA11y';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { Notification, NotificationCategory } from '@/types/notifications';
 import { LandingPage } from '@/pages/LandingPage';
 import { TeamPage } from '@/pages/TeamPage';
@@ -29,21 +28,6 @@ import { FunctionDetailPage } from '@/pages/FunctionsPage/FunctionDetailPage';
 import { ProvidersPage } from '@/pages/ProvidersPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
-import { AdminTenantsPage } from '@/pages/AdminTenantsPage';
-import { AdminUsersPage } from '@/pages/AdminUsersPage';
-import { AdminBillingPage } from '@/pages/AdminBillingPage';
-import { AdminAuditPage } from '@/pages/AdminAuditPage';
-import { AdminFeaturesPage } from '@/pages/AdminFeaturesPage';
-import { AdminSystemPage } from '@/pages/AdminSystemPage';
-import { AdminRedirectsPage } from '@/pages/AdminRedirectsPage';
-import { AdminNewsletterPage } from '@/pages/AdminNewsletterPage';
-import { AdminContentCalendarPage } from '@/pages/AdminContentCalendarPage';
-import { AdminFeedbackPage } from '@/pages/AdminFeedbackPage';
-import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
-import { AdminFunctionsPage } from '@/pages/AdminFunctionsPage';
-import { AdminRegistryPage } from '@/pages/AdminRegistryPage';
-import { AdminBackendsPage } from '@/pages/AdminBackendsPage';
-import { AdminProvidersPage } from '@/pages/AdminProvidersPage';
 import { PrivacyPage } from '@/pages/PrivacyPage';
 import { SecurityPage } from '@/pages/SecurityPage';
 import { TermsPage } from '@/pages/TermsPage';
@@ -52,7 +36,6 @@ import { FeedbackPage } from '@/pages/FeedbackPage';
 import { FAQPage } from '@/pages/FAQPage';
 import BlogPage from '@/pages/BlogPage';
 import BlogPostPage from '@/pages/BlogPostPage';
-import AdminContentPage from '@/pages/AdminContentPage';
 import { ContactPage } from '@/pages/ContactPage';
 import { PasswordResetPage } from '@/pages/AuthPage/PasswordResetPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -66,11 +49,6 @@ import { StandalonePlaygroundPage } from '@/pages/StandalonePlaygroundPage';
 import { ReplayPage } from '@/pages/ReplayPage';
 import { StateFabricPage } from '@/pages/StateFabricPage';
 import { StateFabricDetailPage } from '@/pages/StateFabricPage/StateFabricDetailPage';
-import { AdminStateFabricPage } from '@/pages/AdminStateFabricPage';
-import { AdminTrustDashboardPage } from '@/pages/AdminTrustDashboardPage';
-import { AdminExecutionAuditPage } from '@/pages/AdminExecutionAuditPage';
-import { AdminFraudDetectionPage } from '@/pages/AdminFraudDetectionPage';
-import { AdminEconomicLeaderboardPage } from '@/pages/AdminEconomicLeaderboardPage';
 import { StateFabricMarketingPage } from '@/pages/StateFabricMarketingPage';
 import { BrowseFunctionsPage } from '@/pages/BrowseFunctionsPage';
 import RegistryDeployPage from '@/pages/RegistryDeployPage';
@@ -83,9 +61,6 @@ import { AppsPage } from '@/pages/AppsPage';
 import { AppDetailPage } from '@/pages/AppDetailPage';
 import { FunctionSettingsPage } from '@/pages/FunctionsPage/FunctionSettingsPage';
 import { FunctionLogsPage } from '@/pages/FunctionsPage/FunctionLogsPage';
-import { AdminTenantDetailPage } from '@/pages/AdminTenantDetailPage';
-import { AdminUserDetailPage } from '@/pages/AdminUserDetailPage';
-import { AdminFunctionDetailPage } from '@/pages/AdminFunctionDetailPage';
 import { UserDashboardFunctionsPage } from '@/pages/UserDashboardFunctionsPage';
 import { UserDashboardSettingsPage } from '@/pages/UserDashboardSettingsPage';
 import { TeamsPage } from '@/pages/TeamsPage';
@@ -96,6 +71,7 @@ import AgentMarketplacePage from '@/pages/AgentMarketplacePage';
 import FunctionMarketplacePage from '@/pages/FunctionMarketplacePage';
 import EvolutionPage from '@/pages/EvolutionPage';
 import EnterpriseSLAPage from '@/pages/EnterpriseSLAPage';
+import { AdminFactoryPage } from '@/pages/AdminFactoryPage';
 
 // Flywheel Network imports
 import { FlywheelLayout } from '@/components/flywheel/layout/FlywheelLayout';
@@ -108,7 +84,6 @@ import { EnterpriseSupportPage } from '@/pages/EnterpriseSupportPage';
 import { UsagePage } from '@/pages/UsagePage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import StatusPage from '@/pages/StatusPage';
-import AdminIncidentsPage from '@/pages/AdminStatusPage/AdminIncidentsPage';
 
 function RegistryFunctionRedirect() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -202,34 +177,6 @@ function OnboardingRoute({ children }: { children: React.ReactNode }) {
 
   // If onboarding is complete or skipped, redirect to dashboard
   if (isOnboardingComplete || hasSkippedOnboarding) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-}
-
-function AdminRoute({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const isLoading = useAuthStore((state) => state.isLoading);
-  const user = useAuthStore((state) => state.user);
-
-  // Show loading state while auth is being initialized
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner size="lg" text="Loading..." />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  const isAdmin =
-    user?.role &&
-    ['super_admin', 'support', 'billing_admin', 'developer_admin'].includes(user.role);
-  if (!isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -509,44 +456,6 @@ function AppContent() {
           <Route path="challenges/:id" element={<div>Challenge Detail Page (Coming Soon)</div>} />
           <Route path="leaderboards" element={<LeaderboardPage />} />
           <Route path="reputation/:userId" element={<div>Reputation Page (Coming Soon)</div>} />
-        </Route>
-
-        {/* Admin Routes - use Outlet so only one DashboardLayout (parent) is used */}
-        <Route
-          path="admin"
-          element={
-            <AdminRoute>
-              <Outlet />
-            </AdminRoute>
-          }
-        >
-          <Route index element={<AdminDashboardPage />} />
-          <Route path="tenants" element={<AdminTenantsPage />} />
-          <Route path="tenants/:tenantId" element={<AdminTenantDetailPage />} />
-          <Route path="users" element={<AdminUsersPage />} />
-          <Route path="users/:userId" element={<AdminUserDetailPage />} />
-          <Route path="billing" element={<AdminBillingPage />} />
-          <Route path="features" element={<AdminFeaturesPage />} />
-          <Route path="audit" element={<AdminAuditPage />} />
-          <Route path="system" element={<AdminSystemPage />} />
-          <Route path="backends" element={<AdminBackendsPage />} />
-          <Route path="providers" element={<AdminProvidersPage />} />
-          <Route path="redirects" element={<AdminRedirectsPage />} />
-          <Route path="newsletter" element={<AdminNewsletterPage />} />
-          <Route path="content-calendar" element={<AdminContentCalendarPage />} />
-          <Route path="content" element={<AdminContentPage />} />
-          <Route path="feedback" element={<AdminFeedbackPage />} />
-          <Route path="functions" element={<AdminFunctionsPage />} />
-          <Route path="functions/:functionId" element={<AdminFunctionDetailPage />} />
-          <Route path="registry" element={<AdminRegistryPage />} />
-          <Route path="registry/functions" element={<AdminRegistryPage />} />
-          <Route path="registry/functions/:functionId" element={<AdminFunctionDetailPage />} />
-          <Route path="state-fabric" element={<AdminStateFabricPage />} />
-          <Route path="trust-dashboard" element={<AdminTrustDashboardPage />} />
-          <Route path="execution-audit" element={<AdminExecutionAuditPage />} />
-          <Route path="fraud-detection" element={<AdminFraudDetectionPage />} />
-          <Route path="economic-leaderboard" element={<AdminEconomicLeaderboardPage />} />
-          <Route path="status/incidents" element={<AdminIncidentsPage />} />
         </Route>
       </Route>
 

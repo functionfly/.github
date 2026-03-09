@@ -19,6 +19,12 @@ import {
   PanelTop,
   CircleDot,
   Landmark,
+  AlertTriangle,
+  Mail,
+  Calendar,
+  RotateCcw,
+  TrendingUp,
+  Factory,
 } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import clsx from 'clsx';
@@ -105,6 +111,26 @@ const NAV_ITEMS = [
     icon: Landmark,
   },
   {
+    label: 'Status Incidents',
+    path: ROUTES.ADMIN_STATUS_INCIDENTS,
+    icon: AlertTriangle,
+  },
+  {
+    label: 'Redirects',
+    path: ROUTES.ADMIN_REDIRECTS,
+    icon: RotateCcw,
+  },
+  {
+    label: 'Newsletter',
+    path: ROUTES.ADMIN_NEWSLETTER,
+    icon: Mail,
+  },
+  {
+    label: 'Content Calendar',
+    path: ROUTES.ADMIN_CONTENT_CALENDAR,
+    icon: Calendar,
+  },
+  {
     label: 'Trust Dashboard',
     path: ROUTES.ADMIN_TRUST_DASHBOARD,
     icon: Shield,
@@ -113,6 +139,21 @@ const NAV_ITEMS = [
     label: 'Execution Audit',
     path: ROUTES.ADMIN_EXECUTION_AUDIT,
     icon: BarChart3,
+  },
+  {
+    label: 'Fraud Detection',
+    path: ROUTES.ADMIN_FRAUD_DETECTION,
+    icon: Shield,
+  },
+  {
+    label: 'Economic Leaderboard',
+    path: ROUTES.ADMIN_ECONOMIC_LEADERBOARD,
+    icon: TrendingUp,
+  },
+  {
+    label: 'Factory',
+    path: ROUTES.ADMIN_FACTORY,
+    icon: Factory,
   },
 ];
 

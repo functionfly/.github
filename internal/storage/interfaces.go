@@ -86,6 +86,7 @@ type Repository interface {
 
 	CreateSubscription(ctx context.Context, sub *Subscription) (*Subscription, error)
 	GetSubscriptionByTenantID(tenantID uuid.UUID) (*Subscription, error)
+	ListAllSubscriptions(limit, offset int) ([]*Subscription, error)
 	UpdateSubscription(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*Subscription, error)
 	CancelSubscription(ctx context.Context, id uuid.UUID) error
 

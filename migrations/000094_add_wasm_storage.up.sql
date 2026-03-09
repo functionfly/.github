@@ -3,12 +3,12 @@
 
 -- Add WASM binary storage to function versions
 ALTER TABLE registry_function_versions
-ADD COLUMN wasm_binary BYTEA,
-ADD COLUMN source_hash VARCHAR(64),
-ADD COLUMN bundle_size INTEGER;
+ADD COLUMN IF NOT EXISTS wasm_binary BYTEA,
+ADD COLUMN IF NOT EXISTS source_hash VARCHAR(64),
+ADD COLUMN IF NOT EXISTS bundle_size INTEGER;
 
 -- Add index for efficient WASM queries
-CREATE INDEX idx_registry_function_versions_wasm ON registry_function_versions(wasm_binary) WHERE wasm_binary IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_registry_function_versions_wasm ON registry_function_versions(wasm_binary) WHERE wasm_binary IS NOT NULL;
 
 -- Add comment explaining the new columns
 COMMENT ON COLUMN registry_function_versions.wasm_binary IS 'Compiled WebAssembly binary for sandbox execution';

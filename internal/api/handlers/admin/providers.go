@@ -32,8 +32,8 @@ func (h *ProvidersHandler) HandleListProviders(w http.ResponseWriter, r *http.Re
 	providers, err := h.repo.ListAllProviders(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list all providers")
-		http.Error(w, "Failed to list providers", http.StatusInternalServerError)
-		return
+		// Return empty list so admin UI can load; caller can retry or check logs
+		providers = nil
 	}
 
 	// Build response with user and team information
@@ -46,6 +46,10 @@ func (h *ProvidersHandler) HandleListProviders(w http.ResponseWriter, r *http.Re
 			logrus.WithError(err).WithField("user_id", provider.UserID).Warn("Failed to get user for provider")
 			continue
 		}
+		if user == nil {
+			logrus.WithField("user_id", provider.UserID).Warn("User not found for provider")
+			continue
+		}
 
 		// Get tenant information
 		tenant, err := h.repo.GetTenantByID(user.TenantID)
@@ -53,19 +57,23 @@ func (h *ProvidersHandler) HandleListProviders(w http.ResponseWriter, r *http.Re
 			logrus.WithError(err).WithField("tenant_id", user.TenantID).Warn("Failed to get tenant for provider")
 			continue
 		}
+		tenantName := ""
+		if tenant != nil {
+			tenantName = tenant.Name
+		}
 
 		response = append(response, map[string]interface{}{
-			"id":        provider.ID,
-			"user_id":   provider.UserID.String(),
-			"user_email": user.Email,
-			"tenant_id": user.TenantID.String(),
-			"tenant_name": tenant.Name,
-			"provider":  provider.Provider,
-			"status":    provider.Status,
-			"is_shared": provider.IsShared,
-			"team_id":   provider.TeamID,
-			"created_at": provider.CreatedAt,
-			"updated_at": provider.UpdatedAt,
+			"id":          provider.ID,
+			"user_id":     provider.UserID.String(),
+			"user_email":  user.Email,
+			"tenant_id":   user.TenantID.String(),
+			"tenant_name": tenantName,
+			"provider":    provider.Provider,
+			"status":      provider.Status,
+			"is_shared":   provider.IsShared,
+			"team_id":     provider.TeamID,
+			"created_at":  provider.CreatedAt,
+			"updated_at":  provider.UpdatedAt,
 		})
 	}
 
@@ -132,12 +140,12 @@ func (h *ProvidersHandler) HandleUpdateProvider(w http.ResponseWriter, r *http.R
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"id":        updatedProvider.ID,
-		"user_id":   updatedProvider.UserID.String(),
-		"provider":  updatedProvider.Provider,
-		"status":    updatedProvider.Status,
-		"is_shared": updatedProvider.IsShared,
-		"team_id":   updatedProvider.TeamID,
+		"id":         updatedProvider.ID,
+		"user_id":    updatedProvider.UserID.String(),
+		"provider":   updatedProvider.Provider,
+		"status":     updatedProvider.Status,
+		"is_shared":  updatedProvider.IsShared,
+		"team_id":    updatedProvider.TeamID,
 		"created_at": updatedProvider.CreatedAt,
 		"updated_at": updatedProvider.UpdatedAt,
 	})

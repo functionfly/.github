@@ -274,9 +274,9 @@ type RegistryFunctionVerificationStatus struct {
 	NextVerificationAt *time.Time `json:"next_verification_at,omitempty"` // For periodic re-verification
 	// Blocking information
 	BlockReason string     `json:"block_reason,omitempty" gorm:"type:text"` // Reason for blocking
-	BlockedAt   *time.Time `json:"blocked_at,omitempty"`                   // When the function was blocked
-	CreatedAt          time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt          time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	BlockedAt   *time.Time `json:"blocked_at,omitempty"`                    // When the function was blocked
+	CreatedAt   time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt   time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// Relationships
 	FunctionVersion *RegistryFunctionVersion `json:"function_version,omitempty" gorm:"foreignKey:FunctionVersionID;references:ID"`
@@ -437,3 +437,68 @@ type ResourceHashHistory struct {
 
 // TableName returns the database table name for ResourceHashHistory.
 func (ResourceHashHistory) TableName() string { return "resource_hash_history" }
+
+// ============================================
+// Function Version Changelog
+// ============================================
+
+// ChangeType represents the type of change in a version
+type ChangeType string
+
+const (
+	ChangeTypeAdded      ChangeType = "added"
+	ChangeTypeChanged    ChangeType = "changed"
+	ChangeTypeFixed      ChangeType = "fixed"
+	ChangeTypeDeprecated ChangeType = "deprecated"
+	ChangeTypeRemoved    ChangeType = "removed"
+	ChangeTypeSecurity   ChangeType = "security"
+	ChangeTypeBreaking   ChangeType = "breaking"
+)
+
+// ChangeCategory represents the category of change
+type ChangeCategory string
+
+const (
+	ChangeCategoryFeature       ChangeCategory = "feature"
+	ChangeCategoryBugFix        ChangeCategory = "bug_fix"
+	ChangeCategoryPerformance   ChangeCategory = "performance"
+	ChangeCategorySecurity      ChangeCategory = "security"
+	ChangeCategoryDocumentation ChangeCategory = "documentation"
+	ChangeCategoryDependency    ChangeCategory = "dependency"
+	ChangeCategoryBreaking      ChangeCategory = "breaking_change"
+	ChangeCategoryOther         ChangeCategory = "other"
+)
+
+// FunctionVersionChangelog represents a changelog entry for a function version
+type FunctionVersionChangelog struct {
+	ID                uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID        uuid.UUID       `json:"function_id" gorm:"type:uuid;not null;index"`
+	FunctionVersionID uuid.UUID       `json:"function_version_id" gorm:"type:uuid;not null;index"`
+	Version           string          `json:"version" gorm:"not null;index"`
+	PreviousVersion   *string         `json:"previous_version,omitempty" gorm:"type:text"`
+	ChangeType        ChangeType      `json:"change_type" gorm:"not null"`
+	Category          ChangeCategory  `json:"category" gorm:"not null"`
+	Title             string          `json:"title" gorm:"not null"`
+	Description       string          `json:"description" gorm:"type:text"`
+	Changes           json.RawMessage `json:"changes" gorm:"type:jsonb"` // Detailed changes (array of change items)
+	Author            string          `json:"author" gorm:"not null"`
+	AuthorID          *uuid.UUID      `json:"author_id,omitempty" gorm:"type:uuid"`
+	CreatedAt         time.Time       `json:"created_at" gorm:"autoCreateTime"`
+
+	// Relationships
+	FunctionVersion *RegistryFunctionVersion `json:"function_version,omitempty" gorm:"foreignKey:FunctionVersionID;references:ID"`
+}
+
+// TableName returns the database table name for FunctionVersionChangelog.
+func (FunctionVersionChangelog) TableName() string {
+	return "function_version_changelogs"
+}
+
+// FunctionChangelogChange represents a single change item within a function version changelog entry
+type FunctionChangelogChange struct {
+	Component   string `json:"component"`   // e.g., "input schema", "output schema", "runtime"
+	Field       string `json:"field"`       // e.g., "timeout", "memory"
+	Before      any    `json:"before"`      // previous value
+	After       any    `json:"after"`       // new value
+	Description string `json:"description"` // human-readable description
+}

@@ -52,24 +52,21 @@ FROM pg_stat_user_indexes
 WHERE idx_scan = 0
 ORDER BY pg_relation_size(schemaname||'.'||indexrelname) DESC;
 
--- Query performance monitoring
+-- Query performance monitoring (stub when pg_stat_statements extension is not installed)
 CREATE OR REPLACE VIEW db_query_performance AS
 SELECT
-    query,
-    calls,
-    total_exec_time as total_time,
-    mean_exec_time as mean_time,
-    rows,
-    round((total_exec_time / calls)::numeric, 2) as avg_time_per_call,
-    round((rows::float / calls)::numeric, 2) as avg_rows_per_call,
-    0 as temp_blks_read, -- Not available in basic pg_stat_statements
-    0 as temp_blks_written,
-    0 as blk_read_time,
-    0 as blk_write_time
-FROM pg_stat_statements
-WHERE calls > 10  -- Only show queries executed more than 10 times
-ORDER BY mean_exec_time DESC
-LIMIT 50;
+    NULL::text as query,
+    NULL::bigint as calls,
+    NULL::double precision as total_time,
+    NULL::double precision as mean_time,
+    NULL::bigint as rows,
+    NULL::numeric as avg_time_per_call,
+    NULL::numeric as avg_rows_per_call,
+    0::bigint as temp_blks_read,
+    0::bigint as temp_blks_written,
+    0::double precision as blk_read_time,
+    0::double precision as blk_write_time
+WHERE false;
 
 -- Connection and session monitoring
 CREATE OR REPLACE VIEW db_connection_stats AS

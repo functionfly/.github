@@ -245,7 +245,7 @@ func (sm *SecurityMiddleware) CORSMiddleware(next http.HandlerFunc) http.Handler
 
 		// Get allowed headers from environment
 		allowedHeadersStr := os.Getenv("CORS_ALLOWED_HEADERS")
-		allowedHeaders := "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info"
+		allowedHeaders := "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint"
 		if allowedHeadersStr != "" {
 			allowedHeaders = allowedHeadersStr
 		}

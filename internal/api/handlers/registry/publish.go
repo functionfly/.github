@@ -348,6 +348,18 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		"lazy_verify":   true,
 	}).Info("Skipping synchronous verification - will verify at execute time")
 
+	// Create changelog entry if provided
+	if req.Changelog != nil {
+		if err := h.createChangelogEntry(fnID, version.ID, req); err != nil {
+			logrus.WithError(err).Warn("Failed to create changelog entry")
+		}
+	} else {
+		// Auto-generate a basic changelog if not provided
+		if err := h.autoGenerateChangelog(fnID, version.ID, req, existingFn); err != nil {
+			logrus.WithError(err).Warn("Failed to auto-generate changelog entry")
+		}
+	}
+
 	var verificationStatusStr string
 	if trustLevel == "high" || trustLevel == "enterprise" {
 		// For high-trust levels, we still need verification but can do it async
@@ -505,4 +517,101 @@ func (h *Handler) calculateSourceHash(source *functionregistry.FunctionSource) s
 	}
 
 	return fmt.Sprintf("%x", hasher.Sum(nil))
+}
+
+// createChangelogEntry creates a changelog entry from the provided changelog input
+func (h *Handler) createChangelogEntry(functionID, versionID uuid.UUID, req functionregistry.PublishRequest) error {
+	if req.Changelog == nil {
+		return nil
+	}
+
+	// Convert changes to JSON
+	changesJSON, err := json.Marshal(req.Changelog.Changes)
+	if err != nil {
+		return fmt.Errorf("failed to marshal changelog changes: %w", err)
+	}
+
+	// Determine change type based on whether this is a new function or update
+	changeType := storageregistry.ChangeTypeAdded
+	if req.Changelog.Category == "bug_fix" {
+		changeType = storageregistry.ChangeTypeFixed
+	} else if req.Changelog.Category == "breaking_change" {
+		changeType = storageregistry.ChangeTypeBreaking
+	}
+
+	changelog := &storageregistry.FunctionVersionChangelog{
+		FunctionID:        functionID,
+		FunctionVersionID: versionID,
+		Version:           req.Version,
+		ChangeType:        changeType,
+		Category:          storageregistry.ChangeCategory(req.Changelog.Category),
+		Title:             req.Changelog.Title,
+		Description:       req.Changelog.Description,
+		Changes:           changesJSON,
+		Author:            req.Author,
+	}
+
+	if err := h.repo.CreateFunctionVersionChangelog(changelog); err != nil {
+		return fmt.Errorf("failed to create changelog: %w", err)
+	}
+
+	return nil
+}
+
+// autoGenerateChangelog automatically generates a basic changelog entry
+func (h *Handler) autoGenerateChangelog(functionID, versionID uuid.UUID, req functionregistry.PublishRequest, existingFn *storage.RegistryFunction) error {
+	// Determine if this is a new function or an update
+	isNewFunction := existingFn == nil
+
+	var changeType storageregistry.ChangeType
+	var category storageregistry.ChangeCategory
+	var title, description string
+
+	if isNewFunction {
+		changeType = storageregistry.ChangeTypeAdded
+		category = storageregistry.ChangeCategoryFeature
+		title = fmt.Sprintf("Initial release v%s", req.Version)
+		description = "First version of the function published"
+	} else {
+		changeType = storageregistry.ChangeTypeChanged
+		category = storageregistry.ChangeCategoryOther
+		title = fmt.Sprintf("Updated to v%s", req.Version)
+		description = fmt.Sprintf("Function updated to version %s", req.Version)
+
+		// Try to get previous version for comparison
+		if existingFn.LatestVersion.Valid {
+			prevVersion := existingFn.LatestVersion.String
+			changelog := &storageregistry.FunctionVersionChangelog{
+				FunctionID:        functionID,
+				FunctionVersionID: versionID,
+				Version:           req.Version,
+				PreviousVersion:   &prevVersion,
+				ChangeType:        changeType,
+				Category:          category,
+				Title:             title,
+				Description:       description,
+				Changes:           json.RawMessage("[]"),
+				Author:            req.Author,
+			}
+			return h.repo.CreateFunctionVersionChangelog(changelog)
+		}
+	}
+
+	changelog := &storageregistry.FunctionVersionChangelog{
+		FunctionID:        functionID,
+		FunctionVersionID: versionID,
+		Version:           req.Version,
+		ChangeType:        changeType,
+		Category:          category,
+		Title:             title,
+		Description:       description,
+		Changes:           json.RawMessage("[]"),
+		Author:            req.Author,
+	}
+
+	if err := h.repo.CreateFunctionVersionChangelog(changelog); err != nil {
+		return fmt.Errorf("failed to create auto-generated changelog: %w", err)
+	}
+
+	return nil
 }

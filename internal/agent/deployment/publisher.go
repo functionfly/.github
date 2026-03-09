@@ -2,10 +2,12 @@ package deployment
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/agent/identity"
+	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -22,15 +24,34 @@ func NewPublisher(db *gorm.DB) *Publisher {
 
 // PublishRequest represents a request to publish a function
 type PublishRequest struct {
-	AgentID         string    `json:"agent_id" validate:"required"`
-	GeneratedCodeID uuid.UUID `json:"generated_code_id" validate:"required"`
-	Author          string    `json:"author" validate:"required"`
-	Name            string    `json:"name" validate:"required"`
-	Title           string    `json:"title"`
-	Description     string    `json:"description"`
-	Category        string    `json:"category"`
-	Tags            []string  `json:"tags"`
-	IsPublic        bool      `json:"is_public"`
+	AgentID         string         `json:"agent_id" validate:"required"`
+	GeneratedCodeID uuid.UUID      `json:"generated_code_id" validate:"required"`
+	GeneratedCode   *GeneratedCode `json:"-"`
+	Author          string         `json:"author" validate:"required"`
+	Name            string         `json:"name" validate:"required"`
+	Title           string         `json:"title"`
+	Description     string         `json:"description"`
+	Category        string         `json:"category"`
+	Tags            []string       `json:"tags"`
+	IsPublic        bool           `json:"is_public"`
+	Changelog       *ChangelogSpec `json:"changelog,omitempty"` // Optional changelog for this version
+}
+
+// ChangelogSpec represents changelog information for a published function
+type ChangelogSpec struct {
+	Title       string         `json:"title"`
+	Description string         `json:"description"`
+	Category    string         `json:"category"` // "feature", "bug_fix", "performance", etc.
+	Changes     []ChangeDetail `json:"changes"`
+}
+
+// ChangeDetail represents a single change in the changelog
+type ChangeDetail struct {
+	Component   string `json:"component"`
+	Field       string `json:"field"`
+	Before      any    `json:"before"`
+	After       any    `json:"after"`
+	Description string `json:"description"`
 }
 
 // PublishedFunction represents a successfully published function
@@ -64,9 +85,16 @@ func (PublishedFunction) TableName() string {
 func (p *Publisher) Publish(ctx context.Context, req *PublishRequest) (*PublishedFunction, error) {
 	// Get the generated code
 	var generated GeneratedCode
-	err := p.db.WithContext(ctx).Where("id = ?", req.GeneratedCodeID).First(&generated).Error
-	if err != nil {
-		return nil, fmt.Errorf("generated code not found: %w", err)
+	if req.GeneratedCode != nil {
+		generated = *req.GeneratedCode
+		if generated.ID == uuid.Nil {
+			generated.ID = req.GeneratedCodeID
+		}
+	} else {
+		err := p.db.WithContext(ctx).Where("id = ?", req.GeneratedCodeID).First(&generated).Error
+		if err != nil {
+			return nil, fmt.Errorf("generated code not found: %w", err)
+		}
 	}
 
 	if generated.Status != "success" {
@@ -112,6 +140,12 @@ func (p *Publisher) Publish(ctx context.Context, req *PublishRequest) (*Publishe
 	if err := p.trackOwnership(ctx, req.AgentID, funcID); err != nil {
 		// Log but don't fail
 		fmt.Printf("Warning: failed to track ownership: %v\n", err)
+	}
+
+	// Create changelog entry for the published function
+	if err := p.createChangelogEntry(ctx, funcID, req); err != nil {
+		// Log but don't fail the publish
+		fmt.Printf("Warning: failed to create changelog entry: %v\n", err)
 	}
 
 	return published, nil
@@ -256,4 +290,73 @@ func (p *Publisher) AutoMigrate(ctx context.Context) error {
 		&GeneratedCode{},
 		&PublishedFunction{},
 	)
+}
+
+// createChangelogEntry creates a changelog entry for a newly published function
+func (p *Publisher) createChangelogEntry(ctx context.Context, functionID uuid.UUID, req *PublishRequest) error {
+	// Determine change type and category
+	changeType := registry.ChangeTypeAdded
+	category := registry.ChangeCategoryFeature
+	if req.Changelog != nil && req.Changelog.Category != "" {
+		category = registry.ChangeCategory(req.Changelog.Category)
+	}
+
+	// Build title and description
+	title := "Initial release"
+	description := "First version of the function published by agent"
+	if req.Changelog != nil {
+		if req.Changelog.Title != "" {
+			title = req.Changelog.Title
+		}
+		if req.Changelog.Description != "" {
+			description = req.Changelog.Description
+		}
+	}
+
+	// Convert changes to JSON
+	var changesJSON []byte
+	if req.Changelog != nil && len(req.Changelog.Changes) > 0 {
+		changes := make([]registry.FunctionChangelogChange, len(req.Changelog.Changes))
+		for i, c := range req.Changelog.Changes {
+			changes[i] = registry.FunctionChangelogChange{
+				Component:   c.Component,
+				Field:       c.Field,
+				Before:      c.Before,
+				After:       c.After,
+				Description: c.Description,
+			}
+		}
+		var err error
+		changesJSON, err = json.Marshal(changes)
+		if err != nil {
+			return fmt.Errorf("failed to marshal changes: %w", err)
+		}
+	} else {
+		changesJSON = []byte("[]")
+	}
+
+	// Get the function version ID
+	var fnVersion identity.Function
+	if err := p.db.WithContext(ctx).Where("id = ?", functionID.String()).First(&fnVersion).Error; err != nil {
+		return fmt.Errorf("failed to get function: %w", err)
+	}
+
+	// Create changelog entry
+	changelog := &registry.FunctionVersionChangelog{
+		FunctionID:        functionID,
+		FunctionVersionID: functionID, // Use function ID as version ID for initial version
+		Version:           "1.0.0",
+		ChangeType:        changeType,
+		Category:          category,
+		Title:             title,
+		Description:       description,
+		Changes:           changesJSON,
+		Author:            req.AgentID,
+	}
+
+	if err := p.db.WithContext(ctx).Create(changelog).Error; err != nil {
+		return fmt.Errorf("failed to create changelog: %w", err)
+	}
+
+	return nil
 }

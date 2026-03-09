@@ -1,9 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import pg from 'pg';
+import { Pool } from 'pg';
 import * as schema from './schema/index';
 import { ConfigService } from '@nestjs/config';
-
-const { Pool } = pg;
 
 export const getDatabase = (configService: ConfigService) => {
   const databaseUrl = configService.get<string>('DATABASE_URL');

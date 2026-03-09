@@ -15,6 +15,61 @@ import (
 
 // Billing handler functions
 
+// HandleBillingSummary returns summary stats for the admin billing page.
+// GET /v1/admin/billing/summary
+func (h *Handler) HandleBillingSummary(w http.ResponseWriter, r *http.Request) {
+	invoices, err := h.repo.ListAllInvoices(10000, 0)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list invoices for billing summary")
+		http.Error(w, "Failed to get billing summary", http.StatusInternalServerError)
+		return
+	}
+
+	subs, err := h.repo.ListAllSubscriptions(10000, 0)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list subscriptions for billing summary")
+		http.Error(w, "Failed to get billing summary", http.StatusInternalServerError)
+		return
+	}
+
+	var totalRevenueCents int
+	var pendingInvoices int
+	var overdueCents int
+	now := time.Now()
+
+	for _, inv := range invoices {
+		totalRevenueCents += inv.AmountPaidCents
+		switch strings.ToLower(inv.Status) {
+		case "pending", "open":
+			pendingInvoices++
+			if inv.DueDate != nil && inv.DueDate.Before(now) {
+				overdueCents += inv.AmountDueCents - inv.AmountPaidCents
+			}
+		case "overdue":
+			pendingInvoices++
+			overdueCents += inv.AmountDueCents - inv.AmountPaidCents
+		}
+	}
+
+	activeSubscriptions := 0
+	for _, sub := range subs {
+		if strings.ToLower(sub.Status) == "active" {
+			activeSubscriptions++
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data": map[string]interface{}{
+			"totalRevenue":        totalRevenueCents / 100,
+			"activeSubscriptions": activeSubscriptions,
+			"pendingInvoices":     pendingInvoices,
+			"overdue":             overdueCents / 100,
+		},
+		"success": true,
+	})
+}
+
 // HandleListPricingTiers lists all pricing tiers
 func (h *Handler) HandleListPricingTiers(w http.ResponseWriter, r *http.Request) {
 	tiers, err := h.repo.ListPricingTiers()

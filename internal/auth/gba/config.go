@@ -16,6 +16,8 @@ import (
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
 	"gorm.io/gorm"
+
+	"github.com/functionfly/functionfly/internal/email"
 )
 
 // Config holds the GoBetterAuth configuration
@@ -73,6 +75,7 @@ type Auth struct {
 	sessions *SessionManager
 	hooks    *HookManager
 	logger   *logrus.Logger
+	emailSvc email.Service // optional; when set, verification emails are sent
 }
 
 // New creates a new GoBetterAuth instance
@@ -118,6 +121,16 @@ func New(cfg *Config) (*Auth, error) {
 	auth.registerDefaultHooks()
 
 	return auth, nil
+}
+
+// SetEmailService sets the email service for sending verification and password-reset emails. Optional.
+func (a *Auth) SetEmailService(svc email.Service) {
+	a.emailSvc = svc
+}
+
+// EmailService returns the configured email service, or nil if not set.
+func (a *Auth) EmailService() email.Service {
+	return a.emailSvc
 }
 
 // ConfigFromEnv creates configuration from environment variables
@@ -512,7 +525,7 @@ func (a *Auth) extractTenantID(req *HookRequest) uuid.UUID {
 					return uuid.Nil
 				}
 			}
-			// In production, look up tenant by subdomain
+			// Look up active tenant by subdomain
 			var tenant Tenant
 			if err := a.db.Where("subdomain = ? AND status = ?", subdomain, "active").First(&tenant).Error; err == nil {
 				return tenant.ID

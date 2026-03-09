@@ -3,12 +3,13 @@
 export interface AdminUser {
   id: string;
   email: string;
-  name: string;
-  role: 'super_admin' | 'admin' | 'moderator';
-  permissions: string[];
+  name?: string;
+  role: string; // super_admin | admin | moderator | user | etc.
+  permissions?: string[];
   mfa_enabled: boolean;
   created_at: string;
   updated_at: string;
+  tenant_id?: string;
 }
 
 export interface AdminSession {

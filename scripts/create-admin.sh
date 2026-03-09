@@ -36,7 +36,7 @@ command -v psql >/dev/null 2>&1 || {
 }
 
 # Default values
-DEFAULT_EMAIL="admin@example.com"
+DEFAULT_EMAIL="admin@functionfly.com"
 DEFAULT_PASSWORD="admin123"
 DEFAULT_ROLE="super_admin"
 DEFAULT_DB_HOST="localhost"
@@ -170,6 +170,7 @@ if [ -n "$TENANT_ID" ]; then
         exit 1
     fi
     print_info "Using existing tenant: $TENANT_ID"
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "UPDATE tenants SET plan = 'enterprise', updated_at = NOW() WHERE id = '$TENANT_ID';" >/dev/null 2>&1
 else
     # Get the first tenant or create a default one
     TENANT_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM tenants;" | tr -d ' ')
@@ -177,6 +178,7 @@ else
         TENANT_ID=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT id FROM tenants LIMIT 1;" | tr -d ' ')
         TENANT_NAME=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT name FROM tenants WHERE id = '$TENANT_ID';" | tr -d ' ')
         print_info "Using existing tenant: $TENANT_NAME ($TENANT_ID)"
+        psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "UPDATE tenants SET plan = 'enterprise', updated_at = NOW() WHERE id = '$TENANT_ID';" >/dev/null 2>&1
     else
         # Create a default tenant
         TENANT_ID=$(uuidgen 2>/dev/null || cat /proc/sys/kernel/random/uuid 2>/dev/null || echo "$(date +%s)-$(head -c 4 /dev/urandom | od -An -tx1 | tr -d ' ')")

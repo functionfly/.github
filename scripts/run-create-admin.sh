@@ -9,27 +9,29 @@
 set -e
 cd "$(dirname "$0")/.."
 
-# Load DB_* and ADMIN_* from .env if present (avoid sourcing whole file due to special chars)
+# Load DB_* and ADMIN_* from .env if present; DB_PORT is never read from .env so script default wins unless caller sets it
 if [ -f .env ]; then
   while IFS= read -r line; do
-    case "$line" in
-      DB_HOST=*|DB_PORT=*|DB_USER=*|DB_PASSWORD=*|DB_NAME=*|DB_SSLMODE=*|ADMIN_EMAIL=*|ADMIN_PASSWORD=*|ADMIN_ROLE=*)
-        export "$line"
+    key="${line%%=*}"
+    case "$key" in
+      DB_HOST|DB_USER|DB_PASSWORD|DB_NAME|DB_SSLMODE|ADMIN_EMAIL|ADMIN_PASSWORD|ADMIN_ROLE)
+        [ -z "${!key}" ] && export "$line"
         ;;
+      DB_PORT) ;; # skip: use script default 5432 or caller's DB_PORT
     esac
   done < <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .env 2>/dev/null || true)
 fi
 
-# DB defaults (match dev.sh / storage config)
+# DB defaults: 5432 for local Postgres; set DB_PORT=5434 for Docker Postgres
 export DB_HOST="${DB_HOST:-localhost}"
-export DB_PORT="${DB_PORT:-5434}"
+export DB_PORT="${DB_PORT:-5432}"
 export DB_USER="${DB_USER:-postgres}"
 export DB_PASSWORD="${DB_PASSWORD:-postgres}"
 export DB_NAME="${DB_NAME:-functionfly}"
 export DB_SSLMODE="${DB_SSLMODE:-disable}"
 
 # Default admin credentials; override with ADMIN_* env or pass -email/-password/-role to this script
-EMAIL="${ADMIN_EMAIL:-admin@functionfly.local}"
+EMAIL="${ADMIN_EMAIL:-admin@functionfly.com}"
 PASSWORD="${ADMIN_PASSWORD:-admin123}"
 ROLE="${ADMIN_ROLE:-super_admin}"
 

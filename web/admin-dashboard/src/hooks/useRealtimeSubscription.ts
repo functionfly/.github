@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { CACHE_KEYS } from '@/lib/constants';
 
 export interface RealtimeEvent {
   type: string;
@@ -34,7 +35,7 @@ export function useRealtimeSubscription({
       return;
     }
 
-    const token = localStorage.getItem('admin_access_token');
+    const token = sessionStorage.getItem(CACHE_KEYS.ADMIN_ACCESS_TOKEN);
     if (!token) {
       setError('Missing admin access token for realtime connection');
       return;

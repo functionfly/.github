@@ -1,7 +1,7 @@
 -- Add function content verification tables
 
 -- RegistryFunctionSignature table for digital signatures
-CREATE TABLE registry_function_signatures (
+CREATE TABLE IF NOT EXISTS registry_function_signatures (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     function_version_id UUID NOT NULL REFERENCES registry_function_versions(id) ON DELETE CASCADE,
     algorithm VARCHAR(50) NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE registry_function_signatures (
 );
 
 -- RegistryFunctionMalwareScan table for malware scan results
-CREATE TABLE registry_function_malware_scans (
+CREATE TABLE IF NOT EXISTS registry_function_malware_scans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     function_version_id UUID NOT NULL REFERENCES registry_function_versions(id) ON DELETE CASCADE,
     scan_engine VARCHAR(100) NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE registry_function_malware_scans (
 );
 
 -- RegistryFunctionApproval table for approval workflows
-CREATE TABLE registry_function_approvals (
+CREATE TABLE IF NOT EXISTS registry_function_approvals (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     function_version_id UUID NOT NULL REFERENCES registry_function_versions(id) ON DELETE CASCADE,
     approval_type VARCHAR(50) NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE registry_function_approvals (
 );
 
 -- RegistryFunctionApprovalComment table for approval comments
-CREATE TABLE registry_function_approval_comments (
+CREATE TABLE IF NOT EXISTS registry_function_approval_comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     approval_id UUID NOT NULL REFERENCES registry_function_approvals(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id),
@@ -64,7 +64,7 @@ CREATE TABLE registry_function_approval_comments (
 );
 
 -- RegistryFunctionVerificationStatus table for overall verification status
-CREATE TABLE registry_function_verification_status (
+CREATE TABLE IF NOT EXISTS registry_function_verification_status (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     function_version_id UUID NOT NULL UNIQUE REFERENCES registry_function_versions(id) ON DELETE CASCADE,
     content_hash_verified BOOLEAN DEFAULT FALSE,
@@ -83,26 +83,26 @@ CREATE TABLE registry_function_verification_status (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_registry_function_signatures_function_version ON registry_function_signatures(function_version_id);
-CREATE INDEX idx_registry_function_signatures_key_id ON registry_function_signatures(key_id);
-CREATE INDEX idx_registry_function_signatures_is_valid ON registry_function_signatures(is_valid);
+CREATE INDEX IF NOT EXISTS idx_registry_function_signatures_function_version ON registry_function_signatures(function_version_id);
+CREATE INDEX IF NOT EXISTS idx_registry_function_signatures_key_id ON registry_function_signatures(key_id);
+CREATE INDEX IF NOT EXISTS idx_registry_function_signatures_is_valid ON registry_function_signatures(is_valid);
 
-CREATE INDEX idx_registry_function_malware_scans_function_version ON registry_function_malware_scans(function_version_id);
-CREATE INDEX idx_registry_function_malware_scans_status ON registry_function_malware_scans(status);
-CREATE INDEX idx_registry_function_malware_scans_scanned_at ON registry_function_malware_scans(scanned_at);
+CREATE INDEX IF NOT EXISTS idx_registry_function_malware_scans_function_version ON registry_function_malware_scans(function_version_id);
+CREATE INDEX IF NOT EXISTS idx_registry_function_malware_scans_status ON registry_function_malware_scans(status);
+CREATE INDEX IF NOT EXISTS idx_registry_function_malware_scans_scanned_at ON registry_function_malware_scans(scanned_at);
 
-CREATE INDEX idx_registry_function_approvals_function_version ON registry_function_approvals(function_version_id);
-CREATE INDEX idx_registry_function_approvals_status ON registry_function_approvals(status);
-CREATE INDEX idx_registry_function_approvals_assigned_to ON registry_function_approvals(assigned_to);
-CREATE INDEX idx_registry_function_approvals_requested_by ON registry_function_approvals(requested_by);
-CREATE INDEX idx_registry_function_approvals_review_deadline ON registry_function_approvals(review_deadline);
+CREATE INDEX IF NOT EXISTS idx_registry_function_approvals_function_version ON registry_function_approvals(function_version_id);
+CREATE INDEX IF NOT EXISTS idx_registry_function_approvals_status ON registry_function_approvals(status);
+CREATE INDEX IF NOT EXISTS idx_registry_function_approvals_assigned_to ON registry_function_approvals(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_registry_function_approvals_requested_by ON registry_function_approvals(requested_by);
+CREATE INDEX IF NOT EXISTS idx_registry_function_approvals_review_deadline ON registry_function_approvals(review_deadline);
 
-CREATE INDEX idx_registry_function_approval_comments_approval ON registry_function_approval_comments(approval_id);
-CREATE INDEX idx_registry_function_approval_comments_user ON registry_function_approval_comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_registry_function_approval_comments_approval ON registry_function_approval_comments(approval_id);
+CREATE INDEX IF NOT EXISTS idx_registry_function_approval_comments_user ON registry_function_approval_comments(user_id);
 
-CREATE UNIQUE INDEX idx_registry_function_verification_status_version ON registry_function_verification_status(function_version_id);
-CREATE INDEX idx_registry_function_verification_status_overall ON registry_function_verification_status(overall_status);
-CREATE INDEX idx_registry_function_verification_status_last_verified ON registry_function_verification_status(last_verified_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_registry_function_verification_status_version ON registry_function_verification_status(function_version_id);
+CREATE INDEX IF NOT EXISTS idx_registry_function_verification_status_overall ON registry_function_verification_status(overall_status);
+CREATE INDEX IF NOT EXISTS idx_registry_function_verification_status_last_verified ON registry_function_verification_status(last_verified_at);
 
 -- Update triggers for updated_at columns
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -113,22 +113,27 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_registry_function_signatures_updated_at ON registry_function_signatures;
 CREATE TRIGGER update_registry_function_signatures_updated_at
     BEFORE UPDATE ON registry_function_signatures
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_registry_function_malware_scans_updated_at ON registry_function_malware_scans;
 CREATE TRIGGER update_registry_function_malware_scans_updated_at
     BEFORE UPDATE ON registry_function_malware_scans
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_registry_function_approvals_updated_at ON registry_function_approvals;
 CREATE TRIGGER update_registry_function_approvals_updated_at
     BEFORE UPDATE ON registry_function_approvals
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_registry_function_approval_comments_updated_at ON registry_function_approval_comments;
 CREATE TRIGGER update_registry_function_approval_comments_updated_at
     BEFORE UPDATE ON registry_function_approval_comments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_registry_function_verification_status_updated_at ON registry_function_verification_status;
 CREATE TRIGGER update_registry_function_verification_status_updated_at
     BEFORE UPDATE ON registry_function_verification_status
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

@@ -3,12 +3,18 @@
 
 -- Add side_effects column: none | network | external_state
 ALTER TABLE registry_function_versions
-ADD COLUMN side_effects VARCHAR(20) DEFAULT 'none'
-CHECK (side_effects IN ('none', 'network', 'external_state'));
+ADD COLUMN IF NOT EXISTS side_effects VARCHAR(20) DEFAULT 'none';
+DO $$
+BEGIN
+  ALTER TABLE registry_function_versions ADD CONSTRAINT rfv_side_effects_check
+    CHECK (side_effects IN ('none', 'network', 'external_state'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Add idempotent column: true | false
 ALTER TABLE registry_function_versions
-ADD COLUMN idempotent BOOLEAN DEFAULT false;
+ADD COLUMN IF NOT EXISTS idempotent BOOLEAN DEFAULT false;
 
 -- Add index for efficient filtering of cacheable functions
 -- Functions that are deterministic + no side effects + idempotent = safe to CDN cache

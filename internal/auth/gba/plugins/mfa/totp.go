@@ -2,14 +2,18 @@ package mfa
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base32"
+	"encoding/base64"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/pquerna/otp/totp"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -202,27 +206,86 @@ func generateSecret() (string, error) {
 	return base32.StdEncoding.EncodeToString(secret), nil
 }
 
-// encryptSecret encrypts a secret for storage
-// In production, this should use proper encryption (AES) with a master key
-// For now, we use bcrypt hashing for security
-func encryptSecret(secret string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
+const (
+	secretPrefixEnc  = "enc:"
+	secretPrefixPlain = "plain:"
+)
+
+// getMFAEncryptionKey returns the 32-byte key for MFA secret encryption from env.
+// Use MFA_ENCRYPTION_KEY or GBA_MFA_ENCRYPTION_KEY (base64-encoded, 32 bytes decoded).
+func getMFAEncryptionKey() []byte {
+	for _, name := range []string{"MFA_ENCRYPTION_KEY", "GBA_MFA_ENCRYPTION_KEY"} {
+		if b64 := os.Getenv(name); b64 != "" {
+			key, err := base64.StdEncoding.DecodeString(b64)
+			if err != nil || len(key) != 32 {
+				continue
+			}
+			return key
+		}
 	}
-	return string(hash), nil
+	return nil
 }
 
-// decryptSecret "decrypts" a secret by returning it as-is
-// Since we're using bcrypt hashing, we can't actually decrypt
-// In production, use AES encryption instead
-// For now, return as-is (the secret is stored in a reversible way in practice)
+// encryptSecret encrypts a TOTP secret for storage using AES-256-GCM when a key is configured.
+func encryptSecret(secret string) (string, error) {
+	key := getMFAEncryptionKey()
+	if len(key) == 32 {
+		block, err := aes.NewCipher(key)
+		if err != nil {
+			return "", err
+		}
+		gcm, err := cipher.NewGCM(block)
+		if err != nil {
+			return "", err
+		}
+		nonce := make([]byte, gcm.NonceSize())
+		if _, err := rand.Read(nonce); err != nil {
+			return "", err
+		}
+		ciphertext := gcm.Seal(nonce, nonce, []byte(secret), nil)
+		return secretPrefixEnc + base64.StdEncoding.EncodeToString(ciphertext), nil
+	}
+	// No key: store as plain base64 (dev only; production should set MFA_ENCRYPTION_KEY)
+	return secretPrefixPlain + base64.StdEncoding.EncodeToString([]byte(secret)), nil
+}
+
+// decryptSecret decrypts a stored TOTP secret (AES-256-GCM or legacy plain).
 func decryptSecret(encrypted string) (string, error) {
-	// For bcrypt-hashed secrets, we can't decrypt
-	// This is a limitation of the current approach
-	// In production, use AES encryption instead
-	// For now, return as-is (the secret is stored in a reversible way in practice)
-	return encrypted, nil
+	if strings.HasPrefix(encrypted, secretPrefixEnc) {
+		key := getMFAEncryptionKey()
+		if len(key) != 32 {
+			return "", fmt.Errorf("MFA_ENCRYPTION_KEY not set or invalid; cannot decrypt")
+		}
+		data, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(encrypted, secretPrefixEnc))
+		if err != nil {
+			return "", err
+		}
+		block, err := aes.NewCipher(key)
+		if err != nil {
+			return "", err
+		}
+		gcm, err := cipher.NewGCM(block)
+		if err != nil {
+			return "", err
+		}
+		nonceSize := gcm.NonceSize()
+		if len(data) < nonceSize {
+			return "", fmt.Errorf("ciphertext too short")
+		}
+		plaintext, err := gcm.Open(nil, data[:nonceSize], data[nonceSize:], nil)
+		if err != nil {
+			return "", err
+		}
+		return string(plaintext), nil
+	}
+	if strings.HasPrefix(encrypted, secretPrefixPlain) {
+		decoded, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(encrypted, secretPrefixPlain))
+		if err != nil {
+			return "", err
+		}
+		return string(decoded), nil
+	}
+	return "", fmt.Errorf("invalid or legacy secret format; re-enroll MFA")
 }
 
 // validateTOTPCode validates a TOTP code against a secret

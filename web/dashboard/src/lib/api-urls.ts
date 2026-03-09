@@ -133,39 +133,6 @@ export const API_URLS = {
   },
 
   // ========================================================================
-  // Admin Endpoints
-  // ========================================================================
-  admin: {
-    tenants: {
-      list: (page = 1, limit = 20) =>
-        `/admin/v1/tenants?page=${page}&limit=${limit}`,
-      get: (tenantId: string) => `/admin/v1/tenants/${tenantId}`,
-      create: `/admin/v1/tenants`,
-      update: (tenantId: string) => `/admin/v1/tenants/${tenantId}`,
-      delete: (tenantId: string) => `/admin/v1/tenants/${tenantId}`,
-    },
-    users: {
-      list: (page = 1, limit = 20) =>
-        `/admin/v1/users?page=${page}&limit=${limit}`,
-      get: (userId: string) => `/admin/v1/users/${userId}`,
-      update: (userId: string) => `/admin/v1/users/${userId}`,
-      delete: (userId: string) => `/admin/v1/users/${userId}`,
-    },
-    functions: {
-      list: (page = 1, limit = 20) =>
-        `/admin/v1/functions?page=${page}&limit=${limit}`,
-      get: (functionId: string) => `/admin/v1/functions/${functionId}`,
-      update: (functionId: string) => `/admin/v1/functions/${functionId}`,
-      delete: (functionId: string) => `/admin/v1/functions/${functionId}`,
-    },
-    system: {
-      health: `/admin/v1/system/health`,
-      metrics: `/admin/v1/system/metrics`,
-      config: `/admin/v1/system/config`,
-    },
-  },
-
-  // ========================================================================
   // Blog/Content Endpoints
   // ========================================================================
   blog: {

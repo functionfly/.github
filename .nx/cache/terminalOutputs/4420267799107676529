@@ -1,0 +1,23 @@
+> nest start --watch
+
+[2J[3J[H[[90m12:04:18 PM[0m] Starting compilation in watch mode...
+
+[[90m12:04:22 PM[0m] Found 0 errors. Watching for file changes.
+
+/home/micro/projects/functionfly/cmd/blog-api/src/db/index.ts:6
+const { Pool } = pg;
+        ^
+
+TypeError: Cannot destructure property 'Pool' of 'pg_1.default' as it is undefined.
+    at Object.<anonymous> [90m(/home/micro/projects/functionfly/cmd/blog-api/[39msrc/db/index.ts:6:9[90m)[39m
+[90m    at Module._compile (node:internal/modules/cjs/loader:1811:14)[39m
+[90m    at Module._extensions..js (node:internal/modules/cjs/loader:1942:10)[39m
+[90m    at Module.load (node:internal/modules/cjs/loader:1532:32)[39m
+[90m    at Module._load (node:internal/modules/cjs/loader:1334:12)[39m
+[90m    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)[39m
+[90m    at Module.require (node:internal/modules/cjs/loader:1555:12)[39m
+[90m    at require (node:internal/modules/helpers:152:16)[39m
+    at Object.<anonymous> [90m(/home/micro/projects/functionfly/cmd/blog-api/[39msrc/database/database.service.ts:3:1[90m)[39m
+[90m    at Module._compile (node:internal/modules/cjs/loader:1811:14)[39m
+
+Node.js v25.6.1

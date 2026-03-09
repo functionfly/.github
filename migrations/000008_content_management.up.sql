@@ -61,11 +61,14 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_changelog_entries_updated_at ON changelog_entries;
 CREATE TRIGGER update_changelog_entries_updated_at BEFORE UPDATE ON changelog_entries
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_changelog_changes_updated_at ON changelog_changes;
 CREATE TRIGGER update_changelog_changes_updated_at BEFORE UPDATE ON changelog_changes
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_blog_posts_updated_at ON blog_posts;
 CREATE TRIGGER update_blog_posts_updated_at BEFORE UPDATE ON blog_posts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

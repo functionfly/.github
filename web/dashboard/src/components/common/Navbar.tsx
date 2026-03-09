@@ -27,15 +27,12 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
   const user = useAuthStore((state) => state.user);
   const theme = useThemeStore((state) => state.theme);
 
-  const isAdmin = user?.role && ["super_admin", "support", "billing_admin", "developer_admin"].includes(user.role);
-
   const navigationItems = isAuthenticated ? [
     { path: "/dashboard", label: "Dashboard" },
     { path: "/functions", label: "Functions" },
     { path: "/providers", label: "Providers" },
     { path: "/analytics", label: "Analytics" },
-    { path: "/settings", label: "Settings" },
-    ...(isAdmin ? [{ path: "/admin", label: "Admin" }] : [])
+    { path: "/settings", label: "Settings" }
   ] : [
     { path: "/", label: "Home" },
     { path: "/registry", label: "Functions" },
@@ -96,20 +93,6 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
                 >
                   Settings
                 </Link>
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    className={cn(
-                      "text-text-secondary hover:text-text-primary transition-colors font-medium",
-                      location.pathname === "/admin" && "text-text-primary"
-                    )}
-                    style={theme === 'light' ? {
-                      color: '#1a1a2e',
-                    } : {}}
-                  >
-                    Admin
-                  </Link>
-                )}
               </>
             ) : (
               <>
@@ -352,22 +335,6 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
                   >
                     Settings
                   </Link>
-
-                  {isAdmin && (
-                    <Link
-                      to="/admin"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        "block py-2 text-text-secondary hover:text-text-primary transition-colors font-medium",
-                        location.pathname === "/admin" && "text-text-primary"
-                      )}
-                      style={theme === 'light' ? {
-                        color: '#1a1a2e',
-                      } : {}}
-                    >
-                      Admin
-                    </Link>
-                  )}
                 </>
               ) : (
                 <>

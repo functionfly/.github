@@ -53,3 +53,14 @@ export type {
   UpdateIncidentRequest,
   GetIncidentsParams,
 } from "./status";
+export { factoryApi } from "./factory";
+export type {
+  FactoryConfig,
+  FactoryTotals,
+  FactoryRun,
+  FactoryStatus,
+  Opportunity,
+  PendingReview,
+  FactoryVersion,
+  PublishedFunction,
+} from "./factory";

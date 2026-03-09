@@ -20,8 +20,10 @@ const (
 	GenerationStatusSuccess = "success"
 	GenerationStatusFailed  = "failed"
 
-	defaultCodeModel      = "openai/gpt-4o"
-	defaultMaxTokens      = 2000
+	// Mercury 2 model - high-speed inference (1,009 tokens/sec)
+	// Pricing: $0.25/1M input, $0.75/1M output
+	defaultCodeModel      = "inception/mercury-2"
+	defaultMaxTokens      = 4000
 	openRouterCompletions = "https://openrouter.ai/api/v1/chat/completions"
 )
 

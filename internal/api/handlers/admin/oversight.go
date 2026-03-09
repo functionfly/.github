@@ -510,7 +510,15 @@ func (h *OversightHandler) HandleGetFraudDetection(w http.ResponseWriter, r *htt
 	fraudResult, err := h.registryRepo.DetectFraudPatterns()
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to detect fraud patterns")
-		http.Error(w, "Failed to load fraud detection data", http.StatusInternalServerError)
+		// Return empty fraud data so admin UI can load; caller can retry or check logs
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(FraudDetectionData{
+			BotPatterns:         []BotPattern{},
+			FakeDiversityAlerts: []FakeDiversityAlert{},
+			IPClusters:          []IPCluster{},
+			WashUsagePatterns:   []WashUsagePattern{},
+			Summary:             FraudSummary{},
+		})
 		return
 	}
 

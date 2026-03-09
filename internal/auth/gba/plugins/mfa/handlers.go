@@ -7,6 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+
+	gba "github.com/functionfly/functionfly/internal/auth/gba"
 )
 
 // Handler provides HTTP handlers for MFA endpoints
@@ -300,24 +302,24 @@ func (h *Handler) respondError(w http.ResponseWriter, status int, message string
 	})
 }
 
-// getUserIDFromContext extracts the user ID from the request context
-// This expects the auth middleware to have set the user ID
+// getUserIDFromContext extracts the user ID from the request context.
+// GBA auth middleware (OptionalAuth / RequirePermission) sets gba.ContextKeyUserID.
 func (h *Handler) getUserIDFromContext(r *http.Request) (uuid.UUID, error) {
-	// Get from context - in practice, this would be set by auth middleware
-	// For now, we'll look for a header (for testing) or context value
+	if userID, ok := r.Context().Value(gba.ContextKeyUserID).(uuid.UUID); ok {
+		return userID, nil
+	}
+	if session, ok := r.Context().Value(gba.ContextKeySession).(*gba.Session); ok && session != nil {
+		return session.UserID, nil
+	}
 	if userIDStr := r.Header.Get("X-User-ID"); userIDStr != "" {
 		return uuid.Parse(userIDStr)
 	}
-
-	// Try context value
 	if userID, ok := r.Context().Value("user_id").(uuid.UUID); ok {
 		return userID, nil
 	}
-
 	if userID, ok := r.Context().Value("user_id").(string); ok {
 		return uuid.Parse(userID)
 	}
-
 	return uuid.Nil, fmt.Errorf("user ID not found in context")
 }
 

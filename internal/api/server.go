@@ -22,6 +22,7 @@ import (
 	"github.com/functionfly/functionfly/internal/health"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/notification"
+	"github.com/functionfly/functionfly/internal/recommendations"
 	"github.com/functionfly/functionfly/internal/routing"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -60,6 +61,9 @@ type Server struct {
 
 	// Trigger engine for state changes
 	triggerEngine *staterepo.TriggerEngine
+
+	// Recommendations service
+	recommendationSvc *recommendations.Service
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -194,6 +198,10 @@ func NewServer(db *storage.PostgresDB) *Server {
 	notificationSvc := notification.NewService(notificationRepo, db, emailSvc, logrus.New())
 	authSvc.SetNotificationService(notificationSvc)
 
+	// Initialize recommendations service
+	recommendationConfig := recommendations.DefaultRecommendationConfig()
+	recommendationSvc := recommendations.NewService(db.GORM, nil, recommendationConfig)
+
 	s := &Server{
 		postgresDB:          db,
 		repo:                repo,
@@ -213,6 +221,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 		shutdownTimeout:     shutdownTimeout,
 		notificationSvc:     notificationSvc,
 		notificationRepo:    notificationRepo,
+		recommendationSvc:   recommendationSvc,
 		httpServer: &http.Server{
 			Handler:      router,
 			ReadTimeout:  15 * time.Second,
@@ -225,11 +234,8 @@ func NewServer(db *storage.PostgresDB) *Server {
 
 	// Serve /metrics before any wrapper so Prometheus (no Origin, from Docker) can scrape without 403
 	metricsHandler := monitoring.Handler()
-	isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
-	var mainHandler http.Handler = s.router
-	if isDev {
-		mainHandler = localhostCORSWrapper(s.router)
-	}
+	// Always wrap with localhost CORS so dashboard (e.g. :3000) and admin dashboard (:3002) can call API from localhost without requiring DEVELOPMENT=true
+	var mainHandler http.Handler = localhostCORSWrapper(s.router)
 	handlerWithMetrics := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/metrics" && r.Method == http.MethodGet {
 			metricsHandler.ServeHTTP(w, r)
@@ -252,7 +258,7 @@ func (w *corsResponseWriter) WriteHeader(code int) {
 	if w.origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", w.origin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 	}
 	w.ResponseWriter.WriteHeader(code)
@@ -270,7 +276,7 @@ func localhostCORSWrapper(next http.Handler) http.Handler {
 			if isLocalhost {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info")
+				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Access-Control-Max-Age", "86400")
 			}
@@ -283,7 +289,7 @@ func localhostCORSWrapper(next http.Handler) http.Handler {
 			if isLocalhost {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info")
+				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
 			next.ServeHTTP(w, r)

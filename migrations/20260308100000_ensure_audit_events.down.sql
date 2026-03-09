@@ -1,0 +1,2 @@
+-- Table may have been created by 000004_admin_roles_and_audit; do not drop here.
+-- No-op.
