@@ -55,6 +55,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import "@/styles/components.css";
+import { EmbedTab } from "@/components/embed";
 
 interface FunctionSettings {
   id: string;
@@ -298,11 +299,12 @@ export function FunctionSettingsPage() {
 
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="providers">Providers</TabsTrigger>
           <TabsTrigger value="environment">Environment</TabsTrigger>
+          <TabsTrigger value="embed">Embed</TabsTrigger>
           <TabsTrigger value="danger">Danger Zone</TabsTrigger>
         </TabsList>
 
@@ -644,6 +646,11 @@ export function FunctionSettingsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Embed Settings */}
+        <TabsContent value="embed" className="space-y-6">
+          <EmbedTab author={author || ""} name={name || ""} />
         </TabsContent>
 
         {/* Danger Zone */}

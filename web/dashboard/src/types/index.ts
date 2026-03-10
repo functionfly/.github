@@ -1033,7 +1033,211 @@ export interface TrustMetricsVisualization {
 }
 
 // ============================================================================
+// Agent Memory Types
+// ============================================================================
+
+/** Agent memory types */
+export type AgentMemoryType = "working" | "longterm" | "context" | "episodic";
+
+/** Agent memory model */
+export interface AgentMemory {
+  id: string;
+  tenant_id: string;
+  agent_id: string;
+  memory_type: AgentMemoryType;
+  content?: string;
+  structured_data?: Record<string, unknown>;
+  embedding?: number[];
+  importance_score: number;
+  access_count: number;
+  last_accessed_at?: string;
+  ttl_days: number;
+  expires_at?: string;
+  source_event_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Request to create an agent memory */
+export interface CreateAgentMemoryRequest {
+  agent_id: string;
+  memory_type: AgentMemoryType;
+  content: string;
+  structured_data?: Record<string, unknown>;
+  embedding?: number[];
+  importance_score?: number;
+  ttl_days?: number;
+}
+
+/** Request to update an agent memory */
+export interface UpdateAgentMemoryRequest {
+  content?: string;
+  structured_data?: Record<string, unknown>;
+  embedding?: number[];
+  importance_score?: number;
+}
+
+/** Request to search agent memories */
+export interface AgentMemorySearchRequest {
+  agent_id?: string;
+  query: string;
+  embedding?: number[];
+  memory_type?: AgentMemoryType;
+  limit?: number;
+  threshold?: number;
+}
+
+/** Response from searching agent memories */
+export interface AgentMemorySearchResponse {
+  memories: AgentMemory[];
+  count: number;
+}
+
+/** Request to rebuild the search index */
+export interface RebuildIndexRequest {
+  agent_id?: string;
+  memory_type?: AgentMemoryType;
+}
+
+/** Response from rebuilding the index */
+export interface RebuildIndexResponse {
+  success: boolean;
+  index_id?: string;
+  memory_count: number;
+  message: string;
+}
+
+/** Response from listing agent memories */
+export interface ListAgentMemoriesResponse {
+  memories: AgentMemory[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// ============================================================================
 // Vault Types - Re-export from vault module
 // ============================================================================
 
 export * from "./vault";
+
+// ============================================================================
+// API Key Types - Re-export from api-key module
+// ============================================================================
+
+export * from "./api-key";
+
+// ============================================================================
+// Simple State Types
+// ============================================================================
+
+/** Simple State - basic key-value state management */
+export interface SimpleState {
+  path: string;
+  key: string;
+  value: StateValue;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+  ttl?: number;
+  metadata?: Record<string, string>;
+}
+
+/** State value - can be any JSON-serializable value */
+export type StateValue = string | number | boolean | null | StateValue[] | Record<string, StateValue>;
+
+/** History entry for state changes */
+export interface StateHistoryEntry {
+  id: string;
+  path: string;
+  key: string;
+  operation: "create" | "update" | "delete" | "patch";
+  previousValue?: StateValue;
+  newValue?: StateValue;
+  timestamp: string;
+  actor?: string;
+}
+
+/** Snapshot of state at a point in time */
+export interface StateSnapshot {
+  id: string;
+  path: string;
+  name: string;
+  description?: string;
+  state: Record<string, StateValue>;
+  version: number;
+  createdAt: string;
+  expiresAt?: string;
+}
+
+/** Permission for state access */
+export interface StatePermission {
+  id: string;
+  path: string;
+  principal: string;
+  principalType: "user" | "team" | "service";
+  permissions: ("read" | "write" | "admin")[];
+  grantedAt: string;
+  grantedBy?: string;
+}
+
+/** Request to create a state */
+export interface CreateStateRequest {
+  path: string;
+  key: string;
+  value: StateValue;
+  ttl?: number;
+  metadata?: Record<string, string>;
+}
+
+/** Request to update a state */
+export interface UpdateStateRequest {
+  value: StateValue;
+  ttl?: number;
+  metadata?: Record<string, string>;
+}
+
+/** Request to patch a state value */
+export interface PatchStateRequest {
+  path: string;
+  key?: string;
+  operations: JsonPatchOperation[];
+}
+
+/** JSON Patch operation */
+export interface JsonPatchOperation {
+  op: "add" | "remove" | "replace" | "move" | "copy";
+  path: string;
+  value?: StateValue;
+  from?: string;
+}
+
+/** Request to create a snapshot */
+export interface CreateSnapshotRequest {
+  path: string;
+  name: string;
+  description?: string;
+}
+
+/** Request to grant permission */
+export interface GrantPermissionRequest {
+  path: string;
+  principal: string;
+  principalType: "user" | "team" | "service";
+  permissions: ("read" | "write" | "admin")[];
+}
+
+/** Time travel request */
+export interface TimeTravelRequest {
+  path: string;
+  timestamp?: string;
+  version?: number;
+}
+
+/** Time travel response */
+export interface TimeTravelResponse {
+  path: string;
+  value: StateValue;
+  version: number;
+  timestamp: string;
+}

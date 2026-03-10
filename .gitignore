@@ -110,6 +110,9 @@ Cargo.lock
 # Additional build binaries and artifacts
 server
 setup-bin
+create-admin
+flypy-test
+simple_server
 statefabric-sdk/
 /statefabric/
 tools/

@@ -270,7 +270,7 @@ docker compose logs orchestrator-api | grep -i "database\|connected"
 |----------|-------------|
 | [📖 PRODUCTION_DEPLOYMENT.md](./PRODUCTION_DEPLOYMENT.md) | Full deployment guide with security hardening, monitoring, and troubleshooting |
 | [⚡ PERFORMANCE_TUNING_GUIDE.md](./PERFORMANCE_TUNING_GUIDE.md) | Optimization, load testing, and scaling strategies |
-| [🔧 RUNBOOK.md](../RUNBOOK.md) | Common operations and incident response |
+| [🔧 RUNBOOK.md](RUNBOOK.md) | Common operations and incident response |
 
 ---
 

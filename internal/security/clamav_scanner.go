@@ -7,25 +7,41 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	defaultClamAVTimeout   = 30 * time.Second
+	defaultMaxFileSize     = 100 << 20 // 100 MiB
+	defaultMaxResponseSize = 512 << 10 // 512 KiB
+	maxFilenameLen         = 255
+	maxVirusNameLen        = 256
+)
+
 type ClamAVConfig struct {
-	URL        string
-	Timeout    time.Duration
-	FailOpen   bool
-	MockMode   bool
-	MockResult string
+	URL             string
+	Timeout         time.Duration
+	FailOpen        bool
+	MockMode        bool
+	MockResult      string
+	MaxFileSize     int64
+	MaxResponseSize int64
 }
 
 type ClamAVScanner struct {
-	config  ClamAVConfig
-	client  *http.Client
-	logger  *logrus.Logger
-	healthy bool
+	config   ClamAVConfig
+	client   *http.Client
+	logger   *logrus.Logger
+	healthy  bool
+	healthMu sync.RWMutex
 }
 
 type ClamAVScanResult struct {
@@ -45,33 +61,71 @@ type ClamAVScanResult struct {
 
 func NewClamAVScanner(config ClamAVConfig, logger *logrus.Logger) *ClamAVScanner {
 	if config.Timeout == 0 {
-		config.Timeout = 30 * time.Second
+		config.Timeout = defaultClamAVTimeout
+	}
+	if config.MaxFileSize <= 0 {
+		config.MaxFileSize = defaultMaxFileSize
+	}
+	if config.MaxResponseSize <= 0 {
+		config.MaxResponseSize = defaultMaxResponseSize
 	}
 
+	transport := &http.Transport{
+		MaxIdleConns:       10,
+		IdleConnTimeout:    30 * time.Second,
+		DisableCompression: false,
+	}
 	scanner := &ClamAVScanner{
 		config: config,
 		client: &http.Client{
-			Timeout: config.Timeout,
+			Timeout:   config.Timeout,
+			Transport: transport,
 		},
 		logger:  logger,
 		healthy: false,
 	}
 
 	if config.MockMode {
+		scanner.healthMu.Lock()
 		scanner.healthy = true
+		scanner.healthMu.Unlock()
 		logger.Info("ClamAV scanner initialized in MOCK mode")
-	} else if config.URL != "" {
-		scanner.checkHealth()
+		return scanner
+	}
+	if config.URL != "" {
+		if err := scanner.validateURL(config.URL); err != nil {
+			logger.Warnf("ClamAV URL validation failed: %v", err)
+		} else {
+			scanner.checkHealth()
+		}
 	}
 
 	return scanner
+}
+
+// validateURL ensures URL is http/https and well-formed to reduce SSRF risk.
+func (c *ClamAVScanner) validateURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	switch u.Scheme {
+	case "http", "https":
+		// allowed
+	default:
+		return fmt.Errorf("unsupported scheme %q (use http or https)", u.Scheme)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("missing host in URL")
+	}
+	return nil
 }
 
 func (c *ClamAVScanner) checkHealth() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", c.config.URL+"/health", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.config.URL+"/health", nil)
 	if err != nil {
 		c.logger.Warnf("ClamAV health check failed: %v", err)
 		return
@@ -84,8 +138,11 @@ func (c *ClamAVScanner) checkHealth() {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
-		c.healthy = true
+	ok := resp.StatusCode == http.StatusOK
+	c.healthMu.Lock()
+	c.healthy = ok
+	c.healthMu.Unlock()
+	if ok {
 		c.logger.Info("ClamAV scanner is healthy")
 	} else {
 		c.logger.Warnf("ClamAV health check returned status: %d", resp.StatusCode)
@@ -93,6 +150,8 @@ func (c *ClamAVScanner) checkHealth() {
 }
 
 func (c *ClamAVScanner) IsHealthy() bool {
+	c.healthMu.RLock()
+	defer c.healthMu.RUnlock()
 	return c.healthy
 }
 
@@ -104,7 +163,7 @@ func (c *ClamAVScanner) GetEngineInfo() (version, databaseVersion string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", c.config.URL+"/version", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.config.URL+"/version", nil)
 	if err != nil {
 		return "unknown", "unknown"
 	}
@@ -116,7 +175,7 @@ func (c *ClamAVScanner) GetEngineInfo() (version, databaseVersion string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(io.LimitReader(resp.Body, defaultMaxResponseSize))
 		if err != nil {
 			return version, databaseVersion
 		}
@@ -127,7 +186,7 @@ func (c *ClamAVScanner) GetEngineInfo() (version, databaseVersion string) {
 		if json.Unmarshal(body, &info) == nil && (info.Version != "" || info.DBVer != "") {
 			version, databaseVersion = info.Version, info.DBVer
 		} else {
-			fmt.Sscanf(string(body), "ClamAV %s/%s", &version, &databaseVersion)
+			_, _ = fmt.Sscanf(string(body), "ClamAV %s/%s", &version, &databaseVersion)
 		}
 	}
 
@@ -135,10 +194,19 @@ func (c *ClamAVScanner) GetEngineInfo() (version, databaseVersion string) {
 }
 
 func (c *ClamAVScanner) ScanFile(filename string, fileContent []byte) (*ClamAVScanResult, error) {
+	return c.ScanFileContext(context.Background(), filename, fileContent)
+}
+
+func (c *ClamAVScanner) ScanFileContext(ctx context.Context, filename string, fileContent []byte) (*ClamAVScanResult, error) {
 	startTime := time.Now()
 
+	safeName := sanitizeFilename(filename)
+	if safeName == "" {
+		safeName = "unnamed"
+	}
+
 	result := &ClamAVScanResult{
-		Filename:     filename,
+		Filename:     safeName,
 		FileSize:     int64(len(fileContent)),
 		ScannedAt:    startTime,
 		Engine:       "ClamAV",
@@ -147,8 +215,15 @@ func (c *ClamAVScanner) ScanFile(filename string, fileContent []byte) (*ClamAVSc
 		ScanDuration: 0,
 	}
 
+	if int64(len(fileContent)) > c.config.MaxFileSize {
+		result.Error = fmt.Sprintf("file size %d exceeds max %d", len(fileContent), c.config.MaxFileSize)
+		result.Status = "ERROR"
+		result.ScanDuration = time.Since(startTime).Milliseconds()
+		return result, fmt.Errorf("%s", result.Error)
+	}
+
 	if c.config.MockMode {
-		return c.mockScan(filename, fileContent, startTime), nil
+		return c.mockScan(safeName, fileContent, startTime), nil
 	}
 
 	if c.config.URL == "" {
@@ -164,7 +239,10 @@ func (c *ClamAVScanner) ScanFile(filename string, fileContent []byte) (*ClamAVSc
 		return result, fmt.Errorf("ClamAV not configured")
 	}
 
-	if !c.healthy {
+	c.healthMu.RLock()
+	healthy := c.healthy
+	c.healthMu.RUnlock()
+	if !healthy {
 		if c.config.FailOpen {
 			c.logger.Warn("ClamAV unhealthy, failing open (treating as clean)")
 			result.Status = "OK"
@@ -177,7 +255,32 @@ func (c *ClamAVScanner) ScanFile(filename string, fileContent []byte) (*ClamAVSc
 		return result, fmt.Errorf("ClamAV service unhealthy")
 	}
 
-	return c.doScan(filename, fileContent, startTime)
+	return c.doScan(ctx, safeName, fileContent, startTime)
+}
+
+// sanitizeFilename returns a safe base name for multipart form (no path traversal, bounded length).
+func sanitizeFilename(name string) string {
+	base := filepath.Base(name)
+	base = strings.TrimSpace(base)
+	if base == "" || base == "." || base == ".." {
+		return ""
+	}
+	// Restrict to valid UTF-8 and remove control chars / path separators
+	var b strings.Builder
+	for _, r := range base {
+		if r == 0 || r == '/' || r == '\\' || r < 32 || r == 127 {
+			continue
+		}
+		if !utf8.ValidRune(r) {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	out := b.String()
+	if len(out) > maxFilenameLen {
+		out = out[:maxFilenameLen]
+	}
+	return out
 }
 
 func (c *ClamAVScanner) mockScan(filename string, fileContent []byte, startTime time.Time) *ClamAVScanResult {
@@ -207,7 +310,7 @@ func (c *ClamAVScanner) mockScan(filename string, fileContent []byte, startTime 
 	return result
 }
 
-func (c *ClamAVScanner) doScan(filename string, fileContent []byte, startTime time.Time) (*ClamAVScanResult, error) {
+func (c *ClamAVScanner) doScan(ctx context.Context, filename string, fileContent []byte, startTime time.Time) (*ClamAVScanResult, error) {
 	result := &ClamAVScanResult{
 		Filename:  filename,
 		FileSize:  int64(len(fileContent)),
@@ -219,31 +322,30 @@ func (c *ClamAVScanner) doScan(filename string, fileContent []byte, startTime ti
 	writer := multipart.NewWriter(pw)
 
 	go func() {
-		defer pw.Close()
-		defer writer.Close()
-
+		defer func() {
+			_ = writer.Close()
+			_ = pw.Close()
+		}()
 		part, err := writer.CreateFormFile("file", filename)
 		if err != nil {
 			c.logger.Errorf("Failed to create form file: %v", err)
 			return
 		}
-
 		if _, err := part.Write(fileContent); err != nil {
 			c.logger.Errorf("Failed to write file content: %v", err)
 			return
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), c.config.Timeout)
+	reqCtx, cancel := context.WithTimeout(ctx, c.config.Timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "POST", c.config.URL+"/scan", pr)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, c.config.URL+"/scan", pr)
 	if err != nil {
 		result.Error = err.Error()
 		result.Status = "ERROR"
 		return result, err
 	}
-
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	resp, err := c.client.Do(req)
@@ -261,7 +363,7 @@ func (c *ClamAVScanner) doScan(filename string, fileContent []byte, startTime ti
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, c.config.MaxResponseSize))
 	if err != nil {
 		result.Error = err.Error()
 		result.Status = "ERROR"
@@ -317,50 +419,69 @@ func parseClamAVResponse(body []byte, result *struct {
 	ScanTimeMs int64  `json:"scan_time_ms,omitempty"`
 }) error {
 	result.Status = "OK"
-
 	if len(body) == 0 {
 		return nil
 	}
 
-	bodyStr := string(body)
-
-	switch {
-	case contains(bodyStr, "OK"):
-		result.Status = "OK"
-	case contains(bodyStr, "FOUND"):
-		result.Status = "FOUND"
-		if idx := indexOf(bodyStr, ":"); idx > 0 {
-			result.VirusName = bodyStr[idx+1:]
+	// Prefer JSON response from REST API
+	if json.Valid(body) {
+		var j struct {
+			Status     string `json:"status"`
+			VirusName  string `json:"virus_name,omitempty"`
+			Version    string `json:"version,omitempty"`
+			DBVersion  string `json:"db_version,omitempty"`
+			ScanTimeMs int64  `json:"scan_time_ms,omitempty"`
 		}
-	case contains(bodyStr, "ERROR"):
+		if err := json.Unmarshal(body, &j); err == nil && (j.Status != "" || j.VirusName != "") {
+			result.Status = j.Status
+			result.VirusName = truncateUTF8(j.VirusName, maxVirusNameLen)
+			result.Version = j.Version
+			result.DBVersion = j.DBVersion
+			if j.ScanTimeMs > 0 {
+				result.ScanTimeMs = j.ScanTimeMs
+			}
+			return nil
+		}
+	}
+
+	// Fallback: text response (e.g. "FOUND: Eicar-Test-Signature")
+	bodyStr := string(body)
+	switch {
+	case strings.Contains(bodyStr, "OK"):
+		result.Status = "OK"
+	case strings.Contains(bodyStr, "FOUND"):
+		result.Status = "FOUND"
+		if idx := strings.Index(bodyStr, ":"); idx >= 0 && idx+1 < len(bodyStr) {
+			result.VirusName = truncateUTF8(strings.TrimSpace(bodyStr[idx+1:]), maxVirusNameLen)
+		}
+	case strings.Contains(bodyStr, "ERROR"):
 		result.Status = "ERROR"
 	default:
 		result.Status = "UNKNOWN"
 	}
-
 	return nil
 }
 
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && (s[:len(substr)] == substr || contains(s[1:], substr)))
-}
-
-func indexOf(s, substr string) int {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
+func truncateUTF8(s string, maxBytes int) string {
+	if len(s) <= maxBytes {
+		return s
 	}
-	return -1
+	for len(s) > maxBytes {
+		_, size := utf8.DecodeLastRuneInString(s)
+		s = s[:len(s)-size]
+	}
+	return s
 }
 
 func LoadClamAVConfig() ClamAVConfig {
 	return ClamAVConfig{
-		URL:        getEnvOrDefault("CLAMAV_URL", "http://clamav:3310"),
-		Timeout:    getDurationEnvOrDefault("CLAMAV_TIMEOUT", 30*time.Second),
-		FailOpen:   getEnvOrDefault("CLAMAV_FAIL_OPEN", "true") == "true",
-		MockMode:   getEnvOrDefault("CLAMAV_MOCK", "false") == "true",
-		MockResult: getEnvOrDefault("CLAMAV_MOCK_RESULT", "clean"),
+		URL:             getEnvOrDefault("CLAMAV_URL", "http://clamav:3310"),
+		Timeout:         getDurationEnvOrDefault("CLAMAV_TIMEOUT", defaultClamAVTimeout),
+		FailOpen:        getEnvOrDefault("CLAMAV_FAIL_OPEN", "false") == "true",
+		MockMode:        getEnvOrDefault("CLAMAV_MOCK", "false") == "true",
+		MockResult:      getEnvOrDefault("CLAMAV_MOCK_RESULT", "clean"),
+		MaxFileSize:     getInt64EnvOrDefault("CLAMAV_MAX_FILE_SIZE", defaultMaxFileSize),
+		MaxResponseSize: getInt64EnvOrDefault("CLAMAV_MAX_RESPONSE_SIZE", defaultMaxResponseSize),
 	}
 }
 
@@ -375,6 +496,16 @@ func getDurationEnvOrDefault(key string, defaultValue time.Duration) time.Durati
 	if value := os.Getenv(key); value != "" {
 		if d, err := time.ParseDuration(value); err == nil {
 			return d
+		}
+	}
+	return defaultValue
+}
+
+func getInt64EnvOrDefault(key string, defaultValue int64) int64 {
+	if value := os.Getenv(key); value != "" {
+		var v int64
+		if _, err := fmt.Sscanf(value, "%d", &v); err == nil && v > 0 {
+			return v
 		}
 	}
 	return defaultValue

@@ -297,6 +297,127 @@ var (
 		[]string{"runtime_type", "function_name"},
 	)
 
+	// State and state fabric metrics
+	// State operation metrics (per tenant)
+	stateOperationsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_operations_total",
+			Help: "Total number of state operations",
+		},
+		[]string{"tenant_id", "operation_type", "status"},
+	)
+
+	stateOperationDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_state_operation_duration_seconds",
+			Help:    "State operation duration in seconds",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5},
+		},
+		[]string{"tenant_id", "operation_type"},
+	)
+
+	stateStorageSize = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_state_storage_size_bytes",
+			Help: "Current storage size for state in bytes",
+		},
+		[]string{"tenant_id", "state_path"},
+	)
+
+	// State fabric metrics
+	stateFabricOperationsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_fabric_operations_total",
+			Help: "Total number of state fabric operations",
+		},
+		[]string{"tenant_id", "fabric_id", "operation_type", "status"},
+	)
+
+	stateFabricOperationDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_state_fabric_operation_duration_seconds",
+			Help:    "State fabric operation duration in seconds",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0},
+		},
+		[]string{"tenant_id", "fabric_id", "operation_type"},
+	)
+
+	stateFabricActiveCount = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_state_fabric_active_count",
+			Help: "Number of active state fabrics",
+		},
+		[]string{"tenant_id"},
+	)
+
+	stateFabricStoreCount = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_state_fabric_stores_count",
+			Help: "Number of stores in a state fabric",
+		},
+		[]string{"tenant_id", "fabric_id"},
+	)
+
+	stateFabricPipelineExecutionsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_fabric_pipeline_executions_total",
+			Help: "Total number of state fabric pipeline executions",
+		},
+		[]string{"tenant_id", "fabric_id", "pipeline_id", "status"},
+	)
+
+	stateFabricPipelineDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_state_fabric_pipeline_duration_seconds",
+			Help:    "State fabric pipeline execution duration in seconds",
+			Buckets: []float64{0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0},
+		},
+		[]string{"tenant_id", "fabric_id", "pipeline_id"},
+	)
+
+	// Trigger execution metrics
+	triggerExecutionsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_trigger_executions_total",
+			Help: "Total number of trigger executions",
+		},
+		[]string{"tenant_id", "state_path", "trigger_type", "status"},
+	)
+
+	triggerExecutionDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_trigger_execution_duration_seconds",
+			Help:    "Trigger execution duration in seconds",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0},
+		},
+		[]string{"tenant_id", "state_path", "trigger_type"},
+	)
+
+	triggerErrorsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_trigger_errors_total",
+			Help: "Total number of trigger execution errors",
+		},
+		[]string{"tenant_id", "state_path", "trigger_type", "error_type"},
+	)
+
+	// Event and snapshot metrics
+	stateEventCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_state_events_total",
+			Help: "Total number of state events",
+		},
+		[]string{"tenant_id", "fabric_id", "event_type"},
+	)
+
+	stateSnapshotCount = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_state_snapshots_count",
+			Help: "Number of state snapshots",
+		},
+		[]string{"tenant_id", "fabric_id"},
+	)
+
 	localRuntimeErrorsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "functionfly_local_runtime_errors_total",
@@ -479,6 +600,84 @@ func RecordLocalRuntimeExecutionDuration(runtimeType, functionName string, durat
 // RecordLocalRuntimeError records errors for local runtimes
 func RecordLocalRuntimeError(runtimeType, errorType, functionName string) {
 	localRuntimeErrorsTotal.WithLabelValues(runtimeType, errorType, functionName).Inc()
+}
+
+// State operation metrics recording functions
+
+// RecordStateOperation records state operation metrics
+func RecordStateOperation(tenantID, operationType, status string) {
+	stateOperationsTotal.WithLabelValues(tenantID, operationType, status).Inc()
+}
+
+// RecordStateOperationDuration records state operation duration
+func RecordStateOperationDuration(tenantID, operationType string, duration time.Duration) {
+	stateOperationDuration.WithLabelValues(tenantID, operationType).Observe(duration.Seconds())
+}
+
+// UpdateStateStorageSize updates state storage size metrics
+func UpdateStateStorageSize(tenantID, statePath string, sizeBytes int64) {
+	stateStorageSize.WithLabelValues(tenantID, statePath).Set(float64(sizeBytes))
+}
+
+// State fabric metrics recording functions
+
+// RecordStateFabricOperation records state fabric operation metrics
+func RecordStateFabricOperation(tenantID, fabricID, operationType, status string) {
+	stateFabricOperationsTotal.WithLabelValues(tenantID, fabricID, operationType, status).Inc()
+}
+
+// RecordStateFabricOperationDuration records state fabric operation duration
+func RecordStateFabricOperationDuration(tenantID, fabricID, operationType string, duration time.Duration) {
+	stateFabricOperationDuration.WithLabelValues(tenantID, fabricID, operationType).Observe(duration.Seconds())
+}
+
+// UpdateStateFabricActiveCount updates the count of active state fabrics
+func UpdateStateFabricActiveCount(tenantID string, count int) {
+	stateFabricActiveCount.WithLabelValues(tenantID).Set(float64(count))
+}
+
+// UpdateStateFabricStoreCount updates the count of stores in a state fabric
+func UpdateStateFabricStoreCount(tenantID, fabricID string, count int) {
+	stateFabricStoreCount.WithLabelValues(tenantID, fabricID).Set(float64(count))
+}
+
+// RecordStateFabricPipelineExecution records pipeline execution metrics
+func RecordStateFabricPipelineExecution(tenantID, fabricID, pipelineID, status string) {
+	stateFabricPipelineExecutionsTotal.WithLabelValues(tenantID, fabricID, pipelineID, status).Inc()
+}
+
+// RecordStateFabricPipelineDuration records pipeline execution duration
+func RecordStateFabricPipelineDuration(tenantID, fabricID, pipelineID string, duration time.Duration) {
+	stateFabricPipelineDuration.WithLabelValues(tenantID, fabricID, pipelineID).Observe(duration.Seconds())
+}
+
+// Trigger execution metrics recording functions
+
+// RecordTriggerExecution records trigger execution metrics
+func RecordTriggerExecution(tenantID, statePath, triggerType, status string) {
+	triggerExecutionsTotal.WithLabelValues(tenantID, statePath, triggerType, status).Inc()
+}
+
+// RecordTriggerExecutionDuration records trigger execution duration
+func RecordTriggerExecutionDuration(tenantID, statePath, triggerType string, duration time.Duration) {
+	triggerExecutionDuration.WithLabelValues(tenantID, statePath, triggerType).Observe(duration.Seconds())
+}
+
+// RecordTriggerError records trigger error metrics
+func RecordTriggerError(tenantID, statePath, triggerType, errorType string) {
+	triggerErrorsTotal.WithLabelValues(tenantID, statePath, triggerType, errorType).Inc()
+}
+
+// State event and snapshot metrics recording functions
+
+// RecordStateEvent records state event metrics
+func RecordStateEvent(tenantID, fabricID, eventType string) {
+	stateEventCount.WithLabelValues(tenantID, fabricID, eventType).Inc()
+}
+
+// UpdateStateSnapshotCount updates the count of state snapshots
+func UpdateStateSnapshotCount(tenantID, fabricID string, count int) {
+	stateSnapshotCount.WithLabelValues(tenantID, fabricID).Set(float64(count))
 }
 
 // HTTPMetricsMiddleware returns a middleware that records HTTP metrics

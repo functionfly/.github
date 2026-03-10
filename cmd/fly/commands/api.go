@@ -145,6 +145,92 @@ func (c *APIClient) do(req *http.Request, out interface{}) error {
 	return nil
 }
 
+// App is a minimal app for backend commands.
+type App struct {
+	ID string `json:"id"`
+}
+
+// Backend is a created backend response.
+type Backend struct {
+	ID       string `json:"id"`
+	Provider string `json:"provider"`
+	Region   string `json:"region"`
+	URL      string `json:"url"`
+}
+
+// CircuitState is circuit breaker state.
+type CircuitState struct {
+	State string `json:"state"`
+}
+
+// HealthCheck is a health check result.
+type HealthCheck struct {
+	OK bool `json:"ok"`
+}
+
+// BackendStatus is one backend's status in app status.
+type BackendStatus struct {
+	Backend           *Backend      `json:"backend"`
+	CircuitState      *CircuitState `json:"circuit_state"`
+	LatestHealthCheck *HealthCheck  `json:"latest_health_check"`
+}
+
+// AppStatus is app status with backends.
+type AppStatus struct {
+	Backends []*BackendStatus `json:"backends"`
+}
+
+// GetApp looks up an app by name (slug or name) via GET /v1/apps and returns the matching app.
+func (c *APIClient) GetApp(name string) (*App, error) {
+	var out struct {
+		Apps []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+			Slug string `json:"slug"`
+		} `json:"apps"`
+	}
+	if err := c.Get("/v1/apps", &out); err != nil {
+		return nil, err
+	}
+	for _, a := range out.Apps {
+		if a.Slug == name || a.Name == name {
+			return &App{ID: a.ID}, nil
+		}
+	}
+	return nil, fmt.Errorf("app not found: %s", name)
+}
+
+// CreateBackend creates a backend for an app via POST /v1/apps/{appId}/backends.
+func (c *APIClient) CreateBackend(appID, provider, region, url, sharedSecret string) (*Backend, error) {
+	body := map[string]interface{}{
+		"provider":      provider,
+		"region":        region,
+		"url":           url,
+		"shared_secret": sharedSecret,
+	}
+	var out Backend
+	path := "/v1/apps/" + appID + "/backends"
+	if err := c.Post(path, body, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// GetStatus returns app status including backends via GET /v1/apps/{appId}/status.
+func (c *APIClient) GetStatus(appID string) (*AppStatus, error) {
+	var out AppStatus
+	if err := c.Get("/v1/apps/"+appID+"/status", &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// DeleteBackend removes a backend via DELETE /v1/apps/{appId}/backends/{backendId}.
+func (c *APIClient) DeleteBackend(appID, backendID string) error {
+	path := "/v1/apps/" + appID + "/backends/" + backendID
+	return c.Delete(path, nil)
+}
+
 // StreamLines opens a streaming GET connection and calls fn for each line.
 func (c *APIClient) StreamLines(path string, fn func(line string) bool) error {
 	req, err := http.NewRequest("GET", c.BaseURL+path, nil)

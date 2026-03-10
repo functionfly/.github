@@ -1,4 +1,4 @@
-# Full stack in Docker. For local development (no Docker): use make dev or ./dev.sh
+# Full stack in Docker. For local development (no Docker): use make dev or ./scripts/dev.sh
 # (expects local Postgres on 5432 and Redis on 6379).
 #
 # This file: Postgres on host port 5434 (container 5432). Set DB_PORT=5434 when using this stack.

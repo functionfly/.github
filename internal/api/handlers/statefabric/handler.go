@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/monitoring"
 	repo "github.com/functionfly/functionfly/internal/storage/statefabric"
 )
 
@@ -135,26 +136,41 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
+		monitoring.RecordStateFabricOperation("", "", "create", "unauthorized")
 		return
 	}
 	var req createFabricRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		monitoring.RecordStateFabricOperation(tenantID.String(), "", "create", "bad_request")
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 	item, err := h.repo.CreateFabric(r.Context(), tenantID, req.Name, req.Description, req.Type, req.Settings)
 	if err != nil {
+		monitoring.RecordStateFabricOperation(tenantID.String(), "", "create", "error")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	fabricID := ""
+	if item != nil {
+		fabricID = item.ID.String()
+	}
+	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID, "create", "success")
+	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID, "create", time.Since(start))
+	monitoring.UpdateStateFabricActiveCount(tenantID.String(), 1)
+
 	writeJSON(w, http.StatusCreated, item)
 }
 
 func (h *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
+		monitoring.RecordStateFabricOperation("", "", "read", "unauthorized")
 		return
 	}
 	fabricID, parsed := parseID(w, mux.Vars(r)["id"], "state fabric id")
@@ -163,15 +179,21 @@ func (h *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.GetFabric(r.Context(), tenantID, fabricID)
 	if err != nil {
+		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "read", "not_found")
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
+	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "read", "success")
+	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "read", time.Since(start))
+
 	writeJSON(w, http.StatusOK, item)
 }
 
 func (h *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
+		monitoring.RecordStateFabricOperation("", "", "update", "unauthorized")
 		return
 	}
 	fabricID, parsed := parseID(w, mux.Vars(r)["id"], "state fabric id")
@@ -180,6 +202,7 @@ func (h *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	var req updateFabricRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "update", "bad_request")
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -195,15 +218,21 @@ func (h *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.repo.UpdateFabric(r.Context(), tenantID, fabricID, updates)
 	if err != nil {
+		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "update", "error")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "update", "success")
+	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "update", time.Since(start))
+
 	writeJSON(w, http.StatusOK, item)
 }
 
 func (h *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
+		monitoring.RecordStateFabricOperation("", "", "delete", "unauthorized")
 		return
 	}
 	fabricID, parsed := parseID(w, mux.Vars(r)["id"], "state fabric id")
@@ -211,9 +240,13 @@ func (h *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeleteFabric(r.Context(), tenantID, fabricID); err != nil {
+		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "delete", "error")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "delete", "success")
+	monitoring.RecordStateFabricOperationDuration(tenantID.String(), fabricID.String(), "delete", time.Since(start))
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -570,4 +603,3 @@ func (h *Handler) HandleGetReplay(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, item)
 }
-

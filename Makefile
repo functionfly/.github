@@ -100,8 +100,10 @@ security-scan: ## Run security vulnerability scan
 	gosec ./...
 	govulncheck ./...
 
-clean: ## Clean build artifacts
+clean: ## Clean build artifacts (bin/ and any binaries/logs in project root)
 	rm -rf bin/
+	rm -f api-test create-admin ffly fly flypy-test functionfly functionfly-server health-monitor migrate orchestrator-api server setup-bin simple_server *.test
+	rm -f api_startup.log api_test.log dev_test.log runtime.log server_output.log coverage.out
 
 docker-up: ## Start docker services
 	docker compose up -d

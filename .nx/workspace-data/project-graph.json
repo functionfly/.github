@@ -969,15 +969,14 @@
         "root": "web/site",
         "name": "functionfly-marketing",
         "tags": [
-          "npm:public"
+          "npm:public",
+          "type:app",
+          "platform:web"
         ],
         "metadata": {
           "targetGroups": {
             "NPM Scripts": [
-              "dev",
               "start",
-              "build",
-              "preview",
               "astro"
             ]
           },
@@ -988,19 +987,6 @@
           }
         },
         "targets": {
-          "dev": {
-            "executor": "nx:run-script",
-            "options": {
-              "script": "dev"
-            },
-            "metadata": {
-              "scriptContent": "bun run astro dev",
-              "runCommand": "bun run dev -- undefined"
-            },
-            "configurations": {},
-            "parallelism": true,
-            "cache": false
-          },
           "start": {
             "executor": "nx:run-script",
             "options": {
@@ -1009,38 +995,6 @@
             "metadata": {
               "scriptContent": "bun run astro dev",
               "runCommand": "bun run start -- undefined"
-            },
-            "configurations": {},
-            "parallelism": true
-          },
-          "build": {
-            "executor": "nx:run-script",
-            "options": {
-              "script": "build"
-            },
-            "metadata": {
-              "scriptContent": "bun run astro build",
-              "runCommand": "bun run build -- undefined"
-            },
-            "configurations": {},
-            "parallelism": true,
-            "dependsOn": [
-              "^build"
-            ],
-            "inputs": [
-              "production",
-              "^production"
-            ],
-            "cache": true
-          },
-          "preview": {
-            "executor": "nx:run-script",
-            "options": {
-              "script": "preview"
-            },
-            "metadata": {
-              "scriptContent": "bun run astro preview",
-              "runCommand": "bun run preview -- undefined"
             },
             "configurations": {},
             "parallelism": true
@@ -1065,8 +1019,52 @@
             "options": {},
             "configurations": {},
             "parallelism": true
+          },
+          "build": {
+            "executor": "nx:run-commands",
+            "outputs": [
+              "{projectRoot}/dist"
+            ],
+            "options": {
+              "command": "bun run astro build",
+              "cwd": "web/site"
+            },
+            "configurations": {
+              "production": {}
+            },
+            "parallelism": true,
+            "dependsOn": [
+              "^build"
+            ],
+            "inputs": [
+              "production",
+              "^production"
+            ],
+            "cache": true
+          },
+          "dev": {
+            "executor": "nx:run-commands",
+            "options": {
+              "command": "bun run astro dev",
+              "cwd": "web/site"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": false
+          },
+          "preview": {
+            "executor": "nx:run-commands",
+            "options": {
+              "command": "bun run astro preview",
+              "cwd": "web/site"
+            },
+            "configurations": {},
+            "parallelism": true
           }
         },
+        "$schema": "../../node_modules/nx/schemas/project-schema.json",
+        "sourceRoot": "web/site/src",
+        "projectType": "application",
         "implicitDependencies": []
       }
     },
@@ -43138,7 +43136,7 @@
       },
       {
         "source": "dashboard",
-        "target": "npm:@axe-core/react@4.11.1",
+        "target": "npm:@axe-core/react",
         "type": "static"
       },
       {
@@ -43379,6 +43377,11 @@
       {
         "source": "dashboard",
         "target": "npm:jspdf@4.2.0",
+        "type": "static"
+      },
+      {
+        "source": "dashboard",
+        "target": "npm:lodash@4.17.23",
         "type": "static"
       },
       {
@@ -73258,5 +73261,5 @@
   },
   "version": "6.0",
   "errors": [],
-  "computedAt": 1772989457787
+  "computedAt": 1773167338933
 }

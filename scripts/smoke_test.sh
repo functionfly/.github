@@ -59,9 +59,9 @@ test_server_health() {
 test_auth() {
     log_info "Test 2: Authentication"
 
-    # Try to get a token using the generate_token.go tool
-    if [ -f "./generate_token.go" ]; then
-        TOKEN=$(go run generate_token.go 2>/dev/null)
+    # Try to get a token using the scripts/generate_token tool
+    if [ -d "./scripts/generate_token" ]; then
+        TOKEN=$(go run ./scripts/generate_token 2>/dev/null)
         if [ -n "$TOKEN" ]; then
             log_success "Generated auth token"
             echo "Token: ${TOKEN:0:20}..."

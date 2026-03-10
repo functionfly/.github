@@ -1905,12 +1905,12 @@
   },
   "web/site": {
     "root": [
-      "web/site/package.json",
-      "nx/core/package-json"
+      "web/site/project.json",
+      "nx/core/project-json"
     ],
     "name": [
-      "web/site/package.json",
-      "nx/core/package-json"
+      "web/site/project.json",
+      "nx/core/project-json"
     ],
     "tags": [
       "web/site/package.json",
@@ -1936,18 +1936,6 @@
       "web/site/package.json",
       "nx/core/package-json"
     ],
-    "metadata.targetGroups.NPM Scripts.2": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "metadata.targetGroups.NPM Scripts.3": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "metadata.targetGroups.NPM Scripts.4": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
     "metadata.js": [
       "web/site/package.json",
       "nx/core/package-json"
@@ -1965,34 +1953,6 @@
       "nx/core/package-json"
     ],
     "targets": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.dev": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.dev.executor": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.dev.options": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.dev.metadata": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.dev.options.script": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.dev.metadata.scriptContent": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.dev.metadata.runCommand": [
       "web/site/package.json",
       "nx/core/package-json"
     ],
@@ -2021,62 +1981,6 @@
       "nx/core/package-json"
     ],
     "targets.start.metadata.runCommand": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.build": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.build.executor": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.build.options": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.build.metadata": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.build.options.script": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.build.metadata.scriptContent": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.build.metadata.runCommand": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.preview": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.preview.executor": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.preview.options": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.preview.metadata": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.preview.options.script": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.preview.metadata.scriptContent": [
-      "web/site/package.json",
-      "nx/core/package-json"
-    ],
-    "targets.preview.metadata.runCommand": [
       "web/site/package.json",
       "nx/core/package-json"
     ],
@@ -2124,13 +2028,97 @@
       "web/site/package.json",
       "nx/core/package-json"
     ],
-    "targets.dev.cache": [
-      "nx.json",
-      "nx/target-defaults"
+    "$schema": [
+      "web/site/project.json",
+      "nx/core/project-json"
     ],
-    "targets.dev.parallelism": [
-      "nx.json",
-      "nx/target-defaults"
+    "sourceRoot": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.type:app": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.platform:web": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.executor": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.outputs": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.command": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.cwd": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.configurations.production": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.executor": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.command": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.cwd": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.executor": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.options": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.options.command": [
+      "web/site/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.options.cwd": [
+      "web/site/project.json",
+      "nx/core/project-json"
     ],
     "targets.build.dependsOn": [
       "nx.json",
@@ -2145,6 +2133,14 @@
       "nx/target-defaults"
     ],
     "targets.build.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.dev.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.dev.parallelism": [
       "nx.json",
       "nx/target-defaults"
     ]

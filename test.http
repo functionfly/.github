@@ -1,4 +1,0 @@
-POST http://localhost:8787
-Content-Type: text/plain
-
-Hello World

@@ -1,5 +1,0 @@
-{
-  "account_id": "your-cloudflare-account-id",
-  "api_token": "your-cloudflare-api-token",
-  "script_name": "functionfly-app"
-}

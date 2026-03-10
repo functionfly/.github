@@ -19,9 +19,12 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/swarm"
 	"github.com/functionfly/functionfly/internal/agent/testing"
 	"github.com/functionfly/functionfly/internal/analytics"
+	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
+	agentmemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/agent_memory"
 	analyticshandler "github.com/functionfly/functionfly/internal/api/handlers/analytics"
+	apikeyhandler "github.com/functionfly/functionfly/internal/api/handlers/apikeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
 	authHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/auth"
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
@@ -44,6 +47,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/recommendations"
 	registryhandler "github.com/functionfly/functionfly/internal/api/handlers/registry"
 	drehandler "github.com/functionfly/functionfly/internal/api/handlers/registry/dre"
+	registryexecution "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/api/handlers/security"
 	"github.com/functionfly/functionfly/internal/api/handlers/state"
 	"github.com/functionfly/functionfly/internal/api/handlers/statefabric"
@@ -54,6 +58,7 @@ import (
 	versionhandler "github.com/functionfly/functionfly/internal/api/handlers/version"
 	"github.com/functionfly/functionfly/internal/api/handlers/wellknown"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/captcha"
@@ -84,10 +89,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	backendsHandler := backends.NewHandler(s.repo, s.routingSvc)
 	deploymentsHandler := deployments.NewHandler(s.repo, s.deploySvc)
 	functionsHandler := functions.NewHandler(s.repo, s.deploySvc)
-	adminHandler := admin.NewHandler(s.repo, s.authSvc)
+	unifiedAnalyticsSvc := unified.NewService(s.postgresDB.GORM, s.usageMetricsAgg)
+	adminHandler := admin.NewHandler(s.repo, s.authSvc, unifiedAnalyticsSvc)
 	adminBackendsHandler := admin.NewBackendsHandler(s.repo, s.authSvc)
 	adminProvidersHandler := admin.NewProvidersHandler(s.repo, s.authSvc)
 	securityHandler := security.NewHandler(s.repo, s.authSvc)
+
+	// Initialize API key handler
+	apiKeyRepo := apikey.NewRepository(s.postgresDB.GORM)
+	apiKeyHandler := apikeyhandler.NewHandler(apiKeyRepo)
 
 	// Initialize maintenance mode handler
 	maintenanceRepo := storage.NewMaintenanceRepository(s.postgresDB.GORM)
@@ -237,6 +247,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize agent memory handler
 	memoryRepo := state.NewAgentMemoryRepository(s.postgresDB.GORM)
 	memoryHandler := state.NewAgentMemoryHandler(memoryRepo)
+
+	// Initialize new agent memory handler (REST API at /agent-memories)
+	agentMemoryHandler := agentmemoryhandler.NewHandler(s.postgresDB.GORM)
 
 	// Initialize state fabric handler (dashboard State Fabric feature)
 	stateFabricRepo := statefabricrepo.NewRepository(s.postgresDB.GORM)
@@ -429,7 +442,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Configurable via AUTH_RATE_LIMIT_REQUESTS / AUTH_RATE_LIMIT_WINDOW_SECONDS env vars.
 	authRateLimiter := middleware.NewAuthRateLimiter()
 
-	// Auth routes (public) - on main router, not /v1 subrouter
+	// Auth routes (public) - on main router so /auth/login works when proxy rewrites /api -> /auth
 	s.router.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
 	s.router.HandleFunc("/auth/refresh", authHandler.HandleRefreshToken).Methods("POST", "OPTIONS")
 	s.router.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
@@ -438,16 +451,32 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.HandleFunc("/auth/resend-verification", authRateLimiter.Limit(authHandler.HandleResendVerification)).Methods("POST", "OPTIONS")
 	s.router.HandleFunc("/auth/get-session", authHandler.HandleGetSession).Methods("GET", "OPTIONS")
 
+	// Same auth routes under /api so /api/auth/login works when dashboard is served from same host (no proxy)
+	apiPrefix := s.router.PathPrefix("/api").Subrouter()
+	apiPrefix.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
+	apiPrefix.HandleFunc("/auth/refresh", authHandler.HandleRefreshToken).Methods("POST", "OPTIONS")
+	apiPrefix.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
+	apiPrefix.HandleFunc("/auth/check-username", authHandler.HandleCheckUsernameAvailability).Methods("GET", "OPTIONS")
+	apiPrefix.HandleFunc("/auth/verify-email", authHandler.HandleVerifyEmail).Methods("GET", "OPTIONS")
+	apiPrefix.HandleFunc("/auth/resend-verification", authRateLimiter.Limit(authHandler.HandleResendVerification)).Methods("POST", "OPTIONS")
+	apiPrefix.HandleFunc("/auth/get-session", authHandler.HandleGetSession).Methods("GET", "OPTIONS")
+
 	// OAuth routes (public) - on main router, not /v1 subrouter
 	s.router.HandleFunc("/auth/oauth/providers", authHandler.HandleGetOAuthProviders).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/auth/oauth/url", authHandler.HandleGetOAuthURL).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/auth/oauth/{provider}/callback", authHandler.HandleOAuthCallback).Methods("GET", "OPTIONS")
+	apiPrefix.HandleFunc("/auth/oauth/providers", authHandler.HandleGetOAuthProviders).Methods("GET", "OPTIONS")
+	apiPrefix.HandleFunc("/auth/oauth/url", authHandler.HandleGetOAuthURL).Methods("GET", "OPTIONS")
+	apiPrefix.HandleFunc("/auth/oauth/{provider}/callback", authHandler.HandleOAuthCallback).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/validate", authMiddleware.RequireAuth(authHandler.HandleValidateToken)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/logout", authMiddleware.RequireAuth(authHandler.HandleLogout)).Methods("POST", "OPTIONS")
 
 	// Password reset routes (public)
 	api.HandleFunc("/auth/password-reset", authRateLimiter.Limit(authHandler.HandlePasswordResetRequest)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/password-reset/confirm", authRateLimiter.Limit(authHandler.HandlePasswordResetConfirm)).Methods("POST", "OPTIONS")
+
+	// API key authentication (public)
+	api.HandleFunc("/auth/api-key", apikeyhandler.HandleAPIKeyAuth(apiKeyRepo)).Methods("POST", "OPTIONS")
 
 	// User profile routes
 	// Public: get any user's profile by username
@@ -722,6 +751,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Analytics routes for factory metrics
 	analyticsHandler.RegisterRoutes(api, authMiddleware)
 
+	// Unified analytics (tenant summary and time series)
+	unifiedAnalyticsHandler := analyticshandler.NewUnifiedHandler(unifiedAnalyticsSvc)
+	unifiedAnalyticsHandler.RegisterUnifiedRoutes(api, authMiddleware)
+
 	// Content management (public - for frontend consumption)
 	api.HandleFunc("/content/changelog", contentHandler.HandleGetPublishedChangelogEntries).Methods("GET")
 	api.HandleFunc("/content/blog", contentHandler.HandleGetPublishedBlogPosts).Methods("GET")
@@ -785,7 +818,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/recommendations/interactions", recommendationHandler.HandleRecordInteraction).Methods("POST", "OPTIONS")
 	api.HandleFunc("/recommendations/executions", recommendationHandler.HandleRecordExecution).Methods("POST", "OPTIONS")
 	api.HandleFunc("/recommendations/feedback", recommendationHandler.HandleRecordFeedback).Methods("POST", "OPTIONS")
-	api.HandleFunc("/recommendations/refresh", recommendationHandler.HandleRefreshRecommendations).Methods("POST", "OPTIONS")
+	api.HandleFunc("/recommendations/refresh", authMiddleware.RequirePermission(auth.PermSystemWrite)(recommendationHandler.HandleRefreshRecommendations)).Methods("POST", "OPTIONS")
 
 	// Function Registry v2 routes (with camelCase response format)
 	apiV2 := s.router.PathPrefix("/v2").Subrouter()
@@ -978,6 +1011,20 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/functions/deploy", authMiddleware.RequireAuth(functionsHandler.HandleDeployFunction)).Methods("POST")
 	protected.HandleFunc("/functions/test", authMiddleware.RequireAuth(functionsHandler.HandleTestFunction)).Methods("POST")
 
+	// API Key routes (protected)
+	protected.HandleFunc("/api-keys", authMiddleware.RequireAuth(apiKeyHandler.HandleCreate)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/api-keys", authMiddleware.RequireAuth(apiKeyHandler.HandleList)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeyHandler.HandleGet)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeyHandler.HandleUpdate)).Methods("PATCH", "OPTIONS")
+	protected.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeyHandler.HandleDelete)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/api-keys/{id}/rotate", authMiddleware.RequireAuth(apiKeyHandler.HandleRotate)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/api-keys/{id}/permissions", authMiddleware.RequireAuth(apiKeyHandler.HandleListPermissions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/api-keys/{id}/permissions", authMiddleware.RequireAuth(apiKeyHandler.HandleAddPermission)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/api-keys/{id}/permissions/{perm_id}", authMiddleware.RequireAuth(apiKeyHandler.HandleRemovePermission)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/api-keys/{id}/environments", authMiddleware.RequireAuth(apiKeyHandler.HandleListEnvironments)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/api-keys/{id}/environments", authMiddleware.RequireAuth(apiKeyHandler.HandleAddEnvironment)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/api-keys/{id}/environments/{env_id}", authMiddleware.RequireAuth(apiKeyHandler.HandleRemoveEnvironment)).Methods("DELETE", "OPTIONS")
+
 	// Dashboard routes (protected, tenant-scoped)
 	protected.HandleFunc("/dashboard/usage", authMiddleware.RequireAuth(dashboardHandler.HandleGetUsage)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/dashboard/execution-rate", authMiddleware.RequireAuth(dashboardHandler.HandleGetExecutionRate)).Methods("GET", "OPTIONS")
@@ -988,26 +1035,26 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/enterprise/sla/uptime-history", authMiddleware.RequireAuth(enterpriseSLAHandler.HandleGetUptimeHistory)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/enterprise/sla/incidents", authMiddleware.RequireAuth(enterpriseSLAHandler.HandleGetIncidents)).Methods("GET", "OPTIONS")
 
-	// StateFabric routes (protected)
-	protected.HandleFunc("/state", authMiddleware.RequireAuth(stateHandler.HandleListStates)).Methods("GET")
-	protected.HandleFunc("/state", authMiddleware.RequireAuth(stateHandler.HandleCreateState)).Methods("POST")
-	protected.HandleFunc("/state/{path}", authMiddleware.RequireAuth(stateHandler.HandleGetState)).Methods("GET")
-	protected.HandleFunc("/state/{path}", authMiddleware.RequireAuth(stateHandler.HandleUpdateState)).Methods("PUT")
-	protected.HandleFunc("/state/{path}", authMiddleware.RequireAuth(stateHandler.HandleDeleteState)).Methods("DELETE")
-	protected.HandleFunc("/state/{path}/value", authMiddleware.RequireAuth(stateHandler.HandleSetValue)).Methods("PUT")
-	protected.HandleFunc("/state/{path}/value", authMiddleware.RequireAuth(stateHandler.HandlePatchValue)).Methods("PATCH")
-	protected.HandleFunc("/state/{path}/value", authMiddleware.RequireAuth(stateHandler.HandleGetValue)).Methods("GET")
-	protected.HandleFunc("/state/{path}/value", authMiddleware.RequireAuth(stateHandler.HandleDeleteValue)).Methods("DELETE")
-	protected.HandleFunc("/state/{path}/history", authMiddleware.RequireAuth(stateHandler.HandleGetHistory)).Methods("GET")
-	protected.HandleFunc("/state/{path}/snapshot", authMiddleware.RequireAuth(stateHandler.HandleCreateSnapshot)).Methods("POST")
-	protected.HandleFunc("/state/{path}/snapshots", authMiddleware.RequireAuth(stateHandler.HandleListSnapshots)).Methods("GET")
-	protected.HandleFunc("/state/{path}/restore", authMiddleware.RequireAuth(stateHandler.HandleRestoreSnapshot)).Methods("POST")
-	protected.HandleFunc("/state/{path}/time-travel", authMiddleware.RequireAuth(stateHandler.HandleTimeTravel)).Methods("GET")
-	protected.HandleFunc("/state/{path}/permissions", authMiddleware.RequireAuth(stateHandler.HandleGrantPermission)).Methods("POST")
-	protected.HandleFunc("/state/{path}/permissions", authMiddleware.RequireAuth(stateHandler.HandleGetPermissions)).Methods("GET")
-	protected.HandleFunc("/triggers", authMiddleware.RequireAuth(stateHandler.HandleGetTriggers)).Methods("GET")
-	protected.HandleFunc("/triggers", authMiddleware.RequireAuth(stateHandler.HandleCreateTrigger)).Methods("POST")
-	protected.HandleFunc("/triggers/{id}", authMiddleware.RequireAuth(stateHandler.HandleDeleteTrigger)).Methods("DELETE")
+	// StateFabric routes (protected) - with per-tenant rate limiting
+	protected.HandleFunc("/state", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleListStates))).Methods("GET")
+	protected.HandleFunc("/state", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleCreateState))).Methods("POST")
+	protected.HandleFunc("/state/{path}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleGetState))).Methods("GET")
+	protected.HandleFunc("/state/{path}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleUpdateState))).Methods("PUT")
+	protected.HandleFunc("/state/{path}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleDeleteState))).Methods("DELETE")
+	protected.HandleFunc("/state/{path}/value", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleSetValue))).Methods("PUT")
+	protected.HandleFunc("/state/{path}/value", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandlePatchValue))).Methods("PATCH")
+	protected.HandleFunc("/state/{path}/value", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleGetValue))).Methods("GET")
+	protected.HandleFunc("/state/{path}/value", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleDeleteValue))).Methods("DELETE")
+	protected.HandleFunc("/state/{path}/history", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleGetHistory))).Methods("GET")
+	protected.HandleFunc("/state/{path}/snapshot", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleCreateSnapshot))).Methods("POST")
+	protected.HandleFunc("/state/{path}/snapshots", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleListSnapshots))).Methods("GET")
+	protected.HandleFunc("/state/{path}/restore", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleRestoreSnapshot))).Methods("POST")
+	protected.HandleFunc("/state/{path}/time-travel", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleTimeTravel))).Methods("GET")
+	protected.HandleFunc("/state/{path}/permissions", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleGrantPermission))).Methods("POST")
+	protected.HandleFunc("/state/{path}/permissions", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleGetPermissions))).Methods("GET")
+	protected.HandleFunc("/triggers", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleGetTriggers))).Methods("GET")
+	protected.HandleFunc("/triggers", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleCreateTrigger))).Methods("POST")
+	protected.HandleFunc("/triggers/{id}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleDeleteTrigger))).Methods("DELETE")
 
 	// Agent Memory routes (State Fabric - AI memory with embeddings)
 	protected.HandleFunc("/memories", authMiddleware.RequireAuth(memoryHandler.HandleListMemories)).Methods("GET", "OPTIONS")
@@ -1017,28 +1064,36 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/memories/{id}", authMiddleware.RequireAuth(memoryHandler.HandleUpdateMemory)).Methods("PATCH", "OPTIONS")
 	protected.HandleFunc("/memories/{id}", authMiddleware.RequireAuth(memoryHandler.HandleDeleteMemory)).Methods("DELETE", "OPTIONS")
 
-	// State Fabric routes (dashboard State Fabric feature)
-	protected.HandleFunc("/state-fabrics", authMiddleware.RequireAuth(stateFabricHandler.HandleList)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/state-fabrics", authMiddleware.RequireAuth(stateFabricHandler.HandleCreate)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}", authMiddleware.RequireAuth(stateFabricHandler.HandleGet)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}", authMiddleware.RequireAuth(stateFabricHandler.HandleUpdate)).Methods("PATCH", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}", authMiddleware.RequireAuth(stateFabricHandler.HandleDelete)).Methods("DELETE", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/metrics", authMiddleware.RequireAuth(stateFabricHandler.HandleGetMetrics)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/stores", authMiddleware.RequireAuth(stateFabricHandler.HandleListStores)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/stores", authMiddleware.RequireAuth(stateFabricHandler.HandleCreateStore)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/stores/{storeId}", authMiddleware.RequireAuth(stateFabricHandler.HandleDeleteStore)).Methods("DELETE", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/pipelines", authMiddleware.RequireAuth(stateFabricHandler.HandleListPipelines)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/pipelines", authMiddleware.RequireAuth(stateFabricHandler.HandleCreatePipeline)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/pipelines/{pipelineId}", authMiddleware.RequireAuth(stateFabricHandler.HandleUpdatePipeline)).Methods("PATCH", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/pipelines/{pipelineId}", authMiddleware.RequireAuth(stateFabricHandler.HandleDeletePipeline)).Methods("DELETE", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/pipelines/{pipelineId}/execute", authMiddleware.RequireAuth(stateFabricHandler.HandleExecutePipeline)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/events", authMiddleware.RequireAuth(stateFabricHandler.HandleListEvents)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/snapshots", authMiddleware.RequireAuth(stateFabricHandler.HandleListSnapshots)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/snapshots", authMiddleware.RequireAuth(stateFabricHandler.HandleCreateSnapshot)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/snapshots/{snapshotId}", authMiddleware.RequireAuth(stateFabricHandler.HandleDeleteSnapshot)).Methods("DELETE", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/replays", authMiddleware.RequireAuth(stateFabricHandler.HandleListReplays)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/replays", authMiddleware.RequireAuth(stateFabricHandler.HandleCreateReplay)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id}/replays/{replayId}", authMiddleware.RequireAuth(stateFabricHandler.HandleGetReplay)).Methods("GET", "OPTIONS")
+	// Agent Memory REST API routes (new handler at /agent-memories)
+	protected.HandleFunc("/agent-memories", authMiddleware.RequireAuth(agentMemoryHandler.HandleListMemories)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent-memories", authMiddleware.RequireAuth(agentMemoryHandler.HandleCreateMemory)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent-memories/search", authMiddleware.RequireAuth(agentMemoryHandler.HandleSearchMemories)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent-memories/index", authMiddleware.RequireAuth(agentMemoryHandler.HandleRebuildIndex)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent-memories/{id}", authMiddleware.RequireAuth(agentMemoryHandler.HandleGetMemory)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent-memories/{id}", authMiddleware.RequireAuth(agentMemoryHandler.HandleDeleteMemory)).Methods("DELETE", "OPTIONS")
+
+	// State Fabric routes (dashboard State Fabric feature) - with per-tenant rate limiting
+	protected.HandleFunc("/state-fabrics", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleList))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/state-fabrics", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleCreate))).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleGet))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleUpdate))).Methods("PATCH", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleDelete))).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/metrics", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleGetMetrics))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/stores", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleListStores))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/stores", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleCreateStore))).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/stores/{storeId}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleDeleteStore))).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/pipelines", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleListPipelines))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/pipelines", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleCreatePipeline))).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/pipelines/{pipelineId}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleUpdatePipeline))).Methods("PATCH", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/pipelines/{pipelineId}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleDeletePipeline))).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/pipelines/{pipelineId}/execute", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleExecutePipeline))).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/events", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleListEvents))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/snapshots", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleListSnapshots))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/snapshots", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleCreateSnapshot))).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/snapshots/{snapshotId}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleDeleteSnapshot))).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/replays", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleListReplays))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/replays", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleCreateReplay))).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id}/replays/{replayId}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleGetReplay))).Methods("GET", "OPTIONS")
 
 	// ============================================================
 	// Secrets Vault routes (protected)
@@ -1106,7 +1161,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Flywheel Network components (Proof-of-Execution Knowledge Network)
 	// ============================================================
 	flywheelRepo := flywheel.NewRepository(s.postgresDB.GORM)
-	flywheelExecService := flywheel.NewExecutionAdapter(registryRepo, cacheService, logrus.New())
+	flywheelExecService := flywheel.NewExecutionAdapter(registryRepo, cacheService, registryexecution.NewLocalExecutor(), logrus.New())
 	flywheelService := flywheel.NewService(flywheelRepo, flywheelExecService, logrus.New())
 
 	// Initialize Flywheel WebSocket hub for real-time updates
@@ -1289,6 +1344,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Analytics management
 	adminRoutes.HandleFunc("/analytics", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleGetAnalyticsSettings)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/analytics", authMiddleware.RequirePermission(auth.PermSystemWrite)(adminHandler.HandleUpdateAnalyticsSettings)).Methods("PATCH", "OPTIONS")
+	// Unified analytics (platform and tenant summary)
+	adminRoutes.HandleFunc("/analytics/platform/summary", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandlePlatformAnalyticsSummary)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/analytics/tenants/{tenantId}/summary", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleTenantAnalyticsSummary)).Methods("GET", "OPTIONS")
 
 	// Billing management
 	adminRoutes.HandleFunc("/billing/summary", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleBillingSummary)).Methods("GET", "OPTIONS")
@@ -1446,7 +1504,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	adminRoutes.HandleFunc("/tenants/{tenantId}/apps/{appId}/deployments/{deploymentId}/rollback", authMiddleware.RequirePermission(auth.PermDeploymentsWrite)(adminHandler.HandleTenantDeploymentRollback)).Methods("POST")
 
 	// Tenant-scoped observability
-	adminRoutes.HandleFunc("/tenants/{tenantId}/metrics", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleTenantMetrics)).Methods("GET")
+	adminRoutes.HandleFunc("/tenants/{tenantId}/metrics", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleTenantMetrics)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/tenants/{tenantId}/health", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleTenantHealth)).Methods("GET")
 
 	// Playground SPA routes: /fx/*, /run/*, /replay/*

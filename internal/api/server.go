@@ -16,6 +16,7 @@ import (
 	"github.com/functionfly/functionfly/internal/adapters/deno"
 	"github.com/functionfly/functionfly/internal/adapters/fly"
 	"github.com/functionfly/functionfly/internal/adapters/vercel"
+	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/deployment"
 	"github.com/functionfly/functionfly/internal/email"
@@ -62,8 +63,17 @@ type Server struct {
 	// Trigger engine for state changes
 	triggerEngine *staterepo.TriggerEngine
 
+	// State cleanup service for TTL-based cleanup
+	stateCleanup *staterepo.CleanupService
+
 	// Recommendations service
 	recommendationSvc *recommendations.Service
+
+	// Usage metrics aggregation service
+	usageMetricsAgg *services.AggregationService
+
+	// Unified analytics sync job (Phase 3: fills analytics_rollups from source tables)
+	unifiedSyncJob *unified.SyncJob
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -173,6 +183,11 @@ func NewServer(db *storage.PostgresDB) *Server {
 	// Initialize auth event cleanup service
 	authEventCleanup := storage.NewAuthEventCleanupService(repo)
 
+	// Initialize state cleanup service for TTL-based cleanup
+	stateCleanupConfig := staterepo.DefaultCleanupConfig()
+	stateCleanupConfig.Interval = 1 * time.Hour
+	stateCleanup := staterepo.NewCleanupService(db.GORM, stateCleanupConfig)
+
 	// Initialize verification service
 	clamAVURL := os.Getenv("CLAMAV_URL")
 	if clamAVURL == "" {
@@ -202,6 +217,10 @@ func NewServer(db *storage.PostgresDB) *Server {
 	recommendationConfig := recommendations.DefaultRecommendationConfig()
 	recommendationSvc := recommendations.NewService(db.GORM, nil, recommendationConfig)
 
+	// Initialize usage metrics aggregation service
+	usageMetricsConfig := services.LoadAggregationConfig()
+	usageMetricsAgg := services.NewAggregationService(db.GORM, usageMetricsConfig)
+
 	s := &Server{
 		postgresDB:          db,
 		repo:                repo,
@@ -216,12 +235,14 @@ func NewServer(db *storage.PostgresDB) *Server {
 		oauthStateCleanup:   oauthStateCleanup,
 		loginAttemptCleanup: loginAttemptCleanup,
 		authEventCleanup:    authEventCleanup,
+		stateCleanup:        stateCleanup,
 		healthMonitor:       healthMonitor,
 		redisClient:         redisClient,
 		shutdownTimeout:     shutdownTimeout,
 		notificationSvc:     notificationSvc,
 		notificationRepo:    notificationRepo,
 		recommendationSvc:   recommendationSvc,
+		usageMetricsAgg:     usageMetricsAgg,
 		httpServer: &http.Server{
 			Handler:      router,
 			ReadTimeout:  15 * time.Second,
@@ -342,6 +363,24 @@ func (s *Server) ListenAndServe(addr string) error {
 		logrus.Info("Trigger engine started")
 	}
 
+	// Start state cleanup routine for TTL-based cleanup (runs every hour)
+	if s.stateCleanup != nil {
+		go s.stateCleanup.StartCleanupRoutine(ctx)
+		logrus.Info("State cleanup routine started")
+	}
+
+	// Start usage metrics aggregation service
+	if s.usageMetricsAgg != nil && s.usageMetricsAgg.IsEnabled() {
+		s.usageMetricsAgg.StartAggregationRoutine(ctx)
+		logrus.Info("Usage metrics aggregation service started")
+	}
+
+	// Start unified analytics sync job (Phase 3: rollups from source tables)
+	if s.unifiedSyncJob != nil {
+		s.unifiedSyncJob.Start(ctx)
+		logrus.Info("Unified analytics sync job started")
+	}
+
 	// Channel to listen for interrupt signals
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -393,6 +432,18 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	if s.notificationSvc != nil {
 		s.notificationSvc.Stop()
 		logrus.Info("Notification service stopped")
+	}
+
+	// Stop usage metrics aggregation service
+	if s.usageMetricsAgg != nil {
+		s.usageMetricsAgg.Stop()
+		logrus.Info("Usage metrics aggregation service stopped")
+	}
+
+	// Stop unified analytics sync job
+	if s.unifiedSyncJob != nil {
+		s.unifiedSyncJob.Stop()
+		logrus.Info("Unified analytics sync job stopped")
 	}
 
 	// Shutdown the HTTP server gracefully

@@ -1,0 +1,49 @@
+{
+  "author": "functionfly",
+  "name": "json-to-csv",
+  "version": "1.0.0",
+  "trust_level": "high",
+  "description": "Convert JSON array to CSV format",
+  "tags": ["json", "csv", "convert", "data", "format"],
+  "visibility": "public",
+  "pricing": { "type": "free" },
+  "source_hash": "97e9614706629eb1222594890411a02f98b57687d41c80c99698ed9fba4ea3c1",
+  "manifest": {
+    "name": "json-to-csv",
+    "version": "1.0.0",
+    "runtime": "python3.11",
+    "title": "JSON to CSV",
+    "description": "Convert JSON array to CSV format",
+    "handler": "handler",
+    "timeout_ms": 10000,
+    "memory_mb": 128,
+    "deterministic": true,
+    "cache_ttl": 86400,
+    "side_effects": "none",
+    "idempotent": true,
+    "public": true,
+    "category": "data-formatting",
+    "tags": ["json", "csv", "convert", "data", "format"],
+    "capabilities": [],
+    "input": {
+      "type": "object",
+      "properties": {
+        "data": { "type": "array", "description": "JSON array of objects to convert to CSV" }
+      },
+      "example": { "data": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}] }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "csv": { "type": "string", "description": "CSV string output" },
+        "rows": { "type": "integer", "description": "Number of data rows" },
+        "error": { "type": "string", "description": "Error message if conversion fails" }
+      },
+      "example": { "csv": "name,age\r\nAlice,30\r\nBob,25\r\n", "rows": 2 }
+    }
+  },
+  "source": {
+    "code": "import csv\nimport io\nimport json\n\ndef handler(event):\n    # Handle direct list input\n    if isinstance(event, list):\n        data = event\n    # Handle dict input with data key\n    elif isinstance(event, dict):\n        data = event.get(\"data\", [])\n    else:\n        return {\"error\": \"Input must be a list or dict with data key\"}\n\n    if not data:\n        return {\"csv\": \"\", \"rows\": 0}\n\n    # Get field names from first object\n    if isinstance(data[0], dict):\n        fieldnames = list(data[0].keys())\n    else:\n        return {\"error\": \"Array items must be objects\"}\n\n    # Create CSV\n    output = io.StringIO()\n    writer = csv.DictWriter(output, fieldnames=fieldnames)\n    writer.writeheader()\n    for row in data:\n        writer.writerow(row)\n\n    return {\"csv\": output.getvalue(), \"rows\": len(data)}",
+    "runtime": "python3.11"
+  }
+}

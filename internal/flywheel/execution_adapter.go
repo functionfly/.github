@@ -12,18 +12,27 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// RegistryFunctionExecutor runs a registry function version with the given input.
+// Implementations typically use the sandbox/WASM execution path (e.g. execution.LocalExecutor).
+type RegistryFunctionExecutor interface {
+	Execute(fnVersion *registry.RegistryFunctionVersion, input []byte, timeoutMs int) ([]byte, error)
+}
+
 // ExecutionAdapter integrates Flywheel with the existing execution infrastructure
 type ExecutionAdapter struct {
 	registryRepo *registry.RegistryRepository
 	cacheService *cache.CacheService
+	executor     RegistryFunctionExecutor
 	logger       *logrus.Logger
 }
 
-// NewExecutionAdapter creates a new execution adapter
-func NewExecutionAdapter(registryRepo *registry.RegistryRepository, cacheService *cache.CacheService, logger *logrus.Logger) *ExecutionAdapter {
+// NewExecutionAdapter creates a new execution adapter. executor may be nil only for tests;
+// in production pass a real executor (e.g. from the execution package) so ExecuteFunction runs functions.
+func NewExecutionAdapter(registryRepo *registry.RegistryRepository, cacheService *cache.CacheService, executor RegistryFunctionExecutor, logger *logrus.Logger) *ExecutionAdapter {
 	return &ExecutionAdapter{
 		registryRepo: registryRepo,
 		cacheService: cacheService,
+		executor:     executor,
 		logger:       logger,
 	}
 }
@@ -86,27 +95,44 @@ func (a *ExecutionAdapter) VerifyOutput(ctx context.Context, actual, expected js
 	return false, "Output does not match expected value", nil
 }
 
-// ExecuteFunction executes a registered function
+// ExecuteFunction executes a registered function via the configured executor (sandbox/WASM or backend).
 func (a *ExecutionAdapter) ExecuteFunction(ctx context.Context, author, name, version string, input json.RawMessage) (*functionregistry.ExecutionResponse, error) {
-	// Get function from registry
 	fn, err := a.registryRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		return nil, fmt.Errorf("function not found: %w", err)
 	}
 
-	// Get function version
-	fnVersion, err := a.registryRepo.GetLatestFunctionVersion(fn.ID)
+	var fnVersion *registry.RegistryFunctionVersion
+	if version != "" {
+		fnVersion, err = a.registryRepo.GetFunctionVersion(fn.ID, version)
+	} else {
+		fnVersion, err = a.registryRepo.GetLatestFunctionVersion(fn.ID)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("function version not found: %w", err)
 	}
 
-	// Mock execution - would integrate with actual execution in production
-	_ = fnVersion
-	output := json.RawMessage(`{"executed": true, "function": "` + name + `"}`)
+	if a.executor == nil {
+		return nil, fmt.Errorf("executor not configured: pass a RegistryFunctionExecutor to NewExecutionAdapter for production")
+	}
+
+	timeoutMs := fnVersion.TimeoutMs
+	if timeoutMs <= 0 {
+		timeoutMs = 30000
+	}
+	output, err := a.executor.Execute(fnVersion, []byte(input), timeoutMs)
+	if err != nil {
+		a.logger.WithError(err).WithFields(logrus.Fields{
+			"author":  author,
+			"name":    name,
+			"version": fnVersion.Version,
+		}).Warn("Function execution failed")
+		return nil, fmt.Errorf("execution failed: %w", err)
+	}
 
 	return &functionregistry.ExecutionResponse{
 		OK:   true,
-		Data: output,
+		Data: json.RawMessage(output),
 	}, nil
 }
 

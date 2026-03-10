@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/utils"
 	"github.com/functionfly/functionfly/internal/auth"
@@ -22,15 +23,17 @@ import (
 
 // Handler contains admin handlers
 type Handler struct {
-	repo    storage.Repository
-	authSvc *auth.AuthService
+	repo             storage.Repository
+	authSvc          *auth.AuthService
+	unifiedAnalytics *unified.Service
 }
 
-// NewHandler creates a new admin handler
-func NewHandler(repo storage.Repository, authSvc *auth.AuthService) *Handler {
+// NewHandler creates a new admin handler. unifiedAnalytics may be nil (tenant metrics will be placeholders).
+func NewHandler(repo storage.Repository, authSvc *auth.AuthService, unifiedAnalytics *unified.Service) *Handler {
 	return &Handler{
-		repo:    repo,
-		authSvc: authSvc,
+		repo:             repo,
+		authSvc:          authSvc,
+		unifiedAnalytics: unifiedAnalytics,
 	}
 }
 

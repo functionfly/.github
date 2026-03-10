@@ -123,7 +123,7 @@ Add/extend tables:
   - `usage_events` or `usage_rollups`
   - `coupons`
 
-Update migration narrative in [`MIGRATIONS.md`](MIGRATIONS.md:1).
+Update migration narrative in [`docs/MIGRATIONS.md`](../docs/MIGRATIONS.md).
 
 ## 6) API extensions (admin + billing)
 

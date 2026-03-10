@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/sirupsen/logrus"
 )
 
@@ -264,9 +265,8 @@ func GetAPIVersionFromContext(ctx context.Context) string {
 	return DefaultAPIVersion
 }
 
-// GetUserFromContext retrieves the user from context (for compatibility with existing middleware)
+// GetUserFromContext retrieves the authenticated user (auth claims) from context when only context is available.
+// The value is set by the auth middleware; returns nil if not authenticated.
 func GetUserFromContext(ctx context.Context) interface{} {
-	// This is a placeholder - the actual implementation would be in the auth middleware
-	// but we need this for handler compatibility
-	return nil
+	return middleware.GetClaimsFromContext(ctx)
 }

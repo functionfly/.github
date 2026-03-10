@@ -12,8 +12,8 @@ import (
 )
 
 func main() {
-	// Generate token using generate_token.go
-	cmd := exec.Command("go", "run", "generate_token.go")
+	// Generate token using scripts/generate_token.go
+	cmd := exec.Command("go", "run", "./scripts/generate_token.go")
 	output, err := cmd.Output()
 	if err != nil {
 		fmt.Printf("Error generating token: %v\n", err)

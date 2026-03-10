@@ -1,9 +1,43 @@
 {
   "run": {
     "command": "nx run-many --target=dev --all --parallel=4",
-    "startTime": "2026-03-08T17:04:18.224Z",
-    "endTime": "2026-03-08T21:06:16.676Z",
+    "startTime": "2026-03-10T03:18:18.433Z",
+    "endTime": "2026-03-10T03:49:20.720Z",
     "inner": false
   },
-  "tasks": []
+  "tasks": [
+    {
+      "taskId": "functionfly-marketing:dev",
+      "target": "dev",
+      "projectName": "functionfly-marketing",
+      "hash": "7408800202886405856",
+      "startTime": "2026-03-10T03:18:18.508Z",
+      "endTime": "2026-03-10T03:19:51.403Z",
+      "params": "",
+      "cacheStatus": "cache-miss",
+      "status": 1
+    },
+    {
+      "taskId": "admin-dashboard:dev",
+      "target": "dev",
+      "projectName": "admin-dashboard",
+      "hash": "8353400826356688820",
+      "startTime": "2026-03-10T03:18:18.508Z",
+      "endTime": "2026-03-10T03:49:05.175Z",
+      "params": "",
+      "cacheStatus": "cache-miss",
+      "status": 1
+    },
+    {
+      "taskId": "docs:dev",
+      "target": "dev",
+      "projectName": "docs",
+      "hash": "2886022507931869259",
+      "startTime": "2026-03-10T03:20:05.726Z",
+      "endTime": "2026-03-10T03:49:05.341Z",
+      "params": "",
+      "cacheStatus": "cache-miss",
+      "status": 1
+    }
+  ]
 }

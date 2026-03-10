@@ -342,8 +342,7 @@ func (h *Handler) HandleRefreshRecommendations(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// In production, this would be restricted to admins
-	// For now, we'll just trigger the refresh
+	// Protected by RequirePermission(auth.PermSystemWrite) in routes — admin only.
 
 	err := h.service.RefreshAllRecommendations(r.Context())
 	if err != nil {

@@ -27,16 +27,16 @@ import (
 // SandboxExecutor handles execution of WASM modules in a sandboxed environment
 // It communicates with the local runtime via HTTP
 type SandboxExecutor struct {
-	runtimePath  string
-	tempDir      string
-	runtimePort  int
-	runtimeCmd   *exec.Cmd
-	httpClient   *http.Client
-	runtimeMu    sync.Mutex
-	isRunning    bool
-	wasmPath     string
-	wasmHash     string // SHA-256 hash of the loaded WASM binary
-	fnVersion    *storage.RegistryFunctionVersion
+	runtimePath string
+	tempDir     string
+	runtimePort int
+	runtimeCmd  *exec.Cmd
+	httpClient  *http.Client
+	runtimeMu   sync.Mutex
+	isRunning   bool
+	wasmPath    string
+	wasmHash    string // SHA-256 hash of the loaded WASM binary
+	fnVersion   *storage.RegistryFunctionVersion
 }
 
 // hashWasmBinary computes a hex-encoded SHA-256 hash of the given WASM bytes.
@@ -468,6 +468,12 @@ func findLocalRuntime() (string, error) {
 	}
 
 	return "", fmt.Errorf("local runtime not found, searched: %v", paths)
+}
+
+// ExecuteLocally runs a registry function version locally (sandbox/WASM) with the given resource limits.
+// It is the exported entry point for use by flywheel and other callers that need to run registry functions.
+func ExecuteLocally(fnVersion *storage.RegistryFunctionVersion, input json.RawMessage, maxMemoryMB, maxCPUTimeMs int) (json.RawMessage, error) {
+	return executeLocallyWithLimits(fnVersion, input, maxMemoryMB, maxCPUTimeMs)
 }
 
 // executeLocallyWithLimits executes a function locally with specific resource limits

@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"gonum.org/v1/gonum/stat/distuv"
 	"gorm.io/gorm"
 )
 
@@ -489,30 +490,27 @@ func (s *ExperimentService) analyzeExperiment(ctx context.Context, variants []Va
 	return analysis
 }
 
-// calculatePValue calculates a simplified p-value using z-test approximation
-// In production, use a proper statistical library
+// standardNormal is the standard normal distribution (μ=0, σ=1) from gonum
+// for accurate two-tailed p-values in z-tests.
+var standardNormal = distuv.Normal{Mu: 0, Sigma: 1}
+
+// calculatePValue computes a two-tailed p-value for the difference of means
+// using a z-test approximation and gonum's distuv for numerically stable CDF.
 func (s *ExperimentService) calculatePValue(n1, n2 int, mean1, mean2 float64) float64 {
 	if n1 == 0 || n2 == 0 || mean1 == mean2 {
 		return 1.0
 	}
 
-	// Calculate standard error (simplified)
+	// Standard error of the difference (assuming common variance approximation)
 	pooledSE := math.Sqrt((1.0/float64(n1) + 1.0/float64(n2)) * ((mean1*mean1 + mean2*mean2) / 2))
 	if pooledSE == 0 {
 		return 1.0
 	}
 
 	z := (mean2 - mean1) / pooledSE
-
-	// Convert z-score to p-value (two-tailed)
-	pValue := 2 * (1 - normalCDF(math.Abs(z)))
-
+	// Two-tailed p-value: P(|Z| >= |z|)
+	pValue := 2 * (1 - standardNormal.CDF(math.Abs(z)))
 	return pValue
-}
-
-// normalCDF calculates the cumulative distribution function of standard normal
-func normalCDF(x float64) float64 {
-	return 0.5 * (1 + math.Erf(x/math.Sqrt2))
 }
 
 // GenerationExperimentAdapter provides integration between experiments and generation service

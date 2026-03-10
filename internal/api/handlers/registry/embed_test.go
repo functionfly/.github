@@ -243,3 +243,153 @@ func TestGenerateEmbedScript_ContainsEmbedOriginHeader(t *testing.T) {
 		t.Error("expected script to use window.location.origin as embed origin value")
 	}
 }
+
+// ── Phase 2: Form & Widget Tests ─────────────────────────────────────────
+
+func TestGenerateEmbedScript_FormUsesFormData(t *testing.T) {
+	fn := makeTestFunction("acme", "slugify", "")
+	ver := makeTestVersion("1.0.0")
+	opts := EmbedOptions{Namespace: "ff", Autoload: true, UI: false, Theme: "auto"}
+
+	script := generateEmbedScript(fn, ver, "", opts)
+
+	// Form should use FormData API for serialization
+	if !strings.Contains(script, "new FormData(formEl)") {
+		t.Error("expected form function to use FormData API")
+	}
+	// Form should return cleanup function
+	if !strings.Contains(script, "return function ()") {
+		t.Error("expected form function to return cleanup function")
+	}
+	if !strings.Contains(script, "removeEventListener") {
+		t.Error("expected cleanup function to remove event listener")
+	}
+}
+
+func TestGenerateEmbedScript_WidgetReturnsCleanup(t *testing.T) {
+	fn := makeTestFunction("acme", "slugify", "")
+	ver := makeTestVersion("1.0.0")
+	opts := EmbedOptions{Namespace: "ff", Autoload: true, UI: false, Theme: "auto"}
+
+	script := generateEmbedScript(fn, ver, "", opts)
+
+	// Widget should be a function
+	if !strings.Contains(script, "function widget(") {
+		t.Error("expected widget to be a function")
+	}
+	// Check that container.innerHTML = '' is used in cleanup
+	if !strings.Contains(script, "container.innerHTML = ''") {
+		t.Error("expected widget cleanup to clear container")
+	}
+}
+
+func TestGenerateEmbedScript_WidgetHasDefaultOptions(t *testing.T) {
+	fn := makeTestFunction("acme", "slugify", "")
+	ver := makeTestVersion("1.0.0")
+	opts := EmbedOptions{Namespace: "ff", Autoload: true, UI: false, Theme: "auto"}
+
+	script := generateEmbedScript(fn, ver, "", opts)
+
+	// Widget should have default title using author/name
+	if !strings.Contains(script, "AUTHOR + \"/\" + NAME") {
+		t.Error("expected widget to have default title with author/name")
+	}
+	// Widget should have default placeholder
+	if !strings.Contains(script, "Enter input (JSON)") {
+		t.Error("expected widget to have default placeholder")
+	}
+	// Widget should have default button text
+	if !strings.Contains(script, "|| \"Run\"") {
+		t.Error("expected widget to have default button text")
+	}
+}
+
+func TestGenerateEmbedScript_WidgetHasLoadingState(t *testing.T) {
+	fn := makeTestFunction("acme", "slugify", "")
+	ver := makeTestVersion("1.0.0")
+	opts := EmbedOptions{Namespace: "ff", Autoload: true, UI: false, Theme: "auto"}
+
+	script := generateEmbedScript(fn, ver, "", opts)
+
+	// Widget should show loading state
+	if !strings.Contains(script, "Running…") {
+		t.Error("expected widget to show running state")
+	}
+	// Widget should handle JSON parse errors
+	if !strings.Contains(script, "Invalid JSON input") {
+		t.Error("expected widget to handle JSON parse errors")
+	}
+}
+
+// ── Theme Support Tests ───────────────────────────────────────────────────
+
+func TestGenerateEmbedScript_ThemeSupport_Light(t *testing.T) {
+	fn := makeTestFunction("acme", "slugify", "")
+	ver := makeTestVersion("1.0.0")
+	opts := EmbedOptions{Namespace: "ff", Autoload: true, UI: false, Theme: "light"}
+
+	script := generateEmbedScript(fn, ver, "", opts)
+
+	// Script should contain theme config
+	if !strings.Contains(script, "theme: \"light\"") {
+		t.Error("expected theme 'light' in script config")
+	}
+	// Should have theme detection function
+	if !strings.Contains(script, "getTheme") {
+		t.Error("expected getTheme function for theme detection")
+	}
+	if !strings.Contains(script, "prefers-color-scheme") {
+		t.Error("expected system preference detection for auto theme")
+	}
+}
+
+func TestGenerateEmbedScript_ThemeSupport_Dark(t *testing.T) {
+	fn := makeTestFunction("acme", "slugify", "")
+	ver := makeTestVersion("1.0.0")
+	opts := EmbedOptions{Namespace: "ff", Autoload: true, UI: false, Theme: "dark"}
+
+	script := generateEmbedScript(fn, ver, "", opts)
+
+	// Script should contain theme config
+	if !strings.Contains(script, "theme: \"dark\"") {
+		t.Error("expected theme 'dark' in script config")
+	}
+	// Widget should apply dark theme colors
+	if !strings.Contains(script, "#1e1e1e") {
+		t.Error("expected dark theme background color in widget")
+	}
+}
+
+func TestGenerateEmbedScript_ThemeSupport_Auto(t *testing.T) {
+	fn := makeTestFunction("acme", "slugify", "")
+	ver := makeTestVersion("1.0.0")
+	opts := EmbedOptions{Namespace: "ff", Autoload: true, UI: false, Theme: "auto"}
+
+	script := generateEmbedScript(fn, ver, "", opts)
+
+	// Script should contain theme config
+	if !strings.Contains(script, "theme: \"auto\"") {
+		t.Error("expected theme 'auto' in script config")
+	}
+	// Widget should handle auto theme via getTheme
+	if !strings.Contains(script, "getTheme(options.theme") {
+		t.Error("expected widget to use getTheme for auto detection")
+	}
+}
+
+func TestGenerateEmbedScript_HTMLEntityEscaping(t *testing.T) {
+	fn := makeTestFunction("acme", "slugify", "")
+	ver := makeTestVersion("1.0.0")
+	opts := EmbedOptions{Namespace: "ff", Autoload: true, UI: false, Theme: "auto"}
+
+	script := generateEmbedScript(fn, ver, "", opts)
+
+	// Should have HTML escape utility
+	if !strings.Contains(script, "function escHtml") {
+		t.Error("expected escHtml function for XSS prevention")
+	}
+	// escHtml should escape common XSS vectors
+	if !strings.Contains(script, "&lt;") || !strings.Contains(script, "&gt;") {
+		t.Error("expected escHtml to escape HTML entities")
+	}
+}

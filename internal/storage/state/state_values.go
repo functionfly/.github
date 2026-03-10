@@ -14,6 +14,7 @@ import (
 // ============================================
 
 // SetStateValue sets a value in state (creates or updates)
+// If the state's IsEncrypted flag is true and encryption is enabled, the value will be encrypted.
 func (r *StateRepository) SetStateValue(ctx context.Context, stateID uuid.UUID, key string, value map[string]interface{}, sourceType, sourceID string) (*StateValue, error) {
 	// Start a transaction
 	tx := r.db.WithContext(ctx).Begin()
@@ -39,7 +40,7 @@ func (r *StateRepository) SetStateValue(ctx context.Context, stateID uuid.UUID, 
 		return nil, fmt.Errorf("failed to get previous value: %w", err)
 	}
 
-	// Create new value
+	// Prepare the new value
 	newValue := &StateValue{
 		ID:            uuid.New(),
 		StateID:       stateID,
@@ -49,6 +50,21 @@ func (r *StateRepository) SetStateValue(ctx context.Context, stateID uuid.UUID, 
 		PreviousValue: previousValue,
 		CreatedBy:     sourceID,
 		CreatedAt:     time.Now(),
+	}
+
+	// Check if state requires encryption
+	if state.IsEncrypted && r.IsEncryptionEnabled() {
+		// Encrypt the value
+		encryptedData, _, encErr := r.encryptJSONValue(JSONMap(value))
+		if encErr != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("failed to encrypt state value: %w", encErr)
+		}
+		if encryptedData != nil {
+			newValue.Value = nil // Clear plaintext value
+			newValue.EncryptedVal = encryptedData
+			newValue.IsEncrypted = true
+		}
 	}
 
 	if err := tx.Create(newValue).Error; err != nil {
@@ -78,6 +94,7 @@ func (r *StateRepository) SetStateValue(ctx context.Context, stateID uuid.UUID, 
 }
 
 // GetStateValue retrieves a value from state
+// If the value is encrypted, it will be decrypted automatically.
 func (r *StateRepository) GetStateValue(ctx context.Context, stateID uuid.UUID, key string) (*StateValue, error) {
 	var stateValue StateValue
 	err := r.db.WithContext(ctx).
@@ -92,6 +109,17 @@ func (r *StateRepository) GetStateValue(ctx context.Context, stateID uuid.UUID, 
 		return nil, fmt.Errorf("failed to get state value: %w", err)
 	}
 
+	// Decrypt the value if it's encrypted
+	if stateValue.IsEncrypted && len(stateValue.EncryptedVal) > 0 {
+		decryptedValue, _, decErr := r.decryptJSONValue(stateValue.EncryptedVal)
+		if decErr != nil {
+			return nil, fmt.Errorf("failed to decrypt state value: %w", decErr)
+		}
+		if decryptedValue != nil {
+			stateValue.Value = decryptedValue
+		}
+	}
+
 	// Update last accessed
 	r.db.WithContext(ctx).Model(&State{}).Where("id = ?", stateID).Update("last_accessed_at", time.Now())
 
@@ -99,13 +127,14 @@ func (r *StateRepository) GetStateValue(ctx context.Context, stateID uuid.UUID, 
 }
 
 // GetAllStateValues retrieves all latest values for a state
+// Encrypted values are automatically decrypted.
 func (r *StateRepository) GetAllStateValues(ctx context.Context, stateID uuid.UUID) ([]*StateValue, error) {
 	// Use window function for better performance than subquery with JOIN
 	var values []*StateValue
 	err := r.db.WithContext(ctx).
 		Raw(`
 			SELECT DISTINCT ON (key) id, state_id, key, value, version, previous_value,
-				   content_hash, expires_at, created_by, created_at
+				   content_hash, expires_at, created_by, created_at, is_encrypted, encrypted_val
 			FROM state_values
 			WHERE state_id = ? AND (expires_at IS NULL OR expires_at > NOW())
 			ORDER BY key, version DESC
@@ -114,6 +143,20 @@ func (r *StateRepository) GetAllStateValues(ctx context.Context, stateID uuid.UU
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get state values: %w", err)
+	}
+
+	// Decrypt encrypted values
+	for _, v := range values {
+		if v.IsEncrypted && len(v.EncryptedVal) > 0 {
+			decryptedValue, _, decErr := r.decryptJSONValue(v.EncryptedVal)
+			if decErr != nil {
+				// Log but don't fail - just return encrypted value as-is
+				continue
+			}
+			if decryptedValue != nil {
+				v.Value = decryptedValue
+			}
+		}
 	}
 
 	return values, nil
@@ -166,6 +209,7 @@ func (r *StateRepository) DeleteStateValue(ctx context.Context, stateID uuid.UUI
 }
 
 // BulkSetStateValues sets multiple values in state efficiently
+// If the state's IsEncrypted flag is true and encryption is enabled, values will be encrypted.
 func (r *StateRepository) BulkSetStateValues(ctx context.Context, stateID uuid.UUID, values map[string]map[string]interface{}, sourceType, sourceID string) error {
 	if len(values) == 0 {
 		return nil
@@ -185,6 +229,9 @@ func (r *StateRepository) BulkSetStateValues(ctx context.Context, stateID uuid.U
 
 	currentVersion := state.CurrentVersion
 
+	// Check if state requires encryption
+	encryptValues := state.IsEncrypted && r.IsEncryptionEnabled()
+
 	// Prepare batch insert
 	stateValues := make([]*StateValue, 0, len(values))
 	for key, value := range values {
@@ -197,6 +244,21 @@ func (r *StateRepository) BulkSetStateValues(ctx context.Context, stateID uuid.U
 			CreatedBy: sourceID,
 			CreatedAt: time.Now(),
 		}
+
+		// Encrypt value if required
+		if encryptValues {
+			encryptedData, _, encErr := r.encryptJSONValue(JSONMap(value))
+			if encErr != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to encrypt state value for key %s: %w", key, encErr)
+			}
+			if encryptedData != nil {
+				newValue.Value = nil
+				newValue.EncryptedVal = encryptedData
+				newValue.IsEncrypted = true
+			}
+		}
+
 		stateValues = append(stateValues, newValue)
 	}
 

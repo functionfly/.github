@@ -1,0 +1,17 @@
+> nx run functionfly-marketing:dev
+
+> bun run dev -- 
+
+[0m[2m[35m$[0m [2m[1mbun run astro dev[0m
+[0m[2m[35m$[0m [2m[1mastro dev[0m
+[2m16:12:24[22m [34m[types][39m Generated [2m1ms[22m
+[2m16:12:24[22m [34m[vite][39m Port 4321 is in use, trying another one...
+
+[42m[1m astro [22m[49m [32mv4.16.19[39m [2mready in[22m 12058 [2mms[22m
+
+[2m┃[22m Local    [36mhttp://localhost:4322/[39m
+[2m┃[22m Network  [2muse --host to expose[22m
+
+[2m16:12:24[22m [32mwatching for file changes...[39m
+[2m24:56:51[22m Configuration file removed. Restarting...
+[2m24:56:52[22m [34m[types][39m Generated [2m1ms[22m

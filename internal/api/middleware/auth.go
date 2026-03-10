@@ -65,9 +65,14 @@ func (m *AuthMiddleware) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// getUserFromContext extracts user claims from request context
+// GetUserFromContext extracts user claims from request context
 func GetUserFromContext(r *http.Request) *auth.Claims {
-	if claims, ok := r.Context().Value(contextKeyUser).(*auth.Claims); ok {
+	return GetClaimsFromContext(r.Context())
+}
+
+// GetClaimsFromContext extracts auth claims from context (for use when only context is available, e.g. versioning middleware).
+func GetClaimsFromContext(ctx context.Context) *auth.Claims {
+	if claims, ok := ctx.Value(contextKeyUser).(*auth.Claims); ok {
 		return claims
 	}
 	return nil

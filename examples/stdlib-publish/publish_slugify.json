@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "slugify",
+  "version": "1.0.0",
+  "trust_level": "high",
+  "description": "Convert text to a URL-friendly slug (lowercase, hyphens, no special chars)",
+  "tags": ["text", "slug", "url", "formatting"],
+  "visibility": "public",
+  "pricing": { "type": "free" },
+  "source_hash": "dd0d9983afba82763e514057d43e9031b54c93ab80ab648a6f65938f804a9dc7",
+  "manifest": {
+    "name": "slugify",
+    "version": "1.0.0",
+    "runtime": "python3.11",
+    "title": "Slugify",
+    "description": "Convert text to a URL-friendly slug (lowercase, hyphens, no special chars)",
+    "handler": "handler",
+    "timeout_ms": 5000,
+    "memory_mb": 128,
+    "deterministic": true,
+    "cache_ttl": 86400,
+    "side_effects": "none",
+    "idempotent": true,
+    "public": true,
+    "category": "text",
+    "tags": ["text", "slug", "url", "formatting"],
+    "capabilities": [],
+    "input": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "Text to slugify" },
+        "separator": { "type": "string", "description": "Separator character (default: -)" },
+        "max_length": { "type": "integer", "description": "Maximum length of the slug (0 = unlimited)" }
+      },
+      "example": { "text": "Hello World!", "separator": "-", "max_length": 0 }
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "ok": { "type": "boolean" },
+        "slug": { "type": "string", "description": "URL-friendly slug" },
+        "error": { "type": "string", "description": "Error message if ok is false" }
+      },
+      "example": { "ok": true, "slug": "hello-world" }
+    }
+  },
+  "source": {
+    "code": "import re\n\ndef handler(event):\n    if isinstance(event, dict):\n        text = event.get(\"text\", \"\")\n        separator = str(event.get(\"separator\", \"-\")).strip() or \"-\"\n        max_length = event.get(\"max_length\", 0)\n        try:\n            max_length = int(max_length)\n        except (TypeError, ValueError):\n            max_length = 0\n    else:\n        text = str(event)\n        separator = \"-\"\n        max_length = 0\n\n    if text is None or (isinstance(text, str) and not text.strip()):\n        return {\"ok\": False, \"error\": \"Input 'text' is required and cannot be empty\"}\n\n    s = str(text).lower().strip()\n    s = re.sub(r\"[^a-z0-9\\s-]\", \"\", s)\n    s = re.sub(r\"[-\\s]+\", separator, s).strip(separator)\n    if max_length > 0:\n        s = s[:max_length].rstrip(separator)\n\n    return {\"ok\": True, \"slug\": s}\n",
+    "runtime": "python3.11"
+  }
+}

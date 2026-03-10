@@ -226,7 +226,8 @@ func (h *Handler) HandleTenantDeploymentRollback(w http.ResponseWriter, r *http.
 	json.NewEncoder(w).Encode(result)
 }
 
-// HandleTenantMetrics provides observability metrics for a tenant (admin view)
+// HandleTenantMetrics provides observability metrics for a tenant (admin view).
+// Uses unified analytics when available for real data.
 func (h *Handler) HandleTenantMetrics(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	tenantIDStr := vars["tenantId"]
@@ -236,22 +237,133 @@ func (h *Handler) HandleTenantMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Gather tenant-specific metrics
+	if h.unifiedAnalytics != nil {
+		start := time.Now().UTC().Add(-24 * time.Hour)
+		end := time.Now().UTC()
+		if s := r.URL.Query().Get("start"); s != "" {
+			if t, err := time.Parse(time.RFC3339, s); err == nil {
+				start = t.UTC()
+			}
+		}
+		if e := r.URL.Query().Get("end"); e != "" {
+			if t, err := time.Parse(time.RFC3339, e); err == nil {
+				end = t.UTC()
+			}
+		}
+		sum, err := h.unifiedAnalytics.TenantSummary(r.Context(), tenantID, start, end)
+		if err != nil {
+			logrus.WithError(err).WithField("tenant_id", tenantID).Error("admin: tenant metrics from unified analytics failed")
+			http.Error(w, "Failed to get tenant metrics", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"tenant_id": tenantID,
+			"timestamp": time.Now(),
+			"summary":   sum,
+			"metrics": map[string]interface{}{
+				"function_executions": sum.FunctionExecutions,
+				"state_storage_bytes": sum.StateStorageBytes,
+				"state_read_ops":      sum.StateReadOps,
+				"state_write_ops":     sum.StateWriteOps,
+				"billing_quantity":    sum.BillingQuantity,
+				"agent_calls":         sum.AgentCalls,
+				"agent_cost_usd":      sum.AgentCostUSD,
+				"registry_executions": sum.RegistryExecutions,
+			},
+			"alerts": []string{},
+		})
+		return
+	}
+
+	// Fallback placeholder when unified analytics not injected
 	metrics := map[string]interface{}{
 		"tenant_id": tenantID,
 		"timestamp": time.Now(),
 		"metrics": map[string]interface{}{
-			"apps_count":           0, // Would need to implement counting
+			"apps_count":           0,
 			"active_deployments":   0,
 			"total_requests_24h":   0,
 			"error_rate_24h":       0.0,
 			"avg_response_time_ms": 0,
 		},
-		"alerts": []string{}, // Any active alerts for this tenant
+		"alerts": []string{},
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(metrics)
+}
+
+// HandlePlatformAnalyticsSummary returns platform-wide analytics summary (admin only).
+// GET /v1/admin/analytics/platform/summary?start=...&end=...
+func (h *Handler) HandlePlatformAnalyticsSummary(w http.ResponseWriter, r *http.Request) {
+	if h.unifiedAnalytics == nil {
+		http.Error(w, "Analytics not available", http.StatusServiceUnavailable)
+		return
+	}
+	start := time.Now().UTC().Add(-30 * 24 * time.Hour)
+	end := time.Now().UTC()
+	if s := r.URL.Query().Get("start"); s != "" {
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			start = t.UTC()
+		} else if t, err := time.Parse("2006-01-02", s); err == nil {
+			start = t.UTC()
+		}
+	}
+	if e := r.URL.Query().Get("end"); e != "" {
+		if t, err := time.Parse(time.RFC3339, e); err == nil {
+			end = t.UTC()
+		} else if t, err := time.Parse("2006-01-02", e); err == nil {
+			end = t.UTC()
+		}
+	}
+	sum, err := h.unifiedAnalytics.PlatformSummary(r.Context(), start, end)
+	if err != nil {
+		logrus.WithError(err).Error("admin: platform analytics summary failed")
+		http.Error(w, "Failed to get platform summary", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(sum)
+}
+
+// HandleTenantAnalyticsSummary returns unified tenant summary for any tenant (admin only).
+// GET /v1/admin/analytics/tenants/:tenantId/summary?start=...&end=...
+func (h *Handler) HandleTenantAnalyticsSummary(w http.ResponseWriter, r *http.Request) {
+	if h.unifiedAnalytics == nil {
+		http.Error(w, "Analytics not available", http.StatusServiceUnavailable)
+		return
+	}
+	vars := mux.Vars(r)
+	tenantIDStr := vars["tenantId"]
+	tenantID, err := uuid.Parse(tenantIDStr)
+	if err != nil {
+		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		return
+	}
+	start := time.Now().UTC().Add(-30 * 24 * time.Hour)
+	end := time.Now().UTC()
+	if s := r.URL.Query().Get("start"); s != "" {
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			start = t.UTC()
+		} else if t, err := time.Parse("2006-01-02", s); err == nil {
+			start = t.UTC()
+		}
+	}
+	if e := r.URL.Query().Get("end"); e != "" {
+		if t, err := time.Parse(time.RFC3339, e); err == nil {
+			end = t.UTC()
+		} else if t, err := time.Parse("2006-01-02", e); err == nil {
+			end = t.UTC()
+		}
+	}
+	sum, err := h.unifiedAnalytics.TenantSummary(r.Context(), tenantID, start, end)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Error("admin: tenant analytics summary failed")
+		http.Error(w, "Failed to get tenant summary", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(sum)
 }
 
 // HandleTenantHealth provides health status for a tenant's resources (admin view)

@@ -13,9 +13,8 @@ import (
 )
 
 func main() {
-	// Generate token using generate_token.go
-	cmd := exec.Command("go", "run", "./generate_token.go")
-	cmd.Dir = "/home/micro/projects/functionfly"
+	// Generate token using scripts/generate_token.go (run from repo root)
+	cmd := exec.Command("go", "run", "./scripts/generate_token.go")
 	output, err := cmd.Output()
 	if err != nil {
 		fmt.Println("Error generating token:", err)

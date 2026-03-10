@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/functionfly/functionfly/internal/agent/generation"
+	"gorm.io/gorm"
 )
 
 // CodeGeneratorFactory creates the appropriate CodeGenerator based on configuration
@@ -67,24 +68,23 @@ func (f *CodeGeneratorFactory) SetConfig(config *Config) {
 	f.config = config
 }
 
-// CreateGenerationService creates a generation.Service with the appropriate CodeGenerator
-func (f *CodeGeneratorFactory) CreateGenerationService(db interface{}) (*generation.Service, error) {
+// CreateGenerationService creates a generation.Service with the appropriate CodeGenerator.
+// db may be nil for API-only mode; when using self-hosted inference (gen != nil), db is required for persistence.
+func (f *CodeGeneratorFactory) CreateGenerationService(db *gorm.DB) (*generation.Service, error) {
 	gen, err := f.CreateGenerator()
 	if err != nil {
 		return nil, err
 	}
 
-	// Note: db parameter would be *gorm.DB in real usage
-	// This is a simplified signature that matches the generation.Service
 	if gen != nil {
-		// We need to cast or handle the db properly
-		// For now, return a service with the generator
-		// The caller would need to pass proper db
-		return nil, fmt.Errorf("db must be *gorm.DB")
+		if db == nil {
+			return nil, fmt.Errorf("db is required when using self-hosted inference")
+		}
+		return generation.NewServiceWithGenerator(db, gen), nil
 	}
 
-	// Return service without generator (will use OpenRouter via CreateOpenRouterGenerator)
-	return nil, nil
+	// API mode: service without generator (use CreateOpenRouterGenerator for OpenRouter client)
+	return generation.NewService(db), nil
 }
 
 // HybridGenerator combines API-based and self-hosted inference with fallback

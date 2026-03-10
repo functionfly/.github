@@ -157,16 +157,45 @@ func generateEmbedScript(fn *registry.RegistryFunction, fnVersion *registry.Regi
   // ── Form binding ──────────────────────────────────────────────────────────
   function form(formEl, options) {
     options = options || {};
-    formEl.addEventListener("submit", function (e) {
+    var handler = function (e) {
       e.preventDefault();
+      // Use FormData API to serialize form data
+      var formData = new FormData(formEl);
       var data = {};
+      formData.forEach(function (value, key) {
+        data[key] = value;
+      });
+      // Support checkbox arrays and other special cases
       var elements = formEl.elements;
       for (var i = 0; i < elements.length; i++) {
         var el = elements[i];
-        if (el.name) { data[el.name] = el.value; }
+        if (el.type === 'checkbox' || el.type === 'radio') {
+          if (el.name && !el.checked) { delete data[el.name]; }
+          if (el.name && el.checked && !data[el.name]) { data[el.name] = el.value || true; }
+        }
       }
-      run(data, options);
-    });
+      run(data, {
+        onSuccess: options.onSuccess,
+        onError: options.onError,
+      });
+    };
+    formEl.addEventListener('submit', handler);
+    // Return cleanup function
+    return function () {
+      formEl.removeEventListener('submit', handler);
+    };
+  }
+
+  // ── Theme detection ───────────────────────────────────────────────────────
+  function getTheme(preferredTheme) {
+    if (preferredTheme === 'light' || preferredTheme === 'dark') {
+      return preferredTheme;
+    }
+    // Auto-detect based on system preference
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
   }
 
   // ── UI widget ─────────────────────────────────────────────────────────────
@@ -175,55 +204,101 @@ func generateEmbedScript(fn *registry.RegistryFunction, fnVersion *registry.Regi
     var title       = options.title       || (AUTHOR + "/" + NAME);
     var placeholder = options.placeholder || "Enter input (JSON)...";
     var buttonText  = options.buttonText  || "Run";
-    var theme       = options.theme       || config.theme || "auto";
+    var theme       = getTheme(options.theme || config.theme || "auto");
 
+    // Determine colors based on theme
+    var isDark = theme === 'dark';
+    var bgColor       = isDark ? '#1e1e1e' : '#ffffff';
+    var borderColor   = isDark ? '#444444' : '#dddddd';
+    var textColor     = isDark ? '#e0e0e0' : '#333333';
+    var inputBg       = isDark ? '#2d2d2d' : '#f9f9f9';
+    var outputBg      = isDark ? '#2a2a2a' : '#f5f5f5';
+    var btnBg         = '#0070f3';
+    var btnHover      = '#005bb5';
+    var errorColor    = isDark ? '#ff6b6b' : '#dc3545';
+
+    // Build self-contained widget HTML with inline CSS
     var html = [
-      '<div class="ff-widget" data-theme="' + theme + '" style="font-family:sans-serif;border:1px solid #ddd;border-radius:8px;padding:16px;max-width:480px">',
-      '  <h3 style="margin:0 0 12px;font-size:14px;font-weight:600">' + title + '</h3>',
-      '  <textarea class="ff-input" placeholder="' + placeholder + '" rows="4"',
-      '    style="width:100%%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:13px;resize:vertical"></textarea>',
-      '  <button class="ff-btn" style="margin-top:8px;padding:8px 16px;background:#0070f3;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px">' + buttonText + '</button>',
-      '  <pre class="ff-output" style="margin-top:12px;padding:8px;background:#f5f5f5;border-radius:4px;font-size:12px;overflow:auto;display:none"></pre>',
+      '<div class="ff-widget" style="',
+        'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+        'border: 1px solid ' + borderColor + ';',
+        'border-radius: 8px;',
+        'padding: 16px;',
+        'max-width: 480px;',
+        'background: ' + bgColor + ';',
+        'color: ' + textColor + ';',
+        'box-sizing: border-box;'
+      ).replace(/\s+/g, ' ').trim(),
+      '">',
+      '  <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: ' + textColor + ';">' + escHtml(title) + '</h3>',
+      '  <textarea class="ff-input" placeholder="' + escHtml(placeholder) + '" rows="4"',
+      '    style="width: 100%%; box-sizing: border-box; padding: 8px; border: 1px solid ' + borderColor + '; border-radius: 4px; font-size: 13px; resize: vertical; background: ' + inputBg + '; color: ' + textColor + ';"></textarea>',
+      '  <button class="ff-btn" style="margin-top: 8px; padding: 8px 16px; background: ' + btnBg + '; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;">' + escHtml(buttonText) + '</button>',
+      '  <pre class="ff-output" style="margin-top: 12px; padding: 8px; background: ' + outputBg + '; border-radius: 4px; font-size: 12px; overflow: auto; display: none; color: ' + textColor + ';"></pre>',
       '</div>',
-    ].join("\n");
+    ].join('');
 
     container.innerHTML = html;
 
-    var inputEl  = container.querySelector(".ff-input");
-    var btnEl    = container.querySelector(".ff-btn");
-    var outputEl = container.querySelector(".ff-output");
+    var inputEl  = container.querySelector('.ff-input');
+    var btnEl    = container.querySelector('.ff-btn');
+    var outputEl = container.querySelector('.ff-output');
 
-    btnEl.addEventListener("click", function () {
+    // Add button hover effect
+    btnEl.addEventListener('mouseenter', function () { btnEl.style.background = btnHover; });
+    btnEl.addEventListener('mouseleave', function () { btnEl.style.background = btnBg; });
+
+    btnEl.addEventListener('click', function () {
       var raw = inputEl.value.trim();
       var input;
       try {
         input = raw ? JSON.parse(raw) : {};
       } catch (_) {
-        outputEl.style.display = "block";
-        outputEl.textContent   = "Invalid JSON input";
+        outputEl.style.display = 'block';
+        outputEl.style.color = errorColor;
+        outputEl.textContent   = 'Invalid JSON input';
         return;
       }
 
+      // Show loading state
       btnEl.disabled    = true;
-      btnEl.textContent = "Running…";
+      btnEl.textContent = 'Running…';
+      outputEl.style.display = 'none';
 
       run(input, {
-        onSuccess: function (data) {
-          outputEl.style.display = "block";
+        onSuccess: function (result) {
+          var data = result.data || result;
+          outputEl.style.display = 'block';
+          outputEl.style.color = textColor;
           outputEl.textContent   = JSON.stringify(data, null, 2);
           btnEl.disabled    = false;
           btnEl.textContent = buttonText;
           if (options.onSuccess) { options.onSuccess(data); }
         },
         onError: function (err) {
-          outputEl.style.display = "block";
-          outputEl.textContent   = "Error: " + err.message;
+          outputEl.style.display = 'block';
+          outputEl.style.color = errorColor;
+          outputEl.textContent   = 'Error: ' + (err.message || 'Execution failed');
           btnEl.disabled    = false;
           btnEl.textContent = buttonText;
           if (options.onError) { options.onError(err); }
         },
       });
     });
+
+    // Return cleanup function
+    return function () {
+      container.innerHTML = '';
+    };
+  }
+
+  // HTML escape utility to prevent XSS
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   // ── Public API ────────────────────────────────────────────────────────────

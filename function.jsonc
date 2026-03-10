@@ -1,8 +1,0 @@
-{
-  "name": "test-python",
-  "version": "1.0.0",
-  "runtime": "python3.11",
-  "entry": "test_function.py",
-  "memory_mb": 128,
-  "timeout_ms": 5000
-}

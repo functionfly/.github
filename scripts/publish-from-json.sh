@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Publish a function from a JSON file (e.g. publish_slugify.json).
 # Usage: ./scripts/publish-from-json.sh <path-to-publish.json> [SERVER_URL]
-# Example: ./scripts/publish-from-json.sh publish_slugify.json
+# Example: ./scripts/publish-from-json.sh examples/stdlib-publish/publish_slugify.json
 #
-# Token: uses JWT from generate_token.go (loads .env for JWT_SECRET). If you get 401,
-# use login: PUBLISH_USE_LOGIN=1 ./scripts/publish-from-json.sh publish_slugify.json
+# Token: uses JWT from scripts/generate_token (loads .env for JWT_SECRET). If you get 401,
+# use login: PUBLISH_USE_LOGIN=1 ./scripts/publish-from-json.sh examples/stdlib-publish/publish_slugify.json
 # (set PUBLISH_EMAIL and PUBLISH_PASSWORD, or defaults admin@functionfly.local / admin123)
 set -e
 
@@ -52,7 +52,7 @@ if [[ -n "${PUBLISH_USE_LOGIN:-}" ]]; then
     exit 1
   fi
 else
-  TOKEN=$(go run generate_token.go 2>/dev/null | tr -d '\n\r')
+  TOKEN=$(go run ./scripts/generate_token 2>/dev/null | tr -d '\n\r')
 fi
 
 if [[ -z "$TOKEN" ]]; then

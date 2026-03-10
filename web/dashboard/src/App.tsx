@@ -50,6 +50,10 @@ import { ReplayPage } from '@/pages/ReplayPage';
 import { StateFabricPage } from '@/pages/StateFabricPage';
 import { StateFabricDetailPage } from '@/pages/StateFabricPage/StateFabricDetailPage';
 import { StateFabricMarketingPage } from '@/pages/StateFabricMarketingPage';
+import { AgentMemoryPage } from '@/pages/AgentMemoryPage';
+import { AgentMemoryDetailPage } from '@/pages/AgentMemoryPage/AgentMemoryDetailPage';
+import { StatePage } from '@/pages/StatePage';
+import { StateDetailPage } from '@/pages/StatePage/StateDetailPage';
 import { BrowseFunctionsPage } from '@/pages/BrowseFunctionsPage';
 import RegistryDeployPage from '@/pages/RegistryDeployPage';
 import { DOCS_SITE_URL } from '@/lib/constants';
@@ -64,6 +68,7 @@ import { FunctionLogsPage } from '@/pages/FunctionsPage/FunctionLogsPage';
 import { UserDashboardFunctionsPage } from '@/pages/UserDashboardFunctionsPage';
 import { UserDashboardSettingsPage } from '@/pages/UserDashboardSettingsPage';
 import { TeamsPage } from '@/pages/TeamsPage';
+import { APIKeysPage, APIKeyDetailPage } from '@/pages/api-keys';
 import { ForbiddenPage } from '@/pages/ForbiddenPage';
 import { ServerErrorPage } from '@/pages/ServerErrorPage';
 import AgentsPage from '@/pages/AgentsPage';
@@ -423,7 +428,15 @@ function AppContent() {
         <Route path="state-fabric/new" element={<StateFabricDetailPage />} />
         <Route path="state-fabric/:id" element={<StateFabricDetailPage />} />
         <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
+        <Route path="state" element={<StatePage />} />
+        <Route path="state/new" element={<StateDetailPage />} />
+        <Route path="state/:path" element={<StateDetailPage />} />
+        <Route path="agent-memories" element={<AgentMemoryPage />} />
+        <Route path="agent-memories/new" element={<AgentMemoryDetailPage />} />
+        <Route path="agent-memories/:id" element={<AgentMemoryDetailPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="api-keys" element={<APIKeysPage />} />
+        <Route path="api-keys/:keyId" element={<APIKeyDetailPage />} />
         <Route path="teams" element={<TeamsPage />} />
         {/* Enterprise Routes */}
         <Route path="enterprise/sla" element={<EnterpriseSLAPage />} />

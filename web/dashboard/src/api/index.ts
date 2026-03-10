@@ -64,3 +64,4 @@ export type {
   FactoryVersion,
   PublishedFunction,
 } from "./factory";
+export { apiKeysApi } from "./apikeys";

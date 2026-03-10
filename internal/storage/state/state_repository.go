@@ -4,8 +4,12 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"io"
+	"os"
+	"strings"
 	"sync"
 
 	"gorm.io/gorm"
@@ -40,12 +44,44 @@ type StateRepository struct {
 }
 
 // NewStateRepository creates a new state repository.
+// It automatically configures encryption based on the ENCRYPTED_STATE_ENABLED
+// environment variable and STATE_ENCRYPTION_KEY environment variable.
 func NewStateRepository(db *gorm.DB) *StateRepository {
-	return &StateRepository{
+	repo := &StateRepository{
 		db:  db,
 		key: nil,
 		enc: false,
 	}
+
+	// Configure encryption from environment variables
+	encryptedStateEnabled := os.Getenv("ENCRYPTED_STATE_ENABLED")
+	if strings.ToLower(encryptedStateEnabled) == "true" {
+		encryptionKey := os.Getenv("STATE_ENCRYPTION_KEY")
+		if encryptionKey == "" {
+			// Try alternative environment variable names
+			encryptionKey = os.Getenv("STATE_KEY")
+		}
+		if encryptionKey != "" {
+			// Decode base64 key if needed, otherwise use as-is
+			var keyBytes []byte
+			if decoded, err := base64.StdEncoding.DecodeString(encryptionKey); err == nil {
+				keyBytes = decoded
+			} else {
+				// Use the raw key string
+				keyBytes = []byte(encryptionKey)
+			}
+			// Ensure key is valid AES key size (16, 24, or 32 bytes)
+			if len(keyBytes) >= 16 {
+				// Truncate or pad to valid AES key size
+				if len(keyBytes) > 32 {
+					keyBytes = keyBytes[:32]
+				}
+				repo.SetEncryptionKey(keyBytes)
+			}
+		}
+	}
+
+	return repo
 }
 
 // SetEncryptionKey sets the key for encrypting/decrypting state values.
@@ -75,6 +111,56 @@ func (r *StateRepository) SetEncryptionKey(key []byte) {
 
 func validAESKeySize(n int) bool {
 	return n == AESKeySize128 || n == AESKeySize192 || n == AESKeySize256
+}
+
+// IsEncryptionEnabled returns true if encryption is currently enabled for this repository.
+func (r *StateRepository) IsEncryptionEnabled() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.enc && len(r.key) > 0
+}
+
+// encryptJSONValue encrypts a JSON map value and returns the encrypted bytes
+// along with a marker indicating it was encrypted.
+func (r *StateRepository) encryptJSONValue(value JSONMap) ([]byte, bool, error) {
+	if !r.IsEncryptionEnabled() {
+		return nil, false, nil
+	}
+
+	// Serialize the JSON map to bytes
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// Encrypt the data
+	encrypted, err := r.encryptValue(data)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return encrypted, true, nil
+}
+
+// decryptJSONValue decrypts encrypted bytes back to a JSON map.
+func (r *StateRepository) decryptJSONValue(encryptedData []byte) (JSONMap, bool, error) {
+	if !r.IsEncryptionEnabled() || len(encryptedData) == 0 {
+		return nil, false, nil
+	}
+
+	// Decrypt the data
+	decrypted, err := r.decryptValue(encryptedData)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// Deserialize the JSON map
+	var value JSONMap
+	if err := json.Unmarshal(decrypted, &value); err != nil {
+		return nil, false, err
+	}
+
+	return value, true, nil
 }
 
 // encryptValue encrypts data using AES-GCM. Returns plaintext unchanged if encryption is disabled.
