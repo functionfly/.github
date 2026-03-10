@@ -47,6 +47,22 @@ FunctionFly is a comprehensive serverless platform that enables developers to de
                                       └─────────────┘
 ```
 
+## Project layout
+
+| Path | Purpose |
+|------|---------|
+| `cmd/` | Go entrypoints (orchestrator-api, fly CLI, health-monitor, etc.) |
+| `internal/` | Go application code |
+| `docs/` | Documentation and guides (see [docs/README.md](docs/README.md)) |
+| `scripts/` | Dev and ops scripts (dev.sh, migrations, publish, test helpers) |
+| `examples/` | Sample functions and fixtures; `examples/stdlib-publish/` = publish payloads for stdlib |
+| `examples/fixtures/` | Sample manifests, test inputs, and tiny scripts |
+| `assets/` | Images and static assets |
+| `migrations/` | Database migrations |
+| `web/` | Dashboard and frontends |
+| `deploy/` | Deployment configs (Caddy, etc.) |
+| `plans/` | Design and planning docs |
+
 ## Quick Start
 
 ### Prerequisites
@@ -200,8 +216,8 @@ Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
 
 - [API Documentation](docs/api.md)
 - [Deployment Guide](docs/deployment.md)
-- [Security Policy](SECURITY.md)
-- [Migration Guide](MIGRATIONS.md)
+- [Security Policy](docs/SECURITY.md)
+- [Migration Guide](docs/MIGRATIONS.md)
 
 ## License
 
