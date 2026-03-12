@@ -27,29 +27,32 @@ export function AdminAuditPage() {
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  // Fetch audit events
+  // Fetch audit events (API returns { events, limit, offset, filters })
   const { data: eventsResponse, isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-audit-events'],
     queryFn: async () => {
       try {
         return await adminApiClient.get<AuditEvent[]>('/audit-events?limit=100');
       } catch {
-        return { data: [], success: false };
+        return { events: [], limit: 100, offset: 0, filters: {} };
       }
     },
     staleTime: 1000 * 30, // 30 seconds
   });
 
-  const events = eventsResponse?.data || [];
+  const raw = eventsResponse as { events?: AuditEvent[]; data?: AuditEvent[] } | undefined;
+  const events = raw?.events ?? raw?.data ?? [];
 
   const filteredEvents = events.filter((event) => {
+    const action = event.action ?? '';
+    const resourceType = event.resource_type ?? '';
     const matchesSearch = searchTerm
-      ? event.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ? action.toLowerCase().includes(searchTerm.toLowerCase()) ||
         event.actor_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.resource_type.toLowerCase().includes(searchTerm.toLowerCase())
+        resourceType.toLowerCase().includes(searchTerm.toLowerCase())
       : true;
 
-    const matchesAction = actionFilter === 'all' || event.action.includes(actionFilter);
+    const matchesAction = actionFilter === 'all' || action.includes(actionFilter);
     const matchesSuccess =
       successFilter === 'all' || (successFilter === 'success' ? event.success : !event.success);
 
@@ -71,10 +74,10 @@ export function AdminAuditPage() {
     const csv = [
       ['Timestamp', 'Actor', 'Action', 'Resource', 'Success'],
       ...filteredEvents.map((e) => [
-        new Date(e.timestamp).toISOString(),
+        new Date(e.timestamp ?? 0).toISOString(),
         e.actor_email || 'System',
-        e.action,
-        `${e.resource_type}${e.resource_id ? `:${e.resource_id}` : ''}`,
+        e.action ?? '',
+        `${e.resource_type ?? ''}${e.resource_id ? `:${e.resource_id}` : ''}`,
         e.success ? 'Yes' : 'No',
       ]),
     ]
@@ -182,12 +185,12 @@ export function AdminAuditPage() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{getActionIcon(event.action)}</span>
+                    <span className="text-xl">{getActionIcon(event.action ?? '')}</span>
                     <div>
-                      <p className="font-medium text-gray-900">{event.action}</p>
+                      <p className="font-medium text-gray-900">{event.action ?? '—'}</p>
                       <p className="text-sm text-gray-600">
                         {event.actor_email || 'System'} •{' '}
-                        {event.resource_type}
+                        {event.resource_type ?? '—'}
                         {event.resource_id ? `:${event.resource_id}` : ''}
                       </p>
                     </div>
@@ -203,10 +206,10 @@ export function AdminAuditPage() {
 
                   <div className="text-right">
                     <p className="text-sm text-gray-600">
-                      {new Date(event.timestamp).toLocaleDateString()}
+                      {new Date(event.timestamp ?? 0).toLocaleDateString()}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {new Date(event.timestamp).toLocaleTimeString()}
+                      {new Date(event.timestamp ?? 0).toLocaleTimeString()}
                     </p>
                   </div>
 

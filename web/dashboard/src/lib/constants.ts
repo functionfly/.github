@@ -16,6 +16,7 @@ export const ROUTES = {
   ANALYTICS: "/analytics",
   USAGE: "/usage",
   STATE_FABRIC: "/state-fabric",
+  SECRETS: "/secrets",
   SETTINGS: "/settings",
   BILLING: "/settings", // Billing tab lives on Settings page
   TEAMS: "/teams",
@@ -56,6 +57,7 @@ export const MAIN_NAV_PATHS: string[] = [
   ROUTES.AGENTS,
   ROUTES.ANALYTICS,
   ROUTES.USAGE,
+  ROUTES.SECRETS,
   ROUTES.SETTINGS,
 ].sort((a, b) => b.length - a.length);
 
@@ -183,6 +185,8 @@ export const PLANS = {
       requests: 100000,
       stateFabrics: 0,
       agents: 0,
+      secrets: 0,
+      tokensPerSecret: 0,
     },
   },
   STARTER: {
@@ -206,6 +210,8 @@ export const PLANS = {
       customDomains: 1,
       stateFabrics: 1,
       agents: 2,
+      secrets: 10,
+      tokensPerSecret: 5,
     },
   },
   PROFESSIONAL: {
@@ -233,6 +239,8 @@ export const PLANS = {
       sla: "99.9%",
       stateFabrics: 5,
       agents: 10,
+      secrets: 50,
+      tokensPerSecret: 20,
     },
   },
   ENTERPRISE: {
@@ -260,6 +268,8 @@ export const PLANS = {
       sla: "99.99%",
       stateFabrics: Infinity,
       agents: Infinity,
+      secrets: 10000,
+      tokensPerSecret: 100,
     },
   },
 } as const;
@@ -415,12 +425,23 @@ export const STATUS_COLORS = {
 /**
  * Canonical API base URL (no trailing slash). Use for all API and WebSocket calls.
  * - Set VITE_API_URL in production (e.g. https://api.functionfly.com) and staging.
- * - In dev, falls back to /api (Vite proxy). In production build without env, uses canonical default.
+ * - In dev, uses /api so the Vite proxy forwards to the Go backend; set VITE_API_URL only to point at the API (e.g. http://localhost:8080) if not using the proxy.
  */
 export function getApiBaseUrl(): string {
-  const env = import.meta.env.VITE_API_URL ?? "";
+  const env = (import.meta.env.VITE_API_URL ?? "").trim();
+  if (import.meta.env.DEV) {
+    // In dev, use /api so requests go through Vite proxy to the backend (avoids "Cannot POST /auth/login" when the request would otherwise hit the dev server).
+    if (!env) return "/api";
+    const base = env.replace(/\/$/, "");
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      if (origin && (base === origin || base === "")) return "/api";
+    } catch {
+      /* ignore */
+    }
+    return base;
+  }
   if (env) return env.replace(/\/$/, "");
-  if (import.meta.env.DEV) return "/api";
   return "https://api.functionfly.com";
 }
 

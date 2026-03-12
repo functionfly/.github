@@ -312,19 +312,7 @@ func (h *Handler) HandleUpdateConfig(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "authentication required")
 		return
 	}
-	var req struct {
-		DiscoveryBatchSize     *int     `json:"discovery_batch_size"`
-		MinimumQualityScore    *float64 `json:"minimum_quality_score"`
-		MinimumTestScore       *float64 `json:"minimum_test_score"`
-		RequireAllTestsPass    *bool    `json:"require_all_tests_pass"`
-		AutoPublish            *bool    `json:"auto_publish"`
-		MaxOpportunitiesPerRun *int     `json:"max_opportunities_per_run"`
-		RetryAttempts          *int     `json:"retry_attempts"`
-		RetryBackoffMs         *int     `json:"retry_backoff_ms"`
-		ScheduleEnabled        *bool    `json:"schedule_enabled"`
-		ScheduleCron           *string  `json:"schedule_cron"`
-		ScheduleTimezone       *string  `json:"schedule_timezone"`
-	}
+	var req configUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -359,19 +347,34 @@ func (h *Handler) HandleUpdateConfig(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, h.config)
 }
 
-func (h *Handler) applyConfigUpdate(req struct {
-	DiscoveryBatchSize     *int     `json:"discovery_batch_size"`
-	MinimumQualityScore    *float64 `json:"minimum_quality_score"`
-	MinimumTestScore       *float64 `json:"minimum_test_score"`
-	RequireAllTestsPass    *bool    `json:"require_all_tests_pass"`
-	AutoPublish            *bool    `json:"auto_publish"`
-	MaxOpportunitiesPerRun *int     `json:"max_opportunities_per_run"`
-	RetryAttempts          *int     `json:"retry_attempts"`
-	RetryBackoffMs         *int     `json:"retry_backoff_ms"`
-	ScheduleEnabled        *bool    `json:"schedule_enabled"`
-	ScheduleCron           *string  `json:"schedule_cron"`
-	ScheduleTimezone       *string  `json:"schedule_timezone"`
-}) {
+type configUpdateRequest struct {
+	DiscoveryBatchSize          *int            `json:"discovery_batch_size"`
+	MinimumQualityScore         *float64        `json:"minimum_quality_score"`
+	MinimumTestScore            *float64        `json:"minimum_test_score"`
+	RequireAllTestsPass         *bool           `json:"require_all_tests_pass"`
+	AutoPublish                 *bool           `json:"auto_publish"`
+	MaxOpportunitiesPerRun      *int            `json:"max_opportunities_per_run"`
+	RetryAttempts               *int            `json:"retry_attempts"`
+	RetryBackoffMs              *int            `json:"retry_backoff_ms"`
+	ScheduleEnabled             *bool           `json:"schedule_enabled"`
+	ScheduleCron                *string         `json:"schedule_cron"`
+	ScheduleTimezone            *string         `json:"schedule_timezone"`
+	NotificationWebhookURL      *string         `json:"notification_webhook_url"`
+	RateLimitPerHour            *int            `json:"rate_limit_per_hour"`
+	MaxConcurrentRuns           *int            `json:"max_concurrent_runs"`
+	DryRunMode                  *bool           `json:"dry_run_mode"`
+	DiscoverySources            []string        `json:"discovery_sources"`
+	FeatureFlags                map[string]bool `json:"feature_flags"`
+	ApprovalRequiredAboveQuality *int           `json:"approval_required_above_quality"`
+	ApprovalRequiredAboveTest   *int            `json:"approval_required_above_test"`
+	LogLevel                    *string         `json:"log_level"`
+	NotifyOnFailure             *bool           `json:"notify_on_failure"`
+	NotifyOnReviewRequired      *bool           `json:"notify_on_review_required"`
+	DiscoveryCooldownMinutes    *int            `json:"discovery_cooldown_minutes"`
+	MaxVersionsPerFunction      *int            `json:"max_versions_per_function"`
+}
+
+func (h *Handler) applyConfigUpdate(req configUpdateRequest) {
 	if req.DiscoveryBatchSize != nil && *req.DiscoveryBatchSize > 0 {
 		h.config.DiscoveryBatchSize = *req.DiscoveryBatchSize
 	}
@@ -395,6 +398,7 @@ func (h *Handler) applyConfigUpdate(req struct {
 	}
 	if req.RetryBackoffMs != nil && *req.RetryBackoffMs >= 0 {
 		h.config.RetryBackoff = time.Duration(*req.RetryBackoffMs) * time.Millisecond
+		h.config.RetryBackoffMs = *req.RetryBackoffMs
 	}
 	if req.ScheduleEnabled != nil {
 		h.config.ScheduleEnabled = *req.ScheduleEnabled
@@ -404,6 +408,45 @@ func (h *Handler) applyConfigUpdate(req struct {
 	}
 	if req.ScheduleTimezone != nil {
 		h.config.ScheduleTimezone = *req.ScheduleTimezone
+	}
+	if req.NotificationWebhookURL != nil {
+		h.config.NotificationWebhookURL = *req.NotificationWebhookURL
+	}
+	if req.RateLimitPerHour != nil && *req.RateLimitPerHour >= 0 {
+		h.config.RateLimitPerHour = *req.RateLimitPerHour
+	}
+	if req.MaxConcurrentRuns != nil && *req.MaxConcurrentRuns > 0 {
+		h.config.MaxConcurrentRuns = *req.MaxConcurrentRuns
+	}
+	if req.DryRunMode != nil {
+		h.config.DryRunMode = *req.DryRunMode
+	}
+	if req.DiscoverySources != nil {
+		h.config.DiscoverySources = req.DiscoverySources
+	}
+	if req.FeatureFlags != nil {
+		h.config.FeatureFlags = req.FeatureFlags
+	}
+	if req.ApprovalRequiredAboveQuality != nil && *req.ApprovalRequiredAboveQuality >= 0 {
+		h.config.ApprovalRequiredAboveQuality = *req.ApprovalRequiredAboveQuality
+	}
+	if req.ApprovalRequiredAboveTest != nil && *req.ApprovalRequiredAboveTest >= 0 {
+		h.config.ApprovalRequiredAboveTest = *req.ApprovalRequiredAboveTest
+	}
+	if req.LogLevel != nil && *req.LogLevel != "" {
+		h.config.LogLevel = *req.LogLevel
+	}
+	if req.NotifyOnFailure != nil {
+		h.config.NotifyOnFailure = *req.NotifyOnFailure
+	}
+	if req.NotifyOnReviewRequired != nil {
+		h.config.NotifyOnReviewRequired = *req.NotifyOnReviewRequired
+	}
+	if req.DiscoveryCooldownMinutes != nil && *req.DiscoveryCooldownMinutes >= 0 {
+		h.config.DiscoveryCooldownMinutes = *req.DiscoveryCooldownMinutes
+	}
+	if req.MaxVersionsPerFunction != nil && *req.MaxVersionsPerFunction > 0 {
+		h.config.MaxVersionsPerFunction = *req.MaxVersionsPerFunction
 	}
 }
 

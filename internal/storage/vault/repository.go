@@ -68,11 +68,11 @@ func (r *Repository) GetSecretsByTenant(ctx context.Context, tenantID uuid.UUID)
 func (r *Repository) UpdateSecret(ctx context.Context, secret *Secret) error {
 	secret.UpdatedAt = time.Now()
 	return r.db.WithContext(ctx).Model(secret).Updates(map[string]interface{}{
-		"name":            secret.Name,
+		"name":             secret.Name,
 		"description":     secret.Description,
 		"encrypted_value": secret.EncryptedValue,
 		"encryption_salt": secret.EncryptionSalt,
-		"iv":              secret.IV,
+		"encryption_iv":   secret.IV,
 		"key_version":     secret.KeyVersion,
 		"scopes":          secret.Scopes,
 		"metadata":        secret.Metadata,

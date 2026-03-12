@@ -145,6 +145,51 @@ func (h *Handler) HandleResumeFabric(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// HandleGetSettings (admin) GET /v1/admin/state-fabrics/settings
+func (h *Handler) HandleGetSettings(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if !hasAdminPermission(claims, auth.PermTenantsRead) {
+		writeErr(w, http.StatusForbidden, "forbidden")
+		return
+	}
+	config, err := h.repo.GetPlatformSettings(r.Context())
+	if err != nil {
+		logrus.WithError(err).Error("get state fabric platform settings")
+		writeErr(w, http.StatusInternalServerError, "failed to load settings")
+		return
+	}
+	writeJSON(w, http.StatusOK, config)
+}
+
+// HandleUpdateSettings (admin) PATCH /v1/admin/state-fabrics/settings
+func (h *Handler) HandleUpdateSettings(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if !hasAdminPermission(claims, auth.PermTenantsWrite) {
+		writeErr(w, http.StatusForbidden, "forbidden")
+		return
+	}
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	if err := h.repo.UpdatePlatformSettings(r.Context(), body); err != nil {
+		logrus.WithError(err).Error("update state fabric platform settings")
+		writeErr(w, http.StatusInternalServerError, "failed to update settings")
+		return
+	}
+	config, _ := h.repo.GetPlatformSettings(r.Context())
+	writeJSON(w, http.StatusOK, config)
+}
+
 func hasAdminPermission(claims *auth.Claims, permission string) bool {
 	if claims.Role == auth.RoleSuperAdmin || claims.Role == auth.RoleAdmin {
 		return true

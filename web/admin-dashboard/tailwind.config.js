@@ -22,7 +22,23 @@ export default {
       },
       fontFamily: {
         'sans': ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
-      }
+        'display': ['Outfit', 'sans-serif'],
+        'mono': ['JetBrains Mono', 'ui-monospace', 'monospace'],
+      },
+      animation: {
+        'stagger-fade': 'stagger-fade 0.4s ease-out forwards',
+        'pulse-soft': 'pulse-soft 2s ease-in-out infinite',
+      },
+      keyframes: {
+        'stagger-fade': {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'pulse-soft': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.7' },
+        },
+      },
     },
   },
   plugins: [],

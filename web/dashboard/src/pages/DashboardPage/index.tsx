@@ -76,6 +76,18 @@ export function DashboardPage() {
     staleTime: 30_000,
   });
 
+  const { data: metricsData, isLoading: metricsLoading } = useQuery({
+    queryKey: ["dashboard", "metrics"],
+    queryFn: () => dashboardApi.getMetrics(),
+    staleTime: 60_000,
+  });
+
+  const { data: healthStatus = "unknown" } = useQuery({
+    queryKey: ["dashboard", "health"],
+    queryFn: () => dashboardApi.getHealthStatus(),
+    staleTime: 30_000,
+  });
+
   const usageGraphData = useMemo(() => {
     const raw = usageData?.data ?? [];
     return raw.map((d) => ({
@@ -120,8 +132,36 @@ export function DashboardPage() {
     }));
   }, [providers]);
 
-  const sparklineUp = useMemo(() => [10, 14, 12, 18, 22, 20, 24], []);
-  const sparklineFlat = useMemo(() => [20, 22, 19, 21, 20, 23, 22], []);
+  const requestsSparkline = useMemo(() => {
+    const raw = metricsData?.requests_sparkline ?? [];
+    return raw.length ? raw.map(Number) : [0, 0, 0, 0, 0, 0, 0];
+  }, [metricsData?.requests_sparkline]);
+  const uptimeSparkline = useMemo(() => {
+    const raw = metricsData?.uptime_sparkline ?? [];
+    return raw.length ? raw.map(Number) : [100, 100, 100, 100, 100, 100, 100];
+  }, [metricsData?.uptime_sparkline]);
+
+  const requestsThisMonth = metricsData?.requests_this_month ?? 0;
+  const requestsPrevMonth = metricsData?.requests_prev_month ?? 0;
+  const requestsChangePercent =
+    requestsPrevMonth > 0
+      ? Math.round(((requestsThisMonth - requestsPrevMonth) / requestsPrevMonth) * 1000) / 10
+      : undefined;
+  const formatRequests = (n: number) =>
+    n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+
+  const uptimePct = metricsData?.uptime_pct;
+  const uptimePrevPct = metricsData?.uptime_prev_pct ?? 100;
+  const uptimeChangePercent =
+    uptimePct != null && uptimePrevPct != null
+      ? Math.round((uptimePct - uptimePrevPct) * 10) / 10
+      : undefined;
+
+  const avgLatencyMs = metricsData?.avg_latency_ms;
+  const avgLatencyDisplay =
+    avgLatencyMs != null ? `${Math.round(avgLatencyMs)}ms` : "—";
+  const avgLatencyLabel =
+    avgLatencyMs != null ? "last 7 days" : "no data yet";
 
   return (
     <div className="relative space-y-6">
@@ -187,7 +227,11 @@ export function DashboardPage() {
           </p>
         </div>
         <div className="flex justify-center sm:justify-end">
-          <SystemHealthIndicator status="healthy" showLabel size="md" />
+          <SystemHealthIndicator
+            status={healthStatus as "healthy" | "degraded" | "down" | "unknown"}
+            showLabel
+            size="md"
+          />
         </div>
       </motion.div>
 
@@ -205,30 +249,34 @@ export function DashboardPage() {
           title="Active Functions"
           value={functionsLoading ? "—" : activeFunctions}
           changeLabel="total deployed"
-          changePercent={functions.length > 0 ? 12 : undefined}
-          sparklineData={sparklineUp}
           icon={<FunctionSquare className="h-5 w-5" />}
         />
         <MetricCard
           title="Avg Latency"
-          value="—"
-          changeLabel="no data yet"
+          value={metricsLoading ? "—" : avgLatencyDisplay}
+          changeLabel={avgLatencyLabel}
           icon={<Zap className="h-5 w-5" />}
         />
         <MetricCard
           title="Uptime"
-          value="99.9%"
-          changePercent={0.1}
+          value={
+            metricsLoading
+              ? "—"
+              : uptimePct != null
+                ? `${uptimePct.toFixed(1)}%`
+                : "—"
+          }
+          changePercent={uptimeChangePercent}
           changeLabel="vs last 7d"
-          sparklineData={sparklineFlat}
+          sparklineData={uptimeSparkline}
           icon={<Activity className="h-5 w-5" />}
         />
         <MetricCard
           title="Requests This Month"
-          value="12.4k"
-          changePercent={8.2}
+          value={metricsLoading ? "—" : formatRequests(requestsThisMonth)}
+          changePercent={requestsChangePercent}
           changeLabel="vs last month"
-          sparklineData={sparklineUp}
+          sparklineData={requestsSparkline}
           icon={<Globe className="h-5 w-5" />}
         />
       </motion.div>

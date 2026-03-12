@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/adapters/common"
@@ -14,25 +17,64 @@ import (
 const (
 	ProviderName   = "functionfly-edge"
 	RequestTimeout = 30 * time.Second
+	HealthPath     = "/healthz"
+	// AppNameMaxLen and allowed pattern to prevent path traversal and injection
+	AppNameMaxLen     = 128
+	appNamePatternStr = `^[a-zA-Z0-9][a-zA-Z0-9_-]*$`
 )
 
+var appNameRegex = regexp.MustCompile(appNamePatternStr)
+
+// FunctionFlyAdapter implements ProviderAdapter and DeploymentAdapter for FunctionFly Edge.
+// Edge is a zero-deployment provider: functions are served from the edge URL; deploy only validates and returns the URL.
 type FunctionFlyAdapter struct {
 	signer *signing.RequestSigner
 	client *http.Client
 }
 
+// NewFunctionFlyAdapter creates a new FunctionFly Edge adapter with default HTTP client.
 func NewFunctionFlyAdapter() *FunctionFlyAdapter {
+	return NewFunctionFlyAdapterWithClient(&http.Client{Timeout: RequestTimeout})
+}
+
+// NewFunctionFlyAdapterWithClient creates a new FunctionFly Edge adapter with a custom HTTP client (e.g. for tests or custom TLS).
+func NewFunctionFlyAdapterWithClient(client *http.Client) *FunctionFlyAdapter {
+	if client == nil {
+		client = &http.Client{Timeout: RequestTimeout}
+	}
 	return &FunctionFlyAdapter{
 		signer: &signing.RequestSigner{},
-		client: &http.Client{Timeout: RequestTimeout},
+		client: client,
 	}
 }
 
 func (a *FunctionFlyAdapter) GetName() string { return ProviderName }
 
-func (a *FunctionFlyAdapter) ValidateConfig(region, url string) error {
-	if url == "" {
+// ValidateConfig validates region and edge URL. URL must be HTTPS and a valid base URL.
+func (a *FunctionFlyAdapter) ValidateConfig(region, rawURL string) error {
+	if rawURL == "" {
 		return fmt.Errorf("URL is required for %s provider", ProviderName)
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	if parsed.Scheme != "https" {
+		return fmt.Errorf("URL must use HTTPS for %s provider", ProviderName)
+	}
+	if parsed.Host == "" {
+		return fmt.Errorf("URL must have a host for %s provider", ProviderName)
+	}
+	validRegions := a.GetRegions()
+	regionOK := false
+	for _, r := range validRegions {
+		if r == region {
+			regionOK = true
+			break
+		}
+	}
+	if !regionOK {
+		return fmt.Errorf("invalid region %q, valid: %v", region, validRegions)
 	}
 	return nil
 }
@@ -41,10 +83,62 @@ func (a *FunctionFlyAdapter) GetRegions() []string {
 	return []string{"us-east-1", "eu-west-1", "ap-southeast-1"}
 }
 
+// HealthCheck performs an HTTP GET to backend.URL/healthz with signed request, respects context and reports latency.
 func (a *FunctionFlyAdapter) HealthCheck(ctx context.Context, backend *storage.Backend) (*common.HealthCheckResult, error) {
-	return &common.HealthCheckResult{OK: true, StatusCode: 200}, nil
+	if backend == nil {
+		return &common.HealthCheckResult{
+			OK:           false,
+			ErrorMessage: "backend is nil",
+		}, nil
+	}
+	base := strings.TrimSuffix(backend.URL, "/")
+	if base == "" {
+		return &common.HealthCheckResult{
+			OK:           false,
+			ErrorMessage: "backend URL is empty",
+		}, nil
+	}
+	healthURL := base + HealthPath
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, healthURL, nil)
+	if err != nil {
+		return &common.HealthCheckResult{
+			OK:           false,
+			ErrorMessage: fmt.Sprintf("failed to create request: %v", err),
+		}, nil
+	}
+	start := time.Now()
+	if err := a.SignRequest(req, backend, start); err != nil {
+		return &common.HealthCheckResult{
+			OK:           false,
+			ErrorMessage: fmt.Sprintf("failed to sign request: %v", err),
+		}, nil
+	}
+	resp, err := a.client.Do(req)
+	latencyMs := int(time.Since(start).Milliseconds())
+	if err != nil {
+		return &common.HealthCheckResult{
+			OK:           false,
+			LatencyMs:    latencyMs,
+			ErrorMessage: fmt.Sprintf("health check failed: %v", err),
+		}, nil
+	}
+	defer resp.Body.Close()
+	result := &common.HealthCheckResult{
+		OK:         resp.StatusCode == http.StatusOK,
+		StatusCode: resp.StatusCode,
+		LatencyMs:  latencyMs,
+		Region:     backend.Region,
+	}
+	if v := resp.Header.Get("X-FFLY-Version"); v != "" {
+		result.Version = v
+	}
+	if !result.OK {
+		result.ErrorMessage = fmt.Sprintf("unexpected status code: %d", resp.StatusCode)
+	}
+	return result, nil
 }
 
+// SignRequest signs the request with the backend's shared secret (HMAC-SHA256). Safe if backend is nil.
 func (a *FunctionFlyAdapter) SignRequest(req *http.Request, backend *storage.Backend, timestamp time.Time) error {
 	secret := ""
 	if backend != nil {
@@ -55,22 +149,82 @@ func (a *FunctionFlyAdapter) SignRequest(req *http.Request, backend *storage.Bac
 
 func (a *FunctionFlyAdapter) GetRequestTimeout() time.Duration { return RequestTimeout }
 
-func (a *FunctionFlyAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
-	return &common.DeploymentResult{Status: common.DeploymentStatusPending, Message: "not implemented"}, nil
+// validateAppName returns an error if name is invalid (injection or path traversal risk).
+func validateAppName(name string) error {
+	if name == "" {
+		return fmt.Errorf("app name is required")
+	}
+	if len(name) > AppNameMaxLen {
+		return fmt.Errorf("app name must be at most %d characters", AppNameMaxLen)
+	}
+	if !appNameRegex.MatchString(name) {
+		return fmt.Errorf("app name must match %s", appNamePatternStr)
+	}
+	return nil
 }
 
+// baseURLFromSpec returns the edge base URL from provider config or default.
+func baseURLFromSpec(spec *common.DeploymentSpec) string {
+	if spec != nil && spec.ProviderConfig != nil {
+		if u, ok := spec.ProviderConfig["url"].(string); ok && u != "" {
+			return strings.TrimSuffix(u, "/")
+		}
+	}
+	return "https://edge.functionfly.com"
+}
+
+// Deploy validates the spec and returns the deployment URL. FunctionFly Edge is zero-deploy; no artifact is pushed.
+func (a *FunctionFlyAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
+	if spec == nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "deployment spec is required",
+		}, nil
+	}
+	if err := validateAppName(spec.AppName); err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: err.Error(),
+		}, nil
+	}
+	base := baseURLFromSpec(spec)
+	// Build URL safely: base is already validated or default; AppName is validated
+	deploymentURL := base + "/" + spec.AppName
+	return &common.DeploymentResult{
+		Status:        common.DeploymentStatusSuccess,
+		Message:       "Function available via FunctionFly Edge",
+		DeploymentURL: deploymentURL,
+		DeploymentID:  spec.AppName,
+		Metadata: map[string]interface{}{
+			"provider": ProviderName,
+			"endpoint": deploymentURL,
+			"noDeploy": true,
+		},
+	}, nil
+}
+
+// SetEnv is a no-op for FunctionFly Edge; env is managed by the orchestrator/vault at invoke time.
 func (a *FunctionFlyAdapter) SetEnv(ctx context.Context, deploymentID string, providerConfig map[string]interface{}, envVars, secrets map[string]string) error {
 	return nil
 }
 
+// BindRoutes is a no-op for FunctionFly Edge; routing is by path prefix on the edge.
 func (a *FunctionFlyAdapter) BindRoutes(ctx context.Context, deploymentID string, providerConfig map[string]interface{}, routes []common.RouteBinding) error {
 	return nil
 }
 
+// GetDeploymentStatus returns success for any non-empty deploymentID (edge serves by app name).
 func (a *FunctionFlyAdapter) GetDeploymentStatus(ctx context.Context, deploymentID string, providerConfig map[string]interface{}) (common.DeploymentStatus, error) {
-	return common.DeploymentStatusPending, nil
+	if deploymentID == "" {
+		return common.DeploymentStatusFailed, fmt.Errorf("deployment ID is required")
+	}
+	return common.DeploymentStatusSuccess, nil
 }
 
+// Rollback is a no-op; FunctionFly Edge applies updates instantly.
 func (a *FunctionFlyAdapter) Rollback(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
-	return &common.DeploymentResult{Status: common.DeploymentStatusPending, Message: "not implemented"}, nil
+	return &common.DeploymentResult{
+		Status:  common.DeploymentStatusSuccess,
+		Message: "No rollback needed — FunctionFly Edge provides instant updates",
+	}, nil
 }

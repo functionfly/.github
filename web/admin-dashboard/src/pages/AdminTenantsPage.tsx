@@ -31,7 +31,8 @@ export function AdminTenantsPage() {
     staleTime: 1000 * 60, // 1 minute
   });
 
-  const tenants = tenantsResponse?.data || [];
+  const listResponse = tenantsResponse as { data?: Tenant[]; tenants?: Tenant[] } | undefined;
+  const tenants = listResponse?.tenants ?? listResponse?.data ?? [];
 
   // Create tenant mutation
   const createMutation = useMutation({

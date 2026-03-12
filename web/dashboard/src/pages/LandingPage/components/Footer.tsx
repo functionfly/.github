@@ -4,7 +4,12 @@ import { Logo } from "@/components/common/Logo";
 import { DOCS_SITE_URL } from "@/lib/constants";
 import { useAuthStore } from "@/stores/authStore";
 
-export function Footer() {
+interface FooterProps {
+  /** Set to false when another fixed bottom-right element (e.g. fly guide) is shown to avoid overlap. Default true. */
+  showScrollToTop?: boolean;
+}
+
+export function Footer({ showScrollToTop = true }: FooterProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   return (
@@ -295,17 +300,19 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Back to Top Button */}
-        <motion.button
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-8 right-8 w-12 h-12 bg-gradient-to-r from-brand-500 to-purple-500 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl hover:shadow-brand-500/25 transition-all duration-200 z-50 glow hover-lift"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          <ArrowUp className="w-5 h-5" />
-        </motion.button>
+        {/* Back to Top Button - hidden in dashboard layout so fly guide bot is visible */}
+        {showScrollToTop && (
+          <motion.button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="fixed bottom-8 right-8 w-12 h-12 bg-gradient-to-r from-brand-500 to-purple-500 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl hover:shadow-brand-500/25 transition-all duration-200 z-50 glow hover-lift"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <ArrowUp className="w-5 h-5" />
+          </motion.button>
+        )}
       </div>
     </footer>
   );

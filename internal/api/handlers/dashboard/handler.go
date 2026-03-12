@@ -117,3 +117,39 @@ func (h *Handler) HandleGetActivity(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"activities": items})
 }
+
+// HandleGetMetrics returns aggregated dashboard metrics for the current tenant.
+// GET /v1/dashboard/metrics
+func (h *Handler) HandleGetMetrics(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	metrics, err := h.repo.GetDashboardMetrics(r.Context(), user.TenantID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get dashboard metrics")
+		http.Error(w, "Failed to get metrics", http.StatusInternalServerError)
+		return
+	}
+
+	out := map[string]interface{}{
+		"requests_this_month": metrics.RequestsThisMonth,
+		"requests_prev_month": metrics.RequestsPrevMonth,
+		"uptime_sparkline":    metrics.UptimeSparkline,
+		"requests_sparkline":  metrics.RequestsSparkline,
+	}
+	if metrics.AvgLatencyMs != nil {
+		out["avg_latency_ms"] = *metrics.AvgLatencyMs
+	}
+	if metrics.UptimePct != nil {
+		out["uptime_pct"] = *metrics.UptimePct
+	}
+	if metrics.UptimePrevPct != nil {
+		out["uptime_prev_pct"] = *metrics.UptimePrevPct
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(out)
+}

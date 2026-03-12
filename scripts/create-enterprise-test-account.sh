@@ -94,7 +94,12 @@ export PGPASSWORD="${PGPASSWORD:-$DB_PASSWORD}"
 export PGPASSWORD="${PGPASSWORD:-postgres}"
 
 print_info "Generating password hash..."
-PASSWORD_HASH=$(echo -n "$PASSWORD" | htpasswd -bnBC 10 "" | tr -d ':\n' | sed 's/$2y/$2b/')
+# htpasswd -n outputs "user:hash"; use a dummy user and strip it. -B = bcrypt, -C 10 = cost.
+PASSWORD_HASH=$(htpasswd -nbB -C 10 _ "$PASSWORD" | sed 's/^_://')
+if [ -z "$PASSWORD_HASH" ] || [ "${PASSWORD_HASH#\$2}" = "$PASSWORD_HASH" ]; then
+    print_error "Failed to generate bcrypt hash (htpasswd may not support -B -C)."
+    exit 1
+fi
 
 print_info "Connecting to database $DB_HOST:$DB_PORT/$DB_NAME ..."
 if ! psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" >/dev/null 2>&1; then

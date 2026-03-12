@@ -17,6 +17,7 @@ import {
   Users,
   Building2,
   CreditCard,
+  Key,
   FileText,
   Mail,
   Calendar,
@@ -76,7 +77,8 @@ const navigationSections: NavSection[] = [
       { path: ROUTES.PROVIDERS, label: "Providers", icon: Cloud },
       { path: ROUTES.TEAMS, label: "Teams", icon: Users },
       { path: ROUTES.STATE_FABRIC, label: "State Fabric", icon: Database },
-      { path: ROUTES.AGENTS, label: "Agents", icon: Bot }
+      { path: ROUTES.AGENTS, label: "Agents", icon: Bot },
+      { path: ROUTES.SECRETS, label: "Secrets", icon: Key }
     ]
   },
   {

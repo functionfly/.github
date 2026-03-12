@@ -128,8 +128,8 @@ func secretToResponse(s *vault.Secret) SecretResponse {
 		SecretType:  s.SecretType,
 		EncryptedData: EncryptedDataPayload{
 			Ciphertext: base64.StdEncoding.EncodeToString(s.EncryptedValue),
-			Salt:       s.EncryptionSalt,
-			IV:         s.IV,
+			Salt:       base64.StdEncoding.EncodeToString(s.EncryptionSalt),
+			IV:         base64.StdEncoding.EncodeToString(s.IV),
 			Tag:        "", // Tag is part of ciphertext in GCM mode
 			KeyVersion: s.KeyVersion,
 		},

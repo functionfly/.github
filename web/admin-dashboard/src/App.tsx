@@ -30,6 +30,7 @@ const AdminTenantDetailPage = lazy(() => import('@/pages/AdminTenantDetailPage')
 const AdminUserDetailPage = lazy(() => import('@/pages/AdminUserDetailPage').then((m) => ({ default: m.AdminUserDetailPage })));
 const AdminFunctionDetailPage = lazy(() => import('@/pages/AdminFunctionDetailPage').then((m) => ({ default: m.AdminFunctionDetailPage })));
 const AdminContentPage = lazy(() => import('@/pages/AdminContentPage').then((m) => ({ default: m.AdminContentPage })));
+const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage').then((m) => ({ default: m.AdminBlogPage })));
 const AdminRegistryPage = lazy(() => import('@/pages/AdminRegistryPage').then((m) => ({ default: m.AdminRegistryPage })));
 const AdminStateFabricPage = lazy(() => import('@/pages/AdminStateFabricPage').then((m) => ({ default: m.AdminStateFabricPage })));
 const AdminFeedbackPage = lazy(() => import('@/pages/AdminFeedbackPage').then((m) => ({ default: m.AdminFeedbackPage })));
@@ -40,7 +41,7 @@ const AdminExecutionAuditPage = lazy(() => import('@/pages/AdminExecutionAuditPa
 const AdminFraudDetectionPage = lazy(() => import('@/pages/AdminFraudDetectionPage').then((m) => ({ default: m.AdminFraudDetectionPage })));
 const AdminEconomicLeaderboardPage = lazy(() => import('@/pages/AdminEconomicLeaderboardPage').then((m) => ({ default: m.AdminEconomicLeaderboardPage })));
 const AdminRedirectsPage = lazy(() => import('@/pages/AdminRedirectsPage').then((m) => ({ default: m.AdminRedirectsPage })));
-const AdminNewsletterPage = lazy(() => import('@/pages/AdminNewsletterPage').then((m) => ({ default: m.AdminNewsletterPage })));
+const AdminEmailPage = lazy(() => import('@/pages/AdminEmailPage').then((m) => ({ default: m.AdminEmailPage })));
 const AdminContentCalendarPage = lazy(() => import('@/pages/AdminContentCalendarPage').then((m) => ({ default: m.AdminContentCalendarPage })));
 const AdminIncidentsPage = lazy(() => import('@/pages/AdminIncidentsPage').then((m) => ({ default: m.AdminIncidentsPage })));
 const AdminFactoryPage = lazy(() => import('@/pages/AdminFactoryPage').then((m) => ({ default: m.AdminFactoryPage })));
@@ -178,6 +179,14 @@ function App() {
                 }
               />
               <Route
+                path="blog"
+                element={
+                  <Suspense fallback={<LoadingScreen />}>
+                    <AdminBlogPage />
+                  </Suspense>
+                }
+              />
+              <Route
                 path="registry"
                 element={
                   <Suspense fallback={<LoadingScreen />}>
@@ -234,13 +243,14 @@ function App() {
                 }
               />
               <Route
-                path="newsletter"
+                path="email"
                 element={
                   <Suspense fallback={<LoadingScreen />}>
-                    <AdminNewsletterPage />
+                    <AdminEmailPage />
                   </Suspense>
                 }
               />
+              <Route path="newsletter" element={<Navigate to="/email" replace />} />
               <Route
                 path="content-calendar"
                 element={

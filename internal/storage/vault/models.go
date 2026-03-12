@@ -15,6 +15,7 @@ type Secret struct {
 
 	// Tenant ownership for multi-tenancy
 	TenantID uuid.UUID `gorm:"type:uuid;not null;index"`
+	UserID   uuid.UUID `gorm:"type:uuid;not null"` // User who created the secret (required by DB)
 
 	// Secret identification
 	Name        string `gorm:"not null;size:255"`
@@ -27,10 +28,11 @@ type Secret struct {
 	// This is the AES-256-GCM encrypted blob (ciphertext + auth tag)
 	EncryptedValue []byte `gorm:"type:bytea;not null"`
 
-	// Encryption metadata
-	EncryptionSalt string `gorm:"not null;size:255"`  // PBKDF2 salt (base64)
-	IV             string `gorm:"not null;size:255"`  // AES-GCM IV/nonce (base64)
-	KeyVersion     int    `gorm:"not null;default:1"` // 1=passphrase, 2=KMS, 3=HSM
+	// Encryption metadata (column names match migration: encryption_iv, encryption_salt; BYTEA in DB)
+	EncryptionSalt    []byte `gorm:"column:encryption_salt;type:bytea;not null"`     // PBKDF2 salt
+	IV                []byte `gorm:"column:encryption_iv;type:bytea;not null"`       // AES-GCM IV/nonce
+	EncryptionAuthTag []byte `gorm:"column:encryption_auth_tag;type:bytea;not null"` // GCM auth tag (required by DB)
+	KeyVersion        int    `gorm:"not null;default:1"`                             // 1=passphrase, 2=KMS, 3=HSM
 
 	// Access control scopes (JSONB for flexibility)
 	Scopes JSONMap `gorm:"type:jsonb;not null;default:'[]'::jsonb"`

@@ -1,6 +1,14 @@
 -- Migration: Add user profile fields for extended profile support
 -- Created: 2026-03-02
 
+-- Ensure current_user_id() exists (may be missing if RLS migration not yet applied)
+CREATE OR REPLACE FUNCTION current_user_id()
+RETURNS uuid AS $$
+BEGIN
+    RETURN NULLIF(current_setting('app.current_user_id', true), '')::uuid;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Add new columns to users table
 ALTER TABLE users
     ADD COLUMN IF NOT EXISTS location VARCHAR(255),

@@ -44,6 +44,20 @@ type Vulnerability struct {
 	UpdatedAt     time.Time              `json:"updated_at" db:"updated_at"`
 }
 
+// FeatureMeasure represents a platform security/feature measure (admin can toggle enabled).
+type FeatureMeasure struct {
+	ID          uuid.UUID `json:"id" db:"id"`
+	Key         string    `json:"key" db:"key"`
+	Name        string    `json:"name" db:"name"`
+	Description string    `json:"description" db:"description"`
+	Category    string    `json:"category" db:"category"`
+	Icon        string    `json:"icon" db:"icon"`
+	Enabled     bool      `json:"enabled" db:"enabled"`
+	SortOrder   int       `json:"sort_order" db:"sort_order"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+}
+
 // OAuthState stores OAuth CSRF state tokens for validation on callback (persisted for multi-instance).
 type OAuthState struct {
 	State     string    `gorm:"column:state;primaryKey;size:512"`

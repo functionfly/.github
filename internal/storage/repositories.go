@@ -289,6 +289,14 @@ func (db *PostgresDB) UpdateBackendEnabled(ctx context.Context, backendID uuid.U
 	return db.backendRepository.UpdateBackendEnabled(ctx, backendID, enabled)
 }
 
+func (db *PostgresDB) ListFeatureMeasures(ctx context.Context) ([]*FeatureMeasure, error) {
+	return db.featureMeasureRepository.ListFeatureMeasures(ctx)
+}
+
+func (db *PostgresDB) UpdateFeatureMeasureEnabled(ctx context.Context, id uuid.UUID, enabled bool) error {
+	return db.featureMeasureRepository.UpdateFeatureMeasureEnabled(ctx, id, enabled)
+}
+
 func (db *PostgresDB) InsertHealthCheck(backendID uuid.UUID, ok bool, statusCode, latencyMs int, errorMessage string) error {
 	return db.backendRepository.InsertHealthCheck(backendID, ok, statusCode, latencyMs, errorMessage)
 }
@@ -969,6 +977,10 @@ func (db *PostgresDB) GetExecutionRateByHour(ctx context.Context, tenantID uuid.
 
 func (db *PostgresDB) GetRecentActivityForTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]DashboardActivityItem, error) {
 	return db.functionRepository.GetRecentActivityForTenant(ctx, tenantID, limit)
+}
+
+func (db *PostgresDB) GetDashboardMetrics(ctx context.Context, tenantID uuid.UUID) (*DashboardMetrics, error) {
+	return db.functionRepository.GetDashboardMetrics(ctx, tenantID)
 }
 
 // Team operations

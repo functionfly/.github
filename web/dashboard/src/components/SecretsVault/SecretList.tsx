@@ -15,10 +15,13 @@ import {
   Clock,
   MoreHorizontal,
   Search,
+  AlertCircle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useVaultSecrets, useDeleteSecret } from "@/hooks/useVault";
+import { useAuthStore } from "@/stores/authStore";
+import { getSecretsLimit, formatSecretsRemaining } from "@/lib/plan-utils";
 import type { SecretMetadata, SecretType } from "@/types/vault";
 
 import { Button } from "@/components/ui/button";
@@ -90,11 +93,19 @@ export interface SecretListProps {
 export function SecretList({ className }: SecretListProps) {
   const { data: secrets, isLoading, error } = useVaultSecrets();
   const deleteSecret = useDeleteSecret();
+  const user = useAuthStore((state) => state.user);
+  const userPlan = user?.plan;
+  const secretsLimit = getSecretsLimit(userPlan);
+  const currentSecretCount = secrets?.length ?? 0;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedSecretId, setSelectedSecretId] = useState<string | null>(null);
   const [secretToDelete, setSecretToDelete] = useState<SecretMetadata | null>(null);
+
+  // Check if user has reached their secrets limit
+  const hasReachedLimit = secretsLimit > 0 && currentSecretCount >= secretsLimit;
+  const canCreateSecrets = secretsLimit > 0;
 
   // Filter secrets based on search query
   const filteredSecrets = secrets?.filter((secret) => {
@@ -162,13 +173,33 @@ export function SecretList({ className }: SecretListProps) {
             className="pl-10"
           />
         </div>
-        <Button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Create Secret
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Secrets limit indicator */}
+          {secretsLimit > 0 && (
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm",
+              hasReachedLimit
+                ? "bg-warning/10 text-warning"
+                : "bg-muted text-muted-foreground"
+            )}>
+              <AlertCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">
+                {formatSecretsRemaining(currentSecretCount, userPlan)}
+              </span>
+              <span className="sm:hidden">
+                {currentSecretCount}/{secretsLimit}
+              </span>
+            </div>
+          )}
+          <Button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="gap-2"
+            disabled={hasReachedLimit}
+          >
+            <Plus className="h-4 w-4" />
+            Create Secret
+          </Button>
+        </div>
       </div>
 
       {/* Empty state */}
@@ -178,17 +209,27 @@ export function SecretList({ className }: SecretListProps) {
             <Key className="h-8 w-8 text-brand-500" />
           </div>
           <h3 className="text-lg font-semibold text-card-foreground mb-2">
-            {searchQuery ? "No secrets found" : "No secrets yet"}
+            {searchQuery ? "No secrets found" : canCreateSecrets ? "No secrets yet" : "Secrets not available"}
           </h3>
           <p className="text-text-secondary max-w-sm mx-auto mb-6">
             {searchQuery
               ? "No secrets match your search query. Try a different search term."
-              : "Create your first secret to securely store API keys, passwords, and other sensitive data."}
+              : canCreateSecrets
+                ? "Create your first secret to securely store API keys, passwords, and other sensitive data."
+                : "Secrets are not available on your current plan. Upgrade to Starter or higher to use secrets."}
           </p>
-          {!searchQuery && (
-            <Button onClick={() => setIsCreateModalOpen(true)}>
+          {!searchQuery && canCreateSecrets && (
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              disabled={hasReachedLimit}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create Secret
+            </Button>
+          )}
+          {!canCreateSecrets && (
+            <Button onClick={() => window.location.href = '/pricing'}>
+              Upgrade Plan
             </Button>
           )}
         </div>

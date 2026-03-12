@@ -3,7 +3,7 @@
  * AI Function Factory status monitoring and review queue management
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
@@ -16,6 +16,8 @@ import {
   Search,
   Zap,
   AlertTriangle,
+  Settings,
+  Save,
 } from 'lucide-react';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
 import {
@@ -23,15 +25,18 @@ import {
   type FactoryStatus,
   type PendingReview,
   type FactoryRun,
+  type FactoryConfig,
 } from '@/lib/api/factory';
 import clsx from 'clsx';
 
 /**
  * AdminFactoryPage - Factory status monitoring and review queue management
  */
+type FactorySettingsForm = Partial<FactoryConfig>;
+
 export function AdminFactoryPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'status' | 'reviews'>('status');
+  const [activeTab, setActiveTab] = useState<'status' | 'reviews' | 'settings'>('status');
   const [selectedReview, setSelectedReview] = useState<PendingReview | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -64,6 +69,82 @@ export function AdminFactoryPage() {
     },
     refetchInterval: 15000,
   });
+
+  // Fetch factory config for Settings tab
+  const {
+    data: factoryConfig,
+    isLoading: configLoading,
+    error: configError,
+  } = useQuery({
+    queryKey: ['factory-config'],
+    queryFn: async (): Promise<FactoryConfig | null> => {
+      const data = await factoryApi.getConfig();
+      return data ?? null;
+    },
+    enabled: activeTab === 'settings',
+  });
+
+  // Settings form state (initialized from fetched config)
+  const [settingsForm, setSettingsForm] = useState<FactorySettingsForm>({});
+  const [settingsFormDirty, setSettingsFormDirty] = useState(false);
+  useEffect(() => {
+    if (factoryConfig && activeTab === 'settings') {
+      setSettingsForm({
+        agent_id: factoryConfig.agent_id,
+        discovery_batch_size: factoryConfig.discovery_batch_size,
+        minimum_quality_score: factoryConfig.minimum_quality_score,
+        minimum_test_score: factoryConfig.minimum_test_score,
+        require_all_tests_pass: factoryConfig.require_all_tests_pass,
+        auto_publish: factoryConfig.auto_publish,
+        max_opportunities_per_run: factoryConfig.max_opportunities_per_run,
+        retry_attempts: factoryConfig.retry_attempts,
+        retry_backoff_ms: factoryConfig.retry_backoff_ms,
+        schedule_enabled: factoryConfig.schedule_enabled ?? false,
+        schedule_cron: factoryConfig.schedule_cron ?? '0 0 * * *',
+        schedule_timezone: factoryConfig.schedule_timezone ?? 'UTC',
+        notification_webhook_url: factoryConfig.notification_webhook_url ?? '',
+        rate_limit_per_hour: factoryConfig.rate_limit_per_hour ?? 10,
+        max_concurrent_runs: factoryConfig.max_concurrent_runs ?? 1,
+        dry_run_mode: factoryConfig.dry_run_mode ?? false,
+        discovery_sources: factoryConfig.discovery_sources ?? [],
+        feature_flags: factoryConfig.feature_flags ?? {},
+        approval_required_above_quality: factoryConfig.approval_required_above_quality ?? 0,
+        approval_required_above_test: factoryConfig.approval_required_above_test ?? 0,
+        log_level: factoryConfig.log_level ?? 'info',
+        notify_on_failure: factoryConfig.notify_on_failure ?? true,
+        notify_on_review_required: factoryConfig.notify_on_review_required ?? true,
+        discovery_cooldown_minutes: factoryConfig.discovery_cooldown_minutes ?? 60,
+        max_versions_per_function: factoryConfig.max_versions_per_function ?? 5,
+      });
+      setSettingsFormDirty(false);
+    }
+  }, [factoryConfig, activeTab]);
+
+  // Update config mutation (Settings tab)
+  const updateConfigMutation = useMutation({
+    mutationFn: (payload: FactorySettingsForm) => factoryApi.updateConfig(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factory-config'] });
+      queryClient.invalidateQueries({ queryKey: ['factory-status'] });
+      setSettingsFormDirty(false);
+      alert('Configuration saved.');
+    },
+    onError: (error: Error) => {
+      alert(`Failed to save configuration: ${error.message}`);
+    },
+  });
+
+  const updateSetting = <K extends keyof FactorySettingsForm>(
+    key: K,
+    value: FactorySettingsForm[K]
+  ) => {
+    setSettingsForm((prev) => ({ ...prev, [key]: value }));
+    setSettingsFormDirty(true);
+  };
+
+  const handleSaveSettings = () => {
+    updateConfigMutation.mutate(settingsForm);
+  };
 
   // Pipeline run mutation
   const runPipelineMutation = useMutation({
@@ -242,6 +323,18 @@ export function AdminFactoryPage() {
                 {pendingReviews.total}
               </span>
             ) : null}
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={clsx(
+              'py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2',
+              activeTab === 'settings'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            )}
+          >
+            <Settings className="h-4 w-4" />
+            Settings
           </button>
         </nav>
       </div>
@@ -520,6 +613,363 @@ export function AdminFactoryPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Settings Tab */}
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          {configLoading ? (
+            <div className="text-center py-12 text-gray-500">Loading configuration...</div>
+          ) : configError ? (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800">Failed to load configuration: {(configError as Error).message}</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">Factory configuration</h2>
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={!settingsFormDirty || updateConfigMutation.isPending}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  <Save className="h-4 w-4" />
+                  {updateConfigMutation.isPending ? 'Saving...' : 'Save changes'}
+                </button>
+              </div>
+
+              <div className="grid gap-6">
+                {/* Discovery */}
+                <section className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-md font-semibold text-gray-900 mb-4">Discovery</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Discovery batch size</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={settingsForm.discovery_batch_size ?? 10}
+                        onChange={(e) => updateSetting('discovery_batch_size', parseInt(e.target.value, 10) || 10)}
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Discovery cooldown (minutes)</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={settingsForm.discovery_cooldown_minutes ?? 60}
+                        onChange={(e) => updateSetting('discovery_cooldown_minutes', parseInt(e.target.value, 10) || 0)}
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="block md:col-span-2 lg:col-span-1">
+                      <span className="text-sm font-medium text-gray-700">Discovery sources (comma-separated)</span>
+                      <input
+                        type="text"
+                        value={(settingsForm.discovery_sources ?? []).join(', ')}
+                        onChange={(e) =>
+                          updateSetting(
+                            'discovery_sources',
+                            e.target.value.split(',').map((s) => s.trim()).filter(Boolean)
+                          )
+                        }
+                        placeholder="e.g. api, registry"
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                {/* Quality & Testing */}
+                <section className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-md font-semibold text-gray-900 mb-4">Quality & testing</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Minimum quality score</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        value={settingsForm.minimum_quality_score ?? 70}
+                        onChange={(e) =>
+                          updateSetting('minimum_quality_score', parseFloat(e.target.value) || 0)
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Minimum test score</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        value={settingsForm.minimum_test_score ?? 80}
+                        onChange={(e) =>
+                          updateSetting('minimum_test_score', parseFloat(e.target.value) || 0)
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Approval required above quality</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={settingsForm.approval_required_above_quality ?? 0}
+                        onChange={(e) =>
+                          updateSetting('approval_required_above_quality', parseInt(e.target.value, 10) || 0)
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Approval required above test</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={settingsForm.approval_required_above_test ?? 0}
+                        onChange={(e) =>
+                          updateSetting('approval_required_above_test', parseInt(e.target.value, 10) || 0)
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={settingsForm.require_all_tests_pass ?? true}
+                        onChange={(e) => updateSetting('require_all_tests_pass', e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Require all tests to pass</span>
+                    </label>
+                  </div>
+                </section>
+
+                {/* Publishing */}
+                <section className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-md font-semibold text-gray-900 mb-4">Publishing</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={settingsForm.auto_publish ?? true}
+                        onChange={(e) => updateSetting('auto_publish', e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Auto-publish</span>
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Max opportunities per run</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={settingsForm.max_opportunities_per_run ?? 3}
+                        onChange={(e) =>
+                          updateSetting('max_opportunities_per_run', parseInt(e.target.value, 10) || 1)
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Max versions per function</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={settingsForm.max_versions_per_function ?? 5}
+                        onChange={(e) =>
+                          updateSetting('max_versions_per_function', parseInt(e.target.value, 10) || 1)
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                {/* Scheduling */}
+                <section className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-md font-semibold text-gray-900 mb-4">Scheduling</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={settingsForm.schedule_enabled ?? false}
+                        onChange={(e) => updateSetting('schedule_enabled', e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Schedule enabled</span>
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Cron expression</span>
+                      <input
+                        type="text"
+                        value={settingsForm.schedule_cron ?? '0 0 * * *'}
+                        onChange={(e) => updateSetting('schedule_cron', e.target.value)}
+                        placeholder="0 0 * * *"
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Timezone</span>
+                      <input
+                        type="text"
+                        value={settingsForm.schedule_timezone ?? 'UTC'}
+                        onChange={(e) => updateSetting('schedule_timezone', e.target.value)}
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                {/* Retries */}
+                <section className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-md font-semibold text-gray-900 mb-4">Retries</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Retry attempts</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={settingsForm.retry_attempts ?? 1}
+                        onChange={(e) => updateSetting('retry_attempts', parseInt(e.target.value, 10) || 0)}
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Retry backoff (ms)</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={settingsForm.retry_backoff_ms ?? 500}
+                        onChange={(e) => updateSetting('retry_backoff_ms', parseInt(e.target.value, 10) || 0)}
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                {/* Notifications */}
+                <section className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-md font-semibold text-gray-900 mb-4">Notifications</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="block md:col-span-2">
+                      <span className="text-sm font-medium text-gray-700">Webhook URL</span>
+                      <input
+                        type="url"
+                        value={settingsForm.notification_webhook_url ?? ''}
+                        onChange={(e) => updateSetting('notification_webhook_url', e.target.value)}
+                        placeholder="https://..."
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={settingsForm.notify_on_failure ?? true}
+                        onChange={(e) => updateSetting('notify_on_failure', e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Notify on failure</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={settingsForm.notify_on_review_required ?? true}
+                        onChange={(e) => updateSetting('notify_on_review_required', e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Notify on review required</span>
+                    </label>
+                  </div>
+                </section>
+
+                {/* Advanced */}
+                <section className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-md font-semibold text-gray-900 mb-4">Advanced</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Rate limit (per hour)</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={settingsForm.rate_limit_per_hour ?? 10}
+                        onChange={(e) =>
+                          updateSetting('rate_limit_per_hour', parseInt(e.target.value, 10) || 0)
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Max concurrent runs</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={settingsForm.max_concurrent_runs ?? 1}
+                        onChange={(e) =>
+                          updateSetting('max_concurrent_runs', parseInt(e.target.value, 10) || 1)
+                        }
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">Log level</span>
+                      <select
+                        value={settingsForm.log_level ?? 'info'}
+                        onChange={(e) => updateSetting('log_level', e.target.value)}
+                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                      >
+                        <option value="debug">debug</option>
+                        <option value="info">info</option>
+                        <option value="warn">warn</option>
+                        <option value="error">error</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={settingsForm.dry_run_mode ?? false}
+                        onChange={(e) => updateSetting('dry_run_mode', e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Dry run mode</span>
+                    </label>
+                  </div>
+                  <div className="mt-4">
+                    <span className="text-sm font-medium text-gray-700">Feature flags (key: true/false, one per line)</span>
+                    <textarea
+                      rows={4}
+                      value={Object.entries(settingsForm.feature_flags ?? {})
+                        .map(([k, v]) => `${k}=${v}`)
+                        .join('\n')}
+                      onChange={(e) => {
+                        const flags: Record<string, boolean> = {};
+                        e.target.value
+                          .split('\n')
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                          .forEach((line) => {
+                            const eq = line.indexOf('=');
+                            if (eq > 0) {
+                              const key = line.slice(0, eq).trim();
+                              const val = line.slice(eq + 1).trim().toLowerCase();
+                              flags[key] = val === 'true' || val === '1';
+                            }
+                          });
+                        updateSetting('feature_flags', flags);
+                      }}
+                      placeholder="feature_a=true\nfeature_b=false"
+                      className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm"
+                    />
+                  </div>
+                </section>
+              </div>
+            </>
+          )}
         </div>
       )}
 

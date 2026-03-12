@@ -1,0 +1,12 @@
+# Edge TLS termination for edge.functionfly.com (and *.functionfly.com).
+# Install certs to /etc/ssl/functionfly/ and use this Caddyfile.
+# Listens on 443 only (no port 80) so it works when 80 is already in use.
+
+https://edge.functionfly.com {
+    tls /etc/ssl/functionfly/fullchain.pem /etc/ssl/functionfly/privkey.pem
+    reverse_proxy localhost:8080 {
+        header_up Host {host}
+        header_up X-Forwarded-Proto https
+        header_up X-Real-IP {remote_host}
+    }
+}

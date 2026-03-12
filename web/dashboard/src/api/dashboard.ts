@@ -44,6 +44,20 @@ export interface DashboardMemoryResponse {
   percent: number;
 }
 
+/** Dashboard metrics from GET /v1/dashboard/metrics */
+export interface DashboardMetricsResponse {
+  requests_this_month: number;
+  requests_prev_month: number;
+  avg_latency_ms?: number;
+  uptime_pct?: number;
+  uptime_prev_pct?: number;
+  uptime_sparkline?: number[];
+  requests_sparkline?: number[];
+}
+
+/** Health status from GET /health/detailed */
+export type SystemHealthStatus = "healthy" | "degraded" | "down" | "unknown";
+
 export const dashboardApi = {
   getUsage: async (days = 14): Promise<DashboardUsageResponse> => {
     const res = await apiClient.get<DashboardUsageResponse>(
@@ -75,5 +89,32 @@ export const dashboardApi = {
       return { percent: 0 };
     }
     return { percent: Math.round(percent * 10) / 10 };
+  },
+
+  /** Fetches aggregated dashboard metrics (requests, latency, uptime, sparklines). */
+  getMetrics: async (): Promise<DashboardMetricsResponse> => {
+    const res = await apiClient.get<DashboardMetricsResponse>("/v1/dashboard/metrics");
+    return (
+      res ?? {
+        requests_this_month: 0,
+        requests_prev_month: 0,
+        uptime_sparkline: [],
+        requests_sparkline: [],
+      }
+    );
+  },
+
+  /** Maps backend health status to dashboard SystemHealthStatus. */
+  getHealthStatus: async (): Promise<SystemHealthStatus> => {
+    try {
+      const res = await apiClient.get<{ status?: string }>("/health/detailed");
+      const s = (res?.status ?? "").toLowerCase();
+      if (s === "ok" || s === "healthy") return "healthy";
+      if (s === "degraded") return "degraded";
+      if (s === "unhealthy" || s === "down") return "down";
+      return "unknown";
+    } catch {
+      return "unknown";
+    }
   },
 };

@@ -4,6 +4,28 @@
    ========================================================================== */
 
 /* ==========================================================================
+   Dashboard Page Titles (visible in both light and dark mode)
+   ========================================================================== */
+
+.page-title {
+  color: var(--text-primary);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+[data-theme="light"] .page-title {
+  color: var(--color-text-primary-light, #0f0f1a);
+}
+
+.page-title-subtle {
+  color: var(--text-secondary);
+}
+
+[data-theme="light"] .page-title-subtle {
+  color: var(--color-text-secondary-light, #3a3a45);
+}
+
+/* ==========================================================================
    Buttons
    ========================================================================== */
 

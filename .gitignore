@@ -179,6 +179,10 @@ venv.bak/
 # SECURITY.md
 # SUPABASE_MIGRATION_GUIDE.md
 
+# Edge TLS certs (never commit)
+deploy/edge/certs-in/
+deploy/edge/certs-out/
+
 # Security audit files
 security-audit-simple.go.disabled
 

@@ -110,7 +110,26 @@ export function useCreateSecret() {
       toast.success(`Secret "${created.name}" created successfully`);
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create secret: ${error.message}`);
+      // Check for secret limit exceeded error
+      const errorMessage = error.message || '';
+      if (
+        errorMessage.includes('SECRET_LIMIT_EXCEEDED') ||
+        errorMessage.includes('403') ||
+        errorMessage.toLowerCase().includes('limit')
+      ) {
+        toast.error(
+          "You've reached your secrets limit. Upgrade your plan to create more secrets.",
+          {
+            duration: 5000,
+            action: {
+              label: 'View Plans',
+              onClick: () => window.location.href = '/pricing'
+            }
+          }
+        );
+      } else {
+        toast.error(`Failed to create secret: ${error.message}`);
+      }
     },
   });
 }
@@ -167,7 +186,26 @@ export function useGenerateToken(secretId: string) {
       // Important: The token is only shown once, handled by the component
     },
     onError: (error: Error) => {
-      toast.error(`Failed to generate token: ${error.message}`);
+      // Check for token limit exceeded error
+      const errorMessage = error.message || '';
+      if (
+        errorMessage.includes('TOKEN_LIMIT_EXCEEDED') ||
+        errorMessage.includes('403') ||
+        errorMessage.toLowerCase().includes('token') && errorMessage.toLowerCase().includes('limit')
+      ) {
+        toast.error(
+          "You've reached your token limit for this secret. Upgrade your plan to create more tokens.",
+          {
+            duration: 5000,
+            action: {
+              label: 'View Plans',
+              onClick: () => window.location.href = '/pricing'
+            }
+          }
+        );
+      } else {
+        toast.error(`Failed to generate token: ${error.message}`);
+      }
     },
   });
 }

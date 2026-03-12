@@ -17,6 +17,16 @@ const (
 	DefaultProMaxRequestsPerMonth        = 500_000
 	DefaultEnterpriseMaxRequestsPerMonth = 10_000_000
 
+	// Secrets limits per tenant
+	StarterMaxSecrets    = 10
+	ProMaxSecrets        = 50
+	EnterpriseMaxSecrets = 10000 // Effectively unlimited
+
+	// Token limits per secret
+	StarterMaxTokensPerSecret    = 5
+	ProMaxTokensPerSecret        = 20
+	EnterpriseMaxTokensPerSecret = 100
+
 	// MicroVM-specific limits (Enterprise tier only)
 	EnterpriseMaxMicroVMs      = 100
 	EnterpriseDefaultMemoryMB  = 512
@@ -228,6 +238,34 @@ func MaxProviders(plan string) int {
 		fallthrough
 	default:
 		return StarterMaxProvidersPerApp
+	}
+}
+
+// GetMaxSecrets returns the maximum number of secrets allowed for the given plan
+func GetMaxSecrets(plan string) int {
+	switch plan {
+	case PlanPro:
+		return ProMaxSecrets
+	case PlanEnterprise:
+		return EnterpriseMaxSecrets
+	case PlanStarter:
+		fallthrough
+	default:
+		return StarterMaxSecrets
+	}
+}
+
+// GetMaxTokensPerSecret returns the maximum number of access tokens allowed per secret for the given plan
+func GetMaxTokensPerSecret(plan string) int {
+	switch plan {
+	case PlanPro:
+		return ProMaxTokensPerSecret
+	case PlanEnterprise:
+		return EnterpriseMaxTokensPerSecret
+	case PlanStarter:
+		fallthrough
+	default:
+		return StarterMaxTokensPerSecret
 	}
 }
 

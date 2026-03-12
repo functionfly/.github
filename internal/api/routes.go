@@ -24,7 +24,6 @@ import (
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	agentmemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/agent_memory"
 	analyticshandler "github.com/functionfly/functionfly/internal/api/handlers/analytics"
-	apikeyhandler "github.com/functionfly/functionfly/internal/api/handlers/apikeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
 	authHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/auth"
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
@@ -58,7 +57,6 @@ import (
 	versionhandler "github.com/functionfly/functionfly/internal/api/handlers/version"
 	"github.com/functionfly/functionfly/internal/api/handlers/wellknown"
 	"github.com/functionfly/functionfly/internal/api/middleware"
-	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/captcha"
@@ -94,10 +92,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	adminBackendsHandler := admin.NewBackendsHandler(s.repo, s.authSvc)
 	adminProvidersHandler := admin.NewProvidersHandler(s.repo, s.authSvc)
 	securityHandler := security.NewHandler(s.repo, s.authSvc)
-
-	// Initialize API key handler
-	apiKeyRepo := apikey.NewRepository(s.postgresDB.GORM)
-	apiKeyHandler := apikeyhandler.NewHandler(apiKeyRepo)
 
 	// Initialize maintenance mode handler
 	maintenanceRepo := storage.NewMaintenanceRepository(s.postgresDB.GORM)
@@ -442,7 +436,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Configurable via AUTH_RATE_LIMIT_REQUESTS / AUTH_RATE_LIMIT_WINDOW_SECONDS env vars.
 	authRateLimiter := middleware.NewAuthRateLimiter()
 
-	// Auth routes (public) - on main router so /auth/login works when proxy rewrites /api -> /auth
+	// Auth routes (public) - on main router, not /v1 subrouter
 	s.router.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
 	s.router.HandleFunc("/auth/refresh", authHandler.HandleRefreshToken).Methods("POST", "OPTIONS")
 	s.router.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
@@ -451,32 +445,16 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.HandleFunc("/auth/resend-verification", authRateLimiter.Limit(authHandler.HandleResendVerification)).Methods("POST", "OPTIONS")
 	s.router.HandleFunc("/auth/get-session", authHandler.HandleGetSession).Methods("GET", "OPTIONS")
 
-	// Same auth routes under /api so /api/auth/login works when dashboard is served from same host (no proxy)
-	apiPrefix := s.router.PathPrefix("/api").Subrouter()
-	apiPrefix.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
-	apiPrefix.HandleFunc("/auth/refresh", authHandler.HandleRefreshToken).Methods("POST", "OPTIONS")
-	apiPrefix.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
-	apiPrefix.HandleFunc("/auth/check-username", authHandler.HandleCheckUsernameAvailability).Methods("GET", "OPTIONS")
-	apiPrefix.HandleFunc("/auth/verify-email", authHandler.HandleVerifyEmail).Methods("GET", "OPTIONS")
-	apiPrefix.HandleFunc("/auth/resend-verification", authRateLimiter.Limit(authHandler.HandleResendVerification)).Methods("POST", "OPTIONS")
-	apiPrefix.HandleFunc("/auth/get-session", authHandler.HandleGetSession).Methods("GET", "OPTIONS")
-
 	// OAuth routes (public) - on main router, not /v1 subrouter
 	s.router.HandleFunc("/auth/oauth/providers", authHandler.HandleGetOAuthProviders).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/auth/oauth/url", authHandler.HandleGetOAuthURL).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/auth/oauth/{provider}/callback", authHandler.HandleOAuthCallback).Methods("GET", "OPTIONS")
-	apiPrefix.HandleFunc("/auth/oauth/providers", authHandler.HandleGetOAuthProviders).Methods("GET", "OPTIONS")
-	apiPrefix.HandleFunc("/auth/oauth/url", authHandler.HandleGetOAuthURL).Methods("GET", "OPTIONS")
-	apiPrefix.HandleFunc("/auth/oauth/{provider}/callback", authHandler.HandleOAuthCallback).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/validate", authMiddleware.RequireAuth(authHandler.HandleValidateToken)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/logout", authMiddleware.RequireAuth(authHandler.HandleLogout)).Methods("POST", "OPTIONS")
 
 	// Password reset routes (public)
 	api.HandleFunc("/auth/password-reset", authRateLimiter.Limit(authHandler.HandlePasswordResetRequest)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/password-reset/confirm", authRateLimiter.Limit(authHandler.HandlePasswordResetConfirm)).Methods("POST", "OPTIONS")
-
-	// API key authentication (public)
-	api.HandleFunc("/auth/api-key", apikeyhandler.HandleAPIKeyAuth(apiKeyRepo)).Methods("POST", "OPTIONS")
 
 	// User profile routes
 	// Public: get any user's profile by username
@@ -661,6 +639,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Status Page routes (public - for status page)
 	// GET /api/v1/status - Current platform status
 	api.HandleFunc("/status", statusHandler.HandleGetPlatformStatus).Methods("GET", "OPTIONS")
+	// GET /api/v1/status/edge - Edge (edge.functionfly.com) health, uptime, request stats
+	api.HandleFunc("/status/edge", s.handleEdgeStatus).Methods("GET", "OPTIONS")
 	// GET /api/v1/status/components - Per-component status
 	api.HandleFunc("/status/components", statusHandler.HandleGetComponents).Methods("GET", "OPTIONS")
 	// GET /api/v1/status/providers - Per-provider status by region
@@ -1011,24 +991,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/functions/deploy", authMiddleware.RequireAuth(functionsHandler.HandleDeployFunction)).Methods("POST")
 	protected.HandleFunc("/functions/test", authMiddleware.RequireAuth(functionsHandler.HandleTestFunction)).Methods("POST")
 
-	// API Key routes (protected)
-	protected.HandleFunc("/api-keys", authMiddleware.RequireAuth(apiKeyHandler.HandleCreate)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/api-keys", authMiddleware.RequireAuth(apiKeyHandler.HandleList)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeyHandler.HandleGet)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeyHandler.HandleUpdate)).Methods("PATCH", "OPTIONS")
-	protected.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeyHandler.HandleDelete)).Methods("DELETE", "OPTIONS")
-	protected.HandleFunc("/api-keys/{id}/rotate", authMiddleware.RequireAuth(apiKeyHandler.HandleRotate)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/api-keys/{id}/permissions", authMiddleware.RequireAuth(apiKeyHandler.HandleListPermissions)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/api-keys/{id}/permissions", authMiddleware.RequireAuth(apiKeyHandler.HandleAddPermission)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/api-keys/{id}/permissions/{perm_id}", authMiddleware.RequireAuth(apiKeyHandler.HandleRemovePermission)).Methods("DELETE", "OPTIONS")
-	protected.HandleFunc("/api-keys/{id}/environments", authMiddleware.RequireAuth(apiKeyHandler.HandleListEnvironments)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/api-keys/{id}/environments", authMiddleware.RequireAuth(apiKeyHandler.HandleAddEnvironment)).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/api-keys/{id}/environments/{env_id}", authMiddleware.RequireAuth(apiKeyHandler.HandleRemoveEnvironment)).Methods("DELETE", "OPTIONS")
-
 	// Dashboard routes (protected, tenant-scoped)
 	protected.HandleFunc("/dashboard/usage", authMiddleware.RequireAuth(dashboardHandler.HandleGetUsage)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/dashboard/execution-rate", authMiddleware.RequireAuth(dashboardHandler.HandleGetExecutionRate)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/dashboard/activity", authMiddleware.RequireAuth(dashboardHandler.HandleGetActivity)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/dashboard/metrics", authMiddleware.RequireAuth(dashboardHandler.HandleGetMetrics)).Methods("GET", "OPTIONS")
 
 	// Enterprise SLA routes (protected, enterprise plan required)
 	protected.HandleFunc("/enterprise/sla/overview", authMiddleware.RequireAuth(enterpriseSLAHandler.HandleGetSLAOverview)).Methods("GET", "OPTIONS")
@@ -1334,6 +1301,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// System health and metrics
 	adminRoutes.HandleFunc("/health", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleSystemHealth)).Methods("GET")
+	adminRoutes.HandleFunc("/status/edge", authMiddleware.RequirePermission(auth.PermSystemRead)(s.handleAdminEdgeStatus)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/system/metrics", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleSystemMetrics)).Methods("GET", "OPTIONS")
 
 	// Admin dashboard (activity, revenue, quick stats)
@@ -1394,6 +1362,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	adminRoutes.HandleFunc("/security/incidents", authMiddleware.RequirePermission(auth.PermSystemRead)(securityHandler.HandleGetRecentIncidents)).Methods("GET")
 	adminRoutes.HandleFunc("/security/compliance", authMiddleware.RequirePermission(auth.PermSystemRead)(securityHandler.HandleGetComplianceFrameworks)).Methods("GET")
 	adminRoutes.HandleFunc("/security/measures", authMiddleware.RequirePermission(auth.PermSystemRead)(securityHandler.HandleGetSecurityMeasures)).Methods("GET")
+	adminRoutes.HandleFunc("/security/measures/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(securityHandler.HandleUpdateSecurityMeasureEnabled))).Methods("PATCH", "OPTIONS")
 	adminRoutes.HandleFunc("/security/incident-response", authMiddleware.RequirePermission(auth.PermSystemRead)(securityHandler.HandleGetIncidentResponse)).Methods("GET")
 	adminRoutes.HandleFunc("/security/faq", authMiddleware.RequirePermission(auth.PermSystemRead)(securityHandler.HandleGetSecurityFAQ)).Methods("GET")
 	adminRoutes.HandleFunc("/security/resources", authMiddleware.RequirePermission(auth.PermSystemRead)(securityHandler.HandleGetSecurityResources)).Methods("GET")
@@ -1444,9 +1413,13 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Admin factory (same handlers as /v1/factory, for admin dashboard calling /v1/admin/factory/*)
 	adminRoutes.HandleFunc("/factory/status", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleStatus)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/factory/reviews/pending", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleListPendingReviews)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/factory/config", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleGetConfig)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/factory/config", authMiddleware.RequirePermission(auth.PermSystemWrite)(factoryHandler.HandleUpdateConfig)).Methods("PUT", "PATCH", "OPTIONS")
 
-	// Admin state fabrics (stats before {id} for route precedence)
+	// Admin state fabrics (stats and settings before {id} for route precedence)
 	adminRoutes.HandleFunc("/state-fabrics/stats", authMiddleware.RequirePermission(auth.PermTenantsRead)(stateFabricHandler.HandleGetStats)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/settings", authMiddleware.RequirePermission(auth.PermTenantsRead)(stateFabricHandler.HandleGetSettings)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/settings", authMiddleware.RequirePermission(auth.PermTenantsWrite)(advancedSecurityMiddleware.RequireHMACSignature(stateFabricHandler.HandleUpdateSettings))).Methods("PATCH", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics", authMiddleware.RequirePermission(auth.PermTenantsRead)(stateFabricHandler.HandleListAll)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/{id}/suspend", authMiddleware.RequirePermission(auth.PermTenantsWrite)(stateFabricHandler.HandleSuspendFabric)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/{id}/resume", authMiddleware.RequirePermission(auth.PermTenantsWrite)(stateFabricHandler.HandleResumeFabric)).Methods("POST", "OPTIONS")

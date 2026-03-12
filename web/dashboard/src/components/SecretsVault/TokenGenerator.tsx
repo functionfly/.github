@@ -3,7 +3,7 @@
  * Creates time-limited tokens with scoped permissions
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   X,
   Copy,
@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 import { format, addHours } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useGenerateToken } from "@/hooks/useVault";
+import { useGenerateToken, useSecretTokens } from "@/hooks/useVault";
+import { useAuthStore } from "@/stores/authStore";
+import { getTokensPerSecretLimit } from "@/lib/plan-utils";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +75,13 @@ export function TokenGenerator({
   onGenerated,
 }: TokenGeneratorProps) {
   const generateToken = useGenerateToken(secretId);
+  const { data: tokens } = useSecretTokens(secretId);
+  const user = useAuthStore((state) => state.user);
+  const userPlan = user?.plan;
+  const tokenLimit = getTokensPerSecretLimit(userPlan);
+  const currentTokenCount = tokens?.length ?? 0;
+  const hasReachedTokenLimit = tokenLimit > 0 && currentTokenCount >= tokenLimit;
+  const canCreateTokens = tokenLimit > 0;
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -141,6 +150,20 @@ export function TokenGenerator({
           <DialogDescription>
             Create a time-limited token to access this secret programmatically.
           </DialogDescription>
+          {/* Token limit indicator */}
+          {canCreateTokens && (
+            <div className={cn(
+              "mt-2 flex items-center gap-2 text-sm",
+              hasReachedTokenLimit ? "text-warning" : "text-muted-foreground"
+            )}>
+              <span>
+                {currentTokenCount} of {tokenLimit} tokens used
+              </span>
+              {hasReachedTokenLimit && (
+                <span className="text-warning">- Limit reached</span>
+              )}
+            </div>
+          )}
         </DialogHeader>
 
         {!generatedToken ? (
@@ -217,13 +240,26 @@ export function TokenGenerator({
               <Button
                 type="submit"
                 disabled={
-                  generateToken.isPending || selectedScopes.length === 0
+                  generateToken.isPending ||
+                  selectedScopes.length === 0 ||
+                  hasReachedTokenLimit ||
+                  !canCreateTokens
                 }
               >
                 {generateToken.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Generating...
+                  </>
+                ) : hasReachedTokenLimit ? (
+                  <>
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Limit Reached
+                  </>
+                ) : !canCreateTokens ? (
+                  <>
+                    <Shield className="h-4 w-4 mr-2" />
+                    Not Available
                   </>
                 ) : (
                   <>

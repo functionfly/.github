@@ -69,6 +69,7 @@ import { UserDashboardFunctionsPage } from '@/pages/UserDashboardFunctionsPage';
 import { UserDashboardSettingsPage } from '@/pages/UserDashboardSettingsPage';
 import { TeamsPage } from '@/pages/TeamsPage';
 import { APIKeysPage, APIKeyDetailPage } from '@/pages/api-keys';
+import { SecretsPage } from '@/pages/SecretsPage';
 import { ForbiddenPage } from '@/pages/ForbiddenPage';
 import { ServerErrorPage } from '@/pages/ServerErrorPage';
 import AgentsPage from '@/pages/AgentsPage';
@@ -437,6 +438,7 @@ function AppContent() {
         <Route path="settings" element={<SettingsPage />} />
         <Route path="api-keys" element={<APIKeysPage />} />
         <Route path="api-keys/:keyId" element={<APIKeyDetailPage />} />
+        <Route path="secrets" element={<SecretsPage />} />
         <Route path="teams" element={<TeamsPage />} />
         {/* Enterprise Routes */}
         <Route path="enterprise/sla" element={<EnterpriseSLAPage />} />

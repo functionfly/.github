@@ -27,6 +27,7 @@ import {
   PanelTop,
   RotateCcw,
   Landmark,
+  BookOpen,
 } from 'lucide-react';
 
 interface QuickStats {
@@ -99,9 +100,10 @@ export function AdminDashboardPage() {
     { title: 'Backends', description: 'Platform backends', path: ROUTES.ADMIN_BACKENDS, icon: BarChart3, color: 'indigo' },
     { title: 'Providers', description: 'Provider management', path: ROUTES.ADMIN_PROVIDERS, icon: Zap, color: 'violet' },
     { title: 'Redirects', description: 'URL redirects', path: ROUTES.ADMIN_REDIRECTS, icon: RotateCcw, color: 'orange' },
-    { title: 'Newsletter', description: 'Subscribers and campaigns', path: ROUTES.ADMIN_NEWSLETTER, icon: Mail, color: 'indigo' },
+    { title: 'Email', description: 'Newsletter, campaigns & email settings', path: ROUTES.ADMIN_EMAIL, icon: Mail, color: 'indigo' },
     { title: 'Content Calendar', description: 'Publication schedule', path: ROUTES.ADMIN_CONTENT_CALENDAR, icon: Calendar, color: 'orange' },
     { title: 'Content', description: 'Blog and content management', path: ROUTES.ADMIN_CONTENT, icon: PanelTop, color: 'teal' },
+    { title: 'Blog', description: 'Posts, categories, settings & analytics', path: ROUTES.ADMIN_BLOG, icon: BookOpen, color: 'teal' },
     { title: 'Feedback', description: 'User feedback and tickets', path: ROUTES.ADMIN_FEEDBACK, icon: MessageSquare, color: 'pink' },
     { title: 'Functions', description: 'All functions across tenants', path: ROUTES.ADMIN_FUNCTIONS, icon: BarChart3, color: 'violet' },
     { title: 'Registry', description: 'Function registry moderation', path: ROUTES.ADMIN_REGISTRY, icon: FileText, color: 'cyan' },

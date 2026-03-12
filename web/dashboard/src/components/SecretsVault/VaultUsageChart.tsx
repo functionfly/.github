@@ -45,7 +45,6 @@ import {
   Tooltip,
   buildChartTheme,
 } from "@visx/xychart";
-import { curveMonotoneX } from "@visx/curve";
 
 /** Single data point for the usage chart */
 export interface UsageDataPoint {
@@ -280,7 +279,6 @@ export function VaultUsageChart({
               data={chartData}
               xAccessor={(d) => d.x}
               yAccessor={(d) => d.y}
-              curve={curveMonotoneX}
               fillOpacity={0.3}
               strokeWidth={2}
             />

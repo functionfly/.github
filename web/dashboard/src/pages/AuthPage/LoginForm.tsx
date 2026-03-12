@@ -67,15 +67,22 @@ function getSafeRedirect(redirect: string | null): string | null {
   return null;
 }
 
-export function LoginForm(): React.JSX.Element {
+interface LoginFormProps {
+  authMode?: 'email' | 'social';
+  setAuthMode?: (mode: 'email' | 'social') => void;
+}
+
+export function LoginForm({ authMode: authModeProp, setAuthMode: setAuthModeProp }: LoginFormProps): React.JSX.Element {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = getSafeRedirect(searchParams.get("redirect"));
   const { login, isLoading, error, clearError } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
 
-  // New authentication states
-  const [authMode, setAuthMode] = useState<'email' | 'social'>('email');
+  // Auth mode: use props from parent when provided (tabs rendered in AuthPage), otherwise local state
+  const [authModeLocal, setAuthModeLocal] = useState<'email' | 'social'>('email');
+  const authMode = authModeProp ?? authModeLocal;
+  const setAuthMode = setAuthModeProp ?? setAuthModeLocal;
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
   // OAuth providers
@@ -183,33 +190,35 @@ export function LoginForm(): React.JSX.Element {
 
   return (
     <div className="space-y-6">
-      {/* Auth Mode Selector */}
-      <div className="flex justify-center space-x-2 mb-6">
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => setAuthMode('email')}
-          className={`auth-mode-btn transition-all duration-300 ${
-            authMode === 'email'
-              ? 'auth-mode-btn-active'
-              : 'auth-mode-btn-inactive hover:bg-bg-hover'
-          }`}
-        >
-          Email Login
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => setAuthMode('social')}
-          className={`auth-mode-btn transition-all duration-300 ${
-            authMode === 'social'
-              ? 'auth-mode-btn-active'
-              : 'auth-mode-btn-inactive hover:bg-bg-hover'
-          }`}
-        >
-          Social Login
-        </Button>
-      </div>
+      {/* Auth Mode Selector - only when parent doesn't control it (no props) */}
+      {setAuthModeProp == null && (
+        <div className="flex justify-center space-x-2 mb-6">
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setAuthMode('email')}
+            className={`auth-mode-btn transition-all duration-300 ${
+              authMode === 'email'
+                ? 'auth-mode-btn-active'
+                : 'auth-mode-btn-inactive hover:bg-bg-hover'
+            }`}
+          >
+            Email Login
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setAuthMode('social')}
+            className={`auth-mode-btn transition-all duration-300 ${
+              authMode === 'social'
+                ? 'auth-mode-btn-active'
+                : 'auth-mode-btn-inactive hover:bg-bg-hover'
+            }`}
+          >
+            Social Login
+          </Button>
+        </div>
+      )}
 
       <div ref={formRef}>
         {authMode === 'email' && (

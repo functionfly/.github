@@ -25,6 +25,7 @@ import {
   RotateCcw,
   TrendingUp,
   Factory,
+  BookOpen,
 } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import clsx from 'clsx';
@@ -81,6 +82,11 @@ const NAV_ITEMS = [
     icon: PanelTop,
   },
   {
+    label: 'Blog',
+    path: ROUTES.ADMIN_BLOG,
+    icon: BookOpen,
+  },
+  {
     label: 'Functions',
     path: ROUTES.ADMIN_FUNCTIONS,
     icon: BarChart3,
@@ -121,8 +127,8 @@ const NAV_ITEMS = [
     icon: RotateCcw,
   },
   {
-    label: 'Newsletter',
-    path: ROUTES.ADMIN_NEWSLETTER,
+    label: 'Email',
+    path: ROUTES.ADMIN_EMAIL,
     icon: Mail,
   },
   {

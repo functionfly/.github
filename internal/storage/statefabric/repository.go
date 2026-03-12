@@ -2,6 +2,7 @@ package statefabric
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -109,13 +110,13 @@ type ReplaySession struct {
 }
 
 type FabricMetrics struct {
-	TotalOperations    int64     `json:"totalOperations"`
-	OperationsPerSecond float64  `json:"operationsPerSecond"`
-	AverageLatency     float64   `json:"averageLatency"`
-	ErrorRate          float64   `json:"errorRate"`
-	CacheHitRate       *float64  `json:"cacheHitRate,omitempty"`
-	StorageUsed        int64     `json:"storageUsed"`
-	LastCalculatedAt   time.Time `json:"lastCalculatedAt"`
+	TotalOperations     int64     `json:"totalOperations"`
+	OperationsPerSecond float64   `json:"operationsPerSecond"`
+	AverageLatency      float64   `json:"averageLatency"`
+	ErrorRate           float64   `json:"errorRate"`
+	CacheHitRate        *float64  `json:"cacheHitRate,omitempty"`
+	StorageUsed         int64     `json:"storageUsed"`
+	LastCalculatedAt    time.Time `json:"lastCalculatedAt"`
 }
 
 type ListOptions struct {
@@ -147,12 +148,12 @@ func defaultSettings(state *statestore.State) map[string]interface{} {
 		retention = 30
 	}
 	return map[string]interface{}{
-		"autoSnapshot": false,
+		"autoSnapshot":            false,
 		"snapshotIntervalMinutes": 60,
-		"retentionDays": retention,
-		"enableReplication": false,
-		"regions": []string{},
-		"conflictResolution": "last-write-wins",
+		"retentionDays":           retention,
+		"enableReplication":       false,
+		"regions":                 []string{},
+		"conflictResolution":      "last-write-wins",
 	}
 }
 
@@ -382,12 +383,12 @@ func (r *Repository) GetMetrics(ctx context.Context, fabricID uuid.UUID, _ strin
 	days := float64(maxInt(daysSince(state.CreatedAt), 1))
 	avgLatency := 5.0
 	metrics := FabricMetrics{
-		TotalOperations:    state.WriteOpsMonth + state.ReadOpsMonth,
+		TotalOperations:     state.WriteOpsMonth + state.ReadOpsMonth,
 		OperationsPerSecond: float64(state.WriteOpsMonth+state.ReadOpsMonth) / (days * 86400),
-		AverageLatency:     avgLatency,
-		ErrorRate:          0,
-		StorageUsed:        state.StorageUsedMB * 1024,
-		LastCalculatedAt:   time.Now(),
+		AverageLatency:      avgLatency,
+		ErrorRate:           0,
+		StorageUsed:         state.StorageUsedMB * 1024,
+		LastCalculatedAt:    time.Now(),
 	}
 	if snapshotCount > 0 {
 		cache := float64(100)
@@ -465,16 +466,16 @@ func (r *Repository) ListPipelines(ctx context.Context, fabricID uuid.UUID) ([]P
 	for _, trigger := range triggers {
 		steps := []map[string]interface{}{
 			{
-				"id": trigger.ID.String(),
+				"id":   trigger.ID.String(),
 				"name": defaultTriggerName(trigger),
 				"type": "custom",
 				"config": map[string]interface{}{
 					"targetFunction": trigger.TargetFunction,
 					"keyPattern":     derefString(trigger.KeyPattern),
 				},
-				"order": 1,
-				"enabled": trigger.IsActive,
-				"timeoutMs": 30000,
+				"order":      1,
+				"enabled":    trigger.IsActive,
+				"timeoutMs":  30000,
 				"retryCount": 1,
 			},
 		}
@@ -986,6 +987,79 @@ func (r *Repository) SetFabricSuspended(ctx context.Context, fabricID uuid.UUID,
 	state.Description = stringPtr(description)
 	_, err = r.stateRepo.UpdateState(ctx, state)
 	return err
+}
+
+// platformSettingsRow is used to scan the single settings row.
+type platformSettingsRow struct {
+	Config []byte `gorm:"column:config;type:jsonb"`
+}
+
+// GetPlatformSettings returns the platform-wide state fabric settings (single row).
+func (r *Repository) GetPlatformSettings(ctx context.Context) (map[string]interface{}, error) {
+	var row platformSettingsRow
+	err := r.db.WithContext(ctx).Raw(
+		"SELECT config FROM state_fabric_platform_settings WHERE id = 1",
+	).Scan(&row).Error
+	if err != nil {
+		return nil, fmt.Errorf("get platform settings: %w", err)
+	}
+	if len(row.Config) == 0 {
+		return defaultPlatformSettings(), nil
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal(row.Config, &out); err != nil {
+		return defaultPlatformSettings(), nil
+	}
+	return mergeWithDefaults(out), nil
+}
+
+// UpdatePlatformSettings updates the platform-wide state fabric settings.
+func (r *Repository) UpdatePlatformSettings(ctx context.Context, config map[string]interface{}) error {
+	if config == nil {
+		config = defaultPlatformSettings()
+	}
+	merged := mergeWithDefaults(config)
+	payload, err := json.Marshal(merged)
+	if err != nil {
+		return fmt.Errorf("marshal platform settings: %w", err)
+	}
+	res := r.db.WithContext(ctx).Exec(
+		"UPDATE state_fabric_platform_settings SET config = $1, updated_at = NOW() WHERE id = 1",
+		payload,
+	)
+	if res.Error != nil {
+		return fmt.Errorf("update platform settings: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return r.db.WithContext(ctx).Exec(
+			"INSERT INTO state_fabric_platform_settings (id, config) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET config = EXCLUDED.config, updated_at = NOW()",
+			payload,
+		).Error
+	}
+	return nil
+}
+
+func defaultPlatformSettings() map[string]interface{} {
+	return map[string]interface{}{
+		"maxFabricsPerTenant":          10,
+		"defaultSnapshotRetentionDays": 30,
+		"allowPublicPipelines":         false,
+		"maintenanceMode":              false,
+	}
+}
+
+func mergeWithDefaults(in map[string]interface{}) map[string]interface{} {
+	def := defaultPlatformSettings()
+	out := make(map[string]interface{}, len(def))
+	for k, v := range def {
+		out[k] = v
+	}
+	for k, v := range in {
+		if v != nil {
+			out[k] = v
+		}
+	}
+	return out
 }
 
 func stringPtr(value string) *string {

@@ -51,10 +51,11 @@ type PostgresDB struct {
 	localRuntimeRepository  *LocalRuntimeRepository
 	functionRepository     *FunctionRepository
 	registryRepository     *registry.RegistryRepository
-	incidentRepository     *IncidentRepository
-	teamRepository         *TeamRepository
-	followRepository       *FollowRepository
-	encryptionManager      *DatabaseEncryptionManager
+	incidentRepository       *IncidentRepository
+	featureMeasureRepository *FeatureMeasureRepository
+	teamRepository           *TeamRepository
+	followRepository         *FollowRepository
+	encryptionManager        *DatabaseEncryptionManager
 
 	// Read replica connections
 	readReplicas       []ReadReplicaConnection
@@ -196,6 +197,7 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 	postgresDB.functionRepository = NewFunctionRepository(postgresDB.DB)
 	postgresDB.registryRepository = registry.NewRegistryRepository(postgresDB.GORM, nil)
 	postgresDB.incidentRepository = NewIncidentRepository(postgresDB.DB)
+	postgresDB.featureMeasureRepository = NewFeatureMeasureRepository(postgresDB.DB)
 	postgresDB.teamRepository = NewTeamRepository(postgresDB.GORM)
 	postgresDB.followRepository = NewFollowRepository(postgresDB)
 

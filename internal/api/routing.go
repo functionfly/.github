@@ -7,6 +7,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/utils"
+	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -117,6 +118,11 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 	})
 
 	logger.Info("Routing request to backend")
+
+	// Record edge traffic for monitoring when routing to FunctionFly Edge
+	if decision.SelectedBackend.Provider == "functionfly-edge" || decision.SelectedBackend.Provider == "functionfly" {
+		monitoring.RecordEdgeRequestAndMetric()
+	}
 
 	// Proxy to selected backend and capture the result
 	result := utils.ProxyToBackend(w, r, decision.SelectedBackend, decision.FailoverBackends, requestID)

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,6 +30,33 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status": "ok"}`))
+}
+
+// handleEdgeStatus returns edge (edge.functionfly.com) health, uptime, and request stats.
+// GET /v1/status/edge
+func (s *Server) handleEdgeStatus(w http.ResponseWriter, r *http.Request) {
+	stats := monitoring.GetEdgeStats()
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		http.Error(w, "failed to encode edge stats", http.StatusInternalServerError)
+		return
+	}
+}
+
+// handleAdminEdgeStatus returns edge stats in admin API response shape.
+// GET /v1/admin/status/edge
+func (s *Server) handleAdminEdgeStatus(w http.ResponseWriter, r *http.Request) {
+	stats := monitoring.GetEdgeStats()
+	w.Header().Set("Content-Type", "application/json")
+	body := map[string]interface{}{
+		"data":      stats,
+		"success":   true,
+		"timestamp": time.Now().Format(time.RFC3339),
+	}
+	if err := json.NewEncoder(w).Encode(body); err != nil {
+		http.Error(w, "failed to encode edge stats", http.StatusInternalServerError)
+		return
+	}
 }
 
 // handleDetailedHealth returns comprehensive health status

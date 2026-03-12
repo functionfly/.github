@@ -1,19 +1,33 @@
-import { Crown, TrendingUp, Shield, Headphones } from 'lucide-react';
+import { Crown, TrendingUp, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import { usePlan } from '@/hooks/usePlan';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { enterpriseSlaApi } from '@/api/enterprise';
 
 /**
  * Enterprise status card for the dashboard
- * Shows SLA status, security compliance, and quick actions
+ * Shows SLA status (from API), security compliance, and quick actions
  */
 export function EnterpriseStatusCard() {
   const { isEnterprise } = usePlan();
   const navigate = useNavigate();
+  const { data: slaOverview } = useQuery({
+    queryKey: ['enterprise', 'sla', 'overview'],
+    queryFn: () => enterpriseSlaApi.getOverview(30),
+    enabled: !!isEnterprise,
+    staleTime: 60_000,
+  });
 
   if (!isEnterprise) return null;
+
+  const slaValue =
+    slaOverview != null
+      ? `${slaOverview.current_uptime_percent.toFixed(2)}%`
+      : '—';
+  const slaSubtext = slaOverview != null ? `Last ${slaOverview.period_days} days` : 'Last 30 days';
 
   return (
     <motion.div
@@ -50,8 +64,8 @@ export function EnterpriseStatusCard() {
             <StatusItem
               icon={TrendingUp}
               label="SLA Status"
-              value="99.99%"
-              subtext="Last 30 days"
+              value={slaValue}
+              subtext={slaSubtext}
             />
             <StatusItem
               icon={Shield}

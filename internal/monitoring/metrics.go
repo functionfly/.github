@@ -425,6 +425,38 @@ var (
 		},
 		[]string{"runtime_type", "error_type", "function_name"},
 	)
+
+	// Edge (edge.functionfly.com) monitoring metrics
+	edgeHealthStatus = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "functionfly_edge_health_status",
+			Help: "Edge health from system probe (1=healthy, 0=unhealthy)",
+		},
+	)
+	edgeProbeLatencySeconds = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "functionfly_edge_probe_latency_seconds",
+			Help: "Edge health probe latency in seconds",
+		},
+	)
+	edgeProbeErrorsTotal = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "functionfly_edge_probe_errors_total",
+			Help: "Total number of edge health probe failures",
+		},
+	)
+	edgeRequestsTotal = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "functionfly_edge_requests_total",
+			Help: "Total number of requests routed to FunctionFly Edge",
+		},
+	)
+	edgeUptimeRatio = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "functionfly_edge_uptime_ratio",
+			Help: "Edge uptime ratio (0.0 to 1.0) from recent probes",
+		},
+	)
 )
 
 // Metric recording functions
@@ -666,6 +698,30 @@ func RecordTriggerExecutionDuration(tenantID, statePath, triggerType string, dur
 // RecordTriggerError records trigger error metrics
 func RecordTriggerError(tenantID, statePath, triggerType, errorType string) {
 	triggerErrorsTotal.WithLabelValues(tenantID, statePath, triggerType, errorType).Inc()
+}
+
+// Edge metrics (edge.functionfly.com)
+
+// UpdateEdgeProbeResult updates edge health, latency, and error metrics from a probe.
+func UpdateEdgeProbeResult(ok bool, latencyMs int, errorMessage string) {
+	if ok {
+		edgeHealthStatus.Set(1)
+		edgeProbeLatencySeconds.Set(float64(latencyMs) / 1000.0)
+	} else {
+		edgeHealthStatus.Set(0)
+		edgeProbeLatencySeconds.Set(float64(latencyMs) / 1000.0)
+		edgeProbeErrorsTotal.Inc()
+	}
+}
+
+// RecordEdgeRequest increments the edge request counter (call when routing to edge backend).
+func RecordEdgeRequest() {
+	edgeRequestsTotal.Inc()
+}
+
+// UpdateEdgeUptimeRatio sets the edge uptime ratio gauge (0.0 to 1.0).
+func UpdateEdgeUptimeRatio(ratio float64) {
+	edgeUptimeRatio.Set(ratio)
 }
 
 // State event and snapshot metrics recording functions

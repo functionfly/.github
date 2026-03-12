@@ -118,6 +118,10 @@ type Repository interface {
 	ListAllBackends(ctx context.Context) ([]*Backend, error)
 	UpdateBackendEnabled(ctx context.Context, backendID uuid.UUID, enabled bool) error
 
+	// Platform feature measures (admin security/features page)
+	ListFeatureMeasures(ctx context.Context) ([]*FeatureMeasure, error)
+	UpdateFeatureMeasureEnabled(ctx context.Context, id uuid.UUID, enabled bool) error
+
 	// Health check operations
 	InsertHealthCheck(backendID uuid.UUID, ok bool, statusCode, latencyMs int, errorMessage string) error
 	GetRecentHealthChecks(backendID uuid.UUID, limit int) ([]*HealthCheck, error)
@@ -307,6 +311,7 @@ type Repository interface {
 	GetUsageByDay(ctx context.Context, tenantID uuid.UUID, days int) ([]UsageByDay, error)
 	GetExecutionRateByHour(ctx context.Context, tenantID uuid.UUID, hours int) ([]ExecutionRateByHour, error)
 	GetRecentActivityForTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]DashboardActivityItem, error)
+	GetDashboardMetrics(ctx context.Context, tenantID uuid.UUID) (*DashboardMetrics, error)
 
 	// Incident operations
 	CreateIncident(ctx context.Context, incident *Incident) (*Incident, error)

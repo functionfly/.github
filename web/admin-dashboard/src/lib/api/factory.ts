@@ -19,6 +19,22 @@ export interface FactoryConfig {
   max_opportunities_per_run: number;
   retry_attempts: number;
   retry_backoff_ms: number;
+  schedule_enabled?: boolean;
+  schedule_cron?: string;
+  schedule_timezone?: string;
+  notification_webhook_url?: string;
+  rate_limit_per_hour?: number;
+  max_concurrent_runs?: number;
+  dry_run_mode?: boolean;
+  discovery_sources?: string[];
+  feature_flags?: Record<string, boolean>;
+  approval_required_above_quality?: number;
+  approval_required_above_test?: number;
+  log_level?: string;
+  notify_on_failure?: boolean;
+  notify_on_review_required?: boolean;
+  discovery_cooldown_minutes?: number;
+  max_versions_per_function?: number;
 }
 
 export interface FactoryTotals {
@@ -110,12 +126,19 @@ export interface ReviewDecisionResponse {
 // Factory API Functions
 // ============================================================================
 
+/** Unwrap admin API response (backend may send payload at root or under .data) */
+function unwrap<T>(response: { data?: T } | T): T {
+  return (response as { data?: T }).data !== undefined
+    ? (response as { data: T }).data
+    : (response as T);
+}
+
 /**
  * Get factory status including totals and latest run
  */
 export async function getFactoryStatus(): Promise<FactoryStatus> {
   const response = await adminApiClient.get<FactoryStatus>('/factory/status');
-  return response.data;
+  return unwrap(response);
 }
 
 /**
@@ -123,7 +146,7 @@ export async function getFactoryStatus(): Promise<FactoryStatus> {
  */
 export async function getFactoryConfig(): Promise<FactoryConfig> {
   const response = await adminApiClient.get<FactoryConfig>('/factory/config');
-  return response.data;
+  return unwrap(response);
 }
 
 /**
@@ -131,7 +154,7 @@ export async function getFactoryConfig(): Promise<FactoryConfig> {
  */
 export async function updateFactoryConfig(config: Partial<FactoryConfig>): Promise<FactoryConfig> {
   const response = await adminApiClient.patch<FactoryConfig>('/factory/config', config);
-  return response.data;
+  return unwrap(response);
 }
 
 /**
@@ -139,7 +162,7 @@ export async function updateFactoryConfig(config: Partial<FactoryConfig>): Promi
  */
 export async function triggerPipelineRun(): Promise<PipelineRunResponse> {
   const response = await adminApiClient.post<PipelineRunResponse>('/factory/pipeline/run');
-  return response.data;
+  return unwrap(response);
 }
 
 /**
@@ -159,7 +182,7 @@ export async function listPendingReviews(params?: {
   const response = await adminApiClient.get<PendingReviewListResponse>(
     `/factory/reviews/pending${queryString ? `?${queryString}` : ''}`
   );
-  return response.data;
+  return unwrap(response);
 }
 
 /**
@@ -167,7 +190,7 @@ export async function listPendingReviews(params?: {
  */
 export async function approveOpportunity(id: string): Promise<ReviewDecisionResponse> {
   const response = await adminApiClient.post<ReviewDecisionResponse>(`/factory/opportunities/${id}/approve`);
-  return response.data;
+  return unwrap(response);
 }
 
 /**
@@ -177,7 +200,7 @@ export async function rejectOpportunity(id: string, reason: string): Promise<Rev
   const response = await adminApiClient.post<ReviewDecisionResponse>(`/factory/opportunities/${id}/reject`, {
     reason,
   });
-  return response.data;
+  return unwrap(response);
 }
 
 // ============================================================================

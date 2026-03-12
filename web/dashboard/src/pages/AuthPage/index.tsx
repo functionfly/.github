@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/common/Navbar";
 import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
+import { AuthHeroAnimation } from "./AuthHeroAnimation";
 import { toast } from "sonner";
 import { getApiBaseUrl } from "@/lib/constants";
 
@@ -100,8 +101,14 @@ export function AuthPage() {
   const location = useLocation();
   const isLogin = location.pathname === "/login";
   const [activeTab, setActiveTab] = useState<"login" | "signup">(isLogin ? "login" : "signup");
+  const [authMode, setAuthMode] = useState<"email" | "social">("email");
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
   const [isLoadingProviders, setIsLoadingProviders] = useState(true);
+
+  // Sync tab with route
+  useEffect(() => {
+    setActiveTab(location.pathname === "/login" ? "login" : "signup");
+  }, [location.pathname]);
 
   // Fetch OAuth providers on mount
   useEffect(() => {
@@ -139,33 +146,35 @@ export function AuthPage() {
             </p>
           </motion.div>
 
-          {/* Tabs with enhanced active state */}
-          <div className="flex gap-1 p-1 bg-bg-secondary rounded-xl mb-6 border border-border-subtle">
-            <Link to="/login" className="flex-1" onClick={() => setActiveTab("login")}>
+          {/* Email / Social login tabs (gradient buttons) - shown on login */}
+          {activeTab === "login" && (
+            <div className="flex gap-2 mb-6">
               <Button
-                variant="ghost"
-                className={`auth-tab w-full relative transition-all duration-300 ${
-                  activeTab === "login"
-                    ? "auth-tab-active bg-bg-tertiary text-text-primary shadow-sm"
-                    : "text-text-secondary hover:text-text-primary hover:bg-bg-hover"
+                type="button"
+                size="default"
+                onClick={() => setAuthMode("email")}
+                className={`auth-mode-btn flex-1 transition-all duration-300 ${
+                  authMode === "email"
+                    ? "auth-mode-btn-active"
+                    : "auth-mode-btn-inactive hover:bg-bg-hover"
                 }`}
               >
-                Sign In
+                Email Login
               </Button>
-            </Link>
-            <Link to="/signup" className="flex-1" onClick={() => setActiveTab("signup")}>
               <Button
-                variant="ghost"
-                className={`auth-tab w-full relative transition-all duration-300 ${
-                  activeTab === "signup"
-                    ? "auth-tab-active bg-bg-tertiary text-text-primary shadow-sm"
-                    : "text-text-secondary hover:text-text-primary hover:bg-bg-hover"
+                type="button"
+                size="default"
+                onClick={() => setAuthMode("social")}
+                className={`auth-mode-btn flex-1 transition-all duration-300 ${
+                  authMode === "social"
+                    ? "auth-mode-btn-active"
+                    : "auth-mode-btn-inactive hover:bg-bg-hover"
                 }`}
               >
-                Sign Up
+                Social Login
               </Button>
-            </Link>
-          </div>
+            </div>
+          )}
 
           {/* Form */}
           <motion.div
@@ -175,39 +184,50 @@ export function AuthPage() {
             transition={{ duration: 0.3 }}
             className="mb-4"
           >
-            {activeTab === "login" ? <LoginForm /> : <SignupForm />}
+            {activeTab === "login" ? (
+              <LoginForm authMode={authMode} setAuthMode={setAuthMode} />
+            ) : (
+              <SignupForm />
+            )}
           </motion.div>
+
+          {/* Switch between login and signup */}
+          <p className="text-sm text-text-secondary text-center mt-4">
+            {activeTab === "login" ? (
+              <>
+                Don&apos;t have an account?{" "}
+                <Link
+                  to="/signup"
+                  onClick={() => setActiveTab("signup")}
+                  className="text-brand-500 font-medium hover:underline"
+                >
+                  Sign up
+                </Link>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <Link
+                  to="/login"
+                  onClick={() => setActiveTab("login")}
+                  className="text-brand-500 font-medium hover:underline"
+                >
+                  Sign in
+                </Link>
+              </>
+            )}
+          </p>
 
         </div>
       </div>
 
-      {/* Right Side - Illustration */}
+      {/* Right Side - Custom animation */}
       <div className="auth-testimonial-panel testimonial-mesh-gradient hidden lg:flex flex-1 relative overflow-hidden">
-        {/* Background with gradient */}
+        {/* Background gradient */}
         <div className="absolute inset-0 bg-linear-to-br from-[#6366f1]/20 via-[#8b5cf6]/10 to-bg-primary" />
-
-        {/* Decorative Elements */}
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#6366f1]/30 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-[#8b5cf6]/30 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-
-        {/* Content */}
-        <div className="relative z-10 flex flex-col justify-center px-12">
-          <blockquote className="testimonial-quote text-2xl font-medium text-text-primary mb-6 pl-4">
-            FunctionFly has been a game-changer for our startup. We went from
-            worrying about downtime to never thinking about it.
-          </blockquote>
-          <div className="flex items-center gap-4">
-            {/* Avatar with initials */}
-            <div className="testimonial-avatar" role="img" aria-label="Alex Chen avatar">
-              AC
-            </div>
-            <div>
-              <p className="font-medium text-text-primary">Alex Chen</p>
-              <p className="text-sm text-text-secondary">Founder, TechStart</p>
-            </div>
-          </div>
-          </div>
-        </div>
+        {/* Custom function-flow animation */}
+        <AuthHeroAnimation />
+      </div>
       </main>
 
       {/* Minimal Footer for Auth Pages */}

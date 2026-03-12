@@ -41,6 +41,68 @@ export const getPlanLimits = (plan?: string) => {
 };
 
 /**
+ * Get the maximum number of secrets allowed for the user's tier
+ * Returns Infinity for enterprise, 0 for free tier (no secrets)
+ */
+export const getSecretsLimit = (plan?: string): number => {
+  const limits = getPlanLimits(plan);
+  if (!limits) return 0;
+  // Handle Infinity case for enterprise
+  if (limits.secrets === Infinity) return 10000;
+  return limits.secrets ?? 0;
+};
+
+/**
+ * Get the maximum number of tokens per secret allowed for the user's tier
+ * Returns 0 for free tier (no tokens)
+ */
+export const getTokensPerSecretLimit = (plan?: string): number => {
+  const limits = getPlanLimits(plan);
+  if (!limits) return 0;
+  // Handle Infinity case for enterprise
+  if (limits.tokensPerSecret === Infinity) return 100;
+  return limits.tokensPerSecret ?? 0;
+};
+
+/**
+ * Check if the user can create secrets based on their tier
+ * Returns true if they have at least some secrets allowed
+ */
+export const canCreateSecrets = (plan?: string): boolean => {
+  return getSecretsLimit(plan) > 0;
+};
+
+/**
+ * Check if the user can create tokens based on their tier
+ * Returns true if they have at least some tokens allowed
+ */
+export const canCreateTokens = (plan?: string): boolean => {
+  return getTokensPerSecretLimit(plan) > 0;
+};
+
+/**
+ * Format secrets remaining for display
+ * Shows "X of Y used" or "X remaining" or "Unlimited"
+ */
+export const formatSecretsRemaining = (
+  currentCount: number,
+  plan?: string
+): string => {
+  const limit = getSecretsLimit(plan);
+
+  if (limit === Infinity || limit >= 10000) {
+    return `${currentCount} secrets (unlimited)`;
+  }
+
+  if (limit === 0) {
+    return "Secrets not available on your plan";
+  }
+
+  const remaining = limit - currentCount;
+  return `${currentCount} of ${limit} secrets used (${remaining} remaining)`;
+};
+
+/**
  * Feature availability by plan tier
  */
 export const FEATURES: Record<string, readonly PlanTier[]> = {

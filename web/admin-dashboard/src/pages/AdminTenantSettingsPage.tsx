@@ -7,11 +7,11 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApiClient } from '@/lib/api/adminClient';
-import { 
-  Shield, 
-  Key, 
-  Clock, 
-  Save, 
+import {
+  Shield,
+  Key,
+  Clock,
+  Save,
   RefreshCw,
   Copy,
   Eye,
@@ -24,13 +24,13 @@ import {
 } from 'lucide-react';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
 import { MFA_POLICY_OPTIONS, SESSION_POLICY_DEFAULTS } from '@/lib/constants';
-import type { 
-  Tenant, 
-  SAMLConfig, 
+import type {
+  Tenant,
+  SAMLConfig,
   SAMLMetadata,
   MFAPolicy,
   SessionPolicy,
-  ActiveSession 
+  ActiveSession
 } from '@/types';
 
 type SettingsTab = 'saml' | 'mfa' | 'sessions';
@@ -70,7 +70,14 @@ export function AdminTenantSettingsPage() {
     enabled: !!tenantId,
   });
 
-  const tenant = tenantResponse?.data;
+  // API may return { data: tenant } (new) or the tenant object directly (legacy)
+  const raw = tenantResponse as { data?: Tenant } | Tenant | undefined;
+  const tenant =
+    raw && typeof raw === 'object' && 'data' in raw && raw.data != null
+      ? raw.data
+      : raw && typeof raw === 'object' && 'id' in raw && 'name' in raw
+        ? (raw as Tenant)
+        : undefined;
 
   // Fetch SAML config
   const { data: samlResponse, isLoading: samlLoading } = useQuery({
@@ -535,9 +542,9 @@ export function AdminTenantSettingsPage() {
                     <input
                       type="number"
                       value={sessionPolicy.max_duration_minutes}
-                      onChange={(e) => setSessionPolicy({ 
-                        ...sessionPolicy, 
-                        max_duration_minutes: parseInt(e.target.value) || SESSION_POLICY_DEFAULTS.max_duration_minutes 
+                      onChange={(e) => setSessionPolicy({
+                        ...sessionPolicy,
+                        max_duration_minutes: parseInt(e.target.value) || SESSION_POLICY_DEFAULTS.max_duration_minutes
                       })}
                       min={5}
                       max={525600} // 1 year
@@ -555,9 +562,9 @@ export function AdminTenantSettingsPage() {
                     <input
                       type="number"
                       value={sessionPolicy.idle_timeout_minutes}
-                      onChange={(e) => setSessionPolicy({ 
-                        ...sessionPolicy, 
-                        idle_timeout_minutes: parseInt(e.target.value) || SESSION_POLICY_DEFAULTS.idle_timeout_minutes 
+                      onChange={(e) => setSessionPolicy({
+                        ...sessionPolicy,
+                        idle_timeout_minutes: parseInt(e.target.value) || SESSION_POLICY_DEFAULTS.idle_timeout_minutes
                       })}
                       min={5}
                       max={10080} // 1 week
@@ -575,9 +582,9 @@ export function AdminTenantSettingsPage() {
                     <input
                       type="number"
                       value={sessionPolicy.max_concurrent_sessions}
-                      onChange={(e) => setSessionPolicy({ 
-                        ...sessionPolicy, 
-                        max_concurrent_sessions: parseInt(e.target.value) || SESSION_POLICY_DEFAULTS.max_concurrent_sessions 
+                      onChange={(e) => setSessionPolicy({
+                        ...sessionPolicy,
+                        max_concurrent_sessions: parseInt(e.target.value) || SESSION_POLICY_DEFAULTS.max_concurrent_sessions
                       })}
                       min={1}
                       max={100}

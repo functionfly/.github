@@ -60,3 +60,46 @@ button,
 a {
   transition: all 200ms;
 }
+
+/* Platform Status page – industrial / ops aesthetic */
+.status-page {
+  --status-healthy: #059669;
+  --status-degraded: #d97706;
+  --status-unhealthy: #dc2626;
+  --status-unknown: #6b7280;
+  --status-bg: #0f172a;
+  --status-accent: #38bdf8;
+}
+
+.status-hero-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.status-summary-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: #e2e8f0;
+}
+
+.status-summary-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.status-row-border {
+  border-left: 3px solid transparent;
+}
+
+.status-row-border.healthy {
+  border-left-color: var(--status-healthy);
+}
+
+.status-row-border.unhealthy {
+  border-left-color: var(--status-unhealthy);
+}
+
+.status-row-border.unknown {
+  border-left-color: var(--status-unknown);
+}

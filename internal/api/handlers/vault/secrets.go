@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -37,25 +39,67 @@ func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get tenant plan and check secrets limit
+	plan := middleware.GetTenantPlan(r)
+	maxSecrets := plans.GetMaxSecrets(plan)
+
+	// Get current secret count for tenant
+	secrets, err := h.repo.GetSecretsByTenant(r.Context(), claims.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to count secrets")
+		h.respondError(w, http.StatusInternalServerError, "COUNT_FAILED", "Failed to verify secret limit")
+		return
+	}
+
+	if len(secrets) >= maxSecrets {
+		h.respondError(w, http.StatusForbidden, "SECRET_LIMIT_EXCEEDED",
+			fmt.Sprintf("Maximum number of secrets (%d) exceeded for your plan", maxSecrets))
+		return
+	}
+
 	// Decode base64 encrypted data
 	ciphertext, err := base64.StdEncoding.DecodeString(req.EncryptedData.Ciphertext)
 	if err != nil {
 		h.respondError(w, http.StatusBadRequest, "INVALID_CIPHERTEXT", "Ciphertext must be base64 encoded")
 		return
 	}
+	saltBytes, err := base64.StdEncoding.DecodeString(req.EncryptedData.Salt)
+	if err != nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_SALT", "Salt must be base64 encoded")
+		return
+	}
+	ivBytes, err := base64.StdEncoding.DecodeString(req.EncryptedData.IV)
+	if err != nil {
+		h.respondError(w, http.StatusBadRequest, "INVALID_IV", "IV must be base64 encoded")
+		return
+	}
+	var authTagBytes []byte
+	if req.EncryptedData.Tag != "" {
+		var errTag error
+		authTagBytes, errTag = base64.StdEncoding.DecodeString(req.EncryptedData.Tag)
+		if errTag != nil {
+			h.respondError(w, http.StatusBadRequest, "INVALID_TAG", "Tag must be base64 encoded")
+			return
+		}
+	}
+	if authTagBytes == nil {
+		authTagBytes = []byte{}
+	}
 
 	// Create secret model
 	secret := &vault.Secret{
-		TenantID:       claims.TenantID,
-		Name:           req.Name,
-		Description:    req.Description,
-		SecretType:     req.SecretType,
-		EncryptedValue: ciphertext,
-		EncryptionSalt: req.EncryptedData.Salt,
-		IV:             req.EncryptedData.IV,
-		KeyVersion:     req.EncryptedData.KeyVersion,
-		Scopes:         scopesToJSONMap(req.Scopes),
-		Metadata:       req.Metadata,
+		TenantID:          claims.TenantID,
+		UserID:            claims.UserID,
+		Name:              req.Name,
+		Description:       req.Description,
+		SecretType:        req.SecretType,
+		EncryptedValue:    ciphertext,
+		EncryptionSalt:    saltBytes,
+		IV:                ivBytes,
+		EncryptionAuthTag: authTagBytes,
+		KeyVersion:        req.EncryptedData.KeyVersion,
+		Scopes:            scopesToJSONMap(req.Scopes),
+		Metadata:          req.Metadata,
 	}
 
 	// Create secret in database

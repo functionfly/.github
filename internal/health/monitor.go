@@ -3,6 +3,7 @@ package health
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -10,7 +11,9 @@ import (
 	"github.com/functionfly/functionfly/internal/adapters/common"
 	"github.com/functionfly/functionfly/internal/adapters/deno"
 	"github.com/functionfly/functionfly/internal/adapters/fly"
+	"github.com/functionfly/functionfly/internal/adapters/functionfly"
 	"github.com/functionfly/functionfly/internal/adapters/vercel"
+	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -18,7 +21,7 @@ import (
 
 // Monitor handles backend health monitoring and circuit breaker management
 type Monitor struct {
-	repo         storage.Repository
+	repo          storage.Repository
 	probeInterval time.Duration
 	stopChan      chan struct{}
 	wg            sync.WaitGroup
@@ -90,6 +93,40 @@ func (m *Monitor) probeAllBackends() {
 	}
 
 	wg.Wait()
+
+	// System edge probe: when EDGE_HEALTH_URL is set, probe it and update edge metrics/stats (no DB backend required)
+	if edgeURL := os.Getenv("EDGE_HEALTH_URL"); edgeURL != "" {
+		m.probeSystemEdge(edgeURL, os.Getenv("EDGE_HEALTH_SECRET"))
+	}
+}
+
+// probeSystemEdge probes the configured edge URL and updates Prometheus + in-memory edge stats.
+func (m *Monitor) probeSystemEdge(edgeURL, sharedSecret string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	backend := &storage.Backend{
+		ID:           uuid.Nil,
+		URL:          edgeURL,
+		Region:       "system",
+		SharedSecret: sharedSecret,
+		Provider:     "functionfly-edge",
+	}
+	adapter := functionfly.NewFunctionFlyAdapter()
+	result, err := adapter.HealthCheck(ctx, backend)
+	if err != nil {
+		monitoring.UpdateEdgeProbeAndMetrics(false, 0, err.Error())
+		logrus.WithError(err).WithField("edge_url", edgeURL).Warn("Edge health probe error")
+		return
+	}
+	monitoring.UpdateEdgeProbeAndMetrics(result.OK, result.LatencyMs, result.ErrorMessage)
+	if !result.OK {
+		logrus.WithFields(logrus.Fields{
+			"edge_url": edgeURL,
+			"status":   result.StatusCode,
+			"error":    result.ErrorMessage,
+		}).Warn("Edge health probe failed")
+	}
 }
 
 // getAllBackends gets all enabled backends
@@ -167,6 +204,8 @@ func (m *Monitor) getAdapterForProvider(provider string) common.ProviderAdapter 
 		return fly.NewFlyAdapter()
 	case "deno-deploy":
 		return deno.NewDenoAdapter()
+	case "functionfly-edge", "functionfly":
+		return functionfly.NewFunctionFlyAdapter()
 	default:
 		return nil
 	}
@@ -202,9 +241,9 @@ func (m *Monitor) handleCircuitBreaker(backendID uuid.UUID, healthy bool) {
 				state.SinceTs = now
 				state.LastFailureTs = &now
 				logger.WithFields(logrus.Fields{
-					"old_state":     "closed",
-					"new_state":     "open",
-					"fail_count":    state.FailCount,
+					"old_state":         "closed",
+					"new_state":         "open",
+					"fail_count":        state.FailCount,
 					"transition_reason": "failure_threshold_reached",
 				}).Warn("Circuit breaker opened")
 			}
@@ -221,9 +260,9 @@ func (m *Monitor) handleCircuitBreaker(backendID uuid.UUID, healthy bool) {
 			newState = "half-open"
 			state.SinceTs = now
 			logger.WithFields(logrus.Fields{
-				"old_state":     "open",
-				"new_state":     "half-open",
-				"time_since_open": now.Sub(state.SinceTs).String(),
+				"old_state":         "open",
+				"new_state":         "half-open",
+				"time_since_open":   now.Sub(state.SinceTs).String(),
 				"transition_reason": "timeout_expired",
 			}).Info("Circuit breaker moving to half-open")
 		}
@@ -237,8 +276,8 @@ func (m *Monitor) handleCircuitBreaker(backendID uuid.UUID, healthy bool) {
 			state.SuccessCount++
 			state.LastSuccessTs = &now
 			logger.WithFields(logrus.Fields{
-				"old_state":     "half-open",
-				"new_state":     "closed",
+				"old_state":         "half-open",
+				"new_state":         "closed",
 				"transition_reason": "success_in_half_open",
 			}).Info("Circuit breaker closed")
 		} else {
@@ -248,9 +287,9 @@ func (m *Monitor) handleCircuitBreaker(backendID uuid.UUID, healthy bool) {
 			state.FailCount++
 			state.LastFailureTs = &now
 			logger.WithFields(logrus.Fields{
-				"old_state":     "half-open",
-				"new_state":     "open",
-				"fail_count":    state.FailCount,
+				"old_state":         "half-open",
+				"new_state":         "open",
+				"fail_count":        state.FailCount,
 				"transition_reason": "failure_in_half_open",
 			}).Warn("Circuit breaker reopened")
 		}

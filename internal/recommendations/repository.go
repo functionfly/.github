@@ -2,6 +2,7 @@ package recommendations
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -30,6 +31,7 @@ func (r *Repository) AutoMigrate() error {
 		&SessionFunctionUsage{},
 		&CategorySimilarity{},
 		&RecommendationFeedback{},
+		&FunctionEmbedding{},
 	)
 }
 
@@ -446,4 +448,66 @@ func (r *Repository) BatchComputeRecommendations(ctx context.Context, functionID
 		}
 	}
 	return nil
+}
+
+// UpsertFunctionEmbedding creates or updates the embedding for a function (pgvector vector(1536)).
+func (r *Repository) UpsertFunctionEmbedding(ctx context.Context, e *FunctionEmbedding) error {
+	e.ComputedAt = time.Now()
+	return r.db.WithContext(ctx).
+		Where("function_id = ?", e.FunctionID).
+		Assign(FunctionEmbedding{
+			Embedding:      e.Embedding,
+			EmbeddedText:   e.EmbeddedText,
+			EmbeddingModel: e.EmbeddingModel,
+			ComputedAt:     e.ComputedAt,
+		}).
+		FirstOrCreate(e).Error
+}
+
+// GetFunctionEmbeddingByFunctionID returns the embedding for a function, or nil if not found.
+func (r *Repository) GetFunctionEmbeddingByFunctionID(ctx context.Context, functionID uuid.UUID) (*FunctionEmbedding, error) {
+	var e FunctionEmbedding
+	err := r.db.WithContext(ctx).Where("function_id = ?", functionID).First(&e).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &e, nil
+}
+
+// FunctionEmbeddingWithDistance is a function embedding plus its cosine distance to the query vector (0 = identical, 2 = opposite).
+type FunctionEmbeddingWithDistance struct {
+	FunctionEmbedding
+	Distance float64 `json:"distance" gorm:"column:distance"`
+}
+
+// SearchFunctionEmbeddingsByVector returns function embeddings ordered by cosine similarity (<=>), with distance.
+// excludeFunctionID optionally excludes one function from results (e.g. the query function).
+func (r *Repository) SearchFunctionEmbeddingsByVector(ctx context.Context, queryVector []float32, limit int, excludeFunctionID *uuid.UUID) ([]*FunctionEmbeddingWithDistance, error) {
+	vectorStr := "["
+	for i, v := range queryVector {
+		if i > 0 {
+			vectorStr += ","
+		}
+		vectorStr += fmt.Sprintf("%.6f", v)
+	}
+	vectorStr += "]"
+
+	var args []interface{}
+	sql := `SELECT id, function_id, embedding, embedded_text, embedding_model, computed_at,
+		(embedding <=> ?) AS distance
+		FROM function_embeddings
+		WHERE embedding IS NOT NULL`
+	if excludeFunctionID != nil {
+		sql += ` AND function_id != ?`
+		args = append(args, *excludeFunctionID)
+	}
+	sql += ` ORDER BY embedding <=> ? LIMIT ?`
+	args = append(args, vectorStr, vectorStr, limit)
+
+	var out []*FunctionEmbeddingWithDistance
+	err := r.db.WithContext(ctx).Raw(sql, args...).Scan(&out).Error
+	return out, err
 }

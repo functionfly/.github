@@ -15,6 +15,7 @@ import (
 	"github.com/functionfly/functionfly/internal/adapters/common"
 	"github.com/functionfly/functionfly/internal/adapters/deno"
 	"github.com/functionfly/functionfly/internal/adapters/fly"
+	"github.com/functionfly/functionfly/internal/adapters/functionfly"
 	"github.com/functionfly/functionfly/internal/adapters/vercel"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/auth"
@@ -86,11 +87,14 @@ func NewServer(db *storage.PostgresDB) *Server {
 	}
 
 	// Initialize adapters
+	ffEdge := functionfly.NewFunctionFlyAdapter()
 	adapters := map[string]common.DeploymentAdapter{
-		"workers":     cloudflare.NewCloudflareAdapter(),
-		"vercel":      vercel.NewVercelAdapter(),
-		"fly":         fly.NewFlyDeploymentAdapter(),
-		"deno-deploy": deno.NewDenoAdapter(),
+		"workers":          cloudflare.NewCloudflareAdapter(),
+		"vercel":           vercel.NewVercelAdapter(),
+		"fly":              fly.NewFlyDeploymentAdapter(),
+		"deno-deploy":      deno.NewDenoAdapter(),
+		"functionfly-edge": ffEdge,
+		"functionfly":      ffEdge, // alias for CLI/engine compatibility
 	}
 
 	// Initialize Redis client for caching and artifact store

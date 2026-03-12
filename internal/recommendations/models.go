@@ -88,6 +88,21 @@ type SessionFunctionUsage struct {
 	LastUsedAt    time.Time `json:"last_used_at"`
 }
 
+// FunctionEmbedding stores a vector embedding for a function (semantic similarity via pgvector).
+type FunctionEmbedding struct {
+	ID             uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID     uuid.UUID `json:"function_id" gorm:"type:uuid;not null;uniqueIndex"`
+	Embedding      []float32 `json:"embedding" gorm:"type:vector(1536)"`
+	EmbeddedText   *string   `json:"embedded_text,omitempty" gorm:"type:text"`
+	EmbeddingModel string    `json:"embedding_model" gorm:"type:varchar(100);default:text-embedding-ada-002"`
+	ComputedAt     time.Time `json:"computed_at"`
+}
+
+// TableName overrides the table name for FunctionEmbedding.
+func (FunctionEmbedding) TableName() string {
+	return "function_embeddings"
+}
+
 // CategorySimilarity stores category relationship scores
 type CategorySimilarity struct {
 	ID                uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`

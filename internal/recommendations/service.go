@@ -136,6 +136,66 @@ func (s *Service) GetRecommendations(ctx context.Context, req *RecommendationReq
 	}, nil
 }
 
+// UpsertFunctionEmbedding stores or updates the vector embedding for a function (pgvector vector(1536)).
+func (s *Service) UpsertFunctionEmbedding(ctx context.Context, functionID uuid.UUID, embedding []float32, embeddedText *string, model string) error {
+	if model == "" {
+		model = "text-embedding-ada-002"
+	}
+	return s.repo.UpsertFunctionEmbedding(ctx, &FunctionEmbedding{
+		FunctionID:     functionID,
+		Embedding:      embedding,
+		EmbeddedText:   embeddedText,
+		EmbeddingModel: model,
+	})
+}
+
+// SearchSimilarByEmbedding returns recommendations by vector similarity (cosine). Score = 1 - cosine_distance.
+// excludeFunctionID is optional (e.g. the query function). Requires registry to resolve function details.
+func (s *Service) SearchSimilarByEmbedding(ctx context.Context, queryEmbedding []float32, limit int, excludeFunctionID *uuid.UUID) ([]RecommendationResult, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 50 {
+		limit = 50
+	}
+	withDist, err := s.repo.SearchFunctionEmbeddingsByVector(ctx, queryEmbedding, limit, excludeFunctionID)
+	if err != nil || len(withDist) == 0 {
+		return nil, err
+	}
+	if s.registry == nil {
+		return nil, nil
+	}
+	var results []RecommendationResult
+	for _, e := range withDist {
+		fn, err := s.registry.GetFunctionByID(e.FunctionID)
+		if err != nil {
+			continue
+		}
+		// Cosine distance is in [0, 2]; similarity = 1 - distance, clamped to [0, 1].
+		score := 1 - e.Distance
+		if score < 0 {
+			score = 0
+		}
+		if score > 1 {
+			score = 1
+		}
+		results = append(results, RecommendationResult{
+			FunctionID:         fn.ID,
+			Author:             fn.Author,
+			Name:               fn.Name,
+			Title:              fn.Title.String,
+			Description:        fn.Description.String,
+			Category:           fn.Category.String,
+			Tags:               s.parseTags(fn.Tags),
+			PopularityScore:    fn.PopularityScore,
+			ReliabilityScore:   fn.ReliabilityScore,
+			Score:              score,
+			RecommendationType: RecommendationTypeSimilar,
+		})
+	}
+	return results, nil
+}
+
 // GetRelatedFunctions gets related functions for a specific function
 func (s *Service) GetRelatedFunctions(ctx context.Context, functionID uuid.UUID, limit int) ([]RecommendationResult, error) {
 	if limit == 0 {

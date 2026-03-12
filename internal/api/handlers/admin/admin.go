@@ -15,6 +15,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/utils"
 	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -48,6 +49,7 @@ func (h *Handler) HandleListTenants(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":    tenants,
 		"tenants": tenants,
 	})
 }
@@ -74,7 +76,7 @@ func (h *Handler) HandleGetTenant(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tenant)
+	json.NewEncoder(w).Encode(map[string]interface{}{"data": tenant})
 }
 
 // HandleCreateTenant creates a new tenant
@@ -583,6 +585,9 @@ func (h *Handler) HandleSystemHealth(w http.ResponseWriter, r *http.Request) {
 		{"name": "Registry", "status": regStatus, "latency_ms": repoMs + 5, "uptime_percent": regUptime},
 		{"name": "Auth Service", "status": "healthy", "latency_ms": 15, "uptime_percent": 99.99},
 	}
+
+	// Edge (edge.functionfly.com) stats so the dashboard can show them without a separate route
+	health["edge"] = monitoring.GetEdgeStats()
 
 	w.Header().Set("Content-Type", "application/json")
 	// Always return 200 so the admin dashboard can render and show healthy/unhealthy from the body

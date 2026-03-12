@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/pages/LandingPage/components";
+import { FlywheelChatAssistant } from "@/components/flywheel/ai/FlywheelChatAssistant";
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -31,7 +32,10 @@ export function DashboardLayout() {
           </div>
         </main>
 
-        <Footer />
+        <Footer showScrollToTop={false} />
+
+        {/* Fly guide bot - bottom right */}
+        <FlywheelChatAssistant />
       </div>
     </div>
   );

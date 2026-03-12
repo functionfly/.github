@@ -10,6 +10,7 @@ import (
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -410,63 +411,95 @@ func (h *Handler) HandleGetComplianceFrameworks(w http.ResponseWriter, r *http.R
 	})
 }
 
-// HandleGetSecurityMeasures returns security measures
+// HandleGetSecurityMeasures returns security measures from DB when available; otherwise static fallback.
 func (h *Handler) HandleGetSecurityMeasures(w http.ResponseWriter, r *http.Request) {
-	measures := []SecurityMeasure{
-		{
-			Category: "Infrastructure Security",
-			Icon:     "Server",
-			Measures: []string{
-				"Multi-cloud deployment with automatic failover",
-				"End-to-end encryption (AES-256)",
-				"Automated security patching and updates",
-				"DDoS protection with global CDN",
-				"Zero-trust network architecture",
-				"Container security scanning",
-			},
-		},
-		{
-			Category: "Application Security",
-			Icon:     "Code",
-			Measures: []string{
-				"OWASP Top 10 compliance",
-				"Automated vulnerability scanning",
-				"Secure coding practices and reviews",
-				"Runtime Application Self-Protection (RASP)",
-				"API rate limiting and throttling",
-				"Input validation and sanitization",
-			},
-		},
-		{
-			Category: "Data Protection",
-			Icon:     "Database",
-			Measures: []string{
-				"Data encryption at rest and in transit",
-				"Database access controls and auditing",
-				"Regular security assessments",
-				"Backup encryption and integrity checks",
-				"Data classification and handling procedures",
-				"Secure deletion protocols",
-			},
-		},
-		{
-			Category: "Access Control",
-			Icon:     "Key",
-			Measures: []string{
-				"Multi-factor authentication (MFA)",
-				"Role-based access control (RBAC)",
-				"Single sign-on (SSO) integration",
-				"Session management and timeout",
-				"Audit logging for all access events",
-				"Least privilege principle enforcement",
-			},
-		},
+	list, err := h.repo.ListFeatureMeasures(r.Context())
+	if err == nil && len(list) > 0 {
+		// Return flat list for admin UI (id, name, description, category, enabled)
+		flat := make([]map[string]interface{}, 0, len(list))
+		for _, m := range list {
+			flat = append(flat, map[string]interface{}{
+				"id":          m.ID.String(),
+				"name":        m.Name,
+				"description": m.Description,
+				"category":    m.Category,
+				"enabled":     m.Enabled,
+			})
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"measures": flat})
+		return
 	}
-
+	if err != nil {
+		logrus.WithError(err).Debug("ListFeatureMeasures failed, using static fallback")
+	}
+	// Fallback: static category + measures (no per-measure enabled)
+	measures := []SecurityMeasure{
+		{Category: "Infrastructure Security", Icon: "Server", Measures: []string{
+			"Multi-cloud deployment with automatic failover",
+			"End-to-end encryption (AES-256)",
+			"Automated security patching and updates",
+			"DDoS protection with global CDN",
+			"Zero-trust network architecture",
+			"Container security scanning",
+		}},
+		{Category: "Application Security", Icon: "Code", Measures: []string{
+			"OWASP Top 10 compliance",
+			"Automated vulnerability scanning",
+			"Secure coding practices and reviews",
+			"Runtime Application Self-Protection (RASP)",
+			"API rate limiting and throttling",
+			"Input validation and sanitization",
+		}},
+		{Category: "Data Protection", Icon: "Database", Measures: []string{
+			"Data encryption at rest and in transit",
+			"Database access controls and auditing",
+			"Regular security assessments",
+			"Backup encryption and integrity checks",
+			"Data classification and handling procedures",
+			"Secure deletion protocols",
+		}},
+		{Category: "Access Control", Icon: "Key", Measures: []string{
+			"Multi-factor authentication (MFA)",
+			"Role-based access control (RBAC)",
+			"Single sign-on (SSO) integration",
+			"Session management and timeout",
+			"Audit logging for all access events",
+			"Least privilege principle enforcement",
+		}},
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"measures": measures,
-	})
+	json.NewEncoder(w).Encode(map[string]interface{}{"measures": measures})
+}
+
+// HandleUpdateSecurityMeasureEnabled updates the enabled flag for a measure (PATCH /admin/security/measures/:id).
+func (h *Handler) HandleUpdateSecurityMeasureEnabled(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	if idStr == "" {
+		http.Error(w, `{"error":"missing measure id"}`, http.StatusBadRequest)
+		return
+	}
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, `{"error":"invalid measure id"}`, http.StatusBadRequest)
+		return
+	}
+	var body struct {
+		Enabled *bool `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Enabled == nil {
+		http.Error(w, `{"error":"body must include \"enabled\": true or false"}`, http.StatusBadRequest)
+		return
+	}
+	if err := h.repo.UpdateFeatureMeasureEnabled(r.Context(), id, *body.Enabled); err != nil {
+		logrus.WithError(err).WithField("measure_id", id).Warn("UpdateFeatureMeasureEnabled failed")
+		http.Error(w, `{"error":"failed to update measure"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "enabled": *body.Enabled})
 }
 
 // HandleGetIncidentResponse returns incident response procedures

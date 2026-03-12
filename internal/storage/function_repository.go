@@ -490,7 +490,7 @@ func (r *FunctionRepository) GetFunctionLogs(ctx context.Context, functionID *uu
 
 // UsageByDay is a single day's usage count for dashboard
 type UsageByDay struct {
-	Time  string `json:"time"`  // date as YYYY-MM-DD or formatted for display
+	Time  string `json:"time"` // date as YYYY-MM-DD or formatted for display
 	Value int64  `json:"value"`
 }
 
@@ -524,6 +524,17 @@ func (r *FunctionRepository) GetUsageByDay(ctx context.Context, tenantID uuid.UU
 		result = append(result, UsageByDay{Time: day.Format("2006-01-02"), Value: count})
 	}
 	return result, rows.Err()
+}
+
+// DashboardMetrics holds aggregated metrics for the dashboard (tenant-scoped).
+type DashboardMetrics struct {
+	RequestsThisMonth int64     `json:"requests_this_month"`
+	RequestsPrevMonth int64     `json:"requests_prev_month"`
+	AvgLatencyMs      *float64  `json:"avg_latency_ms,omitempty"`
+	UptimePct         *float64  `json:"uptime_pct,omitempty"`         // last 7 days success rate
+	UptimePrevPct     *float64  `json:"uptime_prev_pct,omitempty"`    // previous 7 days for comparison
+	UptimeSparkline   []float64 `json:"uptime_sparkline,omitempty"`   // 7 daily success rates (newest last)
+	RequestsSparkline []int64   `json:"requests_sparkline,omitempty"` // last 7 days daily counts (newest last)
 }
 
 // ExecutionRateByHour is one hour's execution count for dashboard
@@ -569,13 +580,13 @@ func (r *FunctionRepository) GetExecutionRateByHour(ctx context.Context, tenantI
 
 // DashboardActivityItem represents one item in the dashboard activity feed (log or deployment).
 type DashboardActivityItem struct {
-	ID          string    `json:"id"`
-	Type        string    `json:"type"`        // "deployment", "success", "error", "info", "invocation", "timeout"
-	Title       string    `json:"title"`
-	Description string    `json:"description,omitempty"`
-	Timestamp   time.Time `json:"timestamp"`
-	FunctionID  string    `json:"function_id,omitempty"`
-	FunctionName string   `json:"function_name,omitempty"`
+	ID           string    `json:"id"`
+	Type         string    `json:"type"` // "deployment", "success", "error", "info", "invocation", "timeout"
+	Title        string    `json:"title"`
+	Description  string    `json:"description,omitempty"`
+	Timestamp    time.Time `json:"timestamp"`
+	FunctionID   string    `json:"function_id,omitempty"`
+	FunctionName string    `json:"function_name,omitempty"`
 }
 
 // GetRecentActivityForTenant returns merged recent deployments and logs for the tenant, sorted by time desc.
@@ -670,6 +681,115 @@ func (r *FunctionRepository) GetRecentActivityForTenant(ctx context.Context, ten
 
 	// Sort by timestamp desc and take up to limit
 	return sortDashboardActivitiesByTime(items, limit), nil
+}
+
+// GetDashboardMetrics returns aggregated metrics for the tenant dashboard.
+func (r *FunctionRepository) GetDashboardMetrics(ctx context.Context, tenantID uuid.UUID) (*DashboardMetrics, error) {
+	now := time.Now()
+	startThisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	startPrevMonth := startThisMonth.AddDate(0, -1, 0)
+	endPrevMonth := startThisMonth.Add(-time.Nanosecond)
+	sevenDaysAgo := now.AddDate(0, 0, -7)
+	fourteenDaysAgo := now.AddDate(0, 0, -14)
+
+	out := &DashboardMetrics{
+		UptimeSparkline:   make([]float64, 7),
+		RequestsSparkline: make([]int64, 7),
+	}
+
+	// Requests this month
+	var thisMonth, prevMonth int64
+	q1 := `SELECT COUNT(*)::bigint FROM function_logs fl INNER JOIN functions f ON f.id = fl.function_id WHERE f.tenant_id = $1 AND fl.timestamp >= $2`
+	if err := r.db.QueryRowContext(ctx, q1, tenantID, startThisMonth).Scan(&thisMonth); err != nil {
+		return nil, fmt.Errorf("requests this month: %w", err)
+	}
+	out.RequestsThisMonth = thisMonth
+
+	q2 := `SELECT COUNT(*)::bigint FROM function_logs fl INNER JOIN functions f ON f.id = fl.function_id WHERE f.tenant_id = $1 AND fl.timestamp >= $2 AND fl.timestamp <= $3`
+	if err := r.db.QueryRowContext(ctx, q2, tenantID, startPrevMonth, endPrevMonth).Scan(&prevMonth); err != nil {
+		return nil, fmt.Errorf("requests prev month: %w", err)
+	}
+	out.RequestsPrevMonth = prevMonth
+
+	// Avg latency from metadata->>'duration_ms' (json/jsonb)
+	var avgLat *float64
+	latQuery := `
+		SELECT AVG((fl.metadata->>'duration_ms')::double precision)
+		FROM function_logs fl
+		INNER JOIN functions f ON f.id = fl.function_id
+		WHERE f.tenant_id = $1 AND fl.timestamp >= $2
+		  AND fl.metadata IS NOT NULL
+		  AND fl.metadata->>'duration_ms' IS NOT NULL
+		  AND (fl.metadata->>'duration_ms') ~ '^[0-9.eE+-]+$'`
+	err := r.db.QueryRowContext(ctx, latQuery, tenantID, sevenDaysAgo).Scan(&avgLat)
+	if err != nil {
+		// non-fatal: no duration data
+		avgLat = nil
+	}
+	out.AvgLatencyMs = avgLat
+
+	// Uptime last 7d: success rate = (total - errors) / total * 100
+	var total7, errors7 int64
+	uptimeQuery := `
+		SELECT COUNT(*)::bigint,
+		       COUNT(*) FILTER (WHERE fl.level = 'error')::bigint
+		FROM function_logs fl
+		INNER JOIN functions f ON f.id = fl.function_id
+		WHERE f.tenant_id = $1 AND fl.timestamp >= $2`
+	if err := r.db.QueryRowContext(ctx, uptimeQuery, tenantID, sevenDaysAgo).Scan(&total7, &errors7); err != nil {
+		return nil, fmt.Errorf("uptime 7d: %w", err)
+	}
+	if total7 > 0 {
+		pct := 100.0 * (float64(total7-errors7) / float64(total7))
+		out.UptimePct = &pct
+	}
+
+	// Uptime previous 7d for comparison
+	var total14, errors14 int64
+	if err := r.db.QueryRowContext(ctx, uptimeQuery, tenantID, fourteenDaysAgo).Scan(&total14, &errors14); err != nil {
+		return nil, fmt.Errorf("uptime 14d: %w", err)
+	}
+	// Prev 7d = last 14d total - last 7d total
+	prevTotal := total14 - total7
+	prevErrors := errors14 - errors7
+	if prevTotal > 0 {
+		pct := 100.0 * (float64(prevTotal-prevErrors) / float64(prevTotal))
+		out.UptimePrevPct = &pct
+	}
+
+	// Uptime sparkline: 7 days, each day success rate
+	for i := 0; i < 7; i++ {
+		dayStart := now.AddDate(0, 0, -7+i).Truncate(24 * time.Hour)
+		dayEnd := dayStart.Add(24*time.Hour - time.Nanosecond)
+		var dayTotal, dayErrors int64
+		dayQuery := `
+			SELECT COUNT(*)::bigint, COUNT(*) FILTER (WHERE fl.level = 'error')::bigint
+			FROM function_logs fl INNER JOIN functions f ON f.id = fl.function_id
+			WHERE f.tenant_id = $1 AND fl.timestamp >= $2 AND fl.timestamp <= $3`
+		if err := r.db.QueryRowContext(ctx, dayQuery, tenantID, dayStart, dayEnd).Scan(&dayTotal, &dayErrors); err != nil {
+			out.UptimeSparkline[i] = 100
+			continue
+		}
+		if dayTotal == 0 {
+			out.UptimeSparkline[i] = 100
+		} else {
+			out.UptimeSparkline[i] = 100.0 * (float64(dayTotal-dayErrors) / float64(dayTotal))
+		}
+	}
+
+	// Requests sparkline: last 7 days daily counts
+	for i := 0; i < 7; i++ {
+		dayStart := now.AddDate(0, 0, -7+i).Truncate(24 * time.Hour)
+		dayEnd := dayStart.Add(24*time.Hour - time.Nanosecond)
+		var c int64
+		sparkQuery := `SELECT COUNT(*)::bigint FROM function_logs fl INNER JOIN functions f ON f.id = fl.function_id WHERE f.tenant_id = $1 AND fl.timestamp >= $2 AND fl.timestamp <= $3`
+		if err := r.db.QueryRowContext(ctx, sparkQuery, tenantID, dayStart, dayEnd).Scan(&c); err != nil {
+			continue
+		}
+		out.RequestsSparkline[i] = c
+	}
+
+	return out, nil
 }
 
 func mapDeploymentStatusToActivityType(status string) string {
