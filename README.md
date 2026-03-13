@@ -100,6 +100,15 @@ go run cmd/fly/main.go serve
 go run cmd/fly/main.go deploy --path ./examples/hello-world
 ```
 
+### Installing the fly CLI
+
+- **Install script (Linux/macOS):**  
+  `curl -fsSL https://raw.githubusercontent.com/functionfly/functionfly/main/scripts/install.sh | bash`
+- **Homebrew:** `brew tap functionfly/tap && brew install fly` (when tap is configured)
+- **From source:** `make build-fly` (binary at `bin/fly`)
+
+See [packaging/README.md](packaging/README.md) for Windows (Scoop/Chocolatey), upgrade steps, and release artifacts.
+
 ### Using the CLI
 
 ```bash
@@ -118,6 +127,8 @@ fly invoke my-function --data '{"name": "World"}'
 # View logs
 fly logs my-function
 ```
+
+Configuration precedence: **environment variables (FFLY_*)** override **global config** (`~/.functionfly/config.yaml`). Use `fly config` to view or `fly config reset` to restore defaults. See [cmd/fly/README.md](cmd/fly/README.md) for full CLI docs.
 
 ## Deployment
 
