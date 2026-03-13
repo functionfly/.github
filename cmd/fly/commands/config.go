@@ -56,6 +56,26 @@ func configPath() (string, error) {
 	return filepath.Join(home, ".functionfly", "config.yaml"), nil
 }
 
+// ConfigPath returns the path to the global config file (~/.functionfly/config.yaml).
+// Use this when showing config location in errors or in "fly config" output.
+func ConfigPath() (string, error) {
+	return configPath()
+}
+
+// ApplyEnvOverrides applies FFLY_* environment variables over the loaded config.
+// Precedence: env vars > config file > defaults. Keeps behavior consistent and doc-friendly.
+func ApplyEnvOverrides(cfg *GlobalConfig) {
+	if v := os.Getenv("FFLY_API_URL"); v != "" {
+		cfg.API.URL = v
+	}
+	if v := os.Getenv("FFLY_API_TIMEOUT"); v != "" {
+		cfg.API.Timeout = v
+	}
+	if v := os.Getenv("FFLY_TELEMETRY"); v != "" {
+		cfg.Telemetry.Enabled = v != "0" && v != "false" && v != "no"
+	}
+}
+
 func LoadConfig() (*GlobalConfig, error) {
 	path, err := configPath()
 	if err != nil {
@@ -64,14 +84,17 @@ func LoadConfig() (*GlobalConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return DefaultConfig(), nil
+			c := DefaultConfig()
+			ApplyEnvOverrides(c)
+			return c, nil
 		}
-		return nil, fmt.Errorf("could not read config: %w", err)
+		return nil, fmt.Errorf("could not read config from %s: %w\n   → Try: fly config reset or check FFLY_API_URL", path, err)
 	}
 	cfg := DefaultConfig()
 	if err := yaml.Unmarshal(data, cfg); err != nil {
-		return nil, fmt.Errorf("could not parse config: %w", err)
+		return nil, fmt.Errorf("could not parse config at %s: %w\n   → Try: fly config reset", path, err)
 	}
+	ApplyEnvOverrides(cfg)
 	return cfg, nil
 }
 

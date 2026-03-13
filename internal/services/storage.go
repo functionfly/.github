@@ -94,6 +94,18 @@ func (s *StorageService) initS3Client() {
 		}
 	}
 
+	// Use custom endpoint for S3-compatible backends (MinIO, B2, Wasabi, DO Spaces)
+	s3CustomEndpoint := strings.TrimSuffix(os.Getenv("STORAGE_S3_ENDPOINT"), "/")
+	if s.backend == StorageBackendS3 && s3CustomEndpoint != "" {
+		customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+			return aws.Endpoint{
+				URL:               s3CustomEndpoint,
+				HostnameImmutable: true,
+			}, nil
+		})
+		opts = append(opts, config.WithEndpointResolverWithOptions(customResolver))
+	}
+
 	// Load AWS config
 	cfg, err := config.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
@@ -111,10 +123,11 @@ func (s *StorageService) initS3Client() {
 		cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKey, awsSecretKey, "")
 	}
 
-	// Create S3 client
+	// Create S3 client (path-style required for R2 and for MinIO/B2 custom endpoints)
+	usePathStyle := s.backend == StorageBackendR2 || (s.backend == StorageBackendS3 && s3CustomEndpoint != "")
 	s3Client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		if s.backend == StorageBackendR2 {
-			o.UsePathStyle = true // R2 requires path-style
+		if usePathStyle {
+			o.UsePathStyle = true
 		}
 	})
 
@@ -267,7 +280,17 @@ func (s *StorageService) getCloudURL(path string) string {
 		// R2 uses custom domain
 		return fmt.Sprintf("https://%s.r2.cloudflarestorage.com/%s/%s", os.Getenv("R2_ACCOUNT_ID"), s.bucket, path)
 	}
-	// S3
+	// S3 with custom endpoint (MinIO, B2, Wasabi, DO Spaces)
+	if s.backend == StorageBackendS3 && os.Getenv("STORAGE_S3_ENDPOINT") != "" {
+		publicURL := os.Getenv("STORAGE_PUBLIC_URL")
+		if publicURL != "" {
+			return fmt.Sprintf("%s/%s", strings.TrimSuffix(publicURL, "/"), path)
+		}
+		// Path-style: endpoint/bucket/key
+		ep := strings.TrimSuffix(os.Getenv("STORAGE_S3_ENDPOINT"), "/")
+		return fmt.Sprintf("%s/%s/%s", ep, s.bucket, path)
+	}
+	// S3 (AWS)
 	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.bucket, os.Getenv("AWS_REGION"), path)
 }
 

@@ -3,6 +3,27 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import path from 'path'
+import fs from 'fs'
+
+/** SPA fallback: serve index.html for client routes so refresh on /api-keys, /dashboard, etc. works */
+function spaFallbackPlugin() {
+  return {
+    name: 'spa-fallback',
+    configureServer(server: any) {
+      server.middlewares.use((req: any, res: any, next: () => void) => {
+        const url = req.url?.split('?')[0] ?? ''
+        // Skip SPA fallback for real API proxy paths (/api or /api/...) but not client routes like /api-keys
+        if (req.method !== 'GET' || url === '/api' || url.startsWith('/api/') || url.startsWith('/src') || url.startsWith('/@') || url.startsWith('/node_modules') || url.includes('.')) {
+          return next()
+        }
+        const index = path.join(server.config.root, 'index.html')
+        if (!fs.existsSync(index)) return next()
+        req.url = '/index.html'
+        next()
+      })
+    },
+  }
+}
 
 // When dashboard runs in Docker, set API_PROXY_TARGET=http://orchestrator-api:8080.
 // On host, use localhost for WebSocket compatibility
@@ -44,7 +65,9 @@ const DEV_CSP = [
 ].join('; ')
 
 export default defineConfig({
+  appType: 'spa',
   plugins: [
+    spaFallbackPlugin(),
     react(),
     tailwindcss(),
     // Upload source maps to Sentry when SENTRY_AUTH_TOKEN is set (e.g. in CI)

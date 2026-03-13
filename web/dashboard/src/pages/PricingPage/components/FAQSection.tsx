@@ -21,13 +21,13 @@ export function FAQSection() {
         transition={{ duration: 0.6, delay: 0.2 }}
         className="text-center mb-12"
       >
-        <h2 className="text-3xl font-bold text-white mb-4">Frequently Asked Questions</h2>
-        <p className="text-text-secondary max-w-2xl mx-auto">
-          Everything you need to know about pricing and billing
+        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Frequently Asked Questions</h2>
+        <p className="text-text-secondary max-w-xl mx-auto text-base">
+          Pricing and billing
         </p>
       </motion.div>
 
-      <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
         {faqs.map((faq, index) => (
           <motion.div
             key={index}
@@ -42,7 +42,7 @@ export function FAQSection() {
             <Card className="pricing-faq-card border-white/8 bg-white/5 h-full">
               <CardContent className="p-6">
                 <h3 className="text-lg font-semibold text-white mb-3">{faq.question}</h3>
-                <p className="text-text-secondary leading-relaxed">{faq.answer}</p>
+                <p className="text-text-secondary text-base leading-relaxed">{faq.answer}</p>
               </CardContent>
             </Card>
           </motion.div>

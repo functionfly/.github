@@ -57,14 +57,11 @@ archives:
     # Wrap in directory
     wrap_in_directory: true
 
-# Package formats (Linux)
-dockers:
-  # Skip docker builds - not needed for CLI only
-  []
-
 # Linux package formats
 nfpms:
   - id: linux-packages
+    ids:
+      - fly
     # Package name
     package_name: fly
     # Maintainer

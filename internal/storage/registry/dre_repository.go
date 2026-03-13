@@ -48,6 +48,22 @@ func (r *RegistryRepository) GetMEGByExecutionID(executionID uuid.UUID) (*MEGRec
 	return &rec, nil
 }
 
+// GetMEGByExecutionRootHash retrieves the MEG record for a given execution root hash (for paste-friendly refs in conversations).
+func (r *RegistryRepository) GetMEGByExecutionRootHash(executionRootHash string) (*MEGRecord, error) {
+	if executionRootHash == "" {
+		return nil, nil
+	}
+	var rec MEGRecord
+	err := r.db.Where("execution_root_hash = ?", executionRootHash).First(&rec).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("dre: get meg by execution root hash: %w", err)
+	}
+	return &rec, nil
+}
+
 // UpdateMEGReplayResult updates the replay verification fields of a MEG record.
 func (r *RegistryRepository) UpdateMEGReplayResult(megID uuid.UUID, replayRootHash, replayNodeID string, verifiedAt time.Time) error {
 	if err := r.db.Model(&MEGRecord{}).Where("id = ?", megID).Updates(map[string]interface{}{

@@ -1,27 +1,19 @@
 export const faqs = [
   {
-    question: "Can I change my plan anytime?",
-    answer: "Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately for upgrades, and at the end of your current billing cycle for downgrades."
+    question: "Is there a free trial?",
+    answer: "Yes. All paid plans include a 14-day free trial. No credit card required to start; cancel anytime."
   },
   {
-    question: "What happens if I exceed my plan limits?",
-    answer: "You'll receive email notifications when approaching your limits. If you exceed them, additional usage will be billed at standard overage rates."
+    question: "Can I change or cancel my plan?",
+    answer: "Upgrade or downgrade anytime. Upgrades apply immediately; downgrades at end of billing cycle. Cancel anytime—no lock-in."
   },
   {
-    question: "Do you offer custom enterprise plans?",
-    answer: "Absolutely. Our enterprise plan is fully customizable with dedicated support, custom SLAs, and tailored features for large-scale deployments."
+    question: "What if I exceed my limits?",
+    answer: "We notify you as you approach limits. Overage is billed at standard rates, or you can upgrade to a higher plan."
   },
   {
-    question: "Is there a free trial for paid plans?",
-    answer: "Yes! All paid plans come with a 14-day free trial. No credit card required to start. You can cancel anytime during the trial period."
-  },
-  {
-    question: "What payment methods do you accept?",
-    answer: "We accept all major credit cards (Visa, MasterCard, American Express), PayPal, and bank transfers for enterprise customers."
-  },
-  {
-    question: "Can I cancel my subscription anytime?",
-    answer: "Yes, you can cancel your subscription at any time. You'll continue to have access to your plan until the end of your current billing period."
+    question: "Do you offer enterprise or custom plans?",
+    answer: "Yes. Enterprise plans include dedicated support, custom SLAs, and tailored features. Contact sales for pricing."
   }
 ];
 

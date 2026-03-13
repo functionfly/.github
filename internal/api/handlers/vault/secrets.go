@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -17,6 +18,12 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
+
+// Max secret name length (matches DB column)
+const maxSecretNameLen = 255
+
+// Max total size for encrypted payload (ciphertext + salt + iv + auth tag) to prevent DoS
+const maxEncryptedPayloadBytes = 64 * 1024 // 64 KB
 
 // HandleCreateSecret handles POST /v1/vault/secrets
 // Creates a new encrypted secret in the vault
@@ -39,19 +46,30 @@ func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate name: trim, non-empty, max length
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		h.respondError(w, http.StatusBadRequest, "INVALID_NAME", "Secret name is required")
+		return
+	}
+	if len(req.Name) > maxSecretNameLen {
+		h.respondError(w, http.StatusBadRequest, "INVALID_NAME", fmt.Sprintf("Secret name must be at most %d characters", maxSecretNameLen))
+		return
+	}
+
 	// Get tenant plan and check secrets limit
 	plan := middleware.GetTenantPlan(r)
 	maxSecrets := plans.GetMaxSecrets(plan)
 
 	// Get current secret count for tenant
-	secrets, err := h.repo.GetSecretsByTenant(r.Context(), claims.TenantID)
+	count, err := h.repo.CountSecretsByTenant(r.Context(), claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to count secrets")
 		h.respondError(w, http.StatusInternalServerError, "COUNT_FAILED", "Failed to verify secret limit")
 		return
 	}
 
-	if len(secrets) >= maxSecrets {
+	if count >= int64(maxSecrets) {
 		h.respondError(w, http.StatusForbidden, "SECRET_LIMIT_EXCEEDED",
 			fmt.Sprintf("Maximum number of secrets (%d) exceeded for your plan", maxSecrets))
 		return
@@ -84,6 +102,14 @@ func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	}
 	if authTagBytes == nil {
 		authTagBytes = []byte{}
+	}
+
+	// Reject oversized payloads to prevent DoS and storage blow-up
+	totalPayloadSize := len(ciphertext) + len(saltBytes) + len(ivBytes) + len(authTagBytes)
+	if totalPayloadSize > maxEncryptedPayloadBytes {
+		h.respondError(w, http.StatusBadRequest, "PAYLOAD_TOO_LARGE",
+			fmt.Sprintf("Encrypted payload must not exceed %d bytes", maxEncryptedPayloadBytes))
+		return
 	}
 
 	// Create secret model
@@ -152,31 +178,23 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 		offset = 0
 	}
 
-	// Get secrets for tenant
-	secrets, err := h.repo.GetSecretsByTenant(r.Context(), claims.TenantID)
+	// Get total count and page of secrets (DB-level pagination)
+	total, err := h.repo.CountSecretsByTenant(r.Context(), claims.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to count secrets")
+		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to list secrets")
+		return
+	}
+	secrets, err := h.repo.GetSecretsByTenantPaginated(r.Context(), claims.TenantID, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list secrets")
 		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to list secrets")
 		return
 	}
 
-	// Calculate total
-	total := int64(len(secrets))
-
-	// Apply pagination manually (since repo doesn't support offset yet)
-	start := offset
-	end := offset + limit
-	if start > len(secrets) {
-		start = len(secrets)
-	}
-	if end > len(secrets) {
-		end = len(secrets)
-	}
-	paginatedSecrets := secrets[start:end]
-
 	// Convert to metadata responses (no encrypted data)
-	responses := make([]SecretMetadataResponse, len(paginatedSecrets))
-	for i, secret := range paginatedSecrets {
+	responses := make([]SecretMetadataResponse, len(secrets))
+	for i, secret := range secrets {
 		responses[i] = secretToMetadataResponse(&secret)
 	}
 
@@ -277,10 +295,19 @@ func (h *Handler) HandleUpdateSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Apply partial updates
+	// Apply partial updates with validation
 	updated := false
-	if req.Name != nil && *req.Name != "" {
-		secret.Name = *req.Name
+	if req.Name != nil {
+		trimmed := strings.TrimSpace(*req.Name)
+		if trimmed == "" {
+			h.respondError(w, http.StatusBadRequest, "INVALID_NAME", "Secret name cannot be empty")
+			return
+		}
+		if len(trimmed) > maxSecretNameLen {
+			h.respondError(w, http.StatusBadRequest, "INVALID_NAME", fmt.Sprintf("Secret name must be at most %d characters", maxSecretNameLen))
+			return
+		}
+		secret.Name = trimmed
 		updated = true
 	}
 	if req.Description != nil {

@@ -49,9 +49,12 @@ func NewHandler(repo *vault.Repository, logger *logrus.Logger) *Handler {
 	}
 }
 
-// respondJSON sends a JSON response with the given status code
+// respondJSON sends a JSON response with the given status code.
+// Cache-Control and Pragma prevent caching of secret metadata and encrypted payloads.
 func (h *Handler) respondJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		h.logger.WithError(err).Error("Failed to encode JSON response")

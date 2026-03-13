@@ -204,11 +204,8 @@ func IsOriginAllowedForRequest(r *http.Request) bool {
 	allowed := getCORSAllowedOrigins()
 	isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
 	if len(allowed) == 0 {
-		// Production with no CORS_ALLOWED_ORIGINS: deny cross-origin
-		if isDev && (strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")) {
-			return true
-		}
-		return false
+		// Production with no CORS_ALLOWED_ORIGINS: deny cross-origin except localhost (for local dashboard dev)
+		return strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")
 	}
 	for _, o := range allowed {
 		if o == "*" || o == origin {
@@ -226,10 +223,12 @@ func (sm *SecurityMiddleware) CORSMiddleware(next http.HandlerFunc) http.Handler
 	return func(w http.ResponseWriter, r *http.Request) {
 		allowedOrigins := getCORSAllowedOrigins()
 		origin := r.Header.Get("Origin")
-		// In production, empty allowlist must not result in allowing any origin
+		// In production, empty allowlist must not result in allowing any origin.
+		// Exception: allow localhost origins so local dashboard (e.g. :3000) can call the API without setting DEVELOPMENT or CORS_ALLOWED_ORIGINS.
 		if len(allowedOrigins) == 0 && origin != "" {
 			isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
-			if !isDev {
+			isLocalhost := strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")
+			if !isDev && !isLocalhost {
 				logrus.Error("CORS_ALLOWED_ORIGINS is empty in production — rejecting cross-origin request")
 				http.Error(w, "CORS not configured", http.StatusForbidden)
 				return
@@ -559,6 +558,51 @@ func (a *AuthRateLimiter) Limit(next http.HandlerFunc) http.HandlerFunc {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusTooManyRequests)
 			_, _ = fmt.Fprintf(w, `{"message":"Too many requests. Please wait before trying again."}`)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+}
+
+// VaultRateLimiter applies per-tenant rate limits for vault write operations.
+// Use after RequireAuth so tenant ID is available from context.
+type VaultRateLimiter struct {
+	createSecretLimiter  *RateLimiter // e.g. 30/hour per tenant
+	generateTokenLimiter *RateLimiter // e.g. 60/hour per tenant
+}
+
+// NewVaultRateLimiter creates a limiter for vault create secret (30/hour) and generate token (60/hour) per tenant.
+func NewVaultRateLimiter() *VaultRateLimiter {
+	return &VaultRateLimiter{
+		createSecretLimiter:  NewRateLimiter(time.Hour, 30),
+		generateTokenLimiter: NewRateLimiter(time.Hour, 60),
+	}
+}
+
+// LimitCreate wraps a handler with per-tenant rate limiting for creating secrets.
+// Requires auth context (use after RequireAuth). Key is tenant ID.
+func (v *VaultRateLimiter) LimitCreate(next http.HandlerFunc) http.HandlerFunc {
+	return v.limitByTenant("vault_create", v.createSecretLimiter, next)
+}
+
+// LimitGenerateToken wraps a handler with per-tenant rate limiting for generating tokens.
+func (v *VaultRateLimiter) LimitGenerateToken(next http.HandlerFunc) http.HandlerFunc {
+	return v.limitByTenant("vault_token", v.generateTokenLimiter, next)
+}
+
+func (v *VaultRateLimiter) limitByTenant(prefix string, limiter *RateLimiter, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		key := prefix + ":unknown"
+		if claims != nil {
+			key = prefix + ":" + claims.TenantID.String()
+		}
+		if !limiter.Allow(key) {
+			logrus.WithFields(logrus.Fields{"key": key, "path": r.URL.Path}).Warn("Vault rate limit exceeded")
+			w.Header().Set("Retry-After", "3600")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = fmt.Fprintf(w, `{"error":"Too Many Requests","code":"VAULT_RATE_LIMIT","message":"Vault operation rate limit exceeded. Try again later."}`)
 			return
 		}
 		next.ServeHTTP(w, r)

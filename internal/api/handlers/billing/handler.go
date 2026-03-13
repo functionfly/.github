@@ -15,6 +15,30 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// PaymentMethodInfo represents the payment method details for display
+type PaymentMethodInfo struct {
+	Brand    string `json:"brand"`
+	Last4    string `json:"last4"`
+	ExpMonth int    `json:"exp_month"`
+	ExpYear  int    `json:"exp_year"`
+}
+
+// SubscriptionResponse is the response for subscription details
+type SubscriptionResponse struct {
+	ID                   uuid.UUID          `json:"id"`
+	TenantID             uuid.UUID          `json:"tenant_id"`
+	Plan                 string             `json:"plan"`
+	Status               string             `json:"status"`
+	StripeSubscriptionID string             `json:"stripe_subscription_id,omitempty"`
+	CurrentPeriodStart   *time.Time         `json:"current_period_start,omitempty"`
+	CurrentPeriodEnd     *time.Time         `json:"current_period_end,omitempty"`
+	CancelAtPeriodEnd    bool               `json:"cancel_at_period_end"`
+	CanceledAt           *time.Time         `json:"canceled_at,omitempty"`
+	CreatedAt            time.Time          `json:"created_at"`
+	UpdatedAt            time.Time          `json:"updated_at"`
+	PaymentMethod        *PaymentMethodInfo `json:"payment_method,omitempty"`
+}
+
 // Handler handles billing portal and subscription management (Stripe).
 type Handler struct {
 	repo storage.Repository
@@ -30,9 +54,22 @@ type CreatePortalSessionRequest struct {
 	ReturnURL string `json:"return_url"`
 }
 
+// CreateCheckoutSessionRequest is the request body for creating a checkout session.
+type CreateCheckoutSessionRequest struct {
+	PriceID    string `json:"price_id"`
+	SuccessURL string `json:"success_url"`
+	CancelURL  string `json:"cancel_url"`
+}
+
 // CreatePortalSessionResponse is the response with the Stripe portal URL.
 type CreatePortalSessionResponse struct {
 	URL string `json:"url"`
+}
+
+// CreateCheckoutSessionResponse is the response with the Stripe checkout URL.
+type CreateCheckoutSessionResponse struct {
+	SessionID string `json:"session_id"`
+	URL       string `json:"url"`
 }
 
 // HandleCreatePortalSession creates a Stripe Customer Billing Portal session and returns the URL.
@@ -113,6 +150,74 @@ func (h *Handler) HandleCreatePortalSession(w http.ResponseWriter, r *http.Reque
 	json.NewEncoder(w).Encode(CreatePortalSessionResponse{URL: url})
 }
 
+// HandleCreateCheckoutSession creates a Stripe Checkout session for subscription checkout.
+// POST /v1/billing/checkout
+func (h *Handler) HandleCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	if !payment.IsConfigured() {
+		writeJSONError(w, http.StatusServiceUnavailable, "Billing is not configured")
+		return
+	}
+
+	user, err := h.repo.GetUserByID(claims.UserID)
+	if err != nil || user == nil {
+		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("billing checkout: user not found")
+		writeJSONError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	var req CreateCheckoutSessionRequest
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	if req.PriceID == "" {
+		writeJSONError(w, http.StatusBadRequest, "price_id is required")
+		return
+	}
+
+	name := user.Name
+	if name == "" && user.ProviderData != nil {
+		if n, ok := user.ProviderData["name"].(string); ok {
+			name = n
+		}
+	}
+	if name == "" {
+		name = user.Email
+	}
+
+	resp, err := payment.CreateCheckoutSession(
+		r.Context(),
+		h.repo,
+		claims.TenantID,
+		user.Email,
+		name,
+		payment.CreateCheckoutSessionRequest{
+			PriceID:    req.PriceID,
+			SuccessURL: req.SuccessURL,
+			CancelURL:  req.CancelURL,
+		},
+	)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Error("billing checkout: create checkout session")
+		msg := "Failed to create checkout session"
+		if os.Getenv("DEVELOPMENT") == "true" {
+			msg = err.Error()
+		}
+		writeJSONError(w, http.StatusInternalServerError, msg)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
+}
+
 func writeJSONError(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -135,9 +240,50 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Get tenant to access Stripe customer ID for payment method info
+	tenant, err := h.repo.GetTenantByID(claims.TenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get tenant")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve subscription details")
+		return
+	}
+
+	// Build extended subscription response with payment method info
+	var paymentMethod *PaymentMethodInfo
+	if tenant.StripeCustomerID != nil && *tenant.StripeCustomerID != "" {
+		pm, err := payment.GetPaymentMethodForCustomer(r.Context(), *tenant.StripeCustomerID)
+		if err != nil {
+			logrus.WithError(err).Warn("billing: failed to get payment method")
+			// Don't fail the request, just don't include payment method
+		} else if pm != nil {
+			paymentMethod = &PaymentMethodInfo{
+				Brand:    pm.Brand,
+				Last4:    pm.Last4,
+				ExpMonth: pm.ExpMonth,
+				ExpYear:  pm.ExpYear,
+			}
+		}
+	}
+
+	// Convert storage.Subscription to response format
+	response := SubscriptionResponse{
+		ID:                   subscription.ID,
+		TenantID:             subscription.TenantID,
+		Plan:                 subscription.PricingTier.Name,
+		Status:               subscription.Status,
+		StripeSubscriptionID: subscription.ID.String(), // Use subscription ID as reference
+		CurrentPeriodStart:   &subscription.CurrentPeriodStart,
+		CurrentPeriodEnd:     &subscription.CurrentPeriodEnd,
+		CancelAtPeriodEnd:    subscription.CancelAtPeriodEnd,
+		CanceledAt:           subscription.CanceledAt,
+		CreatedAt:            subscription.CreatedAt,
+		UpdatedAt:            subscription.UpdatedAt,
+		PaymentMethod:        paymentMethod,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(subscription)
+	json.NewEncoder(w).Encode(response)
 }
 
 // HandleListInvoices returns the current user's invoices.
@@ -227,5 +373,57 @@ func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 		"usage": usage,
 		"start": start.Format("2006-01-02"),
 		"end":   end.Format("2006-01-02"),
+	})
+}
+
+// CancelSubscriptionRequest is the request body for cancelling a subscription
+type CancelSubscriptionRequest struct {
+	Immediately bool `json:"immediately"`
+}
+
+// HandleCancelSubscription cancels the current user's subscription.
+// POST /v1/billing/subscription/cancel
+func (h *Handler) HandleCancelSubscription(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.TenantID == uuid.Nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	if !payment.IsConfigured() {
+		writeJSONError(w, http.StatusServiceUnavailable, "Billing is not configured")
+		return
+	}
+
+	// Get subscription to find Stripe subscription ID
+	subscription, err := h.repo.GetSubscriptionByTenantID(claims.TenantID)
+	if err != nil || subscription == nil {
+		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing cancel: no subscription found")
+		writeJSONError(w, http.StatusNotFound, "No active subscription found")
+		return
+	}
+
+	// Parse request body
+	var req CancelSubscriptionRequest
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	// Cancel the subscription via the repository
+	err = h.repo.CancelSubscription(r.Context(), subscription.ID)
+	if err != nil {
+		logrus.WithError(err).WithField("subscription_id", subscription.ID).Error("billing cancel: failed to cancel subscription")
+		msg := "Failed to cancel subscription"
+		if os.Getenv("DEVELOPMENT") == "true" {
+			msg = err.Error()
+		}
+		writeJSONError(w, http.StatusInternalServerError, msg)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Subscription cancelled successfully",
 	})
 }

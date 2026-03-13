@@ -6,6 +6,8 @@ export const DOCS_SITE_URL = "/docs";
 
 export const ROUTES = {
   HOME: "/",
+  LAUNCH: "/launch",
+  COMING_SOON: "/coming-soon",
   PRICING: "/pricing",
   LOGIN: "/login",
   SIGNUP: "/signup",
@@ -17,6 +19,7 @@ export const ROUTES = {
   USAGE: "/usage",
   STATE_FABRIC: "/state-fabric",
   SECRETS: "/secrets",
+  API_KEYS: "/api-keys",
   SETTINGS: "/settings",
   BILLING: "/settings", // Billing tab lives on Settings page
   TEAMS: "/teams",
@@ -58,6 +61,7 @@ export const MAIN_NAV_PATHS: string[] = [
   ROUTES.ANALYTICS,
   ROUTES.USAGE,
   ROUTES.SECRETS,
+  ROUTES.API_KEYS,
   ROUTES.SETTINGS,
 ].sort((a, b) => b.length - a.length);
 
@@ -172,6 +176,7 @@ export const PLANS = {
     name: "Free",
     price: 0,
     priceCents: 0,
+    priceId: "",
     description: "Perfect for getting started with FunctionFly",
     features: [
       "1 function",
@@ -194,6 +199,7 @@ export const PLANS = {
     name: "Starter",
     price: 29,
     priceCents: 2900,
+    priceId: import.meta.env.VITE_STRIPE_PRICE_STARTER || "price_starter_placeholder",
     description: "For side projects and MVPs",
     features: [
       "5 functions",
@@ -219,6 +225,7 @@ export const PLANS = {
     name: "Professional",
     price: 99,
     priceCents: 9900,
+    priceId: import.meta.env.VITE_STRIPE_PRICE_PROFESSIONAL || "price_professional_placeholder",
     description: "For growing businesses and SaaS applications",
     features: [
       "25 functions",
@@ -248,6 +255,7 @@ export const PLANS = {
     name: "Enterprise",
     price: "Custom",
     priceCents: 0,
+    priceId: "",
     description: "For large-scale applications and enterprises",
     features: [
       "Unlimited functions",
@@ -284,6 +292,7 @@ export const AGENT_PLANS = {
     name: "Agent Starter",
     price: 49,
     priceCents: 4900,
+    priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_STARTER || "price_agent_starter_placeholder",
     description: "For small AI agent projects and prototyping",
     features: [
       "500K tool calls/month",
@@ -311,6 +320,7 @@ export const AGENT_PLANS = {
     name: "Agent Scale",
     price: 299,
     priceCents: 29900,
+    priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_SCALE || "price_agent_scale_placeholder",
     description: "For growing AI agent applications",
     features: [
       "5M tool calls/month",
@@ -339,6 +349,7 @@ export const AGENT_PLANS = {
     name: "Agent Pro",
     price: 999,
     priceCents: 99900,
+    priceId: import.meta.env.VITE_STRIPE_PRICE_AGENT_PRO || "price_agent_pro_placeholder",
     description: "For production AI agent systems",
     features: [
       "25M tool calls/month",
@@ -368,6 +379,7 @@ export const AGENT_PLANS = {
     name: "Agent Enterprise",
     price: "Custom",
     priceCents: 250000,
+    priceId: "",
     description: "For large-scale AI agent deployments",
     features: [
       "Unlimited tool calls",
@@ -392,6 +404,53 @@ export const AGENT_PLANS = {
       memoryGB: Infinity,
       logRetentionDays: -1,
     },
+  },
+} as const;
+
+// ============================================================================
+// State Fabric Plans - pricing for stateful serverless capabilities
+// ============================================================================
+
+export const STATE_FABRIC_PLANS = {
+  SANDBOX: {
+    id: "sf_sandbox",
+    name: "Sandbox",
+    price: 0,
+    priceCents: 0,
+    priceId: "",
+    description: "Great for experimentation & onboarding.",
+  },
+  STARTER: {
+    id: "sf_starter",
+    name: "Starter",
+    price: 19,
+    priceCents: 1900,
+    priceId: import.meta.env.VITE_STRIPE_PRICE_SF_STARTER || "price_sf_starter_placeholder",
+    description: "Internal dev & small side projects.",
+  },
+  PRO: {
+    id: "sf_pro",
+    name: "Pro",
+    price: 99,
+    priceCents: 9900,
+    priceId: import.meta.env.VITE_STRIPE_PRICE_SF_PRO || "price_sf_pro_placeholder",
+    description: "Production apps & team projects.",
+  },
+  BUSINESS: {
+    id: "sf_business",
+    name: "Business",
+    price: 499,
+    priceCents: 49900,
+    priceId: import.meta.env.VITE_STRIPE_PRICE_SF_BUSINESS || "price_sf_business_placeholder",
+    description: "Business-critical systems.",
+  },
+  ENTERPRISE: {
+    id: "sf_enterprise",
+    name: "Enterprise",
+    price: "Custom",
+    priceCents: 0,
+    priceId: "",
+    description: "Large enterprises & regulated industries.",
   },
 } as const;
 
@@ -424,8 +483,8 @@ export const STATUS_COLORS = {
 
 /**
  * Canonical API base URL (no trailing slash). Use for all API and WebSocket calls.
- * - Set VITE_API_URL in production (e.g. https://api.functionfly.com) and staging.
- * - In dev, uses /api so the Vite proxy forwards to the Go backend; set VITE_API_URL only to point at the API (e.g. http://localhost:8080) if not using the proxy.
+ * - Production: set VITE_API_URL (e.g. https://api.functionfly.com).
+ * - Local dev: set VITE_API_URL=http://localhost:8080 to hit the API directly (recommended), or VITE_API_URL=/api to use the Vite proxy (backend must be running on 8080). If you see 404 on /api/v1/api-keys, use http://localhost:8080 or start the backend.
  */
 export function getApiBaseUrl(): string {
   const env = (import.meta.env.VITE_API_URL ?? "").trim();

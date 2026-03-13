@@ -51,6 +51,7 @@ func GetCDNCacheKey(functionID, version, inputHash string) string {
 // CDNConfig holds CDN configuration
 type CDNConfig struct {
 	EnableCDNCaching bool   // Toggle for CDN caching
+	CDNBaseURL       string // Base URL for CDN (e.g. https://cdn.functionfly.com)
 	CDNMaxAge        int    // Default CDN max-age (seconds)
 	SDKBasePath      string // Base path for SDK assets
 	DocsBasePath     string // Base path for documentation assets
@@ -61,6 +62,7 @@ type CDNConfig struct {
 func NewCDNConfig() *CDNConfig {
 	return &CDNConfig{
 		EnableCDNCaching: true,
+		CDNBaseURL:       "https://cdn.functionfly.com",
 		CDNMaxAge:        3600,
 		SDKBasePath:      "/sdk",
 		DocsBasePath:     "/docs",

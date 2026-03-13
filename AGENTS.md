@@ -82,6 +82,12 @@ Vite proxies `/api/*` to the Go backend (port 8080). Use `VITE_API_URL` when the
 
 ---
 
+## Vault security (Secrets)
+
+The Secrets Vault is **zero-knowledge**: the server never sees plaintext or the decryption passphrase. Encryption and decryption are done **client-side** (dashboard: `web/dashboard/src/utils/vault-crypto.ts`). The API stores only AES-256-GCM ciphertext + IV/salt/tag. There is **no server-side decrypt endpoint** by design. For audit retention and token cleanup, see `docs/VAULT_OPERATIONS.md`.
+
+---
+
 ## Troubleshooting
 
 - **API won’t start:** Ensure Postgres and Redis are running and env vars are set (especially `DB_*`, `REDIS_ADDR`).

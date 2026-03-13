@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/gorilla/mux"
@@ -41,6 +42,20 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Check for specific error types
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			h.writeError(w, http.StatusConflict, "duplicate_key", "An API key with this name already exists")
+			return
+		}
+		errStr := err.Error()
+		// Foreign key violation: user or tenant from session not found in DB
+		if strings.Contains(errStr, "foreign key") || strings.Contains(errStr, "violates foreign key constraint") {
+			logrus.WithError(err).WithField("tenant_id", claims.TenantID).WithField("user_id", claims.UserID).Warn("Create API key: user or tenant not found")
+			h.writeError(w, http.StatusBadRequest, "invalid_claims", "Your session references a user or tenant that does not exist. Please sign out and sign in again.")
+			return
+		}
+		// Unique constraint (e.g. duplicate name per tenant) — PostgreSQL 23505 or message substring
+		if strings.Contains(errStr, "23505") ||
+			strings.Contains(errStr, "unique constraint") ||
+			strings.Contains(errStr, "duplicate key") {
 			h.writeError(w, http.StatusConflict, "duplicate_key", "An API key with this name already exists")
 			return
 		}

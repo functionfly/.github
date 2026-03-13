@@ -252,14 +252,15 @@ func (r *RegistryRepository) GetRatingByFunctionID(functionID uuid.UUID) (*Regis
 		// Cache miss - continue to database
 	}
 
-	var rating RegistryFunctionRating
-	err := r.db.Where("function_id = ?", functionID).First(&rating).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
+	// Use Limit(1).Find to avoid GORM logging "record not found" when no rating exists (expected)
+	var ratings []RegistryFunctionRating
+	if err := r.db.Where("function_id = ?", functionID).Limit(1).Find(&ratings).Error; err != nil {
 		return nil, fmt.Errorf("failed to get rating: %w", err)
 	}
+	if len(ratings) == 0 {
+		return nil, nil
+	}
+	rating := ratings[0]
 
 	// Cache the result if cache is available
 	if r.cache != nil && r.keyGen != nil {

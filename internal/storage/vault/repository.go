@@ -53,13 +53,39 @@ func (r *Repository) GetSecretByID(ctx context.Context, id uuid.UUID, tenantID u
 	return &secret, nil
 }
 
-// GetSecretsByTenant retrieves all non-deleted secrets for a tenant
+// GetSecretsByTenant retrieves all non-deleted secrets for a tenant (use for small sets; prefer paginated for listing)
 func (r *Repository) GetSecretsByTenant(ctx context.Context, tenantID uuid.UUID) ([]Secret, error) {
 	var secrets []Secret
 	err := r.db.WithContext(ctx).
 		Where("tenant_id = ? AND deleted_at IS NULL", tenantID).
 		Order("created_at DESC").
 		Find(&secrets).Error
+	return secrets, err
+}
+
+// CountSecretsByTenant returns the total number of non-deleted secrets for a tenant
+func (r *Repository) CountSecretsByTenant(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&Secret{}).
+		Where("tenant_id = ? AND deleted_at IS NULL", tenantID).
+		Count(&count).Error
+	return count, err
+}
+
+// GetSecretsByTenantPaginated returns a page of secrets for a tenant (metadata suitable for list views)
+func (r *Repository) GetSecretsByTenantPaginated(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]Secret, error) {
+	var secrets []Secret
+	query := r.db.WithContext(ctx).
+		Where("tenant_id = ? AND deleted_at IS NULL", tenantID).
+		Order("created_at DESC")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+	err := query.Find(&secrets).Error
 	return secrets, err
 }
 
@@ -235,8 +261,8 @@ func (r *Repository) GetAuditLogsBySecret(ctx context.Context, secretID uuid.UUI
 	return logs, err
 }
 
-// GetAuditLogsByTenant retrieves audit logs for a tenant with optional limit
-func (r *Repository) GetAuditLogsByTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]AuditLog, error) {
+// GetAuditLogsByTenant retrieves audit logs for a tenant with limit and offset for pagination
+func (r *Repository) GetAuditLogsByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]AuditLog, error) {
 	var logs []AuditLog
 	query := r.db.WithContext(ctx).
 		Where("tenant_id = ?", tenantID).
@@ -245,9 +271,22 @@ func (r *Repository) GetAuditLogsByTenant(ctx context.Context, tenantID uuid.UUI
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
 
 	err := query.Find(&logs).Error
 	return logs, err
+}
+
+// CountAuditLogsByTenant returns the total number of audit log entries for a tenant
+func (r *Repository) CountAuditLogsByTenant(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&AuditLog{}).
+		Where("tenant_id = ?", tenantID).
+		Count(&count).Error
+	return count, err
 }
 
 // GetAuditLogsByActor retrieves audit logs for a specific actor

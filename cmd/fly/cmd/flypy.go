@@ -35,11 +35,14 @@ var flypyFlags struct {
 }
 
 func init() {
-	rootCmd.AddCommand(flypyCmd)
-
-	// Global flypy flags
 	flypyCmd.PersistentFlags().BoolVarP(&flypyFlags.verbose, "verbose", "v", false, "Enable verbose output")
 	flypyCmd.PersistentFlags().StringVar(&flypyFlags.config, "config", "", "Path to flypy config file (default: flypy.yaml)")
 	flypyCmd.PersistentFlags().StringVar(&flypyFlags.mode, "mode", "deterministic", "Execution mode: deterministic or compatible")
 	flypyCmd.PersistentFlags().StringVarP(&flypyFlags.output, "output", "o", "./dist", "Output directory for compiled artifacts")
+	// Subcommands are added in flypy_build.go, flypy_deploy.go, flypy_local.go
+}
+
+// FlypyCmd returns the flypy command for attachment to the live root (e.g. from main).
+func FlypyCmd() *cobra.Command {
+	return flypyCmd
 }

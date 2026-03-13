@@ -43,7 +43,7 @@ func runInit(name, template string, force bool) error {
 		}
 	}
 	if !isValidFunctionName(name) {
-		return fmt.Errorf("invalid function name: %q\n   → Names must be lowercase letters, numbers, and hyphens only", name)
+		return fmt.Errorf("invalid function name: %q\n   → Use lowercase letters, numbers, and hyphens only; max 63 characters; no leading or trailing hyphens", name)
 	}
 	if template == "javascript" && IsInteractive() {
 		template = PromptSelect("Choose a template:", []string{"javascript", "typescript", "python"}, "javascript")
@@ -83,8 +83,12 @@ func runInit(name, template string, force bool) error {
 	return nil
 }
 
+// isValidFunctionName validates function name: lowercase, digits, hyphens; 1–63 chars; no leading/trailing hyphen.
 func isValidFunctionName(name string) bool {
-	if len(name) == 0 || len(name) > 64 {
+	if len(name) == 0 || len(name) > 63 {
+		return false
+	}
+	if name[0] == '-' || name[len(name)-1] == '-' {
 		return false
 	}
 	for _, c := range name {

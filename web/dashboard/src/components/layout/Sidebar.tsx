@@ -18,6 +18,7 @@ import {
   Building2,
   CreditCard,
   Key,
+  KeyRound,
   FileText,
   Mail,
   Calendar,
@@ -78,7 +79,8 @@ const navigationSections: NavSection[] = [
       { path: ROUTES.TEAMS, label: "Teams", icon: Users },
       { path: ROUTES.STATE_FABRIC, label: "State Fabric", icon: Database },
       { path: ROUTES.AGENTS, label: "Agents", icon: Bot },
-      { path: ROUTES.SECRETS, label: "Secrets", icon: Key }
+      { path: ROUTES.SECRETS, label: "Secrets", icon: Key },
+      { path: ROUTES.API_KEYS, label: "API Keys", icon: KeyRound }
     ]
   },
   {

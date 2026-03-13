@@ -1,0 +1,107 @@
+"""FlyMind AI Service - Main Application.
+
+This is the FastAPI application entry point.
+Includes Phase 1 (Foundation) and Phase 2 (Intelligence Layer).
+"""
+
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from .config import settings, get_settings
+from .api.routes import router
+from .providers.manager import get_provider_manager
+from .services.embeddings import get_embeddings_service
+
+
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, settings.log_level),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    # Startup
+    logger.info(f"Starting {settings.service_name} v{settings.service_version}")
+
+    # Initialize providers
+    try:
+        provider_manager = get_provider_manager()
+        logger.info(f"Initialized providers: {list(provider_manager._providers.keys())}")
+    except Exception as e:
+        logger.error(f"Failed to initialize providers: {e}")
+
+    # Initialize embeddings service
+    try:
+        embeddings_service = get_embeddings_service()
+        logger.info("Embeddings service initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize embeddings service: {e}")
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down...")
+
+    # Close embeddings service
+    try:
+        embeddings_service = get_embeddings_service()
+        await embeddings_service.close()
+    except Exception as e:
+        logger.warning(f"Error closing embeddings service: {e}")
+
+    logger.info("Shutdown complete")
+
+
+# Create FastAPI application
+app = FastAPI(
+    title="FlyMind AI Service",
+    description="Intelligent capabilities for FunctionFly serverless platform",
+    version=settings.service_version,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan,
+)
+
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=settings.cors_allow_credentials,
+    allow_methods=settings.cors_allow_methods,
+    allow_headers=settings.cors_allow_headers,
+)
+
+
+# Include API routes
+app.include_router(router)
+
+
+@app.get("/")
+async def root():
+    """Root endpoint."""
+    return JSONResponse({
+        "service": settings.service_name,
+        "version": settings.service_version,
+        "status": "running",
+        "docs": "/docs",
+    })
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=settings.debug,
+    )

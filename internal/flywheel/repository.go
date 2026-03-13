@@ -119,6 +119,19 @@ func (r *Repository) DeleteThread(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&Thread{}, "id = ?", id).Error
 }
 
+// CountSharedThreads returns the number of distinct flywheel threads where both userID1 and userID2
+// participated (as thread author and/or reply author).
+func (r *Repository) CountSharedThreads(ctx context.Context, userID1, userID2 uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&Thread{}).
+		Where(`
+			(author_id = ? OR EXISTS (SELECT 1 FROM flywheel_replies r WHERE r.thread_id = flywheel_threads.id AND r.author_id = ?))
+			AND (author_id = ? OR EXISTS (SELECT 1 FROM flywheel_replies r WHERE r.thread_id = flywheel_threads.id AND r.author_id = ?))`,
+			userID1, userID1, userID2, userID2).
+		Count(&count).Error
+	return count, err
+}
+
 // MarkThreadAsResolved marks a thread as resolved with an accepted solution
 func (r *Repository) MarkThreadAsResolved(ctx context.Context, threadID, replyID uuid.UUID) error {
 	now := time.Now()

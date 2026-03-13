@@ -1,6 +1,5 @@
 /*
 Copyright © 2026 FunctionFly
-
 */
 package cmd
 
@@ -26,15 +25,16 @@ Examples:
 
   # Remove a backend
   fly backend remove --app myapp --backend <backend-id>`,
-	SilenceUsage:  true,
+	SilenceUsage: true,
 }
 
 func init() {
-	// Add backend command to root
-	rootCmd.AddCommand(backendCmd)
-
-	// Add subcommands
 	backendCmd.AddCommand(newBackendAddCmd())
 	backendCmd.AddCommand(newBackendListCmd())
 	backendCmd.AddCommand(newBackendRemoveCmd())
+}
+
+// BackendCmd returns the backend command for attachment to the live root (e.g. from main).
+func BackendCmd() *cobra.Command {
+	return backendCmd
 }

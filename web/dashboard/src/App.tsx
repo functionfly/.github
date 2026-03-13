@@ -9,9 +9,9 @@ import { useNotificationStore } from '@/stores/notificationStore';
 import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
 import { CookieConsentProvider } from '@/components/cookie-consent';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { DevA11y } from '@/components/dev/DevA11y';
 import type { Notification, NotificationCategory } from '@/types/notifications';
 import { LandingPage } from '@/pages/LandingPage';
+import { LaunchPage } from '@/pages/LaunchPage';
 import { TeamPage } from '@/pages/TeamPage';
 import { PricingPage } from '@/pages/PricingPage';
 import { FeaturesPage } from '@/pages/FeaturesPage';
@@ -78,6 +78,7 @@ import FunctionMarketplacePage from '@/pages/FunctionMarketplacePage';
 import EvolutionPage from '@/pages/EvolutionPage';
 import EnterpriseSLAPage from '@/pages/EnterpriseSLAPage';
 import { AdminFactoryPage } from '@/pages/AdminFactoryPage';
+import ConversationsPage from '@/pages/ConversationsPage';
 
 // Flywheel Network imports
 import { FlywheelLayout } from '@/components/flywheel/layout/FlywheelLayout';
@@ -325,6 +326,8 @@ function AppContent() {
       <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/launch" element={<LaunchPage />} />
+      <Route path="/coming-soon" element={<LaunchPage />} />
       <Route path="/status" element={<StatusPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/features" element={<FeaturesPage />} />
@@ -438,6 +441,9 @@ function AppContent() {
         <Route path="settings" element={<SettingsPage />} />
         <Route path="api-keys" element={<APIKeysPage />} />
         <Route path="api-keys/:keyId" element={<APIKeyDetailPage />} />
+        {/* Same pages at /dashboard/api-keys for consistent nav links */}
+        <Route path="dashboard/api-keys" element={<APIKeysPage />} />
+        <Route path="dashboard/api-keys/:keyId" element={<APIKeyDetailPage />} />
         <Route path="secrets" element={<SecretsPage />} />
         <Route path="teams" element={<TeamsPage />} />
         {/* Enterprise Routes */}
@@ -460,6 +466,9 @@ function AppContent() {
         <Route path="marketplace/functions" element={<FunctionMarketplacePage />} />
         <Route path="evolution" element={<EvolutionPage />} />
         <Route path="evolution/:agentId" element={<EvolutionPage />} />
+
+        <Route path="conversations" element={<ConversationsPage />} />
+        <Route path="conversations/:id" element={<ConversationsPage />} />
 
         {/* Flywheel Network Routes */}
         <Route path="flywheel" element={<FlywheelLayout />}>
@@ -494,7 +503,6 @@ function App() {
         <ThemeProvider>
           <CookieConsentProvider>
             <Analytics />
-            <DevA11y />
             <BrowserRouter>
               <GlobalKeyboardShortcuts />
               <AppContent />

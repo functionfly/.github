@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
-.PHONY: help build build-local-runtime test clean docker-up docker-down dev api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv
+.PHONY: help build build-local-runtime test clean docker-up docker-down dev api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-fly build-fly-release release-dry-run release release-snapshot install-locally dist
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -20,6 +20,27 @@ build-local-runtime: ## Build the local Rust runtime
 
 build-fly: ## Build the fly CLI (bin/fly)
 	go build -o bin/fly ./cmd/fly
+
+build-fly-release: ## Build the fly CLI with version ldflags (for release-like local binary)
+	@v=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
+	c=$$(git rev-parse --short HEAD 2>/dev/null || echo ""); \
+	d=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
+	go build -o bin/fly -ldflags "-s -w -X github.com/functionfly/functionfly/internal/version.Version=$$v -X github.com/functionfly/functionfly/internal/version.Commit=$$c -X github.com/functionfly/functionfly/internal/version.Date=$$d" ./cmd/fly
+
+release-dry-run: ## Run GoReleaser in dry-run mode (no publish)
+	goreleaser release --clean --dry-run
+
+release: ## Create and publish a CLI release (requires GITHUB_TOKEN, tag e.g. v1.0.0)
+	goreleaser release --clean
+
+release-snapshot: ## Create a snapshot release (no tag required)
+	goreleaser release --clean --snapshot
+
+install-locally: ## Install fly CLI to GOPATH/bin
+	go install ./cmd/fly
+
+dist: ## Build distribution packages for current platform only (no publish)
+	goreleaser build --clean --single-target
 
 venv: ## Create .venv for local dev (Python from .python-version) and install functions/functionfly/requirements.txt. Run: source .venv/bin/activate
 	@python3 --version 2>/dev/null || { echo "Python 3 required (pyenv recommended: pyenv install 3.12)"; exit 1; }; \

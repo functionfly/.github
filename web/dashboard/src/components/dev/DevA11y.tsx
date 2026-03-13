@@ -1,7 +1,7 @@
 /**
  * Runs axe-core accessibility checks in development (logs to console).
  * Only runs when import.meta.env.DEV is true.
- * Note: @axe-core/react may not support React 18+; init is best-effort.
+ * Optional: re-enable in App.tsx and run `bun install` from repo root to use.
  */
 import { useEffect } from 'react'
 import React from 'react'

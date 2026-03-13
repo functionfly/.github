@@ -1,20 +1,28 @@
 import { useEffect, useState } from 'react';
 import { Analytics as VercelAnalytics } from '@vercel/analytics/react';
-import { loadGoogleAnalytics, loadHotjar } from '@/components/cookie-consent/ConditionalScriptLoader';
+import { loadGoogleAnalytics } from '@/components/cookie-consent/ConditionalScriptLoader';
 import { getAnalyticsSettings } from '@/api';
 import type { AnalyticsSettings } from '@/types';
+import { useAuthStore } from '@/stores/authStore';
+
+const ADMIN_ROLES = ['admin', 'super_admin'];
 
 export function Analytics() {
   const [settings, setSettings] = useState<AnalyticsSettings | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
     const loadAnalyticsSettings = async () => {
       try {
-        // Only try to load analytics settings if user is authenticated
         const token = localStorage.getItem('ff-access-token');
         if (!token) {
-          // User not authenticated, skip loading analytics settings
+          setLoaded(true);
+          return;
+        }
+        // Admin analytics settings (Google Analytics, etc.) are only available to admins
+        const isAdmin = user?.role && ADMIN_ROLES.includes(user.role);
+        if (!isAdmin) {
           setLoaded(true);
           return;
         }
@@ -22,15 +30,17 @@ export function Analytics() {
         const analyticsSettings = await getAnalyticsSettings();
         setSettings(analyticsSettings);
       } catch (error) {
-        console.error('Failed to load analytics settings:', error);
-        // Don't set fallback settings for authenticated users - they'll get default behavior
+        // 403 expected for non-admins; only log for admins
+        if (user?.role && ADMIN_ROLES.includes(user.role)) {
+          console.error('Failed to load analytics settings:', error);
+        }
       } finally {
         setLoaded(true);
       }
     };
 
     loadAnalyticsSettings();
-  }, []);
+  }, [user?.role]);
 
   if (!loaded) {
     return <VercelAnalytics />;

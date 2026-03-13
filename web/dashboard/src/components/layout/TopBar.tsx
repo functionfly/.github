@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import { Breadcrumb } from "./Breadcrumb";
 import { UserMenu } from "./UserMenu";
 import { SearchButton } from "./SearchButton";
-import { ProductsDropdown } from "@/components/common/ProductsDropdown";
 import { EnterpriseBadge } from "@/components/enterprise";
 import { useNavigationStatus } from "@/hooks/useNavigationStatus";
 import { useContextualActions } from "@/hooks/useContextualActions";
@@ -73,9 +72,6 @@ export function TopBar({ onMenuClick, className }: TopBarProps) {
 
         {/* Right Section */}
         <div className="flex items-center gap-2">
-          {/* Products Dropdown */}
-          <ProductsDropdown />
-
           {/* Global Search */}
           <SearchButton />
 

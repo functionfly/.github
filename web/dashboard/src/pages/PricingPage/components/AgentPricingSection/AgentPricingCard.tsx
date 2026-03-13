@@ -15,19 +15,26 @@ interface AgentPlan {
   price: string;
   period: string;
   description: string;
-  features: string[];
+  features: readonly string[] | string[];
   highlighted: boolean;
   cta: string;
   href: string;
+  priceId?: string;
 }
 
 interface AgentPricingCardProps {
   plan: AgentPlan;
   index: number;
   inView: boolean;
+  onPlanSelect?: (planId: string, priceId?: string) => void;
 }
 
-export function AgentPricingCard({ plan, index, inView }: AgentPricingCardProps) {
+export function AgentPricingCard({ plan, index, inView, onPlanSelect }: AgentPricingCardProps) {
+  const handleClick = () => {
+    if (onPlanSelect) {
+      onPlanSelect(plan.id, plan.priceId);
+    }
+  };
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -36,7 +43,7 @@ export function AgentPricingCard({ plan, index, inView }: AgentPricingCardProps)
     >
       <Card
         className={cn(
-          "pricing-agent-card h-full relative overflow-hidden transition-all duration-300",
+          "pricing-agent-card h-full relative overflow-visible transition-all duration-300",
           "bg-gradient-to-br from-cyan-950/30 to-blue-950/30 backdrop-blur-sm",
           "border border-cyan-500/20 hover:border-cyan-500/40",
           "hover:shadow-2xl hover:shadow-cyan-500/10",
@@ -90,7 +97,7 @@ export function AgentPricingCard({ plan, index, inView }: AgentPricingCardProps)
               </motion.li>
             ))}
           </ul>
-          <Link to={plan.href}>
+          <Link to={plan.href} onClick={handleClick}>
             <Button
               variant={plan.highlighted ? "default" : "outline"}
               size="lg"

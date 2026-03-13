@@ -208,17 +208,17 @@ func (h *Handler) HandleGetPassport(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"function": fmt.Sprintf("fx://%s/%s", author, name),
 			"passport": map[string]interface{}{
-				"deterministic_reliability":    0,
-				"replay_drift_incidents":       0,
-				"verified_executions_total":    0,
-				"total_executions":             0,
-				"determinism_score":            0,
-				"replay_integrity_score":       0,
-				"performance_stability_score":  0,
-				"drift_score":                  1.0,
-				"capsule_version":              "dcc/1.0",
-				"determinism_tier":             "full",
-				"last_verified_at":             nil,
+				"deterministic_reliability":   0,
+				"replay_drift_incidents":      0,
+				"verified_executions_total":   0,
+				"total_executions":            0,
+				"determinism_score":           0,
+				"replay_integrity_score":      0,
+				"performance_stability_score": 0,
+				"drift_score":                 1.0,
+				"capsule_version":             "dcc/1.0",
+				"determinism_tier":            "full",
+				"last_verified_at":            nil,
 			},
 		})
 		return
@@ -227,17 +227,17 @@ func (h *Handler) HandleGetPassport(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"function": fmt.Sprintf("fx://%s/%s", author, name),
 		"passport": map[string]interface{}{
-			"deterministic_reliability":    passport.DeterministicReliability,
-			"replay_drift_incidents":       passport.ReplayDriftIncidents,
-			"verified_executions_total":    passport.VerifiedExecutionsTotal,
-			"total_executions":             passport.TotalExecutions,
-			"determinism_score":            passport.DeterminismScore,
-			"replay_integrity_score":       passport.ReplayIntegrityScore,
-			"performance_stability_score":  passport.PerformanceStabilityScore,
-			"drift_score":                  passport.DriftScore,
-			"capsule_version":              "dcc/1.0",
-			"determinism_tier":             "full",
-			"last_verified_at":             passport.LastVerifiedAt,
+			"deterministic_reliability":   passport.DeterministicReliability,
+			"replay_drift_incidents":      passport.ReplayDriftIncidents,
+			"verified_executions_total":   passport.VerifiedExecutionsTotal,
+			"total_executions":            passport.TotalExecutions,
+			"determinism_score":           passport.DeterminismScore,
+			"replay_integrity_score":      passport.ReplayIntegrityScore,
+			"performance_stability_score": passport.PerformanceStabilityScore,
+			"drift_score":                 passport.DriftScore,
+			"capsule_version":             "dcc/1.0",
+			"determinism_tier":            "full",
+			"last_verified_at":            passport.LastVerifiedAt,
 		},
 	})
 }
@@ -452,11 +452,11 @@ func (h *Handler) HandleGetExecution(w http.ResponseWriter, r *http.Request) {
 		for _, cert := range certs {
 			if cert.ExecutionID == executionID {
 				certInfo = map[string]interface{}{
-					"certificate_id":     cert.CertificateID,
-					"cert_level":         cert.CertLevel,
-					"certificate_hash":   cert.CertificateHash,
-					"created_at":         cert.CreatedAt,
-					"anchored":           cert.Anchored,
+					"certificate_id":   cert.CertificateID,
+					"cert_level":       cert.CertLevel,
+					"certificate_hash": cert.CertificateHash,
+					"created_at":       cert.CreatedAt,
+					"anchored":         cert.Anchored,
 				}
 				break
 			}
@@ -489,6 +489,119 @@ func (h *Handler) HandleGetExecution(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, response)
+}
+
+// HandleGetExecutionByHash returns execution details by execution_root_hash (for conversation execution refs).
+//
+// GET /registry/{author}/{name}/executions/by-hash?execution_root_hash=0x...
+func (h *Handler) HandleGetExecutionByHash(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+	hash := r.URL.Query().Get("execution_root_hash")
+	if hash == "" {
+		writeError(w, http.StatusBadRequest, "execution_root_hash query parameter is required")
+		return
+	}
+
+	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "function not found")
+		return
+	}
+
+	rec, err := h.Repo.GetMEGByExecutionRootHash(hash)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get execution: %v", err))
+		return
+	}
+	if rec == nil {
+		writeError(w, http.StatusNotFound, "execution not found")
+		return
+	}
+	if rec.FunctionID != fn.ID {
+		writeError(w, http.StatusNotFound, "execution not found for this function")
+		return
+	}
+
+	executionID := rec.ExecutionID
+	var certInfo map[string]interface{}
+	certs, err := h.Repo.GetCertificatesByFunctionID(fn.ID, 1, 0)
+	if err == nil && len(certs) > 0 {
+		for _, cert := range certs {
+			if cert.ExecutionID == executionID {
+				certInfo = map[string]interface{}{
+					"certificate_id":   cert.CertificateID,
+					"cert_level":       cert.CertLevel,
+					"certificate_hash": cert.CertificateHash,
+					"created_at":       cert.CreatedAt,
+					"anchored":         cert.Anchored,
+				}
+				break
+			}
+		}
+	}
+
+	response := map[string]interface{}{
+		"execution": map[string]interface{}{
+			"execution_id":        rec.ExecutionID.String(),
+			"execution_root_hash": rec.ExecutionRootHash,
+			"version":             rec.Version,
+			"created_at":          rec.CreatedAt,
+			"determinism_tier":    rec.DeterminismTier,
+			"protocol_version":    rec.ProtocolVersion,
+			"replay_verified_at":  rec.ReplayVerifiedAt,
+			"replay_root_hash":    rec.ReplayRootHash,
+			"replay_node_id":      rec.ReplayNodeID,
+			"roots_match":         rec.ReplayRootHash != "" && rec.ReplayRootHash == rec.ExecutionRootHash,
+			"component_hashes": map[string]string{
+				"input":       rec.InputHash,
+				"output":      rec.OutputHash,
+				"environment": rec.EnvironmentHash,
+				"dependency":  rec.DependencyHash,
+				"trace":       rec.TraceHash,
+				"resource":    rec.ResourceHash,
+				"metadata":    rec.MetadataHash,
+			},
+			"certificate": certInfo,
+		},
+	}
+	writeJSON(w, http.StatusOK, response)
+}
+
+// HandleGetExecutionTimeline returns time-bucketed metrics for executions (for conversation overlay).
+// GET /registry/{author}/{name}/executions/timeline?from=&to=&metric=latency|errors|trust
+func (h *Handler) HandleGetExecutionTimeline(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+	metric := r.URL.Query().Get("metric")
+	if metric == "" {
+		metric = "latency"
+	}
+
+	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "function not found")
+		return
+	}
+
+	// Return placeholder timeline (buckets); in production wire to analytics/monitoring
+	buckets := make([]map[string]interface{}, 0)
+	for i := 0; i < 7; i++ {
+		buckets = append(buckets, map[string]interface{}{
+			"bucket":       time.Now().AddDate(0, 0, -6+i).Format("2006-01-02"),
+			"value":        80 + (i * 2),
+			"sample_count": 10 + i,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"function":    fmt.Sprintf("fx://%s/%s", author, name),
+		"function_id": fn.ID,
+		"metric":      metric,
+		"buckets":     buckets,
+		"insight":     "",
+	})
 }
 
 // writeJSON writes a JSON response with the given status code.

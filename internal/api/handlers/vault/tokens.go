@@ -118,7 +118,7 @@ func (h *Handler) HandleGenerateToken(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// HandleRevokeToken handles POST /v1/vault/tokens/{token_id}/revoke
+// HandleRevokeToken handles DELETE /v1/vault/tokens/{id}
 // Revokes an access token by ID
 func (h *Handler) HandleRevokeToken(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
@@ -128,7 +128,7 @@ func (h *Handler) HandleRevokeToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	tokenID := parseUUID(vars["token_id"])
+	tokenID := parseUUID(vars["id"])
 	if tokenID == nil {
 		h.respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid token ID")
 		return
@@ -267,6 +267,11 @@ func (h *Handler) ValidateTokenForRuntime(next http.HandlerFunc) http.HandlerFun
 			return
 		}
 		if token == nil {
+			h.respondError(w, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid or revoked token")
+			return
+		}
+		// Constant-time comparison to prevent timing leakage
+		if !constantTimeCompare(token.TokenHash, tokenHash) {
 			h.respondError(w, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid or revoked token")
 			return
 		}

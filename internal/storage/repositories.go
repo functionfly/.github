@@ -496,6 +496,10 @@ func (db *PostgresDB) GetFeedbackAttachments(feedbackID uuid.UUID) ([]FeedbackAt
 	return db.feedbackRepository.GetFeedbackAttachments(feedbackID)
 }
 
+func (db *PostgresDB) GetFeedbackAttachmentByID(attachmentID uuid.UUID) (*FeedbackAttachment, error) {
+	return db.feedbackRepository.GetFeedbackAttachmentByID(attachmentID)
+}
+
 func (db *PostgresDB) GetFeedbackStats() (map[string]interface{}, error) {
 	return db.feedbackRepository.GetFeedbackStats()
 }

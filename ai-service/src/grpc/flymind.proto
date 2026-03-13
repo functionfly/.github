@@ -1,0 +1,254 @@
+// FlyMind gRPC Service Definition
+//
+// This proto file defines the gRPC surface between the Go orchestrator
+// and the FlyMind AI service. It is designed for production use:
+// - All calls carry a RequestContext for authn/z and observability
+// - Timestamps use google.protobuf.Timestamp
+// - Enums are used instead of free-form strings where possible
+//
+// Transport security (TLS/mTLS) and per-RPC authentication should be
+// configured at the gRPC layer using credentials and interceptors.
+//
+// To generate Python stubs:
+//   python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. flymind.proto
+//
+// To generate Go stubs:
+//   protoc --go_out=. --go-grpc_out=. flymind.proto
+
+syntax = "proto3";
+
+package flymind;
+
+option go_package = "github.com/functionfly/flymind/pkg/grpc";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// =============================================================================
+// Common types
+// =============================================================================
+
+// Request-scoped context passed on every RPC for authn/z and tracing.
+message RequestContext {
+  // Stable tenant identifier (required for multi-tenant isolation).
+  string tenant_id = 1;
+
+  // End-user or service principal performing the call (optional).
+  string principal_id = 2;
+
+  // API key or client id used, if any (for auditing and rate limiting).
+  string api_key_id = 3;
+
+  // Correlation / trace identifier propagated across services.
+  string trace_id = 4;
+
+  // Caller IP or edge location (best-effort, may be anonymized).
+  string source = 5;
+
+  // Arbitrary additional context: headers, tags, etc.
+  map<string, string> metadata = 6;
+}
+
+enum TargetPlatform {
+  TARGET_PLATFORM_UNSPECIFIED = 0;
+  TARGET_PLATFORM_CLOUDFLARE = 1;
+  TARGET_PLATFORM_VERCEL = 2;
+  TARGET_PLATFORM_FLY = 3;
+  TARGET_PLATFORM_DENO = 4;
+  TARGET_PLATFORM_INTERNAL = 5;
+  TARGET_PLATFORM_FUNCTIONFLY = 6;  // FunctionFly edge
+}
+
+enum ContentType {
+  CONTENT_TYPE_UNSPECIFIED = 0;
+  CONTENT_TYPE_INPUT = 1;
+  CONTENT_TYPE_OUTPUT = 2;
+}
+
+// =============================================================================
+// Service Definitions
+// =============================================================================
+
+service FlyMindService {
+  // Get routing recommendation for an execution request.
+  rpc GetRoutingRecommendation(RoutingRequest) returns (RoutingRecommendation);
+
+  // Report execution outcome for learning and optimization.
+  rpc ReportExecutionOutcome(ExecutionOutcome) returns (google.protobuf.Empty);
+
+  // Ask FlyMind whether a function should be prewarmed.
+  rpc ShouldPrewarm(PrewarmQuery) returns (PrewarmDecision);
+
+  // Decide how to cache a given input.
+  rpc GetCacheKey(CacheQuery) returns (CacheDecision);
+
+  // Run content moderation on function input/output.
+  rpc ModerateContent(ModerationRequest) returns (ModerationResponse);
+
+  // Lightweight liveness/readiness probe.
+  rpc HealthCheck(HealthCheckRequest) returns (HealthResponse);
+}
+
+// =============================================================================
+// Message Definitions
+// =============================================================================
+
+message HealthCheckRequest {
+  RequestContext context = 1;
+}
+
+message HealthResponse {
+  bool healthy = 1;
+  string version = 2;
+  google.protobuf.Timestamp timestamp = 3;
+}
+
+message RoutingRequest {
+  // Per-request context (tenant, principal, trace id, etc.).
+  RequestContext context = 1;
+
+  // Function identifier in the orchestrator.
+  string function_id = 2;
+
+  // Logical geography/region code (e.g. "us-east-1").
+  string geography = 3;
+
+  // Optional geo coordinates used for latency-aware routing.
+  double user_latitude = 4;
+  double user_longitude = 5;
+
+  // Call-specific metadata (HTTP headers, device info, etc.).
+  map<string, string> attributes = 6;
+}
+
+message RoutingRecommendation {
+  // Primary recommended target platform.
+  TargetPlatform target = 1;
+
+  // Confidence in [0.0, 1.0].
+  float confidence = 2;
+
+  // Human-readable reasoning for observability and debugging.
+  string reasoning = 3;
+
+  // Alternative targets ordered by preference.
+  repeated TargetPlatform alternatives = 4;
+
+  // Estimated P95 latency in milliseconds for the chosen target.
+  float latency_estimate_ms = 5;
+}
+
+message ExecutionOutcome {
+  RequestContext context = 1;
+
+  // Orchestrator execution id.
+  string execution_id = 2;
+
+  // Function id associated with the execution.
+  string function_id = 3;
+
+  // Platform that actually handled the request.
+  TargetPlatform target = 4;
+
+  // End-to-end latency in milliseconds.
+  int64 latency_ms = 5;
+
+  // Whether the execution completed successfully.
+  bool success = 6;
+
+  // Optional error description on failure (safe to log, no PII).
+  string error = 7;
+
+  // Whether this invocation experienced a cold start.
+  bool cold_start = 8;
+
+  // When the execution finished.
+  google.protobuf.Timestamp finished_at = 9;
+}
+
+message PrewarmQuery {
+  RequestContext context = 1;
+
+  string function_id = 2;
+
+  // When the orchestrator is asking for the decision (UTC).
+  google.protobuf.Timestamp requested_at = 3;
+}
+
+message PrewarmDecision {
+  // Whether FlyMind recommends prewarming.
+  bool should_prewarm = 1;
+
+  // Number of instances to prewarm (minimum 0).
+  int32 instances = 2;
+
+  // Confidence in [0.0, 1.0].
+  float confidence = 3;
+
+  // Optional explanation for audit/debugging.
+  string reasoning = 4;
+}
+
+message CacheQuery {
+  RequestContext context = 1;
+
+  string function_id = 2;
+
+  // Stable hash of the normalized input payload.
+  bytes input_hash = 3;
+
+  // Optional content type hint (e.g. "application/json").
+  string content_type = 4;
+}
+
+message CacheDecision {
+  // Whether the response should be cached.
+  bool should_cache = 1;
+
+  // Optional logical cache key for shared entries.
+  string cache_key = 2;
+
+  // If an existing cached output can be reused, its identifier.
+  string cached_output_id = 3;
+
+  // Recommended TTL in seconds (0 = do not cache).
+  int32 ttl_seconds = 4;
+}
+
+message ModerationRequest {
+  RequestContext context = 1;
+
+  // Function id for which the content is being moderated.
+  string function_id = 2;
+
+  // Raw bytes of the content (UTF-8 text, JSON, etc.).
+  bytes content = 3;
+
+  // Whether this is function input or output.
+  ContentType content_type = 4;
+
+  // Optional high-level labels (e.g. \"chat\", \"code\", \"file_upload\").
+  repeated string tags = 5;
+}
+
+message ModerationViolation {
+  // Category: pii, secrets, toxic, hate_speech, violence, etc.
+  string category = 1;
+
+  // Free-form description suitable for logs and UIs.
+  string message = 2;
+
+  // Confidence score in [0.0, 1.0].
+  float confidence = 3;
+}
+
+message ModerationResponse {
+  // Whether the content is allowed to proceed.
+  bool allowed = 1;
+
+  // Violations detected by the moderation pipeline.
+  repeated ModerationViolation violations = 2;
+
+  // Aggregate risk score in [0.0, 1.0].
+  float risk_score = 3;
+}

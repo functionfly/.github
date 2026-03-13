@@ -203,6 +203,18 @@ class DreApi {
     );
   }
 
+  // Get execution by root hash (for conversation execution refs)
+  async getExecutionByHash(
+    author: string,
+    name: string,
+    executionRootHash: string
+  ): Promise<ExecutionDetailResponse> {
+    const q = new URLSearchParams({ execution_root_hash: executionRootHash });
+    return apiClient.get<ExecutionDetailResponse>(
+      `/v1/registry/${author}/${name}/executions/by-hash?${q.toString()}`
+    );
+  }
+
   // List certificates (FXCERTs) for a function
   async listCertificates(
     author: string,

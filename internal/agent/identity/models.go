@@ -1,31 +1,70 @@
 package identity
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 )
 
+// JSONBMap scans from and writes to PostgreSQL JSONB for map fields (e.g. capabilities).
+type JSONBMap map[string]any
+
+// Scan implements sql.Scanner for JSONB.
+func (m *JSONBMap) Scan(value interface{}) error {
+	if value == nil {
+		*m = nil
+		return nil
+	}
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("expected []byte for JSONB")
+	}
+	if len(b) == 0 {
+		*m = make(JSONBMap)
+		return nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return err
+	}
+	if out == nil {
+		out = make(map[string]any)
+	}
+	*m = JSONBMap(out)
+	return nil
+}
+
+// Value implements driver.Valuer for JSONB.
+func (m JSONBMap) Value() (driver.Value, error) {
+	if m == nil {
+		return []byte("{}"), nil
+	}
+	return json.Marshal(m)
+}
+
 // AgentIdentity represents a registered agent in the system
 type AgentIdentity struct {
-	ID                uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TenantID          uuid.UUID      `json:"tenant_id" gorm:"type:uuid;not null"`
-	AgentID           string         `json:"agent_id" gorm:"uniqueIndex;not null"` // "org/agent-name"
-	Name              string         `json:"name" gorm:"not null"`
-	Description       string         `json:"description"`
-	PlanTier          string         `json:"plan_tier" gorm:"not null;default:'agent_starter'"`
-	Status            string         `json:"status" gorm:"not null;default:'active'"` // active | suspended | deleted
-	APIKeyHash        string         `json:"-" gorm:"column:api_key_hash"`            // hashed API key, never returned
-	ParentAgentID     *string        `json:"parent_agent_id" gorm:"column:parent_agent_id"`
-	SwarmRole         string         `json:"swarm_role" gorm:"not null;default:'worker'"` // worker | manager | infrastructure
-	MaxChildAgents    int            `json:"max_child_agents" gorm:"not null;default:0"`
-	Capabilities      map[string]any `json:"capabilities" gorm:"type:jsonb;default:'{}'"`
-	AutonomousEnabled bool           `json:"autonomous_enabled" gorm:"not null;default:false"`
-	EvolutionEnabled  bool           `json:"evolution_enabled" gorm:"not null;default:false"`
-	TrustScore        float64        `json:"trust_score" gorm:"type:decimal(5,2);default:0"`
-	EconomicScore     float64        `json:"economic_score" gorm:"type:decimal(5,2);default:0"`
-	CreatedAt         time.Time      `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt         time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
+	ID                uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TenantID          uuid.UUID `json:"tenant_id" gorm:"type:uuid;not null"`
+	AgentID           string    `json:"agent_id" gorm:"uniqueIndex;not null"` // "org/agent-name"
+	Name              string    `json:"name" gorm:"not null"`
+	Description       string    `json:"description"`
+	PlanTier          string    `json:"plan_tier" gorm:"not null;default:'agent_starter'"`
+	Status            string    `json:"status" gorm:"not null;default:'active'"` // active | suspended | deleted
+	APIKeyHash        string    `json:"-" gorm:"column:api_key_hash"`            // hashed API key, never returned
+	ParentAgentID     *string   `json:"parent_agent_id" gorm:"column:parent_agent_id"`
+	SwarmRole         string    `json:"swarm_role" gorm:"not null;default:'worker'"` // worker | manager | infrastructure
+	MaxChildAgents    int       `json:"max_child_agents" gorm:"not null;default:0"`
+	Capabilities      JSONBMap  `json:"capabilities" gorm:"type:jsonb;default:'{}'"`
+	AutonomousEnabled bool      `json:"autonomous_enabled" gorm:"not null;default:false"`
+	EvolutionEnabled  bool      `json:"evolution_enabled" gorm:"not null;default:false"`
+	TrustScore        float64   `json:"trust_score" gorm:"type:decimal(5,2);default:0"`
+	EconomicScore     float64   `json:"economic_score" gorm:"type:decimal(5,2);default:0"`
+	CreatedAt         time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt         time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // TableName returns the GORM table name

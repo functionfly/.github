@@ -1,6 +1,10 @@
 /**
  * Vault Crypto - WebCrypto utilities for client-side encryption
- * Uses PBKDF2 for key derivation and AES-256-GCM for encryption
+ * Uses PBKDF2 for key derivation and AES-256-GCM for encryption.
+ *
+ * Key versions:
+ * - 1: 100_000 PBKDF2 iterations (legacy; existing secrets remain decryptable)
+ * - 2: 600_000 PBKDF2 iterations (OWASP-style; used for new secrets)
  */
 
 import type { EncryptedDataPayload } from "@/types/vault";
@@ -45,11 +49,12 @@ export function base64ToUint8Array(base64: string): Uint8Array {
  */
 export class VaultCrypto {
   // Algorithm constants
-  private static readonly PBKDF2_ITERATIONS = 100000;
+  private static readonly PBKDF2_ITERATIONS_V1 = 100_000; // legacy (existing secrets)
+  private static readonly PBKDF2_ITERATIONS_V2 = 600_000; // OWASP-style for new secrets
   private static readonly SALT_LENGTH = 16; // 128 bits
   private static readonly IV_LENGTH = 12;   // 96 bits for AES-GCM
   private static readonly KEY_LENGTH = 256; // AES-256
-  private static readonly KEY_VERSION = 1;  // 1 = passphrase-based
+  private static readonly KEY_VERSION = 2;  // 2 = 600k iterations; 1 = 100k (legacy)
 
   /**
    * Generate a random salt for PBKDF2
@@ -71,14 +76,17 @@ export class VaultCrypto {
    * Derive a cryptographic key from a passphrase using PBKDF2
    * @param passphrase - User's passphrase
    * @param salt - Random salt (should be generated via generateSalt)
+   * @param iterations - PBKDF2 iterations (default: KEY_VERSION 2 = 600k)
    * @returns Promise<CryptoKey> - Derived AES-GCM key
    */
-  static async deriveKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
-    // Encode passphrase as UTF-8
+  static async deriveKey(
+    passphrase: string,
+    salt: Uint8Array,
+    iterations: number = this.PBKDF2_ITERATIONS_V2
+  ): Promise<CryptoKey> {
     const encoder = new TextEncoder();
     const passphraseData = encoder.encode(passphrase);
 
-    // Import passphrase as a key for PBKDF2
     const baseKey = await crypto.subtle.importKey(
       "raw",
       passphraseData,
@@ -87,15 +95,13 @@ export class VaultCrypto {
       ["deriveBits", "deriveKey"]
     );
 
-    // Convert Uint8Array to ArrayBuffer for the salt parameter
     const saltBuffer = salt.buffer.slice(salt.byteOffset, salt.byteOffset + salt.byteLength) as ArrayBuffer;
 
-    // Derive AES-GCM key using PBKDF2
     const key = await crypto.subtle.deriveKey(
       {
         name: "PBKDF2",
         salt: saltBuffer,
-        iterations: this.PBKDF2_ITERATIONS,
+        iterations,
         hash: "SHA-256",
       },
       baseKey,
@@ -199,9 +205,10 @@ export class VaultCrypto {
     passphrase: string
   ): Promise<EncryptedData> {
     const salt = this.generateSalt();
-    const key = await this.deriveKey(passphrase, salt);
+    const key = await this.deriveKey(passphrase, salt, this.PBKDF2_ITERATIONS_V2);
     const encrypted = await this.encrypt(plaintext, key);
     encrypted.salt = arrayBufferToBase64(salt);
+    encrypted.keyVersion = this.KEY_VERSION; // 2 = 600k iterations
     return encrypted;
   }
 
@@ -216,7 +223,9 @@ export class VaultCrypto {
     passphrase: string
   ): Promise<string> {
     const salt = base64ToUint8Array(encryptedData.salt);
-    const key = await this.deriveKey(passphrase, salt);
+    const iterations =
+      encryptedData.keyVersion === 2 ? this.PBKDF2_ITERATIONS_V2 : this.PBKDF2_ITERATIONS_V1;
+    const key = await this.deriveKey(passphrase, salt, iterations);
     return this.decrypt(encryptedData, key);
   }
 

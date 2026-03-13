@@ -232,12 +232,13 @@ export function useRevokeToken() {
 // ==================== Utility Hooks ====================
 
 /**
- * Hook to decrypt a secret value (for server-side decryption with KMS/HSM)
- * For client-side encryption, use VaultCrypto utilities directly
+ * Hook to decrypt a secret value client-side (zero-knowledge; passphrase never sent to server).
+ * Requires passphrase; use VaultCrypto directly if you already have the secret payload.
  */
 export function useDecryptSecret() {
   return useMutation({
-    mutationFn: (id: string) => vaultApi.decryptSecret(id),
+    mutationFn: ({ id, passphrase }: { id: string; passphrase: string }) =>
+      vaultApi.decryptSecret(id, passphrase),
     onError: (error: Error) => {
       toast.error(`Failed to decrypt secret: ${error.message}`);
     },

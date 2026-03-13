@@ -16,6 +16,8 @@ interface AuthState {
   session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /** True after the first initialize() has completed (so we know if currentUser is set). */
+  authChecked: boolean;
   error: string | null;
   mfaRequired: boolean;
 
@@ -39,6 +41,7 @@ const authStore = create<AuthState>()(
       session: null,
       isAuthenticated: false,
       isLoading: false,
+      authChecked: false,
       error: null,
       mfaRequired: false,
 
@@ -47,7 +50,7 @@ const authStore = create<AuthState>()(
         const refreshToken = localStorage.getItem("ff-refresh-token");
 
         if (!jwtToken) {
-          set({ user: null, session: null, isAuthenticated: false });
+          set({ user: null, session: null, isAuthenticated: false, authChecked: true });
           return;
         }
 
@@ -104,6 +107,7 @@ const authStore = create<AuthState>()(
                 user,
                 session,
                 isAuthenticated: true,
+                authChecked: true,
               });
               return;
             }
@@ -168,6 +172,7 @@ const authStore = create<AuthState>()(
                   user,
                   session,
                   isAuthenticated: true,
+                  authChecked: true,
                 });
                 return;
               }
@@ -184,6 +189,7 @@ const authStore = create<AuthState>()(
             session: null,
             isAuthenticated: false,
             error: null,
+            authChecked: true,
           });
         } catch {
           // Network or parse error during validation — clear auth state
@@ -194,6 +200,7 @@ const authStore = create<AuthState>()(
             session: null,
             isAuthenticated: false,
             error: null,
+            authChecked: true,
           });
         }
       },

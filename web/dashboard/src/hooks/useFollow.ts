@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { followApi, type FollowUserRequest, type FollowFunctionRequest } from "@/api/follow";
+import { useApiReachableStore } from "@/stores/apiReachableStore";
 import { toast } from "sonner";
 
 const FOLLOW_QUERY_KEYS = {
@@ -138,10 +139,23 @@ export function useMyFollowedFunctions(page = 1, pageSize = 20) {
   });
 }
 
+const EMPTY_FOLLOW_STATS = { followers: 0, following: 0, functions_followed: 0 };
+
 export function useMyFollowStats() {
+  const apiReachable = useApiReachableStore((s) => s.apiReachable);
   return useQuery({
     queryKey: FOLLOW_QUERY_KEYS.myStats(),
-    queryFn: () => followApi.getMyFollowStats(),
+    queryFn: async () => {
+      try {
+        return await followApi.getMyFollowStats();
+      } catch (e: unknown) {
+        const status = (e as { response?: { status?: number } })?.response?.status;
+        if (status === 404) return EMPTY_FOLLOW_STATS;
+        throw e;
+      }
+    },
+    enabled: apiReachable === true,
     staleTime: 30 * 1000,
+    retry: false,
   });
 }

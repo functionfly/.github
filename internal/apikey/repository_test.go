@@ -337,7 +337,7 @@ func TestAPIKeyRotation(t *testing.T) {
 		CreatedBy:      &userID,
 		KeyHash:        "somehash",
 		RotationReason: RotationReasonManual,
-		Metadata:       map[string]any{"note": "test"},
+		Metadata:       JSONBMap{"note": "test"},
 	}
 
 	assert.Equal(t, RotationReasonManual, rotation.RotationReason)

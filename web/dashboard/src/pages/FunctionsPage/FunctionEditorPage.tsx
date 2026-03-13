@@ -85,12 +85,15 @@ export function FunctionEditorPage() {
     queryFn: () => providersApi.getConnectedProviders(),
   });
 
-  // Map connected providers to the format expected by the editor
-  const providers = (connectedProviders ?? []).map((p) => ({
-    id: (p as { provider_type?: string; id: string }).provider_type || p.id,
-    name: p.name,
-    regions: (p as { region?: string }).region ? [(p as { region: string }).region] : ["global"],
-  }));
+  // Map connected providers to the format expected by the editor (API may include provider_type/region)
+  const providers = (connectedProviders ?? []).map((p) => {
+    const prov = p as typeof p & { provider_type?: string; region?: string };
+    return {
+      id: prov.provider_type ?? prov.id,
+      name: prov.name,
+      regions: prov.region ? [prov.region] : ["global"],
+    };
+  });
 
   const { data: vaultSecrets } = useVaultSecrets();
 
@@ -109,6 +112,8 @@ export function FunctionEditorPage() {
   const [deploymentStatus, setDeploymentStatus] = useState<string | null>(null);
   const [vaultPickerOpen, setVaultPickerOpen] = useState(false);
   const [pickingSecretId, setPickingSecretId] = useState<string | null>(null);
+  const [pendingSecretForDecrypt, setPendingSecretForDecrypt] = useState<SecretMetadata | null>(null);
+  const [vaultDecryptPassphrase, setVaultDecryptPassphrase] = useState("");
   const [revealEnvVarId, setRevealEnvVarId] = useState<string | null>(null);
   const [revealGateOpen, setRevealGateOpen] = useState(false);
   const [logs, setLogs] = useState<DeploymentLog[]>([
@@ -250,20 +255,28 @@ export function FunctionEditorPage() {
     });
   };
 
-  const handleSelectVaultSecret = async (secret: SecretMetadata) => {
-    setPickingSecretId(secret.id);
+  const handleSelectVaultSecret = (secret: SecretMetadata) => {
+    setPendingSecretForDecrypt(secret);
+    setVaultDecryptPassphrase("");
+    setVaultPickerOpen(false);
+  };
+
+  const handleConfirmVaultPassphrase = async () => {
+    if (!pendingSecretForDecrypt || !vaultDecryptPassphrase.trim()) return;
+    setPickingSecretId(pendingSecretForDecrypt.id);
     try {
-      const { value } = await vaultApi.decryptSecret(secret.id);
-      setNewEnvKey(secret.name);
+      const { value } = await vaultApi.decryptSecret(pendingSecretForDecrypt.id, vaultDecryptPassphrase.trim());
+      setNewEnvKey(pendingSecretForDecrypt.name);
       setNewEnvValue(value);
       setIsNewEnvSecret(true);
-      setVaultPickerOpen(false);
-      addLog("info", `Using secret from Vault: ${secret.name}`);
-      toast.success(`Added "${secret.name}" from Vault`);
+      addLog("info", `Using secret from Vault: ${pendingSecretForDecrypt.name}`);
+      toast.success(`Added "${pendingSecretForDecrypt.name}" from Vault`);
+      setPendingSecretForDecrypt(null);
+      setVaultDecryptPassphrase("");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Decrypt failed";
       addLog("error", `Vault decrypt failed: ${msg}`);
-      toast.error("Could not use this secret here. Try adding it manually or reveal in Vault first.");
+      toast.error("Wrong passphrase or decrypt failed. Try again or reveal in Vault first.");
     } finally {
       setPickingSecretId(null);
     }
@@ -694,6 +707,61 @@ export function FunctionEditorPage() {
                   ))}
                 </div>
               </ScrollArea>
+            </DialogContent>
+          </Dialog>
+
+          {/* Vault passphrase dialog (client-side decrypt; passphrase never sent to server) */}
+          <Dialog
+            open={!!pendingSecretForDecrypt}
+            onOpenChange={(open) => {
+              if (!open) {
+                setPendingSecretForDecrypt(null);
+                setVaultDecryptPassphrase("");
+              }
+            }}
+          >
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Key className="w-5 h-5" />
+                  Vault passphrase
+                </DialogTitle>
+                <DialogDescription>
+                  Enter your vault passphrase to use &quot;{pendingSecretForDecrypt?.name}&quot;. Decryption happens on this device only.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label htmlFor="vault-decrypt-passphrase">Passphrase</Label>
+                  <Input
+                    id="vault-decrypt-passphrase"
+                    type="password"
+                    placeholder="Enter encryption passphrase"
+                    value={vaultDecryptPassphrase}
+                    onChange={(e) => setVaultDecryptPassphrase(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleConfirmVaultPassphrase()}
+                    autoComplete="off"
+                    className="font-mono"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setPendingSecretForDecrypt(null);
+                      setVaultDecryptPassphrase("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleConfirmVaultPassphrase}
+                    disabled={!vaultDecryptPassphrase.trim() || pickingSecretId !== null}
+                  >
+                    {pickingSecretId ? <Loader2 className="w-4 h-4 animate-spin" /> : "Use secret"}
+                  </Button>
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
 

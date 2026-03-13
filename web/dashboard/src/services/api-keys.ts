@@ -26,8 +26,8 @@ export const apiKeysService = {
    * Create a new API key
    */
   createKey: async (data: CreateAPIKeyRequest): Promise<APIKeyCreateResponse> => {
-    const response = await apiClient.post<APIKeyCreateResponse>(BASE_URL, data);
-    return response;
+    const res = await apiClient.post<{ data: APIKeyCreateResponse } | APIKeyCreateResponse>(BASE_URL, data);
+    return "data" in res && res.data != null ? res.data : (res as APIKeyCreateResponse);
   },
 
   /**
@@ -40,7 +40,7 @@ export const apiKeysService = {
   ): Promise<APIKeyListResponse> => {
     const params = new URLSearchParams();
     params.append("page", String(page));
-    params.append("page_size", String(pageSize));
+    params.append("limit", String(pageSize)); // backend expects "limit"
 
     if (filters?.key_type) {
       params.append("key_type", filters.key_type);
@@ -58,26 +58,41 @@ export const apiKeysService = {
       params.append("search", filters.search);
     }
 
-    const response = await apiClient.get<APIKeyListResponse>(
+    type BackendListResponse = {
+      data: APIKey[];
+      meta?: { page: number; limit: number; total: number; total_pages: number };
+    };
+    const response = await apiClient.get<BackendListResponse>(
       `${BASE_URL}?${params.toString()}`
     );
-    return response;
+    const meta = response.meta;
+    return {
+      data: response.data ?? [],
+      total: meta?.total ?? response.data?.length ?? 0,
+      page: meta?.page ?? page,
+      page_size: meta?.limit ?? pageSize,
+      total_pages: meta?.total_pages ?? 1,
+    };
   },
 
   /**
    * Get a single API key by ID
    */
   getKey: async (id: string): Promise<APIKey> => {
-    const response = await apiClient.get<APIKey>(`${BASE_URL}/${id}`);
-    return response;
+    const res = await apiClient.get<{ data: APIKey } | APIKey>(`${BASE_URL}/${id}`);
+    return res && typeof res === "object" && "data" in res && res.data != null
+      ? res.data
+      : (res as APIKey);
   },
 
   /**
    * Update an existing API key
    */
   updateKey: async (id: string, data: UpdateAPIKeyRequest): Promise<APIKey> => {
-    const response = await apiClient.patch<APIKey>(`${BASE_URL}/${id}`, data);
-    return response;
+    const res = await apiClient.patch<{ data: APIKey } | APIKey>(`${BASE_URL}/${id}`, data);
+    return res && typeof res === "object" && "data" in res && res.data != null
+      ? res.data
+      : (res as APIKey);
   },
 
   /**

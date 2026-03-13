@@ -193,6 +193,7 @@ type Repository interface {
 	UpdateFeedbackStatus(id uuid.UUID, status string) error
 	CreateFeedbackAttachment(attachment *FeedbackAttachment) (*FeedbackAttachment, error)
 	GetFeedbackAttachments(feedbackID uuid.UUID) ([]FeedbackAttachment, error)
+	GetFeedbackAttachmentByID(attachmentID uuid.UUID) (*FeedbackAttachment, error)
 	GetFeedbackStats() (map[string]interface{}, error)
 	GetFeedbackAnalytics() (map[string]interface{}, error)
 

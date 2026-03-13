@@ -5,8 +5,10 @@ package agent
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/agent/attribution"
@@ -79,6 +81,11 @@ func (h *Handler) HandleRegisterAgent(w http.ResponseWriter, r *http.Request) {
 	agent, apiKey, err := h.identityRepo.CreateAgent(r.Context(), claims.TenantID, &req)
 	if err != nil {
 		logrus.WithError(err).Error("failed to register agent")
+		errStr := err.Error()
+		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(errStr, "duplicate key") || strings.Contains(errStr, "unique constraint") {
+			writeError(w, http.StatusConflict, "AGENT_ID_TAKEN", "This agent ID is already in use.")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "REGISTRATION_FAILED", err.Error())
 		return
 	}

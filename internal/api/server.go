@@ -29,6 +29,7 @@ import (
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
+	vaultstorage "github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/gorilla/mux"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
@@ -75,6 +76,9 @@ type Server struct {
 
 	// Unified analytics sync job (Phase 3: fills analytics_rollups from source tables)
 	unifiedSyncJob *unified.SyncJob
+
+	// Vault repository for token cleanup job (set in setupRoutes)
+	vaultRepo *vaultstorage.Repository
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -173,7 +177,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 	}
 
 	storageService := services.NewStorageService(baseURL)
-	logrus.Info("Storage service initialized with local filesystem")
+	logrus.Info("Storage service initialized (backend from env: local, s3, or r2)")
 
 	// Initialize session cleanup service
 	sessionCleanup := storage.NewSessionCleanupService(repo)
@@ -331,6 +335,22 @@ func localhostCORSWrapper(next http.Handler) http.Handler {
 	})
 }
 
+// runVaultTokenCleanup runs CleanupExpiredTokens periodically (e.g. daily) with the given olderThan (e.g. 30 days).
+func runVaultTokenCleanup(ctx context.Context, repo *vaultstorage.Repository, interval, olderThan time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := repo.CleanupExpiredTokens(ctx, olderThan); err != nil {
+				logrus.WithError(err).Warn("Vault token cleanup failed")
+			}
+		}
+	}
+}
+
 func (s *Server) ListenAndServe(addr string) error {
 	// Set the server address
 	s.httpServer.Addr = addr
@@ -371,6 +391,12 @@ func (s *Server) ListenAndServe(addr string) error {
 	if s.stateCleanup != nil {
 		go s.stateCleanup.StartCleanupRoutine(ctx)
 		logrus.Info("State cleanup routine started")
+	}
+
+	// Start vault expired-token cleanup (runs daily; prunes tokens expired/revoked > 30 days ago)
+	if s.vaultRepo != nil {
+		go runVaultTokenCleanup(ctx, s.vaultRepo, 24*time.Hour, 30*24*time.Hour)
+		logrus.Info("Vault token cleanup routine started")
 	}
 
 	// Start usage metrics aggregation service

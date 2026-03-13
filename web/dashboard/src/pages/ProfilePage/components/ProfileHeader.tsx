@@ -38,11 +38,13 @@ import type { UserProfile } from "@/types";
 export interface ProfileHeaderProps {
   profile: UserProfile;
   isOwnProfile: boolean;
+  /** When false, Follow and Message buttons are hidden (signed-out viewers). */
+  isViewerSignedIn?: boolean;
   onEditProfile?: () => void;
   onAvatarClick?: () => void;
 }
 
-export function ProfileHeader({ profile, isOwnProfile, onEditProfile, onAvatarClick }: ProfileHeaderProps) {
+export function ProfileHeader({ profile, isOwnProfile, isViewerSignedIn = false, onEditProfile, onAvatarClick }: ProfileHeaderProps) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(profile.stats.followersCount);
 
@@ -192,7 +194,7 @@ export function ProfileHeader({ profile, isOwnProfile, onEditProfile, onAvatarCl
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 shrink-0">
-            {!isOwnProfile ? (
+            {!isOwnProfile && isViewerSignedIn ? (
               <>
                 <Button
                   variant={isFollowing ? "outline" : "default"}
@@ -210,7 +212,7 @@ export function ProfileHeader({ profile, isOwnProfile, onEditProfile, onAvatarCl
                   Message
                 </Button>
               </>
-            ) : (
+            ) : !isOwnProfile ? null : (
               <Button variant="outline" onClick={onEditProfile} className="gap-2">
                 <Edit3 className="w-4 h-4" />
                 Edit Profile

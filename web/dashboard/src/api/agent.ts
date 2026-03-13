@@ -240,9 +240,14 @@ export const agentApi = {
   /**
    * Register a new agent.
    * POST /v1/agent/register
+   * Sends snake_case (agent_id) for API compatibility.
    */
   registerAgent: (data: RegisterAgentRequest) =>
-    apiClient.post<RegisterAgentResponse>("/v1/agent/register", data),
+    apiClient.post<RegisterAgentResponse>("/v1/agent/register", {
+      agent_id: data.agentId,
+      name: data.name,
+      ...(data.description != null && data.description !== "" && { description: data.description }),
+    }),
 
   /**
    * List all agents for the authenticated tenant.

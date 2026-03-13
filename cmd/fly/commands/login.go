@@ -194,8 +194,12 @@ func runDevLogin(baseURL, emailFlag, passwordFlag string) error {
 		return fmt.Errorf("email and password required for dev login (use --email and --password, or FFLY_DEV_EMAIL and FFLY_DEV_PASSWORD)")
 	}
 
+	loginPath := "/v1/auth/login"
+	if contains(baseURL, "localhost") || contains(baseURL, "127.0.0.1") {
+		loginPath = "/auth/login"
+	}
 	body, _ := json.Marshal(map[string]string{"email": email, "password": password})
-	req, err := http.NewRequest("POST", baseURL+"/v1/auth/login", bytes.NewReader(body))
+	req, err := http.NewRequest("POST", baseURL+loginPath, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}

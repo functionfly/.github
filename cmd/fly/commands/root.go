@@ -59,6 +59,8 @@ Go from idea → global API in under 60 seconds.
 		NewLoginCmd(),
 		NewWhoamiCmd(),
 		NewLogoutCmd(),
+		NewConfigCmd(),
+		NewSelfUpdateCmd(),
 		NewInitCmd(),
 		NewDevCmd(),
 		NewPublishCmd(),

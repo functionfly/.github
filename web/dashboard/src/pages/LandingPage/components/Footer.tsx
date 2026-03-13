@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
-import { Github, Twitter, Linkedin, MessageCircle, Mail, ArrowUp, Heart } from "lucide-react";
+import { MessageCircle, Mail, ArrowUp, Heart } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
+import { GitHubIcon, XIcon, InstagramIcon, LinkedInIcon } from "@/pages/LandingPage/components/icons";
 import { DOCS_SITE_URL } from "@/lib/constants";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -33,22 +34,37 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
               </p>
               <div className="flex items-center gap-4" role="group" aria-label="Social links">
                 <motion.a
-                  href="#"
+                  href="https://github.com/functionfly"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect shine-effect"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   aria-label="FunctionFly on GitHub"
                 >
-                  <Github className="w-5 h-5" aria-hidden />
+                  <GitHubIcon className="w-5 h-5" />
                 </motion.a>
                 <motion.a
-                  href="#"
+                  href="https://x.com/functionflycom"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  aria-label="FunctionFly on Twitter"
+                  aria-label="FunctionFly on X"
                 >
-                  <Twitter className="w-5 h-5" aria-hidden />
+                  <XIcon className="w-5 h-5" />
+                </motion.a>
+                <motion.a
+                  href="https://instagram.com/functionfly"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  aria-label="FunctionFly on Instagram"
+                >
+                  <InstagramIcon className="w-5 h-5" />
                 </motion.a>
                 <motion.a
                   href="#"
@@ -57,7 +73,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                   whileTap={{ scale: 0.95 }}
                   aria-label="FunctionFly on LinkedIn"
                 >
-                  <Linkedin className="w-5 h-5" aria-hidden />
+                  <LinkedInIcon className="w-5 h-5" />
                 </motion.a>
                 <motion.a
                   href="#"

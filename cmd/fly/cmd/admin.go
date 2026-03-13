@@ -29,11 +29,12 @@ Examples:
 }
 
 func init() {
-	// Add admin command to root
-	rootCmd.AddCommand(adminCmd)
-
-	// Add subcommands
 	adminCmd.AddCommand(newAdminCreateUserCmd())
 	adminCmd.AddCommand(newAdminSetupCmd())
 	adminCmd.AddCommand(newAdminDBCmd())
+}
+
+// AdminCmd returns the admin command for attachment to the live root (e.g. from main).
+func AdminCmd() *cobra.Command {
+	return adminCmd
 }

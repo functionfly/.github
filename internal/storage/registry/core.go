@@ -49,6 +49,16 @@ func (r *RegistryRepository) GetRecentExecutions(functionID uuid.UUID, limit int
 	return executions, err
 }
 
+// GetRecentFailedExecutions retrieves the most recent non-success executions for a function (outcome != 'success').
+func (r *RegistryRepository) GetRecentFailedExecutions(functionID uuid.UUID, limit int) ([]RegistryFunctionExecution, error) {
+	var executions []RegistryFunctionExecution
+	err := r.db.Where("function_id = ? AND outcome != ?", functionID, "success").
+		Order("timestamp DESC").
+		Limit(limit).
+		Find(&executions).Error
+	return executions, err
+}
+
 // GetRecentPublicExecutions retrieves the most recent public executions for a function
 func (r *RegistryRepository) GetRecentPublicExecutions(functionID uuid.UUID, limit int) ([]RegistryExecutionPublic, error) {
 	var executions []RegistryExecutionPublic

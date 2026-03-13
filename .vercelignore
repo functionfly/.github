@@ -1,8 +1,13 @@
-# Exclude source files and development artifacts
+# Exclude source files and development artifacts; include only what's needed for "nx build dashboard"
 *
 
-# Include only the admin dashboard build
-!web/admin-dashboard/
+# Root files required for install and Nx
+!package.json
+!bun.lock
+!nx.json
+
+# Dashboard app (built by vercel.json buildCommand)
+!web/dashboard/
 
 # Exclude specific files that shouldn't be deployed
 index.js

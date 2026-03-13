@@ -13,9 +13,16 @@ interface StateFabricPricingCardProps {
   plan: StateFabricPlan;
   index: number;
   inView: boolean;
+  onPlanSelect?: (planId: string, priceId?: string) => void;
 }
 
-export function StateFabricPricingCard({ plan, index, inView }: StateFabricPricingCardProps) {
+export function StateFabricPricingCard({ plan, index, inView, onPlanSelect }: StateFabricPricingCardProps) {
+  const handleClick = () => {
+    if (onPlanSelect) {
+      onPlanSelect(plan.id, plan.priceId);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -24,7 +31,7 @@ export function StateFabricPricingCard({ plan, index, inView }: StateFabricPrici
     >
       <Card
         className={cn(
-          "pricing-state-fabric-card h-full relative overflow-hidden transition-all duration-300",
+          "pricing-state-fabric-card h-full relative overflow-visible transition-all duration-300",
           "bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-sm",
           "border border-white/10 hover:border-white/20",
           "hover:shadow-2xl hover:shadow-[#6366f1]/10",
@@ -74,7 +81,7 @@ export function StateFabricPricingCard({ plan, index, inView }: StateFabricPrici
               Add-ons: {plan.addOns}
             </p>
           )}
-          <Link to={plan.href}>
+          <Link to={plan.href} onClick={handleClick}>
             <Button
               variant={plan.highlighted ? "default" : "outline"}
               size="lg"

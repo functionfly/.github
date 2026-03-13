@@ -4,12 +4,15 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -28,6 +31,14 @@ func NewHandler(repo storage.Repository, storageService *services.StorageService
 		repo:           repo,
 		storageService: storageService,
 	}
+}
+
+// getStorageBucketName returns the configured bucket name for attachment metadata (env-driven).
+func getStorageBucketName() string {
+	if b := os.Getenv("STORAGE_BUCKET"); b != "" {
+		return b
+	}
+	return "functionfly-uploads"
 }
 
 // CreateFeedback handles POST /v1/feedback
@@ -52,15 +63,23 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Smart form validation
-	if feedbackType == "bug" && !strings.Contains(strings.ToLower(message), "steps to reproduce") {
-		http.Error(w, `{"error":"Bug reports should include steps to reproduce"}`, http.StatusBadRequest)
-		return
-	}
-
-	if feedbackType == "feature" && len(message) < 50 {
-		http.Error(w, `{"error":"Feature requests need more detail (minimum 50 characters)"}`, http.StatusBadRequest)
-		return
+	// Launch waitlist: optional email, short message (interests)
+	if feedbackType == "launch_waitlist" {
+		email := strings.TrimSpace(r.FormValue("email"))
+		if email != "" && (len(email) > 254 || !strings.Contains(email, "@") || !strings.Contains(email, ".")) {
+			http.Error(w, `{"error":"Invalid email"}`, http.StatusBadRequest)
+			return
+		}
+	} else {
+		// Smart form validation for other types
+		if feedbackType == "bug" && !strings.Contains(strings.ToLower(message), "steps to reproduce") {
+			http.Error(w, `{"error":"Bug reports should include steps to reproduce"}`, http.StatusBadRequest)
+			return
+		}
+		if feedbackType == "feature" && len(message) < 50 {
+			http.Error(w, `{"error":"Feature requests need more detail (minimum 50 characters)"}`, http.StatusBadRequest)
+			return
+		}
 	}
 
 	if len(message) > 1000 {
@@ -75,8 +94,11 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 	if user := middleware.GetUserFromContext(r); user != nil {
 		userID = &user.UserID
 	} else {
-		// For anonymous feedback, we could optionally collect email
-		// userEmail = &someEmailField
+		// For anonymous feedback (e.g. launch waitlist), use optional form email
+		emailForm := strings.TrimSpace(r.FormValue("email"))
+		if emailForm != "" {
+			userEmail = &emailForm
+		}
 	}
 
 	// Rate limiting check
@@ -153,7 +175,7 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 						fileHeader.Filename,
 					)
 
-					// Upload file to Supabase Storage
+					// Upload file to storage backend (local, S3, R2, or S3-compatible e.g. B2)
 					_, err = h.storageService.UploadFile(r.Context(), fileHeader, storagePath)
 					if err != nil {
 						// Log error but don't fail the entire request
@@ -161,14 +183,14 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 						continue
 					}
 
-					// Create attachment record with actual storage info
+					// Create attachment record with actual storage info (bucket from env for metadata)
 					attachment := &storage.FeedbackAttachment{
 						FeedbackID:  createdFeedback.ID,
 						Filename:    fileHeader.Filename,
 						ContentType: contentType,
 						Size:        fileHeader.Size,
 						S3Key:       storagePath,
-						S3Bucket:    "functionfly-feedback",
+						S3Bucket:    getStorageBucketName(),
 					}
 
 					_, err = h.repo.CreateFeedbackAttachment(attachment)
@@ -307,6 +329,65 @@ func (h *Handler) UpdateFeedbackStatus(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Status updated successfully"})
+}
+
+// DownloadAttachment handles GET /v1/feedback/attachments/{id}/download (auth required: owner or admin).
+// Streams the file from storage (local, S3, R2, or B2) for private buckets.
+func (h *Handler) DownloadAttachment(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+
+	vars := mux.Vars(r)
+	attachmentIDStr := vars["id"]
+	attachmentID, err := uuid.Parse(attachmentIDStr)
+	if err != nil {
+		http.Error(w, `{"error":"Invalid attachment ID"}`, http.StatusBadRequest)
+		return
+	}
+
+	attachment, err := h.repo.GetFeedbackAttachmentByID(attachmentID)
+	if err != nil || attachment == nil {
+		http.Error(w, `{"error":"Attachment not found"}`, http.StatusNotFound)
+		return
+	}
+
+	feedback, err := h.repo.GetFeedbackByID(attachment.FeedbackID)
+	if err != nil || feedback == nil {
+		http.Error(w, `{"error":"Feedback not found"}`, http.StatusNotFound)
+		return
+	}
+
+	// Allow if user is the feedback owner or has system read (admin)
+	allowed := feedback.UserID != nil && *feedback.UserID == user.UserID
+	if !allowed && user.Permissions != nil {
+		for _, p := range user.Permissions {
+			if p == auth.PermSystemRead {
+				allowed = true
+				break
+			}
+		}
+	}
+	if !allowed {
+		http.Error(w, `{"error":"Forbidden"}`, http.StatusForbidden)
+		return
+	}
+
+	rc, err := h.storageService.GetFile(r.Context(), attachment.S3Key)
+	if err != nil {
+		http.Error(w, `{"error":"Failed to load file"}`, http.StatusInternalServerError)
+		return
+	}
+	defer rc.Close()
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", attachment.Filename))
+	if attachment.ContentType != "" {
+		w.Header().Set("Content-Type", attachment.ContentType)
+	}
+	w.Header().Set("Content-Length", strconv.FormatInt(attachment.Size, 10))
+	_, _ = io.Copy(w, rc)
 }
 
 // GetFeedbackStats handles GET /v1/admin/feedback/stats (admin only)
@@ -457,16 +538,16 @@ func (h *Handler) exportJSON(w http.ResponseWriter, feedbacks []storage.Feedback
 			userEmail = *fb.UserEmail
 		}
 		exportItem := map[string]interface{}{
-			"id":             fb.ID.String(),
-			"user_email":     userEmail,
-			"feedback_type":  fb.FeedbackType,
-			"subject":        fb.Subject,
-			"message":        fb.Message,
-			"priority":       fb.Priority,
-			"status":         fb.Status,
-			"browser_info":   fb.BrowserInfo,
-			"created_at":     fb.CreatedAt.Format(time.RFC3339),
-			"updated_at":     fb.UpdatedAt.Format(time.RFC3339),
+			"id":              fb.ID.String(),
+			"user_email":      userEmail,
+			"feedback_type":   fb.FeedbackType,
+			"subject":         fb.Subject,
+			"message":         fb.Message,
+			"priority":        fb.Priority,
+			"status":          fb.Status,
+			"browser_info":    fb.BrowserInfo,
+			"created_at":      fb.CreatedAt.Format(time.RFC3339),
+			"updated_at":      fb.UpdatedAt.Format(time.RFC3339),
 			"has_attachments": len(fb.Attachments) > 0,
 		}
 		exportData = append(exportData, exportItem)

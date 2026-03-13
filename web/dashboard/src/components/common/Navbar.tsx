@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/common/Logo";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -27,12 +27,13 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
   const user = useAuthStore((state) => state.user);
   const theme = useThemeStore((state) => state.theme);
 
+  const settingsPath = user?.username ? `/u/${user.username}/settings` : "/settings";
   const navigationItems = isAuthenticated ? [
     { path: "/dashboard", label: "Dashboard" },
     { path: "/functions", label: "Functions" },
     { path: "/providers", label: "Providers" },
     { path: "/analytics", label: "Analytics" },
-    { path: "/settings", label: "Settings" }
+    { path: settingsPath, label: "Settings" }
   ] : [
     { path: "/", label: "Home" },
     { path: "/registry", label: "Functions" },
@@ -76,16 +77,21 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
           </div>
 
           {/* Desktop Navigation - gap-4 on parent + logo mr keeps first nav link clear of logo */}
+          {/* Product menus (Products, Marketplace) only on market/landing; dashboard uses sidebar */}
           <div className="hidden md:flex items-center gap-6">
             {isAuthenticated ? (
               <>
-                <ProductsDropdown />
-                <MarketplaceDropdown />
+                {variant !== "dashboard" && (
+                  <>
+                    <ProductsDropdown />
+                    <MarketplaceDropdown />
+                  </>
+                )}
                 <Link
-                  to="/settings"
+                  to={settingsPath}
                   className={cn(
                     "text-text-secondary hover:text-text-primary transition-colors font-medium",
-                    location.pathname === "/settings" && "text-text-primary"
+                    (location.pathname === "/settings" || location.pathname.match(/^\/u\/[^/]+\/settings$/)) && "text-text-primary"
                   )}
                   style={theme === 'light' ? {
                     color: '#1a1a2e',
@@ -146,6 +152,20 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
 
                 {/* Theme Toggle */}
                 <ThemeToggle />
+
+                {/* Messages (Dashboard only) */}
+                {variant === "dashboard" && (
+                  <Link
+                    to="/conversations"
+                    aria-label="Messages"
+                    className={cn(
+                      "relative flex items-center justify-center rounded-md p-2 text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors",
+                      theme === 'light' && "text-[#1a1a2e]"
+                    )}
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                  </Link>
+                )}
 
                 {/* Notifications (Dashboard only) */}
                 {variant === "dashboard" && (
@@ -217,117 +237,122 @@ export function Navbar({ variant = "landing", className, onMenuClick }: NavbarPr
             <div className="px-4 py-4 space-y-4">
               {isAuthenticated ? (
                 <>
-                  {/* Products Section */}
-                  <div className="space-y-2">
-                    <div className="text-sm font-semibold text-text-primary px-2">
-                      Products
-                    </div>
-                    <Link
-                      to="/functions"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
-                        location.pathname === "/functions" && "text-text-primary"
-                      )}
-                      style={theme === 'light' ? {
-                        color: '#1a1a2e',
-                      } : {}}
-                    >
-                      ⚡ Functions
-                    </Link>
-                    <Link
-                      to="/providers"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
-                        location.pathname === "/providers" && "text-text-primary"
-                      )}
-                      style={theme === 'light' ? {
-                        color: '#1a1a2e',
-                      } : {}}
-                    >
-                      ☁️ Providers
-                    </Link>
-                    <Link
-                      to="/analytics"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
-                        location.pathname === "/analytics" && "text-text-primary"
-                      )}
-                      style={theme === 'light' ? {
-                        color: '#1a1a2e',
-                      } : {}}
-                    >
-                      📊 Analytics
-                    </Link>
-                    <Link
-                      to="/api-gateway"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
-                        location.pathname === "/api-gateway" && "text-text-primary"
-                      )}
-                      style={theme === 'light' ? {
-                        color: '#1a1a2e',
-                      } : {}}
-                    >
-                      🚪 API Gateway
-                    </Link>
-                    <Link
-                      to="/monitoring"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
-                        location.pathname === "/monitoring" && "text-text-primary"
-                      )}
-                      style={theme === 'light' ? {
-                        color: '#1a1a2e',
-                      } : {}}
-                    >
-                      👁️ Monitoring
-                    </Link>
-                  </div>
+                  {/* Products & Marketplace sections only on market/landing; dashboard uses sidebar */}
+                  {variant !== "dashboard" && (
+                    <>
+                      {/* Products Section */}
+                      <div className="space-y-2">
+                        <div className="text-sm font-semibold text-text-primary px-2">
+                          Products
+                        </div>
+                        <Link
+                          to="/functions"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
+                            location.pathname === "/functions" && "text-text-primary"
+                          )}
+                          style={theme === 'light' ? {
+                            color: '#1a1a2e',
+                          } : {}}
+                        >
+                          ⚡ Functions
+                        </Link>
+                        <Link
+                          to="/providers"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
+                            location.pathname === "/providers" && "text-text-primary"
+                          )}
+                          style={theme === 'light' ? {
+                            color: '#1a1a2e',
+                          } : {}}
+                        >
+                          ☁️ Providers
+                        </Link>
+                        <Link
+                          to="/analytics"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
+                            location.pathname === "/analytics" && "text-text-primary"
+                          )}
+                          style={theme === 'light' ? {
+                            color: '#1a1a2e',
+                          } : {}}
+                        >
+                          📊 Analytics
+                        </Link>
+                        <Link
+                          to="/api-gateway"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
+                            location.pathname === "/api-gateway" && "text-text-primary"
+                          )}
+                          style={theme === 'light' ? {
+                            color: '#1a1a2e',
+                          } : {}}
+                        >
+                          🚪 API Gateway
+                        </Link>
+                        <Link
+                          to="/monitoring"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
+                            location.pathname === "/monitoring" && "text-text-primary"
+                          )}
+                          style={theme === 'light' ? {
+                            color: '#1a1a2e',
+                          } : {}}
+                        >
+                          👁️ Monitoring
+                        </Link>
+                      </div>
 
-                  {/* Marketplace Section */}
-                  <div className="space-y-2">
-                    <div className="text-sm font-semibold text-text-primary px-2">
-                      Marketplace
-                    </div>
-                    <Link
-                      to="/marketplace/functions"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
-                        location.pathname === "/marketplace/functions" && "text-text-primary"
-                      )}
-                      style={theme === 'light' ? {
-                        color: '#1a1a2e',
-                      } : {}}
-                    >
-                      ⚡ Function Marketplace
-                    </Link>
-                    <Link
-                      to="/marketplace/agents"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
-                        location.pathname === "/marketplace/agents" && "text-text-primary"
-                      )}
-                      style={theme === 'light' ? {
-                        color: '#1a1a2e',
-                      } : {}}
-                    >
-                      🤖 Agent Marketplace
-                    </Link>
-                  </div>
+                      {/* Marketplace Section */}
+                      <div className="space-y-2">
+                        <div className="text-sm font-semibold text-text-primary px-2">
+                          Marketplace
+                        </div>
+                        <Link
+                          to="/marketplace/functions"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
+                            location.pathname === "/marketplace/functions" && "text-text-primary"
+                          )}
+                          style={theme === 'light' ? {
+                            color: '#1a1a2e',
+                          } : {}}
+                        >
+                          ⚡ Function Marketplace
+                        </Link>
+                        <Link
+                          to="/marketplace/agents"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            "block py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium",
+                            location.pathname === "/marketplace/agents" && "text-text-primary"
+                          )}
+                          style={theme === 'light' ? {
+                            color: '#1a1a2e',
+                          } : {}}
+                        >
+                          🤖 Agent Marketplace
+                        </Link>
+                      </div>
+                    </>
+                  )}
 
                   <Link
-                    to="/settings"
+                    to={settingsPath}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
                       "block py-2 text-text-secondary hover:text-text-primary transition-colors font-medium",
-                      location.pathname === "/settings" && "text-text-primary"
+                      (location.pathname === "/settings" || location.pathname.match(/^\/u\/[^/]+\/settings$/)) && "text-text-primary"
                     )}
                     style={theme === 'light' ? {
                       color: '#1a1a2e',

@@ -64,7 +64,7 @@ func LoadCacheConfiguration() *CacheConfiguration {
 		// CDN defaults
 		CDNEnabled:     getEnvBool("CACHE_CDN_ENABLED", false),
 		CDNProvider:    getEnvString("CACHE_CDN_PROVIDER", "cloudflare"),
-		CDNBaseURL:     getEnvString("CACHE_CDN_BASE_URL", "https://cdn.functionfly.dev"),
+		CDNBaseURL:     getEnvString("CACHE_CDN_BASE_URL", "https://cdn.functionfly.com"),
 		CDNMaxAge:      getEnvInt("CACHE_CDN_MAX_AGE", 86400), // 24 hours
 		SDKBasePath:    getEnvString("CACHE_SDK_BASE_PATH", "/sdk"),
 		DocsBasePath:   getEnvString("CACHE_DOCS_BASE_PATH", "/docs"),
@@ -104,6 +104,7 @@ func (c *CacheConfiguration) ToCacheConfig() *CacheConfig {
 func (c *CacheConfiguration) ToCDNConfig() *CDNConfig {
 	return &CDNConfig{
 		EnableCDNCaching: c.CDNEnabled,
+		CDNBaseURL:       c.CDNBaseURL,
 		CDNMaxAge:        c.CDNMaxAge,
 	}
 }

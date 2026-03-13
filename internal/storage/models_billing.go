@@ -21,18 +21,19 @@ type PricingTier struct {
 
 // Subscription represents a tenant's subscription
 type Subscription struct {
-	ID                 uuid.UUID    `json:"id"`
-	TenantID           uuid.UUID    `json:"tenant_id"`
-	PricingTierID      uuid.UUID    `json:"pricing_tier_id"`
-	Status             string       `json:"status"`
-	CurrentPeriodStart time.Time    `json:"current_period_start"`
-	CurrentPeriodEnd   time.Time    `json:"current_period_end"`
-	TrialEnd           *time.Time   `json:"trial_end,omitempty"`
-	CancelAtPeriodEnd  bool         `json:"cancel_at_period_end"`
-	CanceledAt         *time.Time   `json:"canceled_at,omitempty"`
-	CreatedAt          time.Time    `json:"created_at"`
-	UpdatedAt          time.Time    `json:"updated_at"`
-	PricingTier        *PricingTier `json:"pricing_tier,omitempty"` // Populated in queries
+	ID                   uuid.UUID    `json:"id"`
+	TenantID             uuid.UUID    `json:"tenant_id"`
+	PricingTierID        uuid.UUID    `json:"pricing_tier_id"`
+	Status               string       `json:"status"`
+	StripeSubscriptionID string       `json:"stripe_subscription_id,omitempty"`
+	CurrentPeriodStart   time.Time    `json:"current_period_start"`
+	CurrentPeriodEnd     time.Time    `json:"current_period_end"`
+	TrialEnd             *time.Time   `json:"trial_end,omitempty"`
+	CancelAtPeriodEnd    bool         `json:"cancel_at_period_end"`
+	CanceledAt           *time.Time   `json:"canceled_at,omitempty"`
+	CreatedAt            time.Time    `json:"created_at"`
+	UpdatedAt            time.Time    `json:"updated_at"`
+	PricingTier          *PricingTier `json:"pricing_tier,omitempty"` // Populated in queries
 }
 
 // Invoice represents a billing invoice

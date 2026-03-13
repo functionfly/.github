@@ -1,8 +1,66 @@
 import { apiClient } from "./client";
 
+// ==================== Types ====================
+
+export interface PaymentMethod {
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+}
+
 export interface CreatePortalSessionResponse {
   url: string;
 }
+
+export interface CreateCheckoutSessionResponse {
+  session_id: string;
+  url: string;
+}
+
+export interface Subscription {
+  id: string;
+  tenant_id: string;
+  plan: string;
+  status: string;
+  stripe_subscription_id: string | null;
+  stripe_price_id: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  canceled_at: string | null;
+  created_at: string;
+  updated_at: string;
+  payment_method?: PaymentMethod | null;
+}
+
+export interface Invoice {
+  id: string;
+  tenant_id: string;
+  stripe_invoice_id: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  invoice_date: string | null;
+  due_date: string | null;
+  invoice_pdf: string | null;
+  hosted_invoice_url: string | null;
+  created_at: string;
+}
+
+export interface InvoicesResponse {
+  invoices: Invoice[];
+  limit: number;
+  offset: number;
+}
+
+export interface CreateCheckoutRequest {
+  price_id: string;
+  success_url?: string;
+  cancel_url?: string;
+}
+
+// ==================== Helper Functions ====================
 
 /** Extract error message from API error (e.g. axios 4xx/5xx). */
 export function getBillingPortalErrorMessage(e: unknown): string {
@@ -13,6 +71,37 @@ export function getBillingPortalErrorMessage(e: unknown): string {
   }
   return "Could not open billing portal.";
 }
+
+/** Extract error message from checkout API error. */
+export function getCheckoutErrorMessage(e: unknown): string {
+  if (e && typeof e === "object" && "response" in e) {
+    const res = (e as { response?: { data?: { error?: string }; status?: number } }).response;
+    if (res?.data?.error) return res.data.error;
+    if (res?.status === 503) return "Billing is not configured. Set STRIPE_SECRET_KEY on the server.";
+    if (res?.status === 400) return "Invalid price ID. Please try again.";
+  }
+  return "Could not create checkout session.";
+}
+
+/** Extract error message from subscription API error. */
+export function getSubscriptionErrorMessage(e: unknown): string {
+  if (e && typeof e === "object" && "response" in e) {
+    const res = (e as { response?: { data?: { error?: string }; status?: number } }).response;
+    if (res?.data?.error) return res.data.error;
+  }
+  return "Could not load subscription details.";
+}
+
+/** Extract error message from invoices API error. */
+export function getInvoicesErrorMessage(e: unknown): string {
+  if (e && typeof e === "object" && "response" in e) {
+    const res = (e as { response?: { data?: { error?: string }; status?: number } }).response;
+    if (res?.data?.error) return res.data.error;
+  }
+  return "Could not load invoices.";
+}
+
+// ==================== API Functions ====================
 
 /**
  * Create a Stripe Customer Billing Portal session.
@@ -26,6 +115,88 @@ export async function createBillingPortalSession(
   const response = await apiClient.post<CreatePortalSessionResponse>(
     "/v1/billing/portal-session",
     body ?? {}
+  );
+  return response;
+}
+
+/**
+ * Create a Stripe Checkout session for subscription checkout.
+ * Returns the URL to redirect the user to complete the checkout on Stripe.
+ * @param priceId - The Stripe price ID for the subscription plan
+ * @param successUrl - URL to redirect after successful checkout (optional)
+ * @param cancelUrl - URL to redirect after cancelled checkout (optional)
+ */
+export async function createCheckoutSession(
+  priceId: string,
+  successUrl?: string,
+  cancelUrl?: string
+): Promise<CreateCheckoutSessionResponse> {
+  const body: CreateCheckoutRequest = {
+    price_id: priceId,
+  };
+  if (successUrl) body.success_url = successUrl;
+  if (cancelUrl) body.cancel_url = cancelUrl;
+
+  const response = await apiClient.post<CreateCheckoutSessionResponse>(
+    "/v1/billing/checkout",
+    body
+  );
+  return response;
+}
+
+/**
+ * Get the current user's subscription details.
+ * Returns subscription information including plan, status, and billing period.
+ */
+export async function getSubscription(): Promise<Subscription> {
+  const response = await apiClient.get<Subscription>("/v1/billing/subscription");
+  return response;
+}
+
+/**
+ * Get the current user's invoices.
+ * @param limit - Number of invoices to return (default: 10)
+ * @param offset - Number of invoices to skip for pagination (default: 0)
+ */
+export async function listInvoices(
+  limit: number = 10,
+  offset: number = 0
+): Promise<InvoicesResponse> {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString(),
+  });
+  const response = await apiClient.get<InvoicesResponse>(`/v1/billing/invoices?${params}`);
+  return response;
+}
+
+/**
+ * Get the current user's usage details.
+ * Returns usage information for the specified period.
+ */
+export async function getUsage(
+  startDate?: string,
+  endDate?: string
+): Promise<{ usage: unknown; start: string; end: string }> {
+  const params = new URLSearchParams();
+  if (startDate) params.set("start", startDate);
+  if (endDate) params.set("end", endDate);
+
+  const queryString = params.toString();
+  const url = queryString ? `/v1/billing/usage?${queryString}` : "/v1/billing/usage";
+
+  const response = await apiClient.get<{ usage: unknown; start: string; end: string }>(url);
+  return response;
+}
+
+/**
+ * Cancel the current user's subscription.
+ * @param immediately - If true, cancels immediately. If false, cancels at period end.
+ */
+export async function cancelSubscription(immediately: boolean = false): Promise<{ message: string }> {
+  const response = await apiClient.post<{ message: string }>(
+    "/v1/billing/subscription/cancel",
+    { immediately }
   );
   return response;
 }

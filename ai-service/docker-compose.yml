@@ -1,0 +1,77 @@
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flymind-ai-service
+    ports:
+      - "8081:8081"
+    environment:
+      # API Keys (set in .env or here)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+
+      # Ollama (local development)
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama2}
+      - OLLAMA_EMBEDDING_MODEL=${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+
+      # Default provider
+      - DEFAULT_PROVIDER=${DEFAULT_PROVIDER:-openai}
+      - DEFAULT_EMBEDDING_PROVIDER=${DEFAULT_EMBEDDING_PROVIDER:-openai}
+
+      # Redis
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_CACHE_TTL=${REDIS_CACHE_TTL:-3600}
+
+      # Database
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/functionfly}
+
+      # Feature flags
+      - ENABLE_STREAMING=${ENABLE_STREAMING:-true}
+      - ENABLE_CACHING=${ENABLE_CACHING:-true}
+      - ENABLE_COST_TRACKING=${ENABLE_COST_TRACKING:-true}
+
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEBUG=${DEBUG:-false}
+
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - flymind-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: flymind-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - flymind-network
+
+networks:
+  flymind-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local
+

@@ -409,6 +409,11 @@ func (s *Service) GetUserReputation(ctx context.Context, userID uuid.UUID) (*Rep
 	return s.repo.GetReputationScores(ctx, userID)
 }
 
+// CountSharedThreads returns the number of flywheel threads where both users participated.
+func (s *Service) CountSharedThreads(ctx context.Context, userID1, userID2 uuid.UUID) (int64, error) {
+	return s.repo.CountSharedThreads(ctx, userID1, userID2)
+}
+
 // ListReputationEvents lists reputation events for a user
 func (s *Service) ListReputationEvents(ctx context.Context, userID uuid.UUID, limit, offset int) ([]ReputationEvent, int64, error) {
 	return s.repo.ListReputationEvents(ctx, userID, limit, offset)

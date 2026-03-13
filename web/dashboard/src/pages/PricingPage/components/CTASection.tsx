@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { useScrollAnimation } from "../hooks";
 
 interface CTASectionProps {
-  onPlanSelect?: (planId: string) => void;
+  onPlanSelect?: (planId: string, priceId?: string) => void;
 }
 
 // Call to Action Section with scroll animations

@@ -202,14 +202,13 @@ func (e *TriggerEngine) Start(ctx context.Context) {
 	}
 
 	e.logger.WithFields(logrus.Fields{
-		"pollInterval":  e.config.PollInterval,
-		"maxConcurrent": e.config.MaxConcurrent,
+		"pollInterval": e.config.PollInterval,
 	}).Info("Starting trigger engine")
 
-	// Start worker pool
-	for i := 0; i < e.config.MaxConcurrent; i++ {
-		go e.worker(ctx)
-	}
+	// Single poller: one goroutine runs the DB query per interval to avoid N identical
+	// SELECTs (was MaxConcurrent workers all hitting state_triggers every tick).
+	// executeTrigger still runs per-trigger in its own goroutine for concurrency.
+	go e.worker(ctx)
 
 	e.logger.Info("Trigger engine started")
 }

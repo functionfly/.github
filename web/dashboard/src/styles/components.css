@@ -453,6 +453,18 @@
   background-color: white;
 }
 
+/* Create API Key modal – Key Type dropdown custom hover */
+.create-api-key-key-type-dropdown [data-highlighted] {
+  background-color: color-mix(in srgb, var(--color-brand-500) 14%, transparent) !important;
+  color: var(--text-primary);
+}
+.create-api-key-key-type-dropdown [data-highlighted]:focus {
+  background-color: color-mix(in srgb, var(--color-brand-500) 14%, transparent) !important;
+}
+[data-theme="light"] .create-api-key-key-type-dropdown [data-highlighted] {
+  background-color: color-mix(in srgb, var(--color-brand-500) 12%, transparent) !important;
+}
+
 /* ==========================================================================
    Badges
    ========================================================================== */

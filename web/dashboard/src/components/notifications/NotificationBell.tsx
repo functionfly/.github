@@ -259,7 +259,12 @@ export function NotificationBell({
             onNotificationClick={handleNotificationClick}
             onSettingsClick={() => {
               closeSheet();
-              navigate('/settings/notifications');
+              const user = useAuthStore.getState().user;
+              if (user?.username) {
+                navigate(`/u/${user.username}/settings`);
+              } else {
+                navigate('/settings');
+              }
             }}
           />
         </ScrollArea>

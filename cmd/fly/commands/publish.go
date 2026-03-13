@@ -201,7 +201,7 @@ func validateManifest(m *Manifest) error {
 		return fmt.Errorf("name is required")
 	}
 	if !isValidFunctionName(m.Name) {
-		return fmt.Errorf("name must be lowercase letters, numbers, and hyphens only")
+		return fmt.Errorf("name must be lowercase letters, numbers, and hyphens only; max 63 characters; no leading or trailing hyphens")
 	}
 	if m.Version == "" {
 		return fmt.Errorf("version is required")

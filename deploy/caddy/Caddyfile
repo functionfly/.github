@@ -219,3 +219,23 @@ docs.functionfly.com {
     try_files {path} /index.html
     file_server
 }
+
+# CDN subdomain - cdn.functionfly.com (SDK, docs, static assets with edge caching)
+# API serves these under /v1/sdk, /v1/docs, /v1/static – rewrite path before proxying
+cdn.functionfly.com {
+    # Rewrite /sdk|docs|static -> /v1/sdk|docs|static so orchestrator routes match
+    rewrite * /v1{uri}
+
+    # Cache static asset responses at the edge
+    @cdn_cache path /v1/sdk/* /v1/docs/* /v1/static/*
+    cache @cdn_cache {
+        header_regexp Cache-Control "public"
+        default_max_age 86400
+    }
+
+    reverse_proxy orchestrator-api:8080 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+    }
+}

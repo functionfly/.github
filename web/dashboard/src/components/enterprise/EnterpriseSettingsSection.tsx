@@ -16,22 +16,22 @@ export function EnterpriseSettingsSection() {
   if (!isEnterprise) return null;
 
   return (
-    <Card className="border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent">
+    <Card className="settings-enterprise-section border border-border-default dark:border-amber-500/20 bg-linear-to-br from-amber-500/5 to-transparent">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-500
+            <div className="w-10 h-10 rounded-lg bg-linear-to-br from-amber-500 to-yellow-500
                             flex items-center justify-center">
               <Crown className="w-5 h-5 text-white" />
             </div>
             <div>
-              <CardTitle className="text-white">Enterprise Plan</CardTitle>
+              <CardTitle className="text-text-primary">Enterprise Plan</CardTitle>
               <p className="text-sm text-text-secondary">
                 Active since March 2024
               </p>
             </div>
           </div>
-          <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+          <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/40 dark:border-amber-500/30">
             Active
           </Badge>
         </div>
@@ -61,7 +61,7 @@ export function EnterpriseSettingsSection() {
           <Button
             variant="outline"
             onClick={() => navigate('/enterprise/sla')}
-            className="border-amber-500/30 hover:bg-amber-500/10"
+            className="border-border-strong hover:bg-amber-500/10 hover:border-amber-500/30 dark:border-amber-500/30"
           >
             <TrendingUp className="w-4 h-4 mr-2" />
             SLA Dashboard
@@ -69,7 +69,7 @@ export function EnterpriseSettingsSection() {
           <Button
             variant="outline"
             onClick={() => navigate('/enterprise/audit')}
-            className="border-amber-500/30 hover:bg-amber-500/10"
+            className="border-border-strong hover:bg-amber-500/10 hover:border-amber-500/30 dark:border-amber-500/30"
           >
             <FileText className="w-4 h-4 mr-2" />
             Audit Logs
@@ -77,7 +77,7 @@ export function EnterpriseSettingsSection() {
           <Button
             variant="outline"
             onClick={() => navigate('/enterprise/support')}
-            className="border-amber-500/30 hover:bg-amber-500/10"
+            className="border-border-strong hover:bg-amber-500/10 hover:border-amber-500/30 dark:border-amber-500/30"
           >
             <Headphones className="w-4 h-4 mr-2" />
             Contact Support
@@ -98,9 +98,9 @@ function FeatureCard({
   label: string;
 }) {
   return (
-    <div className="p-4 rounded-lg bg-bg-secondary border border-white/8 text-center">
-      <Icon className="w-5 h-5 text-amber-400 mx-auto mb-2" />
-      <p className="text-lg font-semibold text-white">{value}</p>
+    <div className="p-4 rounded-lg bg-bg-elevated border border-border-default shadow-sm text-center">
+      <Icon className="w-5 h-5 text-amber-500 dark:text-amber-400 mx-auto mb-2" />
+      <p className="text-lg font-semibold text-text-primary">{value}</p>
       <p className="text-xs text-text-secondary">{label}</p>
     </div>
   );

@@ -1,0 +1,116 @@
+/* Launch / Coming Soon page – self-contained aesthetic */
+
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+.launch-page {
+  --launch-bg: #06060a;
+  --launch-surface: rgba(14, 14, 22, 0.85);
+  --launch-border: rgba(255, 255, 255, 0.08);
+  --launch-text: #fafafa;
+  --launch-muted: #8b8b9e;
+  --launch-accent: #f59e0b;
+  --launch-accent-dim: rgba(245, 158, 11, 0.15);
+  --launch-font-display: 'Syne', sans-serif;
+  --launch-font-body: 'DM Sans', sans-serif;
+  font-family: var(--launch-font-body);
+  min-height: 100vh;
+  background: var(--launch-bg);
+  color: var(--launch-text);
+}
+
+.launch-page .launch-display-font {
+  font-family: var(--launch-font-display);
+}
+
+/* Gradient mesh background */
+.launch-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 120% 80% at 20% 10%, rgba(245, 158, 11, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 120% at 80% 90%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, rgba(30, 30, 45, 0.6) 0%, transparent 70%);
+}
+
+.launch-noise {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Staggered reveal */
+.launch-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: launchReveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.launch-reveal:nth-child(1) { animation-delay: 0.1s; }
+.launch-reveal:nth-child(2) { animation-delay: 0.2s; }
+.launch-reveal:nth-child(3) { animation-delay: 0.35s; }
+.launch-reveal:nth-child(4) { animation-delay: 0.5s; }
+.launch-reveal:nth-child(5) { animation-delay: 0.65s; }
+.launch-reveal:nth-child(6) { animation-delay: 0.8s; }
+.launch-reveal:nth-child(7) { animation-delay: 0.95s; }
+.launch-reveal:nth-child(8) { animation-delay: 1.1s; }
+.launch-reveal:nth-child(9) { animation-delay: 1.25s; }
+.launch-reveal:nth-child(10) { animation-delay: 1.4s; }
+
+@keyframes launchReveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Float subtle */
+@keyframes launchFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.launch-float {
+  animation: launchFloat 6s ease-in-out infinite;
+}
+
+/* Glow pulse on CTA */
+@keyframes launchGlow {
+  0%, 100% { box-shadow: 0 0 24px rgba(245, 158, 11, 0.25); }
+  50% { box-shadow: 0 0 40px rgba(245, 158, 11, 0.4); }
+}
+
+.launch-cta {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.launch-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(245, 158, 11, 0.35);
+}
+.launch-cta:focus-visible {
+  outline: 2px solid var(--launch-accent);
+  outline-offset: 2px;
+}
+
+/* Input focus ring */
+.launch-input:focus {
+  outline: none;
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 0 3px var(--launch-accent-dim);
+}
+
+/* Checkbox custom */
+.launch-checkbox-wrap {
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.launch-checkbox-wrap:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.launch-checkbox-wrap input:checked + .launch-checkbox-label {
+  color: var(--launch-accent);
+}

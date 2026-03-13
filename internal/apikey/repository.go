@@ -64,7 +64,7 @@ func (r *Repository) Create(ctx context.Context, tenantID, userID uuid.UUID, req
 		RateLimitRPH:          rateLimit.RPH,
 		RateLimitRPD:          rateLimit.RPD,
 		IsActive:              true,
-		Metadata:              req.Metadata,
+		Metadata:              JSONBMap(req.Metadata),
 		CreatedAt:             now,
 		UpdatedAt:             now,
 	}
@@ -169,9 +169,9 @@ func (r *Repository) Update(ctx context.Context, apiKey *APIKey) error {
 	return nil
 }
 
-// List lists API keys with filtering and pagination
+// List lists API keys with filtering and pagination.
+// Avoids a separate COUNT when the result set fits in one page (common case) to prevent slow count queries.
 func (r *Repository) List(ctx context.Context, filters *ListFilters, limit, offset int) ([]*APIKey, int64, error) {
-	var total int64
 	var keys []*APIKey
 
 	query := r.db.WithContext(ctx).Model(&APIKey{})
@@ -202,14 +202,45 @@ func (r *Repository) List(ctx context.Context, filters *ListFilters, limit, offs
 		}
 	}
 
-	// Count total
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, fmt.Errorf("failed to count API keys: %w", err)
+	// Fetch limit+1 to detect whether there is another page (avoids slow COUNT when result fits in one page)
+	if err := query.Order("created_at DESC").Limit(limit + 1).Offset(offset).Find(&keys).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to list API keys: %w", err)
 	}
 
-	// Apply pagination and ordering
-	if err := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&keys).Error; err != nil {
-		return nil, 0, fmt.Errorf("failed to list API keys: %w", err)
+	var total int64
+	if len(keys) <= limit {
+		total = int64(offset + len(keys))
+	} else {
+		// More than one page: truncate to requested limit and run count
+		keys = keys[:limit]
+		countQuery := r.db.WithContext(ctx).Model(&APIKey{})
+		if filters != nil {
+			if filters.TenantID != nil {
+				countQuery = countQuery.Where("tenant_id = ?", *filters.TenantID)
+			}
+			if filters.UserID != nil {
+				countQuery = countQuery.Where("user_id = ?", *filters.UserID)
+			}
+			if filters.KeyType != nil {
+				countQuery = countQuery.Where("key_type = ?", *filters.KeyType)
+			}
+			if filters.IsActive != nil {
+				countQuery = countQuery.Where("is_active = ?", *filters.IsActive)
+			}
+			if filters.ExpiresBefore != nil {
+				countQuery = countQuery.Where("expires_at < ?", *filters.ExpiresBefore)
+			}
+			if filters.ExpiresAfter != nil {
+				countQuery = countQuery.Where("expires_at > ?", *filters.ExpiresAfter)
+			}
+			if filters.Search != "" {
+				searchPattern := "%" + filters.Search + "%"
+				countQuery = countQuery.Where("name ILIKE ? OR description ILIKE ?", searchPattern, searchPattern)
+			}
+		}
+		if err := countQuery.Count(&total).Error; err != nil {
+			return nil, 0, fmt.Errorf("failed to count API keys: %w", err)
+		}
 	}
 
 	return keys, total, nil
@@ -268,7 +299,7 @@ func (r *Repository) Rotate(ctx context.Context, keyID uuid.UUID, newPlaintext s
 			CreatedBy:      createdBy,
 			KeyHash:        existingKey.KeyHash,
 			RotationReason: reason,
-			Metadata:       metadata,
+			Metadata:       JSONBMap(metadata),
 		}
 		if err := tx.Create(rotation).Error; err != nil {
 			return fmt.Errorf("failed to create rotation record: %w", err)

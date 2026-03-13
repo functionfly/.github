@@ -29,8 +29,16 @@ func (h *Handler) HandleGetAuditLog(w http.ResponseWriter, r *http.Request) {
 		offset = 0
 	}
 
-	// Get audit logs for tenant
-	logs, err := h.repo.GetAuditLogsByTenant(r.Context(), claims.TenantID, limit)
+	// Get total count for tenant
+	total, err := h.repo.CountAuditLogsByTenant(r.Context(), claims.TenantID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to count audit logs")
+		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
+		return
+	}
+
+	// Get audit logs for tenant with pagination
+	logs, err := h.repo.GetAuditLogsByTenant(r.Context(), claims.TenantID, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get audit logs")
 		h.respondError(w, http.StatusInternalServerError, "LIST_FAILED", "Failed to get audit logs")
@@ -45,7 +53,7 @@ func (h *Handler) HandleGetAuditLog(w http.ResponseWriter, r *http.Request) {
 
 	h.respondJSON(w, http.StatusOK, ListAuditLogResponse{
 		Entries: responses,
-		Total:   int64(len(logs)), // Note: This is a simplified count; ideally we'd query total separately
+		Total:   total,
 		Limit:   limit,
 		Offset:  offset,
 	})

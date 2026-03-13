@@ -1,0 +1,633 @@
+package conversations
+
+import (
+	"encoding/json"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/conversations"
+	"github.com/functionfly/functionfly/internal/flywheel"
+	"github.com/functionfly/functionfly/internal/security"
+	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/functionfly/functionfly/internal/storage/registry"
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
+)
+
+// Handler handles conversation (DM) and message API requests.
+type Handler struct {
+	repo        *storage.ConversationRepository
+	flywheelSvc *flywheel.Service
+	registryRepo *registry.RegistryRepository
+	logger      *logrus.Logger
+}
+
+// NewHandler creates a new conversations handler. flywheelSvc and registryRepo may be nil for stub behaviour.
+func NewHandler(repo *storage.ConversationRepository, flywheelSvc *flywheel.Service, registryRepo *registry.RegistryRepository, logger *logrus.Logger) *Handler {
+	if logger == nil {
+		logger = logrus.New()
+	}
+	return &Handler{repo: repo, flywheelSvc: flywheelSvc, registryRepo: registryRepo, logger: logger}
+}
+
+// GetCollaborationProfile handles GET /api/v1/conversations/collaboration-profile/:user_id
+// Returns reputation and collaboration insight for the sidebar.
+func (h *Handler) GetCollaborationProfile(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	userIDStr := vars["user_id"]
+	if userIDStr == "" {
+		http.Error(w, `{"error":"user_id required"}`, http.StatusBadRequest)
+		return
+	}
+	profileUserID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		http.Error(w, `{"error":"Invalid user_id"}`, http.StatusBadRequest)
+		return
+	}
+
+	var profile map[string]interface{}
+	if h.flywheelSvc != nil {
+		scores, err := h.flywheelSvc.GetUserReputation(r.Context(), profileUserID)
+		if err != nil {
+			h.logger.WithError(err).WithField("user_id", profileUserID).Warn("Get collaboration profile: reputation lookup failed")
+		}
+		rep := map[string]int{"builder": 0, "mentor": 0}
+		if scores != nil {
+			rep["builder"] = scores.BuilderScore
+			rep["mentor"] = scores.MentorScore
+		}
+		sharedThreads := int64(0)
+		if shared, err := h.flywheelSvc.CountSharedThreads(r.Context(), user.UserID, profileUserID); err == nil {
+			sharedThreads = shared
+		} else {
+			h.logger.WithError(err).WithField("user_id", profileUserID).Debug("Count shared threads failed")
+		}
+		profile = map[string]interface{}{
+			"user_id":           profileUserID.String(),
+			"reputation":        rep,
+			"shared_threads":    sharedThreads,
+			"functions_overlap": []string{},
+		}
+	} else {
+		profile = map[string]interface{}{
+			"user_id":           userIDStr,
+			"reputation":        map[string]int{"builder": 0, "mentor": 0},
+			"shared_threads":    0,
+			"functions_overlap": []string{},
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(profile)
+}
+
+// GetConversationContext handles GET /api/v1/conversations/context?function=author/name
+// Returns smart context for composing messages about a function (last failures, trust, open issues).
+func (h *Handler) GetConversationContext(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	fn := r.URL.Query().Get("function")
+	if fn == "" {
+		http.Error(w, `{"error":"function query required (e.g. author/name)"}`, http.StatusBadRequest)
+		return
+	}
+
+	var ctx map[string]interface{}
+	if h.registryRepo != nil {
+		parts := strings.SplitN(fn, "/", 2)
+		author, name := "", ""
+		if len(parts) >= 1 {
+			author = strings.TrimSpace(parts[0])
+		}
+		if len(parts) == 2 {
+			name = strings.TrimSpace(parts[1])
+		}
+		if author == "" || name == "" {
+			http.Error(w, `{"error":"function must be author/name (e.g. author/name)"}`, http.StatusBadRequest)
+			return
+		}
+		fnRecord, err := h.registryRepo.GetFunctionByAuthorName(author, name)
+		if err != nil || fnRecord == nil {
+			ctx = map[string]interface{}{
+				"function":        fn,
+				"trust_score":     0,
+				"last_failures":   []interface{}{},
+				"open_issues":     []interface{}{},
+				"suggested_hints": []string{"Include execution hash if reporting a bug.", "Mention version for reproducibility."},
+			}
+		} else {
+			trustScore := 85
+			since := time.Now().AddDate(0, 0, -30)
+			if total, successRate, _, _, _, _, _, err := h.registryRepo.GetFunctionTrustStats(fnRecord.ID, since); err == nil && total > 0 {
+				trustScore = int(successRate)
+				if trustScore < 0 {
+					trustScore = 0
+				}
+				if trustScore > 100 {
+					trustScore = 100
+				}
+			}
+			lastFailures := []interface{}{}
+			if failures, err := h.registryRepo.GetRecentFailedExecutions(fnRecord.ID, 10); err == nil {
+				for _, e := range failures {
+					entry := map[string]interface{}{
+						"id":        e.ID.String(),
+						"timestamp": e.Timestamp.Format(time.RFC3339),
+						"outcome":   e.Outcome,
+						"version":   e.Version,
+					}
+					if e.ErrorCode.Valid {
+						entry["error_code"] = e.ErrorCode.String
+					}
+					lastFailures = append(lastFailures, entry)
+				}
+			}
+			ctx = map[string]interface{}{
+				"function":        fn,
+				"trust_score":     trustScore,
+				"last_failures":   lastFailures,
+				"open_issues":     []interface{}{},
+				"suggested_hints": []string{"Include execution hash if reporting a bug.", "Mention version for reproducibility."},
+			}
+		}
+	} else {
+		ctx = map[string]interface{}{
+			"function":        fn,
+			"trust_score":     85,
+			"last_failures":   []interface{}{},
+			"open_issues":     []interface{}{},
+			"suggested_hints": []string{"Include execution hash if reporting a bug.", "Mention version for reproducibility."},
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(ctx)
+}
+
+// ListConversations handles GET /api/v1/conversations
+func (h *Handler) ListConversations(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	list, err := h.repo.ListConversationsForUser(r.Context(), user.UserID, limit, offset)
+	if err != nil {
+		h.logger.WithError(err).Error("List conversations failed")
+		http.Error(w, `{"error":"Failed to list conversations"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"conversations": list})
+}
+
+// CreateConversationRequest is the body for creating a conversation.
+type CreateConversationRequest struct {
+	Type           string   `json:"type"`
+	ParticipantIDs []string `json:"participant_ids"` // UUID strings
+	SourceThreadID *string  `json:"source_thread_id,omitempty"`
+	OrganizationID *string  `json:"organization_id,omitempty"`
+}
+
+// CreateFromThreadRequest is the body for "Move to Private Debug Thread".
+type CreateFromThreadRequest struct {
+	ThreadID string `json:"thread_id"` // Flywheel thread UUID
+}
+
+// CreateFromThread handles POST /api/v1/conversations/from-thread
+// Creates a conversation linked to a Flywheel thread (move to private debug).
+func (h *Handler) CreateFromThread(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	var req CreateFromThreadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	threadID, err := uuid.Parse(req.ThreadID)
+	if err != nil {
+		http.Error(w, `{"error":"Invalid thread_id"}`, http.StatusBadRequest)
+		return
+	}
+	// Create conversation with current user and thread reference; participants would be filled by caller or lookup
+	participantIDs := []string{user.UserID.String()}
+	participantIDsJSON, _ := json.Marshal(participantIDs)
+	c := &conversations.Conversation{
+		Type:           conversations.TypeIssueThread,
+		ParticipantIDs: participantIDsJSON,
+		SourceThreadID: &threadID,
+	}
+	if err := h.repo.CreateConversation(r.Context(), c); err != nil {
+		h.logger.WithError(err).Error("Create from thread failed")
+		http.Error(w, `{"error":"Failed to create conversation"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(c)
+}
+
+// CreateConversation handles POST /api/v1/conversations
+func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	var req CreateConversationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	// Ensure current user is in participants
+	participantIDs := req.ParticipantIDs
+	me := user.UserID.String()
+	hasMe := false
+	for _, id := range participantIDs {
+		if id == me {
+			hasMe = true
+			break
+		}
+	}
+	if !hasMe {
+		participantIDs = append([]string{me}, participantIDs...)
+	}
+	participantIDsJSON, _ := json.Marshal(participantIDs)
+	c := &conversations.Conversation{
+		Type:           conversations.ConversationType(req.Type),
+		ParticipantIDs: participantIDsJSON,
+	}
+	if req.Type == "" {
+		c.Type = conversations.TypeDM
+	}
+	if req.SourceThreadID != nil {
+		id, err := uuid.Parse(*req.SourceThreadID)
+		if err == nil {
+			c.SourceThreadID = &id
+		}
+	}
+	if req.OrganizationID != nil {
+		id, err := uuid.Parse(*req.OrganizationID)
+		if err == nil {
+			c.OrganizationID = &id
+		}
+	}
+	if err := h.repo.CreateConversation(r.Context(), c); err != nil {
+		h.logger.WithError(err).Error("Create conversation failed")
+		http.Error(w, `{"error":"Failed to create conversation"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(c)
+}
+
+// GetConversation handles GET /api/v1/conversations/:id
+func (h *Handler) GetConversation(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	c, err := h.repo.GetConversationByID(r.Context(), id)
+	if err != nil {
+		h.logger.WithError(err).Error("Get conversation failed")
+		http.Error(w, `{"error":"Failed to get conversation"}`, http.StatusInternalServerError)
+		return
+	}
+	if c == nil {
+		http.Error(w, `{"error":"Conversation not found"}`, http.StatusNotFound)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(c)
+}
+
+// ListMessages handles GET /api/v1/conversations/:id/messages
+func (h *Handler) ListMessages(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	list, err := h.repo.ListMessages(r.Context(), id, limit, offset)
+	if err != nil {
+		h.logger.WithError(err).Error("List messages failed")
+		http.Error(w, `{"error":"Failed to list messages"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"messages": list})
+}
+
+// ValidateMessageRequest is the body for validating a message (security scan).
+type ValidateMessageRequest struct {
+	Content string `json:"content"`
+}
+
+// ValidateMessage handles POST /api/v1/conversations/:id/messages/validate
+func (h *Handler) ValidateMessage(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	var req ValidateMessageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	scan := security.ScanMessageContent(req.Content)
+	warning := ""
+	if len(req.Content) > 5000 {
+		warning = "Message is very long; consider using a snippet instead."
+	}
+	for _, w := range scan.Warnings {
+		if warning != "" {
+			warning += " "
+		}
+		warning += w
+	}
+	if len(scan.SecretsFound) > 0 {
+		warning = "Suspected secrets or tokens detected (e.g. " + strings.Join(scan.SecretsFound, ", ") + "). Remove them before sending."
+	}
+	resp := map[string]interface{}{
+		"valid":   scan.Valid,
+		"warning": warning,
+	}
+	if len(scan.SecretsFound) > 0 {
+		resp["secrets_found"] = scan.SecretsFound
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+// CreateMessageRequest is the body for creating a message.
+type CreateMessageRequest struct {
+	Content    string          `json:"content"`
+	Embeddings json.RawMessage `json:"embeddings,omitempty"`
+}
+
+// CreateMessage handles POST /api/v1/conversations/:id/messages
+func (h *Handler) CreateMessage(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	var req CreateMessageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	if req.Embeddings == nil {
+		req.Embeddings = json.RawMessage("{}")
+	}
+	m := &conversations.ConversationMessage{
+		ConversationID: id,
+		AuthorID:       user.UserID,
+		Content:        req.Content,
+		Embeddings:     req.Embeddings,
+	}
+	if err := h.repo.CreateMessage(r.Context(), m); err != nil {
+		h.logger.WithError(err).Error("Create message failed")
+		http.Error(w, `{"error":"Failed to send message"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(m)
+}
+
+// ResolveConversationRequest is the body for resolving a conversation.
+type ResolveConversationRequest struct {
+	MessageID string `json:"message_id"` // UUID of the message that is the accepted solution
+}
+
+// ResolveConversation handles POST /api/v1/conversations/:id/resolve
+func (h *Handler) ResolveConversation(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	var req ResolveConversationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	var messageID *uuid.UUID
+	if req.MessageID != "" {
+		parsed, err := uuid.Parse(req.MessageID)
+		if err != nil {
+			http.Error(w, `{"error":"Invalid message_id"}`, http.StatusBadRequest)
+			return
+		}
+		messageID = &parsed
+	}
+	if err := h.repo.ResolveConversation(r.Context(), id, user.UserID, messageID); err != nil {
+		h.logger.WithError(err).Error("Resolve conversation failed")
+		http.Error(w, `{"error":"Failed to resolve conversation"}`, http.StatusInternalServerError)
+		return
+	}
+	c, _ := h.repo.GetConversationByID(r.Context(), id)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(c)
+}
+
+// ListBounties handles GET /api/v1/conversations/:id/bounties
+func (h *Handler) ListBounties(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	list, err := h.repo.ListBountiesForConversation(r.Context(), id)
+	if err != nil {
+		h.logger.WithError(err).Error("List bounties failed")
+		http.Error(w, `{"error":"Failed to list bounties"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"bounties": list})
+}
+
+// CreateBountyRequest is the body for attaching a bounty.
+type CreateBountyRequest struct {
+	AmountReputation        int     `json:"amount_reputation"`
+	AmountCents             int     `json:"amount_cents,omitempty"`
+	SecurityWeightMultiplier float64 `json:"security_weight_multiplier,omitempty"`
+}
+
+// CreateBounty handles POST /api/v1/conversations/:id/bounties
+func (h *Handler) CreateBounty(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	var req CreateBountyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	if req.AmountReputation < 0 {
+		req.AmountReputation = 0
+	}
+	if req.SecurityWeightMultiplier <= 0 {
+		req.SecurityWeightMultiplier = 1.0
+	}
+	b := &conversations.ConversationBounty{
+		ConversationID:         id,
+		OfferedBy:              user.UserID,
+		AmountReputation:       req.AmountReputation,
+		AmountCents:            req.AmountCents,
+		SecurityWeightMultiplier: req.SecurityWeightMultiplier,
+	}
+	if err := h.repo.CreateBounty(r.Context(), b); err != nil {
+		h.logger.WithError(err).Error("Create bounty failed")
+		http.Error(w, `{"error":"Failed to attach bounty"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(b)
+}
+
+// ClaimBounty handles POST /api/v1/conversations/:id/bounties/:bounty_id/claim
+func (h *Handler) ClaimBounty(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	conversationID, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	bountyID, err := uuid.Parse(vars["bounty_id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid bounty ID"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), conversationID, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	b, err := h.repo.GetBountyByID(r.Context(), bountyID)
+	if err != nil || b == nil || b.ConversationID != conversationID {
+		http.Error(w, `{"error":"Bounty not found"}`, http.StatusNotFound)
+		return
+	}
+	if b.ClaimedBy != nil {
+		http.Error(w, `{"error":"Bounty already claimed"}`, http.StatusConflict)
+		return
+	}
+	if err := h.repo.ClaimBounty(r.Context(), bountyID, user.UserID); err != nil {
+		h.logger.WithError(err).Error("Claim bounty failed")
+		http.Error(w, `{"error":"Failed to claim bounty"}`, http.StatusInternalServerError)
+		return
+	}
+	b.ClaimedBy = &user.UserID
+	now := time.Now()
+	b.ClaimedAt = &now
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(b)
+}

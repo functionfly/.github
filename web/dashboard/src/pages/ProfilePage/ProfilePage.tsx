@@ -57,7 +57,7 @@ import { FunctionsTab } from "./components/tabs/FunctionsTab";
 import { ActivityTab } from "./components/tabs/ActivityTab";
 import { AnalyticsTab } from "./components/tabs/AnalyticsTab";
 import { AboutTab } from "./components/tabs/AboutTab";
-import { SettingsTab } from "./components/tabs/SettingsTab";
+import { SettingsContent } from "@/pages/SettingsPage/SettingsContent";
 import { registryApi } from "@/api/registry";
 
 // ============================================================================
@@ -78,6 +78,7 @@ export function ProfilePage({
   const urlTab = searchParams.get("tab") as ProfileTab | null;
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
+  const authChecked = useAuthStore((state) => state.authChecked);
 
   const username = propUsername || paramUsername;
 
@@ -153,7 +154,7 @@ export function ProfilePage({
         functionsResponse.functions || []
       );
     },
-    enabled: !!username,
+    enabled: !!username && !!authChecked,
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
@@ -438,6 +439,7 @@ export function ProfilePage({
               <ProfileHeader
                 profile={profile}
                 isOwnProfile={isOwnProfile}
+                isViewerSignedIn={!!currentUser}
                 onEditProfile={() => setIsEditModalOpen(true)}
                 onAvatarClick={
                   isOwnProfile ? () => setIsAvatarPickerOpen(true) : undefined
@@ -505,7 +507,9 @@ export function ProfilePage({
                     />
                   </TabsContent>
                   <TabsContent value="settings" className="m-0">
-                    <SettingsTab />
+                    <div className="px-4 md:px-8 pb-8">
+                      <SettingsContent showHeader={false} profile={mergedProfile ?? undefined} />
+                    </div>
                   </TabsContent>
                 </Tabs>
               </div>

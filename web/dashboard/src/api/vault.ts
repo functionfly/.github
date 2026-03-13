@@ -1,9 +1,13 @@
 /**
  * Vault API Client - Secrets management API
- * Mirrors internal/api/handlers/vault endpoints
+ * Mirrors internal/api/handlers/vault endpoints.
+ *
+ * Security: Decryption is client-side only. The server never sees plaintext.
+ * Use decryptSecret(id, passphrase) to fetch encrypted data and decrypt locally.
  */
 
 import { apiClient } from "./client";
+import { VaultCrypto } from "@/utils/vault-crypto";
 import type {
   Secret,
   SecretMetadata,
@@ -60,12 +64,18 @@ export const vaultApi = {
   },
 
   /**
-   * Decrypt and retrieve secret value
-   * Note: This is a convenience endpoint for server-side decryption (if KMS/HSM is used)
-   * For client-side encryption, use vault-crypto.ts utilities
+   * Decrypt secret value client-side (no server decrypt; zero-knowledge).
+   * Fetches the secret's encrypted payload then decrypts with VaultCrypto + passphrase.
+   * The server never receives or sees the passphrase or plaintext.
    */
-  decryptSecret: async (id: string): Promise<{ value: string; secret_type: string }> => {
-    return apiClient.post<{ value: string; secret_type: string }>(`/v1/vault/secrets/${id}/decrypt`, {});
+  decryptSecret: async (
+    id: string,
+    passphrase: string
+  ): Promise<{ value: string; secret_type: string }> => {
+    const secret = await apiClient.get<Secret>(`/v1/vault/secrets/${id}`);
+    const encryptedData = VaultCrypto.fromPayload(secret.encrypted_data);
+    const value = await VaultCrypto.decryptWithPassphrase(encryptedData, passphrase);
+    return { value, secret_type: secret.secret_type };
   },
 
   // ==================== Access Tokens ====================
@@ -89,10 +99,10 @@ export const vaultApi = {
   },
 
   /**
-   * Revoke an access token
+   * Revoke an access token (DELETE /v1/vault/tokens/{id})
    */
   revokeToken: async (tokenId: string): Promise<void> => {
-    await apiClient.post<void>(`/v1/vault/tokens/${tokenId}/revoke`, {});
+    await apiClient.delete<void>(`/v1/vault/tokens/${tokenId}`);
   },
 
   /**

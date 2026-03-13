@@ -2,10 +2,50 @@
 package apikey
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// JSONBMap is a map that scans from and writes to PostgreSQL JSONB.
+// Use it for gorm/jsonb columns so the driver can scan []byte into the map.
+type JSONBMap map[string]any
+
+// Scan implements sql.Scanner for JSONB.
+func (m *JSONBMap) Scan(value interface{}) error {
+	if value == nil {
+		*m = nil
+		return nil
+	}
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("expected []byte for JSONB")
+	}
+	if len(b) == 0 {
+		*m = make(JSONBMap)
+		return nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return err
+	}
+	if out == nil {
+		out = make(map[string]any)
+	}
+	*m = JSONBMap(out)
+	return nil
+}
+
+// Value implements driver.Valuer for JSONB.
+func (m JSONBMap) Value() (driver.Value, error) {
+	if m == nil {
+		return []byte("{}"), nil
+	}
+	return json.Marshal(m)
+}
 
 // Key types supported by the API key system
 type KeyType string
@@ -97,26 +137,26 @@ func DefaultRateLimitConfig() *RateLimitConfig {
 
 // APIKey represents an API key entity
 type APIKey struct {
-	ID                    uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TenantID              uuid.UUID      `json:"tenant_id" gorm:"type:uuid;not null;index:idx_api_keys_tenant"`
-	UserID                uuid.UUID      `json:"user_id" gorm:"type:uuid;not null"`
-	Name                  string         `json:"name" gorm:"size:255;not null"`
-	Description           string         `json:"description" gorm:"type:text"`
-	KeyType               KeyType        `json:"key_type" gorm:"type:varchar(50);not null;index:idx_api_keys_type"`
-	KeyPrefix             string         `json:"key_prefix" gorm:"size:10;not null;index:idx_api_keys_prefix"`
-	KeyHash               string         `json:"-" gorm:"type:text;not null;index:idx_api_keys_hash"`
-	KeyVersion            int            `json:"key_version" gorm:"not null;default:1"`
-	ExpiresAt             *time.Time     `json:"expires_at" gorm:"index:idx_api_keys_expires"`
-	LastRotatedAt         time.Time      `json:"last_rotated_at" gorm:"not null"`
-	RotationFrequencyDays int            `json:"rotation_frequency_days" gorm:"not null;default:90"`
-	RateLimitRPM          int            `json:"rate_limit_rpm" gorm:"column:rate_limit_rpm;not null;default:1000"`
-	RateLimitRPH          int            `json:"rate_limit_rph" gorm:"column:rate_limit_rph;not null;default:60000"`
-	RateLimitRPD          int            `json:"rate_limit_rpd" gorm:"column:rate_limit_rpd;not null;default:1000000"`
-	IsActive              bool           `json:"is_active" gorm:"not null;default:true;index:idx_api_keys_active"`
-	Metadata              map[string]any `json:"metadata" gorm:"type:jsonb;default:'{}'"`
-	CreatedAt             time.Time      `json:"created_at" gorm:"not null;autoCreateTime"`
-	UpdatedAt             time.Time      `json:"updated_at" gorm:"not null;autoUpdateTime"`
-	LastUsedAt            *time.Time     `json:"last_used_at" gorm:"index"`
+	ID                    uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TenantID              uuid.UUID  `json:"tenant_id" gorm:"type:uuid;not null;index:idx_api_keys_tenant"`
+	UserID                uuid.UUID  `json:"user_id" gorm:"type:uuid;not null"`
+	Name                  string     `json:"name" gorm:"size:255;not null"`
+	Description           string     `json:"description" gorm:"type:text"`
+	KeyType               KeyType    `json:"key_type" gorm:"type:varchar(50);not null;index:idx_api_keys_type"`
+	KeyPrefix             string     `json:"key_prefix" gorm:"size:10;not null;index:idx_api_keys_prefix"`
+	KeyHash               string     `json:"-" gorm:"type:text;not null;index:idx_api_keys_hash"`
+	KeyVersion            int        `json:"key_version" gorm:"not null;default:1"`
+	ExpiresAt             *time.Time `json:"expires_at" gorm:"index:idx_api_keys_expires"`
+	LastRotatedAt         time.Time  `json:"last_rotated_at" gorm:"not null"`
+	RotationFrequencyDays int        `json:"rotation_frequency_days" gorm:"not null;default:90"`
+	RateLimitRPM          int        `json:"rate_limit_rpm" gorm:"column:rate_limit_rpm;not null;default:1000"`
+	RateLimitRPH          int        `json:"rate_limit_rph" gorm:"column:rate_limit_rph;not null;default:60000"`
+	RateLimitRPD          int        `json:"rate_limit_rpd" gorm:"column:rate_limit_rpd;not null;default:1000000"`
+	IsActive              bool       `json:"is_active" gorm:"not null;default:true;index:idx_api_keys_active"`
+	Metadata              JSONBMap   `json:"metadata" gorm:"type:jsonb;default:'{}'"`
+	CreatedAt             time.Time  `json:"created_at" gorm:"not null;autoCreateTime"`
+	UpdatedAt             time.Time  `json:"updated_at" gorm:"not null;autoUpdateTime"`
+	LastUsedAt            *time.Time `json:"last_used_at" gorm:"index"`
 
 	// Associations
 	Permissions  []APIKeyPermission  `json:"permissions,omitempty" gorm:"foreignKey:APIKeyID"`
@@ -151,7 +191,7 @@ type APIKeyRotation struct {
 	CreatedBy      *uuid.UUID     `json:"created_by,omitempty" gorm:"type:uuid"`
 	KeyHash        string         `json:"key_hash" gorm:"type:text;not null"`
 	RotationReason RotationReason `json:"rotation_reason" gorm:"type:varchar(50);not null"`
-	Metadata       map[string]any `json:"metadata,omitempty" gorm:"type:jsonb;default:'{}'"`
+	Metadata       JSONBMap       `json:"metadata,omitempty" gorm:"type:jsonb;default:'{}'"`
 }
 
 // CreateAPIKeyRequest represents a request to create a new API key
@@ -199,6 +239,7 @@ type APIKeyResponse struct {
 	KeyType               KeyType             `json:"key_type"`
 	Prefix                string              `json:"prefix"`
 	ExpiresAt             *time.Time          `json:"expires_at,omitempty"`
+	LastUsedAt            *time.Time          `json:"last_used_at,omitempty"`
 	LastRotatedAt         time.Time           `json:"last_rotated_at"`
 	RotationFrequencyDays int                 `json:"rotation_frequency_days"`
 	RateLimit             *RateLimitConfig    `json:"rate_limit"`
@@ -287,6 +328,7 @@ func (k *APIKey) ToResponse() *APIKeyResponse {
 		KeyType:               k.KeyType,
 		Prefix:                k.KeyPrefix,
 		ExpiresAt:             k.ExpiresAt,
+		LastUsedAt:            k.LastUsedAt,
 		LastRotatedAt:         k.LastRotatedAt,
 		RotationFrequencyDays: k.RotationFrequencyDays,
 		RateLimit:             k.GetRateLimitConfig(),

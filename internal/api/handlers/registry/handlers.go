@@ -141,17 +141,18 @@ func (h *Handler) HandleServeSDK(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Construct CDN path
+	// Construct CDN path and redirect to CDN when enabled
 	cdnPath := fmt.Sprintf("/sdk/%s/%s/%s", sdkType, version, filename)
-
-	// Set CDN headers
+	cdnURL := h.cdnService.GetCDNURL(cdnPath)
+	if cdnURL != cdnPath {
+		// CDN is configured: redirect so the client fetches from CDN
+		cache.RecordCDNHit()
+		http.Redirect(w, r, cdnURL, http.StatusTemporaryRedirect)
+		return
+	}
+	// CDN URL same as path (disabled): serve locally with CDN headers for consistency
 	h.cdnService.SetCDNHeaders(w, cdnPath)
-
-	// Record CDN hit (in production, this would be determined by CDN)
 	cache.RecordCDNHit()
-
-	// For now, serve locally with CDN headers
-	// In production, this would redirect to or proxy from CDN
 	h.serveSDKLocally(w, r, sdkType, version, filename)
 }
 
@@ -168,16 +169,16 @@ func (h *Handler) HandleServeDocs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Construct CDN path
+	// Construct CDN path and redirect to CDN when enabled
 	cdnPath := fmt.Sprintf("/docs/%s/%s/%s", docType, version, path)
-
-	// Set CDN headers
+	cdnURL := h.cdnService.GetCDNURL(cdnPath)
+	if cdnURL != cdnPath {
+		cache.RecordCDNHit()
+		http.Redirect(w, r, cdnURL, http.StatusTemporaryRedirect)
+		return
+	}
 	h.cdnService.SetCDNHeaders(w, cdnPath)
-
-	// Record CDN hit
 	cache.RecordCDNHit()
-
-	// For now, serve locally with CDN headers
 	h.serveDocsLocally(w, r, docType, version, path)
 }
 
@@ -193,10 +194,14 @@ func (h *Handler) HandleServeStatic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Construct CDN path
+	// Construct CDN path and redirect to CDN when enabled
 	cdnPath := fmt.Sprintf("/static/%s/%s", category, path)
-
-	// Set CDN headers
+	cdnURL := h.cdnService.GetCDNURL(cdnPath)
+	if cdnURL != cdnPath {
+		cache.RecordCDNHit()
+		http.Redirect(w, r, cdnURL, http.StatusTemporaryRedirect)
+		return
+	}
 	h.cdnService.SetCDNHeaders(w, cdnPath)
 
 	// Record CDN hit

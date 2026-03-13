@@ -24,12 +24,14 @@ import (
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	agentmemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/agent_memory"
 	analyticshandler "github.com/functionfly/functionfly/internal/api/handlers/analytics"
+	"github.com/functionfly/functionfly/internal/api/handlers/apikeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
 	authHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/auth"
 	"github.com/functionfly/functionfly/internal/api/handlers/backends"
 	"github.com/functionfly/functionfly/internal/api/handlers/billing"
 	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
+	conversationshandler "github.com/functionfly/functionfly/internal/api/handlers/conversations"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
 	"github.com/functionfly/functionfly/internal/api/handlers/enterprise"
@@ -57,6 +59,7 @@ import (
 	versionhandler "github.com/functionfly/functionfly/internal/api/handlers/version"
 	"github.com/functionfly/functionfly/internal/api/handlers/wellknown"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/captcha"
@@ -103,6 +106,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize follow handler
 	followService := services.NewFollowService(s.repo)
 	followHandler := followHandlerPkg.NewHandler(followService, s.repo, s.authSvc)
+
+	// Initialize API keys handler
+	apikeyRepo := apikey.NewRepository(s.postgresDB.GORM)
+	apiKeysHandler := apikeys.NewHandler(apikeyRepo)
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "functionfly-jwt-secret-key-2026"
+	}
+	apiKeyAuthHandler := apikeys.NewAPIKeyAuthHandler(apikeyRepo, jwtSecret)
 
 	// Initialize monitoring handler
 	monitoringHandler := monitoring.NewHandler(s.repo, s.monitoringSvc, s.realtimeMonitor, s.authSvc)
@@ -251,6 +263,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Initialize vault handler (Secrets Vault feature)
 	vaultRepo := vaultstorage.NewRepository(s.postgresDB.GORM)
+	s.vaultRepo = vaultRepo
 	vaultHandler := vault.NewHandler(vaultRepo, logrus.New())
 
 	// Initialize AEP (Agent Execution Plan) handler
@@ -435,11 +448,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Dedicated rate limiter for auth endpoints: 10 req/min per IP (much stricter than global)
 	// Configurable via AUTH_RATE_LIMIT_REQUESTS / AUTH_RATE_LIMIT_WINDOW_SECONDS env vars.
 	authRateLimiter := middleware.NewAuthRateLimiter()
+	vaultRateLimiter := middleware.NewVaultRateLimiter()
 
-	// Auth routes (public) - on main router, not /v1 subrouter
+	// Auth routes (public) - on main router and under /v1 for CLI (fly login --dev uses POST /v1/auth/login)
 	s.router.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
 	s.router.HandleFunc("/auth/refresh", authHandler.HandleRefreshToken).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/refresh", authHandler.HandleRefreshToken).Methods("POST", "OPTIONS")
 	s.router.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
 	s.router.HandleFunc("/auth/check-username", authHandler.HandleCheckUsernameAvailability).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/auth/verify-email", authHandler.HandleVerifyEmail).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/auth/resend-verification", authRateLimiter.Limit(authHandler.HandleResendVerification)).Methods("POST", "OPTIONS")
@@ -455,6 +472,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Password reset routes (public)
 	api.HandleFunc("/auth/password-reset", authRateLimiter.Limit(authHandler.HandlePasswordResetRequest)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/password-reset/confirm", authRateLimiter.Limit(authHandler.HandlePasswordResetConfirm)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/api-key", apiKeyAuthHandler.HandleAuthenticate).Methods("POST", "OPTIONS")
 
 	// User profile routes
 	// Public: get any user's profile by username
@@ -495,27 +513,45 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/users/me/skills/{id}", authMiddleware.RequireAuth(usersHandler.HandleRemoveUserSkill)).Methods("DELETE", "OPTIONS")
 
 	// Follow routes (protected for write, public for read where noted)
+	// api is already under PathPrefix("/v1"), so use "/follow/..." not "/v1/follow/..."
 	// User follows
-	api.HandleFunc("/v1/follow/users/{username}/follow", authMiddleware.RequireAuth(followHandler.HandleFollowUser)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/v1/follow/users/{username}/follow", authMiddleware.RequireAuth(followHandler.HandleUnfollowUser)).Methods("DELETE", "OPTIONS")
-	api.HandleFunc("/v1/follow/users/{username}/followers", followHandler.HandleGetUserFollowers).Methods("GET", "OPTIONS")
-	api.HandleFunc("/v1/follow/users/{username}/following", followHandler.HandleGetUserFollowing).Methods("GET", "OPTIONS")
-	api.HandleFunc("/v1/follow/users/{username}/status", authMiddleware.RequireAuth(followHandler.HandleCheckFollowingStatus)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/follow/users/{username}/follow", authMiddleware.RequireAuth(followHandler.HandleFollowUser)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/follow/users/{username}/follow", authMiddleware.RequireAuth(followHandler.HandleUnfollowUser)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/follow/users/{username}/followers", followHandler.HandleGetUserFollowers).Methods("GET", "OPTIONS")
+	api.HandleFunc("/follow/users/{username}/following", followHandler.HandleGetUserFollowing).Methods("GET", "OPTIONS")
+	api.HandleFunc("/follow/users/{username}/status", authMiddleware.RequireAuth(followHandler.HandleCheckFollowingStatus)).Methods("GET", "OPTIONS")
 
 	// Function follows
-	api.HandleFunc("/v1/follow/functions/{functionID}/follow", authMiddleware.RequireAuth(followHandler.HandleFollowFunction)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/v1/follow/functions/{functionID}/follow", authMiddleware.RequireAuth(followHandler.HandleUnfollowFunction)).Methods("DELETE", "OPTIONS")
-	api.HandleFunc("/v1/follow/functions/{functionID}/followers", followHandler.HandleGetFunctionFollowers).Methods("GET", "OPTIONS")
-	api.HandleFunc("/v1/follow/functions/{functionID}/status", authMiddleware.RequireAuth(followHandler.HandleCheckFunctionFollowingStatus)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/follow/functions/{functionID}/follow", authMiddleware.RequireAuth(followHandler.HandleFollowFunction)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/follow/functions/{functionID}/follow", authMiddleware.RequireAuth(followHandler.HandleUnfollowFunction)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/follow/functions/{functionID}/followers", followHandler.HandleGetFunctionFollowers).Methods("GET", "OPTIONS")
+	api.HandleFunc("/follow/functions/{functionID}/status", authMiddleware.RequireAuth(followHandler.HandleCheckFunctionFollowingStatus)).Methods("GET", "OPTIONS")
 
 	// My follows (protected)
-	api.HandleFunc("/v1/follow/me/functions", authMiddleware.RequireAuth(followHandler.HandleGetMyFollowedFunctions)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/v1/follow/me/stats", authMiddleware.RequireAuth(followHandler.HandleGetMyFollowStats)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/follow/me/functions", authMiddleware.RequireAuth(followHandler.HandleGetMyFollowedFunctions)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/follow/me/stats", authMiddleware.RequireAuth(followHandler.HandleGetMyFollowStats)).Methods("GET", "OPTIONS")
+
+	// API keys (protected)
+	api.HandleFunc("/api-keys", authMiddleware.RequireAuth(apiKeysHandler.HandleList)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/api-keys", authMiddleware.RequireAuth(apiKeysHandler.HandleCreate)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeysHandler.HandleGet)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeysHandler.HandleUpdate)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeysHandler.HandleDelete)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/rotate", authMiddleware.RequireAuth(apiKeysHandler.HandleRotate)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/permissions", authMiddleware.RequireAuth(apiKeysHandler.HandleListPermissions)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/permissions", authMiddleware.RequireAuth(apiKeysHandler.HandleAddPermission)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/permissions/{perm_id}", authMiddleware.RequireAuth(apiKeysHandler.HandleRemovePermission)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/environments", authMiddleware.RequireAuth(apiKeysHandler.HandleListEnvironments)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/environments", authMiddleware.RequireAuth(apiKeysHandler.HandleAddEnvironment)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/api-keys/{id}/environments/{env_id}", authMiddleware.RequireAuth(apiKeysHandler.HandleRemoveEnvironment)).Methods("DELETE", "OPTIONS")
 
 	// Billing portal (Stripe Customer Portal)
 	api.HandleFunc("/billing/portal-session", authMiddleware.RequireAuth(billingHandler.HandleCreatePortalSession)).Methods("POST", "OPTIONS")
+	// Checkout session (Stripe Checkout)
+	api.HandleFunc("/billing/checkout", authMiddleware.RequireAuth(billingHandler.HandleCreateCheckoutSession)).Methods("POST", "OPTIONS")
 	// User billing endpoints
 	api.HandleFunc("/billing/subscription", authMiddleware.RequireAuth(billingHandler.HandleGetSubscription)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/billing/subscription/cancel", authMiddleware.RequireAuth(billingHandler.HandleCancelSubscription)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/billing/invoices", authMiddleware.RequireAuth(billingHandler.HandleListInvoices)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/usage", authMiddleware.RequireAuth(billingHandler.HandleGetUsage)).Methods("GET", "OPTIONS")
 	// @username profile routes (clean URL structure)
@@ -745,6 +781,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Feedback routes (public)
 	api.HandleFunc("/feedback", feedbackHandler.CreateFeedback).Methods("POST")
 	api.HandleFunc("/feedback/history", authMiddleware.RequireAuth(feedbackHandler.GetFeedbackHistory)).Methods("GET")
+	api.HandleFunc("/feedback/attachments/{id}/download", authMiddleware.RequireAuth(feedbackHandler.DownloadAttachment)).Methods("GET")
 
 	// Function Registry routes (public for read, protected for write)
 	api.HandleFunc("/registry/functions", registryHandler.HandleListFunctions).Methods("GET")
@@ -931,6 +968,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Execution Explorer routes (public — execution hashes are public artifacts)
 	api.HandleFunc("/registry/{author}/{name}/executions", dreHandler.HandleListExecutions).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/{author}/{name}/executions/by-hash", dreHandler.HandleGetExecutionByHash).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/{author}/{name}/executions/timeline", dreHandler.HandleGetExecutionTimeline).Methods("GET", "OPTIONS")
 	api.HandleFunc("/registry/{author}/{name}/executions/{execution_id}", dreHandler.HandleGetExecution).Methods("GET", "OPTIONS")
 
 	// Execution security routes (public)
@@ -1066,12 +1105,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Secrets Vault routes (protected)
 	// ============================================================
 	protected.HandleFunc("/vault/secrets", authMiddleware.RequireAuth(vaultHandler.HandleListSecrets)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/vault/secrets", authMiddleware.RequireAuth(vaultHandler.HandleCreateSecret)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/secrets", authMiddleware.RequireAuth(vaultRateLimiter.LimitCreate(vaultHandler.HandleCreateSecret))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultHandler.HandleGetSecret)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultHandler.HandleUpdateSecret)).Methods("PATCH", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}", authMiddleware.RequireAuth(vaultHandler.HandleDeleteSecret)).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/vault/secrets/{id}/tokens", authMiddleware.RequireAuth(vaultHandler.HandleListTokens)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/vault/secrets/{id}/tokens", authMiddleware.RequireAuth(vaultHandler.HandleGenerateToken)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/vault/secrets/{id}/tokens", authMiddleware.RequireAuth(vaultRateLimiter.LimitGenerateToken(vaultHandler.HandleGenerateToken))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/vault/tokens/{id}", authMiddleware.RequireAuth(vaultHandler.HandleRevokeToken)).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/vault/audit", authMiddleware.RequireAuth(vaultHandler.HandleGetAuditLog)).Methods("GET", "OPTIONS")
 
@@ -1189,6 +1228,23 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Marketplace integration (protected)
 	api.HandleFunc("/flywheel/replies/{id}/publish-to-marketplace", authMiddleware.RequireAuth(flywheelHandler.PublishToMarketplace)).Methods("POST", "OPTIONS")
+
+	// Executable Conversations (DMs with function-aware messages)
+	conversationRepo := storage.NewConversationRepository(s.postgresDB.GORM)
+	conversationsHandler := conversationshandler.NewHandler(conversationRepo, flywheelService, registryRepo, logrus.New())
+	api.HandleFunc("/conversations/context", authMiddleware.RequireAuth(conversationsHandler.GetConversationContext)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/conversations/from-thread", authMiddleware.RequireAuth(conversationsHandler.CreateFromThread)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/conversations/collaboration-profile/{user_id}", authMiddleware.RequireAuth(conversationsHandler.GetCollaborationProfile)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/conversations", authMiddleware.RequireAuth(conversationsHandler.ListConversations)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/conversations", authMiddleware.RequireAuth(conversationsHandler.CreateConversation)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/conversations/{id}", authMiddleware.RequireAuth(conversationsHandler.GetConversation)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/conversations/{id}/messages", authMiddleware.RequireAuth(conversationsHandler.ListMessages)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/conversations/{id}/messages/validate", authMiddleware.RequireAuth(conversationsHandler.ValidateMessage)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/conversations/{id}/messages", authMiddleware.RequireAuth(conversationsHandler.CreateMessage)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/conversations/{id}/resolve", authMiddleware.RequireAuth(conversationsHandler.ResolveConversation)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/conversations/{id}/bounties", authMiddleware.RequireAuth(conversationsHandler.ListBounties)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/conversations/{id}/bounties", authMiddleware.RequireAuth(conversationsHandler.CreateBounty)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/conversations/{id}/bounties/{bounty_id}/claim", authMiddleware.RequireAuth(conversationsHandler.ClaimBounty)).Methods("POST", "OPTIONS")
 
 	// ============================================================
 	// Swarm / Marketplace / Evolution routes (protected)

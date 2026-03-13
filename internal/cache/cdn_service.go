@@ -35,8 +35,15 @@ func NewCDNService(config *CDNConfig) *CDNService {
 		config = NewCDNConfig()
 	}
 
+	baseURL := config.CDNBaseURL
+	if baseURL == "" {
+		baseURL = "https://cdn.functionfly.com"
+	}
+	// Normalize: no trailing slash
+	baseURL = strings.TrimSuffix(baseURL, "/")
+
 	service := &CDNService{
-		cdnURL:    "",
+		cdnURL:    baseURL,
 		enabled:   config.EnableCDNCaching,
 		maxAge:    config.CDNMaxAge,
 		providers: make(map[string]*CDNProvider),
@@ -44,18 +51,21 @@ func NewCDNService(config *CDNConfig) *CDNService {
 
 	// Initialize default providers if enabled
 	if config.EnableCDNCaching {
-		service.initializeProviders()
+		service.initializeProviders(baseURL)
 	}
 
 	return service
 }
 
-// initializeProviders sets up CDN providers
-func (c *CDNService) initializeProviders() {
-	// Cloudflare CDN (default)
+// initializeProviders sets up CDN providers (baseURL is the configured CDN base, e.g. https://cdn.functionfly.com)
+func (c *CDNService) initializeProviders(baseURL string) {
+	if baseURL == "" {
+		baseURL = "https://cdn.functionfly.com"
+	}
+	// Cloudflare CDN (default) – use configured base URL
 	c.providers["cloudflare"] = &CDNProvider{
 		Name:     "cloudflare",
-		BaseURL:  "https://cdn.functionfly.dev",
+		BaseURL:  baseURL,
 		Regions:  []string{"global"},
 		Enabled:  true,
 		Priority: 100,

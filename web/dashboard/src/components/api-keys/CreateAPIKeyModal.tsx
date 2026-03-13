@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -28,6 +28,7 @@ import {
   DEFAULT_ROTATION_DAYS,
 } from "@/types/api-key";
 import { apiKeysService, storeNewApiKey } from "@/services/api-keys";
+import { toast } from "sonner";
 
 interface CreateAPIKeyModalProps {
   open: boolean;
@@ -43,6 +44,8 @@ export function CreateAPIKeyModal({
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [showKey, setShowKey] = useState<string | null>(null);
+  const [countdownSeconds, setCountdownSeconds] = useState(20);
+  const [copied, setCopied] = useState(false);
 
   // Form state
   const [name, setName] = useState("");
@@ -64,6 +67,25 @@ export function CreateAPIKeyModal({
     setRpd(DEFAULT_RATE_LIMIT.rpd);
     setError(null);
   };
+
+  // Live countdown and auto-close when showing the new key
+  useEffect(() => {
+    if (!showKey || !open) return;
+    setCountdownSeconds(20);
+    const interval = setInterval(() => {
+      setCountdownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setShowKey(null);
+          resetForm();
+          onOpenChange(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [showKey, open, onOpenChange]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,13 +109,30 @@ export function CreateAPIKeyModal({
       };
 
       const response = await apiKeysService.createKey(data);
-      // Store the new key in localStorage for one-time display
       storeNewApiKey(response);
-      setShowKey(response.plaintext);
-      onSuccess?.({ ...data, plaintext: response.plaintext });
-    } catch (err) {
+      const plaintext = response.plaintext ?? "";
+      setCopied(false);
+      setShowKey(plaintext || null);
+      onSuccess?.({ ...data, plaintext });
+      // If no plaintext in response, close modal so user isn't stuck (key still created, list will update)
+      if (!plaintext) {
+        resetForm();
+        onOpenChange(false);
+      }
+    } catch (err: unknown) {
       console.error("Failed to create API key:", err);
-      setError(err instanceof Error ? err.message : "Failed to create API key");
+      const apiMessage =
+        err &&
+        typeof err === "object" &&
+        "response" in err &&
+        (err as { response?: { data?: { error?: { message?: string } } } }).response?.data?.error?.message;
+      setError(
+        typeof apiMessage === "string" && apiMessage
+          ? apiMessage
+          : err instanceof Error
+            ? err.message
+            : "Failed to create API key"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -110,8 +149,14 @@ export function CreateAPIKeyModal({
   };
 
   const copyToClipboard = async () => {
-    if (showKey) {
+    if (!showKey) return;
+    try {
       await navigator.clipboard.writeText(showKey);
+      setCopied(true);
+      toast.success("API key copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
     }
   };
 
@@ -135,8 +180,9 @@ export function CreateAPIKeyModal({
                   size="sm"
                   onClick={copyToClipboard}
                   className="text-xs"
+                  disabled={copied}
                 >
-                  Copy
+                  {copied ? "Copied!" : "Copy"}
                 </Button>
               </div>
               <code className="text-sm break-all font-mono">{showKey}</code>
@@ -150,6 +196,9 @@ export function CreateAPIKeyModal({
             </div>
           </div>
           <DialogFooter>
+            <p className="text-xs text-muted-foreground mr-auto">
+              Closes automatically in {countdownSeconds}s
+            </p>
             <Button onClick={handleClose}>Done</Button>
           </DialogFooter>
         </DialogContent>
@@ -196,10 +245,10 @@ export function CreateAPIKeyModal({
           <div className="space-y-2">
             <Label htmlFor="keyType">Key Type *</Label>
             <Select value={keyType} onValueChange={(v) => setKeyType(v as APIKeyType)}>
-              <SelectTrigger>
+              <SelectTrigger className="create-api-key-key-type-trigger">
                 <SelectValue placeholder="Select key type" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="create-api-key-key-type-dropdown">
                 {(Object.keys(API_KEY_TYPE_LABELS) as APIKeyType[]).map((type) => (
                   <SelectItem key={type} value={type}>
                     <div className="flex flex-col">

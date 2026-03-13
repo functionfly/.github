@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 import { ZodSchema } from "zod";
 import { getApiBaseUrl } from "@/lib/constants";
+import { useApiReachableStore } from "@/stores/apiReachableStore";
 import { safeParse, ValidationResult } from "@/lib/validation-utils";
 
 class ApiClient {
@@ -33,11 +34,18 @@ class ApiClient {
       }
     );
 
-    // Add response interceptor to handle auth errors
+    // Add response interceptor to handle auth errors and track API reachability
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        useApiReachableStore.getState().setApiReachable(true);
+        return response;
+      },
       async (error) => {
-        if (error.response?.status === 401) {
+        const status = error.response?.status;
+        if (status !== 401) {
+          useApiReachableStore.getState().setApiReachable(false);
+        }
+        if (status === 401) {
           // Token is invalid or expired - try to refresh first
           const refreshToken = localStorage.getItem("ff-refresh-token");
           if (refreshToken) {

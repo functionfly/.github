@@ -269,6 +269,21 @@ func (r *FeedbackRepository) GetFeedbackAttachments(feedbackID uuid.UUID) ([]Fee
 	return attachments, nil
 }
 
+// GetFeedbackAttachmentByID retrieves a single attachment by ID (for download).
+func (r *FeedbackRepository) GetFeedbackAttachmentByID(attachmentID uuid.UUID) (*FeedbackAttachment, error) {
+	var att FeedbackAttachment
+	err := r.db.QueryRow(`
+		SELECT id, feedback_id, filename, content_type, size, s3_key, s3_bucket, created_at
+		FROM feedback_attachments
+		WHERE id = $1`, attachmentID).Scan(
+		&att.ID, &att.FeedbackID, &att.Filename, &att.ContentType,
+		&att.Size, &att.S3Key, &att.S3Bucket, &att.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &att, nil
+}
+
 // GetFeedbackStats returns statistics about feedback submissions
 func (r *FeedbackRepository) GetFeedbackStats() (map[string]interface{}, error) {
 	stats := make(map[string]interface{})

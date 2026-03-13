@@ -4,11 +4,14 @@
  * See strategic pricing doc for add-on pricing (storage, ops, hot cache, etc.).
  */
 
+import { STATE_FABRIC_PLANS as SF_PLANS } from "@/lib/constants";
+
 export interface StateFabricPlan {
   id: string;
   name: string;
   tagline?: string;
   price: string;
+  priceValue?: number;
   period: string;
   description: string;
   features: string[];
@@ -16,6 +19,7 @@ export interface StateFabricPlan {
   highlighted: boolean;
   cta: string;
   href: string;
+  priceId?: string;
 }
 
 export const STATE_FABRIC_PLANS: StateFabricPlan[] = [
@@ -24,6 +28,7 @@ export const STATE_FABRIC_PLANS: StateFabricPlan[] = [
     name: "Sandbox",
     tagline: "Free",
     price: "$0",
+    priceValue: 0,
     period: "month",
     description: "Great for experimentation & onboarding.",
     features: [
@@ -37,12 +42,14 @@ export const STATE_FABRIC_PLANS: StateFabricPlan[] = [
     highlighted: false,
     cta: "Get Started",
     href: "/signup",
+    priceId: SF_PLANS.SANDBOX.priceId,
   },
   {
     id: "starter",
     name: "Starter",
     tagline: "Dev State",
     price: "$19",
+    priceValue: 19,
     period: "month",
     description: "Internal dev & small side projects.",
     features: [
@@ -57,12 +64,14 @@ export const STATE_FABRIC_PLANS: StateFabricPlan[] = [
     highlighted: false,
     cta: "Start Free Trial",
     href: "/signup",
+    priceId: SF_PLANS.STARTER.priceId,
   },
   {
     id: "pro",
     name: "Pro",
     tagline: "Persistent Apps",
     price: "$99",
+    priceValue: 99,
     period: "month",
     description: "Production apps & team projects.",
     features: [
@@ -78,12 +87,14 @@ export const STATE_FABRIC_PLANS: StateFabricPlan[] = [
     highlighted: true,
     cta: "Start Free Trial",
     href: "/signup",
+    priceId: SF_PLANS.PRO.priceId,
   },
   {
     id: "business",
     name: "Business",
     tagline: "Scale State",
     price: "$499",
+    priceValue: 499,
     period: "month",
     description: "Business-critical systems.",
     features: [
@@ -100,12 +111,14 @@ export const STATE_FABRIC_PLANS: StateFabricPlan[] = [
     highlighted: false,
     cta: "Start Free Trial",
     href: "/signup",
+    priceId: SF_PLANS.BUSINESS.priceId,
   },
   {
     id: "enterprise",
     name: "Enterprise",
     tagline: "StateFabric Enterprise",
     price: "$1,999",
+    priceValue: 1999,
     period: "month+",
     description: "Large enterprises & regulated industries.",
     features: [
@@ -121,6 +134,7 @@ export const STATE_FABRIC_PLANS: StateFabricPlan[] = [
     highlighted: false,
     cta: "Contact Sales",
     href: "/contact",
+    priceId: SF_PLANS.ENTERPRISE.priceId,
   },
 ];
 
