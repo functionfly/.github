@@ -1,21 +1,23 @@
-# Exclude large directories not needed for the dashboard build
-.nx/
-bin/
-cmd/
-deploy/
-docs/
-internal/
-migrations/
-runtimes/
-scripts/
-sdk/
-functionfly-types/
-.agents/
+# Exclude large directories not needed for the dashboard build.
+# Leading / anchors patterns to the repo root so subdirs like
+# web/dashboard/scripts/ are NOT accidentally excluded.
+/.nx/
+/bin/
+/cmd/
+/deploy/
+/docs/
+/internal/
+/migrations/
+/runtimes/
+/scripts/
+/sdk/
+/functionfly-types/
+/.agents/
 
 # Exclude other web apps (only web/dashboard is deployed here)
-web/docs/
-web/site/
-web/admin-dashboard/
+/web/docs/
+/web/site/
+/web/admin-dashboard/
 
 # Standard ignores
 *.log
