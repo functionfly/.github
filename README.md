@@ -69,33 +69,45 @@ FunctionFly is a comprehensive serverless platform that enables developers to de
 
 - Go 1.24+
 - Docker & Docker Compose
-- PostgreSQL 14+
+- PostgreSQL 17
 - Redis 7+
 
 ### Local Development
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/functionfly/functionfly.git
 cd functionfly
 ```
 
-2. Copy environment configuration:
+1. Copy environment configuration:
+
 ```bash
 cp .env.example .env
 ```
 
-3. Start the development environment:
+1. Start the development environment:
+
 ```bash
 docker-compose -f docker-compose.local.yml up -d
 ```
 
-4. Run the orchestrator:
+1. Run the orchestrator:
+
 ```bash
-go run cmd/fly/main.go serve
+go build -o bin/orchestrator-api ./cmd/orchestrator-api
+./bin/orchestrator-api --skip-migrations
 ```
 
-5. Deploy your first function:
+Or use the Makefile:
+
+```bash
+make dev
+```
+
+1. Deploy your first function:
+
 ```bash
 go run cmd/fly/main.go deploy --path ./examples/hello-world
 ```
@@ -105,7 +117,7 @@ go run cmd/fly/main.go deploy --path ./examples/hello-world
 - **Install script (Linux/macOS):**  
   `curl -fsSL https://raw.githubusercontent.com/functionfly/functionfly/main/scripts/install.sh | bash`
 - **Homebrew:** `brew tap functionfly/tap && brew install fly` (when tap is configured)
-- **From source:** `make build-fly` (binary at `bin/fly`)
+- **From source:** `go build -o bin/fly ./cmd/fly` (binary at `bin/fly`)
 
 See [packaging/README.md](packaging/README.md) for Windows (Scoop/Chocolatey), upgrade steps, and release artifacts.
 
@@ -115,20 +127,23 @@ See [packaging/README.md](packaging/README.md) for Windows (Scoop/Chocolatey), u
 # Login to FunctionFly
 fly login
 
-# List your functions
-fly list
+# Initialize a new function project
+fly init my-function
+
+# Run local development environment
+fly dev
+
+# Publish a function to the registry
+fly publish
 
 # Deploy a function
-fly deploy --name my-function --path ./my-function
-
-# Invoke a function
-fly invoke my-function --data '{"name": "World"}'
+fly deploy
 
 # View logs
 fly logs my-function
 ```
 
-Configuration precedence: **environment variables (FFLY_*)** override **global config** (`~/.functionfly/config.yaml`). Use `fly config` to view or `fly config reset` to restore defaults. See [cmd/fly/README.md](cmd/fly/README.md) for full CLI docs.
+Configuration precedence: **environment variables (FFLY_*)** override **global config** (`~/.fly/config.yaml`). Use `fly config` to view or `fly config reset` to restore defaults. See [cmd/fly/README.md](cmd/fly/README.md) for full CLI docs.
 
 ## Deployment
 
@@ -143,18 +158,18 @@ docker-compose -f docker-compose.production.yml up -d
 
 ### Kubernetes
 
-See [deploy/kubernetes](./deploy/kubernetes) for Kubernetes manifests.
+Kubernetes deployment documentation is coming soon. For now, see the [Production Deployment Guide](./docs/PRODUCTION_DEPLOYMENT.md) for bare-metal deployment.
 
 ### Cloud Providers
 
-- **AWS**: [deploy/aws](./deploy/aws)
-- **GCP**: [deploy/gcp](./deploy/gcp)
+- **AWS**: Contact the team for AWS deployment support
+- **GCP**: Contact the team for GCP deployment support
 
 ## SDKs
 
 - **Python**: [sdk/python](./sdk/python)
-- **Node.js**: [sdk/nodejs](./sdk/nodejs)
-- **Go**: [sdk/go](./sdk/go)
+- **JavaScript/TypeScript**: [sdk/js](./sdk/js) — contains the `flypy` package
+- **Edge**: [sdk/edge](./sdk/edge)
 
 ### Example: Python SDK
 
@@ -168,10 +183,10 @@ result = client.invoke("my-function", {"name": "World"})
 print(result)
 ```
 
-### Example: Node.js SDK
+### Example: JavaScript SDK (flypy)
 
 ```javascript
-const { FunctionClient } = require('@functionfly/sdk');
+const { FunctionClient } = require('@functionfly/flypy');
 
 const client = new FunctionClient({ apiKey: 'your-api-key' });
 
@@ -196,22 +211,26 @@ Environment variables can be configured via `.env` files. See `.env.example` for
 FunctionFly includes built-in monitoring with Prometheus and Grafana.
 
 1. Start the monitoring stack:
+
 ```bash
 docker-compose -f docker-compose.monitoring.yml up -d
 ```
 
-2. Access Grafana at http://localhost:3000 (admin/admin)
+1. Access Grafana at <http://localhost:3000> (admin/admin)
 
-3. Import dashboards from `deploy/monitoring/grafana/`
+2. Import dashboards from `deploy/monitoring/grafana/`
 
 ## Examples
 
 See the [examples](./examples) directory for sample functions:
 
-- [hello-world](./examples/hello-world) - Basic function
-- [http-api](./examples/http-api) - HTTP API with routing
+- [ai-sentiment](./examples/ai-sentiment) - AI/ML sentiment analysis
+- [email-notification](./examples/email-notification) - Email webhook handler
+- [external-api](./examples/external-api) - External API integration
+- [file-storage](./examples/file-storage) - File operations
+- [kv-counter](./examples/kv-counter) - Key-value state
+- [python](./examples/python) - Python runtime example
 - [webhook-notifier](./examples/webhook-notifier) - Webhook handler
-- [ai-sentiment](./examples/ai-sentiment) - AI/ML inference
 
 ## Contributing
 
@@ -225,10 +244,10 @@ Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
 
 ## Documentation
 
-- [API Documentation](docs/api.md)
-- [Deployment Guide](docs/deployment.md)
-- [Security Policy](docs/SECURITY.md)
-- [Migration Guide](docs/MIGRATIONS.md)
+- [Quick Start Guide](./docs/QUICK_START.md) — Get running locally or in production
+- [Production Deployment](./docs/PRODUCTION_DEPLOYMENT.md) — Full production deployment
+- [Security Policy](./docs/SECURITY.md)
+- [Migration Guide](./docs/MIGRATIONS.md)
 
 ## License
 
@@ -236,5 +255,5 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Support
 
-- Discord: https://discord.gg/functionfly
-- Issues: https://github.com/functionfly/functionfly/issues
+- Discord: <https://discord.gg/functionfly>
+- Issues: <https://github.com/functionfly/functionfly/issues>
