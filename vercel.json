@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd web/dashboard && bun run build",
+  "buildCommand": "cd web/dashboard && bun run build:standalone",
   "outputDirectory": "web/dashboard/dist",
   "installCommand": "bun install",
   "framework": null,
