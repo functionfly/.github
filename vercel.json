@@ -1,6 +1,6 @@
 {
   "buildCommand": "cd web/dashboard && bun run build",
-  "outputDirectory": "web/dashboard/dist",
+  "outputDirectory": "dist",
   "installCommand": "bun install",
   "framework": null,
   "bunVersion": "1.x"
