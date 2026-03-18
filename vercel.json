@@ -1,5 +1,5 @@
 {
-  "buildCommand": "nx build dashboard",
+  "buildCommand": "cd web/dashboard && bun run build",
   "outputDirectory": "web/dashboard/dist",
   "installCommand": "bun install",
   "framework": null,
