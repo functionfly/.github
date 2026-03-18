@@ -1,19 +1,25 @@
-# Exclude source files and development artifacts; include only what's needed for "nx build dashboard"
-*
+# Exclude large directories not needed for the dashboard build
+.nx/
+bin/
+cmd/
+deploy/
+docs/
+internal/
+migrations/
+runtimes/
+scripts/
+sdk/
+functionfly-types/
+.agents/
 
-# Root files required for install and Nx
-!package.json
-!bun.lock
-!nx.json
+# Exclude other web apps (only web/dashboard is deployed here)
+web/docs/
+web/site/
+web/admin-dashboard/
 
-# Dashboard app (built by vercel.json buildCommand)
-!web/dashboard/
-!web/dashboard/**
-!web/dashboard/dist/
-
-# Exclude specific files that shouldn't be deployed
-index.js
-example-*.js
+# Standard ignores
 *.log
-.env*
-!.env.production
+.env
+.env.local
+.env.development
+.env.test
