@@ -8,6 +8,8 @@
 
 # Dashboard app (built by vercel.json buildCommand)
 !web/dashboard/
+!web/dashboard/**
+!web/dashboard/dist/
 
 # Exclude specific files that shouldn't be deployed
 index.js
