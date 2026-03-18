@@ -84,6 +84,10 @@ func getDefaultSettings() map[string]interface{} {
 		"allowTagging":          true,
 		"allowIndexing":         true,
 		"showLastActive":        true,
+		"deploymentSuccess":     true,
+		"deploymentFailure":     true,
+		"failoverEvents":        true,
+		"providerIssues":        true,
 	}
 }
 
@@ -185,6 +189,10 @@ func (h *Handler) HandlePatchUserSettingsNotifications(w http.ResponseWriter, r 
 		"notifyOnFunctionUsage",
 		"notifyOnReviews",
 		"weeklyDigest",
+		"deploymentSuccess",
+		"deploymentFailure",
+		"failoverEvents",
+		"providerIssues",
 	}
 
 	for _, field := range notificationFields {
@@ -443,6 +451,10 @@ func (h *Handler) HandlePatchUserSettingsNotificationsMe(w http.ResponseWriter, 
 		"notifyOnFunctionUsage",
 		"notifyOnReviews",
 		"weeklyDigest",
+		"deploymentSuccess",
+		"deploymentFailure",
+		"failoverEvents",
+		"providerIssues",
 	}
 
 	for _, field := range notificationFields {

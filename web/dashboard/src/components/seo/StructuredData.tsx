@@ -230,9 +230,9 @@ export function BreadcrumbStructuredData({ items }: BreadcrumbStructuredDataProp
     <JsonLd
       item={{
         '@context': 'https://schema.org',
-        '@type': 'BreadcrumbList',
+        '@type': 'BreadcrumbList' as const,
         'itemListElement': items.map((item, index) => ({
-          '@type': 'ListItem',
+          '@type': 'ListItem' as const,
           'position': index + 1,
           'name': item.name,
           'item': item.url
@@ -256,49 +256,46 @@ interface BlogPageStructuredDataProps {
 }
 
 export function BlogPageStructuredData({ posts }: BlogPageStructuredDataProps) {
-  return (
-    <JsonLd
-      item={{
-        '@context': 'https://schema.org',
-        '@graph': [
-          {
-            '@type': 'Blog',
-            'name': 'FunctionFly Blog',
-            'description': 'Insights, tutorials, and best practices for serverless functions, edge computing, and AI agents',
-            'url': 'https://functionfly.dev/blog',
-            'publisher': {
-              '@type': 'Organization',
-              'name': 'FunctionFly',
-              'logo': {
-                '@type': 'ImageObject',
-                'url': 'https://functionfly.dev/logo.png'
-              }
-            },
-            'mainEntityOfPage': {
-              '@type': 'WebPage',
-              '@id': 'https://functionfly.dev/blog'
-            }
-          },
-          ...(posts ? posts.slice(0, 10).map((post, index) => ({
-            '@type': 'BlogPosting',
-            'headline': post.title,
-            'description': post.excerpt,
-            'author': {
-              '@type': 'Person',
-              'name': post.author.name
-            },
-            'datePublished': post.publishedAt,
-            'url': `https://functionfly.dev/blog/${post.slug}`,
-            'keywords': post.tags?.join(', '),
-            'position': index + 1,
-            'isPartOf': {
-              '@type': 'Blog',
-              'name': 'FunctionFly Blog',
-              'url': 'https://functionfly.dev/blog'
-            }
-          })) : [])
-        ]
-      }}
-    />
-  );
+  const graphItem = {
+    '@context': 'https://schema.org' as const,
+    '@graph': [
+      {
+        '@type': 'Blog' as const,
+        'name': 'FunctionFly Blog',
+        'description': 'Insights, tutorials, and best practices for serverless functions, edge computing, and AI agents',
+        'url': 'https://functionfly.dev/blog',
+        'publisher': {
+          '@type': 'Organization' as const,
+          'name': 'FunctionFly',
+          'logo': {
+            '@type': 'ImageObject' as const,
+            'url': 'https://functionfly.dev/logo.png'
+          }
+        },
+        'mainEntityOfPage': {
+          '@type': 'WebPage' as const,
+          '@id': 'https://functionfly.dev/blog'
+        }
+      },
+      ...(posts ? posts.slice(0, 10).map((post, index) => ({
+        '@type': 'BlogPosting' as const,
+        'headline': post.title,
+        'description': post.excerpt,
+        'author': {
+          '@type': 'Person' as const,
+          'name': post.author.name
+        },
+        'datePublished': post.publishedAt,
+        'url': `https://functionfly.dev/blog/${post.slug}`,
+        'keywords': post.tags?.join(', ') ?? '',
+        'position': index + 1,
+        'isPartOf': {
+          '@type': 'Blog' as const,
+          'name': 'FunctionFly Blog',
+          'url': 'https://functionfly.dev/blog'
+        }
+      })) : [])
+    ]
+  };
+  return <JsonLd item={graphItem as unknown as Parameters<typeof JsonLd>[0]['item']} />;
 }

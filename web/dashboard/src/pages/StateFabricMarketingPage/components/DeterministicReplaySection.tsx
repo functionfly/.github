@@ -2,7 +2,7 @@ import { SectionWrapper } from "./SectionWrapper";
 import { FadeInOnScroll } from "./FadeInOnScroll";
 import { CodeBlock } from "./CodeBlock";
 import { ReplayVisualizer } from "./ReplayVisualizer";
-import { TimelineSlider } from "./TimelineSlider";
+import { TimelineSlider, type TimelineEvent } from "./TimelineSlider";
 import { InteractiveDemoMock } from "./InteractiveDemoMock";
 import { UseCaseCard } from "./UseCaseCard";
 import { UseCaseGrid } from "./UseCaseGrid";
@@ -39,7 +39,7 @@ const replaySteps = [
   }
 ];
 
-const timelineEvents = [
+const timelineEvents: TimelineEvent[] = [
   {
     id: "init",
     timestamp: "2026-02-10T14:00:00Z",

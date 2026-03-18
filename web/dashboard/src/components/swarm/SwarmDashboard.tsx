@@ -1,22 +1,21 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { agentApi } from '@/api/agent';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Users, 
-  GitBranch, 
-  MessageSquare, 
-  Wallet, 
-  TrendingUp, 
-  Shield,
+import {
   Activity,
-  Plus,
-  ChevronRight,
   Brain,
-  Clock,
-  DollarSign
+  ChevronRight,
+  GitBranch,
+  MessageSquare,
+  Plus,
+  Shield,
+  TrendingUp,
+  Users,
+  Wallet,
 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 // Types for Swarm Dashboard
 interface Agent {
@@ -43,56 +42,126 @@ interface SwarmDashboardProps {
   agentId: string;
 }
 
+// Map API child (snake_case) to dashboard Agent
+function mapChildToAgent(c: {
+  id?: string;
+  agent_id?: string;
+  name: string;
+  status: string;
+  swarm_role?: string;
+  trust_score?: number;
+  economic_score?: number;
+}): Agent {
+  const status = (
+    c.status === 'active' || c.status === 'suspended' || c.status === 'pending'
+      ? c.status
+      : 'active'
+  ) as Agent['status'];
+  const swarmRole = (
+    c.swarm_role === 'worker' || c.swarm_role === 'manager' || c.swarm_role === 'infrastructure'
+      ? c.swarm_role
+      : 'worker'
+  ) as Agent['swarmRole'];
+  return {
+    id: c.id ?? c.agent_id ?? '',
+    name: c.name,
+    status,
+    swarmRole,
+    trustScore: Number(c.trust_score) || 0,
+    economicScore: Number(c.economic_score) || 0,
+  };
+}
+
 export function SwarmDashboard({ agentId }: SwarmDashboardProps) {
   const [stats, setStats] = useState<SwarmStats | null>(null);
   const [children, setChildren] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!agentId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const [childrenRes, walletRes, inboxRes, listRes] = await Promise.allSettled([
+        agentApi.getChildren(agentId),
+        agentApi.getWallet(agentId),
+        agentApi.getInbox(agentId),
+        agentApi.listAgents({ limit: 1000 }),
+      ]);
+
+      const childrenData =
+        childrenRes.status === 'fulfilled' && childrenRes.value?.children
+          ? (childrenRes.value.children as unknown[]).map(mapChildToAgent)
+          : [];
+      setChildren(childrenData);
+
+      const wallet =
+        walletRes.status === 'fulfilled' && walletRes.value?.wallet
+          ? (walletRes.value.wallet as unknown as Record<string, unknown>)
+          : null;
+      const messages =
+        inboxRes.status === 'fulfilled' && inboxRes.value?.messages
+          ? (inboxRes.value.messages as { status?: string }[])
+          : [];
+      const agents =
+        listRes.status === 'fulfilled' && listRes.value?.agents
+          ? (listRes.value.agents as { status?: string }[])
+          : [];
+
+      const activeCount = agents.filter((a) => a.status === 'active').length;
+      const pendingMessages = messages.filter((m) => m.status === 'pending' || !m.status).length;
+
+      const balanceUSD =
+        wallet &&
+        (typeof wallet.balance_usd === 'number'
+          ? wallet.balance_usd
+          : (wallet as { balanceUSD?: number }).balanceUSD);
+      const totalEarnedUSD =
+        wallet &&
+        (typeof wallet.total_earned_usd === 'number'
+          ? wallet.total_earned_usd
+          : (wallet as { totalEarnedUSD?: number }).totalEarnedUSD);
+      setStats({
+        totalAgents: agents.length,
+        activeAgents: activeCount,
+        totalMessages: messages.length,
+        pendingMessages,
+        walletBalance: Number(balanceUSD) || 0,
+        revenueThisMonth: Number(totalEarnedUSD) || 0,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load swarm data');
+      setStats(null);
+      setChildren([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [agentId]);
 
   useEffect(() => {
-    // In production, fetch from API
-    setTimeout(() => {
-      setStats({
-        totalAgents: 12,
-        activeAgents: 10,
-        totalMessages: 1543,
-        pendingMessages: 7,
-        walletBalance: 1250.00,
-        revenueThisMonth: 3420.50
-      });
-      setChildren([
-        {
-          id: 'agent-1',
-          name: 'Data Processor',
-          status: 'active',
-          swarmRole: 'worker',
-          trustScore: 95,
-          economicScore: 88
-        },
-        {
-          id: 'agent-2',
-          name: 'Analytics Worker',
-          status: 'active',
-          swarmRole: 'worker',
-          trustScore: 92,
-          economicScore: 85
-        },
-        {
-          id: 'agent-3',
-          name: 'Error Handler',
-          status: 'active',
-          swarmRole: 'worker',
-          trustScore: 98,
-          economicScore: 91
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
-  }, [agentId]);
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive">
+        <p className="font-medium">Failed to load swarm data</p>
+        <p className="text-sm mt-1">{error}</p>
+        <Button variant="outline" size="sm" className="mt-3" onClick={() => fetchData()}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -137,9 +206,7 @@ export function SwarmDashboard({ agentId }: SwarmDashboardProps) {
               <GitBranch className="h-5 w-5" />
               Child Agents
             </CardTitle>
-            <CardDescription>
-              Agents spawned by this manager
-            </CardDescription>
+            <CardDescription>Agents spawned by this manager</CardDescription>
           </div>
           <Button size="sm">
             <Plus className="h-4 w-4 mr-2" />
@@ -175,22 +242,28 @@ export function SwarmDashboard({ agentId }: SwarmDashboardProps) {
           icon={<Activity className="h-5 w-5" />}
           href="/evolution"
         />
+        <ActionCard
+          title="Agent Wallet"
+          description="View balance and transactions"
+          icon={<Wallet className="h-5 w-5" />}
+          href="/wallet"
+        />
       </div>
     </div>
   );
 }
 
-function StatCard({ 
-  title, 
-  value, 
-  icon, 
-  description, 
-  trend 
-}: { 
-  title: string; 
-  value: string | number; 
-  icon: React.ReactNode; 
-  description?: string; 
+function StatCard({
+  title,
+  value,
+  icon,
+  description,
+  trend,
+}: {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  description?: string;
   trend?: string;
 }) {
   return (
@@ -200,13 +273,9 @@ function StatCard({
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
             <p className="text-2xl font-bold">{value}</p>
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
+            {description && <p className="text-xs text-muted-foreground">{description}</p>}
           </div>
-          <div className="p-2 bg-primary/10 rounded-lg text-primary">
-            {icon}
-          </div>
+          <div className="p-2 bg-primary/10 rounded-lg text-primary">{icon}</div>
         </div>
         {trend && (
           <div className="mt-2 flex items-center text-xs text-green-600">
@@ -223,13 +292,13 @@ function AgentCard({ agent }: { agent: Agent }) {
   const statusColors = {
     active: 'bg-green-500',
     suspended: 'bg-red-500',
-    pending: 'bg-yellow-500'
+    pending: 'bg-yellow-500',
   };
 
   const roleColors = {
     worker: 'bg-blue-500',
     manager: 'bg-purple-500',
-    infrastructure: 'bg-orange-500'
+    infrastructure: 'bg-orange-500',
   };
 
   return (
@@ -264,24 +333,22 @@ function AgentCard({ agent }: { agent: Agent }) {
   );
 }
 
-function ActionCard({ 
-  title, 
-  description, 
-  icon, 
-  href 
-}: { 
-  title: string; 
-  description: string; 
-  icon: React.ReactNode; 
+function ActionCard({
+  title,
+  description,
+  icon,
+  href,
+}: {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
   href: string;
 }) {
   return (
     <Card className="hover:border-primary/50 transition-colors cursor-pointer">
       <CardContent className="pt-6">
         <div className="flex items-start gap-4">
-          <div className="p-3 bg-primary/10 rounded-lg">
-            {icon}
-          </div>
+          <div className="p-3 bg-primary/10 rounded-lg">{icon}</div>
           <div>
             <h3 className="font-medium">{title}</h3>
             <p className="text-sm text-muted-foreground mt-1">{description}</p>

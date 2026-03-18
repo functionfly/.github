@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Copy, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { Check, Copy } from 'lucide-react';
+import { useState } from 'react';
 
 export interface HashBlockProps {
   /** The hash value to display */
@@ -41,12 +41,13 @@ export function HashBlock({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const displayHash = truncate && hash.length > truncateChars * 2 + 3
-    ? `${hash.slice(0, truncateChars)}...${hash.slice(-truncateChars)}`
-    : hash;
+  const displayHash =
+    truncate && hash.length > truncateChars * 2 + 3
+      ? `${hash.slice(0, truncateChars)}...${hash.slice(-truncateChars)}`
+      : hash;
 
   return (
-    <div className={cn("flex flex-col gap-1", className)}>
+    <div className={cn('flex flex-col gap-1', className)}>
       {label && (
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {label}
@@ -54,22 +55,21 @@ export function HashBlock({
       )}
       <div
         className={cn(
-          "flex items-center gap-2 bg-bg-secondary rounded-md px-3 py-2 font-mono text-sm",
-          onClick && "cursor-pointer hover:bg-bg-tertiary transition-colors",
-          verified && "border-l-2 border-l-green-500",
-          invalid && "border-l-2 border-l-red-500"
+          'flex items-center gap-2 bg-bg-secondary rounded-md px-3 py-2 font-mono text-sm text-foreground',
+          onClick && 'cursor-pointer hover:bg-bg-tertiary transition-colors',
+          verified && 'border-l-2 border-l-green-500',
+          invalid && 'border-l-2 border-l-red-500'
         )}
         onClick={onClick}
+        title={truncate && hash.length > (truncateChars ?? 8) * 2 + 3 ? hash : undefined}
       >
-        <span className={cn("flex-1 break-all", truncate && "select-none")}>
-          {displayHash}
-        </span>
+        <span className={cn('flex-1 break-all', truncate && 'select-none')}>{displayHash}</span>
         <Button
           variant="ghost"
           size="icon"
           className="h-6 w-6 shrink-0"
           onClick={handleCopy}
-          title={copied ? "Copied!" : "Copy to clipboard"}
+          title={copied ? 'Copied!' : 'Copy to clipboard'}
         >
           {copied ? (
             <Check className="h-3.5 w-3.5 text-green-500" />

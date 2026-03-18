@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"time"
@@ -99,7 +100,7 @@ func (r *SAMLConfigRepository) GetByTenantID(tenantID uuid.UUID) (*SAMLConfig, e
 // Update updates an existing SAML configuration
 func (r *SAMLConfigRepository) Update(config *SAMLConfig) error {
 	_, err := r.db.Exec(`
-		UPDATE saml_configs SET 
+		UPDATE saml_configs SET
 			enabled = $1, idp_metadata = $2, idp_entity_id = $3, idp_sso_url = $4, idp_certificate = $5,
 			sp_entity_id = $6, sp_acs_url = $7, sp_metadata_url = $8, name_id_format = $9, authn_contexts = $10, updated_at = $11
 		WHERE id = $12 AND tenant_id = $13`,
@@ -163,9 +164,13 @@ func (r *SAMLStateRepository) GetAuthnRequestState(stateID string) (tenantID uui
 		return uuid.Nil, "", fmt.Errorf("SAML state expired")
 	}
 
-	// Parse relay state from metadata (simple extraction)
-	// In production, you'd use proper JSON parsing
-	return tenantID, relayState, nil
+	var payload struct {
+		RelayState string `json:"relay_state"`
+	}
+	if err := json.Unmarshal([]byte(metadata), &payload); err != nil {
+		return uuid.Nil, "", fmt.Errorf("failed to parse SAML state metadata: %w", err)
+	}
+	return tenantID, payload.RelayState, nil
 }
 
 // DeleteAuthnRequestState deletes an AuthnRequest state

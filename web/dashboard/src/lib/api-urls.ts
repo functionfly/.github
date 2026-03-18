@@ -71,6 +71,8 @@ export const API_URLS = {
       `${API}/registry/functions/${author}/${name}/versions`,
     latestVersion: (author: string, name: string) =>
       `${API}/registry/functions/${author}/${name}/latest`,
+    settings: (author: string, name: string) =>
+      `${API}/functions/${author}/${name}/settings`,
   },
 
   // ========================================================================

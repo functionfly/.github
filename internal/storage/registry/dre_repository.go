@@ -147,6 +147,19 @@ func (r *RegistryRepository) GetCertificateByID(certID string) (*ExecutionCertif
 	return &cert, nil
 }
 
+// GetCertificateByExecutionID retrieves the certificate for a specific execution, if any.
+func (r *RegistryRepository) GetCertificateByExecutionID(executionID uuid.UUID) (*ExecutionCertificate, error) {
+	var cert ExecutionCertificate
+	err := r.db.Where("execution_id = ?", executionID).First(&cert).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("dre: get certificate by execution id: %w", err)
+	}
+	return &cert, nil
+}
+
 // GetCertificatesByFunctionID lists certificates for a function (paginated).
 func (r *RegistryRepository) GetCertificatesByFunctionID(functionID uuid.UUID, limit, offset int) ([]*ExecutionCertificate, error) {
 	var certs []*ExecutionCertificate

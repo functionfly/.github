@@ -22,6 +22,7 @@ export interface MeResponse {
   name: string;
   username?: string;
   companyName?: string;
+  bio?: string;
   email: string;
   avatar?: string;
   plan?: string;

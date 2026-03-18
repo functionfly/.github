@@ -1,0 +1,20 @@
+{
+  "name": "http-api",
+  "version": "1.0.0",
+  "runtime": "bun",
+  "title": "HTTP API",
+  "description": "Example of a RESTful API built with TypeScript",
+  "category": "examples",
+  "tags": ["typescript", "http", "api", "rest"],
+  "entry": "main.ts",
+  "handler": "handler",
+  "memory": "256MB",
+  "timeout": "10s",
+  "environment": {
+    "API_VERSION": "v1",
+  },
+  "example": {
+    "input": { "method": "GET", "path": "/users/123" },
+    "output": { "status": 200, "data": { "id": "123", "name": "User" } },
+  },
+}

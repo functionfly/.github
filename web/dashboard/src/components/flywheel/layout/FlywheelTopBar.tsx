@@ -53,7 +53,7 @@ export function FlywheelTopBar({
   return (
     <header
       className={cn(
-        'fixed left-0 right-0 top-0 z-50 h-16 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md',
+        'flywheel-topbar fixed left-0 right-0 top-0 z-50 h-16 border-b border-border-default bg-bg-secondary/80 backdrop-blur-md',
         className
       )}
     >
@@ -69,9 +69,9 @@ export function FlywheelTopBar({
             aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
           >
             {isMobileMenuOpen ? (
-              <X className="h-5 w-5 text-slate-400" />
+              <X className="flywheel-nav-icon h-5 w-5 text-text-muted" />
             ) : (
-              <Menu className="h-5 w-5 text-slate-400" />
+              <Menu className="flywheel-nav-icon h-5 w-5 text-text-muted" />
             )}
           </Button>
 
@@ -80,7 +80,7 @@ export function FlywheelTopBar({
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600">
               <Trophy className="h-4 w-4 text-white" />
             </div>
-            <span className="hidden text-lg font-bold text-white sm:inline">
+            <span className="flywheel-logo-text hidden text-lg font-bold text-text-primary sm:inline">
               Flywheel
             </span>
           </a>
@@ -89,13 +89,13 @@ export function FlywheelTopBar({
         {/* Center - Search */}
         <form onSubmit={handleSearch} className="mx-4 hidden max-w-md flex-1 md:block">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="flywheel-search-icon absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
             <Input
               type="search"
               placeholder="Search threads, users, solutions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-10 border-slate-800 bg-slate-900 pl-10 text-sm text-slate-200 placeholder:text-slate-400 focus-visible:ring-indigo-500"
+              className="flywheel-search-input h-10 border-border-default bg-bg-tertiary pl-10 text-sm text-text-primary placeholder:text-text-muted focus-visible:ring-indigo-500"
             />
           </div>
         </form>
@@ -110,7 +110,7 @@ export function FlywheelTopBar({
             onClick={() => navigate('/flywheel/search')}
             aria-label="Search"
           >
-            <Search className="h-5 w-5 text-slate-400" />
+            <Search className="flywheel-nav-icon h-5 w-5 text-text-muted" />
           </Button>
 
           {/* Notifications */}
@@ -122,20 +122,20 @@ export function FlywheelTopBar({
                 className="relative"
                 aria-label="Notifications"
               >
-                <Bell className="h-5 w-5 text-slate-400" />
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-indigo-500 ring-2 ring-slate-950" />
+                <Bell className="flywheel-nav-icon h-5 w-5 text-text-muted" />
+                <span className="flywheel-notification-dot absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-indigo-500 ring-2 ring-bg-primary" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 bg-slate-900 border-slate-800">
+            <DropdownMenuContent align="end" className="w-80 border-border-default bg-bg-elevated">
               <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-sm font-medium text-slate-200">Notifications</span>
+                <span className="text-sm font-medium text-text-primary">Notifications</span>
                 <Button variant="ghost" size="sm" className="h-auto text-xs text-indigo-400 hover:text-indigo-300">
                   Mark all read
                 </Button>
               </div>
-              <DropdownMenuSeparator className="bg-slate-800" />
+              <DropdownMenuSeparator className="bg-border-subtle" />
               <div className="max-h-64 overflow-y-auto">
-                <div className="px-3 py-4 text-center text-sm text-slate-400">
+                <div className="px-3 py-4 text-center text-sm text-text-muted">
                   No new notifications
                 </div>
               </div>
@@ -147,19 +147,19 @@ export function FlywheelTopBar({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="flex items-center gap-2 px-2 hover:bg-slate-900"
+                className="flywheel-profile-text flex items-center gap-2 px-2 hover:bg-bg-hover"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-600">
-                  <User className="h-4 w-4 text-slate-300" />
+                  <User className="h-4 w-4 text-text-secondary" />
                 </div>
-                <span className="hidden text-sm font-medium text-slate-300 lg:inline">
+                <span className="hidden text-sm font-medium text-text-secondary lg:inline">
                   Profile
                 </span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-slate-800">
+            <DropdownMenuContent align="end" className="w-56 border-border-default bg-bg-elevated">
               <div className="px-3 py-2">
-                <p className="text-sm font-medium text-slate-200">Your Account</p>
+                <p className="text-sm font-medium text-text-primary">Your Account</p>
                 {reputationData?.profile && (
                   <div className="mt-2 flex items-center gap-2">
                     <ReputationBadge
@@ -171,31 +171,31 @@ export function FlywheelTopBar({
                   </div>
                 )}
               </div>
-              <DropdownMenuSeparator className="bg-slate-800" />
+              <DropdownMenuSeparator className="bg-border-subtle" />
               <DropdownMenuItem
                 onClick={() => navigate('/flywheel/reputation/me')}
-                className="text-slate-300 focus:bg-slate-800 focus:text-slate-100"
+                className="text-text-secondary focus:bg-bg-hover focus:text-text-primary"
               >
                 <Trophy className="mr-2 h-4 w-4" />
                 Reputation
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => navigate('/settings')}
-                className="text-slate-300 focus:bg-slate-800 focus:text-slate-100"
+                className="text-text-secondary focus:bg-bg-hover focus:text-text-primary"
               >
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => navigate('/help')}
-                className="text-slate-300 focus:bg-slate-800 focus:text-slate-100"
+                className="text-text-secondary focus:bg-bg-hover focus:text-text-primary"
               >
                 <HelpCircle className="mr-2 h-4 w-4" />
                 Help
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-slate-800" />
+              <DropdownMenuSeparator className="bg-border-subtle" />
               <DropdownMenuItem
-                className="text-red-400 focus:bg-slate-800 focus:text-red-300"
+                className="text-red-400 focus:bg-bg-hover focus:text-red-300"
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Log out

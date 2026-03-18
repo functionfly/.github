@@ -295,13 +295,17 @@ export function reportValidationError(
     timestamp: new Date().toISOString()
   });
 
-  // In production, you might want to send this to an error reporting service
-  // if (typeof window !== 'undefined' && window.errorReporting) {
-  //   window.errorReporting.captureException(error, {
-  //     tags: { type: 'validation' },
-  //     extra: { context, ...additionalData }
-  //   });
-  // }
+  if (import.meta.env.PROD && typeof window !== 'undefined') {
+    const err = error instanceof Error ? error : new Error(errorMessage);
+    import('@sentry/react')
+      .then((Sentry) => {
+        Sentry.captureException(err, {
+          tags: { type: 'validation' },
+          extra: { context, ...additionalData },
+        });
+      })
+      .catch(() => {});
+  }
 }
 
 // Create a validated fetch wrapper

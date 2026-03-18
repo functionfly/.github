@@ -65,6 +65,44 @@ export const getTokensPerSecretLimit = (plan?: string): number => {
 };
 
 /**
+ * Get the maximum number of custom domains allowed for the user's tier
+ * Returns 0 for free tier (no custom domains)
+ */
+export const getCustomDomainsLimit = (plan?: string): number => {
+  const limits = getPlanLimits(plan);
+  if (!limits) return 0;
+  const raw = (limits as { customDomains?: number }).customDomains;
+  if (raw === undefined) return 0;
+  return raw === Infinity ? 10000 : raw;
+};
+
+/**
+ * Check if the user can add more custom domains (has feature and under limit)
+ */
+export const canAddCustomDomain = (
+  plan: string | undefined,
+  currentCount: number
+): boolean => {
+  if (!hasFeature(plan, 'CUSTOM_DOMAINS')) return false;
+  const limit = getCustomDomainsLimit(plan);
+  if (limit === 0) return false;
+  return currentCount < limit;
+};
+
+/**
+ * Format custom domains usage for display (e.g. "2 of 5" or "Unlimited")
+ */
+export const formatCustomDomainsRemaining = (
+  currentCount: number,
+  plan?: string
+): string => {
+  const limit = getCustomDomainsLimit(plan);
+  if (limit === 0) return 'Not available on your plan';
+  if (limit >= 10000) return `${currentCount} (unlimited)`;
+  return `${currentCount} of ${limit}`;
+};
+
+/**
  * Check if the user can create secrets based on their tier
  * Returns true if they have at least some secrets allowed
  */

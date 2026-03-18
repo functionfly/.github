@@ -1,45 +1,54 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/neon';
-// Real-time functionality temporarily disabled during Neon migration
-import { useRealtimeSubscription } from './useRealtimeSubscription.ts';
-import { DatabaseHealth, DatabaseAlert, DatabaseMetric } from './types';
-import type { RealtimePostgresChangesPayload } from './useRealtime';
 import {
-  databaseHealthSchema,
-  databaseAlertSchema,
-  databaseMetricSchema,
-  timeRangeSchema,
-  tableNameSchema
-} from '../lib/api-validation';
-import {
-  validateDatabaseHealth,
   validateDatabaseAlerts,
+  validateDatabaseHealth,
   validateDatabaseMetrics,
+  validateTableName,
   validateTimeRange,
-  validateTableName
 } from '../lib/validation-utils';
+import { DatabaseAlert, DatabaseHealth, DatabaseMetric } from './types';
+import type { DatabaseChangeEvent, RealtimePostgresChangesPayload } from './useRealtime';
+import { useRealtimeSubscription } from './useRealtimeSubscription.ts';
 
-// Hook for database changes (alternative to broadcast events)
+const MAX_CHANGES = 100;
+
+// Hook for database changes via WebSocket realtime (backend can be backed by Neon or Postgres LISTEN/NOTIFY)
 export function useDatabaseChanges(table: string, filter?: string) {
   const [changes, setChanges] = useState<RealtimePostgresChangesPayload<any>[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Validate table name input
     const tableValidation = validateTableName(table);
     if (!tableValidation.success) {
-      setValidationError(tableValidation.error || 'Invalid table name');
+      setValidationError(tableValidation.error ?? 'Invalid table name');
       return;
     }
-
     setValidationError(null);
+  }, [table]);
 
-    // TODO: Implement real-time database changes with Neon
-    console.warn('Real-time database changes not yet implemented with Neon Auth');
-
-    // Temporary: Return empty cleanup function
-    return () => {};
-  }, [table, filter]);
+  useRealtimeSubscription<DatabaseChangeEvent>(`db_changes_${table}`, 'db_change', (event) => {
+    if (event.table !== table) return;
+    const payload: RealtimePostgresChangesPayload = {
+      data: {
+        schema: event.schema ?? '',
+        table: event.table ?? table,
+        commit_timestamp: event.commit_timestamp ?? new Date().toISOString(),
+        eventType: (event.eventType ?? 'INSERT') as 'INSERT' | 'UPDATE' | 'DELETE',
+        new: event.new ?? null,
+        old: event.old ?? null,
+        errors: event.errors ?? null,
+      },
+      ids: event.ids ?? [],
+    };
+    if (filter) {
+      const row = (event.new ?? event.old) as Record<string, unknown> | null;
+      if (row && typeof row === 'object') {
+        const [key, value] = filter.split('=').map((s) => s.trim());
+        if (key && row[key] !== value) return;
+      }
+    }
+    setChanges((prev) => [payload, ...prev].slice(0, MAX_CHANGES));
+  });
 
   return { changes, validationError };
 }
@@ -86,10 +95,13 @@ export function useDatabaseHealth() {
         // Validate and parse API response using Zod schema
         const validationResult = validateDatabaseHealth(data);
         if (validationResult.success && validationResult.data) {
-          setHealth(validationResult.data);
+          setHealth(validationResult.data as DatabaseHealth);
           setValidationError(null);
         } else {
-          console.warn('Database health validation failed, using fallback:', validationResult.error);
+          console.warn(
+            'Database health validation failed, using fallback:',
+            validationResult.error
+          );
           setValidationError(validationResult.error || 'Validation failed');
           // Fallback to mock data if validation fails
           const mockHealth: DatabaseHealth = {
@@ -98,23 +110,23 @@ export function useDatabaseHealth() {
               active: 0,
               idle: 0,
               total: 0,
-              max: 100
+              max: 100,
             },
             performance: {
               avgQueryTime: 0,
               slowQueries: 0,
-              throughput: 0
+              throughput: 0,
             },
             storage: {
               used: 0,
               total: 0,
-              growthRate: 0
+              growthRate: 0,
             },
             replication: {
               lag: 0,
-              status: 'healthy'
+              status: 'healthy',
             },
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
           };
           setHealth(mockHealth);
         }
@@ -129,23 +141,23 @@ export function useDatabaseHealth() {
             active: 0,
             idle: 0,
             total: 0,
-            max: 100
+            max: 100,
           },
           performance: {
             avgQueryTime: 0,
             slowQueries: 0,
-            throughput: 0
+            throughput: 0,
           },
           storage: {
             used: 0,
             total: 0,
-            growthRate: 0
+            growthRate: 0,
           },
           replication: {
             lag: 0,
-            status: 'healthy'
+            status: 'healthy',
           },
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
         };
         setHealth(mockHealth);
       } finally {
@@ -182,25 +194,19 @@ export function useDatabaseAlerts() {
     'db_alert_created',
     (event) => {
       if (event.type === 'db_alert_created' && event.data) {
-        setAlerts(prev => [event.data, ...prev.slice(0, 9)]); // Keep last 10 alerts
+        setAlerts((prev) => [event.data, ...prev.slice(0, 9)]); // Keep last 10 alerts
       }
     }
   );
 
   // Subscribe to alert resolutions
-  useRealtimeSubscription(
-    'database_alerts',
-    'db_alert_resolved',
-    (event) => {
-      if (event.type === 'db_alert_resolved' && event.data) {
-        setAlerts(prev => prev.map(alert =>
-          alert.id === event.data.id
-            ? { ...alert, resolved: true }
-            : alert
-        ));
-      }
+  useRealtimeSubscription('database_alerts', 'db_alert_resolved', (event) => {
+    if (event.type === 'db_alert_resolved' && event.data) {
+      setAlerts((prev) =>
+        prev.map((alert) => (alert.id === event.data.id ? { ...alert, resolved: true } : alert))
+      );
     }
-  );
+  });
 
   useEffect(() => {
     const fetchDatabaseAlerts = async () => {

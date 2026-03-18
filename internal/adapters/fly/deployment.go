@@ -7,25 +7,59 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/adapters/common"
 )
 
-const flyAPIBase = "https://api.fly.io/v1"
+// Default Fly Machines API base URL (https://fly.io/docs/machines/api/working-with-machines-api/)
+const defaultFlyAPIBase = "https://api.machines.dev"
 
-// FlyDeploymentClient handles deployment operations for Fly.io
+// Machines API rate limit: 1 req/s per action (burst 3). We throttle to avoid 408.
+const rateLimitMinInterval = 400 * time.Millisecond
+
+func getFlyAPIBase() string {
+	if v := os.Getenv("FLY_API_HOSTNAME"); v != "" {
+		return strings.TrimSuffix(v, "/")
+	}
+	return defaultFlyAPIBase
+}
+
+// FlyDeploymentClient handles deployment operations for Fly.io Machines API
 type FlyDeploymentClient struct {
 	httpClient *http.Client
 	apiToken   string
+	baseURL    string
+	lastReq    time.Time
+	reqMu      sync.Mutex
 }
 
-// NewFlyDeploymentClient creates a new Fly.io deployment client
+// NewFlyDeploymentClient creates a new Fly.io deployment client using FLY_API_HOSTNAME or default.
 func NewFlyDeploymentClient(apiToken string) *FlyDeploymentClient {
+	return NewFlyDeploymentClientWithBase(apiToken, getFlyAPIBase())
+}
+
+// NewFlyDeploymentClientWithBase creates a client with an explicit API base URL (for tests).
+func NewFlyDeploymentClientWithBase(apiToken, baseURL string) *FlyDeploymentClient {
 	return &FlyDeploymentClient{
 		httpClient: &http.Client{Timeout: 120 * time.Second},
 		apiToken:   apiToken,
+		baseURL:    strings.TrimSuffix(baseURL, "/"),
+		lastReq:    time.Time{},
 	}
+}
+
+func (c *FlyDeploymentClient) rateLimit() {
+	c.reqMu.Lock()
+	elapsed := time.Since(c.lastReq)
+	if elapsed < rateLimitMinInterval {
+		time.Sleep(rateLimitMinInterval - elapsed)
+	}
+	c.lastReq = time.Now()
+	c.reqMu.Unlock()
 }
 
 // FlyDeployResult is the result of a Fly.io deployment operation
@@ -41,9 +75,10 @@ func (c *FlyDeploymentClient) setAuthHeaders(req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
 }
 
-// EnsureApp creates a Fly.io app if it doesn't exist
+// EnsureApp creates a Fly.io app if it doesn't exist. org_slug is required when creating a new app (Machines API).
 func (c *FlyDeploymentClient) EnsureApp(ctx context.Context, appName, orgSlug string) error {
-	getURL := fmt.Sprintf("%s/apps/%s", flyAPIBase, appName)
+	c.rateLimit()
+	getURL := fmt.Sprintf("%s/v1/apps/%s", c.baseURL, appName)
 	req, err := http.NewRequestWithContext(ctx, "GET", getURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create get app request: %w", err)
@@ -64,17 +99,21 @@ func (c *FlyDeploymentClient) EnsureApp(ctx context.Context, appName, orgSlug st
 		return fmt.Errorf("unexpected status checking app: %d - %s", resp.StatusCode, string(body))
 	}
 
-	// Create the app
-	createData := map[string]interface{}{"app_name": appName}
-	if orgSlug != "" {
-		createData["org_slug"] = orgSlug
+	// Create the app (Machines API requires org_slug)
+	if orgSlug == "" {
+		return fmt.Errorf("org_slug is required when creating a new Fly app; set provider_config.org_slug (e.g. \"personal\")")
+	}
+	createData := map[string]interface{}{
+		"app_name": appName,
+		"org_slug": orgSlug,
 	}
 	jsonData, err := json.Marshal(createData)
 	if err != nil {
 		return fmt.Errorf("failed to marshal create app data: %w", err)
 	}
 
-	createReq, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/apps", flyAPIBase), bytes.NewReader(jsonData))
+	c.rateLimit()
+	createReq, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/v1/apps", c.baseURL), bytes.NewReader(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create app request: %w", err)
 	}
@@ -93,13 +132,19 @@ func (c *FlyDeploymentClient) EnsureApp(ctx context.Context, appName, orgSlug st
 	return nil
 }
 
-// Deploy deploys an artifact to a Fly.io app using the Machines API
-func (c *FlyDeploymentClient) Deploy(ctx context.Context, artifact []byte, appName, version string) (*FlyDeployResult, error) {
-	machinesURL := fmt.Sprintf("%s/apps/%s/machines", flyAPIBase, appName)
+// Deploy creates a Machine for the app using the given image reference. The image must already exist
+// (e.g. built and pushed via flyctl deploy or CI). imageRef defaults to registry.fly.io/<appName>:<version>.
+func (c *FlyDeploymentClient) Deploy(ctx context.Context, appName, imageRef string) (*FlyDeployResult, error) {
+	if imageRef == "" {
+		return nil, fmt.Errorf("image ref is required for Fly deploy (image must be pre-pushed to registry.fly.io or set provider_config.image)")
+	}
+
+	c.rateLimit()
+	machinesURL := fmt.Sprintf("%s/v1/apps/%s/machines", c.baseURL, appName)
 
 	machineConfig := map[string]interface{}{
 		"config": map[string]interface{}{
-			"image": fmt.Sprintf("registry.fly.io/%s:%s", appName, version),
+			"image": imageRef,
 			"services": []map[string]interface{}{
 				{
 					"ports": []map[string]interface{}{
@@ -167,15 +212,16 @@ func (c *FlyDeploymentClient) Deploy(ctx context.Context, artifact []byte, appNa
 			"machine_state": machine.State,
 			"region":        machine.Region,
 			"app_name":      appName,
-			"version":       version,
+			"image":         imageRef,
 			"deployed_at":   time.Now().Format(time.RFC3339),
 		},
 	}, nil
 }
 
-// SetEnvVars sets environment variables for a Fly.io app
+// SetEnvVars sets environment variables for a Fly.io app (legacy API; may require FLY_API_HOSTNAME=https://api.fly.io/v1)
 func (c *FlyDeploymentClient) SetEnvVars(ctx context.Context, appName string, envVars map[string]string) error {
-	envURL := fmt.Sprintf("%s/apps/%s/env_vars", flyAPIBase, appName)
+	c.rateLimit()
+	envURL := fmt.Sprintf("%s/v1/apps/%s/env_vars", c.baseURL, appName)
 	envData := map[string]interface{}{"env": envVars}
 	jsonData, err := json.Marshal(envData)
 	if err != nil {
@@ -198,9 +244,10 @@ func (c *FlyDeploymentClient) SetEnvVars(ctx context.Context, appName string, en
 	return nil
 }
 
-// SetSecrets sets secrets for a Fly.io app
+// SetSecrets sets secrets for a Fly.io app (legacy API; may require FLY_API_HOSTNAME=https://api.fly.io/v1)
 func (c *FlyDeploymentClient) SetSecrets(ctx context.Context, appName string, secrets map[string]string) error {
-	secretsURL := fmt.Sprintf("%s/apps/%s/secrets", flyAPIBase, appName)
+	c.rateLimit()
+	secretsURL := fmt.Sprintf("%s/v1/apps/%s/secrets", c.baseURL, appName)
 	secretsData := map[string]interface{}{"secrets": secrets}
 	jsonData, err := json.Marshal(secretsData)
 	if err != nil {
@@ -225,7 +272,8 @@ func (c *FlyDeploymentClient) SetSecrets(ctx context.Context, appName string, se
 
 // UnsetSecret removes a secret from a Fly.io app
 func (c *FlyDeploymentClient) UnsetSecret(ctx context.Context, appName, secretName string) error {
-	secretsURL := fmt.Sprintf("%s/apps/%s/secrets/%s", flyAPIBase, appName, secretName)
+	c.rateLimit()
+	secretsURL := fmt.Sprintf("%s/v1/apps/%s/secrets/%s", c.baseURL, appName, secretName)
 	req, err := http.NewRequestWithContext(ctx, "DELETE", secretsURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create unset secret request: %w", err)
@@ -245,7 +293,8 @@ func (c *FlyDeploymentClient) UnsetSecret(ctx context.Context, appName, secretNa
 
 // ListSecrets lists all secrets for a Fly.io app (returns only secret names, not values)
 func (c *FlyDeploymentClient) ListSecrets(ctx context.Context, appName string) (map[string]string, error) {
-	secretsURL := fmt.Sprintf("%s/apps/%s/secrets", flyAPIBase, appName)
+	c.rateLimit()
+	secretsURL := fmt.Sprintf("%s/v1/apps/%s/secrets", c.baseURL, appName)
 	req, err := http.NewRequestWithContext(ctx, "GET", secretsURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list secrets request: %w", err)
@@ -263,8 +312,8 @@ func (c *FlyDeploymentClient) ListSecrets(ctx context.Context, appName string) (
 
 	var result struct {
 		Secrets []struct {
-			Name  string `json:"name"`
-			Type  string `json:"type"`
+			Name string `json:"name"`
+			Type string `json:"type"`
 		} `json:"secrets"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -280,7 +329,8 @@ func (c *FlyDeploymentClient) ListSecrets(ctx context.Context, appName string) (
 
 // AddCertificate adds a custom domain certificate to a Fly.io app
 func (c *FlyDeploymentClient) AddCertificate(ctx context.Context, appName, hostname string) error {
-	certURL := fmt.Sprintf("%s/apps/%s/certificates", flyAPIBase, appName)
+	c.rateLimit()
+	certURL := fmt.Sprintf("%s/v1/apps/%s/certificates", c.baseURL, appName)
 	certData := map[string]interface{}{"hostname": hostname}
 	jsonData, err := json.Marshal(certData)
 	if err != nil {
@@ -305,7 +355,8 @@ func (c *FlyDeploymentClient) AddCertificate(ctx context.Context, appName, hostn
 
 // GetDeploymentStatus gets the current status of a Fly.io machine
 func (c *FlyDeploymentClient) GetDeploymentStatus(ctx context.Context, appName, machineID string) (common.DeploymentStatus, error) {
-	machineURL := fmt.Sprintf("%s/apps/%s/machines/%s", flyAPIBase, appName, machineID)
+	c.rateLimit()
+	machineURL := fmt.Sprintf("%s/v1/apps/%s/machines/%s", c.baseURL, appName, machineID)
 	req, err := http.NewRequestWithContext(ctx, "GET", machineURL, nil)
 	if err != nil {
 		return common.DeploymentStatusFailed, fmt.Errorf("failed to create status request: %w", err)
@@ -343,79 +394,102 @@ func (c *FlyDeploymentClient) GetDeploymentStatus(ctx context.Context, appName, 
 	}
 }
 
-// Rollback reverts a Fly.io app to a previous release
-func (c *FlyDeploymentClient) Rollback(ctx context.Context, appName, version string) (*common.DeploymentResult, error) {
-	releasesURL := fmt.Sprintf("%s/apps/%s/releases", flyAPIBase, appName)
-	req, err := http.NewRequestWithContext(ctx, "GET", releasesURL, nil)
+// flyMachine is a subset of the Machines API response for list/get
+type flyMachine struct {
+	ID     string                 `json:"id"`
+	State  string                 `json:"state"`
+	Region string                 `json:"region"`
+	Config map[string]interface{} `json:"config"`
+}
+
+// ListMachines returns all machines for an app (Machines API)
+func (c *FlyDeploymentClient) ListMachines(ctx context.Context, appName string) ([]flyMachine, error) {
+	c.rateLimit()
+	listURL := fmt.Sprintf("%s/v1/apps/%s/machines", c.baseURL, appName)
+	req, err := http.NewRequestWithContext(ctx, "GET", listURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create releases request: %w", err)
+		return nil, fmt.Errorf("failed to create list machines request: %w", err)
 	}
 	c.setAuthHeaders(req)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list releases: %w", err)
+		return nil, fmt.Errorf("failed to list machines: %w", err)
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("list releases failed with status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("list machines failed with status %d: %s", resp.StatusCode, string(body))
+	}
+	var machines []flyMachine
+	if err := json.NewDecoder(resp.Body).Decode(&machines); err != nil {
+		return nil, fmt.Errorf("failed to decode list machines response: %w", err)
+	}
+	return machines, nil
+}
+
+// UpdateMachine updates a machine's config (full config required). Used for rollback by setting a new image.
+func (c *FlyDeploymentClient) UpdateMachine(ctx context.Context, appName, machineID string, config map[string]interface{}) error {
+	c.rateLimit()
+	updateURL := fmt.Sprintf("%s/v1/apps/%s/machines/%s", c.baseURL, appName, machineID)
+	body := map[string]interface{}{"config": config}
+	jsonData, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("failed to marshal update body: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", updateURL, bytes.NewReader(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create update request: %w", err)
+	}
+	c.setAuthHeaders(req)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to update machine: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("update machine failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
+	return nil
+}
+
+// Rollback reverts all machines in the app to the given image version (Machines API: update each machine's image).
+// version is the image tag to roll back to (e.g. "previous" or a semantic version). Image ref used: registry.fly.io/<appName>:<version>
+func (c *FlyDeploymentClient) Rollback(ctx context.Context, appName, version string) (*common.DeploymentResult, error) {
+	machines, err := c.ListMachines(ctx, appName)
+	if err != nil {
+		return nil, fmt.Errorf("list machines for rollback: %w", err)
+	}
+	if len(machines) == 0 {
+		return nil, fmt.Errorf("no machines found in app %s", appName)
 	}
 
-	var releases struct {
-		Releases []struct {
-			ID      string `json:"id"`
-			Version int    `json:"version"`
-			Status  string `json:"status"`
-		} `json:"releases"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
-		return nil, fmt.Errorf("failed to decode releases response: %w", err)
-	}
-
-	if len(releases.Releases) < 2 {
-		return nil, fmt.Errorf("no previous release available for rollback")
-	}
-
-	var previousReleaseID string
-	for i, release := range releases.Releases {
-		if i == 0 {
+	imageRef := fmt.Sprintf("registry.fly.io/%s:%s", appName, version)
+	updated := 0
+	for _, m := range machines {
+		if m.Config == nil {
 			continue
 		}
-		if release.Status == "complete" {
-			previousReleaseID = release.ID
-			break
+		// Clone config and set new image
+		newConfig := make(map[string]interface{})
+		for k, v := range m.Config {
+			newConfig[k] = v
 		}
-	}
-	if previousReleaseID == "" {
-		return nil, fmt.Errorf("no successful previous release found for rollback")
-	}
-
-	rollbackURL := fmt.Sprintf("%s/apps/%s/releases/%s/rollback", flyAPIBase, appName, previousReleaseID)
-	rollbackReq, err := http.NewRequestWithContext(ctx, "POST", rollbackURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create rollback request: %w", err)
-	}
-	c.setAuthHeaders(rollbackReq)
-
-	rollbackResp, err := c.httpClient.Do(rollbackReq)
-	if err != nil {
-		return nil, fmt.Errorf("failed to rollback: %w", err)
-	}
-	defer rollbackResp.Body.Close()
-
-	if rollbackResp.StatusCode != http.StatusOK && rollbackResp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(rollbackResp.Body)
-		return nil, fmt.Errorf("rollback failed with status %d: %s", rollbackResp.StatusCode, string(body))
+		newConfig["image"] = imageRef
+		if err := c.UpdateMachine(ctx, appName, m.ID, newConfig); err != nil {
+			return nil, fmt.Errorf("update machine %s: %w", m.ID, err)
+		}
+		updated++
 	}
 
 	return &common.DeploymentResult{
-		DeploymentID: previousReleaseID,
+		DeploymentID: appName,
 		Status:       common.DeploymentStatusSuccess,
-		Message:      fmt.Sprintf("Rolled back app %s to release %s", appName, previousReleaseID),
+		Message:      fmt.Sprintf("Rolled back app %s to image %s (%d machine(s) updated)", appName, imageRef, updated),
 		Metadata: map[string]interface{}{
 			"app_name":           appName,
-			"rolled_back_to":     previousReleaseID,
+			"image":              imageRef,
+			"machines_updated":   updated,
 			"rollback_initiated": time.Now().Format(time.RFC3339),
 		},
 	}, nil

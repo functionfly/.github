@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
-import { ROUTES } from "@/lib/constants";
+import { ADMIN_DASHBOARD_URL, ROUTES } from "@/lib/constants";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation";
 
@@ -41,12 +41,10 @@ export function MobileNav({ className }: MobileNavProps) {
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
 
-  const adminNavItems: NavItem[] = isAdmin ? [
-    { path: ROUTES.ADMIN_TENANTS, label: "Tenants", icon: Shield },
-    { path: ROUTES.ADMIN_USERS, label: "Users", icon: Shield },
-    { path: ROUTES.ADMIN_BILLING, label: "Billing", icon: Shield },
-    { path: ROUTES.ADMIN_SYSTEM, label: "System", icon: Shield },
-  ] : [];
+  const adminNavItems: NavItem[] =
+    isAdmin && ADMIN_DASHBOARD_URL
+      ? [{ path: ADMIN_DASHBOARD_URL, label: "Admin Panel", icon: Shield }]
+      : [];
 
   const allNavItems = [...mainNavItems, ...adminNavItems];
 
@@ -156,8 +154,11 @@ export function MobileNav({ className }: MobileNavProps) {
               {/* Navigation Items */}
               <div className="py-4">
                 {allNavItems.map((item, index) => {
-                  const isActive = location.pathname === item.path ||
-                    (item.path !== ROUTES.DASHBOARD && location.pathname.startsWith(item.path));
+                  const isExternal = item.path.startsWith('http');
+                  const isActive =
+                    !isExternal &&
+                    (location.pathname === item.path ||
+                      (item.path !== ROUTES.DASHBOARD && location.pathname.startsWith(item.path)));
                   const isFocused = focusedIndex === index;
                   const Icon = item.icon;
 

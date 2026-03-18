@@ -31,6 +31,14 @@ type Manifest struct {
 	SideEffects  string                 `json:"side_effects,omitempty"`
 	Capabilities []string               `json:"capabilities,omitempty"`
 	MainFile     string                 `json:"main_file,omitempty"`
+	// TypeScript type checking options
+	TypeCheck     *bool  `json:"typeCheck,omitempty"`     // Enable/disable type checking
+	TSConfig      string `json:"tsConfig,omitempty"`      // Custom tsconfig path
+	StrictMode    *bool  `json:"strictMode,omitempty"`    // Enforce strict TypeScript
+	SkipTypeCheck *bool  `json:"skipTypeCheck,omitempty"` // Skip type checking (for legacy code)
+	// npm package options
+	IncludePackages *bool  `json:"includePackages,omitempty"` // Include npm packages in bundle
+	PackageCache    string `json:"packageCache,omitempty"`    // Custom package cache path
 }
 
 // Default values
@@ -223,6 +231,34 @@ func generateJSONCWithComments(m *Manifest) string {
 		sb.WriteString("\n")
 	}
 
+	// typeCheck - TypeScript type checking
+	if m.TypeCheck != nil {
+		sb.WriteString(`  // Enable/disable TypeScript type checking (default: true for TypeScript files)
+`)
+		sb.WriteString(fmt.Sprintf(`  "typeCheck": %t,\n`, *m.TypeCheck))
+	}
+
+	// tsConfig - custom tsconfig path
+	if m.TSConfig != "" {
+		sb.WriteString(`  // Custom tsconfig.json path for type checking
+`)
+		sb.WriteString(fmt.Sprintf(`  "tsConfig": "%s",\n`, escapeString(m.TSConfig)))
+	}
+
+	// strictMode - enforce strict TypeScript
+	if m.StrictMode != nil {
+		sb.WriteString(`  // Enforce strict TypeScript mode (default: false)
+`)
+		sb.WriteString(fmt.Sprintf(`  "strictMode": %t,\n`, *m.StrictMode))
+	}
+
+	// skipTypeCheck - skip type checking entirely
+	if m.SkipTypeCheck != nil {
+		sb.WriteString(`  // Skip TypeScript type checking (for legacy code)
+`)
+		sb.WriteString(fmt.Sprintf(`  "skipTypeCheck": %t,\n`, *m.SkipTypeCheck))
+	}
+
 	sb.WriteString("}\n")
 
 	return sb.String()
@@ -271,9 +307,10 @@ func (m *Manifest) Validate() error {
 		"node20":     true,
 		"python3.11": true,
 		"deno":       true,
+		"bun":        true,
 	}
 	if !validRuntimes[m.Runtime] {
-		return fmt.Errorf("runtime must be one of: node18, node20, python3.11, deno")
+		return fmt.Errorf("runtime must be one of: node18, node20, python3.11, deno, bun")
 	}
 
 	// Entry file validation (if provided)
@@ -291,6 +328,7 @@ func (m *Manifest) Validate() error {
 			"node20":     {".js", ".ts"},
 			"python3.11": {".py"},
 			"deno":       {".js", ".ts"},
+			"bun":        {".js", ".ts"},
 		}
 		ext := filepath.Ext(m.Entry)
 		if validExts, ok := validExtensions[m.Runtime]; ok {

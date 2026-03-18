@@ -138,11 +138,71 @@ func (cl *CompatibilityLayer) TransformResponse(endpoint, method, fromVersion, t
 	return result, nil
 }
 
-// genericTransform applies generic transformations (like snake_case to camelCase)
+// genericTransform applies generic key-name transformations between versions:
+// v1 (snake_case) <-> v2 (camelCase).
 func (cl *CompatibilityLayer) genericTransform(data []byte, fromVersion, toVersion string) ([]byte, error) {
-	// For now, return the original data if no specific rule exists
-	// In production, this could apply generic transformations like snake_case to camelCase
-	return data, nil
+	var parsed interface{}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return nil, fmt.Errorf("generic transform: parse: %w", err)
+	}
+	var keyFn func(string) string
+	if toVersion == "v2" || toVersion == "v3" {
+		keyFn = snakeToCamel
+	} else if fromVersion == "v2" || fromVersion == "v3" {
+		keyFn = camelToSnake
+	} else {
+		return data, nil
+	}
+	transformed := transformKeysRecursive(parsed, keyFn)
+	out, err := json.Marshal(transformed)
+	if err != nil {
+		return nil, fmt.Errorf("generic transform: marshal: %w", err)
+	}
+	return out, nil
+}
+
+// transformKeysRecursive walks JSON-like data and converts map keys with keyFn.
+func transformKeysRecursive(data interface{}, keyFn func(string) string) interface{} {
+	switch v := data.(type) {
+	case map[string]interface{}:
+		out := make(map[string]interface{})
+		for k, val := range v {
+			out[keyFn(k)] = transformKeysRecursive(val, keyFn)
+		}
+		return out
+	case []interface{}:
+		out := make([]interface{}, len(v))
+		for i, item := range v {
+			out[i] = transformKeysRecursive(item, keyFn)
+		}
+		return out
+	default:
+		return data
+	}
+}
+
+// snakeToCamel converts snake_case to camelCase (e.g. popularity_score -> popularityScore).
+func snakeToCamel(s string) string {
+	if s == "" {
+		return s
+	}
+	result := make([]byte, 0, len(s))
+	upper := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '_' {
+			upper = true
+			continue
+		}
+		if upper {
+			if c >= 'a' && c <= 'z' {
+				c -= 'a' - 'A'
+			}
+			upper = false
+		}
+		result = append(result, c)
+	}
+	return string(result)
 }
 
 // applyTransformations applies the compatibility transformations
@@ -312,14 +372,19 @@ func transformVersion(value interface{}) interface{} {
 	}
 }
 
-// camelToSnake converts camelCase to snake_case
+// camelToSnake converts camelCase to snake_case (e.g. popularityScore -> popularity_score).
 func camelToSnake(s string) string {
-	result := make([]rune, 0, len(s)*2)
-	for i, r := range s {
-		if i > 0 && r >= 'A' && r <= 'Z' {
-			result = append(result, '_')
+	result := make([]byte, 0, len(s)*2)
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' {
+			if i > 0 {
+				result = append(result, '_')
+			}
+			result = append(result, c+'a'-'A')
+		} else {
+			result = append(result, c)
 		}
-		result = append(result, rune(r-'A'+'a'))
 	}
 	return string(result)
 }

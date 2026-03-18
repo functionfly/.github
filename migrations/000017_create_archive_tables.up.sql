@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS archive_data (
     storage_key VARCHAR(255) UNIQUE NOT NULL,
     archive_type VARCHAR(100) NOT NULL, -- e.g., 'audit_logs', 'user_data', 'compliance_reports'
     compressed_data BYTEA NOT NULL, -- Compressed and encrypted archive data
-    encryption_key BYTEA NOT NULL, -- Encryption key (should be stored securely in production)
+    encryption_key BYTEA NOT NULL, -- DEK: per-archive key bytes. In production use envelope encryption (store KMS-encrypted DEK or key reference elsewhere).
     metadata_json JSONB NOT NULL, -- Archive metadata as JSON
     checksum VARCHAR(64) NOT NULL, -- SHA256 checksum of original data
     status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'completed', 'failed', 'deleted'
@@ -61,5 +61,5 @@ CREATE INDEX idx_archive_data_metadata_gin ON archive_data USING GIN (metadata_j
 COMMENT ON TABLE archive_data IS 'Stores compressed and encrypted archive data with metadata';
 COMMENT ON TABLE archive_cleanup_log IS 'Tracks archive cleanup and maintenance operations';
 COMMENT ON COLUMN archive_data.compressed_data IS 'Gzip compressed and AES-256-GCM encrypted data';
-COMMENT ON COLUMN archive_data.encryption_key IS 'Randomly generated 32-byte encryption key (store securely in production)';
+COMMENT ON COLUMN archive_data.encryption_key IS 'Data encryption key (DEK). In production use envelope encryption: store KMS-encrypted DEK here or reference key via metadata.encryption_key_id';
 COMMENT ON COLUMN archive_data.metadata_json IS 'JSON metadata including record count, date ranges, compression stats';

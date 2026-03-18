@@ -157,6 +157,36 @@ export const stateFabricApi = {
   listReplays: async (fabricId: string): Promise<ReplaySession[]> => {
     return apiClient.get<ReplaySession[]>(`/v1/state-fabrics/${fabricId}/replays`);
   },
+
+  // Triggers (fabric-scoped)
+  listTriggers: async (
+    fabricId: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<{ triggers: StateFabricTrigger[]; total: number }> => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.offset) queryParams.append("offset", params.offset.toString());
+    const query = queryParams.toString();
+    return apiClient.get<{ triggers: StateFabricTrigger[]; total: number }>(
+      `/v1/state-fabrics/${fabricId}/triggers${query ? `?${query}` : ""}`
+    );
+  },
+
+  createTrigger: async (
+    fabricId: string,
+    data: CreateTriggerRequest
+  ): Promise<StateFabricTrigger> => {
+    return apiClient.post<StateFabricTrigger>(
+      `/v1/state-fabrics/${fabricId}/triggers`,
+      data
+    );
+  },
+
+  deleteTrigger: async (fabricId: string, triggerId: string): Promise<void> => {
+    await apiClient.delete<void>(
+      `/v1/state-fabrics/${fabricId}/triggers/${triggerId}`
+    );
+  },
 };
 
 // Admin API for State Fabric management

@@ -25,8 +25,8 @@ ALTER TABLE function_logs ENABLE ROW LEVEL SECURITY;
 CREATE OR REPLACE FUNCTION current_tenant_id()
 RETURNS uuid AS $$
 BEGIN
-    -- In production, this should be set by your application middleware
-    -- For now, we'll use a session variable that can be set by the application
+    -- RLS policies use this; set per request in app middleware: SET app.current_tenant_id = '<uuid>';
+    -- If unset, returns NULL and tenant-scoped policies will not match (deny by default).
     RETURN NULLIF(current_setting('app.current_tenant_id', true), '')::uuid;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -35,6 +35,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION current_user_id()
 RETURNS uuid AS $$
 BEGIN
+    -- Set per request in app middleware: SET app.current_user_id = '<uuid>';
     RETURN NULLIF(current_setting('app.current_user_id', true), '')::uuid;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

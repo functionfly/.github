@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
-.PHONY: help build build-local-runtime test clean docker-up docker-down dev api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-fly build-fly-release release-dry-run release release-snapshot install-locally dist
+.PHONY: help build build-local-runtime test clean docker-up docker-down dev api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-fly build-fly-release release-dry-run release release-snapshot install-locally dist build-coming-soon
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -42,6 +42,16 @@ install-locally: ## Install fly CLI to GOPATH/bin
 dist: ## Build distribution packages for current platform only (no publish)
 	goreleaser build --clean --single-target
 
+build-coming-soon: ## Build dashboard for coming-soon-only deploy (output: web/dashboard/dist). Set VITE_API_URL if different.
+	cd web/dashboard && VITE_COMING_SOON_ONLY=true VITE_API_URL=$${VITE_API_URL:-https://api.functionfly.com} bun run build:standalone
+
+deploy-coming-soon: build-coming-soon ## Build and deploy coming-soon to Cloudflare Pages. Requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in .env (see docs/DOMAIN_AND_COMING_SOON_SETUP.md).
+	@[ -f .env ] && set -a && . ./.env && set +a; \
+	if [ -z "$${CLOUDFLARE_API_TOKEN:-}" ]; then echo "ERROR: CLOUDFLARE_API_TOKEN not set. Add to .env or export it."; exit 1; fi; \
+	if [ -z "$${CLOUDFLARE_ACCOUNT_ID:-}" ]; then echo "ERROR: CLOUDFLARE_ACCOUNT_ID not set (avoids API 10001). Add to .env: CLOUDFLARE_ACCOUNT_ID=your_account_id_from_dashboard_url"; exit 1; fi; \
+	npx wrangler pages project create functionfly-dashboard 2>/dev/null || true; \
+	npx wrangler pages deploy web/dashboard/dist --project-name=functionfly-dashboard --branch=master
+
 venv: ## Create .venv for local dev (Python from .python-version) and install functions/functionfly/requirements.txt. Run: source .venv/bin/activate
 	@python3 --version 2>/dev/null || { echo "Python 3 required (pyenv recommended: pyenv install 3.12)"; exit 1; }; \
 	rm -rf .venv && python3 -m venv .venv && .venv/bin/pip install --upgrade pip && \
@@ -54,7 +64,7 @@ test-functions: ## Run unit tests for functions/functionfly (stdlib handlers)
 test-functions-e2e: ## Run unit + e2e tests for functions/functionfly
 	@cd functions/functionfly && (test -d .venv || python3 -m venv .venv) && .venv/bin/pip install -q -r requirements-test.txt && .venv/bin/pytest tests/ -v --tb=short
 
-publish-stdlib: build-fly ## Dev login then publish all functions in functions/functionfly. Requires FFLY_API_URL, FFLY_DEV_EMAIL, FFLY_DEV_PASSWORD.
+publish-stdlib: build-fly ## Dev login then publish all functions in functions/functionfly. Requires FFLY_API_URL, FFLY_DEV_EMAIL, FFLY_DEV_PASSWORD. API must be running with DEVELOPMENT=true (see AGENTS.md) or restarted after middleware changes.
 	@test -n "$$FFLY_API_URL" || (echo "FFLY_API_URL is required (e.g. http://localhost:8080)"; exit 1)
 	@test -n "$$FFLY_DEV_EMAIL" || (echo "FFLY_DEV_EMAIL is required (e.g. admin@functionfly.local)"; exit 1)
 	@test -n "$$FFLY_DEV_PASSWORD" || (echo "FFLY_DEV_PASSWORD is required"; exit 1)
@@ -224,14 +234,19 @@ migrate-version: ## Show current migration version
 reset-db: ## Drop DB, recreate, and run migrations (clean slate). Use when DB is dirty or inconsistent.
 	@./scripts/reset-db.sh
 
-setup: ## Setup initial data (tenant, user)
-	@if command -v infisical >/dev/null 2>&1; then \
+setup: ## Setup initial data (tenant, user). Uses Infisical if available and INFISICAL_TOKEN set.
+	@if command -v infisical >/dev/null 2>&1 && [ -n "$$INFISICAL_TOKEN" ]; then \
 		infisical run --env=dev -- go run ./cmd/setup; \
 	else \
 		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
 		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
 		go run ./cmd/setup; \
 	fi
+
+setup-local: ## Setup initial data without Infisical (use when INFISICAL_TOKEN is missing or 403).
+	DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+	go run ./cmd/setup
 
 seed-blog: ## Seed default blog post (State Fabric) into DB. Uses DB_* from env or defaults (load .env first if needed).
 	@test -f scripts/seed-blog-post-state-fabric.sql || (echo "Missing scripts/seed-blog-post-state-fabric.sql"; exit 1)
@@ -334,6 +349,41 @@ db-maintenance: ## Run database maintenance (analyze/vacuum) to optimize perform
 db-migrate-prod: ## Run migrations on production database
 	@echo "Running migrations on production database..."
 	infisical run --env=prod -- go run ./cmd/migrate up
+
+# Neon CLI (neonctl). Install: make neon-install. Auth: make neon-auth. Set NEON_API_KEY or NEON_PROJECT_ID as needed.
+neon-install: ## Install Neon CLI (neonctl) via npm if 'neon' not in PATH
+	@command -v neon >/dev/null 2>&1 && echo "Neon CLI already installed: $$(neon --version)" || npm install -g neonctl
+
+neon-auth: ## Authenticate Neon CLI (opens browser). Or set NEON_API_KEY for CI.
+	neon auth
+
+neon-cs: ## Print primary connection string. Optionally set NEON_PROJECT_ID, NEON_BRANCH.
+	neon connection-string $${NEON_BRANCH:+$$NEON_BRANCH} $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}
+
+neon-cs-pooled: ## Print pooled connection string (for app). Optionally set NEON_PROJECT_ID, NEON_BRANCH.
+	neon connection-string $${NEON_BRANCH:+$$NEON_BRANCH} --pooled $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}
+
+neon-cs-replica: ## Print read replica connection string. Set NEON_BRANCH (e.g. main). Optionally NEON_PROJECT_ID.
+	@test -n "$$NEON_BRANCH" || (echo "Set NEON_BRANCH (e.g. NEON_BRANCH=main make neon-cs-replica)"; exit 1)
+	neon connection-string $$NEON_BRANCH --endpoint-type read_only --pooled $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}
+
+neon-branches: ## List Neon branches. Optionally set NEON_PROJECT_ID.
+	neon branches list $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}
+
+neon-replica-add: ## Add a read replica to a branch. Set NEON_BRANCH (e.g. main). Optionally NEON_PROJECT_ID.
+	@test -n "$$NEON_BRANCH" || (echo "Set NEON_BRANCH (e.g. NEON_BRANCH=main make neon-replica-add)"; exit 1)
+	neon branches add-compute $$NEON_BRANCH --type read_only $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}
+
+neon-psql: ## Open psql to default branch using Neon connection string. Optionally NEON_PROJECT_ID, NEON_BRANCH.
+	neon connection-string $${NEON_BRANCH:+$$NEON_BRANCH} --psql $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}
+
+# Run migrations on Neon (production branch, functionfly DB). Uses direct connection (no pooler) for compatibility.
+# Set NEON_BRANCH=production (default) or staging. Requires: neon auth or NEON_API_KEY.
+migrate-neon: ## Run migrations on Neon. Set NEON_BRANCH (default production), NEON_PROJECT_ID optional.
+	@DATABASE_URL=$$(neon connection-string $${NEON_BRANCH:-production} --database-name functionfly 2>/dev/null) && \
+	export DATABASE_URL && \
+	echo "Running migrations on Neon (branch: $${NEON_BRANCH:-production}, DB: functionfly)..." && \
+	go run ./cmd/migrate up
 
 # Logging commands
 logging-up: ## Start logging stack (Loki, Elasticsearch, Kibana, Fluent Bit)

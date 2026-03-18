@@ -37,6 +37,8 @@ go.work
 .env.docker
 .env.staging
 .env.production
+.env.cloudflare.e2e
+deploy/database/production.env
 
 # IDE and editor files
 .vscode/
@@ -133,6 +135,9 @@ yarn-debug.log*
 yarn-error.log*
 .npm
 .yarn-integrity
+
+# TypeScript
+*.tsbuildinfo
 
 # Python (if any)
 __pycache__/

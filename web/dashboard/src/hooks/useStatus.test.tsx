@@ -17,6 +17,7 @@ import {
   incidentKeys,
 } from './useStatus';
 import * as statusApi from '@/api/status';
+import type { LatencyMetrics } from '@/api/status';
 
 // Mock the status API
 vi.mock('@/api/status', () => ({
@@ -54,7 +55,7 @@ const createWrapper = () => {
     },
   });
 
-  return function Wrapper({ children }: { children: ReactNode }) {
+  return function Wrapper({ children }: { children: any }) {
     return (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
@@ -265,7 +266,7 @@ describe('useLatencyMetrics', () => {
   });
 
   it('should fetch latency metrics for provider', async () => {
-    const mockMetrics = {
+    const mockMetrics: LatencyMetrics = {
       provider: 'fly',
       time_range: '24h',
       avg_latency_ms: 45,
@@ -290,7 +291,7 @@ describe('useLatencyMetrics', () => {
   });
 
   it('should fetch latency metrics with region', async () => {
-    const mockMetrics = {
+    const mockMetrics: LatencyMetrics = {
       provider: 'fly',
       region: 'iad',
       time_range: '24h',

@@ -11,6 +11,7 @@ import (
 	agentquota "github.com/functionfly/functionfly/internal/agent/quota"
 	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/paperclip/costbridge"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -201,6 +202,16 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 
 	// 11. Record spend
 	h.quotaEnforcer.RecordSpend(r.Context(), agentID, record.CostUSD)
+
+	// 12. Push cost to Paperclip for budget enforcement (if configured)
+	if record.CostUSD >= 0 {
+		cfg := costbridge.FromEnv()
+		_ = costbridge.ReportCost(r.Context(), cfg, record.CostUSD, map[string]string{
+			"execution_id":  executionID,
+			"function_uri":  record.FunctionURI,
+			"agent_id":      agentID,
+		})
+	}
 
 	if execErr != nil {
 		writeError(w, http.StatusInternalServerError, "EXECUTION_FAILED", execErr.Error())

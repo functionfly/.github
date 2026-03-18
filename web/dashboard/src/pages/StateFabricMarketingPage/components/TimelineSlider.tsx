@@ -1,12 +1,12 @@
-import { motion } from "framer-motion";
-import { useState } from "react";
+import { motion } from 'framer-motion';
+import { useState } from 'react';
 
-interface TimelineEvent {
+export interface TimelineEvent {
   id: string;
   timestamp: string;
   title: string;
   description: string;
-  type: "action" | "snapshot" | "error" | "cost";
+  type: 'action' | 'snapshot' | 'error' | 'cost';
 }
 
 interface TimelineSliderProps {
@@ -15,13 +15,13 @@ interface TimelineSliderProps {
 }
 
 const eventColors = {
-  action: "bg-blue-500",
-  snapshot: "bg-green-500",
-  error: "bg-red-500",
-  cost: "bg-yellow-500"
+  action: 'bg-blue-500',
+  snapshot: 'bg-green-500',
+  error: 'bg-red-500',
+  cost: 'bg-yellow-500',
 };
 
-export function TimelineSlider({ events, className = "" }: TimelineSliderProps) {
+export function TimelineSlider({ events, className = '' }: TimelineSliderProps) {
   const [selectedEvent, setSelectedEvent] = useState(0);
 
   return (
@@ -73,7 +73,7 @@ export function TimelineSlider({ events, className = "" }: TimelineSliderProps) 
           <motion.div
             className="h-full bg-blue-500"
             style={{
-              width: `${((selectedEvent + 1) / events.length) * 100}%`
+              width: `${((selectedEvent + 1) / events.length) * 100}%`,
             }}
             transition={{ duration: 0.3 }}
           />
@@ -90,7 +90,9 @@ export function TimelineSlider({ events, className = "" }: TimelineSliderProps) 
           transition={{ duration: 0.3 }}
         >
           <div className="flex items-start gap-3">
-            <div className={`w-3 h-3 rounded-full mt-1.5 ${eventColors[events[selectedEvent].type]}`} />
+            <div
+              className={`w-3 h-3 rounded-full mt-1.5 ${eventColors[events[selectedEvent].type]}`}
+            />
             <div className="flex-1">
               <h4 className="font-semibold text-slate-900 dark:text-white mb-1">
                 {events[selectedEvent].title}
@@ -98,9 +100,7 @@ export function TimelineSlider({ events, className = "" }: TimelineSliderProps) 
               <p className="text-sm text-slate-600 dark:text-text-secondary mb-2">
                 {events[selectedEvent].description}
               </p>
-              <div className="text-xs text-slate-500">
-                {events[selectedEvent].timestamp}
-              </div>
+              <div className="text-xs text-slate-500">{events[selectedEvent].timestamp}</div>
             </div>
           </div>
         </motion.div>
@@ -116,7 +116,7 @@ export function TimelineSlider({ events, className = "" }: TimelineSliderProps) 
           onChange={(e) => setSelectedEvent(Number(e.target.value))}
           className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer slider"
         />
-        <style jsx>{`
+        <style>{`
           .slider::-webkit-slider-thumb {
             appearance: none;
             height: 16px;

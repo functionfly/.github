@@ -19,8 +19,9 @@ type LocalRuntimeMetricsCollector struct {
 	runtimeType     string
 	process         *process.Process
 	mu              sync.RWMutex
-	activeRequests  int64
+	activeRequests   int64
 	totalRequests   int64
+	totalErrors     int64
 	lastThroughput  float64
 	startTime       time.Time
 	requestCount    int64
@@ -166,6 +167,9 @@ func (c *LocalRuntimeMetricsCollector) RecordRequestEnd(port int, success bool, 
 	if c.activeRequests < 0 {
 		c.activeRequests = 0 // Safety check
 	}
+	if !success {
+		c.totalErrors++
+	}
 
 	c.requestCount++
 
@@ -219,12 +223,17 @@ func (c *LocalRuntimeMetricsCollector) GetCurrentMetrics() RuntimeMetrics {
 	}
 }
 
-// calculateErrorRate calculates the current error rate (simplified version)
+// calculateErrorRate returns the share of requests that ended in error (RecordRequestEnd(..., success: false))
+// as a percentage. Uses lifetime totals; for a time-bounded rate a sliding window could be added.
 func (c *LocalRuntimeMetricsCollector) calculateErrorRate() float64 {
-	// This is a simplified calculation - in production you'd want to track
-	// errors over a sliding window
-	// For now, return 0 as we need to implement proper error tracking
-	return 0.0
+	c.mu.RLock()
+	total := c.totalRequests
+	errors := c.totalErrors
+	c.mu.RUnlock()
+	if total == 0 {
+		return 0.0
+	}
+	return 100.0 * float64(errors) / float64(total)
 }
 
 // GetSystemInfo returns system-level information

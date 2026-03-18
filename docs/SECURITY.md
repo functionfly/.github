@@ -193,3 +193,11 @@ Security events are logged with structured logging:
 - Invalid headers/paths
 
 Monitor these logs to detect and respond to security threats.
+
+## Before Making the Repo Public
+
+- **No real credentials in docs or examples**: Staging/production DB passwords, Neon project IDs, and connection strings must use placeholders (e.g. `<from Neon Console>`, `ep-staging-xxxxx.us-east-1.aws.neon.tech`). Real values belong in a secrets manager or private runbooks only.
+- **Env files**: Only `*.env.example` (and similar) are committed. `.env`, `.env.production`, `.env.staging`, and `deploy/database/production.env` are in `.gitignore` and must never be committed.
+- **Supabase / third-party**: `.env.example` uses placeholders for `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; do not commit real project URLs or keys.
+- **Test accounts**: Docs may reference a dev-only account (e.g. `admin@functionfly.local`); ensure production deployments use strong passwords and that this is clearly documented as dev-only.
+- **Edge / deploy**: `deploy/edge/certs-in/` and `deploy/edge/certs-out/` are gitignored; no TLS private keys or certs in the repo.

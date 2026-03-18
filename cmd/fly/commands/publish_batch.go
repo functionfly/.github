@@ -41,6 +41,7 @@ func NewPublishBatchCmd() *cobra.Command {
 	var conflictStrategy string
 	var pattern string
 	var continueOnError bool
+	var authorOverride string
 
 	cmd := &cobra.Command{
 		Use:   "publish-batch [directory]",
@@ -50,8 +51,12 @@ func NewPublishBatchCmd() *cobra.Command {
 Each subdirectory containing a functionfly.jsonc manifest will be published
 as a separate function. Useful for bulk-publishing a library of functions.
 
+When publishing from functions/functionfly (stdlib), author is forced to
+"functionfly" so all entries appear under the official namespace.
+
 Examples:
-  fly publish-batch ./functions
+  fly publish-batch ./functions/functionfly
+  fly publish-batch ./functions/functionfly --author functionfly
   fly publish-batch ./functions --concurrency 5
   fly publish-batch ./functions --dry-run
   fly publish-batch ./functions --conflict-strategy overwrite
@@ -62,7 +67,7 @@ Examples:
 			if len(args) > 0 {
 				dir = args[0]
 			}
-			return runPublishBatch(dir, concurrency, dryRun, asJSON, conflictStrategy, pattern, continueOnError)
+			return runPublishBatch(dir, concurrency, dryRun, asJSON, conflictStrategy, pattern, continueOnError, authorOverride)
 		},
 	}
 
@@ -72,11 +77,12 @@ Examples:
 	cmd.Flags().StringVar(&conflictStrategy, "conflict-strategy", "error", "Version conflict strategy: error, overwrite, create_new")
 	cmd.Flags().StringVar(&pattern, "pattern", "", "Glob pattern to find manifests (default: */functionfly.jsonc)")
 	cmd.Flags().BoolVar(&continueOnError, "continue-on-error", true, "Continue publishing remaining functions if one fails")
+	cmd.Flags().StringVar(&authorOverride, "author", "", "Override author for all functions (e.g. functionfly for stdlib)")
 
 	return cmd
 }
 
-func runPublishBatch(dir string, concurrency int, dryRun, asJSON bool, conflictStrategy, pattern string, continueOnError bool) error {
+func runPublishBatch(dir string, concurrency int, dryRun, asJSON bool, conflictStrategy, pattern string, continueOnError bool, authorOverride string) error {
 	startTime := time.Now()
 
 	dirs, err := findFunctionDirs(dir, pattern)
@@ -103,6 +109,12 @@ func runPublishBatch(dir string, concurrency int, dryRun, asJSON bool, conflictS
 	}
 	if concurrency > 10 {
 		concurrency = 10
+	}
+
+	// Ensure stdlib (functions/functionfly) is always published as author "functionfly"
+	forceAuthor := authorOverride
+	if forceAuthor == "" && strings.Contains(filepath.ToSlash(dir), "functions/functionfly") {
+		forceAuthor = "functionfly"
 	}
 
 	var apiClient *APIClient
@@ -141,7 +153,7 @@ func runPublishBatch(dir string, concurrency int, dryRun, asJSON bool, conflictS
 					continue
 				}
 
-				result := publishSingleFunction(fnDir, dryRun, conflictStrategy, apiClient)
+				result := publishSingleFunction(fnDir, dryRun, conflictStrategy, apiClient, forceAuthor)
 
 				if result.Status == "failed" {
 					stopMu.Lock()
@@ -301,6 +313,19 @@ func injectDescriptionIfMissing(rawManifest []byte, functionName string) ([]byte
 	return json.Marshal(m)
 }
 
+// injectAuthorIntoManifest sets manifest["author"] so the stored manifest matches the publish author.
+func injectAuthorIntoManifest(rawManifest []byte, author string) ([]byte, error) {
+	if author == "" {
+		return rawManifest, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawManifest, &m); err != nil {
+		return nil, err
+	}
+	m["author"] = author
+	return json.Marshal(m)
+}
+
 func readMainSourceCode(dir string, runtime string) (string, error) {
 	var mainFile string
 	switch runtime {
@@ -332,7 +357,7 @@ type batchPublishResponse struct {
 	Message    string `json:"message"`
 }
 
-func publishSingleFunction(dir string, dryRun bool, conflictStrategy string, client *APIClient) BatchPublishResult {
+func publishSingleFunction(dir string, dryRun bool, conflictStrategy string, client *APIClient, forceAuthor string) BatchPublishResult {
 	startTime := time.Now()
 	result := BatchPublishResult{Dir: dir}
 
@@ -344,7 +369,11 @@ func publishSingleFunction(dir string, dryRun bool, conflictStrategy string, cli
 		return result
 	}
 
-	result.Function = fmt.Sprintf("%s/%s", manifest.Author, manifest.Name)
+	author := manifest.Author
+	if forceAuthor != "" {
+		author = forceAuthor
+	}
+	result.Function = fmt.Sprintf("%s/%s", author, manifest.Name)
 	result.Version = manifest.Version
 
 	if dryRun {
@@ -382,9 +411,19 @@ func publishSingleFunction(dir string, dryRun bool, conflictStrategy string, cli
 		result.DurationMs = time.Since(startTime).Milliseconds()
 		return result
 	}
+	// Ensure stored manifest has the same author as the publish request (e.g. functionfly for stdlib)
+	if author != "" {
+		rawManifest, err = injectAuthorIntoManifest(rawManifest, author)
+		if err != nil {
+			result.Status = "failed"
+			result.Error = fmt.Sprintf("failed to set manifest author: %v", err)
+			result.DurationMs = time.Since(startTime).Milliseconds()
+			return result
+		}
+	}
 
 	reqBody := map[string]interface{}{
-		"author":   manifest.Author,
+		"author":   author,
 		"name":     manifest.Name,
 		"version":  manifest.Version,
 		"manifest": json.RawMessage(rawManifest),

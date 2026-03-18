@@ -11,6 +11,7 @@ use regex::Regex;
 use csv::ReaderBuilder;
 use csv::WriterBuilder;
 use std::io::Cursor;
+use encoding_rs;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Input {
@@ -249,8 +250,37 @@ impl CsvOptions {
     }
 }
 
-// Encoding conversion utilities
-// Note: Full encoding support requires encoding_rs crate. This is a basic implementation.
+// Encoding conversion utilities using encoding_rs for production-grade support.
+fn encoding_rs_label(encoding: &Encoding) -> Option<&'static encoding_rs::Encoding> {
+    match encoding {
+        Encoding::Utf8 => encoding_rs::Encoding::for_label(b"utf-8"),
+        Encoding::Latin1 => encoding_rs::Encoding::for_label(b"iso-8859-1"),
+        Encoding::Windows1252 => encoding_rs::Encoding::for_label(b"windows-1252"),
+        Encoding::Utf16Le => encoding_rs::Encoding::for_label(b"utf-16le"),
+        Encoding::Utf16Be => encoding_rs::Encoding::for_label(b"utf-16be"),
+        Encoding::Utf32Le | Encoding::Utf32Be => None, // encoding_rs has no UTF-32; handled below
+    }
+}
+
+fn decode_utf32_to_utf8(bytes: &[u8], little_endian: bool) -> Result<String, String> {
+    if bytes.len() % 4 != 0 {
+        return Err("UTF-32 byte length must be a multiple of 4".to_string());
+    }
+    let mut s = String::new();
+    for chunk in bytes.chunks_exact(4) {
+        let code_point = if little_endian {
+            u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]])
+        } else {
+            u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]])
+        };
+        match std::char::from_u32(code_point) {
+            Some(c) => s.push(c),
+            None => s.push(std::char::REPLACEMENT_CHARACTER),
+        }
+    }
+    Ok(s)
+}
+
 fn convert_encoding_to_utf8(bytes: &[u8], encoding: &Encoding) -> Result<String, String> {
     match encoding {
         Encoding::Utf8 => {
@@ -259,69 +289,58 @@ fn convert_encoding_to_utf8(bytes: &[u8], encoding: &Encoding) -> Result<String,
                 Err(e) => Err(format!("Invalid UTF-8 data: {}", e)),
             }
         }
-        Encoding::Latin1 => {
-            // Basic Latin-1 (ISO-8859-1) support
-            let mut result = String::new();
-            for &byte in bytes {
-                if byte < 128 {
-                    result.push(byte as char);
-                } else {
-                    // Convert Latin-1 extended characters
-                    result.push(byte as char);
-                }
-            }
-            Ok(result)
-        }
-        Encoding::Windows1252 => {
-            // Basic Windows-1252 support (similar to Latin-1 with some differences)
-            let mut result = String::new();
-            for &byte in bytes {
-                if byte < 128 {
-                    result.push(byte as char);
-                } else {
-                    // Simplified conversion - in production, use encoding_rs
-                    result.push(byte as char);
-                }
-            }
-            Ok(result)
-        }
-        Encoding::Utf16Le | Encoding::Utf16Be | Encoding::Utf32Le | Encoding::Utf32Be => {
-            Err(format!("{:?} encoding not fully supported without encoding_rs crate. Use UTF-8 for now.", encoding))
+        Encoding::Utf32Le => decode_utf32_to_utf8(bytes, true),
+        Encoding::Utf32Be => decode_utf32_to_utf8(bytes, false),
+        _ => {
+            let enc = encoding_rs_label(encoding).ok_or_else(|| format!("Unsupported encoding: {:?}", encoding))?;
+            let (cow, _, _) = enc.decode(bytes);
+            Ok(cow.into_owned())
         }
     }
+}
+
+fn encode_utf8_to_utf32(s: &str, little_endian: bool) -> Vec<u8> {
+    let mut out = Vec::with_capacity(s.chars().count() * 4);
+    for c in s.chars() {
+        let code = c as u32;
+        let bytes = if little_endian { code.to_le_bytes() } else { code.to_be_bytes() };
+        out.extend_from_slice(&bytes);
+    }
+    out
+}
+
+// encoding_rs encodes TO the "output encoding" (UTF-8 for UTF-16), so we encode to UTF-16 manually.
+fn encode_utf8_to_utf16(s: &str, little_endian: bool) -> Vec<u8> {
+    let mut u16s: Vec<u16> = Vec::with_capacity(s.chars().count());
+    for c in s.chars() {
+        let code = c as u32;
+        if code <= 0xFFFF {
+            u16s.push(code as u16);
+        } else {
+            let code = code - 0x1_0000;
+            u16s.push(0xD800 | (code >> 10) as u16);
+            u16s.push(0xDC00 | (code & 0x3FF) as u16);
+        }
+    }
+    let mut out = Vec::with_capacity(u16s.len() * 2);
+    for &u in &u16s {
+        let bytes = if little_endian { u.to_le_bytes() } else { u.to_be_bytes() };
+        out.extend_from_slice(&bytes);
+    }
+    out
 }
 
 fn convert_utf8_to_encoding(s: &str, encoding: &Encoding) -> Result<Vec<u8>, String> {
     match encoding {
         Encoding::Utf8 => Ok(s.as_bytes().to_vec()),
-        Encoding::Latin1 => {
-            // Basic UTF-8 to Latin-1 conversion
-            let mut result = Vec::new();
-            for ch in s.chars() {
-                if ch as u32 <= 255 {
-                    result.push(ch as u8);
-                } else {
-                    // Replace unsupported characters with '?'
-                    result.push(b'?');
-                }
-            }
-            Ok(result)
-        }
-        Encoding::Windows1252 => {
-            // Basic UTF-8 to Windows-1252 conversion
-            let mut result = Vec::new();
-            for ch in s.chars() {
-                if ch as u32 <= 255 {
-                    result.push(ch as u8);
-                } else {
-                    // Replace unsupported characters with '?'
-                    result.push(b'?');
-                }
-            }
-            Ok(result)
-        }
-        Encoding::Utf16Le | Encoding::Utf16Be | Encoding::Utf32Le | Encoding::Utf32Be => {
-            Err(format!("{:?} encoding not fully supported without encoding_rs crate. Use UTF-8 for now.", encoding))
+        Encoding::Utf16Le => Ok(encode_utf8_to_utf16(s, true)),
+        Encoding::Utf16Be => Ok(encode_utf8_to_utf16(s, false)),
+        Encoding::Utf32Le => Ok(encode_utf8_to_utf32(s, true)),
+        Encoding::Utf32Be => Ok(encode_utf8_to_utf32(s, false)),
+        _ => {
+            let enc = encoding_rs_label(encoding).ok_or_else(|| format!("Unsupported encoding: {:?}", encoding))?;
+            let (bytes, _, _) = enc.encode(s);
+            Ok(bytes.into_owned())
         }
     }
 }
@@ -989,6 +1008,11 @@ fn json_loads_str(s: &str) -> serde_json::Value {
 }
 
 // ============== Logging Helpers ==============
+// Host import: FunctionFly WASM host provides functionfly::log(msg_ptr, msg_len)
+#[link(wasm_import_module = "functionfly")]
+extern "C" {
+    fn log(msg_ptr: *const u8, msg_len: i32);
+}
 
 #[derive(Debug)]
 enum LogLevel {
@@ -999,15 +1023,17 @@ enum LogLevel {
 }
 
 fn log_message(level: LogLevel, message: &str) {
-    // In production, this would be implemented by the WASM host
-    // For now, we can use println! which may be captured by the host
     let level_str = match level {
         LogLevel::Error => "ERROR",
         LogLevel::Warn => "WARN",
         LogLevel::Info => "INFO",
         LogLevel::Debug => "DEBUG",
     };
-    println!("[{}] {}", level_str, message);
+    let line = format!("[{}] {}", level_str, message);
+    let bytes = line.as_bytes();
+    unsafe {
+        log(bytes.as_ptr(), bytes.len() as i32);
+    }
 }
 
 // ============== WASI Entry Point ==============

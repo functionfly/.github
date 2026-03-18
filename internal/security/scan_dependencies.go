@@ -5,9 +5,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
+
+	"golang.org/x/mod/semver"
 )
 
 // scanGoDependencies scans Go module dependencies for known vulnerabilities
@@ -191,53 +194,46 @@ func (sas *SecurityAuditService) scanOutdatedDependencies(ctx context.Context) (
 	return vulnerabilities, nil
 }
 
-// isVulnerableVersion checks if a version is vulnerable based on a known vulnerable version
+// isVulnerableVersion checks if a version is vulnerable based on a known vulnerable version.
+// Returns true if current is equal to or older than the known vulnerable version (semver order).
 func isVulnerableVersion(currentVersion, vulnerableVersion string) bool {
-	// Simple version comparison - in production, you'd want proper semver parsing
-	current := strings.TrimPrefix(currentVersion, "v")
-	vulnerable := strings.TrimPrefix(vulnerableVersion, "v")
-
-	// If versions match exactly, it's vulnerable
-	if current == vulnerable {
-		return true
+	cur := canonicalSemver(currentVersion)
+	vuln := canonicalSemver(vulnerableVersion)
+	if cur == "" || vuln == "" {
+		return currentVersion == vulnerableVersion
 	}
-
-	// Check if current version is within a vulnerable range
-	// This is a simplified check - production systems should use proper semver
-	return strings.HasPrefix(current, vulnerable[:len(vulnerable)-2])
+	return semver.Compare(cur, vuln) <= 0
 }
 
-// compareVersions compares two semantic versions
+// compareVersions compares two semantic versions. Returns -1 if v1 < v2, 0 if equal, 1 if v1 > v2.
 func compareVersions(v1, v2 string) int {
-	v1 = strings.TrimPrefix(v1, "v")
-	v2 = strings.TrimPrefix(v2, "v")
-
-	parts1 := strings.Split(v1, ".")
-	parts2 := strings.Split(v2, ".")
-
-	for i := 0; i < len(parts1) && i < len(parts2); i++ {
-		if parts1[i] != parts2[i] {
-			// Simple numeric comparison (doesn't handle pre-release tags)
-			if len(parts1[i]) > len(parts2[i]) {
-				return 1
-			} else if len(parts1[i]) < len(parts2[i]) {
-				return -1
-			}
-			return strings.Compare(parts1[i], parts2[i])
-		}
+	c1 := canonicalSemver(v1)
+	c2 := canonicalSemver(v2)
+	if c1 == "" || c2 == "" {
+		return strings.Compare(v1, v2)
 	}
-
-	if len(parts1) > len(parts2) {
-		return 1
-	} else if len(parts1) < len(parts2) {
-		return -1
-	}
-
-	return 0
+	return semver.Compare(c1, c2)
 }
 
-// scanFilesForPattern scans files matching a glob pattern for security issues
-func (sas *SecurityAuditService) scanFilesForPattern(pattern string, patterns []struct {
+// canonicalSemver returns a version in canonical form for semver comparison (e.g. "v1.0.0").
+// Handles Go pseudo-versions. Returns empty string if the version is not valid.
+func canonicalSemver(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return ""
+	}
+	if v[0] != 'v' {
+		v = "v" + v
+	}
+	if semver.IsValid(v) {
+		return v
+	}
+	return ""
+}
+
+// scanFilesForPattern scans files matching a glob pattern for security issues.
+// Pattern may be "*.go", "cmd/*.go", or "dir/**/*.go" (/**/ matches any directory depth).
+func (sas *SecurityAuditService) scanFilesForPattern(globPattern string, patterns []struct {
 	name        string
 	pattern     string
 	severity    string
@@ -246,45 +242,97 @@ func (sas *SecurityAuditService) scanFilesForPattern(pattern string, patterns []
 }) ([]Vulnerability, error) {
 	vulnerabilities := []Vulnerability{}
 
-	// For this implementation, we'll check common Go files
-	// In production, you'd want to use filepath.Glob or a proper file walker
-	filesToCheck := []string{
-		"main.go", "server.go", "api.go", "database.go",
-		"internal/api/server.go", "internal/api/handlers.go",
-		"cmd/main.go", "cmd/server/main.go",
+	files, err := globGoFiles(globPattern)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, filePath := range filesToCheck {
-		if data, err := os.ReadFile(filePath); err == nil {
-			content := string(data)
-			lines := strings.Split(content, "\n")
+	for _, filePath := range files {
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		lines := strings.Split(content, "\n")
 
-			for _, pattern := range patterns {
-				re, err := regexp.Compile(pattern.pattern)
-				if err != nil {
-					continue
-				}
+		for _, p := range patterns {
+			re, err := regexp.Compile(p.pattern)
+			if err != nil {
+				continue
+			}
 
-				for lineNum, line := range lines {
-					if re.MatchString(line) {
-						vulnerabilities = append(vulnerabilities, Vulnerability{
-							ID:          generateVulnID(),
-							Title:       fmt.Sprintf("Security Pattern: %s", pattern.name),
-							Description: fmt.Sprintf("%s found in %s:%d", pattern.description, filePath, lineNum+1),
-							Severity:    pattern.severity,
-							Category:    "code",
-							Component:   filePath,
-							Location:    fmt.Sprintf("%s:%d", filePath, lineNum+1),
-							Status:      "open",
-							Remediation: pattern.remediation,
-							Discovered:  time.Now(),
-							Updated:     time.Now(),
-						})
-					}
+			for lineNum, line := range lines {
+				if re.MatchString(line) {
+					vulnerabilities = append(vulnerabilities, Vulnerability{
+						ID:          generateVulnID(),
+						Title:       fmt.Sprintf("Security Pattern: %s", p.name),
+						Description: fmt.Sprintf("%s found in %s:%d", p.description, filePath, lineNum+1),
+						Severity:    p.severity,
+						Category:    "code",
+						Component:   filePath,
+						Location:    fmt.Sprintf("%s:%d", filePath, lineNum+1),
+						Status:      "open",
+						Remediation: p.remediation,
+						Discovered:  time.Now(),
+						Updated:     time.Now(),
+					})
 				}
 			}
 		}
 	}
 
 	return vulnerabilities, nil
+}
+
+// globGoFiles returns Go file paths matching the pattern.
+// Supports "*.go" (all .go files under current dir via WalkDir), "dir/*.go" (filepath.Glob),
+// and "dir/**/*.go" (WalkDir under dir). Skips vendor, .git, and node_modules.
+func globGoFiles(pattern string) ([]string, error) {
+	walkRoot := ""
+	switch {
+	case pattern == "*.go" || pattern == "":
+		walkRoot = "."
+	case strings.Contains(pattern, "**"):
+		prefix := strings.TrimSuffix(strings.Split(pattern, "**")[0], "/")
+		if prefix == "" {
+			prefix = "."
+		}
+		walkRoot = prefix
+	}
+	if walkRoot != "" {
+		var out []string
+		err := filepath.WalkDir(walkRoot, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return nil
+			}
+			if d.IsDir() {
+				base := filepath.Base(path)
+				if base == "vendor" || base == ".git" || base == "node_modules" {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if filepath.Ext(path) == ".go" {
+				out = append(out, path)
+			}
+			return nil
+		})
+		return out, err
+	}
+
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, m := range matches {
+		info, err := os.Stat(m)
+		if err != nil {
+			continue
+		}
+		if info.Mode().IsRegular() && filepath.Ext(m) == ".go" {
+			out = append(out, m)
+		}
+	}
+	return out, nil
 }

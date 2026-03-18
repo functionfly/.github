@@ -98,17 +98,26 @@ func (s *Service) ListThreads(ctx context.Context, filter ThreadFilter) ([]Threa
 	return s.repo.ListThreads(ctx, filter)
 }
 
+// IsModeratorRole returns true for platform roles that can moderate threads (update/delete others' content).
+func IsModeratorRole(role string) bool {
+	switch role {
+	case "super_admin", "admin", "support":
+		return true
+	default:
+		return false
+	}
+}
+
 // UpdateThread updates a thread with authorization check
-func (s *Service) UpdateThread(ctx context.Context, threadID uuid.UUID, updates map[string]interface{}, userID uuid.UUID) error {
+func (s *Service) UpdateThread(ctx context.Context, threadID uuid.UUID, updates map[string]interface{}, userID uuid.UUID, callerCanModerate bool) error {
 	thread, err := s.repo.GetThreadByID(ctx, threadID)
 	if err != nil {
 		return err
 	}
 
-	// Check authorization
-	if thread.AuthorID != userID {
-		// TODO: Check if user is moderator
-		return fmt.Errorf("unauthorized: only the author can update this thread")
+	// Check authorization: author or moderator
+	if thread.AuthorID != userID && !callerCanModerate {
+		return fmt.Errorf("unauthorized: only the author or a moderator can update this thread")
 	}
 
 	// Apply updates

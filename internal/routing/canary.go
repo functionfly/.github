@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"math"
 	"math/rand"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
@@ -162,7 +164,8 @@ func (cr *CanaryRouter) RecordRequest(canaryID uuid.UUID, success bool, latencyM
 	}
 }
 
-// RecordMetric records a metric snapshot
+// RecordMetric records a metric snapshot (one latency sample per request).
+// Percentiles (P50/P95/P99) are computed in CalculateMetrics from the sample window.
 func (cmt *CanaryMetricsTracker) RecordMetric(canaryID uuid.UUID, success bool, latencyMs float64) {
 	cmt.mu.Lock()
 	defer cmt.mu.Unlock()
@@ -176,10 +179,10 @@ func (cmt *CanaryMetricsTracker) RecordMetric(canaryID uuid.UUID, success bool, 
 		snapshot.ErrorRate = 1.0
 	}
 
-	// Simple latency tracking (in production, use proper percentiles)
+	// Store single sample; P50/P95/P99 are derived when aggregating in CalculateMetrics
 	snapshot.LatencyP50 = latencyMs
-	snapshot.LatencyP95 = latencyMs
-	snapshot.LatencyP99 = latencyMs
+	snapshot.LatencyP95 = 0
+	snapshot.LatencyP99 = 0
 
 	cmt.metrics[canaryID] = append(cmt.metrics[canaryID], snapshot)
 
@@ -255,17 +258,17 @@ func (cr *CanaryRouter) CalculateMetrics(canaryID uuid.UUID) (*CanaryMetricSnaps
 		}, nil
 	}
 
-	// Aggregate from snapshots
+	// Aggregate from snapshots: one latency sample per snapshot (LatencyP50)
 	var totalRequests int
 	var totalErrors int
-	var latencies []float64
+	latencies := make([]float64, 0, len(metrics))
 
 	for _, m := range metrics {
 		totalRequests += m.RequestCount
 		if m.ErrorRate > 0 {
 			totalErrors += int(float64(m.RequestCount) * m.ErrorRate)
 		}
-		latencies = append(latencies, m.LatencyP50, m.LatencyP95, m.LatencyP99)
+		latencies = append(latencies, m.LatencyP50)
 	}
 
 	errorRate := 0.0
@@ -273,15 +276,9 @@ func (cr *CanaryRouter) CalculateMetrics(canaryID uuid.UUID) (*CanaryMetricSnaps
 		errorRate = float64(totalErrors) / float64(totalRequests)
 	}
 
-	// Calculate percentiles
-	var p50, p95, p99 float64
-	if len(latencies) > 0 {
-		// Simple percentile calculation
-		sorted := sortFloat64(latencies)
-		p50 = sorted[len(sorted)*50/100]
-		p95 = sorted[len(sorted)*95/100]
-		p99 = sorted[len(sorted)*99/100]
-	}
+	// Compute percentiles (nearest-rank) from sample window
+	ps := percentileNearestRank(latencies, 50, 95, 99)
+	p50, p95, p99 := ps[0], ps[1], ps[2]
 
 	return &CanaryMetricSnapshot{
 		Timestamp:    time.Now(),
@@ -293,18 +290,38 @@ func (cr *CanaryRouter) CalculateMetrics(canaryID uuid.UUID) (*CanaryMetricSnaps
 	}, nil
 }
 
-// sortFloat64 sorts a float64 slice
-func sortFloat64(a []float64) []float64 {
-	b := make([]float64, len(a))
-	copy(b, a)
-	for i := 0; i < len(b)-1; i++ {
-		for j := i + 1; j < len(b); j++ {
-			if b[i] > b[j] {
-				b[i], b[j] = b[j], b[i]
-			}
-		}
+// percentileNearestRank returns the requested percentiles from samples using nearest-rank.
+// Each p is 0-100 (e.g. 50, 95, 99). Returns 0 for any percentile when samples is empty.
+func percentileNearestRank(samples []float64, percentiles ...int) []float64 {
+	out := make([]float64, len(percentiles))
+	if len(samples) == 0 {
+		return out
 	}
-	return b
+	sorted := make([]float64, len(samples))
+	copy(sorted, samples)
+	sort.Float64s(sorted)
+	n := float64(len(sorted))
+
+	for i, p := range percentiles {
+		if p <= 0 {
+			out[i] = sorted[0]
+			continue
+		}
+		if p >= 100 {
+			out[i] = sorted[len(sorted)-1]
+			continue
+		}
+		// Nearest-rank: index = ceil(p/100 * n) - 1, 0-based
+		idx := int(math.Ceil(n*float64(p)/100)) - 1
+		if idx < 0 {
+			idx = 0
+		}
+		if idx >= len(sorted) {
+			idx = len(sorted) - 1
+		}
+		out[i] = sorted[idx]
+	}
+	return out
 }
 
 // WeightedRandom selects a version based on weights

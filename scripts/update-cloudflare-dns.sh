@@ -38,12 +38,22 @@ check_dependencies() {
     fi
 }
 
-# Get current public IP for a region
+# Get current public IP or hostname for a Fly.io region.
+# If flyctl is available and FLY_APP_NAME is set (or default functionfly-control), returns the
+# first allocated IP for that region; otherwise returns the app hostname for the region.
 get_region_ip() {
     local region=$1
-    # In production, this would query Fly.io for the region's IP
-    # For now, we'll use the Fly.io Anycast IP
-    echo "functionfly-control.${region}.fly.dev"
+    local app="${FLY_APP_NAME:-functionfly-control}"
+    local ip
+    if command -v flyctl &>/dev/null; then
+        ip=$(flyctl ips list -a "$app" --json 2>/dev/null | \
+            jq -r --arg r "$region" '(.[]? | select(.region == $r) | .address // .Address) // empty' | head -1)
+    fi
+    if [ -n "$ip" ]; then
+        echo "$ip"
+    else
+        echo "${app}.${region}.fly.dev"
+    fi
 }
 
 # Create or update a DNS record

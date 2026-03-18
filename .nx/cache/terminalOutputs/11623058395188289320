@@ -1,0 +1,19 @@
+[Vite] API proxy target: http://127.0.0.1:8080
+
+ NX   Cannot find module 'typescript'
+
+Require stack:
+- /home/micro/projects/functionfly/node_modules/.bun/@nx+js@22.5.4+aacba9d877a7d6de/node_modules/@nx/js/src/utils/typescript/run-type-check.js
+- /home/micro/projects/functionfly/node_modules/.bun/@nx+js@22.5.4+aacba9d877a7d6de/node_modules/@nx/js/src/index.js
+- /home/micro/projects/functionfly/node_modules/.bun/@nx+vite@22.5.4+0b6f2b2cfddbe92e/node_modules/@nx/vite/src/utils/executor-utils.js
+- /home/micro/projects/functionfly/node_modules/.bun/@nx+vite@22.5.4+0b6f2b2cfddbe92e/node_modules/@nx/vite/src/utils/options-utils.js
+- /home/micro/projects/functionfly/node_modules/.bun/@nx+vite@22.5.4+0b6f2b2cfddbe92e/node_modules/@nx/vite/src/executors/build/build.impl.js
+- /home/micro/projects/functionfly/node_modules/.bun/nx@22.5.4/node_modules/nx/src/config/schema-utils.js
+- /home/micro/projects/functionfly/node_modules/.bun/nx@22.5.4/node_modules/nx/src/command-line/run/executor-utils.js
+- /home/micro/projects/functionfly/node_modules/.bun/nx@22.5.4/node_modules/nx/src/project-graph/utils/project-configuration-utils.js
+- /home/micro/projects/functionfly/node_modules/.bun/nx@22.5.4/node_modules/nx/src/utils/package-json.js
+- /home/micro/projects/functionfly/node_modules/.bun/nx@22.5.4/node_modules/nx/src/utils/print-help.js
+- /home/micro/projects/functionfly/node_modules/.bun/nx@22.5.4/node_modules/nx/src/command-line/run/run.js
+- /home/micro/projects/functionfly/node_modules/.bun/nx@22.5.4/node_modules/nx/bin/run-executor.js
+Pass --verbose to see the stacktrace.
+

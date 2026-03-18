@@ -4,6 +4,7 @@ This module provides the Ollama provider for local/development use.
 """
 
 from typing import Optional, AsyncGenerator
+import json
 import time
 import httpx
 
@@ -183,7 +184,7 @@ class OllamaProvider(BaseProvider):
             async for line in response.aiter_lines():
                 if line.strip():
                     try:
-                        data = eval(line)  # Parse the JSON line
+                        data = json.loads(line)  # Parse the JSON line safely
                         if "message" in data and "content" in data["message"]:
                             content = data["message"]["content"]
                             if content:

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { apiClient } from "@/api/client";
+import { registryApi, type FunctionSettingsResponse } from "@/api/registry";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,8 +39,16 @@ import {
   RefreshCw,
   AlertTriangle,
   CheckCircle2,
-  ExternalLink,
+  Plus,
+  X,
 } from "lucide-react";
+import { usePlan } from "@/hooks/usePlan";
+import { EnterpriseFeature } from "@/components/enterprise/EnterpriseFeature";
+import {
+  getCustomDomainsLimit,
+  canAddCustomDomain,
+  formatCustomDomainsRemaining,
+} from "@/lib/plan-utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,25 +66,7 @@ import {
 import "@/styles/components.css";
 import { EmbedTab } from "@/components/embed";
 
-interface FunctionSettings {
-  id: string;
-  name: string;
-  author: string;
-  description: string;
-  isPublic: boolean;
-  isPublished: boolean;
-  allowAnonymousInvoke: boolean;
-  corsEnabled: boolean;
-  corsOrigins: string[];
-  timeout: number;
-  memory: number;
-  runtime: string;
-  providers: string[];
-  environmentVariables: Record<string, string>;
-  secrets: string[];
-  customDomains: string[];
-  webhookUrl?: string;
-}
+type FunctionSettings = FunctionSettingsResponse & { webhookUrl?: string };
 
 export function FunctionSettingsPage() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -109,6 +100,13 @@ export function FunctionSettingsPage() {
   const [newEnvKey, setNewEnvKey] = useState("");
   const [newEnvValue, setNewEnvValue] = useState("");
 
+  // Custom domains
+  const [showAddDomainDialog, setShowAddDomainDialog] = useState(false);
+  const [newDomainValue, setNewDomainValue] = useState("");
+  const [addDomainError, setAddDomainError] = useState<string | null>(null);
+
+  const { plan, hasFeature } = usePlan();
+
   // Fetch function settings
   useEffect(() => {
     const fetchFunctionSettings = async () => {
@@ -118,10 +116,7 @@ export function FunctionSettingsPage() {
         setLoading(true);
         setError(null);
 
-        // Fetch function settings from API
-        const response = await apiClient.get<FunctionSettings>(
-          `/v1/functions/${author}/${name}/settings`
-        );
+        const response = await registryApi.getFunctionSettings(author, name);
         setFunctionSettings(response);
 
         // Populate form fields
@@ -175,6 +170,7 @@ export function FunctionSettingsPage() {
           if (key) acc[key] = value;
           return acc;
         }, {} as Record<string, string>),
+        customDomains: functionSettings?.customDomains ?? [],
       };
 
       await apiClient.patch(`/v1/functions/${author}/${name}/settings`, settings);
@@ -189,6 +185,47 @@ export function FunctionSettingsPage() {
 
   const handleDelete = () => {
     setShowDeleteDialog(true);
+  };
+
+  const customDomainsList = functionSettings?.customDomains ?? [];
+  const customDomainsLimit = getCustomDomainsLimit(plan);
+  const canAddMore = canAddCustomDomain(plan, customDomainsList.length);
+
+  const validateDomain = (value: string): string | null => {
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed) return "Enter a domain";
+    if (/^https?:\/\//i.test(trimmed)) return "Do not include http:// or https://";
+    if (/\s/.test(trimmed)) return "Domain cannot contain spaces";
+    if (customDomainsList.includes(trimmed)) return "This domain is already added";
+    return null;
+  };
+
+  const handleAddDomain = () => {
+    setAddDomainError(null);
+    const err = validateDomain(newDomainValue);
+    if (err) {
+      setAddDomainError(err);
+      return;
+    }
+    const domain = newDomainValue.trim().toLowerCase();
+    setFunctionSettings((prev) =>
+      prev
+        ? { ...prev, customDomains: [...(prev.customDomains ?? []), domain] }
+        : prev
+    );
+    setNewDomainValue("");
+    setShowAddDomainDialog(false);
+  };
+
+  const handleRemoveDomain = (domain: string) => {
+    setFunctionSettings((prev) =>
+      prev
+        ? {
+            ...prev,
+            customDomains: (prev.customDomains ?? []).filter((d) => d !== domain),
+          }
+        : prev
+    );
   };
 
   const confirmDelete = async () => {
@@ -495,33 +532,104 @@ export function FunctionSettingsPage() {
               <CardTitle className="card-title">Custom Domains</CardTitle>
             </CardHeader>
             <CardContent className="card-content space-y-4">
-              {functionSettings.customDomains?.length > 0 ? (
-                <div className="space-y-2">
-                  {functionSettings.customDomains.map((domain) => (
-                    <div
-                      key={domain}
-                      className="flex items-center justify-between p-3 rounded-lg bg-bg-tertiary"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Globe className="w-4 h-4 text-text-muted" />
-                        <span className="text-text-primary">{domain}</span>
+              <EnterpriseFeature
+                feature="CUSTOM_DOMAINS"
+                fallback="upgrade"
+                upgradeMessage="Custom domains are available on Starter, Professional, and Enterprise plans. Upgrade to connect your own domains."
+              >
+                {hasFeature("CUSTOM_DOMAINS") && (
+                  <>
+                    <p className="text-text-muted text-sm">
+                      Connect custom domains to this function. Plan limit:{" "}
+                      <span className="text-text-primary font-medium">
+                        {formatCustomDomainsRemaining(customDomainsList.length, plan)}
+                      </span>
+                    </p>
+                    {customDomainsList.length > 0 ? (
+                      <div className="space-y-2">
+                        {customDomainsList.map((domain) => (
+                          <div
+                            key={domain}
+                            className="flex items-center justify-between p-3 rounded-lg bg-bg-tertiary"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Globe className="w-4 h-4 text-text-muted shrink-0" />
+                              <span className="text-text-primary">{domain}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">Active</Badge>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-text-muted hover:text-destructive"
+                                onClick={() => handleRemoveDomain(domain)}
+                                aria-label={`Remove ${domain}`}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <Badge variant="secondary">Active</Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-text-muted text-sm">
-                  No custom domains configured. Contact support to add custom domains.
-                </p>
-              )}
+                    ) : (
+                      <p className="text-text-muted text-sm">
+                        No custom domains configured. Add a domain to serve this function from your own hostname.
+                      </p>
+                    )}
 
-              <Button variant="outline" className="w-full">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Add Custom Domain
-              </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      disabled={!canAddMore}
+                      onClick={() => {
+                        setNewDomainValue("");
+                        setAddDomainError(null);
+                        setShowAddDomainDialog(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Custom Domain
+                      {!canAddMore && customDomainsLimit > 0 && (
+                        <span className="ml-2 text-xs">(limit reached)</span>
+                      )}
+                    </Button>
+                  </>
+                )}
+              </EnterpriseFeature>
             </CardContent>
           </Card>
+
+          <Dialog open={showAddDomainDialog} onOpenChange={setShowAddDomainDialog}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add Custom Domain</DialogTitle>
+                <DialogDescription>
+                  Enter the hostname (e.g. api.example.com). Do not include https://.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Input
+                  placeholder="api.example.com"
+                  value={newDomainValue}
+                  onChange={(e) => {
+                    setNewDomainValue(e.target.value);
+                    setAddDomainError(null);
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddDomain()}
+                />
+                {addDomainError && (
+                  <p className="text-sm text-destructive">{addDomainError}</p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowAddDomainDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddDomain}>Add domain</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Providers Settings */}

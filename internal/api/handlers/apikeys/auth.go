@@ -90,7 +90,7 @@ func (h *APIKeyAuthHandler) HandleAuthenticate(w http.ResponseWriter, r *http.Re
 	// Update last used timestamp
 	_ = h.repo.UpdateLastUsed(ctx, apiKey.ID)
 
-	// Generate JWT token (in production, use proper JWT generation)
+	// Generate JWT (HS256, exp/iat/iss + key/tenant/user claims)
 	token, expiresAt, err := h.generateJWT(apiKey)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to generate JWT token")

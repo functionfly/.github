@@ -76,11 +76,11 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                   <LinkedInIcon className="w-5 h-5" />
                 </motion.a>
                 <motion.a
-                  href="#"
+                  href="/flywheel"
                   className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  aria-label="FunctionFly on community chat"
+                  aria-label="Flywheel community"
                 >
                   <MessageCircle className="w-5 h-5" aria-hidden />
                 </motion.a>
@@ -206,7 +206,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                 </li>
                 <li>
                   <a
-                    href="#"
+                    href="/flywheel"
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
                     Community

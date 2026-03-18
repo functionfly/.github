@@ -1,27 +1,36 @@
-import { useState } from "react";
-import { Plus, Trash2, GripVertical, Settings, Play, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import type { Pipeline, PipelineStep } from '@/types';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import type { Pipeline, PipelineStep } from "@/types";
+  AlertCircle,
+  ArrowDown,
+  ArrowUp,
+  CheckCircle,
+  Play,
+  Plus,
+  Settings,
+  Trash2,
+} from 'lucide-react';
+import { useState } from 'react';
 
 interface PipelineStepEditorProps {
   fabricId: string;
@@ -30,49 +39,49 @@ interface PipelineStepEditorProps {
 }
 
 const stepTypeLabels: Record<string, string> = {
-  transform: "Transform",
-  filter: "Filter",
-  aggregate: "Aggregate",
-  enrich: "Enrich",
-  custom: "Custom",
+  transform: 'Transform',
+  filter: 'Filter',
+  aggregate: 'Aggregate',
+  enrich: 'Enrich',
+  custom: 'Custom',
 };
 
 const stepTypeDescriptions: Record<string, string> = {
-  transform: "Transform the input data using functions or mappings",
-  filter: "Filter events based on conditions",
-  aggregate: "Aggregate multiple events into summary data",
-  enrich: "Enrich events with additional data from external sources",
-  custom: "Run custom code or logic",
+  transform: 'Transform the input data using functions or mappings',
+  filter: 'Filter events based on conditions',
+  aggregate: 'Aggregate multiple events into summary data',
+  enrich: 'Enrich events with additional data from external sources',
+  custom: 'Run custom code or logic',
 };
 
 const stepTypeIcons: Record<string, string> = {
-  transform: "🔧",
-  filter: "🔍",
-  aggregate: "📊",
-  enrich: "✨",
-  custom: "⚙️",
+  transform: '🔧',
+  filter: '🔍',
+  aggregate: '📊',
+  enrich: '✨',
+  custom: '⚙️',
 };
 
 const defaultStepConfig: Record<string, Record<string, any>> = {
   transform: {
     mapping: {},
-    function: "",
+    function: '',
   },
   filter: {
     conditions: [],
-    expression: "",
+    expression: '',
   },
   aggregate: {
     windowSize: 100,
-    function: "sum",
+    function: 'sum',
   },
   enrich: {
     sources: [],
     mapping: {},
   },
   custom: {
-    code: "",
-    language: "javascript",
+    code: '',
+    language: 'javascript',
   },
 };
 
@@ -83,8 +92,8 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [newStep, setNewStep] = useState<Partial<PipelineStep>>({
-    name: "",
-    type: "transform",
+    name: '',
+    type: 'transform',
     config: defaultStepConfig.transform,
     enabled: true,
     timeoutMs: 30000,
@@ -93,28 +102,28 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
 
   const handleAddStep = async () => {
     if (!newStep.name?.trim()) return;
-    
+
     setIsSubmitting(true);
     try {
       const step: PipelineStep = {
         id: `step-${Date.now()}`,
         name: newStep.name,
-        type: newStep.type as PipelineStep["type"] || "transform",
+        type: (newStep.type as PipelineStep['type']) || 'transform',
         config: newStep.config || {},
         order: steps.length,
         enabled: newStep.enabled ?? true,
         timeoutMs: newStep.timeoutMs ?? 30000,
         retryCount: newStep.retryCount ?? 3,
       };
-      
+
       const updatedSteps = [...steps, step];
       setSteps(updatedSteps);
       await onUpdate(updatedSteps);
-      
+
       setIsAddStepOpen(false);
       setNewStep({
-        name: "",
-        type: "transform",
+        name: '',
+        type: 'transform',
         config: defaultStepConfig.transform,
         enabled: true,
         timeoutMs: 30000,
@@ -127,15 +136,13 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
 
   const handleUpdateStep = async () => {
     if (!editingStep) return;
-    
+
     setIsSubmitting(true);
     try {
-      const updatedSteps = steps.map((s) => 
-        s.id === editingStep.id ? editingStep : s
-      );
+      const updatedSteps = steps.map((s) => (s.id === editingStep.id ? editingStep : s));
       setSteps(updatedSteps);
       await onUpdate(updatedSteps);
-      
+
       setEditingStep(null);
     } finally {
       setIsSubmitting(false);
@@ -143,8 +150,8 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
   };
 
   const handleDeleteStep = async (stepId: string) => {
-    if (!confirm("Are you sure you want to delete this step?")) return;
-    
+    if (!confirm('Are you sure you want to delete this step?')) return;
+
     setIsSubmitting(true);
     try {
       const updatedSteps = steps
@@ -157,39 +164,40 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
     }
   };
 
-  const handleMoveStep = async (stepId: string, direction: "up" | "down") => {
+  const handleMoveStep = async (stepId: string, direction: 'up' | 'down') => {
     const idx = steps.findIndex((s) => s.id === stepId);
     if (idx === -1) return;
-    
-    if (direction === "up" && idx === 0) return;
-    if (direction === "down" && idx === steps.length - 1) return;
-    
-    const newIdx = direction === "up" ? idx - 1 : idx + 1;
+
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === steps.length - 1) return;
+
+    const newIdx = direction === 'up' ? idx - 1 : idx + 1;
     const updatedSteps = [...steps];
     [updatedSteps[idx], updatedSteps[newIdx]] = [updatedSteps[newIdx], updatedSteps[idx]];
-    
+
     const reorderedSteps = updatedSteps.map((s, i) => ({ ...s, order: i }));
     setSteps(reorderedSteps);
     await onUpdate(reorderedSteps);
   };
 
   const handleToggleStep = async (stepId: string) => {
-    const updatedSteps = steps.map((s) => 
-      s.id === stepId ? { ...s, enabled: !s.enabled } : s
-    );
+    const updatedSteps = steps.map((s) => (s.id === stepId ? { ...s, enabled: !s.enabled } : s));
     setSteps(updatedSteps);
     await onUpdate(updatedSteps);
   };
 
-  const renderStepConfig = (step: Partial<PipelineStep>, onChange: (updates: Partial<PipelineStep>) => void) => {
+  const renderStepConfig = (
+    step: Partial<PipelineStep>,
+    onChange: (updates: Partial<PipelineStep>) => void
+  ) => {
     switch (step.type) {
-      case "transform":
+      case 'transform':
         return (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Transform Function</Label>
               <Input
-                value={step.config?.function || ""}
+                value={step.config?.function || ''}
                 onChange={(e) => onChange({ config: { ...step.config, function: e.target.value } })}
                 placeholder="e.g., JSON.stringify, uppercase, etc."
               />
@@ -210,15 +218,17 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
             </div>
           </div>
         );
-      
-      case "filter":
+
+      case 'filter':
         return (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Filter Expression</Label>
               <Input
-                value={step.config?.expression || ""}
-                onChange={(e) => onChange({ config: { ...step.config, expression: e.target.value } })}
+                value={step.config?.expression || ''}
+                onChange={(e) =>
+                  onChange({ config: { ...step.config, expression: e.target.value } })
+                }
                 placeholder="e.g., value > 100"
               />
             </div>
@@ -228,7 +238,9 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                 value={JSON.stringify(step.config?.conditions || [], null, 2)}
                 onChange={(e) => {
                   try {
-                    onChange({ config: { ...step.config, conditions: JSON.parse(e.target.value) } });
+                    onChange({
+                      config: { ...step.config, conditions: JSON.parse(e.target.value) },
+                    });
                   } catch {}
                 }}
                 placeholder='[{"field": "status", "operator": "eq", "value": "active"}]'
@@ -238,14 +250,14 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
             </div>
           </div>
         );
-      
-      case "aggregate":
+
+      case 'aggregate':
         return (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Aggregation Function</Label>
               <Select
-                value={step.config?.function || "sum"}
+                value={step.config?.function || 'sum'}
                 onValueChange={(v) => onChange({ config: { ...step.config, function: v } })}
               >
                 <SelectTrigger>
@@ -266,22 +278,31 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
               <Input
                 type="number"
                 value={step.config?.windowSize || 100}
-                onChange={(e) => onChange({ config: { ...step.config, windowSize: parseInt(e.target.value) } })}
+                onChange={(e) =>
+                  onChange({ config: { ...step.config, windowSize: parseInt(e.target.value) } })
+                }
                 min={1}
                 max={10000}
               />
             </div>
           </div>
         );
-      
-      case "enrich":
+
+      case 'enrich':
         return (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Data Sources (comma-separated URLs)</Label>
               <Input
-                value={(step.config?.sources || []).join(", ")}
-                onChange={(e) => onChange({ config: { ...step.config, sources: e.target.value.split(",").map(s => s.trim()) } })}
+                value={(step.config?.sources || []).join(', ')}
+                onChange={(e) =>
+                  onChange({
+                    config: {
+                      ...step.config,
+                      sources: e.target.value.split(',').map((s) => s.trim()),
+                    },
+                  })
+                }
                 placeholder="https://api.example.com/data, https://api2.example.com/users"
               />
             </div>
@@ -301,14 +322,14 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
             </div>
           </div>
         );
-      
-      case "custom":
+
+      case 'custom':
         return (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Language</Label>
               <Select
-                value={step.config?.language || "javascript"}
+                value={step.config?.language || 'javascript'}
                 onValueChange={(v) => onChange({ config: { ...step.config, language: v } })}
               >
                 <SelectTrigger>
@@ -323,7 +344,7 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
             <div className="space-y-2">
               <Label>Custom Code</Label>
               <Textarea
-                value={step.config?.code || ""}
+                value={step.config?.code || ''}
                 onChange={(e) => onChange({ config: { ...step.config, code: e.target.value } })}
                 placeholder="// Your custom processing code here"
                 rows={8}
@@ -332,7 +353,7 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
             </div>
           </div>
         );
-      
+
       default:
         return (
           <div className="space-y-2">
@@ -358,9 +379,7 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Pipeline Steps</h3>
-          <p className="text-sm text-text-muted">
-            Define the processing steps for your pipeline
-          </p>
+          <p className="text-sm text-text-muted">Define the processing steps for your pipeline</p>
         </div>
         <Button onClick={() => setIsAddStepOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
@@ -387,7 +406,7 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
           {steps
             .sort((a, b) => a.order - b.order)
             .map((step, index) => (
-              <Card key={step.id} className={!step.enabled ? "opacity-60" : ""}>
+              <Card key={step.id} className={!step.enabled ? 'opacity-60' : ''}>
                 <CardContent className="pt-4">
                   <div className="flex items-start gap-3">
                     <div className="flex flex-col gap-1 mt-1">
@@ -395,7 +414,7 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={() => handleMoveStep(step.id, "up")}
+                        onClick={() => handleMoveStep(step.id, 'up')}
                         disabled={index === 0}
                       >
                         <ArrowUp className="w-3 h-3" />
@@ -404,17 +423,17 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={() => handleMoveStep(step.id, "down")}
+                        onClick={() => handleMoveStep(step.id, 'down')}
                         disabled={index === steps.length - 1}
                       >
                         <ArrowDown className="w-3 h-3" />
                       </Button>
                     </div>
-                    
+
                     <div className="w-10 h-10 rounded-lg bg-bg-secondary flex items-center justify-center shrink-0">
                       <span className="text-xl">{stepTypeIcons[step.type]}</span>
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium">{step.name}</span>
@@ -427,32 +446,22 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                           <AlertCircle className="w-4 h-4 text-yellow-400" />
                         )}
                       </div>
-                      <p className="text-sm text-text-muted">
-                        {stepTypeDescriptions[step.type]}
-                      </p>
+                      <p className="text-sm text-text-muted">{stepTypeDescriptions[step.type]}</p>
                       <div className="flex items-center gap-4 mt-2 text-xs text-text-muted">
                         <span>Timeout: {step.timeoutMs}ms</span>
                         <span>Retries: {step.retryCount}</span>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-1">
                       <Switch
                         checked={step.enabled}
                         onCheckedChange={() => handleToggleStep(step.id)}
                       />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditingStep(step)}
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => setEditingStep(step)}>
                         <Settings className="w-4 h-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteStep(step.id)}
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteStep(step.id)}>
                         <Trash2 className="w-4 h-4 text-red-400" />
                       </Button>
                     </div>
@@ -473,21 +482,23 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
             <div className="space-y-2">
               <Label>Step Name</Label>
               <Input
-                value={newStep.name || ""}
+                value={newStep.name || ''}
                 onChange={(e) => setNewStep({ ...newStep, name: e.target.value })}
                 placeholder="e.g., Validate Input, Transform Data"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label>Step Type</Label>
               <Select
                 value={newStep.type}
-                onValueChange={(v) => setNewStep({ 
-                  ...newStep, 
-                  type: v as PipelineStep["type"],
-                  config: defaultStepConfig[v] || {},
-                })}
+                onValueChange={(v) =>
+                  setNewStep({
+                    ...newStep,
+                    type: v as PipelineStep['type'],
+                    config: defaultStepConfig[v] || {},
+                  })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -504,12 +515,12 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                 </SelectContent>
               </Select>
               <p className="text-xs text-text-muted">
-                {stepTypeDescriptions[newStep.type || "transform"]}
+                {stepTypeDescriptions[newStep.type || 'transform']}
               </p>
             </div>
-            
+
             {renderStepConfig(newStep, setNewStep)}
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Timeout (ms)</Label>
@@ -532,7 +543,7 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <Label>Enabled</Label>
               <Switch
@@ -567,15 +578,17 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                   onChange={(e) => setEditingStep({ ...editingStep, name: e.target.value })}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Step Type</Label>
                 <Select
                   value={editingStep.type}
-                  onValueChange={(v) => setEditingStep({ 
-                    ...editingStep, 
-                    type: v as PipelineStep["type"],
-                  })}
+                  onValueChange={(v) =>
+                    setEditingStep({
+                      ...editingStep,
+                      type: v as PipelineStep['type'],
+                    })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -592,16 +605,20 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                   </SelectContent>
                 </Select>
               </div>
-              
-              {renderStepConfig(editingStep, setEditingStep)}
-              
+
+              {renderStepConfig(editingStep, (updates) =>
+                setEditingStep((prev) => (prev ? { ...prev, ...updates } : null))
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Timeout (ms)</Label>
                   <Input
                     type="number"
                     value={editingStep.timeoutMs}
-                    onChange={(e) => setEditingStep({ ...editingStep, timeoutMs: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setEditingStep({ ...editingStep, timeoutMs: parseInt(e.target.value) })
+                    }
                     min={1000}
                     max={300000}
                   />
@@ -611,13 +628,15 @@ export function PipelineStepEditor({ pipeline, onUpdate }: PipelineStepEditorPro
                   <Input
                     type="number"
                     value={editingStep.retryCount}
-                    onChange={(e) => setEditingStep({ ...editingStep, retryCount: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setEditingStep({ ...editingStep, retryCount: parseInt(e.target.value) })
+                    }
                     min={0}
                     max={10}
                   />
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <Label>Enabled</Label>
                 <Switch

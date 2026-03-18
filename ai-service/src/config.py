@@ -111,6 +111,11 @@ class Settings(BaseSettings):
     orchestrator_url: str = "http://localhost:8080"
     orchestrator_api_key: Optional[str] = None
 
+    # Content moderation (2026: OpenAI Moderation API recommended when key is set)
+    # auto = use OpenAI if key present, else Detoxify, else keyword fallback
+    moderation_provider: str = "auto"  # auto | openai | detoxify | keywords
+    openai_moderation_model: str = "omni-moderation-latest"
+
 
 # Global settings instance
 settings = Settings()

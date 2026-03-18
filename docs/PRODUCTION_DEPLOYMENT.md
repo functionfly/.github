@@ -230,6 +230,8 @@ docker run hello-world
 
 ### 2.1 Cloudflare Setup
 
+For a single reference covering DNS, CDN, R2, Workers, Tunnel, and Pages, see [CLOUDFLARE.md](CLOUDFLARE.md).
+
 1. Log into [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. Select your domain (`functionfly.com`)
 3. Go to **DNS** → **Records**
@@ -322,7 +324,19 @@ DB_PASSWORD=your-secure-neon-password
 DB_NAME=functionfly
 DB_SSLMODE=require
 
-# Database Encryption (generate strong key)
+# ============================================================================
+# DATABASE ENCRYPTION (Data at Rest) - REQUIRED FOR PRODUCTION
+# ============================================================================
+# ⚠️  CRITICAL: Database encryption is MANDATORY for production deployment
+#    This protects sensitive data (secrets, API keys, tokens) at rest using AES-256-GCM
+#    The server uses a zero-knowledge architecture - master key is never stored
+#
+# Key Management:
+# - Generate master key: openssl rand -hex 32
+# - Store the key securely (Infisical, Vault, or secure secrets manager)
+# - The key encrypts ALL sensitive fields in the database
+# - If the key is lost, encrypted data CANNOT be recovered - keep a secure backup!
+#
 DB_ENCRYPTION_ENABLED=true
 DB_MASTER_KEY_PASSWORD=your-secure-master-key-min-32-characters-long
 
@@ -460,11 +474,12 @@ ARCHIVE_CLEANUP_INTERVAL_HOURS=168
 LOG_LEVEL=info
 
 # ============================================================================
-# STRIPE PAYMENT PROCESSING
+# STRIPE PAYMENT PROCESSING (use .env; never commit real keys)
+# Get values from Stripe Dashboard → Developers → API keys / Webhooks
 # ============================================================================
-STRIPE_PUBLISHABLE_KEY=pk_live_your_stripe_publishable_key
-STRIPE_SECRET_KEY=sk_live_your_stripe_secret_key
-STRIPE_WEBHOOK_SECRET=whsec_your_stripe_webhook_secret
+STRIPE_PUBLISHABLE_KEY=<your-publishable-key-from-dashboard>
+STRIPE_SECRET_KEY=<your-secret-key-from-dashboard>
+STRIPE_WEBHOOK_SECRET=<your-webhook-signing-secret>
 EOF
 
 # Secure the environment file
@@ -510,9 +525,9 @@ version: '3.8'
 # ============================================================================
 
 services:
-  # PostgreSQL with pgvector extension
+  # PostgreSQL with pgvector extension (pg17; use pg16 if needed)
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg17
     container_name: functionfly-postgres
     hostname: postgres
     environment:
@@ -1382,8 +1397,9 @@ GRANT ALL PRIVILEGES ON DATABASE functionfly TO functionfly_app;
 -- Connect to the database
 \c functionfly
 
--- Enable required extensions
+-- Enable required extensions (or run migration 000000_postgres_extensions.up.sql)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE EXTENSION IF NOT EXISTS "pgvector";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 ```

@@ -1,9 +1,10 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import { sentryVitePlugin } from '@sentry/vite-plugin'
-import path from 'path'
-import fs from 'fs'
+import { sentryVitePlugin } from '@sentry/vite-plugin';
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import fs from 'fs';
+import path from 'path';
+import type { PluginOption } from 'vite';
+import { defineConfig } from 'vite';
 
 /** SPA fallback: serve index.html for client routes so refresh on /api-keys, /dashboard, etc. works */
 function spaFallbackPlugin() {
@@ -11,45 +12,97 @@ function spaFallbackPlugin() {
     name: 'spa-fallback',
     configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: () => void) => {
-        const url = req.url?.split('?')[0] ?? ''
-        // Skip SPA fallback for real API proxy paths (/api or /api/...) but not client routes like /api-keys
-        if (req.method !== 'GET' || url === '/api' || url.startsWith('/api/') || url.startsWith('/src') || url.startsWith('/@') || url.startsWith('/node_modules') || url.includes('.')) {
-          return next()
+        const url = req.url?.split('?')[0] ?? '';
+        // Skip SPA fallback for real API proxy paths (/api, /api/, /v1) but not client routes like /api-keys
+        if (
+          req.method !== 'GET' ||
+          url === '/api' ||
+          url.startsWith('/api/') ||
+          url.startsWith('/v1') ||
+          url.startsWith('/src') ||
+          url.startsWith('/@') ||
+          url.startsWith('/node_modules') ||
+          url.includes('.')
+        ) {
+          return next();
         }
-        const index = path.join(server.config.root, 'index.html')
-        if (!fs.existsSync(index)) return next()
-        req.url = '/index.html'
-        next()
-      })
+        const index = path.join(server.config.root, 'index.html');
+        if (!fs.existsSync(index)) return next();
+        req.url = '/index.html';
+        next();
+      });
     },
-  }
+  };
+}
+
+/** Copy Cloudflare Pages _headers and _redirects to dist folder */
+function cloudflarePagesPlugin() {
+  return {
+    name: 'cloudflare-pages',
+    closeBundle() {
+      const files = ['_headers', '_redirects'];
+      const srcDir = path.resolve(__dirname);
+      const outDir = path.resolve(__dirname, 'dist');
+
+      for (const file of files) {
+        const srcPath = path.join(srcDir, file);
+        const outPath = path.join(outDir, file);
+        if (fs.existsSync(srcPath)) {
+          fs.copyFileSync(srcPath, outPath);
+          console.log(`[cloudflare-pages] Copied ${file} to dist/`);
+        }
+      }
+    },
+  };
+}
+
+/** Generate sitemap.xml and robots.txt into dist after build (Vite/SPA approach). */
+function sitemapPlugin() {
+  return {
+    name: 'vite-plugin-sitemap',
+    apply: 'build',
+    async closeBundle() {
+      const outDir = path.resolve(__dirname, 'dist');
+      const scriptPath = path.resolve(__dirname, 'scripts/generate-sitemap.mjs');
+      const { spawnSync } = await import('child_process');
+      const r = spawnSync(process.execPath, [scriptPath, outDir], {
+        stdio: 'inherit',
+        cwd: __dirname,
+        shell: false,
+      });
+      if (r.status !== 0) {
+        throw new Error(`sitemap script exited with ${r.status}`);
+      }
+    },
+  };
 }
 
 // When dashboard runs in Docker, set API_PROXY_TARGET=http://orchestrator-api:8080.
 // On host, use localhost for WebSocket compatibility
-const apiProxyTarget = process.env.VITE_PROXY_API_TARGET || process.env.API_PROXY_TARGET || 'http://127.0.0.1:8080'
+const apiProxyTarget =
+  process.env.VITE_PROXY_API_TARGET || process.env.API_PROXY_TARGET || 'http://127.0.0.1:8080';
 
 function proxyConfigure(proxy: any) {
   proxy.on('error', (err: Error, _req: any, res: any) => {
-    console.error('[Vite proxy] Cannot reach API at', apiProxyTarget, err.message)
+    console.error('[Vite proxy] Cannot reach API at', apiProxyTarget, err.message);
     if (res && typeof res.writeHead === 'function' && !res.headersSent) {
       try {
-        res.writeHead(500, { 'Content-Type': 'text/plain' })
-        res.end('Proxy error: ' + err.message)
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Proxy error: ' + err.message);
       } catch (e) {
-        console.error('[Vite proxy] Failed to send error response:', e)
+        console.error('[Vite proxy] Failed to send error response:', e);
       }
     }
-  })
+  });
   proxy.on('proxyReq', (_proxyReq: any, req: any) => {
     if (req.url?.includes('/auth/login')) {
-      console.log('[Vite proxy] Proxying', req.method, req.url, '->', apiProxyTarget)
+      console.log('[Vite proxy] Proxying', req.method, req.url, '->', apiProxyTarget);
     }
-  })
+  });
 }
 
 // Log proxy target at startup so we can confirm what the dashboard will use
-console.log('[Vite] API proxy target:', apiProxyTarget)
+console.log('[Vite] API proxy target:', apiProxyTarget);
 
 // Dev CSP: permissive enough for local tools (Vercel Analytics, Google Fonts, HMR).
 // Production CSP is enforced via public/_headers (Vercel/CF deployments) and the Go backend middleware.
@@ -62,12 +115,16 @@ const DEV_CSP = [
   "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://va.vercel-scripts.com http://localhost:8080 https: ws: wss:",
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",
-].join('; ')
+].join('; ');
 
 export default defineConfig({
   appType: 'spa',
+  // Cloudflare Pages: output to dist folder (default)
+  base: '/',
   plugins: [
     spaFallbackPlugin(),
+    cloudflarePagesPlugin(),
+    sitemapPlugin(),
     react(),
     tailwindcss(),
     // Upload source maps to Sentry when SENTRY_AUTH_TOKEN is set (e.g. in CI)
@@ -78,7 +135,7 @@ export default defineConfig({
           sourcemaps: { assets: './dist/**' },
         })
       : undefined,
-  ].filter(Boolean),
+  ].filter(Boolean) as PluginOption[],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -97,7 +154,11 @@ export default defineConfig({
             return 'radix-ui';
           }
           // Data fetching and state management
-          if (id.includes('@tanstack/react-query') || id.includes('axios') || id.includes('zustand')) {
+          if (
+            id.includes('@tanstack/react-query') ||
+            id.includes('axios') ||
+            id.includes('zustand')
+          ) {
             return 'data-vendor';
           }
           // Charts and tables
@@ -130,8 +191,8 @@ export default defineConfig({
     host: true, // listen on 0.0.0.0 so Docker can expose port 3000
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-      'Pragma': 'no-cache',
-      'Expires': '0',
+      Pragma: 'no-cache',
+      Expires: '0',
       'Content-Security-Policy': DEV_CSP,
       'X-Frame-Options': 'DENY',
       'X-Content-Type-Options': 'nosniff',
@@ -173,6 +234,12 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/v1/, '/v1'),
         configure: proxyConfigure,
       },
+      // /v1/... -> backend /v1/... (direct v1 calls from FunctionPage, PlaygroundPage, etc.)
+      '/v1': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        configure: proxyConfigure,
+      },
       // /api/... -> backend /v1/... (fallback for other API calls)
       '/api': {
         target: apiProxyTarget,
@@ -183,4 +250,4 @@ export default defineConfig({
       },
     },
   },
-})
+});

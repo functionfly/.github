@@ -7,12 +7,13 @@ import (
 
 // Supported runtimes
 const (
-	RuntimeNode18    = "node18"
-	RuntimeNode20    = "node20"
-	RuntimePython311 = "python3.11"
-	RuntimePython312 = "python3.12"
-	RuntimeGo121     = "go1.21"
-	RuntimeRust175   = "rust1.75"
+	RuntimeNode18        = "node18"
+	RuntimeNode20        = "node20"
+	RuntimePython311     = "python3.11"
+	RuntimePython312     = "python3.12"
+	RuntimeGo121         = "go1.21"
+	RuntimeRust175       = "rust1.75"
+	RuntimeTypeScriptWASM = "typescript-wasm"
 )
 
 // FunctionVisibility types

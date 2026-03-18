@@ -1,7 +1,9 @@
 package storage
 
 import (
-	"fmt"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -129,11 +131,22 @@ func (sv *StateValue) BeforeCreate(tx *gorm.DB) error {
 		sv.CreatedAt = time.Now()
 	}
 	if sv.ContentHash == "" && sv.Value != nil {
-		// Generate content hash for deduplication (simplified)
-		// In production, you'd use a proper hashing algorithm
-		sv.ContentHash = fmt.Sprintf("%d", len(sv.Value))
+		sv.ContentHash = contentHashJSON(sv.Value)
 	}
 	return nil
+}
+
+// contentHashJSON returns a SHA-256 hex digest of the JSON-serialized value for content addressing and deduplication.
+func contentHashJSON(v JSONMap) string {
+	if v == nil {
+		return ""
+	}
+	data, err := json.Marshal(v)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }
 
 // StateEvent represents an immutable event in state history

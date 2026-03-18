@@ -95,25 +95,26 @@ func (db *PostgresDB) VerifyPassword(userID uuid.UUID, password string) (bool, e
 }
 
 // OAuth state (CSRF) — persisted for multi-instance OAuth flows
-func (db *PostgresDB) StoreOAuthState(ctx context.Context, state string, expiresAt time.Time) error {
-	row := &OAuthState{State: state, ExpiresAt: expiresAt}
+func (db *PostgresDB) StoreOAuthState(ctx context.Context, state string, expiresAt time.Time, redirectURI string) error {
+	row := &OAuthState{State: state, ExpiresAt: expiresAt, RedirectURI: redirectURI}
 	return db.GORM.WithContext(ctx).Create(row).Error
 }
 
-func (db *PostgresDB) ValidateAndConsumeOAuthState(ctx context.Context, state string) (bool, error) {
+func (db *PostgresDB) ValidateAndConsumeOAuthState(ctx context.Context, state string) (bool, string, error) {
 	var row OAuthState
 	err := db.GORM.WithContext(ctx).Where("state = ? AND expires_at > ?", state, time.Now()).First(&row).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return false, nil
+			return false, "", nil
 		}
-		return false, err
+		return false, "", err
 	}
+	redirectURI := row.RedirectURI
 	// Consume: delete so the state can only be used once
 	if err := db.GORM.WithContext(ctx).Where("state = ?", state).Delete(&OAuthState{}).Error; err != nil {
-		return false, err
+		return false, "", err
 	}
-	return true, nil
+	return true, redirectURI, nil
 }
 
 func (db *PostgresDB) DeleteExpiredOAuthStates() (int64, error) {

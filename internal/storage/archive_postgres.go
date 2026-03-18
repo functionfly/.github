@@ -9,9 +9,13 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -65,8 +69,8 @@ func (p *PostgresArchiveStorage) StoreArchive(ctx context.Context, key string, d
 	metadata.Status = "completed"
 	metadata.StorageKey = key
 
-	// Store encryption key ID (in production, this should be stored securely)
-	metadata.EncryptionKeyID = "postgres-archive-key-v1"
+	// EncryptionKeyID is a key reference/label (not secret material). Set ARCHIVE_ENCRYPTION_KEY_ID in production to a KMS key ID or vault path.
+	metadata.EncryptionKeyID = getArchiveEncryptionKeyID()
 
 	// Convert metadata to JSON for storage
 	metadataJSON, err := json.Marshal(metadata)
@@ -135,8 +139,14 @@ func (p *PostgresArchiveStorage) RetrieveArchive(ctx context.Context, key string
 		return nil, fmt.Errorf("failed to retrieve archive: %w", err)
 	}
 
+	// Resolve DEK: unwrap if envelope-encrypted (ARCHIVE_MASTER_KEY)
+	dek, err := unwrapDEK(encryptionKey, getArchiveMasterKey())
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve archive encryption key: %w", err)
+	}
+
 	// Decrypt data
-	decryptedData, err := p.decryptData(compressedData, encryptionKey)
+	decryptedData, err := p.decryptData(compressedData, dek)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt archive data: %w", err)
 	}
@@ -246,6 +256,105 @@ func (p *PostgresArchiveStorage) HealthCheck(ctx context.Context) error {
 	return p.db.PingContext(ctx)
 }
 
+// Envelope encryption: version byte for stored encryption_key column.
+const (
+	archiveKeyFormatRaw    = 0x00 // 32-byte raw DEK (legacy)
+	archiveKeyFormatWrapped = 0x01 // KEK-wrapped DEK: version(1) + nonce(12) + GCM(DEK)
+)
+
+// getArchiveEncryptionKeyID returns the encryption key ID for archive metadata. In production, set ARCHIVE_ENCRYPTION_KEY_ID to a KMS key ID or vault path.
+func getArchiveEncryptionKeyID() string {
+	if id := strings.TrimSpace(os.Getenv("ARCHIVE_ENCRYPTION_KEY_ID")); id != "" {
+		return id
+	}
+	return "postgres-archive-key-v1"
+}
+
+// getArchiveMasterKey returns the 32-byte KEK for envelope encryption when ARCHIVE_MASTER_KEY is set (base64 or hex). Nil if not set.
+func getArchiveMasterKey() []byte {
+	s := strings.TrimSpace(os.Getenv("ARCHIVE_MASTER_KEY"))
+	if s == "" {
+		return nil
+	}
+	// Try base64 first, then hex
+	if b, err := base64.StdEncoding.DecodeString(s); err == nil && len(b) == 32 {
+		return b
+	}
+	if b, err := base64.RawURLEncoding.DecodeString(s); err == nil && len(b) == 32 {
+		return b
+	}
+	if len(s) == 64 {
+		b, err := hex.DecodeString(s)
+		if err == nil && len(b) == 32 {
+			return b
+		}
+	}
+	return nil
+}
+
+// wrapDEK encrypts the DEK with the KEK (AES-256-GCM) for envelope encryption. Returns version(1) + nonce + ciphertext.
+func wrapDEK(dek, kek []byte) ([]byte, error) {
+	if len(kek) != 32 || len(dek) != 32 {
+		return nil, fmt.Errorf("wrapDEK: DEK and KEK must be 32 bytes")
+	}
+	block, err := aes.NewCipher(kek)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	sealed := gcm.Seal(nil, nonce, dek, nil)
+	out := make([]byte, 1+len(nonce)+len(sealed))
+	out[0] = archiveKeyFormatWrapped
+	copy(out[1:], nonce)
+	copy(out[1+len(nonce):], sealed)
+	return out, nil
+}
+
+// unwrapDEK decrypts the stored encryption_key bytes. 32 bytes = raw DEK (legacy). Version 0x01 = KEK-wrapped; decrypt with KEK and return DEK.
+func unwrapDEK(stored, kek []byte) ([]byte, error) {
+	if len(stored) == 32 {
+		return stored, nil
+	}
+	if len(stored) < 1 {
+		return nil, fmt.Errorf("archive encryption_key too short")
+	}
+	if stored[0] != archiveKeyFormatWrapped {
+		return nil, fmt.Errorf("archive encryption_key unknown format: %d", stored[0])
+	}
+	if len(kek) != 32 {
+		return nil, fmt.Errorf("envelope-encrypted archive requires ARCHIVE_MASTER_KEY (32 bytes)")
+	}
+	block, err := aes.NewCipher(kek)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	nonceSize := gcm.NonceSize()
+	if len(stored) < 1+nonceSize {
+		return nil, fmt.Errorf("archive encryption_key wrapped format invalid")
+	}
+	nonce := stored[1 : 1+nonceSize]
+	ciphertext := stored[1+nonceSize:]
+	dek, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("unwrap DEK: %w", err)
+	}
+	if len(dek) != 32 {
+		return nil, fmt.Errorf("unwrap DEK: invalid length")
+	}
+	return dek, nil
+}
+
 // compressData compresses data using gzip
 func (p *PostgresArchiveStorage) compressData(data []byte) ([]byte, error) {
 	var buf bytes.Buffer
@@ -273,15 +382,15 @@ func (p *PostgresArchiveStorage) decompressData(data []byte) ([]byte, error) {
 	return io.ReadAll(reader)
 }
 
-// encryptData encrypts data using AES-GCM
+// encryptData encrypts data using AES-GCM. Returns (ciphertext, keyToStore, nil). keyToStore is raw DEK or KEK-wrapped DEK when ARCHIVE_MASTER_KEY is set.
 func (p *PostgresArchiveStorage) encryptData(data []byte) ([]byte, []byte, error) {
-	// Generate a random 32-byte key for AES-256
-	key := make([]byte, 32)
-	if _, err := rand.Read(key); err != nil {
+	// Generate a random 32-byte DEK for AES-256
+	dek := make([]byte, 32)
+	if _, err := rand.Read(dek); err != nil {
 		return nil, nil, fmt.Errorf("failed to generate encryption key: %w", err)
 	}
 
-	block, err := aes.NewCipher(key)
+	block, err := aes.NewCipher(dek)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create cipher: %w", err)
 	}
@@ -297,10 +406,18 @@ func (p *PostgresArchiveStorage) encryptData(data []byte) ([]byte, []byte, error
 		return nil, nil, fmt.Errorf("failed to generate nonce: %w", err)
 	}
 
-	// Encrypt data
+	// Encrypt data with DEK
 	ciphertext := gcm.Seal(nonce, nonce, data, nil)
 
-	return ciphertext, key, nil
+	// Envelope encryption: wrap DEK with KEK so we don't store raw key material
+	if kek := getArchiveMasterKey(); kek != nil {
+		wrapped, err := wrapDEK(dek, kek)
+		if err != nil {
+			return nil, nil, fmt.Errorf("wrap DEK: %w", err)
+		}
+		return ciphertext, wrapped, nil
+	}
+	return ciphertext, dek, nil
 }
 
 // decryptData decrypts AES-GCM encrypted data

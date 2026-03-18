@@ -332,6 +332,8 @@ func (r *Repository) GetLeaderboard(ctx context.Context, scoreType ReputationSco
 
 	// Apply sorting based on score type
 	switch scoreType {
+	case ReputationScoreTypeOverall:
+		query = query.Order("(builder_score + optimizer_score + mentor_score + agent_whisperer_score) DESC")
 	case ReputationScoreTypeBuilder:
 		query = query.Order("builder_score DESC")
 	case ReputationScoreTypeOptimizer:

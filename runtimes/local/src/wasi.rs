@@ -362,7 +362,7 @@ impl WasiLinker {
 
         // Add WASI p1 interfaces
         wasmtime_wasi::p1::add_to_linker_sync(&mut linker, |ctx: &mut WasiP1Ctx| ctx)
-            .context("Failed to add WASI to linker")?;
+            .map_err(|e| anyhow::anyhow!("Failed to add WASI to linker: {}", e))?;
 
         // Add FunctionFly host functions
         let host_functions_linker = HostFunctionsLinker::new(

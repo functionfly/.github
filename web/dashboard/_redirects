@@ -1,0 +1,6 @@
+# Cloudflare Pages SPA Redirects
+# https://developers.cloudflare.com/pages/platform/redirects/
+
+# SPA fallback: serve index.html for all routes that don't match a file
+# This enables client-side routing to work properly
+/* /index.html 200

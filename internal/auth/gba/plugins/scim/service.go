@@ -3,6 +3,7 @@ package scim
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -705,9 +706,11 @@ func (s *SCIMService) applyGroupFilter(query *gorm.DB, filter string) *gorm.DB {
 func GenerateSecureToken(length int) (string, error) {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
 	for i := range b {
-		// Use a simple random for now - in production use crypto/rand
-		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
+		b[i] = charset[b[i]%byte(len(charset))]
 	}
 	return string(b), nil
 }

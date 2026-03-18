@@ -1,0 +1,28 @@
+{
+  "name": "functionfly-types",
+  "version": "1.0.0",
+  "description": "TypeScript type definitions for FunctionFly functions",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [
+    "functionfly",
+    "functions",
+    "serverless",
+    "typescript"
+  ],
+  "author": "FunctionFly",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

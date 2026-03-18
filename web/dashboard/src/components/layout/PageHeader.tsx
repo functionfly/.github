@@ -1,11 +1,10 @@
-import { ReactNode } from "react";
-import { motion } from "framer-motion";
-import { ChevronRight, Home } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { ROUTES } from "@/lib/constants";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ROUTES } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { ChevronRight, Home } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 
 interface BreadcrumbItem {
   label: string;
@@ -16,8 +15,8 @@ interface BreadcrumbItem {
 interface ActionButton {
   label: string;
   onClick: () => void;
-  variant?: "default" | "outline" | "ghost" | "secondary";
-  size?: "sm" | "md" | "lg";
+  variant?: 'default' | 'outline' | 'ghost' | 'secondary';
+  size?: 'sm' | 'md' | 'lg';
   icon?: React.ComponentType<{ className?: string }>;
   disabled?: boolean;
 }
@@ -29,7 +28,7 @@ interface PageHeaderProps {
   actions?: ActionButton[];
   badges?: Array<{
     label: string;
-    variant?: "default" | "secondary" | "destructive" | "outline";
+    variant?: 'default' | 'secondary' | 'destructive' | 'outline';
   }>;
   className?: string;
   animate?: boolean;
@@ -50,18 +49,17 @@ export function PageHeader({
   const defaultBreadcrumbs = generateDefaultBreadcrumbs(location.pathname);
   const displayBreadcrumbs = breadcrumbs || defaultBreadcrumbs;
 
-  const Header = animate ? motion.div : "div";
-  const headerProps = animate ? {
-    initial: { opacity: 0, y: -10 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.3, ease: "easeOut" },
-  } : {};
+  const Header = animate ? motion.div : 'div';
+  const headerProps = animate
+    ? {
+        initial: { opacity: 0, y: -10 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.3, ease: 'easeOut' as const },
+      }
+    : {};
 
   return (
-    <Header
-      {...headerProps}
-      className={cn("space-y-4", className)}
-    >
+    <Header {...headerProps} className={cn('space-y-4', className)}>
       {/* Breadcrumbs */}
       {displayBreadcrumbs && displayBreadcrumbs.length > 1 && (
         <nav className="flex items-center gap-2 text-sm text-text-muted">
@@ -71,9 +69,7 @@ export function PageHeader({
 
             return (
               <div key={index} className="flex items-center gap-2">
-                {index > 0 && (
-                  <ChevronRight className="w-4 h-4" />
-                )}
+                {index > 0 && <ChevronRight className="w-4 h-4" />}
                 {crumb.path && !isLast ? (
                   <Link
                     to={crumb.path}
@@ -83,10 +79,12 @@ export function PageHeader({
                     <span>{crumb.label}</span>
                   </Link>
                 ) : (
-                  <span className={cn(
-                    "flex items-center gap-2",
-                    isLast ? "text-text-primary font-medium" : "text-text-secondary"
-                  )}>
+                  <span
+                    className={cn(
+                      'flex items-center gap-2',
+                      isLast ? 'text-text-primary font-medium' : 'text-text-secondary'
+                    )}
+                  >
                     {Icon && <Icon className="w-4 h-4" />}
                     <span>{crumb.label}</span>
                   </span>
@@ -112,9 +110,7 @@ export function PageHeader({
               </div>
             )}
           </div>
-          {subtitle && (
-            <p className="text-text-secondary">{subtitle}</p>
-          )}
+          {subtitle && <p className="text-text-secondary">{subtitle}</p>}
         </div>
 
         {/* Actions */}
@@ -125,8 +121,8 @@ export function PageHeader({
               return (
                 <Button
                   key={index}
-                  variant={action.variant || "default"}
-                  size={action.size || "sm"}
+                  variant={action.variant || 'default'}
+                  size={action.size === 'md' ? 'default' : action.size || 'sm'}
                   onClick={action.onClick}
                   disabled={action.disabled}
                 >
@@ -146,7 +142,7 @@ export function PageHeader({
 function generateDefaultBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const segments = pathname.split('/').filter(Boolean);
   const breadcrumbs: BreadcrumbItem[] = [
-    { label: "Dashboard", path: ROUTES.DASHBOARD, icon: Home }
+    { label: 'Dashboard', path: ROUTES.DASHBOARD, icon: Home },
   ];
 
   if (segments.length === 0 || segments[0] === 'dashboard') {
@@ -157,48 +153,26 @@ function generateDefaultBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const section = segments[0];
   switch (section) {
     case 'functions':
-      breadcrumbs.push({ label: "Functions", path: ROUTES.FUNCTIONS });
+      breadcrumbs.push({ label: 'Functions', path: ROUTES.FUNCTIONS });
       break;
     case 'providers':
-      breadcrumbs.push({ label: "Providers", path: ROUTES.PROVIDERS });
+      breadcrumbs.push({ label: 'Providers', path: ROUTES.PROVIDERS });
       break;
     case 'analytics':
-      breadcrumbs.push({ label: "Analytics", path: ROUTES.ANALYTICS });
+      breadcrumbs.push({ label: 'Analytics', path: ROUTES.ANALYTICS });
       break;
     case 'settings':
-      breadcrumbs.push({ label: "Settings", path: ROUTES.SETTINGS });
-      break;
-    case 'admin':
-      breadcrumbs.push({ label: "Admin" });
+      breadcrumbs.push({ label: 'Settings', path: ROUTES.SETTINGS });
       break;
   }
 
   // Add subsection breadcrumb if applicable
-  if (segments.length > 1 && section !== 'admin') {
+  if (segments.length > 1) {
     const subsection = segments[1];
     if (subsection && subsection !== 'new') {
       breadcrumbs.push({ label: subsection.charAt(0).toUpperCase() + subsection.slice(1) });
     } else if (subsection === 'new') {
-      breadcrumbs.push({ label: "New" });
-    }
-  } else if (segments.length > 1 && section === 'admin') {
-    const adminSection = segments[1];
-    switch (adminSection) {
-      case 'tenants':
-        breadcrumbs.push({ label: "Tenants", path: ROUTES.ADMIN_TENANTS });
-        break;
-      case 'users':
-        breadcrumbs.push({ label: "Users", path: ROUTES.ADMIN_USERS });
-        break;
-      case 'billing':
-        breadcrumbs.push({ label: "Billing", path: ROUTES.ADMIN_BILLING });
-        break;
-      case 'audit':
-        breadcrumbs.push({ label: "Audit Log", path: ROUTES.ADMIN_AUDIT });
-        break;
-      case 'system':
-        breadcrumbs.push({ label: "System", path: ROUTES.ADMIN_SYSTEM });
-        break;
+      breadcrumbs.push({ label: 'New' });
     }
   }
 

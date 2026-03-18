@@ -1,12 +1,16 @@
 'use client';
 
-import React from 'react';
-import { AlertTriangle, RefreshCcw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AlertTriangle, Home, RefreshCcw } from 'lucide-react';
+import React from 'react';
+
+export type ErrorReportFn = (error: Error, errorInfo: React.ErrorInfo) => void;
 
 interface Props {
   children: React.ReactNode;
   fallback?: React.ReactNode;
+  /** Called in production when an error is caught; use to send to Sentry, LogRocket, etc. */
+  onError?: ErrorReportFn;
 }
 
 interface State {
@@ -35,10 +39,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
       errorInfo,
     });
 
-    // In production, you might want to send this to a logging service
-    // Example: Sentry, LogRocket, etc.
-    if (import.meta.env.PROD) {
-      // sendToErrorReporting(error, errorInfo);
+    if (import.meta.env.PROD && this.props.onError) {
+      this.props.onError(error, errorInfo);
     }
   }
 
@@ -63,9 +65,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
             {/* Error Message */}
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold text-text-primary">
-                Something went wrong
-              </h1>
+              <h1 className="text-2xl font-bold text-text-primary">Something went wrong</h1>
               <p className="text-text-secondary">
                 We apologize for the inconvenience. An unexpected error has occurred.
               </p>
@@ -74,9 +74,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             {/* Error Details (only in development) */}
             {import.meta.env.DEV && this.state.error && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-left">
-                <p className="text-red-400 font-mono text-sm mb-2">
-                  {this.state.error.message}
-                </p>
+                <p className="text-red-400 font-mono text-sm mb-2">{this.state.error.message}</p>
                 {this.state.errorInfo && (
                   <pre className="text-red-400/70 font-mono text-xs overflow-auto max-h-32 whitespace-pre-wrap">
                     {this.state.errorInfo.componentStack}

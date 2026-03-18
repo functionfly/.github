@@ -1,16 +1,16 @@
-import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { User, Calendar, Package, ExternalLink } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Navbar } from "@/components/common/Navbar";
-import { UserNotFoundView } from "@/components/ui/UserNotFoundView";
-import { usersApi } from "@/api/users";
-import { FollowUserButton, FollowStats } from "@/components/follow";
-import { useUserFollowStatus } from "@/hooks/useFollow";
-import { useAuth } from "@/hooks/useAuth";
-import type { PublicUserProfile } from "@/types";
+import { usersApi } from '@/api/users';
+import { Navbar } from '@/components/common/Navbar';
+import { FollowStats, FollowUserButton } from '@/components/follow';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { UserNotFoundView } from '@/components/ui/UserNotFoundView';
+import { useUserFollowStatus } from '@/hooks/useFollow';
+import { useAuthStore } from '@/stores/authStore';
+import type { PublicUserProfile } from '@/types';
+import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
+import { Calendar, ExternalLink, Package, User } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
 
 function ProfileSkeleton() {
   return (
@@ -32,7 +32,7 @@ function ProfileSkeleton() {
   );
 }
 
-function FunctionCard({ fn }: { fn: PublicUserProfile["publishedFunctions"][0] }) {
+function FunctionCard({ fn }: { fn: PublicUserProfile['publishedFunctions'][0] }) {
   return (
     <Card className="bg-bg-secondary border-border-subtle hover:border-brand-500/50 transition-colors">
       <CardHeader className="pb-2">
@@ -79,7 +79,7 @@ function FunctionCard({ fn }: { fn: PublicUserProfile["publishedFunctions"][0] }
 
 export function UserProfilePage() {
   const { username } = useParams<{ username: string }>();
-  const { user: currentUser } = useAuth();
+  const currentUser = useAuthStore((state) => state.user);
 
   const {
     data: profile,
@@ -87,7 +87,7 @@ export function UserProfilePage() {
     isError,
     error,
   } = useQuery<PublicUserProfile>({
-    queryKey: ["user-profile", username],
+    queryKey: ['user-profile', username],
     queryFn: () => usersApi.getPublicProfile(username!),
     enabled: !!username,
     staleTime: 5 * 60 * 1000,
@@ -95,12 +95,12 @@ export function UserProfilePage() {
   });
 
   // Get follow status
-  const { data: followStatus } = useUserFollowStatus(username ?? "");
+  const { data: followStatus } = useUserFollowStatus(username ?? '');
 
   const joinedDate = profile?.createdAt
-    ? new Date(profile.createdAt).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
+    ? new Date(profile.createdAt).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
       })
     : null;
 
@@ -118,7 +118,7 @@ export function UserProfilePage() {
           <div className="flex flex-col items-center justify-center py-24 px-4">
             <UserNotFoundView
               username={username}
-              is404={(error as Error)?.message?.includes("404")}
+              is404={(error as Error)?.message?.includes('404')}
               compact={false}
             />
           </div>
@@ -156,13 +156,9 @@ export function UserProfilePage() {
                     <p className="text-brand-400 font-medium">@{profile.username}</p>
                   </div>
                   {/* Follow Button - only show if not viewing own profile */}
-                  {!isOwnProfile && currentUser && (
-                    <FollowUserButton username={profile.username} />
-                  )}
+                  {!isOwnProfile && currentUser && <FollowUserButton username={profile.username} />}
                 </div>
-                {profile.bio && (
-                  <p className="text-text-secondary mt-2 text-sm">{profile.bio}</p>
-                )}
+                {profile.bio && <p className="text-text-secondary mt-2 text-sm">{profile.bio}</p>}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-text-muted">
                   {joinedDate && (
                     <span className="flex items-center gap-1">
@@ -173,7 +169,7 @@ export function UserProfilePage() {
                   <span className="flex items-center gap-1">
                     <Package className="w-3.5 h-3.5" />
                     {profile.publishedFunctions.length} function
-                    {profile.publishedFunctions.length !== 1 ? "s" : ""}
+                    {profile.publishedFunctions.length !== 1 ? 's' : ''}
                   </span>
                   {/* Follow Stats */}
                   <FollowStats

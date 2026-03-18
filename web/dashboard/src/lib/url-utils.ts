@@ -63,7 +63,8 @@ export function createSlug(
   const slug = slugify(text, {
     lower,
     strict: true,
-    separator,
+    // slugify's option is `replacement`, not `separator`
+    replacement: separator,
     trim: true,
   });
 

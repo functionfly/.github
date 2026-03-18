@@ -5,13 +5,35 @@
 
 use anyhow::Context;
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::RwLock;
 
 use crate::cache::ResultCache;
+use crate::host_functions::fetch;
+
+/// Max size for a single package download (100 MiB)
+const MAX_PACKAGE_DOWNLOAD_BYTES: usize = 100 * 1024 * 1024;
+/// Timeout for package HTTP download
+const PACKAGE_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Parse the package name from a requirement string (e.g. "requests>=2.28" -> "requests").
+/// Strips version specifiers (==, !=, >=, <=, ~=, <, >).
+fn parse_requirement_name(requirement: &str) -> &str {
+    let s = requirement.trim();
+    let specifiers = ["~=", "==", "!=", ">=", "<=", "<", ">"];
+    let mut min_idx = s.len();
+    for spec in &specifiers {
+        if let Some(idx) = s.find(spec) {
+            min_idx = min_idx.min(idx);
+        }
+    }
+    s[..min_idx].trim()
+}
 
 /// Enterprise package manager with caching
 pub struct PackageManager {
@@ -23,21 +45,44 @@ pub struct PackageManager {
     max_cache_size: usize,
     /// Current cache size
     current_cache_size: Arc<RwLock<usize>>,
+    /// Allowed hosts for package downloads (network whitelist)
+    network_whitelist: HashSet<String>,
+    /// If true, only whitelist hosts are allowed; if false, any public host is allowed
+    strict_network_whitelist: bool,
+    /// Number of package/dependency cache hits
+    cache_hits: AtomicU64,
+    /// Number of package/dependency cache misses
+    cache_misses: AtomicU64,
 }
 
 impl PackageManager {
-    /// Create a new package manager
-    pub fn new(cache: Arc<RwLock<ResultCache>>, cache_dir: PathBuf, max_cache_size_mb: usize) -> anyhow::Result<Self> {
+    /// Create a new package manager.
+    ///
+    /// `network_whitelist`: allowed hosts for downloads (e.g. `files.pythonhosted.org`, `*.pypi.org`).
+    /// `strict_network_whitelist`: if true, only whitelist hosts are allowed; if false, any public host is allowed.
+    pub fn new(
+        cache: Arc<RwLock<ResultCache>>,
+        cache_dir: PathBuf,
+        max_cache_size_mb: usize,
+        network_whitelist: Vec<String>,
+        strict_network_whitelist: bool,
+    ) -> anyhow::Result<Self> {
         let max_cache_size = max_cache_size_mb * 1024 * 1024;
 
         // Ensure cache directory exists
         fs::create_dir_all(&cache_dir)?;
+
+        let network_whitelist: HashSet<String> = network_whitelist.into_iter().collect();
 
         let manager = Self {
             cache,
             cache_dir,
             max_cache_size,
             current_cache_size: Arc::new(RwLock::new(0)),
+            network_whitelist,
+            strict_network_whitelist,
+            cache_hits: AtomicU64::new(0),
+            cache_misses: AtomicU64::new(0),
         };
 
         // Initialize cache size
@@ -51,10 +96,12 @@ impl PackageManager {
         // Check cache first
         let mut cache = self.cache.write().await;
         if let Some(cached_data) = cache.get_package(package_name, version) {
+            self.cache_hits.fetch_add(1, Ordering::Relaxed);
             tracing::debug!("Package cache hit for {}@{}", package_name, version);
             return Ok(cached_data);
         }
         drop(cache);
+        self.cache_misses.fetch_add(1, Ordering::Relaxed);
 
         // Download package
         tracing::info!("Downloading package {}@{} from {}", package_name, version, download_url);
@@ -80,11 +127,13 @@ impl PackageManager {
         let mut cache = self.cache.write().await;
         if let Some(cached_resolution) = cache.get_dependency_resolution(&requirements_hash) {
             if let Ok(resolution) = serde_json::from_str(&cached_resolution) {
+                self.cache_hits.fetch_add(1, Ordering::Relaxed);
                 tracing::debug!("Dependency resolution cache hit");
                 return Ok(resolution);
             }
         }
         drop(cache);
+        self.cache_misses.fetch_add(1, Ordering::Relaxed);
 
         // Perform dependency resolution
         let resolution = self.perform_dependency_resolution(requirements).await?;
@@ -125,18 +174,86 @@ impl PackageManager {
         Ok(())
     }
 
-    /// Download package from URL (placeholder implementation)
-    async fn download_from_url(&self, _url: &str) -> anyhow::Result<Vec<u8>> {
-        // TODO: Implement actual HTTP download with network whitelist checking
-        // For now, return an error indicating this needs implementation
-        Err(anyhow::anyhow!("Package download not yet implemented - requires network whitelist integration"))
+    /// Download package from URL with network whitelist enforcement.
+    async fn download_from_url(&self, url: &str) -> anyhow::Result<Vec<u8>> {
+        if !fetch::is_network_request_allowed(
+            url,
+            &self.network_whitelist,
+            self.strict_network_whitelist,
+        ) {
+            anyhow::bail!(
+                "Package download denied: URL not allowed by network whitelist (host not in whitelist or private/loopback)"
+            );
+        }
+
+        let client = reqwest::Client::builder()
+            .timeout(PACKAGE_DOWNLOAD_TIMEOUT)
+            .build()
+            .context("build HTTP client for package download")?;
+
+        let resp = client
+            .get(url)
+            .send()
+            .await
+            .context("package download request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            anyhow::bail!("Package download failed: HTTP {}", status);
+        }
+
+        let content_len = resp.content_length().unwrap_or(0) as usize;
+        if content_len > MAX_PACKAGE_DOWNLOAD_BYTES {
+            anyhow::bail!(
+                "Package too large ({} bytes, max {} bytes)",
+                content_len,
+                MAX_PACKAGE_DOWNLOAD_BYTES
+            );
+        }
+
+        let bytes = resp.bytes().await.context("read package response body")?;
+        if bytes.len() > MAX_PACKAGE_DOWNLOAD_BYTES {
+            anyhow::bail!(
+                "Package too large ({} bytes, max {} bytes)",
+                bytes.len(),
+                MAX_PACKAGE_DOWNLOAD_BYTES
+            );
+        }
+
+        Ok(bytes.to_vec())
     }
 
-    /// Perform dependency resolution (placeholder implementation)
-    async fn perform_dependency_resolution(&self, _requirements: &[String]) -> anyhow::Result<HashMap<String, String>> {
-        // TODO: Implement actual dependency resolution
-        // This would integrate with pip/PyPI or similar
-        Err(anyhow::anyhow!("Dependency resolution not yet implemented"))
+    /// Perform dependency resolution via PyPI JSON API.
+    /// Each requirement is parsed to a package name (version specifiers stripped); then the latest
+    /// version is fetched from https://pypi.org/pypi/<name>/json. Respects network whitelist.
+    async fn perform_dependency_resolution(&self, requirements: &[String]) -> anyhow::Result<HashMap<String, String>> {
+        let mut resolution = HashMap::new();
+        for req in requirements {
+            let name = parse_requirement_name(req);
+            if name.is_empty() {
+                continue;
+            }
+            let name_lower = name.to_lowercase();
+            if resolution.contains_key(&name_lower) {
+                continue;
+            }
+            let version = self.fetch_pypi_latest_version(&name).await?;
+            resolution.insert(name_lower, version);
+        }
+        Ok(resolution)
+    }
+
+    /// Fetch latest version for a package from PyPI JSON API.
+    async fn fetch_pypi_latest_version(&self, package_name: &str) -> anyhow::Result<String> {
+        let url = format!("https://pypi.org/pypi/{}/json", package_name);
+        let body = self.download_from_url(&url).await?;
+        let json: serde_json::Value = serde_json::from_slice(&body).context("parse PyPI JSON")?;
+        let version = json
+            .get("info")
+            .and_then(|info| info.get("version"))
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow::anyhow!("PyPI response missing info.version for {}", package_name))?;
+        Ok(version.to_string())
     }
 
     /// Store large package in filesystem cache
@@ -213,12 +330,20 @@ impl PackageManager {
         let cache = self.cache.read().await;
         let result_stats = cache.stats();
         let current_size = *self.current_cache_size.read().await;
+        let hits = self.cache_hits.load(Ordering::Relaxed);
+        let misses = self.cache_misses.load(Ordering::Relaxed);
+        let total = hits + misses;
+        let cache_hit_ratio = if total > 0 {
+            hits as f64 / total as f64
+        } else {
+            0.0
+        };
 
         PackageCacheStats {
             result_cache_entries: result_stats.entries,
             filesystem_cache_size_mb: current_size / (1024 * 1024),
             max_cache_size_mb: self.max_cache_size / (1024 * 1024),
-            cache_hit_ratio: 0.0, // TODO: Track hit ratio
+            cache_hit_ratio,
         }
     }
 }
@@ -242,7 +367,14 @@ mod tests {
     async fn test_package_manager_creation() {
         let cache = Arc::new(RwLock::new(ResultCache::new(3600)));
         let temp_dir = tempfile::tempdir().unwrap();
-        let manager = PackageManager::new(cache, temp_dir.path().to_path_buf(), 100).unwrap();
+        let manager = PackageManager::new(
+            cache,
+            temp_dir.path().to_path_buf(),
+            100,
+            vec![],
+            false,
+        )
+        .unwrap();
         assert!(manager.cache_dir.exists());
     }
 
@@ -250,7 +382,14 @@ mod tests {
     async fn test_cache_stats() {
         let cache = Arc::new(RwLock::new(ResultCache::new(3600)));
         let temp_dir = tempfile::tempdir().unwrap();
-        let manager = PackageManager::new(cache, temp_dir.path().to_path_buf(), 100).unwrap();
+        let manager = PackageManager::new(
+            cache,
+            temp_dir.path().to_path_buf(),
+            100,
+            vec![],
+            false,
+        )
+        .unwrap();
 
         let stats = manager.get_cache_stats().await;
         assert_eq!(stats.max_cache_size_mb, 100);

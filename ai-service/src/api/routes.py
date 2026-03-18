@@ -4,6 +4,7 @@ This module defines all the API endpoints for Phase 1 (Foundation)
 and Phase 2 (Intelligence Layer).
 """
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import AsyncGenerator, Optional
@@ -95,15 +96,23 @@ async def health_check():
     except Exception as e:
         logger.warning(f"Redis health check failed: {e}")
 
-    # Check database (basic connection test)
+    # Check database (connect and run SELECT 1)
     database_connected = False
-    try:
-        # For now, we just check if the DATABASE_URL is valid
-        # In production, you'd do a more thorough check
-        if settings.database_url:
-            database_connected = True
-    except Exception as e:
-        logger.warning(f"Database health check failed: {e}")
+    if settings.database_url:
+        try:
+            import asyncpg
+
+            conn = await asyncio.wait_for(
+                asyncpg.connect(settings.database_url),
+                timeout=2.0,
+            )
+            try:
+                await conn.fetchval("SELECT 1")
+                database_connected = True
+            finally:
+                await conn.close()
+        except Exception as e:
+            logger.warning(f"Database health check failed: {e}")
 
     # Get provider status
     provider_manager = get_provider_manager()

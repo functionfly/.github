@@ -31,6 +31,12 @@ export interface APIKeyEnvironment {
   created_at: string;
 }
 
+/** Platform environment that can be linked to an API key (from GET /api-keys/environments/available) */
+export interface AvailableEnvironment {
+  id: string;
+  name: string;
+}
+
 export interface APIKeyRotation {
   id: string;
   api_key_id: string;
@@ -117,6 +123,7 @@ export interface AddPermissionRequest {
 
 export interface AddEnvironmentRequest {
   environment_id: string;
+  environment_name?: string;
 }
 
 // Filter types

@@ -14,7 +14,10 @@ See `README.md` for project overview and `CONTRIBUTING.md` for Git workflow. Thi
 | **Auth** | `internal/auth/`, `internal/api/middleware/auth.go` | Sessions, GBA plugins (MFA, SAML, WebAuthn) |
 | **Dashboard (React)** | `web/dashboard/src/` | Vite SPA; `pages/`, `components/`, `hooks/`, `lib/` |
 | **Deploy / edge** | `deploy/`, `deploy/edge/` | Caddy, DNS, VPS/edge scripts |
+| **Cloudflare** | `docs/CLOUDFLARE.md`, `deploy/cloudflare/`, `deploy/dns/` | DNS, CDN, R2, Workers, Tunnel, Pages |
 | **Docs** | `docs/` | Design and operational docs |
+| **Neon Postgres** | `docs/NEON.md` | Optional: use Neon for Postgres; set `DATABASE_URL` or `DB_*` |
+| **Local PG 17 + pgvector** | `docs/LOCAL_POSTGRES_17.md` | Migrate local Debian DB to PostgreSQL 17 with pgvector and extensions |
 
 When adding API surface: add handler in `internal/api/handlers/`, register in `internal/api/routes.go`, and use existing storage/auth patterns.
 
@@ -26,7 +29,7 @@ When adding API surface: add handler in `internal/api/handlers/`, register in `i
 |---------|-----------|------|
 | **Orchestrator API** (Go) | `./bin/orchestrator-api --skip-migrations` or `make dev` | 8080 |
 | **Dashboard** (Vite/React) | `cd web/dashboard && npx vite --host 0.0.0.0` | 3000 |
-| **PostgreSQL** | `sudo pg_ctlcluster 16 main start` | 5432 |
+| **PostgreSQL** | `sudo pg_ctlcluster 17 main start` (see `docs/LOCAL_POSTGRES_17.md` to replace PG 16 with 17) | 5432 |
 | **Redis** | `redis-server --daemonize yes` | 6379 |
 
 ---
@@ -34,18 +37,22 @@ When adding API surface: add handler in `internal/api/handlers/`, register in `i
 ## Starting the backend
 
 1. **Start dependencies** (required first):
+
    ```bash
-   sudo pg_ctlcluster 16 main start
+   sudo pg_ctlcluster 17 main start
    redis-server --daemonize yes
    ```
 
 2. **Environment:** Ensure `.env` exists (copy from `.env.example` if present). Then:
+
    ```bash
    source .env
    export DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres DB_NAME=functionfly DB_SSLMODE=disable
    export REDIS_ADDR=localhost:6379 DEVELOPMENT=true SKIP_MIGRATION_VALIDATION=true VERIFICATION_ENABLED=false
    ./bin/orchestrator-api --skip-migrations
    ```
+
+   If you still have PostgreSQL 16 and want a single cluster, see `docs/LOCAL_POSTGRES_17.md` to replace it with PG 17 on port 5432.
 
 The `--skip-migrations` flag is required because the `migrations/` directory has duplicate sequence numbers that break golang-migrate. Schema is applied via direct SQL during initial setup.
 

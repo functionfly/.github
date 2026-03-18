@@ -1,6 +1,7 @@
 package bundler
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -297,19 +298,201 @@ func getRuntimeFilePath() string {
 	return ""
 }
 
-// ValidateModuleWithRuntime checks if a WASM module is compatible with micropython runtime
+// ValidateModuleWithRuntime checks if a WASM module is compatible with micropython runtime:
+// magic bytes, version, and presence of required imports/exports.
 func ValidateModuleWithRuntime(wasmBytes []byte) error {
-	// Basic validation - check magic bytes
 	if len(wasmBytes) < 8 {
 		return fmt.Errorf("invalid WASM module: too short")
 	}
-
 	if wasmBytes[0] != 0x00 || wasmBytes[1] != 0x61 || wasmBytes[2] != 0x73 || wasmBytes[3] != 0x6D {
 		return fmt.Errorf("invalid WASM magic bytes")
 	}
+	// Version: 1 (0x01 0x00 0x00 0x00) or 2
+	if wasmBytes[4] != 1 || wasmBytes[5] != 0 || wasmBytes[6] != 0 || wasmBytes[7] != 0 {
+		return fmt.Errorf("unsupported WASM version")
+	}
 
-	// TODO: Add more validation - check for required imports/exports
+	imports, exports, err := parseWasmImportsExports(wasmBytes[8:])
+	if err != nil {
+		return fmt.Errorf("WASM imports/exports: %w", err)
+	}
 
+	requiredImports := []string{"env.memory", "env.mp_js_init", "env.mp_js_do_exec", "env.malloc", "env.free"}
+	for _, key := range requiredImports {
+		if !imports[key] {
+			return fmt.Errorf("missing required import %q", key)
+		}
+	}
+
+	// Runtime must export linear memory for the host.
+	if !exports["memory"] {
+		return fmt.Errorf("missing required export %q", "memory")
+	}
+
+	return nil
+}
+
+// parseWasmImportsExports parses WASM section payloads to collect import "module.name" and export "name" sets.
+func parseWasmImportsExports(payload []byte) (imports map[string]bool, exports map[string]bool, err error) {
+	imports = make(map[string]bool)
+	exports = make(map[string]bool)
+	r := bytes.NewReader(payload)
+	for r.Len() > 0 {
+		id, err := wasmParseByte(r)
+		if err != nil {
+			return nil, nil, err
+		}
+		secLen, err := wasmParseU32LEB128(r)
+		if err != nil {
+			return nil, nil, err
+		}
+		if secLen > uint32(r.Len()) {
+			return nil, nil, fmt.Errorf("section length exceeds buffer")
+		}
+		sec := make([]byte, secLen)
+		if _, err := r.Read(sec); err != nil {
+			return nil, nil, err
+		}
+		switch id {
+		case 2: // Import
+			if err := parseWasmImportSection(sec, imports); err != nil {
+				return nil, nil, err
+			}
+		case 7: // Export
+			if err := parseWasmExportSection(sec, exports); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+	return imports, exports, nil
+}
+
+func wasmParseByte(r *bytes.Reader) (byte, error) {
+	b := make([]byte, 1)
+	if _, err := r.Read(b); err != nil {
+		return 0, err
+	}
+	return b[0], nil
+}
+
+func wasmParseU32LEB128(r *bytes.Reader) (uint32, error) {
+	var v uint32
+	var shift uint
+	for {
+		b := make([]byte, 1)
+		if _, err := r.Read(b); err != nil {
+			return 0, err
+		}
+		v |= uint32(b[0]&0x7f) << shift
+		if b[0]&0x80 == 0 {
+			return v, nil
+		}
+		shift += 7
+		if shift > 35 {
+			return 0, fmt.Errorf("LEB128 overflow")
+		}
+	}
+}
+
+func wasmParseVecBytes(r *bytes.Reader) ([]byte, error) {
+	n, err := wasmParseU32LEB128(r)
+	if err != nil {
+		return nil, err
+	}
+	if n > 1<<20 {
+		return nil, fmt.Errorf("vector length too large")
+	}
+	b := make([]byte, n)
+	if _, err := r.Read(b); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func parseWasmImportSection(sec []byte, out map[string]bool) error {
+	r := bytes.NewReader(sec)
+	count, err := wasmParseU32LEB128(r)
+	if err != nil {
+		return err
+	}
+	for i := uint32(0); i < count; i++ {
+		mod, err := wasmParseVecBytes(r)
+		if err != nil {
+			return err
+		}
+		name, err := wasmParseVecBytes(r)
+		if err != nil {
+			return err
+		}
+		kind, err := wasmParseByte(r)
+		if err != nil {
+			return err
+		}
+		key := string(mod) + "." + string(name)
+		out[key] = true
+		// Skip type index for func (0), table type for table (1), memory type for mem (2), global type for global (3)
+		switch kind {
+		case 0: // func: type index u32
+			if _, err := wasmParseU32LEB128(r); err != nil {
+				return err
+			}
+		case 1: // table: elem_type byte + limits (min [max])
+			if _, err := wasmParseByte(r); err != nil {
+				return err
+			}
+			if err := wasmSkipLimits(r); err != nil {
+				return err
+			}
+		case 2: // memory: limits
+			if err := wasmSkipLimits(r); err != nil {
+				return err
+			}
+		case 3: // global: valtype byte + mut byte
+			if _, err := r.Read(make([]byte, 2)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func wasmSkipLimits(r *bytes.Reader) error {
+	flag, err := wasmParseByte(r)
+	if err != nil {
+		return err
+	}
+	if _, err := wasmParseU32LEB128(r); err != nil {
+		return err
+	}
+	if flag == 1 {
+		if _, err := wasmParseU32LEB128(r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func parseWasmExportSection(sec []byte, out map[string]bool) error {
+	r := bytes.NewReader(sec)
+	count, err := wasmParseU32LEB128(r)
+	if err != nil {
+		return err
+	}
+	for i := uint32(0); i < count; i++ {
+		name, err := wasmParseVecBytes(r)
+		if err != nil {
+			return err
+		}
+		_, err = wasmParseByte(r)
+		if err != nil {
+			return err
+		}
+		out[string(name)] = true
+		// index (u32)
+		if _, err := wasmParseU32LEB128(r); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

@@ -251,7 +251,7 @@ func (s *ExperimentService) GetVariantMetrics(ctx context.Context, variantID uui
 
 	// Calculate aggregates
 	var totalSuccess, totalTestsPassed int
-	var totalQuality, totalLatency float64
+	var totalQuality, totalLatency, sumSqQuality float64
 	var totalPromptTokens, totalCompletionTokens, totalTokens int
 
 	for _, m := range rawMetrics {
@@ -263,6 +263,7 @@ func (s *ExperimentService) GetVariantMetrics(ctx context.Context, variantID uui
 			totalTestsPassed++
 		}
 		totalQuality += m.QualityScore
+		sumSqQuality += m.QualityScore * m.QualityScore
 		totalLatency += m.LatencyMs
 
 		if m.PromptTokens != nil {
@@ -276,11 +277,20 @@ func (s *ExperimentService) GetVariantMetrics(ctx context.Context, variantID uui
 		}
 	}
 
-	metrics.TotalSamples = len(rawMetrics)
-	metrics.SuccessRate = float64(totalSuccess) / float64(metrics.TotalSamples) * 100
-	metrics.TestPassRate = float64(totalTestsPassed) / float64(metrics.TotalSamples) * 100
-	metrics.AverageQualityScore = totalQuality / float64(metrics.TotalSamples)
-	metrics.AverageLatencyMs = totalLatency / float64(metrics.TotalSamples)
+	n := len(rawMetrics)
+	metrics.TotalSamples = n
+	metrics.SuccessRate = float64(totalSuccess) / float64(n) * 100
+	metrics.TestPassRate = float64(totalTestsPassed) / float64(n) * 100
+	meanQuality := totalQuality / float64(n)
+	metrics.AverageQualityScore = meanQuality
+	metrics.AverageLatencyMs = totalLatency / float64(n)
+	// Sample variance for quality score (for two-sample t-test)
+	if n > 1 {
+		metrics.VarianceQualityScore = (sumSqQuality - float64(n)*meanQuality*meanQuality) / float64(n-1)
+		if metrics.VarianceQualityScore < 0 {
+			metrics.VarianceQualityScore = 0
+		}
+	}
 	metrics.TotalPromptTokens = totalPromptTokens
 	metrics.TotalCompletionTokens = totalCompletionTokens
 	metrics.TotalTokens = totalTokens
@@ -294,6 +304,7 @@ type VariantMetrics struct {
 	SuccessRate           float64
 	TestPassRate          float64
 	AverageQualityScore   float64
+	VarianceQualityScore  float64 // sample variance for quality score (for t-test)
 	AverageLatencyMs      float64
 	TotalPromptTokens     int
 	TotalCompletionTokens int
@@ -331,6 +342,7 @@ func (s *ExperimentService) GetExperimentStats(ctx context.Context, experimentID
 			SuccessRate:         metrics.SuccessRate,
 			TestPassRate:        metrics.TestPassRate,
 			AverageQualityScore: metrics.AverageQualityScore,
+			VarianceQualityScore: metrics.VarianceQualityScore,
 			AverageLatencyMs:    metrics.AverageLatencyMs,
 		}
 		stats.Variants = append(stats.Variants, variantStat)
@@ -355,14 +367,15 @@ type ExperimentStats struct {
 
 // VariantStat holds statistics for a single variant
 type VariantStat struct {
-	VariantID           uuid.UUID `json:"variant_id"`
-	VariantName         string    `json:"variant_name"`
-	IsControl           bool      `json:"is_control"`
-	TotalSamples        int       `json:"total_samples"`
-	SuccessRate         float64   `json:"success_rate"`
-	TestPassRate        float64   `json:"test_pass_rate"`
-	AverageQualityScore float64   `json:"average_quality_score"`
-	AverageLatencyMs    float64   `json:"average_latency_ms"`
+	VariantID            uuid.UUID `json:"variant_id"`
+	VariantName          string    `json:"variant_name"`
+	IsControl            bool      `json:"is_control"`
+	TotalSamples         int       `json:"total_samples"`
+	SuccessRate          float64   `json:"success_rate"`
+	TestPassRate         float64   `json:"test_pass_rate"`
+	AverageQualityScore  float64   `json:"average_quality_score"`
+	VarianceQualityScore float64   `json:"variance_quality_score"` // sample variance for t-test
+	AverageLatencyMs     float64   `json:"average_latency_ms"`
 }
 
 // StatisticalAnalysis holds the results of statistical tests
@@ -448,8 +461,12 @@ func (s *ExperimentService) analyzeExperiment(ctx context.Context, variants []Va
 			if control.AverageQualityScore > 0 {
 				comparison.RelativeGain = (comparison.Difference / control.AverageQualityScore) * 100
 			}
-			// Simplified p-value calculation (in production, use proper statistical test)
-			comparison.PValue = s.calculatePValue(control.TotalSamples, v.TotalSamples, control.AverageQualityScore, v.AverageQualityScore)
+			// Two-sample pooled-variance t-test for difference of means
+			comparison.PValue = s.calculatePValue(
+				control.TotalSamples, v.TotalSamples,
+				control.AverageQualityScore, v.AverageQualityScore,
+				control.VarianceQualityScore, v.VarianceQualityScore,
+			)
 			comparison.IsSignificant = comparison.PValue < (1 - confidenceLevel)
 		}
 
@@ -490,26 +507,45 @@ func (s *ExperimentService) analyzeExperiment(ctx context.Context, variants []Va
 	return analysis
 }
 
-// standardNormal is the standard normal distribution (μ=0, σ=1) from gonum
-// for accurate two-tailed p-values in z-tests.
-var standardNormal = distuv.Normal{Mu: 0, Sigma: 1}
-
 // calculatePValue computes a two-tailed p-value for the difference of means
-// using a z-test approximation and gonum's distuv for numerically stable CDF.
-func (s *ExperimentService) calculatePValue(n1, n2 int, mean1, mean2 float64) float64 {
-	if n1 == 0 || n2 == 0 || mean1 == mean2 {
+// using a pooled-variance two-sample t-test (Welch-Satterthwaite not required when
+// using pooled variance). Uses gonum's distuv.StudentsT for the t distribution.
+func (s *ExperimentService) calculatePValue(n1, n2 int, mean1, mean2, var1, var2 float64) float64 {
+	if n1 == 0 || n2 == 0 {
+		return 1.0
+	}
+	if mean1 == mean2 && var1 == 0 && var2 == 0 {
 		return 1.0
 	}
 
-	// Standard error of the difference (assuming common variance approximation)
-	pooledSE := math.Sqrt((1.0/float64(n1) + 1.0/float64(n2)) * ((mean1*mean1 + mean2*mean2) / 2))
-	if pooledSE == 0 {
+	df := float64(n1 + n2 - 2)
+	if df < 1 {
 		return 1.0
 	}
-
-	z := (mean2 - mean1) / pooledSE
-	// Two-tailed p-value: P(|Z| >= |z|)
-	pValue := 2 * (1 - standardNormal.CDF(math.Abs(z)))
+	// Pooled variance: s_p² = ((n1-1)*s1² + (n2-1)*s2²) / (n1+n2-2)
+	pooledVar := (float64(n1-1)*var1 + float64(n2-1)*var2) / df
+	if pooledVar <= 0 {
+		// Fallback when both variances are 0 (constant scores)
+		if mean1 == mean2 {
+			return 1.0
+		}
+		pooledVar = 1e-10
+	}
+	// Standard error of the difference of means
+	se := math.Sqrt(pooledVar * (1.0/float64(n1) + 1.0/float64(n2)))
+	if se == 0 {
+		return 1.0
+	}
+	t := (mean2 - mean1) / se
+	tDist := distuv.StudentsT{Mu: 0, Sigma: 1, Nu: df}
+	// Two-tailed p-value: P(|T| >= |t|)
+	pValue := 2 * (1 - tDist.CDF(math.Abs(t)))
+	if pValue > 1 {
+		pValue = 1
+	}
+	if pValue < 0 {
+		pValue = 0
+	}
 	return pValue
 }
 

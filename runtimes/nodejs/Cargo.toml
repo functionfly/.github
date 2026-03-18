@@ -11,43 +11,47 @@ license = "MIT"
 tokio = { version = "1.35", features = ["full"] }
 
 # Logging
-tracing = "0.1"
+tracing = "0.1.44"
 tracing-subscriber = { version = "0.3", features = ["json"] }
 log = "0.4"
 
 # Error handling
-thiserror = "1.0"
-anyhow = "1.0"
-async-trait = "0.1"
+thiserror = "2.0.18"
+anyhow = "1.0.102"
+async-trait = "0.1.89"
 
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
 
 # Time handling
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4.44", features = ["serde"] }
 
 # UUID for execution IDs
-uuid = { version = "1.6", features = ["v4", "serde"] }
+uuid = { version = "1.22.0", features = ["v4", "serde"] }
 
 # HTTP types
-http = "1.1"
+http = "1.4.0"
 
-# WASM support - we use quickjs-wasm-sys
-# Note: In production, you'd embed the quickjs-wasm-rs crate
+# WASM support: high-level QuickJS WASM bindings (Bytecode Alliance/javy)
+quickjs-wasm-rs = "3.1.0"
 
 # Resource limiting
-parking_lot = "0.12"
+parking_lot = "0.12.5"
 
 # Concurrency primitives
-futures = "0.3"
+futures = "0.3.32"
 
 # Metrics
-prometheus-client = "0.22"
+prometheus-client = "0.24.0"
+
+# Hashing for cache keys (content-addressable)
+sha2 = "0.10"
+hex = "0.4"
 
 [target.'cfg(not(target_env = "wasm32"))'.dependencies]
 # Non-WASM specific dependencies
-wasmtime = "17.0"
+wasmtime = "42.0.0"  # 24.0.6+ fixes panic in wasi:http/types.fields (CVE)
 
 [lib]
 name = "nodejs_runtime"

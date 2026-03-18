@@ -1,73 +1,186 @@
-# React + TypeScript + Vite
+# FunctionFly Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite dashboard for the FunctionFly serverless platform.
 
-Currently, two official plugins are available:
+## Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The FunctionFly Dashboard is a single-page application (SPA) built with React, TypeScript, and Vite. It provides a web interface for managing functions, viewing analytics, and configuring platform settings.
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Framework**: React 18+ with TypeScript
+- **Build Tool**: Vite
+- **Routing**: React Router v6
+- **State Management**: React Context + hooks
+- **Styling**: CSS Modules / CSS Variables
+- **HTTP Client**: Fetch API
+- **Package Manager**: bun
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js 18+
+- bun package manager
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Install dependencies
+bun install
+
+# Or from workspace root
+cd ../..
+bun install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+# Start development server
+bun run dev
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Or with custom API URL
+VITE_API_URL=http://localhost:8080 bun run dev
 ```
+
+The dashboard will be available at `http://localhost:3000`. The dev server proxies API requests to `http://localhost:8080`.
+
+### Production Build
+
+```bash
+# Build for production
+bun run build
+
+# Preview production build
+bun run preview
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VITE_API_URL` | API base URL | `http://localhost:8080` |
+| `VITE_WS_URL` | WebSocket URL | `ws://localhost:8080` |
+
+## Project Structure
+
+```
+src/
+├── pages/           # Page components
+│   ├── Dashboard.tsx
+│   ├── Functions.tsx
+│   ├── FunctionDetail.tsx
+│   ├── Deployments.tsx
+│   ├── Analytics.tsx
+│   ├── Settings.tsx
+│   └── Login.tsx
+├── components/      # Reusable components
+│   ├── Header.tsx
+│   ├── Sidebar.tsx
+│   ├── FunctionCard.tsx
+│   ├── LogViewer.tsx
+│   └── ...
+├── hooks/           # Custom React hooks
+│   ├── useAuth.ts
+│   ├── useFunctions.ts
+│   └── useApi.ts
+├── lib/             # Utilities and helpers
+│   ├── api.ts
+│   ├── auth.ts
+│   └── utils.ts
+├── contexts/        # React contexts
+│   ├── AuthContext.tsx
+│   └── ThemeContext.tsx
+├── types/           # TypeScript type definitions
+└── App.tsx          # Main application component
+```
+
+## Features
+
+### Function Management
+- Create, edit, and delete functions
+- Deploy functions to the registry
+- View function versions and history
+- Monitor function performance
+
+### Analytics
+- Usage statistics and metrics
+- Execution history and logs
+- Performance graphs
+
+### User Settings
+- Profile management
+- API key management
+- Notification preferences
+
+### Authentication
+- OAuth (GitHub, Google)
+- Email/password login
+- Session management
+
+## API Integration
+
+The dashboard communicates with the FunctionFly API at `VITE_API_URL`. All API endpoints are documented in [`docs/API.md`](../../docs/API.md).
+
+### Authentication Flow
+
+1. User logs in via OAuth or email/password
+2. API returns JWT access token and refresh token
+3. Tokens are stored in localStorage
+4. Tokens are included in Authorization header for API requests
+
+## Testing
+
+```bash
+# Run unit tests
+bun run test
+
+# Run tests with coverage
+bun run test:coverage
+
+# Run tests in watch mode
+bun run test:watch
+```
+
+## Linting and Formatting
+
+```bash
+# Run ESLint
+bun run lint
+
+# Format code with Prettier
+bun run format
+```
+
+## Troubleshooting
+
+### Dashboard can't connect to API
+
+1. Check `VITE_API_URL` environment variable
+2. Verify the API server is running on port 8080
+3. Check browser console for CORS errors
+
+### Login issues
+
+1. Clear localStorage and sessionStorage
+2. Check browser console for authentication errors
+3. Verify OAuth credentials are configured
+
+### Build failures
+
+1. Clear node_modules and reinstall
+2. Check for TypeScript errors: `bun run typecheck`
+
+## Contributing
+
+See [`CONTRIBUTING.md`](../../CONTRIBUTING.md) for contribution guidelines.
+
+## License
+
+MIT License - see [`LICENSE`](../../LICENSE) for details.
+
+## Support
+
+- GitHub Issues: https://github.com/functionfly/functionfly/issues
+- Discord: https://discord.gg/functionfly

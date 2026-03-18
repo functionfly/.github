@@ -1,7 +1,7 @@
-import { Link2 } from "lucide-react";
-import { HashBlock } from "../primitives/HashBlock";
-import { VerificationBadge } from "../primitives/VerificationBadge";
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
+import { Link2 } from 'lucide-react';
+import { HashBlock } from '../primitives/HashBlock';
+import { VerificationBadge } from '../primitives/VerificationBadge';
 
 export interface ExecutionRootBadgeProps {
   /** Execution root hash */
@@ -33,30 +33,21 @@ export function ExecutionRootBadge({
   className,
 }: ExecutionRootBadgeProps) {
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn('space-y-2', className)}>
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Execution Root Hash
         </span>
-        <VerificationBadge
-          status={verified ? "verified" : "pending"}
-          size="sm"
-          showIcon={false}
-        />
+        <VerificationBadge status={verified ? 'verified' : 'pending'} size="sm" showIcon={false} />
         {anchored && (
-          <span className="inline-flex items-center gap-1 text-xs text-blue-500">
+          <span className="inline-flex items-center gap-1 text-xs text-brand-500 dre-link-accent">
             <Link2 className="h-3 w-3" />
             Anchored
           </span>
         )}
       </div>
 
-      <HashBlock
-        hash={hash}
-        truncate={truncate}
-        truncateChars={16}
-        verified={verified}
-      />
+      <HashBlock hash={hash} truncate={truncate} truncateChars={16} verified={verified} />
 
       {/* Anchor Info */}
       {anchored && chain && (
@@ -68,7 +59,7 @@ export function ExecutionRootBadge({
               href={`https://${chain.toLowerCase()}.com/tx/${txHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-500 hover:underline"
+              className="dre-link-accent text-brand-500 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-500/30 rounded"
             >
               View Transaction →
             </a>

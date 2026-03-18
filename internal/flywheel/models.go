@@ -40,9 +40,10 @@ const (
 type ReputationScoreType string
 
 const (
-	ReputationScoreTypeBuilder        ReputationScoreType = "builder"
-	ReputationScoreTypeOptimizer      ReputationScoreType = "optimizer"
-	ReputationScoreTypeMentor         ReputationScoreType = "mentor"
+	ReputationScoreTypeOverall        ReputationScoreType = "overall"
+	ReputationScoreTypeBuilder       ReputationScoreType = "builder"
+	ReputationScoreTypeOptimizer     ReputationScoreType = "optimizer"
+	ReputationScoreTypeMentor        ReputationScoreType = "mentor"
 	ReputationScoreTypeAgentWhisperer ReputationScoreType = "agent_whisperer"
 	ReputationScoreTypeReliability    ReputationScoreType = "reliability"
 )

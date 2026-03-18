@@ -124,6 +124,15 @@ func (h *Handler) ListRuntimes(w http.ResponseWriter, r *http.Request) {
 			Timeout:     300000,
 		},
 		{
+			ID:          "bun",
+			Name:        "Bun",
+			Version:     "latest",
+			Status:      "beta",
+			Features:    []string{"TypeScript", "Built-in bundler", "Fast startup", "Web APIs"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		{
 			ID:          "python3.12",
 			Name:        "Python",
 			Version:     "3.12",

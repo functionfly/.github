@@ -1,9 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, Check, CheckCheck, X, AlertCircle, Info, AlertTriangle, CheckCircle } from 'lucide-react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  Bell,
+  Check,
+  CheckCheck,
+  CheckCircle,
+  Info,
+  X,
+} from 'lucide-react';
+import { useState } from 'react';
 import { useUserNotifications } from '../../hooks/useRealtime';
+import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
 import { Card } from '../common/Card';
-import { Badge } from '../common/Badge';
 
 interface NotificationItemProps {
   notification: {
@@ -63,22 +72,26 @@ function NotificationItem({ notification, onMarkAsRead, onDismiss }: Notificatio
   };
 
   return (
-    <div className={`p-4 border-l-4 ${getBorderColor()} bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow`}>
+    <div
+      className={`p-4 border-l-4 ${getBorderColor()} bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow`}
+    >
       <div className="flex items-start justify-between">
         <div className="flex items-start space-x-3">
           {getIcon()}
           <div className="flex-1 min-w-0">
-            <h4 className={`text-sm font-medium ${notification.read_at ? 'text-gray-600' : 'text-gray-900'}`}>
+            <h4
+              className={`text-sm font-medium ${notification.read_at ? 'text-gray-600' : 'text-gray-900'}`}
+            >
               {notification.title}
             </h4>
             {notification.message && (
-              <p className={`text-sm mt-1 ${notification.read_at ? 'text-gray-500' : 'text-gray-700'}`}>
+              <p
+                className={`text-sm mt-1 ${notification.read_at ? 'text-gray-500' : 'text-gray-700'}`}
+              >
                 {notification.message}
               </p>
             )}
-            <p className="text-xs text-gray-400 mt-2">
-              {formatTimestamp(notification.created_at)}
-            </p>
+            <p className="text-xs text-gray-400 mt-2">{formatTimestamp(notification.created_at)}</p>
           </div>
         </div>
         <div className="flex items-center space-x-1 ml-4">
@@ -111,19 +124,14 @@ interface RealtimeNotificationCenterProps {
 }
 
 export function RealtimeNotificationCenter({ className = '' }: RealtimeNotificationCenterProps) {
-  const {
-    notifications,
-    unreadCount,
-    isConnected,
-    markAsRead,
-    markAllAsRead,
-  } = useUserNotifications();
+  const { notifications, unreadCount, isConnected, markAsRead, markAllAsRead } =
+    useUserNotifications();
 
   const [isOpen, setIsOpen] = useState(false);
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 
   const displayedNotifications = showUnreadOnly
-    ? notifications.filter(n => !n.read_at)
+    ? notifications.filter((n) => !n.read_at)
     : notifications;
 
   const handleMarkAsRead = async (id: string) => {
@@ -142,12 +150,7 @@ export function RealtimeNotificationCenter({ className = '' }: RealtimeNotificat
   return (
     <div className={`relative ${className}`}>
       {/* Notification Bell Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2"
-      >
+      <Button variant="ghost" size="sm" onClick={() => setIsOpen(!isOpen)} className="relative p-2">
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
           <Badge
@@ -186,7 +189,8 @@ export function RealtimeNotificationCenter({ className = '' }: RealtimeNotificat
                   Unread only
                 </Button>
                 <span className="text-sm text-gray-500">
-                  {displayedNotifications.length} notification{displayedNotifications.length !== 1 ? 's' : ''}
+                  {displayedNotifications.length} notification
+                  {displayedNotifications.length !== 1 ? 's' : ''}
                 </span>
               </div>
 
@@ -217,7 +221,14 @@ export function RealtimeNotificationCenter({ className = '' }: RealtimeNotificat
                 {displayedNotifications.map((notification) => (
                   <div key={notification.notification_id} className="p-2">
                     <NotificationItem
-                      notification={notification}
+                      notification={{
+                        notification_id: notification.notification_id,
+                        type: notification.notification_type,
+                        title: notification.title,
+                        message: notification.message,
+                        created_at: notification.timestamp,
+                        read_at: notification.read_at,
+                      }}
                       onMarkAsRead={handleMarkAsRead}
                       onDismiss={handleDismiss}
                     />
@@ -238,12 +249,7 @@ export function RealtimeNotificationCenter({ className = '' }: RealtimeNotificat
       )}
 
       {/* Click outside to close */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      {isOpen && <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />}
     </div>
   );
 }

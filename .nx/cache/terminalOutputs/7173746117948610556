@@ -1,0 +1,54 @@
+> nest start --watch
+
+[2J[3J[H[[90m5:50:48 PM[0m] Starting compilation in watch mode...
+
+[[90m5:50:59 PM[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +11ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +2ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDatabaseModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mThrottlerModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBlogModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mBlogController {/api/v1/blog}:[39m[38;5;3m +62ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/posts, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/posts/:slug, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/posts, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/posts/:id, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/posts/:id, DELETE} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/categories, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/categories, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/categories/:id, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/categories/:id, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/authors, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/authors, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/authors/:id, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/blog/authors/:id, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +2ms[39m
+[31m[Nest] 289157  - [39m03/15/2026, 5:51:08 PM [31m  ERROR[39m [38;5;3m[NestApplication] [39m[31mError: listen EADDRINUSE: address already in use :::8080[39m[38;5;3m +4ms[39m
+node:net:2016
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::8080
+[90m    at Server.setupListenHandle [as _listen2] (node:net:2016:16)[39m
+[90m    at listenInCluster (node:net:2073:12)[39m
+[90m    at Server.listen (node:net:2178:7)[39m
+    at ExpressAdapter.listen (/home/micro/projects/functionfly/node_modules/[4m.bun[24m/@nestjs+platform-express@11.1.16+de1b2146a6a37485/node_modules/[4m@nestjs/platform-express[24m/adapters/express-adapter.js:127:32)
+    at /home/micro/projects/functionfly/node_modules/[4m.bun[24m/@nestjs+core@11.1.16+2d8ca32d34fc4009/node_modules/[4m@nestjs/core[24m/nest-application.js:188:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (/home/micro/projects/functionfly/node_modules/[4m.bun[24m/@nestjs+core@11.1.16+2d8ca32d34fc4009/node_modules/[4m@nestjs/core[24m/nest-application.js:178:16)
+    at async bootstrap [90m(/home/micro/projects/functionfly/cmd/blog-api/[39msrc/main.ts:41:3[90m)[39m {
+  code: [32m'EADDRINUSE'[39m,
+  errno: [33m-98[39m,
+  syscall: [32m'listen'[39m,
+  address: [32m'::'[39m,
+  port: [33m8080[39m
+}
+
+Node.js v25.6.1

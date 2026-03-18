@@ -18,12 +18,13 @@ func NewPublishCmd() *cobra.Command {
 	var build bool
 	var dryRun bool
 	var asJSON bool
+	var skipTypeCheck bool
 	cmd := &cobra.Command{
 		Use:     "publish",
 		Short:   "Publish your function to the FunctionFly registry",
 		Example: "  fly publish\n  fly publish --access private\n  fly publish --build\n  fly publish --dry-run\n  fly publish --json",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPublish(access, force, build, dryRun, asJSON)
+			return runPublish(access, force, build, dryRun, asJSON, skipTypeCheck)
 		},
 	}
 	cmd.Flags().StringVar(&access, "access", "", "Access level: public or private")
@@ -31,6 +32,7 @@ func NewPublishCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&build, "build", false, "Build before publishing (runs flypy build if needed)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate and bundle without publishing")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "Output results as JSON")
+	cmd.Flags().BoolVar(&skipTypeCheck, "skip-type-check", false, "Skip TypeScript type checking during publish")
 	return cmd
 }
 
@@ -43,7 +45,7 @@ type PublishResult struct {
 	DeployedAt      time.Time `json:"deployed_at"`
 }
 
-func runPublish(access string, force, build, dryRun, asJSON bool) error {
+func runPublish(access string, force, build, dryRun, asJSON, skipTypeCheck bool) error {
 	var bundle []byte
 	manifest, err := LoadManifest("")
 	if err != nil {
@@ -64,10 +66,6 @@ func runPublish(access string, force, build, dryRun, asJSON bool) error {
 			return fmt.Errorf("build failed: %w", err)
 		}
 	}
-	funcFile, err := findFunctionFile(manifest)
-	if err != nil {
-		return err
-	}
 
 	// Validate manifest with spinner
 	err = WithSpinner("Validating manifest", func() error {
@@ -77,8 +75,8 @@ func runPublish(access string, force, build, dryRun, asJSON bool) error {
 		return fmt.Errorf("manifest validation failed: %w", err)
 	}
 
-	// Bundle code
-	bundle, err = bundleFunction(funcFile, manifest)
+	// Bundle code - using simple bundling (for full bundling, use deploy command)
+	bundle, err = bundleFunction("", manifest)
 	if err != nil {
 		return fmt.Errorf("bundling failed: %w", err)
 	}

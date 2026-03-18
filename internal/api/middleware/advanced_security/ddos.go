@@ -2,6 +2,7 @@ package advanced_security
 
 import (
 	"math"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -10,24 +11,24 @@ import (
 
 // RequestFingerprinting analyzes request patterns for DDoS detection
 type RequestFingerprinting struct {
-	mu         sync.RWMutex
+	mu           sync.RWMutex
 	fingerprints map[string]*RequestPattern
-	window     time.Duration
+	window       time.Duration
 }
 
 // BotDetection identifies bot traffic
 type BotDetection struct {
-	mu              sync.RWMutex
-	botSignatures   map[string]bool
-	suspiciousIPs   map[string]*BotActivity
-	detectionRules  []BotDetectionRule
+	mu             sync.RWMutex
+	botSignatures  map[string]bool
+	suspiciousIPs  map[string]*BotActivity
+	detectionRules []BotDetectionRule
 }
 
 // TrafficAnalyzer monitors traffic patterns
 type TrafficAnalyzer struct {
-	mu              sync.RWMutex
-	trafficStats    map[string]*TrafficStats
-	window          time.Duration
+	mu               sync.RWMutex
+	trafficStats     map[string]*TrafficStats
+	window           time.Duration
 	anomalyThreshold float64
 }
 
@@ -312,7 +313,7 @@ func (ta *TrafficAnalyzer) updateHistoricalData(stats *TrafficStats, now time.Ti
 
 	// Add new data point or update current window
 	if len(stats.historicalTimestamps) == 0 ||
-	   now.Sub(stats.historicalTimestamps[len(stats.historicalTimestamps)-1]) >= windowSize {
+		now.Sub(stats.historicalTimestamps[len(stats.historicalTimestamps)-1]) >= windowSize {
 
 		// Start new time window
 		stats.historicalRequests = append(stats.historicalRequests, 1)
@@ -397,4 +398,15 @@ func getClientIP(r *http.Request) string {
 
 	// Fall back to RemoteAddr
 	return r.RemoteAddr
+}
+
+// isLoopbackIP returns true if the given address is a loopback address (e.g. 127.0.0.1, ::1).
+// The ip string may be "host" or "host:port" (e.g. "[::1]:46098" or "127.0.0.1:12345").
+func isLoopbackIP(ip string) bool {
+	host := ip
+	if hostStr, _, err := net.SplitHostPort(ip); err == nil {
+		host = hostStr
+	}
+	parsed := net.ParseIP(host)
+	return parsed != nil && parsed.IsLoopback()
 }

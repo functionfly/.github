@@ -77,19 +77,7 @@ func TestHandleUpdateConfigAppliesSelectableFields(t *testing.T) {
 	config := &factorysvc.Config{AgentID: "factory-agent", DiscoveryBatchSize: 10, MinimumQualityScore: 70, MinimumTestScore: 80, AutoPublish: true, MaxOpportunitiesPerRun: 3, RetryAttempts: 1, RetryBackoff: time.Second, ScheduleEnabled: false, ScheduleCron: "0 0 * * *", ScheduleTimezone: "UTC"}
 	h := &Handler{config: config}
 	body := bytes.NewBufferString(`{"discovery_batch_size":25,"minimum_quality_score":85,"minimum_test_score":90,"require_all_tests_pass":false,"auto_publish":false,"max_opportunities_per_run":5,"retry_attempts":4,"retry_backoff_ms":250,"schedule_enabled":true,"schedule_cron":"0 12 * * *","schedule_timezone":"America/New_York"}`)
-	h.applyConfigUpdate(struct {
-		DiscoveryBatchSize     *int     `json:"discovery_batch_size"`
-		MinimumQualityScore    *float64 `json:"minimum_quality_score"`
-		MinimumTestScore       *float64 `json:"minimum_test_score"`
-		RequireAllTestsPass    *bool    `json:"require_all_tests_pass"`
-		AutoPublish            *bool    `json:"auto_publish"`
-		MaxOpportunitiesPerRun *int     `json:"max_opportunities_per_run"`
-		RetryAttempts          *int     `json:"retry_attempts"`
-		RetryBackoffMs         *int     `json:"retry_backoff_ms"`
-		ScheduleEnabled        *bool    `json:"schedule_enabled"`
-		ScheduleCron           *string  `json:"schedule_cron"`
-		ScheduleTimezone       *string  `json:"schedule_timezone"`
-	}{
+	h.applyConfigUpdate(configUpdateRequest{
 		DiscoveryBatchSize:     intPtr(25),
 		MinimumQualityScore:    floatPtr(85),
 		MinimumTestScore:       floatPtr(90),

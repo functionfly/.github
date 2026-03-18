@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -486,25 +487,13 @@ func (e *TriggerEngine) matchesKeyPattern(pattern, key string) bool {
 	return matchRegex(regexPattern, key)
 }
 
-// matchRegex is a simple regex matcher
+// matchRegex matches text against a regex pattern (e.g. from matchesKeyPattern). Returns false if the pattern is invalid.
 func matchRegex(pattern, text string) bool {
-	// Simple implementation - in production use regexp
-	pattern = strings.TrimPrefix(pattern, "^")
-	pattern = strings.TrimSuffix(pattern, "$")
-
-	// Handle * wildcard
-	if pattern == "*" {
-		return true
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return false
 	}
-
-	if strings.Contains(pattern, ".*") {
-		parts := strings.Split(pattern, ".*")
-		if len(parts) == 2 {
-			return strings.HasPrefix(text, parts[0]) && strings.HasSuffix(text, parts[1])
-		}
-	}
-
-	return pattern == text
+	return re.MatchString(text)
 }
 
 // evaluateCondition evaluates a trigger condition

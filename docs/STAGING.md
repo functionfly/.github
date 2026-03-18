@@ -30,14 +30,14 @@ The staging environment is a complete, isolated replica of the production system
 
 ### Branch Configuration
 - **Branch Name**: `staging`
-- **Branch ID**: `br-icy-hall-ai6e37zm`
+- **Branch ID**: `br-xxxx` (see Neon Console for your branch ID)
 - **Parent Branch**: `production`
 - **Region**: AWS US East 1 (N. Virginia)
 - **Compute**: 0.25 CU (shared with production limits)
 
 ### Connection Details
 ```bash
-Host: ep-lucky-bird-aie8580h.c-4.us-east-1.aws.neon.tech
+Host: ep-staging-xxxxx.us-east-1.aws.neon.tech  # From Neon Console → Connection details
 Port: 5432
 Database: functionfly
 User: functionfly_owner
@@ -58,11 +58,11 @@ SSL Mode: require
 NODE_ENV=staging
 ENVIRONMENT=staging
 
-# Database (Neon staging branch)
-DB_HOST=ep-lucky-bird-aie8580h.c-4.us-east-1.aws.neon.tech
+# Database (Neon staging branch - get host/password from Neon Console)
+DB_HOST=ep-staging-xxxxx.us-east-1.aws.neon.tech
 DB_PORT=5432
 DB_USER=functionfly_owner
-DB_PASSWORD=npg_YzCkZWNy97Dv
+DB_PASSWORD=<from Neon Console or secrets manager>
 DB_NAME=functionfly
 DB_SSLMODE=require
 
@@ -154,8 +154,8 @@ make staging-migrate
 # Direct psql connection
 make staging-psql
 
-# Or manually:
-psql "postgresql://functionfly_owner:npg_YzCkZWNy97Dv@ep-lucky-bird-aie8580h.c-4.us-east-1.aws.neon.tech/functionfly?sslmode=require"
+# Or manually (replace host and password from Neon Console):
+psql "postgresql://functionfly_owner:<password>@ep-staging-xxxxx.us-east-1.aws.neon.tech/functionfly?sslmode=require"
 ```
 
 ### Testing Endpoints
@@ -250,7 +250,7 @@ neon branches delete feature-x
 #### Database Connection Failed
 ```bash
 # Check Neon branch status
-neon branches list --project-id billowing-rice-16808528
+neon branches list --project-id <your-neon-project-id>
 
 # Test connection manually
 make staging-psql
@@ -336,7 +336,7 @@ make staging-logs
 make staging-down
 ```
 
-**Staging Database**: `postgresql://functionfly_owner:npg_YzCkZWNy97Dv@ep-lucky-bird-aie8580h.c-4.us-east-1.aws.neon.tech/functionfly?sslmode=require`
+**Staging Database**: Get connection string from Neon Console (Staging branch). Example format: `postgresql://functionfly_owner:<password>@ep-staging-xxxxx.us-east-1.aws.neon.tech/functionfly?sslmode=require`
 
 **API Endpoint**: `http://localhost:8082`
 

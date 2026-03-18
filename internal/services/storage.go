@@ -115,10 +115,17 @@ func (s *StorageService) initS3Client() {
 		return
 	}
 
-	// Get credentials
+	// Get credentials: for R2 prefer R2_* vars so Cloudflare-only deploys don't need AWS_*
 	awsAccessKey := os.Getenv("AWS_ACCESS_KEY_ID")
 	awsSecretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-
+	if s.backend == StorageBackendR2 {
+		if r2Key := os.Getenv("R2_ACCESS_KEY_ID"); r2Key != "" {
+			awsAccessKey = r2Key
+		}
+		if r2Secret := os.Getenv("R2_SECRET_ACCESS_KEY"); r2Secret != "" {
+			awsSecretKey = r2Secret
+		}
+	}
 	if awsAccessKey != "" && awsSecretKey != "" {
 		cfg.Credentials = credentials.NewStaticCredentialsProvider(awsAccessKey, awsSecretKey, "")
 	}

@@ -1,80 +1,72 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Globe,
-  Plus,
-  Trash2,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  APIKeyEnvironment,
-} from "@/types/api-key";
-import { apiKeysService } from "@/services/api-keys";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { apiKeysService } from '@/services/api-keys';
+import { APIKeyEnvironment, AvailableEnvironment } from '@/types/api-key';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, Globe, Loader2, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface APIKeyEnvironmentsProps {
   keyId: string;
 }
 
-// Mock environments - in production, this would come from an API
-const MOCK_ENVIRONMENTS = [
-  { id: "env-1", name: "Development" },
-  { id: "env-2", name: "Staging" },
-  { id: "env-3", name: "Production" },
-];
-
 export function APIKeyEnvironments({ keyId }: APIKeyEnvironmentsProps) {
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
-  const [selectedEnvId, setSelectedEnvId] = useState("");
+  const [selectedEnvId, setSelectedEnvId] = useState('');
 
-  const { data: environments, isLoading, error } = useQuery({
-    queryKey: ["api-key-environments", keyId],
+  const {
+    data: environments,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['api-key-environments', keyId],
     queryFn: () => apiKeysService.getEnvironments(keyId),
   });
 
+  const { data: availableEnvironmentsList = [] } = useQuery({
+    queryKey: ['api-keys-available-environments'],
+    queryFn: () => apiKeysService.getAvailableEnvironments(),
+  });
+
   const linkEnvironmentMutation = useMutation({
-    mutationFn: (environmentId: string) =>
-      apiKeysService.linkEnvironment(keyId, { environment_id: environmentId }),
+    mutationFn: (env: { id: string; name: string }) =>
+      apiKeysService.linkEnvironment(keyId, { environment_id: env.id, environment_name: env.name }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["api-key-environments", keyId] });
+      queryClient.invalidateQueries({ queryKey: ['api-key-environments', keyId] });
       setShowAddForm(false);
-      setSelectedEnvId("");
+      setSelectedEnvId('');
     },
   });
 
   const unlinkEnvironmentMutation = useMutation({
-    mutationFn: (environmentId: string) =>
-      apiKeysService.unlinkEnvironment(keyId, environmentId),
+    mutationFn: (environmentId: string) => apiKeysService.unlinkEnvironment(keyId, environmentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["api-key-environments", keyId] });
+      queryClient.invalidateQueries({ queryKey: ['api-key-environments', keyId] });
     },
   });
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
     });
   };
 
   const handleLinkEnvironment = () => {
     if (!selectedEnvId) return;
-    linkEnvironmentMutation.mutate(selectedEnvId);
+    const env = availableEnvironments.find((e) => e.id === selectedEnvId);
+    if (env) linkEnvironmentMutation.mutate({ id: env.id, name: env.name });
   };
 
   // Get already linked environment IDs
-  const linkedEnvIds = (environments as APIKeyEnvironment[] | undefined)?.map(
-    (e) => e.environment_id
-  ) || [];
+  const linkedEnvIds =
+    (environments as APIKeyEnvironment[] | undefined)?.map((e) => e.environment_id) || [];
 
-  // Filter out already linked environments
-  const availableEnvironments = MOCK_ENVIRONMENTS.filter(
+  // Environments that can still be linked (from API, excluding already linked)
+  const availableEnvironments = (availableEnvironmentsList as AvailableEnvironment[]).filter(
     (env) => !linkedEnvIds.includes(env.id)
   );
 
@@ -90,9 +82,7 @@ export function APIKeyEnvironments({ keyId }: APIKeyEnvironmentsProps) {
     return (
       <div className="text-center py-8">
         <AlertCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
-        <p className="text-sm text-muted-foreground">
-          Failed to load environments
-        </p>
+        <p className="text-sm text-muted-foreground">Failed to load environments</p>
       </div>
     );
   }
@@ -135,11 +125,7 @@ export function APIKeyEnvironments({ keyId }: APIKeyEnvironmentsProps) {
               </select>
             </div>
             <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAddForm(false)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setShowAddForm(false)}>
                 Cancel
               </Button>
               <Button
@@ -147,7 +133,7 @@ export function APIKeyEnvironments({ keyId }: APIKeyEnvironmentsProps) {
                 onClick={handleLinkEnvironment}
                 disabled={!selectedEnvId || linkEnvironmentMutation.isPending}
               >
-                {linkEnvironmentMutation.isPending ? "Linking..." : "Link"}
+                {linkEnvironmentMutation.isPending ? 'Linking...' : 'Link'}
               </Button>
             </div>
           </div>
@@ -156,10 +142,7 @@ export function APIKeyEnvironments({ keyId }: APIKeyEnvironmentsProps) {
         {envs && envs.length > 0 ? (
           <div className="space-y-2">
             {envs.map((env) => (
-              <div
-                key={env.id}
-                className="flex items-center justify-between p-3 border rounded-lg"
-              >
+              <div key={env.id} className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex items-center gap-3">
                   <Globe className="w-4 h-4 text-muted-foreground" />
                   <span className="font-medium">{env.environment_name}</span>
@@ -182,9 +165,7 @@ export function APIKeyEnvironments({ keyId }: APIKeyEnvironmentsProps) {
             ))}
           </div>
         ) : (
-          <p className="text-center py-8 text-muted-foreground">
-            No environments linked
-          </p        >
+          <p className="text-center py-8 text-muted-foreground">No environments linked</p>
         )}
       </CardContent>
     </Card>

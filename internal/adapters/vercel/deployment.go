@@ -8,16 +8,34 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"os"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/adapters/common"
 )
+
+const defaultVercelAPIBase = "https://api.vercel.com"
+
+// Vercel API rate limit: avoid bursts (e.g. 100/min); throttle between calls
+const rateLimitMinInterval = 200 * time.Millisecond
+
+func getVercelAPIBase() string {
+	if v := os.Getenv("VERCEL_API_BASE"); v != "" {
+		return strings.TrimSuffix(v, "/")
+	}
+	return defaultVercelAPIBase
+}
 
 // VercelDeploymentClient handles deployment operations for Vercel
 type VercelDeploymentClient struct {
 	httpClient *http.Client
 	apiToken   string
 	teamID     string // Optional team ID for team deployments
+	baseURL    string
+	lastReq    time.Time
+	reqMu      sync.Mutex
 }
 
 // VercelProject represents a Vercel project
@@ -38,15 +56,30 @@ type ProjectLinkResult struct {
 	Environment       string
 }
 
-// NewVercelDeploymentClient creates a new Vercel deployment client
+// NewVercelDeploymentClient creates a new Vercel deployment client (uses VERCEL_API_BASE or default).
 func NewVercelDeploymentClient(apiToken, teamID string) *VercelDeploymentClient {
+	return NewVercelDeploymentClientWithBase(apiToken, teamID, getVercelAPIBase())
+}
+
+// NewVercelDeploymentClientWithBase creates a client with an explicit API base URL (for tests).
+func NewVercelDeploymentClientWithBase(apiToken, teamID, baseURL string) *VercelDeploymentClient {
 	return &VercelDeploymentClient{
-		httpClient: &http.Client{
-			Timeout: 120 * time.Second, // Vercel deployments can take time
-		},
-		apiToken: apiToken,
-		teamID:   teamID,
+		httpClient: &http.Client{Timeout: 120 * time.Second},
+		apiToken:   apiToken,
+		teamID:     teamID,
+		baseURL:    strings.TrimSuffix(baseURL, "/"),
+		lastReq:    time.Time{},
 	}
+}
+
+func (c *VercelDeploymentClient) rateLimit() {
+	c.reqMu.Lock()
+	elapsed := time.Since(c.lastReq)
+	if elapsed < rateLimitMinInterval {
+		time.Sleep(rateLimitMinInterval - elapsed)
+	}
+	c.lastReq = time.Now()
+	c.reqMu.Unlock()
 }
 
 // Deploy creates a new deployment on Vercel
@@ -86,8 +119,8 @@ func (c *VercelDeploymentClient) Deploy(ctx context.Context, functionContent []b
 
 	writer.Close()
 
-	// Create deployment request
-	deployURL := "https://api.vercel.com/v13/deployments"
+	c.rateLimit()
+	deployURL := c.baseURL + "/v13/deployments"
 	if c.teamID != "" {
 		deployURL += fmt.Sprintf("?teamId=%s", c.teamID)
 	}
@@ -133,22 +166,25 @@ func (c *VercelDeploymentClient) Deploy(ctx context.Context, functionContent []b
 		status = common.DeploymentStatusDeploying
 	}
 
-	return &common.DeploymentResult{
-		DeploymentID: deployResponse.UID,
-		Status:       status,
-		Message:      fmt.Sprintf("Deployment created: %s", deployResponse.URL),
+	result := &common.DeploymentResult{
+		DeploymentID:  deployResponse.UID,
+		Status:        status,
+		Message:       fmt.Sprintf("Deployment created: %s", deployResponse.URL),
+		DeploymentURL: deployResponse.URL,
 		Metadata: map[string]interface{}{
 			"url":       deployResponse.URL,
 			"project":   projectName,
 			"state":     deployResponse.State,
 			"createdAt": deployResponse.CreatedAt,
 		},
-	}, nil
+	}
+	return result, nil
 }
 
 // SetEnvironmentVariables updates environment variables for a Vercel project
 func (c *VercelDeploymentClient) SetEnvironmentVariables(ctx context.Context, projectID string, vars, secrets map[string]string) error {
-	envURL := fmt.Sprintf("https://api.vercel.com/v10/projects/%s/env", projectID)
+	c.rateLimit()
+	envURL := fmt.Sprintf("%s/v10/projects/%s/env", c.baseURL, projectID)
 	if c.teamID != "" {
 		envURL += fmt.Sprintf("?teamId=%s", c.teamID)
 	}
@@ -163,6 +199,7 @@ func (c *VercelDeploymentClient) SetEnvironmentVariables(ctx context.Context, pr
 	}
 
 	for key, value := range allEnv {
+		c.rateLimit()
 		envData := map[string]interface{}{
 			"key":    key,
 			"value":  value,
@@ -199,7 +236,8 @@ func (c *VercelDeploymentClient) SetEnvironmentVariables(ctx context.Context, pr
 
 // GetDeploymentStatus retrieves the status of a Vercel deployment
 func (c *VercelDeploymentClient) GetDeploymentStatus(ctx context.Context, deploymentID string) (common.DeploymentStatus, error) {
-	statusURL := fmt.Sprintf("https://api.vercel.com/v13/deployments/%s", deploymentID)
+	c.rateLimit()
+	statusURL := fmt.Sprintf("%s/v13/deployments/%s", c.baseURL, deploymentID)
 	if c.teamID != "" {
 		statusURL += fmt.Sprintf("?teamId=%s", c.teamID)
 	}
@@ -249,7 +287,8 @@ func (c *VercelDeploymentClient) Rollback(ctx context.Context, functionContent [
 
 // BindDomain adds a custom domain to a Vercel project
 func (c *VercelDeploymentClient) BindDomain(ctx context.Context, projectID, domain string) error {
-	domainURL := fmt.Sprintf("https://api.vercel.com/v10/projects/%s/domains", projectID)
+	c.rateLimit()
+	domainURL := fmt.Sprintf("%s/v10/projects/%s/domains", c.baseURL, projectID)
 	if c.teamID != "" {
 		domainURL += fmt.Sprintf("?teamId=%s", c.teamID)
 	}
@@ -287,10 +326,8 @@ func (c *VercelDeploymentClient) BindDomain(ctx context.Context, projectID, doma
 
 // UpdateRoutingConfig updates the vercel.json configuration for routing
 func (c *VercelDeploymentClient) UpdateRoutingConfig(ctx context.Context, projectID string, routes []common.RouteBinding) error {
-	// For Vercel, routing is typically handled through vercel.json
-	// We can update project configuration to include routing rules
-
-	configURL := fmt.Sprintf("https://api.vercel.com/v1/projects/%s", projectID)
+	c.rateLimit()
+	configURL := fmt.Sprintf("%s/v1/projects/%s", c.baseURL, projectID)
 	if c.teamID != "" {
 		configURL += fmt.Sprintf("?teamId=%s", c.teamID)
 	}
@@ -388,7 +425,8 @@ func (c *VercelDeploymentClient) LinkProject(ctx context.Context, projectName, f
 
 // GetProject retrieves a Vercel project by name
 func (c *VercelDeploymentClient) GetProject(ctx context.Context, projectName string) (*VercelProject, error) {
-	projectURL := fmt.Sprintf("https://api.vercel.com/v6/projects/%s", projectName)
+	c.rateLimit()
+	projectURL := fmt.Sprintf("%s/v6/projects/%s", c.baseURL, projectName)
 	if c.teamID != "" {
 		projectURL += fmt.Sprintf("?teamId=%s", c.teamID)
 	}
@@ -424,7 +462,8 @@ func (c *VercelDeploymentClient) GetProject(ctx context.Context, projectName str
 
 // CreateProject creates a new Vercel project
 func (c *VercelDeploymentClient) CreateProject(ctx context.Context, projectName string) (*VercelProject, error) {
-	createURL := "https://api.vercel.com/v6/projects"
+	c.rateLimit()
+	createURL := c.baseURL + "/v6/projects"
 	if c.teamID != "" {
 		createURL += fmt.Sprintf("?teamId=%s", c.teamID)
 	}

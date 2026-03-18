@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -305,7 +306,19 @@ func normalizePathForRateLimit(path string) string {
 // DDoSProtection applies DDoS protection mechanisms
 func (asm *AdvancedSecurityMiddleware) DDoSProtection(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Skip for health checks so Fly, K8s, and load balancers always get 200
+		if r.URL.Path == "/health" || r.URL.Path == "/healthz" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		clientIP := getClientIP(r)
+
+		// Never block or track loopback (localhost) so local dev works
+		if isLoopbackIP(clientIP) {
+			next.ServeHTTP(w, r)
+			return
+		}
 
 		// Check if IP is blocked due to suspicious activity
 		if asm.isIPBlocked(clientIP) {
@@ -384,6 +397,12 @@ func (asm *AdvancedSecurityMiddleware) TrafficManagement(next http.HandlerFunc) 
 // GeoBlocking blocks requests based on geographic location and IP reputation
 func (asm *AdvancedSecurityMiddleware) GeoBlocking(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Skip for health checks so Fly, K8s, and load balancers always get 200
+		if r.URL.Path == "/health" || r.URL.Path == "/healthz" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		clientIP := getClientIP(r)
 
 		// Check IP allowlist/blocklist
@@ -413,6 +432,12 @@ func (asm *AdvancedSecurityMiddleware) GeoBlocking(next http.HandlerFunc) http.H
 // AdvancedInputValidation applies advanced input validation and filtering
 func (asm *AdvancedSecurityMiddleware) AdvancedInputValidation(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Skip input validation for registry publish: request body is function source code,
+		// which often triggers false positives (e.g. "select", "<script>"). Match path with or without /v1 prefix.
+		if r.Method == http.MethodPost && (r.URL.Path == "/v1/registry/publish" || strings.HasSuffix(r.URL.Path, "/registry/publish")) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		// SQL injection filtering
 		if asm.config.EnableSQLInjectionFilter {
 			if asm.sqlInjectionFilter.Detect(r) {
@@ -503,6 +528,9 @@ func (asm *AdvancedSecurityMiddleware) initPathTraversalPatterns() []*regexp.Reg
 
 // Helper methods
 func (asm *AdvancedSecurityMiddleware) isIPBlocked(ip string) bool {
+	if isLoopbackIP(ip) {
+		return false
+	}
 	// Check if IP is in allowed list first
 	if asm.allowedIPs[ip] {
 		return false
@@ -520,6 +548,9 @@ func (asm *AdvancedSecurityMiddleware) isIPBlocked(ip string) bool {
 }
 
 func (asm *AdvancedSecurityMiddleware) blockIP(ip, reason string) {
+	if isLoopbackIP(ip) {
+		return
+	}
 	asm.botDetection.mu.Lock()
 	defer asm.botDetection.mu.Unlock()
 

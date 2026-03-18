@@ -3,9 +3,11 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -41,12 +43,16 @@ type DatabaseConfig struct {
 	MaxHealthFailures   int
 
 	// Connection recovery
-	RetryAttempts      int
-	RetryDelay         time.Duration
+	RetryAttempts         int
+	RetryDelay            time.Duration
 	CircuitBreakerTimeout time.Duration
+
+	// ConnectionString is set when DATABASE_URL is used (e.g. Neon); takes precedence over Host/Port/User/Password/Database/SSLMode
+	ConnectionString string
 }
 
-// loadDatabaseConfig loads database configuration from environment variables
+// loadDatabaseConfig loads database configuration from environment variables.
+// If DATABASE_URL is set (e.g. for Neon), it is used as the connection string and Host/Port/User/Database/SSLMode are parsed for logging.
 func loadDatabaseConfig() (*DatabaseConfig, error) {
 	port, err := strconv.Atoi(getEnvOrDefault("DB_PORT", "5432"))
 	if err != nil {
@@ -73,7 +79,7 @@ func loadDatabaseConfig() (*DatabaseConfig, error) {
 	retryDelay := getEnvDuration("DB_RETRY_DELAY", 1*time.Second)
 	circuitBreakerTimeout := getEnvDuration("DB_CIRCUIT_BREAKER_TIMEOUT", 60*time.Second)
 
-	return &DatabaseConfig{
+	cfg := &DatabaseConfig{
 		Host:            getEnvOrDefault("DB_HOST", "localhost"),
 		Port:            port,
 		User:            getEnvOrDefault("DB_USER", "postgres"),
@@ -92,14 +98,76 @@ func loadDatabaseConfig() (*DatabaseConfig, error) {
 		HealthCheckTimeout:  healthCheckTimeout,
 		MaxHealthFailures:   maxHealthFailures,
 
-		RetryAttempts:        retryAttempts,
-		RetryDelay:           retryDelay,
+		RetryAttempts:         retryAttempts,
+		RetryDelay:            retryDelay,
 		CircuitBreakerTimeout: circuitBreakerTimeout,
+	}
+
+	// DATABASE_URL takes precedence (e.g. Neon connection string from Console)
+	if raw := os.Getenv("DATABASE_URL"); raw != "" {
+		cfg.ConnectionString = raw
+		if u, err := parsePostgresURL(raw); err == nil {
+			cfg.Host = u.Host
+			cfg.Port = u.Port
+			cfg.User = u.User
+			cfg.Database = u.Database
+			if u.SSLMode != "" {
+				cfg.SSLMode = u.SSLMode
+			}
+		}
+	}
+
+	return cfg, nil
+}
+
+// parsedPostgresURL holds components parsed from a postgresql:// or postgres:// URL for logging
+type parsedPostgresURL struct {
+	Host     string
+	Port     int
+	User     string
+	Database string
+	SSLMode  string
+}
+
+func parsePostgresURL(s string) (*parsedPostgresURL, error) {
+	// lib/pq accepts postgres:// and postgresql://
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "postgres://") && !strings.HasPrefix(s, "postgresql://") {
+		return nil, fmt.Errorf("invalid scheme")
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		return nil, err
+	}
+	port := 5432
+	if p := u.Port(); p != "" {
+		if pi, err := strconv.Atoi(p); err == nil {
+			port = pi
+		}
+	}
+	db := strings.TrimPrefix(u.Path, "/")
+	if db == "" {
+		db = "functionfly"
+	}
+	sslmode := "require"
+	if q := u.Query().Get("sslmode"); q != "" {
+		sslmode = q
+	}
+	return &parsedPostgresURL{
+		Host:     u.Hostname(),
+		Port:     port,
+		User:     u.User.Username(),
+		Database: db,
+		SSLMode:  sslmode,
 	}, nil
 }
 
-// buildConnectionString creates a PostgreSQL connection string from config
+// buildConnectionString creates a PostgreSQL connection string from config.
+// If config.ConnectionString is set (e.g. from DATABASE_URL for Neon), it is returned as-is.
 func buildConnectionString(config *DatabaseConfig) string {
+	if config.ConnectionString != "" {
+		return config.ConnectionString
+	}
 	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		config.Host, config.Port, config.User, config.Password, config.Database, config.SSLMode)
 }

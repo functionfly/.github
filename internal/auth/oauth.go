@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -14,6 +16,16 @@ import (
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
 )
+
+// isAllowedRedirectURI restricts redirect_uri to localhost/127.0.0.1 for CLI callback security.
+func isAllowedRedirectURI(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "http" || u.Host == "" {
+		return false
+	}
+	host := strings.ToLower(u.Hostname())
+	return host == "127.0.0.1" || host == "localhost"
+}
 
 // SetBaseURL sets the base URL for OAuth redirects
 func (a *AuthService) SetBaseURL(baseURL string) {
@@ -67,11 +79,17 @@ func (a *AuthService) getEnvVar(key string) string {
 	return os.Getenv(key)
 }
 
-// GetOAuthURL generates OAuth authorization URL for a provider
-func (a *AuthService) GetOAuthURL(provider string) (string, error) {
+// GetOAuthURL generates OAuth authorization URL for a provider.
+// redirectURI is optional; when set (e.g. CLI callback URL), the callback will redirect there with the token.
+// Only http://127.0.0.1 and http://localhost (any port) are allowed for redirectURI.
+func (a *AuthService) GetOAuthURL(provider, redirectURI string) (string, error) {
 	p, exists := a.oauthProviders[provider]
 	if !exists {
 		return "", fmt.Errorf("OAuth provider '%s' not configured", provider)
+	}
+
+	if redirectURI != "" && !isAllowedRedirectURI(redirectURI) {
+		return "", fmt.Errorf("redirect_uri must be http://127.0.0.1 or http://localhost (with optional port)")
 	}
 
 	// Generate state for CSRF protection
@@ -82,14 +100,15 @@ func (a *AuthService) GetOAuthURL(provider string) (string, error) {
 
 	// Store state server-side (persisted for multi-instance) so we can validate it on callback
 	expiresAt := time.Now().Add(10 * time.Minute)
-	if err := a.repo.StoreOAuthState(context.Background(), state, expiresAt); err != nil {
+	if err := a.repo.StoreOAuthState(context.Background(), state, expiresAt, redirectURI); err != nil {
 		return "", fmt.Errorf("failed to store OAuth state: %w", err)
 	}
 
 	return p.Config.AuthCodeURL(state, oauth2.AccessTypeOffline), nil
 }
 
-// HandleOAuthCallback processes OAuth callback and returns user authentication
+// HandleOAuthCallback processes OAuth callback and returns user authentication.
+// The returned RedirectURI (if set) should be used to redirect the user with the token (e.g. CLI callback).
 func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthCallbackResponse, error) {
 	// Validate CSRF state token — must match one issued by GetOAuthURL (persisted, one-time use)
 	if state == "" {
@@ -99,7 +118,7 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 			Description: "The OAuth state parameter is invalid or has expired. Please try signing in again.",
 		}
 	}
-	valid, err := a.repo.ValidateAndConsumeOAuthState(context.Background(), state)
+	valid, redirectURI, err := a.repo.ValidateAndConsumeOAuthState(context.Background(), state)
 	if err != nil {
 		return nil, &OAuthError{
 			Type:        "invalid_state",
@@ -297,6 +316,7 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 		RefreshToken: refreshToken,
 		User:         user,
 		NewUser:      newUser,
+		RedirectURI:  redirectURI,
 	}, nil
 }
 

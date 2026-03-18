@@ -189,7 +189,7 @@ impl WasmEngine {
             .max_wasm_stack(512 * 1024); // 512KB stack
 
         let engine = Engine::new(&wasm_config)
-            .context("Failed to create Wasmtime engine")?;
+            .map_err(|e| anyhow::anyhow!("Failed to create Wasmtime engine: {}", e))?;
 
         // Start epoch ticker thread: increments the epoch counter every 1ms so
         // that epoch_deadline_trap() can enforce wall-clock timeouts.
@@ -516,11 +516,11 @@ impl WasmEngine {
     pub fn compile_and_cache(&self, wasm_bytes: &[u8], hash: &str) -> anyhow::Result<Vec<u8>> {
         // Compile the module
         let module = Module::new(&self.engine, wasm_bytes)
-            .context("AOT: failed to compile Wasm module")?;
+            .map_err(|e| anyhow::anyhow!("AOT: failed to compile Wasm module: {}", e))?;
 
         // Serialize to portable compiled bytes
         let compiled = module.serialize()
-            .context("AOT: failed to serialize compiled module")?;
+            .map_err(|e| anyhow::anyhow!("AOT: failed to serialize compiled module: {}", e))?;
 
         if self.config.aot_cache_enabled {
             let size = compiled.len();
@@ -578,7 +578,7 @@ impl WasmEngine {
             if let Ok(cache) = self.aot_cache.read() {
                 if let Some(entry) = cache.get(hash) {
                     let module = unsafe { Module::deserialize(&self.engine, &entry.compiled) }
-                        .context("AOT: failed to deserialize cached module")?;
+                        .map_err(|e| anyhow::anyhow!("AOT: failed to deserialize cached module: {}", e))?;
                     tracing::debug!("AOT cache: in-memory hit for hash {}", &hash[..8.min(hash.len())]);
                     return Ok(Some(module));
                 }
@@ -592,7 +592,7 @@ impl WasmEngine {
                     match std::fs::read(&path) {
                         Ok(bytes) => {
                             let module = unsafe { Module::deserialize(&self.engine, &bytes) }
-                                .context("AOT: failed to deserialize disk-cached module")?;
+                                .map_err(|e| anyhow::anyhow!("AOT: failed to deserialize disk-cached module: {}", e))?;
                             tracing::debug!("AOT cache: disk hit for hash {}", &hash[..8.min(hash.len())]);
                             // Warm the in-memory cache
                             let _ = self.compile_and_cache_precompiled(hash, bytes);
@@ -639,7 +639,7 @@ impl WasmEngine {
         // Compile and cache
         let compiled = self.compile_and_cache(wasm_bytes, &hash)?;
         let module = unsafe { Module::deserialize(&self.engine, &compiled) }
-            .context("AOT: failed to deserialize freshly compiled module")?;
+            .map_err(|e| anyhow::anyhow!("AOT: failed to deserialize freshly compiled module: {}", e))?;
         Ok(module)
     }
 
@@ -756,12 +756,12 @@ fn execute_wasi_sync_inner(
         m
     } else {
         Module::new(engine, wasm_bytes)
-            .context("Failed to compile Wasm module")?
+            .map_err(|e| anyhow::anyhow!("Failed to compile Wasm module: {}", e))?
     };
 
     // Instantiate module with WASI
     let instance = linker.linker().instantiate(&mut store, &module)
-        .context("Failed to instantiate Wasm module with WASI")?;
+        .map_err(|e| anyhow::anyhow!("Failed to instantiate Wasm module with WASI: {}", e))?;
 
     // Execute the function. Prefer handler when we have input so Python WASM (and other
     // handler-based modules) receive input and can return a value via memory; otherwise try _start/main.
@@ -781,10 +781,10 @@ fn execute_wasi_sync_inner(
             return Err(anyhow::anyhow!("No memory export found for handler function"));
         }
     } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut store, "_start") {
-        func.call(&mut store, ()).context("Failed to execute _start function")?;
+        func.call(&mut store, ()).map_err(|e| anyhow::anyhow!("Failed to execute _start function: {}", e))?;
         None
     } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut store, "main") {
-        func.call(&mut store, ()).context("Failed to execute main function")?;
+        func.call(&mut store, ()).map_err(|e| anyhow::anyhow!("Failed to execute main function: {}", e))?;
         None
     } else {
         return Err(anyhow::anyhow!("No _start, main, or handler function found in WASM module"));
@@ -936,11 +936,11 @@ impl WasmEngine {
 
         // Compile module
         let module = Module::new(&self.engine, wasm_bytes)
-            .context("Failed to compile Wasm module")?;
+            .map_err(|e| anyhow::anyhow!("Failed to compile Wasm module: {}", e))?;
 
         // Instantiate module with WASI
         let instance = linker.linker().instantiate(&mut store, &module)
-            .context("Failed to instantiate Wasm module with WASI")?;
+            .map_err(|e| anyhow::anyhow!("Failed to instantiate Wasm module with WASI: {}", e))?;
 
         // Track initial memory before execution
         let initial_memory_mb = self.estimate_memory_usage(&mut store, &instance);
@@ -991,10 +991,10 @@ impl WasmEngine {
         // Try to call the main function or _start
         if let Ok(func) = instance.get_typed_func::<(), ()>(&mut *store, "_start") {
             // WASI command module - call _start
-            func.call(&mut *store, ()).context("Failed to execute _start function")?;
+            func.call(&mut *store, ()).map_err(|e| anyhow::anyhow!("Failed to execute _start function: {}", e))?;
         } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut *store, "main") {
             // Simple main function
-            func.call(&mut *store, ()).context("Failed to execute main function")?;
+            func.call(&mut *store, ()).map_err(|e| anyhow::anyhow!("Failed to execute main function: {}", e))?;
         } else {
             // No entry point found, try to read from memory
             return self.read_memory_output(&mut *store, instance);
@@ -1043,24 +1043,24 @@ impl WasmEngine {
     pub fn execute_without_wasi(&self, wasm_bytes: &[u8], input: &str) -> anyhow::Result<String> {
         // Compile module
         let module = Module::new(&self.engine, wasm_bytes)
-            .context("Failed to compile Wasm module")?;
+            .map_err(|e| anyhow::anyhow!("Failed to compile Wasm module: {}", e))?;
 
         // Create store with fuel
         let mut store = Store::new(&self.engine, ());
         store.set_fuel(1_000_000)?; // 1M fuel units
 
         // Link module
-        let instance = Instance::new(&mut store, &module, &[])
-            .context("Failed to instantiate Wasm module")?;
+          let instance = Instance::new(&mut store, &module, &[])
+            .map_err(|e| anyhow::anyhow!("Failed to instantiate Wasm module: {}", e))?;
 
         // Get the _start function (or main)
         let _func = instance
             .get_typed_func::<(), ()>(&mut store, "_start")
             .or_else(|_| instance.get_typed_func::<(), ()>(&mut store, "main"))
-            .context("Failed to find function entry point")?;
+            .map_err(|e| anyhow::anyhow!("Failed to find function entry point: {}", e))?;
 
         // Call the function
-        _func.call(&mut store, ()).context("Failed to execute function")?;
+        _func.call(&mut store, ()).map_err(|e| anyhow::anyhow!("Failed to execute function: {}", e))?;
 
         // Try to read result from memory
         self.read_memory_output(&mut store, &instance)
@@ -1107,7 +1107,7 @@ impl WasmEngine {
 
         tokio::time::timeout(timeout_duration, self.execute(wasm_bytes, input, &self.config))
             .await
-            .context("Execution timeout exceeded")?
+            .map_err(|_| anyhow::anyhow!("Execution timeout exceeded"))?
     }
 }
 

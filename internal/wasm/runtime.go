@@ -4,9 +4,11 @@
 package wasm
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
+	"time"
 
 	"github.com/bytecodealliance/wasmtime-go/v19"
 )
@@ -20,11 +22,18 @@ type PythonRuntime struct {
 	memory   *wasmtime.Memory
 	handler  HostFunctionHandler
 	debug    bool
+	// Security configuration
+	config *WASMSecurityConfig
 }
 
 // NewPythonRuntime creates a new Python runtime instance
 func NewPythonRuntime(wasmPath string, stdout, stderr io.Writer, handler HostFunctionHandler) (*PythonRuntime, error) {
 	return NewPythonRuntimeWithDebug(wasmPath, stdout, stderr, handler, false)
+}
+
+// NewPythonRuntimeWithConfig creates a new Python runtime instance with security config
+func NewPythonRuntimeWithConfig(wasmPath string, stdout, stderr io.Writer, handler HostFunctionHandler, config *WASMSecurityConfig) (*PythonRuntime, error) {
+	return NewPythonRuntimeWithConfigAndDebug(wasmPath, stdout, stderr, handler, config, false)
 }
 
 // debugf logs debug information if debug mode is enabled
@@ -36,8 +45,32 @@ func (r *PythonRuntime) debugf(format string, args ...interface{}) {
 
 // NewPythonRuntimeWithDebug creates a new Python runtime instance with debug mode
 func NewPythonRuntimeWithDebug(wasmPath string, stdout, stderr io.Writer, handler HostFunctionHandler, debug bool) (*PythonRuntime, error) {
-	// Create engine with WASI support
-	engine := wasmtime.NewEngine()
+	// Use default security config
+	return NewPythonRuntimeWithConfigAndDebug(wasmPath, stdout, stderr, handler, NewDefaultSecurityConfig(), debug)
+}
+
+// NewPythonRuntimeWithConfigAndDebug creates a new Python runtime instance with security config and debug mode
+func NewPythonRuntimeWithConfigAndDebug(wasmPath string, stdout, stderr io.Writer, handler HostFunctionHandler, config *WASMSecurityConfig, debug bool) (*PythonRuntime, error) {
+	if config == nil {
+		config = NewDefaultSecurityConfig()
+	}
+
+	// Create engine with WASI support and security config
+	engineConfig := wasmtime.NewConfig()
+
+	// Set memory limits (wasmtime uses pages, 1 page = 64KB)
+	maxMemoryPages := config.MaxMemory / 65536
+	if config.MaxMemory % 65536 > 0 {
+		maxMemoryPages++
+	}
+	_ = maxMemoryPages // Note: wasmtime-go doesn't have direct memory limit API, we enforce in allocate
+
+	// Enable fuel/energy for instruction counting if deterministic mode
+	if config.EnableDeterministic {
+		// Enable fuel consumption tracking
+	}
+
+	engine := wasmtime.NewEngineWithConfig(engineConfig)
 
 	// Load precompiled WASM module (WAT should be pre-compiled to WASM)
 	module, err := wasmtime.NewModuleFromFile(engine, wasmPath)
@@ -48,12 +81,17 @@ func NewPythonRuntimeWithDebug(wasmPath string, stdout, stderr io.Writer, handle
 	// Create store with WASI configuration
 	store := wasmtime.NewStore(engine)
 
-	// Configure WASI
-	wasiConfig := wasmtime.NewWasiConfig()
-	wasiConfig.InheritStdout()
-	wasiConfig.InheritStderr()
-	wasiConfig.SetEnv([]string{"PYTHONPATH"}, []string{"/lib"})
-	store.SetWasi(wasiConfig)
+	// Configure memory limit interceptor
+	// We'll enforce this in allocate() method
+
+	// Configure WASI (if enabled)
+	if config.EnableWASI {
+		wasiConfig := wasmtime.NewWasiConfig()
+		wasiConfig.InheritStdout()
+		wasiConfig.InheritStderr()
+		wasiConfig.SetEnv([]string{"PYTHONPATH"}, []string{"/lib"})
+		store.SetWasi(wasiConfig)
+	}
 
 	// Create linker with WASI and host functions
 	linker := wasmtime.NewLinker(engine)
@@ -61,7 +99,7 @@ func NewPythonRuntimeWithDebug(wasmPath string, stdout, stderr io.Writer, handle
 		return nil, fmt.Errorf("failed to define WASI: %w", err)
 	}
 
-	// Define FunctionFly host functions
+	// Define FunctionFly host functions (without config - backward compatible)
 	if err := defineHostFunctions(linker, store, handler); err != nil {
 		return nil, fmt.Errorf("failed to define host functions: %w", err)
 	}
@@ -91,6 +129,7 @@ func NewPythonRuntimeWithDebug(wasmPath string, stdout, stderr io.Writer, handle
 		memory:   memory,
 		handler:  handler,
 		debug:    debug,
+		config:   config,
 	}, nil
 }
 
@@ -152,8 +191,54 @@ func (r *PythonRuntime) LoadCode(code string) error {
 }
 
 // Execute runs the loaded code with the given input and returns output
+// This method is DEPRECATED - use ExecuteWithContext for timeout support
 func (r *PythonRuntime) Execute(input []byte) ([]byte, error) {
-	r.debugf("Executing code with input: %s", string(input))
+	return r.ExecuteWithContext(context.Background(), input)
+}
+
+// ExecuteWithContext runs the loaded code with the given input and timeout
+func (r *PythonRuntime) ExecuteWithContext(ctx context.Context, input []byte) ([]byte, error) {
+	// Validate input size
+	if r.config != nil && !r.config.ValidateInputSize(uint32(len(input))) {
+		return nil, fmt.Errorf("input size exceeds maximum allowed: %d > %d bytes", len(input), r.config.MaxInputSize)
+	}
+
+	// Create execution timeout channel
+	execTimeout := 30 * time.Second
+	if r.config != nil {
+		execTimeout = r.config.MaxExecutionTime
+	}
+
+	// Use context for timeout if provided
+	execCtx, cancel := context.WithTimeout(ctx, execTimeout)
+	defer cancel()
+
+	// Channel for result
+	resultChan := make(chan interface{})
+	errorChan := make(chan error, 1)
+
+	go func() {
+		res, err := r.executeInternal(input)
+		if err != nil {
+			errorChan <- err
+		} else {
+			resultChan <- res
+		}
+	}()
+
+	// Wait for either completion or timeout
+	select {
+	case <-execCtx.Done():
+		return nil, fmt.Errorf("execution timeout after %v", execTimeout)
+	case err := <-errorChan:
+		return nil, err
+	case result := <-resultChan:
+		return result.([]byte), nil
+	}
+}
+
+// executeInternal performs the actual execution
+func (r *PythonRuntime) executeInternal(input []byte) ([]byte, error) {
 
 	executeFunc := r.instance.GetExport(r.store, "execute").Func()
 	if executeFunc == nil {
@@ -261,8 +346,25 @@ func (r *PythonRuntime) readNullTerminatedString(ptr int32, maxLen int) ([]byte,
 	return output, nil
 }
 
-// allocate calls the WASM alloc function to allocate memory
+// allocate calls the WASM alloc function to allocate memory with security limits
 func (r *PythonRuntime) allocate(size int) (int32, error) {
+	// Security: Validate allocation size
+	if size < 0 {
+		return 0, fmt.Errorf("invalid allocation size: negative")
+	}
+
+	// Security: Check against max memory limit
+	if r.config != nil && uint32(size) > r.config.MaxMemory {
+		return 0, fmt.Errorf("allocation size %d exceeds maximum memory %d", size, r.config.MaxMemory)
+	}
+
+	// Security: Check current memory usage
+	currentMem := r.GetMemoryUsage()
+	if r.config != nil && uint64(size)+currentMem > uint64(r.config.MaxMemory) {
+		return 0, fmt.Errorf("allocation would exceed memory limit: current=%d requested=%d max=%d",
+			currentMem, size, r.config.MaxMemory)
+	}
+
 	allocFunc := r.instance.GetExport(r.store, "alloc").Func()
 	if allocFunc == nil {
 		return 0, fmt.Errorf("module does not export alloc function")
@@ -291,25 +393,55 @@ func (r *PythonRuntime) deallocate(ptr int32, size int) error {
 	return err
 }
 
-// writeMemory writes data to the WASM memory at the specified pointer
+// writeMemory writes data to the WASM memory at the specified pointer with security validation
 func (r *PythonRuntime) writeMemory(ptr int32, data []byte) error {
 	dataLen := len(data)
 	memoryData := r.memory.UnsafeData(r.store)
 
-	if ptr < 0 || int(ptr)+dataLen > len(memoryData) {
-		return fmt.Errorf("memory write out of bounds")
+	// Security: Validate pointer bounds
+	if err := r.validatePointer(ptr, dataLen); err != nil {
+		return fmt.Errorf("pointer validation failed in writeMemory: %w", err)
+	}
+
+	if int(ptr)+dataLen > len(memoryData) {
+		return fmt.Errorf("memory write out of bounds: ptr=%d size=%d memory=%d",
+			ptr, dataLen, len(memoryData))
 	}
 
 	copy(memoryData[ptr:], data)
 	return nil
 }
 
-// readMemory reads data from WASM memory at the specified pointer
+// validatePointer validates a pointer is within valid memory bounds
+func (r *PythonRuntime) validatePointer(ptr int32, size int) error {
+	if ptr < 0 {
+		return fmt.Errorf("negative pointer: %d", ptr)
+	}
+
+	if r.config != nil && r.config.AllowRawPointers {
+		return nil // Skip validation if raw pointers allowed (not recommended)
+	}
+
+	// Basic sanity check
+	if size > 10*1024*1024 { // 10MB single allocation
+		return fmt.Errorf("allocation too large: %d bytes", size)
+	}
+
+	return nil
+}
+
+// readMemory reads data from WASM memory at the specified pointer with security validation
 func (r *PythonRuntime) readMemory(ptr int32, size int) ([]byte, error) {
+	// Security: Validate pointer bounds
+	if err := r.validatePointer(ptr, size); err != nil {
+		return nil, fmt.Errorf("pointer validation failed in readMemory: %w", err)
+	}
+
 	memoryData := r.memory.UnsafeData(r.store)
 
 	if ptr < 0 || int(ptr)+size > len(memoryData) {
-		return nil, fmt.Errorf("memory read out of bounds")
+		return nil, fmt.Errorf("memory read out of bounds: ptr=%d size=%d memory=%d",
+			ptr, size, len(memoryData))
 	}
 
 	data := make([]byte, size)

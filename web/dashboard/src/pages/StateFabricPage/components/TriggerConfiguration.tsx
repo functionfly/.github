@@ -65,8 +65,8 @@ export function TriggerConfiguration({ fabricId }: TriggerConfigurationProps) {
   const [isActive, setIsActive] = useState(true);
 
   const { data: triggersData, isLoading, refetch } = useStateFabricTriggers(fabricId);
-  const createTrigger = useCreateTrigger();
-  const deleteTrigger = useDeleteTrigger();
+  const createTrigger = useCreateTrigger(fabricId);
+  const deleteTrigger = useDeleteTrigger(fabricId);
 
   const triggers = triggersData?.triggers || [];
 

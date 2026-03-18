@@ -1,5 +1,5 @@
 /** @type {import('next-sitemap').IConfig} */
-module.exports = {
+export default {
   siteUrl: process.env.SITE_URL || 'https://functionfly.com',
   generateRobotsTxt: true,
   generateIndexSitemap: false,
@@ -11,9 +11,9 @@ module.exports = {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/dashboard/', '/admin/', '/api/']
-      }
-    ]
+        disallow: ['/dashboard/', '/admin/', '/api/'],
+      },
+    ],
   },
   transform: async (config, path) => {
     // Custom transform function
@@ -21,7 +21,7 @@ module.exports = {
       loc: path,
       changefreq: config.changefreq,
       priority: config.priority,
-      lastmod: config.autoLastmod ? new Date().toISOString() : undefined
+      lastmod: config.autoLastmod ? new Date().toISOString() : undefined,
     };
 
     // Customize priority and changefreq based on path
@@ -29,7 +29,7 @@ module.exports = {
       return {
         ...defaultTransform,
         priority: 1.0,
-        changefreq: 'daily'
+        changefreq: 'daily',
       };
     }
 
@@ -37,7 +37,7 @@ module.exports = {
       return {
         ...defaultTransform,
         priority: 0.9,
-        changefreq: 'weekly'
+        changefreq: 'weekly',
       };
     }
 
@@ -45,7 +45,7 @@ module.exports = {
       return {
         ...defaultTransform,
         priority: 0.6,
-        changefreq: 'monthly'
+        changefreq: 'monthly',
       };
     }
 
@@ -57,7 +57,8 @@ module.exports = {
     // Add dynamic blog posts
     try {
       // Try to fetch from API first
-      const apiUrl = process.env.API_URL || `${process.env.SITE_URL || 'https://functionfly.dev'}/api`;
+      const apiUrl =
+        process.env.API_URL || `${process.env.SITE_URL || 'https://functionfly.dev'}/api`;
       const response = await fetch(`${apiUrl}/v1/content/blog?limit=100`, {
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +77,7 @@ module.exports = {
               loc: `/blog/${post.slug}`,
               changefreq: 'monthly',
               priority: 0.6,
-              lastmod: post.updated_at || post.created_at || new Date().toISOString()
+              lastmod: post.updated_at || post.created_at || new Date().toISOString(),
             });
           }
         });
@@ -86,7 +87,10 @@ module.exports = {
         throw new Error(`API returned ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
-      console.warn('Failed to fetch blog posts from API, falling back to known posts:', error.message);
+      console.warn(
+        'Failed to fetch blog posts from API, falling back to known posts:',
+        error.message
+      );
 
       // Fallback to known blog post slugs if API fails
       const blogPosts = [
@@ -96,7 +100,7 @@ module.exports = {
         'flywheel-network',
         'secrets-vault',
         'ai-agent-integration',
-        'builder-success-story'
+        'builder-success-story',
       ];
 
       blogPosts.forEach((slug) => {
@@ -104,7 +108,7 @@ module.exports = {
           loc: `/blog/${slug}`,
           changefreq: 'monthly',
           priority: 0.6,
-          lastmod: new Date().toISOString()
+          lastmod: new Date().toISOString(),
         });
       });
 
@@ -112,5 +116,5 @@ module.exports = {
     }
 
     return result;
-  }
+  },
 };

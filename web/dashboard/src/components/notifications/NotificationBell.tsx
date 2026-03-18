@@ -124,10 +124,12 @@ export function NotificationBell({
     setNotificationCenterOpen(false);
   }, [setNotificationCenterOpen]);
 
-  // Fetch initial unread count
+  // Fetch initial unread count (only when authenticated and we have a token)
   useEffect(() => {
     const fetchUnreadCount = async () => {
       if (!user?.id) return;
+      const token = typeof localStorage !== 'undefined' ? localStorage.getItem('ff-access-token') : null;
+      if (!token) return;
 
       try {
         const counts = await notificationsApi.fetchUnreadCounts();

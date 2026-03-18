@@ -4,14 +4,12 @@ CREATE TABLE IF NOT EXISTS archive_data (
     storage_key VARCHAR(255) UNIQUE NOT NULL,
     archive_type VARCHAR(100) NOT NULL, -- e.g., 'audit_logs', 'user_data', 'compliance_reports'
     compressed_data BYTEA NOT NULL, -- Compressed and encrypted archive data
-    encryption_key BYTEA NOT NULL, -- Encryption key (should be stored securely in production)
+    encryption_key BYTEA NOT NULL, -- DEK: raw 32 bytes or envelope (0x01 + nonce + ciphertext); see COMMENT ON COLUMN
     metadata_json JSONB NOT NULL, -- Archive metadata as JSON
     checksum VARCHAR(64) NOT NULL, -- SHA256 checksum of original data
     status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'completed', 'failed', 'deleted'
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-
-    -- Check constraints
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT chk_archive_status CHECK (status IN ('pending', 'completed', 'failed', 'deleted')),
     CONSTRAINT chk_archive_type CHECK (archive_type IN ('audit_logs', 'user_data', 'compliance_reports', 'system_logs'))
 );
@@ -62,5 +60,5 @@ CREATE INDEX IF NOT EXISTS idx_archive_data_metadata_gin ON archive_data USING G
 COMMENT ON TABLE archive_data IS 'Stores compressed and encrypted archive data with metadata';
 COMMENT ON TABLE archive_cleanup_log IS 'Tracks archive cleanup and maintenance operations';
 COMMENT ON COLUMN archive_data.compressed_data IS 'Gzip compressed and AES-256-GCM encrypted data';
-COMMENT ON COLUMN archive_data.encryption_key IS 'Randomly generated 32-byte encryption key (store securely in production)';
+COMMENT ON COLUMN archive_data.encryption_key IS 'Data encryption key (DEK): 32-byte raw or envelope format (0x01 + 12-byte nonce + AES-256-GCM ciphertext). Use ARCHIVE_MASTER_KEY env for KEK in production.';
 COMMENT ON COLUMN archive_data.metadata_json IS 'JSON metadata including record count, date ranges, compression stats';

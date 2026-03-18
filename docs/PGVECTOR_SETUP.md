@@ -13,22 +13,28 @@ Below is the recommended setup for local development and production.
 
 Postgres must have the pgvector extension installed.
 
-**Ubuntu/Debian (Postgres 16):**
+**Ubuntu/Debian (Postgres 17 recommended):** Use the [PGDG repository](https://apt.postgresql.org/), then:
+
 ```bash
-sudo apt install postgresql-16-pgvector
+sudo apt install postgresql-17 postgresql-17-pgvector
 ```
 
+For Postgres 17: `sudo apt install postgresql-17-pgvector` (see `docs/LOCAL_POSTGRES_17.md` for full setup).  
+Full local migration steps (PG 17 + pgvector + other extensions): see [LOCAL_POSTGRES_17.md](LOCAL_POSTGRES_17.md).
+
 **macOS:**
+
 ```bash
 brew install pgvector
 ```
 
 **Docker (production):** Use the official image that already includes pgvector:
+
 ```yaml
 # docker-compose or similar
 postgres:
-  image: pgvector/pgvector:pg16
-  # ...
+  image: pgvector/pgvector:pg17
+  # ... or pgvector/pgvector:pg16
 ```
 
 Then ensure the extension is created in the DB (your app does this in `migrations/000000_postgres_extensions.up.sql`):
@@ -84,7 +90,7 @@ Keep dimensions aligned with your embedding model (e.g. OpenAI `text-embedding-3
 
 ## 5. Checklist
 
-- [ ] Postgres has pgvector installed (`apt`, `brew`, or `pgvector/pgvector:pg16`).
+- [ ] Postgres has pgvector installed (`apt` with PGDG for PG 17, `brew`, or `pgvector/pgvector:pg17`).
 - [ ] Extension created: `CREATE EXTENSION IF NOT EXISTS vector;`
 - [ ] `agent_memories.embedding` is type `vector(1536)` (migration applied).
 - [ ] HNSW index on `agent_memories (embedding vector_cosine_ops)` exists.

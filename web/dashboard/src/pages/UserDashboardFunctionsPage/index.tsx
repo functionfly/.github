@@ -251,12 +251,12 @@ export function UserDashboardFunctionsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => navigate(`/functions/${fn.id}/logs`)}
+                          onClick={() => navigate(`/functions/${fn.author}/${fn.name}/logs`)}
                         >
                           View Logs
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => navigate(`/functions/${fn.id}/settings`)}
+                          onClick={() => navigate(`/functions/${fn.author}/${fn.name}/settings`)}
                         >
                           Settings
                         </DropdownMenuItem>

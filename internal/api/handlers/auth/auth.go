@@ -334,15 +334,17 @@ func (h *Handler) HandleResendVerification(w http.ResponseWriter, r *http.Reques
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-// HandleGetOAuthURL generates OAuth authorization URL for a provider
+// HandleGetOAuthURL generates OAuth authorization URL for a provider.
+// Optional query: redirect_uri (e.g. http://127.0.0.1:port/callback) for CLI — callback will redirect there with token.
 func (h *Handler) HandleGetOAuthURL(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	if provider == "" {
 		writeJSONError(w, http.StatusBadRequest, "Provider is required")
 		return
 	}
+	redirectURI := r.URL.Query().Get("redirect_uri")
 
-	url, err := h.authSvc.GetOAuthURL(provider)
+	url, err := h.authSvc.GetOAuthURL(provider, redirectURI)
 	if err != nil {
 		logrus.WithError(err).WithField("provider", provider).Warn("Failed to get OAuth URL")
 		writeJSONError(w, http.StatusBadRequest, err.Error())
@@ -437,7 +439,13 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Redirect to frontend with success and token
+	// Redirect: if client requested a redirect_uri (e.g. CLI), use it; otherwise frontend
+	if response.RedirectURI != "" {
+		successRedirectURL := fmt.Sprintf("%s?token=%s&refresh_token=%s&new_user=%t",
+			response.RedirectURI, response.Token, response.RefreshToken, response.NewUser)
+		http.Redirect(w, r, successRedirectURL, http.StatusFound)
+		return
+	}
 	frontendURL := os.Getenv("FRONTEND_URL")
 	if frontendURL == "" {
 		frontendURL = "http://localhost:3000"
@@ -833,6 +841,62 @@ func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Logged out successfully"})
+}
+
+// VerifyPasswordRequest is the body for POST /auth/verify-password (re-auth for sensitive actions).
+type VerifyPasswordRequest struct {
+	Password string `json:"password"`
+}
+
+// HandleVerifyPassword verifies the current user's password. Used for re-authentication (e.g. reveal secret).
+// Requires valid JWT. Returns 200 on success, 401 on wrong password, 400 if account has no password (e.g. SSO).
+func (h *Handler) HandleVerifyPassword(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		writeJSONError(w, http.StatusUnauthorized, "Authorization required")
+		return
+	}
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		writeJSONError(w, http.StatusUnauthorized, "Invalid authorization header")
+		return
+	}
+	claims, err := h.authSvc.ValidateToken(parts[1])
+	if err != nil {
+		writeJSONError(w, http.StatusUnauthorized, "Invalid or expired token")
+		return
+	}
+
+	var req VerifyPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Password == "" {
+		writeJSONError(w, http.StatusBadRequest, "Password is required")
+		return
+	}
+
+	user, err := h.authSvc.Repo().GetUserByID(claims.UserID)
+	if err != nil || user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "User not found")
+		return
+	}
+	if user.PasswordHash == "" {
+		writeJSONError(w, http.StatusBadRequest, "This account uses sign-in with a provider; password verification is not available")
+		return
+	}
+
+	valid, err := h.authSvc.VerifyPassword(req.Password, user.PasswordHash)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", user.ID).Debug("Verify password error")
+		writeJSONError(w, http.StatusUnauthorized, "Invalid password")
+		return
+	}
+	if !valid {
+		writeJSONError(w, http.StatusUnauthorized, "Invalid password")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Password verified"})
 }
 
 // HandleRefreshToken handles refresh token requests to get new access tokens

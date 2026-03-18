@@ -60,26 +60,26 @@ export function ThreadCard({ thread, className }: ThreadCardProps) {
     <Link
       to={`/flywheel/threads/${thread.id}`}
       className={cn(
-        'group block rounded-xl border border-slate-800 bg-slate-900 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-700 hover:shadow-lg',
+        'flywheel-card group block rounded-xl border border-border-default bg-bg-tertiary p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-lg',
         className
       )}
     >
       {/* Header */}
       <div className="flex items-start gap-3">
-        <Avatar className="h-10 w-10 border border-slate-800">
+        <Avatar className="h-10 w-10 border border-border-default">
           <AvatarImage src={thread.author.avatarUrl} alt={thread.author.username} />
-          <AvatarFallback className="bg-slate-800 text-slate-400">
+          <AvatarFallback className="bg-bg-hover text-text-muted">
             {thread.author.username.slice(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
 
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-1 text-lg font-semibold text-white group-hover:text-indigo-400">
+          <h3 className="line-clamp-1 text-lg font-semibold text-text-primary group-hover:text-indigo-400">
             {thread.title}
           </h3>
 
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-text-muted">
               @{thread.author.username}
             </span>
 
@@ -91,8 +91,8 @@ export function ThreadCard({ thread, className }: ThreadCardProps) {
               />
             )}
 
-            <span className="text-slate-600">•</span>
-            <span className="text-sm text-slate-400">
+            <span className="text-text-muted">•</span>
+            <span className="text-sm text-text-muted">
               {formatTimeAgo(thread.createdAt)}
             </span>
           </div>
@@ -112,7 +112,7 @@ export function ThreadCard({ thread, className }: ThreadCardProps) {
         {thread.category && (
           <Badge
             variant="outline"
-            className="border-slate-700 bg-slate-800/50 text-xs text-slate-400"
+            className="border-border-default bg-bg-hover/50 text-xs text-text-muted"
           >
             {thread.category.name}
           </Badge>
@@ -121,7 +121,7 @@ export function ThreadCard({ thread, className }: ThreadCardProps) {
 
       {/* Preview */}
       {thread.problemData?.description && (
-        <p className="mt-3 line-clamp-2 text-sm text-slate-400">
+        <p className="mt-3 line-clamp-2 text-sm text-text-secondary">
           {thread.problemData.description}
         </p>
       )}
@@ -132,13 +132,13 @@ export function ThreadCard({ thread, className }: ThreadCardProps) {
           {thread.tags.slice(0, 4).map((tag) => (
             <span
               key={tag}
-              className="rounded-md bg-slate-800 px-2 py-0.5 text-xs text-slate-400"
+              className="rounded-md bg-bg-hover px-2 py-0.5 text-xs text-text-muted"
             >
               {tag}
             </span>
           ))}
           {thread.tags.length > 4 && (
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-text-muted">
               +{thread.tags.length - 4}
             </span>
           )}
@@ -146,18 +146,18 @@ export function ThreadCard({ thread, className }: ThreadCardProps) {
       )}
 
       {/* Footer Stats */}
-      <div className="mt-4 flex items-center gap-4 border-t border-slate-800 pt-3">
-        <div className="flex items-center gap-1.5 text-sm text-slate-400">
+      <div className="mt-4 flex items-center gap-4 border-t border-border-default pt-3">
+        <div className="flex items-center gap-1.5 text-sm text-text-muted">
           <MessageCircle className="h-4 w-4" />
           <span>{thread.replyCount}</span>
         </div>
 
-        <div className="flex items-center gap-1.5 text-sm text-slate-400">
+        <div className="flex items-center gap-1.5 text-sm text-text-muted">
           <Eye className="h-4 w-4" />
           <span>{thread.viewCount.toLocaleString()}</span>
         </div>
 
-        <div className="flex items-center gap-1.5 text-sm text-slate-400">
+        <div className="flex items-center gap-1.5 text-sm text-text-muted">
           <Clock className="h-4 w-4" />
           <span>{formatTimeAgo(thread.updatedAt)}</span>
         </div>
@@ -188,26 +188,26 @@ export function ThreadCard({ thread, className }: ThreadCardProps) {
  */
 export function ThreadCardSkeleton() {
   return (
-    <div className="animate-pulse rounded-xl border border-slate-800 bg-slate-900 p-5">
+    <div className="flywheel-skeleton animate-pulse rounded-xl border border-border-default bg-bg-tertiary p-5">
       <div className="flex items-start gap-3">
-        <div className="h-10 w-10 rounded-full bg-slate-800" />
+        <div className="h-10 w-10 rounded-full bg-bg-hover" />
         <div className="flex-1 space-y-2">
-          <div className="h-5 w-3/4 rounded bg-slate-800" />
-          <div className="h-4 w-1/2 rounded bg-slate-800" />
+          <div className="h-5 w-3/4 rounded bg-bg-hover" />
+          <div className="h-4 w-1/2 rounded bg-bg-hover" />
         </div>
       </div>
       <div className="mt-3 flex gap-2">
-        <div className="h-5 w-16 rounded bg-slate-800" />
-        <div className="h-5 w-20 rounded bg-slate-800" />
+        <div className="h-5 w-16 rounded bg-bg-hover" />
+        <div className="h-5 w-20 rounded bg-bg-hover" />
       </div>
       <div className="mt-3 space-y-2">
-        <div className="h-4 w-full rounded bg-slate-800" />
-        <div className="h-4 w-5/6 rounded bg-slate-800" />
+        <div className="h-4 w-full rounded bg-bg-hover" />
+        <div className="h-4 w-5/6 rounded bg-bg-hover" />
       </div>
-      <div className="mt-4 flex gap-4 border-t border-slate-800 pt-3">
-        <div className="h-4 w-16 rounded bg-slate-800" />
-        <div className="h-4 w-16 rounded bg-slate-800" />
-        <div className="h-4 w-16 rounded bg-slate-800" />
+      <div className="mt-4 flex gap-4 border-t border-border-default pt-3">
+        <div className="h-4 w-16 rounded bg-bg-hover" />
+        <div className="h-4 w-16 rounded bg-bg-hover" />
+        <div className="h-4 w-16 rounded bg-bg-hover" />
       </div>
     </div>
   );

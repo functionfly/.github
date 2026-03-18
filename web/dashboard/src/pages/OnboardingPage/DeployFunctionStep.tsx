@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useOnboardingStore } from "@/stores/onboardingStore";
-import { Rocket, Code, Check, Loader2, Terminal, Copy, ExternalLink, AlertTriangle, Sparkles } from "lucide-react";
+import { Rocket, Code, Check, Loader2, Terminal, Copy, ExternalLink, AlertTriangle, Sparkles, RefreshCw } from "lucide-react";
 import Confetti from "react-confetti";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -199,12 +199,16 @@ func (a *VercelAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec)
 	if apiToken == "" {
 		return nil, fmt.Errorf("missing required Vercel config: api_token")
 	}
-
 	if projectName == "" {
-		projectName = "functionfly-deployment" // Default project name
+		return nil, fmt.Errorf("missing required Vercel config: project_name (or app_name in spec)")
+	}
+	if len(spec.Artifact) == 0 {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "deployment artifact is empty; provide bundle bytes for Vercel deploy",
+		}, nil
 	}
 
-	// Combine env vars and secrets for deployment
 	env := make(map[string]string)
 	for k, v := range spec.EnvVars {
 		env[k] = v
@@ -213,9 +217,15 @@ func (a *VercelAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec)
 		env[k] = v
 	}
 
-	// Create deployment client and deploy
 	client := NewVercelDeploymentClient(apiToken, teamID)
-	return client.Deploy(ctx, spec.Artifact, projectName, env)
+	result, err := client.Deploy(ctx, spec.Artifact, projectName, env)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("deployment failed: %v", err),
+		}, nil
+	}
+	return result, nil
 }
 
 // SetEnv implements the DeploymentAdapter interface
@@ -309,12 +319,10 @@ func (a *VercelAdapter) Rollback(ctx context.Context, spec *common.DeploymentSpe
 	if apiToken == "" {
 		return nil, fmt.Errorf("missing required Vercel config: api_token")
 	}
-
 	if projectName == "" {
-		projectName = "functionfly-deployment" // Default project name
+		return nil, fmt.Errorf("missing required Vercel config: project_name for rollback")
 	}
 
-	// Combine env vars and secrets for rollback deployment
 	env := make(map[string]string)
 	for k, v := range spec.EnvVars {
 		env[k] = v
@@ -323,7 +331,6 @@ func (a *VercelAdapter) Rollback(ctx context.Context, spec *common.DeploymentSpe
 		env[k] = v
 	}
 
-	// Create deployment client and rollback (redeploy)
 	client := NewVercelDeploymentClient(apiToken, teamID)
 	return client.Rollback(ctx, spec.Artifact, projectName, env)
 }

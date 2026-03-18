@@ -4,6 +4,7 @@ export interface User {
   username?: string;
   companyName?: string;
   name: string;
+  bio?: string;
   avatar?: string; // Profile picture URL from social providers
   tenantId: string;
   plan: string; // Tenant plan from API: free, starter, pro, enterprise, etc.
@@ -77,7 +78,7 @@ export interface Backend {
 }
 
 export interface CircuitState {
-  state: "closed" | "open" | "half-open";
+  state: 'closed' | 'open' | 'half-open';
   sinceTs: string;
   failCount: number;
   successCount: number;
@@ -108,7 +109,7 @@ export interface Deployment {
   appId: string;
   provider: string;
   region: string;
-  status: "pending" | "building" | "deploying" | "success" | "failed" | "rolled_back";
+  status: 'pending' | 'building' | 'deploying' | 'success' | 'failed' | 'rolled_back';
   artifactUrl?: string;
   deployedUrl?: string;
   errorMessage?: string;
@@ -204,7 +205,7 @@ export interface ProviderMetrics {
 export interface ConnectedProvider {
   id: string;
   name: string;
-  status: "online" | "offline" | "degraded" | "pending";
+  status: 'online' | 'offline' | 'degraded' | 'pending';
   connectedAt: string;
   apiKey?: string;
 }
@@ -223,7 +224,7 @@ export interface Tenant {
   id: string;
   name: string;
   plan?: string;
-  status: "active" | "suspended";
+  status: 'active' | 'suspended';
   createdAt: string;
   updatedAt: string;
 }
@@ -261,7 +262,7 @@ export interface Subscription {
   id: string;
   tenantId: string;
   pricingTierId: string;
-  status: "active" | "canceled" | "past_due" | "trialing";
+  status: 'active' | 'canceled' | 'past_due' | 'trialing';
   currentPeriodStart: string;
   currentPeriodEnd: string;
   trialEnd?: string;
@@ -276,7 +277,7 @@ export interface Invoice {
   id: string;
   tenantId: string;
   subscriptionId?: string;
-  status: "draft" | "open" | "paid" | "void" | "uncollectible";
+  status: 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
   amountDueCents: number;
   amountPaidCents: number;
   currency: string;
@@ -315,7 +316,7 @@ export interface Coupon {
   code: string;
   name: string;
   description: string;
-  discountType: "percent" | "amount";
+  discountType: 'percent' | 'amount';
   discountValue: number;
   currency?: string;
   maxRedemptions?: number;
@@ -328,22 +329,25 @@ export interface Coupon {
 }
 
 export interface SystemHealth {
-  status: "healthy" | "unhealthy";
+  status: 'healthy' | 'unhealthy';
   version: string;
   timestamp: string;
-  checks: Record<string, {
-    status: string;
-    healthy: boolean;
-    responseTimeMs?: number;
-    goroutines?: number;
-  }>;
+  checks: Record<
+    string,
+    {
+      status: string;
+      healthy: boolean;
+      responseTimeMs?: number;
+      goroutines?: number;
+    }
+  >;
 }
 
 // Analytics types
 export interface AnalyticsService {
   name: string;
   enabled: boolean;
-  status: "loading" | "loaded" | "error" | "disabled";
+  status: 'loading' | 'loaded' | 'error' | 'disabled';
   config: Record<string, any>;
   lastUsed?: string;
 }
@@ -393,7 +397,7 @@ export interface FunctionConfig {
   createdAt: string;
   updatedAt: string;
   version: string;
-  status: "draft" | "deploying" | "deployed" | "failed";
+  status: 'draft' | 'deploying' | 'deployed' | 'failed';
 }
 
 export interface CreateFunctionRequest {
@@ -416,7 +420,7 @@ export interface FunctionDeployment {
   id: string;
   functionId: string;
   version: string;
-  status: "pending" | "deploying" | "success" | "failed";
+  status: 'pending' | 'deploying' | 'success' | 'failed';
   provider: string;
   region: string;
   deployedUrl?: string;
@@ -429,7 +433,7 @@ export interface FunctionLog {
   id: string;
   functionId: string;
   deploymentId?: string;
-  level: "info" | "warn" | "error" | "debug";
+  level: 'info' | 'warn' | 'error' | 'debug';
   message: string;
   timestamp: string;
   source: string;
@@ -465,9 +469,9 @@ export interface TestFunctionResponse {
 
 // Function Card Types
 
-export type FunctionCardVariant = "compact" | "expanded" | "analytics";
+export type FunctionCardVariant = 'compact' | 'expanded' | 'analytics';
 
-export type PricingModel = "free" | "per_call" | "subscription" | "revenue_share";
+export type PricingModel = 'free' | 'per_call' | 'subscription' | 'revenue_share';
 
 export interface FunctionAuthor {
   id: string;
@@ -530,7 +534,7 @@ export interface FunctionCardProps {
 
 // Function Header Types
 
-export type TrustTier = "critical" | "high" | "medium" | "low" | "untrusted";
+export type TrustTier = 'critical' | 'high' | 'medium' | 'low' | 'untrusted';
 
 export interface FunctionHeaderData {
   /** Function name */
@@ -557,7 +561,7 @@ export interface FunctionHeaderData {
   /** Optional description */
   description?: string;
   /** Optional status for the status badge */
-  status?: "online" | "offline" | "degraded" | "pending";
+  status?: 'online' | 'offline' | 'degraded' | 'pending';
   /** Optional version */
   version?: string;
 }
@@ -577,10 +581,10 @@ export interface FunctionHeaderProps {
 // Trust Score Badge Types
 
 /** Trust score band classification */
-export type TrustScoreBand = "excellent" | "good" | "fair" | "poor";
+export type TrustScoreBand = 'excellent' | 'good' | 'fair' | 'poor';
 
 /** Fraud risk level assessment */
-export type FraudRiskLevel = "low" | "medium" | "high";
+export type FraudRiskLevel = 'low' | 'medium' | 'high';
 
 /**
  * Comprehensive trust metrics for a function
@@ -621,7 +625,7 @@ export interface TrustScoreBadgeProps {
   /** Trust metrics data object */
   metrics: TrustMetrics;
   /** Display variant */
-  variant?: "compact" | "expanded" | "mini";
+  variant?: 'compact' | 'expanded' | 'mini';
   /** Whether to show detailed tooltip on hover */
   showDetails?: boolean;
   /** Optional additional CSS classes */
@@ -636,8 +640,8 @@ export interface StateFabric {
   id: string;
   name: string;
   description: string;
-  status: "online" | "offline" | "degraded" | "pending";
-  type: "session" | "catalog" | "cache" | "workflow" | "custom";
+  status: 'online' | 'offline' | 'degraded' | 'pending';
+  type: 'session' | 'catalog' | 'cache' | 'workflow' | 'custom';
   tenantId: string;
   stores: StateFabricStore[];
   pipelines: Pipeline[];
@@ -653,8 +657,8 @@ export interface StateFabric {
 export interface StateFabricStore {
   id: string;
   name: string;
-  type: "memory" | "persistent" | "cache" | "queue";
-  status: "active" | "inactive" | "error";
+  type: 'memory' | 'persistent' | 'cache' | 'queue';
+  status: 'active' | 'inactive' | 'error';
   size: number;
   maxSize: number;
   region: string;
@@ -669,7 +673,7 @@ export interface Pipeline {
   id: string;
   name: string;
   description: string;
-  status: "active" | "paused" | "error" | "draft";
+  status: 'active' | 'paused' | 'error' | 'draft';
   steps: PipelineStep[];
   inputSchema?: Record<string, any>;
   outputSchema?: Record<string, any>;
@@ -683,7 +687,7 @@ export interface Pipeline {
 export interface PipelineStep {
   id: string;
   name: string;
-  type: "transform" | "filter" | "aggregate" | "enrich" | "custom";
+  type: 'transform' | 'filter' | 'aggregate' | 'enrich' | 'custom';
   config: Record<string, any>;
   order: number;
   enabled: boolean;
@@ -695,7 +699,7 @@ export interface EventLog {
   id: string;
   fabricId: string;
   storeId?: string;
-  eventType: "create" | "update" | "delete" | "snapshot" | "sync";
+  eventType: 'create' | 'update' | 'delete' | 'snapshot' | 'sync';
   payload: Record<string, any>;
   timestamp: string;
   sequenceNumber: number;
@@ -721,7 +725,7 @@ export interface ReplaySession {
   snapshotId?: string;
   startEventId?: string;
   endEventId?: string;
-  status: "pending" | "running" | "completed" | "failed";
+  status: 'pending' | 'running' | 'completed' | 'failed';
   progress: number;
   eventsReplayed: number;
   startedAt: string;
@@ -735,7 +739,15 @@ export interface StateFabricSettings {
   retentionDays: number;
   enableReplication: boolean;
   regions: string[];
-  conflictResolution: "last-write-wins" | "first-write-wins" | "manual";
+  conflictResolution: 'last-write-wins' | 'first-write-wins' | 'manual';
+}
+
+/** One data point for metrics time-series (from API when available). */
+export interface StateFabricMetricsHistoryPoint {
+  time: string;
+  operations: number;
+  latency: number;
+  errors: number;
 }
 
 export interface StateFabricMetrics {
@@ -746,12 +758,14 @@ export interface StateFabricMetrics {
   cacheHitRate?: number;
   storageUsed: number;
   lastCalculatedAt: string;
+  /** Time-series for charts; when omitted, charts show empty state. */
+  history?: StateFabricMetricsHistoryPoint[];
 }
 
 export interface CreateStateFabricRequest {
   name: string;
   description: string;
-  type: StateFabric["type"];
+  type: StateFabric['type'];
   settings?: Partial<StateFabricSettings>;
 }
 
@@ -764,19 +778,19 @@ export interface UpdateStateFabricRequest {
 export interface CreatePipelineRequest {
   name: string;
   description: string;
-  steps: Omit<PipelineStep, "id">[];
+  steps: Omit<PipelineStep, 'id'>[];
 }
 
 export interface UpdatePipelineRequest {
   name?: string;
   description?: string;
   steps?: PipelineStep[];
-  status?: Pipeline["status"];
+  status?: Pipeline['status'];
 }
 
 export interface CreateStoreRequest {
   name: string;
-  type: StateFabricStore["type"];
+  type: StateFabricStore['type'];
   maxSize: number;
   region: string;
 }
@@ -816,7 +830,7 @@ export interface CreateTriggerRequest {
 // ============================================================================
 
 /** Tab types for profile page navigation */
-export type ProfileTab = "overview" | "functions" | "activity" | "analytics" | "about" | "settings";
+export type ProfileTab = 'overview' | 'functions' | 'activity' | 'analytics' | 'about' | 'settings';
 
 /** Social links for user profile */
 export interface SocialLinks {
@@ -837,7 +851,7 @@ export interface Achievement {
   icon: string;
   color: string;
   unlockedAt: string;
-  tier: "bronze" | "silver" | "gold" | "platinum";
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum';
   progress?: {
     current: number;
     target: number;
@@ -846,17 +860,17 @@ export interface Achievement {
 
 /** Activity feed item types */
 export type ActivityType =
-  | "joined"
-  | "function_published"
-  | "function_updated"
-  | "function_deleted"
-  | "achievement_earned"
-  | "review_received"
-  | "milestone_reached"
-  | "followed"
-  | "follower_gained"
-  | "contribution"
-  | "deployment";
+  | 'joined'
+  | 'function_published'
+  | 'function_updated'
+  | 'function_deleted'
+  | 'achievement_earned'
+  | 'review_received'
+  | 'milestone_reached'
+  | 'followed'
+  | 'follower_gained'
+  | 'contribution'
+  | 'deployment';
 
 /** Activity feed item */
 export interface UserActivity {
@@ -920,8 +934,8 @@ export interface UserStats {
 /** Skill/Technology expertise */
 export interface Skill {
   name: string;
-  level: "beginner" | "intermediate" | "advanced" | "expert";
-  category: "language" | "framework" | "tool" | "platform" | "concept";
+  level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  category: 'language' | 'framework' | 'tool' | 'platform' | 'concept';
   endorsements?: number;
 }
 
@@ -1010,10 +1024,10 @@ export interface ProfileAnalytics {
 /** Filter and sort options for functions tab */
 export interface FunctionFilters {
   search: string;
-  sortBy: "popular" | "recent" | "name" | "rating";
+  sortBy: 'popular' | 'recent' | 'name' | 'rating';
   category?: string;
   language?: string;
-  visibility?: "all" | "public" | "private";
+  visibility?: 'all' | 'public' | 'private';
 }
 
 /** Trust metrics visualization data */
@@ -1037,7 +1051,7 @@ export interface TrustMetricsVisualization {
 // ============================================================================
 
 /** Agent memory types */
-export type AgentMemoryType = "working" | "longterm" | "context" | "episodic";
+export type AgentMemoryType = 'working' | 'longterm' | 'context' | 'episodic';
 
 /** Agent memory model */
 export interface AgentMemory {
@@ -1119,13 +1133,13 @@ export interface ListAgentMemoriesResponse {
 // Vault Types - Re-export from vault module
 // ============================================================================
 
-export * from "./vault";
+export * from './vault';
 
 // ============================================================================
 // API Key Types - Re-export from api-key module
 // ============================================================================
 
-export * from "./api-key";
+export * from './api-key';
 
 // ============================================================================
 // Simple State Types
@@ -1143,15 +1157,21 @@ export interface SimpleState {
   metadata?: Record<string, string>;
 }
 
-/** State value - can be any JSON-serializable value */
-export type StateValue = string | number | boolean | null | StateValue[] | Record<string, StateValue>;
+/** Primitive JSON-serializable state value */
+export type StatePrimitive = string | number | boolean | null;
+
+/** State value - JSON-serializable, non-recursive in type definition to satisfy TypeScript */
+export type StateValue =
+  | StatePrimitive
+  | StatePrimitive[]
+  | Record<string, StatePrimitive | StatePrimitive[]>;
 
 /** History entry for state changes */
 export interface StateHistoryEntry {
   id: string;
   path: string;
   key: string;
-  operation: "create" | "update" | "delete" | "patch";
+  operation: 'create' | 'update' | 'delete' | 'patch';
   previousValue?: StateValue;
   newValue?: StateValue;
   timestamp: string;
@@ -1175,8 +1195,8 @@ export interface StatePermission {
   id: string;
   path: string;
   principal: string;
-  principalType: "user" | "team" | "service";
-  permissions: ("read" | "write" | "admin")[];
+  principalType: 'user' | 'team' | 'service';
+  permissions: ('read' | 'write' | 'admin')[];
   grantedAt: string;
   grantedBy?: string;
 }
@@ -1206,7 +1226,7 @@ export interface PatchStateRequest {
 
 /** JSON Patch operation */
 export interface JsonPatchOperation {
-  op: "add" | "remove" | "replace" | "move" | "copy";
+  op: 'add' | 'remove' | 'replace' | 'move' | 'copy';
   path: string;
   value?: StateValue;
   from?: string;
@@ -1223,8 +1243,8 @@ export interface CreateSnapshotRequest {
 export interface GrantPermissionRequest {
   path: string;
   principal: string;
-  principalType: "user" | "team" | "service";
-  permissions: ("read" | "write" | "admin")[];
+  principalType: 'user' | 'team' | 'service';
+  permissions: ('read' | 'write' | 'admin')[];
 }
 
 /** Time travel request */

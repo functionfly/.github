@@ -1,0 +1,159 @@
+> vite
+
+[Vite] API proxy target: http://127.0.0.1:8080
+
+  [32m[1mVITE[22m v7.3.1[39m  [2mready in [0m[1m72464[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m3000[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://10.255.255.254:[1m3000[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.213.29:[1m3000[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.18.0.1:[1m3000[22m/[39m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m4:31:48 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/index.css, /src/styles/index.css?direct, /src/pages/SettingsPage/components/NotificationsSettingsTab.tsx[22m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m4:31:48 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/index.css, /src/styles/index.css?direct, /src/pages/SettingsPage/components/NotificationsSettingsTab.tsx[22m [33m(x2)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m4:32:11 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/index.css, /src/styles/index.css?direct, /src/pages/SettingsPage/components/NotificationsSettingsTab.tsx[22m [33m(x3)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m4:33:03 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/index.css, /src/styles/index.css?direct, /src/pages/SettingsPage/components/NotificationsSettingsTab.tsx[22m [33m(x4)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m4:33:11 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ui/switch.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m4:33:26 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/index.css, /src/styles/index.css?direct, /src/pages/SettingsPage/components/NotificationsSettingsTab.tsx[22m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m4:33:27 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ui/switch.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m5:29:15 PM[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[Vite] API proxy target: http://127.0.0.1:8080
+[cloudflare-pages] Copied _headers to dist/
+[cloudflare-pages] Copied _redirects to dist/
+[cloudflare-pages] Copied _headers to dist/
+[cloudflare-pages] Copied _redirects to dist/
+[2m5:29:18 PM[22m [36m[1m[vite][22m[39m server restarted.
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m5:29:27 PM[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[Vite] API proxy target: http://127.0.0.1:8080
+[cloudflare-pages] Copied _headers to dist/
+[cloudflare-pages] Copied _redirects to dist/
+[cloudflare-pages] Copied _headers to dist/
+[cloudflare-pages] Copied _redirects to dist/
+[2m5:29:27 PM[22m [36m[1m[vite][22m[39m server restarted.
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m5:29:36 PM[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[Vite] API proxy target: http://127.0.0.1:8080
+[cloudflare-pages] Copied _headers to dist/
+[cloudflare-pages] Copied _redirects to dist/
+[cloudflare-pages] Copied _headers to dist/
+[cloudflare-pages] Copied _redirects to dist/
+[2m5:29:36 PM[22m [36m[1m[vite][22m[39m server restarted.

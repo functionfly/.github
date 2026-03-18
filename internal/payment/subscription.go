@@ -6,6 +6,7 @@ import (
 
 	"github.com/stripe/stripe-go/v83"
 	"github.com/stripe/stripe-go/v83/customer"
+	"github.com/stripe/stripe-go/v83/paymentmethod"
 )
 
 // PaymentMethodInfo represents the payment method details for display
@@ -35,13 +36,20 @@ func GetPaymentMethodForCustomer(ctx context.Context, customerID string) (*Payme
 	// Check for default payment method on the customer
 	if c.InvoiceSettings != nil && c.InvoiceSettings.DefaultPaymentMethod != nil {
 		defaultPM := c.InvoiceSettings.DefaultPaymentMethod
+		if defaultPM.ID != "" {
+			pm, err := paymentmethod.Get(defaultPM.ID, nil)
+			if err == nil && pm != nil && pm.Card != nil {
+				return &PaymentMethodInfo{
+					Brand:    string(pm.Card.Brand),
+					Last4:    pm.Card.Last4,
+					ExpMonth: int(pm.Card.ExpMonth),
+					ExpYear:  int(pm.Card.ExpYear),
+				}, nil
+			}
+			// If Get failed or card is nil, fall through to legacy sources or placeholder
+		}
 
-		// Try to get card details from the payment method
-		// Note: In Stripe, you need to expand the payment method to get card details
-		// For now, we'll return the information we can get from the customer object
-		// In a full implementation, you'd make an additional API call to get the PaymentMethod
-
-		// Check if there's a card in the customer's sources
+		// Fallback: check legacy card sources on the customer
 		if c.Sources != nil && c.Sources.Data != nil {
 			for _, src := range c.Sources.Data {
 				if src.Card != nil {
@@ -55,11 +63,8 @@ func GetPaymentMethodForCustomer(ctx context.Context, customerID string) (*Payme
 			}
 		}
 
-		// If we have a default payment method ID but couldn't get details,
-		// return what we know from the customer
+		// Last resort: we have a default payment method ID but couldn't get details
 		if defaultPM.ID != "" {
-			// Return a placeholder - in production you'd use the PaymentIntent
-			// or SetupIntent to get full card details
 			return &PaymentMethodInfo{
 				Brand: "Card",
 				Last4: "****",

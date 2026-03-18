@@ -122,7 +122,7 @@ function TimeUnit({ value, label }: { value: number; label: string }) {
   return (
     <span className="flex items-baseline gap-0.5">
       <span className="tabular-nums">{String(value).padStart(2, '0')}</span>
-      <span className="text-xs font-normal text-slate-400">{label}</span>
+      <span className="text-xs font-normal text-text-muted">{label}</span>
     </span>
   );
 }
@@ -146,7 +146,7 @@ export function ChallengeCard({ challenge, className }: ChallengeCardProps) {
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900 transition-all duration-300 hover:border-slate-700 hover:shadow-lg',
+        'flywheel-card relative overflow-hidden rounded-xl border border-border-default bg-bg-tertiary transition-all duration-300 hover:border-border-strong hover:shadow-lg',
         className
       )}
     >
@@ -165,12 +165,12 @@ export function ChallengeCard({ challenge, className }: ChallengeCardProps) {
             </div>
             <div>
               <Badge variant="outline" className={cn(
-                'mb-1 border-slate-700 text-xs',
-                challenge.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-400'
+                'mb-1 border-border-default text-xs',
+                challenge.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'text-text-muted'
               )}>
                 {statusConfig[challenge.status]}
               </Badge>
-              <p className={cn('text-xs font-medium', 'text-slate-400')}>
+              <p className={cn('text-xs font-medium', 'text-text-muted')}>
                 {type.label} Challenge
               </p>
             </div>
@@ -178,7 +178,7 @@ export function ChallengeCard({ challenge, className }: ChallengeCardProps) {
 
           {/* Prize Pool */}
           <div className="text-right">
-            <p className="text-xs text-slate-400">Prize Pool</p>
+            <p className="text-xs text-text-muted">Prize Pool</p>
             <p className="text-lg font-bold text-white">
               ${challenge.rewards.totalPool.toLocaleString()}
             </p>
@@ -189,22 +189,22 @@ export function ChallengeCard({ challenge, className }: ChallengeCardProps) {
         <h3 className="mt-3 text-lg font-semibold text-white line-clamp-1">
           {challenge.title}
         </h3>
-        <p className="mt-1 line-clamp-2 text-sm text-slate-400">
+        <p className="mt-1 line-clamp-2 text-sm text-text-secondary">
           {challenge.description}
         </p>
 
         {/* Countdown Timer */}
         {(isActive || isUpcoming) && (
           <div className="mt-4">
-            <p className="mb-2 text-xs text-slate-400">
+            <p className="mb-2 text-xs text-text-muted">
               {isActive ? 'Ends in:' : 'Starts in:'}
             </p>
             <CountdownTimer endTime={challenge.schedule.endTime} />
 
             {isActive && (
               <div className="mt-3">
-                <Progress value={progress} className="h-1 bg-slate-800" />
-                <p className="mt-1 text-xs text-slate-400">
+                <Progress value={progress} className="h-1 bg-bg-hover" />
+                <p className="mt-1 text-xs text-text-muted">
                   {progress.toFixed(0)}% complete
                 </p>
               </div>
@@ -219,7 +219,7 @@ export function ChallengeCard({ challenge, className }: ChallengeCardProps) {
               <span className="text-lg">
                 {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
               </span>
-              <span className="text-sm font-medium text-slate-300">
+              <span className="text-sm font-medium text-text-secondary">
                 ${prize.amount.toLocaleString()}
               </span>
             </div>
@@ -227,8 +227,8 @@ export function ChallengeCard({ challenge, className }: ChallengeCardProps) {
         </div>
 
         {/* Stats & Actions */}
-        <div className="mt-4 flex items-center justify-between border-t border-slate-800 pt-4">
-          <div className="flex items-center gap-4 text-sm text-slate-400">
+        <div className="mt-4 flex items-center justify-between border-t border-border-default pt-4">
+          <div className="flex items-center gap-4 text-sm text-text-muted">
             <span className="flex items-center gap-1">
               <Users className="h-4 w-4" />
               {challenge.statistics.participantCount}
@@ -281,7 +281,7 @@ export function ChallengeCardCompact({ challenge }: { challenge: Challenge }) {
   return (
     <Link
       to={`/flywheel/challenges/${challenge.id}`}
-      className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-3 transition-colors hover:border-slate-700"
+      className="flex items-center gap-3 rounded-lg border border-border-default bg-bg-tertiary p-3 transition-colors hover:border-border-strong"
     >
       <div className={cn(
         'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br',
@@ -293,11 +293,11 @@ export function ChallengeCardCompact({ challenge }: { challenge: Challenge }) {
         <h4 className="truncate text-sm font-medium text-white">
           {challenge.title}
         </h4>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-text-muted">
           ${challenge.rewards.totalPool.toLocaleString()} • {challenge.statistics.participantCount} participants
         </p>
       </div>
-      <Badge variant="outline" className="shrink-0 border-slate-700 text-xs text-slate-400">
+      <Badge variant="outline" className="shrink-0 border-border-default text-xs text-text-muted">
         {statusConfig[challenge.status]}
       </Badge>
     </Link>

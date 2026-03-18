@@ -15,12 +15,17 @@ type JSONBMap map[string]any
 // Scan implements sql.Scanner for JSONB.
 func (m *JSONBMap) Scan(value interface{}) error {
 	if value == nil {
-		*m = nil
+		*m = make(JSONBMap)
 		return nil
 	}
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("expected []byte for JSONB")
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	default:
+		return errors.New("expected []byte or string for JSONB")
 	}
 	if len(b) == 0 {
 		*m = make(JSONBMap)

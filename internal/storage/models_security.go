@@ -59,9 +59,11 @@ type FeatureMeasure struct {
 }
 
 // OAuthState stores OAuth CSRF state tokens for validation on callback (persisted for multi-instance).
+// RedirectURI is optional; when set (e.g. by CLI), the callback redirects there with token instead of FRONTEND_URL.
 type OAuthState struct {
-	State     string    `gorm:"column:state;primaryKey;size:512"`
-	ExpiresAt time.Time `gorm:"column:expires_at;not null"`
+	State       string    `gorm:"column:state;primaryKey;size:512"`
+	ExpiresAt   time.Time `gorm:"column:expires_at;not null"`
+	RedirectURI string    `gorm:"column:redirect_uri;type:text"`
 }
 
 // TableName overrides the default table name for GORM.

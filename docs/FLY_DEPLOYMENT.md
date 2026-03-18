@@ -1,6 +1,8 @@
 # Fly.io Deployment Guide
 
-This document describes how to set up automatic deployments to Fly.io.
+This document describes how to set up automatic deployments to Fly.io for the **orchestrator API** (backend).
+
+For **domain setup** (api.functionfly.com + functionfly.com) and **coming-soon mode** (launch page only), see [DOMAIN_AND_COMING_SOON_SETUP.md](DOMAIN_AND_COMING_SOON_SETUP.md).
 
 ## Overview
 
@@ -93,33 +95,104 @@ You can also trigger deployments manually from the GitHub Actions UI:
 
 ## Manual Deployment (CLI)
 
-If you need to deploy manually without GitHub Actions:
+**Run from the repository root** so the Docker build context includes `go.mod` and the full app:
 
 ```bash
-# Install flyctl if not already installed
-brew install flyctl
+cd /path/to/functionfly   # repo root
 
-# Login
+brew install flyctl   # if needed
 flyctl auth login
-
-# Deploy production
-flyctl deploy --config deploy/fly/functionfly-control/fly.toml
-
-# Check status
+flyctl deploy --config deploy/fly/functionfly-control/fly.toml --remote-only
 flyctl status --app functionfly-control
-
-# View logs
 flyctl logs --app functionfly-control
 ```
 
+## Required Secrets (Fly.io)
+
+Set in **Fly Dashboard → functionfly-control → Secrets** (or via `flyctl secrets set`) so the API can reach DB, Redis, etc.:
+
+| Secret | Example | Required |
+|--------|---------|----------|
+| `DB_HOST` | Neon host or IP | Yes |
+| `DB_PORT` | `5432` | Yes |
+| `DB_USER` | DB user | Yes |
+| `DB_PASSWORD` | DB password | Yes |
+| `DB_NAME` | `functionfly` | Yes |
+| `DB_SSLMODE` | `require` (Neon) or `disable` | Yes |
+| `REDIS_ADDR` | `host:6379` | Yes (or use Upstash) |
+| `JWT_SECRET` | Random string | Yes |
+| `API_SHARED_SECRET` | Random string | Yes |
+| `CORS_ALLOWED_ORIGINS` | `https://functionfly.com,https://www.functionfly.com` | Yes |
+| `BASE_URL` | `https://api.functionfly.com` | Yes |
+| `FRONTEND_URL` | `https://functionfly.com` | Yes |
+
+Optional: `REDIS_PASSWORD`, `DB_MASTER_KEY_PASSWORD`, `GOOGLE_CLIENT_*`, `GITHUB_CLIENT_*`, etc. See `.env.example`.
+
+Example (replace values):
+
+```bash
+flyctl secrets set DB_HOST=ep-xxx-pooler.us-east-1.aws.neon.tech --app functionfly-control
+flyctl secrets set DB_PORT=5432 --app functionfly-control
+flyctl secrets set DB_USER=functionfly_owner --app functionfly-control
+flyctl secrets set DB_PASSWORD=xxx --app functionfly-control
+flyctl secrets set DB_NAME=functionfly --app functionfly-control
+flyctl secrets set DB_SSLMODE=require --app functionfly-control
+flyctl secrets set REDIS_ADDR=xxx.upstash.io:6379 --app functionfly-control
+flyctl secrets set JWT_SECRET=xxx --app functionfly-control
+flyctl secrets set API_SHARED_SECRET=xxx --app functionfly-control
+flyctl secrets set CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com --app functionfly-control
+flyctl secrets set BASE_URL=https://api.functionfly.com --app functionfly-control
+flyctl secrets set FRONTEND_URL=https://functionfly.com --app functionfly-control
+```
+
+## Custom Domain (api.functionfly.com)
+
+1. Add the certificate:
+
+   ```bash
+   flyctl certs add api.functionfly.com --app functionfly-control
+   ```
+
+2. Get DNS instructions:
+
+   ```bash
+   flyctl certs show api.functionfly.com --app functionfly-control
+   ```
+
+3. In your DNS (e.g. Cloudflare for functionfly.com):
+   - Add **CNAME**: `api` → `functionfly-control.fly.dev.`
+   - If using Cloudflare proxy (orange cloud), also add the **TXT** record `_fly-ownership` shown by `fly certs show`.
+
+4. Verify:
+
+   ```bash
+   flyctl certs check api.functionfly.com --app functionfly-control
+   curl -s https://api.functionfly.com/healthz
+   ```
+
+Then set the frontend’s API URL to `https://api.functionfly.com` (e.g. `VITE_API_URL`).
+
+## Deploying functions to Fly.io (adapter)
+
+When using the **Fly deployment adapter** (provider `fly`) to deploy functions/apps from the orchestrator or CLI:
+
+- **API base URL**: The adapter uses the [Fly Machines API](https://fly.io/docs/machines/api/working-with-machines-api/). Set `FLY_API_HOSTNAME` to override the base URL (default: `https://api.machines.dev`). For app secrets/env vars that use the legacy API, you can set `FLY_API_HOSTNAME=https://api.fly.io/v1`.
+- **Provider config** (per deployment):
+  - `api_token` (required): Fly API token (e.g. `fly tokens deploy`).
+  - `app_name` (required): Fly app name.
+  - `org_slug` (required when creating a new app): Organization slug (e.g. `personal`). Omit only if the app already exists.
+  - `image` (optional): Full image reference (e.g. `registry.fly.io/myapp:v1`). If omitted, defaults to `registry.fly.io/<app_name>:<version>` (image must be pre-pushed via `flyctl deploy` or CI).
+- **Rollback**: Implemented via the Machines API by updating each machine’s image to the previous version tag you provide.
+
 ## Environment Variables
 
-The deployment uses the following environment variables (configured in `fly.toml`):
+The deployment uses these in `fly.toml` and/or Fly secrets:
 
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `REGION` | `iad` | Primary region (Virginia) |
 | `PRIMARY_REGION` | `iad` | Primary region for data |
+| `FLY_API_HOSTNAME` | `https://api.machines.dev` | Optional. Fly API base URL for the deployment adapter (Machines API default). |
 
 ## Auto-scaling
 

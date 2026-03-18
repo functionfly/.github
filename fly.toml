@@ -1,0 +1,71 @@
+# Fly.io configuration for FunctionFly Orchestrator API
+# Deploy with: fly deploy
+
+app = "functionfly-api"
+primary_region = "ord"
+
+[build]
+  dockerfile = "deploy/docker/Dockerfile.orchestrator"
+
+[http_service]
+  port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  # Health check configuration
+  [http_service.health_check]
+    path = "/health"
+    interval = 30
+    timeout = 10
+    grace_period = 5
+    method = "GET"
+
+# Machine configuration for the API
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "512"
+  cpu_kind = "shared"
+  cpus = 2
+
+# Environment variables (non-sensitive)
+# Note: Secrets should be set via: fly secrets set KEY=value
+[env]
+  PORT = "8080"
+  LOG_LEVEL = "info"
+  DEVELOPMENT = "false"
+
+# Runtime secrets - set these via fly CLI:
+#
+# Database (Neon PostgreSQL) - Option 1: DATABASE_URL (recommended)
+# fly secrets set DATABASE_URL="postgresql://user:pass@ep-xxx-pooler.us-east-1.aws.neon.tech/functionfly?sslmode=require"
+#
+# Database - Option 2: Individual DB_* variables
+# fly secrets set DB_HOST=ep-xxx-pooler.us-east-1.aws.neon.tech DB_PORT=5432 DB_USER=user DB_PASSWORD=pass DB_NAME=functionfly DB_SSLMODE=require
+#
+# Redis
+# fly secrets set REDIS_ADDR=your-redis-host:6379 REDIS_PASSWORD=your-redis-password
+#
+# Authentication & Security
+# fly secrets set JWT_SECRET=your-jwt-secret-min-32-chars API_SHARED_SECRET=your-secret BASE_URL=https://api.functionfly.com
+# fly secrets set DB_MASTER_KEY_PASSWORD=your-master-key
+#
+# See .fly/secrets.example for full list
+
+# No [processes] override: Fly uses the image CMD (./orchestrator-api --skip-migrations) so the app binds to 0.0.0.0:8080.
+
+# Deployments configuration
+[deploy]
+  release_command = ""
+  wait_timeout = "60s"
+
+# Acme / TLS configuration (optional - Fly.io handles this automatically)
+# [[tls]]
+#   hosts = ["api.functionfly.com"]
+#   dns_validation = true
+
+# Experimental features
+[experimental]
+  auto_rollback = true

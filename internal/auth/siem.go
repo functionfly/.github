@@ -10,10 +10,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	cwtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -432,32 +438,107 @@ func NewCloudWatchExporter(config map[string]interface{}) (*CloudWatchExporter, 
 }
 
 func (e *CloudWatchExporter) Export(ctx context.Context, logs []map[string]interface{}) error {
-	// Note: In production, use AWS SDK. This is a simplified implementation.
-	// For now, we would use the AWS SDK to put log events.
-	// The actual implementation would use the CloudWatch Logs API.
-
-	// Serialize logs for CloudWatch
-	events := make([]string, len(logs))
-	for i, log := range logs {
-		data, _ := json.Marshal(log)
-		events[i] = string(data)
+	if len(logs) == 0 {
+		return nil
 	}
 
-	// In production, this would call:
-	// cwClient.PutLogEvents(ctx, &cloudwatchlogs.PutLogEventsInput{
-	// 	LogGroupName:  &e.LogGroup,
-	// 	LogStreamName: &e.StreamName,
-	// 	LogEvents:     events,
-	// })
+	cfg, err := e.awsConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("cloudwatch config: %w", err)
+	}
+	client := cloudwatchlogs.NewFromConfig(cfg)
 
-	_ = events // Used in production implementation
+	streamName := e.StreamName
+	if streamName == "" {
+		streamName = "functionfly-auth-" + time.Now().UTC().Format("2006-01-02")
+	}
 
-	return fmt.Errorf("CloudWatch export requires AWS SDK - use webhook for testing")
+	_, _ = client.CreateLogStream(ctx, &cloudwatchlogs.CreateLogStreamInput{
+		LogGroupName:  aws.String(e.LogGroup),
+		LogStreamName: aws.String(streamName),
+	})
+	// Ignore error: ResourceAlreadyExistsException is expected when stream exists
+
+	// Build log events with timestamps (ms); CloudWatch requires chronological order
+	events := make([]cwtypes.InputLogEvent, 0, len(logs))
+	for _, log := range logs {
+		data, err := json.Marshal(log)
+		if err != nil {
+			continue
+		}
+		msg := string(data)
+		if len(msg) > 1024*1024 {
+			msg = msg[:1024*1024]
+		}
+		ts := time.Now().UnixMilli()
+		if t, ok := log["timestamp"]; ok {
+			switch v := t.(type) {
+			case string:
+				if parsed, err := time.Parse(time.RFC3339, v); err == nil {
+					ts = parsed.UnixMilli()
+				}
+			case float64:
+				ts = int64(v)
+			}
+		}
+		events = append(events, cwtypes.InputLogEvent{
+			Message:   aws.String(msg),
+			Timestamp: aws.Int64(ts),
+		})
+	}
+	sort.Slice(events, func(i, j int) bool { return *events[i].Timestamp < *events[j].Timestamp })
+
+	const maxPerBatch = 10000
+	var nextSeq *string
+	for i := 0; i < len(events); i += maxPerBatch {
+		end := i + maxPerBatch
+		if end > len(events) {
+			end = len(events)
+		}
+		batch := events[i:end]
+		input := &cloudwatchlogs.PutLogEventsInput{
+			LogGroupName:  aws.String(e.LogGroup),
+			LogStreamName: aws.String(streamName),
+			LogEvents:     batch,
+		}
+		if nextSeq != nil {
+			input.SequenceToken = nextSeq
+		}
+		out, err := client.PutLogEvents(ctx, input)
+		if err != nil {
+			return fmt.Errorf("cloudwatch PutLogEvents: %w", err)
+		}
+		nextSeq = out.NextSequenceToken
+	}
+	return nil
 }
 
 func (e *CloudWatchExporter) TestConnection(ctx context.Context) error {
-	// In production, verify credentials and log group access
-	return fmt.Errorf("CloudWatch test requires AWS SDK - use webhook for testing")
+	cfg, err := e.awsConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("cloudwatch config: %w", err)
+	}
+	client := cloudwatchlogs.NewFromConfig(cfg)
+	_, err = client.DescribeLogGroups(ctx, &cloudwatchlogs.DescribeLogGroupsInput{
+		LogGroupNamePrefix: aws.String(e.LogGroup),
+		Limit:              aws.Int32(1),
+	})
+	if err != nil {
+		return fmt.Errorf("cloudwatch describe log groups: %w", err)
+	}
+	return nil
+}
+
+func (e *CloudWatchExporter) awsConfig(ctx context.Context) (aws.Config, error) {
+	opts := []func(*config.LoadOptions) error{
+		config.WithRegion(e.Region),
+	}
+	if e.AccessKeyID != "" && e.SecretKey != "" {
+		opts = append(opts, config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+			e.AccessKeyID, e.SecretKey, "",
+		)))
+	}
+	return config.LoadDefaultConfig(ctx, opts...)
 }
 
 // ============== Azure Sentinel Exporter ==============

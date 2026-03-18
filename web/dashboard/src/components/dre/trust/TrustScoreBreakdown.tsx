@@ -7,8 +7,8 @@ export interface TrustScoreBreakdownProps {
   determinismScore: number;
   /** Replay consistency score (0-100) */
   replayConsistency: number;
-  /** Resource stability score (0-100) */
-  resourceStability: number;
+  /** Resource stability score (0-100); omit when not available from API */
+  resourceStability?: number;
   /** Number of drift incidents */
   driftIncidents: number;
   /** Overall trust score (0-100) */
@@ -122,12 +122,22 @@ export function TrustScoreBreakdown({
             icon={RefreshCw}
             color="text-purple-500"
           />
-          <ScoreBar
-            label="Resource Stability"
-            value={resourceStability}
-            icon={HardDrive}
-            color="text-cyan-500"
-          />
+          {resourceStability !== undefined ? (
+            <ScoreBar
+              label="Resource Stability"
+              value={resourceStability}
+              icon={HardDrive}
+              color="text-cyan-500"
+            />
+          ) : (
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <HardDrive className="h-4 w-4 text-muted-foreground" />
+                <span>Resource Stability</span>
+              </div>
+              <span className="text-muted-foreground">—</span>
+            </div>
+          )}
         </div>
 
         {/* Drift Incidents */}

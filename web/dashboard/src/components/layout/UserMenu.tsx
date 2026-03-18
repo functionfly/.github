@@ -1,13 +1,4 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  User,
-  Settings,
-  CreditCard,
-  LogOut,
-  ChevronDown,
-  Shield
-} from "lucide-react";
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,11 +6,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/stores/authStore";
-import { cn } from "@/lib/utils";
-import { PLANS, ROUTES } from "@/lib/constants";
+} from '@/components/ui/dropdown-menu';
+import { ADMIN_DASHBOARD_URL, PLANS, ROUTES } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/stores/authStore';
+import { ChevronDown, CreditCard, LogOut, Settings, Shield, User } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 interface UserMenuProps {
   className?: string;
@@ -32,7 +25,8 @@ export function UserMenu({ className }: UserMenuProps) {
   if (!user) return null;
 
   const planInfo = PLANS[user.plan.toUpperCase() as keyof typeof PLANS] || PLANS.FREE;
-  const isAdmin = user.role && ["super_admin", "support", "billing_admin", "developer_admin"].includes(user.role);
+  const isAdmin =
+    user.role && ['super_admin', 'support', 'billing_admin', 'developer_admin'].includes(user.role);
 
   const handleLogout = () => {
     logout();
@@ -41,13 +35,15 @@ export function UserMenu({ className }: UserMenuProps) {
   const getInitials = () => {
     // Prefer username, then name, then email as fallback
     const source = user.username || user.name || user.email;
-    return source
-      .split(/[@.\s_-]+/)
-      .filter(Boolean)
-      .map(word => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 2) || '??';
+    return (
+      source
+        .split(/[@.\s_-]+/)
+        .filter(Boolean)
+        .map((word) => word.charAt(0))
+        .join('')
+        .toUpperCase()
+        .slice(0, 2) || '??'
+    );
   };
 
   return (
@@ -56,13 +52,13 @@ export function UserMenu({ className }: UserMenuProps) {
         <Button
           variant="ghost"
           className={cn(
-            "ml-2 flex items-center gap-3 pl-4 border-l border-white/8 hover:bg-white/5",
+            'ml-2 flex items-center gap-3 pl-4 border-l border-white/8 hover:bg-white/5',
             className
           )}
         >
           <div className="text-right hidden sm:block">
             <p className="text-sm font-medium text-white truncate max-w-24">
-              {user.username ? `@${user.username}` : (user.name || user.email)}
+              {user.username ? `@${user.username}` : user.name || user.email}
             </p>
             <p className="text-xs text-text-muted capitalize">
               {user.name && user.username ? user.name : `${planInfo.name} Plan`}
@@ -70,15 +66,21 @@ export function UserMenu({ className }: UserMenuProps) {
           </div>
           <div className="w-9 h-9 rounded-full bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-medium text-sm">
             {user.avatar ? (
-              <img src={user.avatar} alt={user.name || user.username || 'User'} className="w-full h-full rounded-full object-cover" />
+              <img
+                src={user.avatar}
+                alt={user.name || user.username || 'User'}
+                className="w-full h-full rounded-full object-cover"
+              />
             ) : (
               getInitials()
             )}
           </div>
-          <ChevronDown className={cn(
-            "w-4 h-4 text-text-secondary transition-transform",
-            isOpen && "rotate-180"
-          )} />
+          <ChevronDown
+            className={cn(
+              'w-4 h-4 text-text-secondary transition-transform',
+              isOpen && 'rotate-180'
+            )}
+          />
         </Button>
       </DropdownMenuTrigger>
 
@@ -90,9 +92,7 @@ export function UserMenu({ className }: UserMenuProps) {
         <DropdownMenuLabel className="px-3 py-2">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium text-white">{user.name || user.username || 'User'}</p>
-            {user.username && (
-              <p className="text-xs text-brand-400">@{user.username}</p>
-            )}
+            {user.username && <p className="text-xs text-brand-400">@{user.username}</p>}
             <p className="text-xs text-text-muted truncate">{user.email}</p>
           </div>
         </DropdownMenuLabel>
@@ -101,7 +101,7 @@ export function UserMenu({ className }: UserMenuProps) {
 
         <DropdownMenuItem asChild>
           <Link
-            to={user.username ? `/u/${user.username}` : "/profile"}
+            to={user.username ? `/u/${user.username}` : '/profile'}
             className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-white/5 cursor-pointer"
             onClick={() => setIsOpen(false)}
           >
@@ -132,18 +132,19 @@ export function UserMenu({ className }: UserMenuProps) {
           </Link>
         </DropdownMenuItem>
 
-        {isAdmin && (
+        {isAdmin && ADMIN_DASHBOARD_URL && (
           <>
             <DropdownMenuSeparator className="bg-white/8" />
             <DropdownMenuItem asChild>
-              <Link
-                to={ROUTES.ADMIN}
+              <a
+                href={ADMIN_DASHBOARD_URL}
                 className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-white/5 cursor-pointer"
                 onClick={() => setIsOpen(false)}
+                rel="noopener noreferrer"
               >
                 <Shield className="w-4 h-4" />
                 <span>Admin Panel</span>
-              </Link>
+              </a>
             </DropdownMenuItem>
           </>
         )}

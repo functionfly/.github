@@ -1,7 +1,9 @@
 package security
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -9,17 +11,9 @@ import (
 )
 
 // checkSecurityHeaders checks for missing or misconfigured security headers
+// by making a live HTTP request to target (when non-empty) and by scanning config files.
 func (sas *SecurityAuditService) checkSecurityHeaders(target string) ([]Vulnerability, error) {
 	vulnerabilities := []Vulnerability{}
-
-	// This is a simplified check - in production you'd make an HTTP request
-	// For now, we'll check configuration files for security header settings
-
-	// Check for common configuration files
-	configFiles := []string{
-		"Caddyfile", "nginx.conf", "apache.conf", "apache2.conf",
-		".htaccess", "web.config", "server.go", "main.go",
-	}
 
 	requiredHeaders := map[string]string{
 		"X-Frame-Options":           "Prevents clickjacking attacks",
@@ -29,10 +23,22 @@ func (sas *SecurityAuditService) checkSecurityHeaders(target string) ([]Vulnerab
 		"Strict-Transport-Security": "Enforces HTTPS connections",
 	}
 
+	// Live check: HTTP request to target when provided
+	if target != "" {
+		liveVulns, err := sas.checkSecurityHeadersLive(target, requiredHeaders)
+		if err == nil {
+			vulnerabilities = append(vulnerabilities, liveVulns...)
+		}
+	}
+
+	// Config-based check: scan configuration files for header settings
+	configFiles := []string{
+		"Caddyfile", "nginx.conf", "apache.conf", "apache2.conf",
+		".htaccess", "web.config", "server.go", "main.go",
+	}
 	for _, configFile := range configFiles {
 		if data, err := os.ReadFile(configFile); err == nil {
 			content := strings.ToLower(string(data))
-
 			for header, description := range requiredHeaders {
 				headerLower := strings.ToLower(header)
 				if !strings.Contains(content, headerLower) {
@@ -58,6 +64,58 @@ func (sas *SecurityAuditService) checkSecurityHeaders(target string) ([]Vulnerab
 	}
 
 	return vulnerabilities, nil
+}
+
+// checkSecurityHeadersLive performs an HTTP request to the target and reports missing security headers.
+func (sas *SecurityAuditService) checkSecurityHeadersLive(target string, requiredHeaders map[string]string) ([]Vulnerability, error) {
+	baseURL := target
+	if !strings.HasPrefix(baseURL, "http://") && !strings.HasPrefix(baseURL, "https://") {
+		baseURL = "https://" + target
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, baseURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	client := &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return nil }}
+	resp, err := client.Do(req)
+	if err != nil {
+		// Try HTTP if HTTPS failed (e.g. local dev or no TLS)
+		if strings.HasPrefix(baseURL, "https://") {
+			host := strings.TrimPrefix(strings.TrimPrefix(target, "https://"), "http://")
+			baseURL = "http://" + host
+			req2, _ := http.NewRequestWithContext(ctx, http.MethodHead, baseURL, nil)
+			resp, err = client.Do(req2)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	defer resp.Body.Close()
+
+	var vulns []Vulnerability
+	for header, description := range requiredHeaders {
+		if resp.Header.Get(header) == "" {
+			vulns = append(vulns, Vulnerability{
+				ID:          generateVulnID(),
+				Title:       fmt.Sprintf("Missing Security Header: %s", header),
+				Description: fmt.Sprintf("Response from %s is missing %s: %s", baseURL, header, description),
+				Severity:    "medium",
+				Category:    "config",
+				Component:   "web_server",
+				Location:    baseURL,
+				Status:      "open",
+				Remediation: fmt.Sprintf("Add %s header to server configuration", header),
+				ReferenceUrls: []string{
+					"https://owasp.org/www-project-secure-headers/",
+				},
+				Discovered: time.Now(),
+				Updated:    time.Now(),
+			})
+		}
+	}
+	return vulns, nil
 }
 
 // checkExposedServices checks for potentially dangerous exposed services

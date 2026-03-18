@@ -355,6 +355,19 @@ func (s *Server) ListenAndServe(addr string) error {
 	// Set the server address
 	s.httpServer.Addr = addr
 
+	// Channel to listen for interrupt signals
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start HTTP listener first so Fly.io (and health checks) see the app listening immediately.
+	// Background services are started after so a slow init does not delay the port binding.
+	go func() {
+		logrus.WithField("addr", addr).Info("API server listening")
+		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logrus.WithError(err).Fatal("Server failed to start")
+		}
+	}()
+
 	// Start session cleanup routine (runs every hour)
 	s.sessionCleanup.StartCleanupRoutine(time.Hour)
 
@@ -410,18 +423,6 @@ func (s *Server) ListenAndServe(addr string) error {
 		s.unifiedSyncJob.Start(ctx)
 		logrus.Info("Unified analytics sync job started")
 	}
-
-	// Channel to listen for interrupt signals
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
-	// Start server in a goroutine
-	go func() {
-		logrus.WithField("addr", addr).Info("API server listening")
-		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logrus.WithError(err).Fatal("Server failed to start")
-		}
-	}()
 
 	// Wait for interrupt signal
 	<-done

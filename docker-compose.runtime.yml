@@ -159,6 +159,39 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Bun Runtime Service - Bun function execution
+  runtime-bun:
+    image: functionfly/runtime-bun:latest
+    container_name: functionfly-runtime-bun
+    ports:
+      - "8085:8080"
+    environment:
+      - RUNTIME=bun
+      - LOG_LEVEL=info
+      - PORT=8080
+    volumes:
+      - bun-cache:/root/.bun
+    networks:
+      - functionfly-runtime
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
 networks:
   functionfly-runtime:
     driver: bridge
@@ -170,4 +203,6 @@ volumes:
   clamav-data:
     driver: local
   yara-rules:
+    driver: local
+  bun-cache:
     driver: local

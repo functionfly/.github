@@ -75,6 +75,8 @@ type DefaultReplayService struct {
 	driftDetector DriftDetector
 	// Node key for signing replay results
 	nodeKey ed25519.PrivateKey
+	// Optional: retrieves original MEG from storage for comparison and drift analysis
+	megProvider OriginalMEGProvider
 }
 
 // FunctionExecutor defines the interface for executing functions.
@@ -89,12 +91,20 @@ type DriftDetector interface {
 	Analyze(original, replay *drecrypto.MEGResult) (*ReplayDriftReport, error)
 }
 
+// OriginalMEGProvider supplies the stored MEG for an execution (e.g. from registry storage).
+// Implementations typically call registry.GetMEGByExecutionID and convert MEGRecord to MEGResult.
+type OriginalMEGProvider interface {
+	GetOriginalMEG(ctx context.Context, executionID string) (*drecrypto.MEGResult, error)
+}
+
 // NewDefaultReplayService creates a new default replay service.
-func NewDefaultReplayService(executor FunctionExecutor, driftDetector DriftDetector, nodeKey ed25519.PrivateKey) *DefaultReplayService {
+// megProvider may be nil; if set, ExecuteReplay will retrieve the original MEG from storage for comparison and drift analysis.
+func NewDefaultReplayService(executor FunctionExecutor, driftDetector DriftDetector, nodeKey ed25519.PrivateKey, megProvider OriginalMEGProvider) *DefaultReplayService {
 	return &DefaultReplayService{
 		executor:      executor,
 		driftDetector: driftDetector,
 		nodeKey:       nodeKey,
+		megProvider:   megProvider,
 	}
 }
 
@@ -136,23 +146,29 @@ func (s *DefaultReplayService) ExecuteReplay(ctx context.Context, req *ReplayReq
 
 	executionDuration := time.Since(startTime)
 
-	// Build MEG from replay output
-	// In production, this would be more comprehensive
-	replayMEG := &drecrypto.MEGResult{
-		ExecutionRootHash: drecrypto.HashString(drecrypto.TagMeta, []byte(string(replayOutput)+req.ExecutionID)),
-		InputHash:         drecrypto.HashString(drecrypto.TagInput, req.InputPayload),
-		OutputHash:        drecrypto.HashString(drecrypto.TagOutput, replayOutput),
-		EnvironmentHash:  drecrypto.HashString(drecrypto.TagEnv, []byte(req.CapsuleDescriptor)),
+	// Build MEG from replay using full DRE/1.0 component set so root comparison and drift analysis match production.
+	replayMEG, err := buildReplayMEG(req, replayOutput)
+	if err != nil {
+		return nil, fmt.Errorf("cert: build replay MEG: %w", err)
 	}
 
-	// Compare with original execution root hash
-	// In production, we'd retrieve the original MEG from storage
-	originalRootHash := req.Metadata["original_root_hash"]
+	// Compare with original execution root hash: retrieve original MEG from storage when available
+	var originalMEG *drecrypto.MEGResult
+	if s.megProvider != nil && req.ExecutionID != "" {
+		originalMEG, err = s.megProvider.GetOriginalMEG(ctx, req.ExecutionID)
+		if err != nil {
+			// Log but continue; we can still fall back to metadata
+			originalMEG = nil
+		}
+	}
+
 	var originalRoot string
-	if originalRoot != "" {
-		originalRoot = originalRoot
-	} else if s, ok := originalRootHash.(string); ok {
-		originalRoot = s
+	if originalMEG != nil {
+		originalRoot = originalMEG.ExecutionRootHash
+	} else if req.Metadata != nil {
+		if s, ok := req.Metadata["original_root_hash"].(string); ok && s != "" {
+			originalRoot = s
+		}
 	}
 
 	rootsMatch := originalRoot != "" && originalRoot == replayMEG.ExecutionRootHash
@@ -160,9 +176,9 @@ func (s *DefaultReplayService) ExecuteReplay(ctx context.Context, req *ReplayReq
 	// Perform drift analysis if there's a mismatch
 	var driftReport *ReplayDriftReport
 	if !rootsMatch && s.driftDetector != nil {
-		// Create mock original MEG for drift detection
-		originalMEG := &drecrypto.MEGResult{
-			ExecutionRootHash: originalRoot,
+		// Use stored original MEG when available for accurate drift detection; otherwise minimal stub
+		if originalMEG == nil {
+			originalMEG = &drecrypto.MEGResult{ExecutionRootHash: originalRoot}
 		}
 		drift, err := s.driftDetector.Analyze(originalMEG, replayMEG)
 		if err == nil && drift != nil {
@@ -318,4 +334,77 @@ func GetReplayInfo(cert *FXCert) map[string]interface{} {
 	}
 
 	return info
+}
+
+// buildReplayMEG constructs a full MEG from replay request and output using DRE/1.0 component ordering.
+// Uses the same canonical shapes as the execution path so root and drift comparison are meaningful.
+func buildReplayMEG(req *ReplayRequest, replayOutput json.RawMessage) (*drecrypto.MEGResult, error) {
+	meta := req.Metadata
+	getStr := func(key string) string {
+		if meta == nil {
+			return ""
+		}
+		if v, ok := meta[key]; ok {
+			if s, _ := v.(string); s != "" {
+				return s
+			}
+		}
+		return ""
+	}
+
+	// Input: same shape as execution megInputPayload (args, caller_id, fx_uri, seed)
+	inputPayload := map[string]interface{}{
+		"args":      req.InputPayload,
+		"caller_id": getStr("caller_id"),
+		"fx_uri":    "fx://" + req.FunctionID,
+		"seed":      getStr("nonce"),
+	}
+
+	// Environment: runtime_version + capsule (string or parsed JSON)
+	var envCapsule interface{} = req.CapsuleDescriptor
+	if len(req.CapsuleDescriptor) > 0 && (req.CapsuleDescriptor[0] == '{' || req.CapsuleDescriptor[0] == '[') {
+		var parsed interface{}
+		if err := json.Unmarshal([]byte(req.CapsuleDescriptor), &parsed); err == nil {
+			envCapsule = parsed
+		}
+	}
+	environmentData := map[string]interface{}{
+		"runtime_version": getStr("runtime_version"),
+		"capsule":        envCapsule,
+	}
+
+	// Output: return_value + exit_code
+	outputPayload := map[string]interface{}{
+		"return_value": replayOutput,
+		"exit_code":    0,
+	}
+
+	// Metadata: execution_id, function_id, and standard fields
+	timestamp := req.RequestedAt.Format(time.RFC3339)
+	if timestamp == "" || req.RequestedAt.IsZero() {
+		timestamp = time.Now().UTC().Format(time.RFC3339)
+	}
+	metadataPayload := map[string]interface{}{
+		"execution_id":     req.ExecutionID,
+		"function_id":      req.FunctionID,
+		"owner_id":         getStr("owner_id"),
+		"caller_id":        getStr("caller_id"),
+		"node_id":          req.RequestingNodeID,
+		"region":           req.RequestingRegion,
+		"nonce":            getStr("nonce"),
+		"protocol_version": getStr("protocol_version"),
+		"timestamp":        timestamp,
+	}
+
+	components := drecrypto.MEGComponents{
+		InputPayload:    inputPayload,
+		EnvironmentData: environmentData,
+		Dependencies:    nil,
+		TraceChunks:     nil,
+		ResourceUsage:   nil,
+		OutputPayload:   outputPayload,
+		Metadata:        metadataPayload,
+	}
+
+	return drecrypto.BuildMEG(components)
 }

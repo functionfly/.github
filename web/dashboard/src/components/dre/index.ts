@@ -10,8 +10,9 @@ export * from "./execution";
 // Replay System
 export * from "./replay";
 
-// Capsule Inspection
-export * from "./capsule";
+// Capsule Inspection (CapsuleDescriptor comes from ./replay to avoid duplicate export)
+export { CapsuleInspector } from "./capsule";
+export type { CapsuleInspectorProps } from "./capsule";
 
 // FXCERT
 export * from "./fxcert";

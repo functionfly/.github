@@ -1,12 +1,12 @@
-import { useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Editor from '@monaco-editor/react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileCode2, FormInput, BookOpen } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { ManifestInputForm } from '@/components/common/ManifestInputForm';
-import { usePlaygroundStore, InputTab } from '../store/playgroundStore';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 import { useThemeStore } from '@/stores/themeStore';
+import Editor from '@monaco-editor/react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { BookOpen, FileCode2, FormInput } from 'lucide-react';
+import { useCallback } from 'react';
+import { InputTab, usePlaygroundStore } from '../store/playgroundStore';
 import { ExampleSelector } from './ExampleSelector';
 
 interface PlaygroundInputPanelProps {
@@ -89,105 +89,118 @@ export function PlaygroundInputPanel({ className }: PlaygroundInputPanelProps) {
           <div className="ml-auto text-xs text-text-muted pr-1">Input</div>
         </div>
 
-        {/* Tab content */}
+        {/* Tab content: single keyed child for AnimatePresence mode="wait" */}
         <div className="flex-1 overflow-hidden">
-          <AnimatePresence mode="wait">
-            <TabsContent
-              value="form"
-              className="h-full m-0 overflow-auto"
-              forceMount
-              hidden={activeInputTab !== 'form'}
-            >
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="p-3 h-full"
-              >
-                {inputSpec ? (
-                  <ManifestInputForm
-                    inputSpec={inputSpec}
-                    value={inputValue}
-                    onChange={handleFormChange}
-                    className="border-0 shadow-none bg-transparent"
+          <TabsContent
+            value="form"
+            className="h-full m-0 overflow-auto"
+            forceMount
+            hidden={activeInputTab !== 'form'}
+          >
+            <AnimatePresence mode="wait">
+              {activeInputTab === 'form' && (
+                <motion.div
+                  key="form"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="p-3 h-full"
+                >
+                  {inputSpec ? (
+                    <ManifestInputForm
+                      inputSpec={inputSpec}
+                      value={inputValue}
+                      onChange={handleFormChange}
+                      className="border-0 shadow-none bg-transparent"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                      <FormInput className="w-10 h-10 text-text-muted mb-3" />
+                      <p className="text-sm text-text-muted">No input schema defined</p>
+                      <p className="text-xs text-text-muted mt-1">
+                        Switch to JSON tab to enter raw input
+                      </p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </TabsContent>
+
+          <TabsContent
+            value="json"
+            className="h-full m-0"
+            forceMount
+            hidden={activeInputTab !== 'json'}
+          >
+            <AnimatePresence mode="wait">
+              {activeInputTab === 'json' && (
+                <motion.div
+                  key="json"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="h-full"
+                >
+                  <Editor
+                    height="100%"
+                    language="json"
+                    value={inputJson}
+                    onChange={handleJsonChange}
+                    theme={resolvedTheme === 'dark' ? 'vs-dark' : 'light'}
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 13,
+                      lineNumbers: 'on',
+                      scrollBeyondLastLine: false,
+                      wordWrap: 'on',
+                      formatOnPaste: true,
+                      formatOnType: true,
+                      tabSize: 2,
+                      automaticLayout: true,
+                      padding: { top: 8, bottom: 8 },
+                      scrollbar: {
+                        verticalScrollbarSize: 6,
+                        horizontalScrollbarSize: 6,
+                      },
+                    }}
+                    beforeMount={(monaco) => {
+                      if (monacoSchema) {
+                        monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+                          validate: true,
+                          schemas: [monacoSchema],
+                        });
+                      }
+                    }}
                   />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                    <FormInput className="w-10 h-10 text-text-muted mb-3" />
-                    <p className="text-sm text-text-muted">No input schema defined</p>
-                    <p className="text-xs text-text-muted mt-1">
-                      Switch to JSON tab to enter raw input
-                    </p>
-                  </div>
-                )}
-              </motion.div>
-            </TabsContent>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </TabsContent>
 
-            <TabsContent
-              value="json"
-              className="h-full m-0"
-              forceMount
-              hidden={activeInputTab !== 'json'}
-            >
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="h-full"
-              >
-                <Editor
-                  height="100%"
-                  language="json"
-                  value={inputJson}
-                  onChange={handleJsonChange}
-                  theme={resolvedTheme === 'dark' ? 'vs-dark' : 'light'}
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 13,
-                    lineNumbers: 'on',
-                    scrollBeyondLastLine: false,
-                    wordWrap: 'on',
-                    formatOnPaste: true,
-                    formatOnType: true,
-                    tabSize: 2,
-                    automaticLayout: true,
-                    padding: { top: 8, bottom: 8 },
-                    scrollbar: {
-                      verticalScrollbarSize: 6,
-                      horizontalScrollbarSize: 6,
-                    },
-                  }}
-                  beforeMount={(monaco) => {
-                    if (monacoSchema) {
-                      monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-                        validate: true,
-                        schemas: [monacoSchema],
-                      });
-                    }
-                  }}
-                />
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent
-              value="examples"
-              className="h-full m-0 overflow-auto"
-              forceMount
-              hidden={activeInputTab !== 'examples'}
-            >
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="p-3"
-              >
-                <ExampleSelector />
-              </motion.div>
-            </TabsContent>
-          </AnimatePresence>
+          <TabsContent
+            value="examples"
+            className="h-full m-0 overflow-auto"
+            forceMount
+            hidden={activeInputTab !== 'examples'}
+          >
+            <AnimatePresence mode="wait">
+              {activeInputTab === 'examples' && (
+                <motion.div
+                  key="examples"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="p-3"
+                >
+                  <ExampleSelector />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </TabsContent>
         </div>
       </Tabs>
     </div>

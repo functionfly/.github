@@ -144,15 +144,23 @@ func (r *Repository) CleanupExpiredMemories(ctx context.Context) (int64, error) 
 	return result.RowsAffected, result.Error
 }
 
-// SearchMemories searches memories by content keywords
+// SearchMemories searches memories by content using Postgres full-text search (tsvector/tsquery).
+// When query is empty, returns recent non-expired memories by importance and date.
 func (r *Repository) SearchMemories(ctx context.Context, agentID string, query string, limit int) ([]AgentMemory, error) {
 	var memories []AgentMemory
-	// Note: This is a simple implementation. For complex search, consider using full-text search
-	err := r.db.WithContext(ctx).
-		Where("agent_id = ? AND (expires_at IS NULL OR expires_at > ?)", agentID, time.Now()).
-		Order("importance DESC, created_at DESC").
-		Limit(limit).
-		Find(&memories).Error
+	q := r.db.WithContext(ctx).Model(&AgentMemory{}).
+		Where("agent_id = ? AND (expires_at IS NULL OR expires_at > ?)", agentID, time.Now())
+
+	if query != "" {
+		// Full-text search: content can be TEXT or JSONB; coalesce(content::text, '') works for both.
+		q = q.Where(
+			"to_tsvector('english', coalesce(content::text, '')) @@ plainto_tsquery('english', ?)",
+			query,
+		)
+	}
+	q = q.Order("importance DESC, created_at DESC")
+
+	err := q.Limit(limit).Find(&memories).Error
 	return memories, err
 }
 

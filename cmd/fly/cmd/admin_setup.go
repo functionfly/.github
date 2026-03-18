@@ -1,6 +1,5 @@
 /*
 Copyright © 2026 FunctionFly
-
 */
 package cmd
 
@@ -79,7 +78,10 @@ func runAdminSetup(cmd *cobra.Command) error {
 	// Create default admin user if not exists
 	var userID string
 	defaultPassword := "admin123"
-	hashedPassword := hashPassword(defaultPassword)
+	hashedPassword, err := hashPassword(defaultPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
 
 	err = db.QueryRow(`
 		INSERT INTO users (email, password_hash, tenant_id, role, created_at, updated_at)

@@ -342,10 +342,18 @@ func (a *CloudflareAdapter) DeployBlueGreen(ctx context.Context, spec *common.De
 		return nil, fmt.Errorf("missing required blue/green config: zone_id, domain")
 	}
 
+	// Workers.dev CNAME target: script-name.<workers_subdomain>.workers.dev (set in Cloudflare Workers dashboard)
+	var workersSubdomain string
+	if spec.ProviderConfig != nil {
+		if s, ok := spec.ProviderConfig["workers_subdomain"].(string); ok {
+			workersSubdomain = s
+		}
+	}
+
 	client := NewCloudflareDeploymentClient(apiToken, accountID)
 
 	// Perform blue/green deployment
-	result, err := client.DeployBlueGreen(ctx, spec.Artifact, scriptName, zoneID, domain, enableProxied)
+	result, err := client.DeployBlueGreen(ctx, spec.Artifact, scriptName, zoneID, domain, workersSubdomain, enableProxied)
 	if err != nil {
 		return &common.DeploymentResult{
 			Status:  common.DeploymentStatusFailed,

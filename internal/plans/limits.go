@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -26,6 +27,11 @@ const (
 	StarterMaxTokensPerSecret    = 5
 	ProMaxTokensPerSecret        = 20
 	EnterpriseMaxTokensPerSecret = 100
+
+	// Custom domains per tenant (starter/pro/enterprise)
+	StarterMaxCustomDomains    = 1
+	ProMaxCustomDomains        = 5
+	EnterpriseMaxCustomDomains = -1 // Unlimited
 
 	// MicroVM-specific limits (Enterprise tier only)
 	EnterpriseMaxMicroVMs      = 100
@@ -238,6 +244,21 @@ func MaxProviders(plan string) int {
 		fallthrough
 	default:
 		return StarterMaxProvidersPerApp
+	}
+}
+
+// GetMaxCustomDomains returns the maximum number of custom domains for the given plan.
+// Returns -1 for unlimited (enterprise).
+func GetMaxCustomDomains(plan string) int {
+	switch strings.ToLower(plan) {
+	case PlanPro, "professional":
+		return ProMaxCustomDomains
+	case PlanEnterprise:
+		return EnterpriseMaxCustomDomains
+	case PlanStarter:
+		fallthrough
+	default:
+		return StarterMaxCustomDomains
 	}
 }
 

@@ -1,50 +1,41 @@
-import { useState, useCallback, useEffect } from "react";
-import { NavLink, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { Logo } from '@/components/common/Logo';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
+import { useNavigationStatus } from '@/hooks/useNavigationStatus';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import { ROUTES } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/stores/authStore';
+import { useNotificationStore } from '@/stores/notificationStore';
+import { useRecentNavStore } from '@/stores/recentNavStore';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  LayoutDashboard,
-  Package,
-  Cloud,
+  Activity,
   BarChart3,
-  Settings,
-  LogOut,
-  X,
+  Bell,
+  Bot,
+  Building2,
   ChevronDown,
-  Search,
+  Cloud,
+  Code,
   Database,
   FunctionSquare,
-  Shield,
-  Users,
-  Building2,
-  CreditCard,
   Key,
   KeyRound,
-  FileText,
-  Mail,
-  Calendar,
-  MessageSquare,
-  Code,
-  Layers,
-  RotateCcw,
-  Wrench,
-  Server,
-  Bot,
+  LayoutDashboard,
+  LogOut,
+  Package,
   PieChart,
-  Bell,
-  Activity,
-  AlertTriangle,
-} from "lucide-react";
-import { Logo } from "@/components/common/Logo";
-import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/stores/authStore";
-import { useRecentNavStore } from "@/stores/recentNavStore";
-import { useNotificationStore } from "@/stores/notificationStore";
-import { cn } from "@/lib/utils";
-import { ROUTES } from "@/lib/constants";
-import { useNavigationStatus } from "@/hooks/useNavigationStatus";
-import { useSwipeGesture } from "@/hooks/useSwipeGesture";
-import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation";
-import { Input } from "@/components/ui/input";
+  Search,
+  Settings,
+  Shield,
+  Users,
+  Wallet,
+  X,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -62,40 +53,47 @@ interface NavSection {
 
 const navigationSections: NavSection[] = [
   {
-    title: "Overview",
+    title: 'Overview',
     items: [
-      { path: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutDashboard },
-      { path: "/status", label: "Status", icon: Activity },
-      { path: "/notifications", label: "Notifications", icon: Bell }
-    ]
+      { path: ROUTES.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
+      { path: '/status', label: 'Status', icon: Activity },
+      { path: '/notifications', label: 'Notifications', icon: Bell },
+    ],
   },
   {
-    title: "Management",
+    title: 'Swarm',
     items: [
-      { path: ROUTES.FUNCTIONS, label: "Functions", icon: FunctionSquare },
-      { path: ROUTES.APPS, label: "Apps", icon: Building2 },
-      { path: ROUTES.REGISTRY, label: "Registry", icon: Package },
-      { path: ROUTES.PROVIDERS, label: "Providers", icon: Cloud },
-      { path: ROUTES.TEAMS, label: "Teams", icon: Users },
-      { path: ROUTES.STATE_FABRIC, label: "State Fabric", icon: Database },
-      { path: ROUTES.AGENTS, label: "Agents", icon: Bot },
-      { path: ROUTES.SECRETS, label: "Secrets", icon: Key },
-      { path: ROUTES.API_KEYS, label: "API Keys", icon: KeyRound }
-    ]
+      { path: ROUTES.AGENTS, label: 'Agents', icon: Bot },
+      { path: ROUTES.EVOLUTION, label: 'Evolution', icon: Activity },
+      { path: ROUTES.MARKETPLACE_AGENTS, label: 'Agent Marketplace', icon: Shield },
+      { path: ROUTES.MARKETPLACE_FUNCTIONS, label: 'Function Marketplace', icon: Code },
+      { path: '/wallet', label: 'Wallet', icon: Wallet },
+    ],
   },
   {
-    title: "Insights",
+    title: 'Management',
     items: [
-      { path: ROUTES.ANALYTICS, label: "Analytics", icon: BarChart3 },
-      { path: ROUTES.USAGE, label: "Usage", icon: PieChart }
-    ]
+      { path: ROUTES.FUNCTIONS, label: 'Functions', icon: FunctionSquare },
+      { path: ROUTES.APPS, label: 'Apps', icon: Building2 },
+      { path: ROUTES.REGISTRY, label: 'Registry', icon: Package },
+      { path: ROUTES.PROVIDERS, label: 'Providers', icon: Cloud },
+      { path: ROUTES.TEAMS, label: 'Teams', icon: Users },
+      { path: ROUTES.STATE_FABRIC, label: 'State Fabric', icon: Database },
+      { path: ROUTES.SECRETS, label: 'Secrets', icon: Key },
+      { path: ROUTES.API_KEYS, label: 'API Keys', icon: KeyRound },
+    ],
   },
   {
-    title: "Account",
+    title: 'Insights',
     items: [
-      { path: ROUTES.SETTINGS, label: "Settings", icon: Settings }
-    ]
-  }
+      { path: ROUTES.ANALYTICS, label: 'Analytics', icon: BarChart3 },
+      { path: ROUTES.USAGE, label: 'Usage', icon: PieChart },
+    ],
+  },
+  {
+    title: 'Account',
+    items: [{ path: ROUTES.SETTINGS, label: 'Settings', icon: Settings }],
+  },
 ];
 
 const LG_BREAKPOINT = 1024;
@@ -107,9 +105,11 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   const status = useNavigationStatus();
   const unreadCount = useNotificationStore((state) => state.unreadCounts.all);
 
-  const [mobileSearchQuery, setMobileSearchQuery] = useState("");
+  const [mobileSearchQuery, setMobileSearchQuery] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(-1);
-  const [isLg, setIsLg] = useState(() => typeof window !== "undefined" && window.innerWidth >= LG_BREAKPOINT);
+  const [isLg, setIsLg] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth >= LG_BREAKPOINT
+  );
 
   const recordRecent = useRecentNavStore((s) => s.record);
   const recentPaths = useRecentNavStore((s) => s.recentPaths);
@@ -118,8 +118,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     const mq = window.matchMedia(`(min-width: ${LG_BREAKPOINT}px)`);
     const handler = () => setIsLg(mq.matches);
     handler();
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
   }, []);
 
   // Record current route for recent-tab tracking (only when inside dashboard layout)
@@ -143,12 +143,12 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     .filter((item): item is NonNullable<typeof item> => item != null);
 
   // Initialize expanded state - all sections expanded by default
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(() =>
-    new Set(allSections.map(section => section.title))
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    () => new Set(allSections.map((section) => section.title))
   );
 
   const toggleSection = (sectionTitle: string) => {
-    setExpandedSections(prev => {
+    setExpandedSections((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(sectionTitle)) {
         newSet.delete(sectionTitle);
@@ -161,23 +161,25 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Filter sections and items based on mobile search
   const filteredSections = mobileSearchQuery.trim()
-    ? allSections.map(section => ({
-        ...section,
-        items: section.items.filter(item =>
-          item.label.toLowerCase().includes(mobileSearchQuery.toLowerCase())
-        )
-      })).filter(section => section.items.length > 0)
+    ? allSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) =>
+            item.label.toLowerCase().includes(mobileSearchQuery.toLowerCase())
+          ),
+        }))
+        .filter((section) => section.items.length > 0)
     : allSections;
 
   // Get all navigable items (flattened for keyboard navigation)
-  const allNavigableItems = filteredSections.flatMap(section =>
+  const allNavigableItems = filteredSections.flatMap((section) =>
     expandedSections.has(section.title) ? section.items : []
   );
 
   // Keyboard navigation
   const handleArrowUp = useCallback(() => {
     if (!isOpen) return;
-    setFocusedIndex(prev => {
+    setFocusedIndex((prev) => {
       const newIndex = prev <= 0 ? allNavigableItems.length - 1 : prev - 1;
       return newIndex;
     });
@@ -185,7 +187,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const handleArrowDown = useCallback(() => {
     if (!isOpen) return;
-    setFocusedIndex(prev => {
+    setFocusedIndex((prev) => {
       const newIndex = prev >= allNavigableItems.length - 1 ? 0 : prev + 1;
       return newIndex;
     });
@@ -221,12 +223,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       {/* Mobile Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={onClose}
-        />
-      )}
+      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onClose} />}
 
       {/* Sidebar */}
       <motion.aside
@@ -235,10 +232,10 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         animate={{
           x: isOpen || isLg ? 0 : -280,
         }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={cn(
-          "dashboard-sidebar fixed left-0 top-0 z-50 h-screen w-[260px] min-w-[260px] bg-bg-primary border-r border-border-subtle",
-          "flex flex-col lg:translate-x-0 lg:static lg:shrink-0"
+          'dashboard-sidebar fixed left-0 top-0 z-50 h-screen w-[260px] min-w-[260px] bg-bg-primary border-r border-border-subtle',
+          'flex flex-col lg:translate-x-0 lg:static lg:shrink-0'
         )}
       >
         {/* Header */}
@@ -276,10 +273,13 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
               </h3>
               <div className="space-y-1">
                 {recentItems.map((item) => {
-                  const isActive = location.pathname === item.path ||
+                  const isActive =
+                    location.pathname === item.path ||
                     (item.path !== ROUTES.DASHBOARD && location.pathname.startsWith(item.path));
                   const Icon = item.icon;
-                  const itemIndex = allNavigableItems.findIndex(navItem => navItem.path === item.path);
+                  const itemIndex = allNavigableItems.findIndex(
+                    (navItem) => navItem.path === item.path
+                  );
                   const isFocused = focusedIndex === itemIndex;
 
                   return (
@@ -288,23 +288,23 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                       to={item.path}
                       onClick={() => onClose()}
                       className={cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                        "relative overflow-hidden",
+                        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+                        'relative overflow-hidden',
                         isActive
-                          ? "text-text-primary bg-bg-hover"
+                          ? 'text-text-primary bg-bg-hover'
                           : isFocused
-                          ? "text-text-primary bg-bg-hover ring-2 ring-border-focus"
-                          : "text-text-secondary hover:text-text-primary hover:bg-bg-hover"
+                            ? 'text-text-primary bg-bg-hover ring-2 ring-border-focus'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                       )}
                     >
                       {isActive && (
                         <motion.div
                           layoutId="activeNav"
                           className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-full bg-linear-to-b from-brand-500 to-brand-600"
-                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                         />
                       )}
-                      <Icon className={cn("w-5 h-5", isActive && "text-brand-500")} />
+                      <Icon className={cn('w-5 h-5', isActive && 'text-brand-500')} />
                       <span>{item.label}</span>
                     </NavLink>
                   );
@@ -315,9 +315,10 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           {filteredSections.map((section) => {
             const isExpanded = expandedSections.has(section.title);
-            const hasActiveItem = section.items.some(item =>
-              location.pathname === item.path ||
-              (item.path !== ROUTES.DASHBOARD && location.pathname.startsWith(item.path))
+            const hasActiveItem = section.items.some(
+              (item) =>
+                location.pathname === item.path ||
+                (item.path !== ROUTES.DASHBOARD && location.pathname.startsWith(item.path))
             );
 
             return (
@@ -325,129 +326,137 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <button
                   onClick={() => toggleSection(section.title)}
                   className={cn(
-                    "flex items-center justify-between w-full px-3 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors",
-                    "hover:bg-bg-hover",
-                    hasActiveItem ? "text-text-primary" : "text-text-muted"
+                    'flex items-center justify-between w-full px-3 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors',
+                    'hover:bg-bg-hover',
+                    hasActiveItem ? 'text-text-primary' : 'text-text-muted'
                   )}
                 >
                   <span>{section.title}</span>
-                  <ChevronDown className={cn(
-                    "w-4 h-4 transition-transform duration-200",
-                    isExpanded ? "rotate-0" : "-rotate-90"
-                  )} />
+                  <ChevronDown
+                    className={cn(
+                      'w-4 h-4 transition-transform duration-200',
+                      isExpanded ? 'rotate-0' : '-rotate-90'
+                    )}
+                  />
                 </button>
 
                 <AnimatePresence>
                   {isExpanded && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
+                      animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.2 }}
                       className="space-y-1 overflow-hidden"
                     >
                       {section.items.map((item) => {
-                  const isActive = location.pathname === item.path ||
-                    (item.path !== ROUTES.DASHBOARD && location.pathname.startsWith(item.path));
-                  const Icon = item.icon;
+                        const isActive =
+                          location.pathname === item.path ||
+                          (item.path !== ROUTES.DASHBOARD &&
+                            location.pathname.startsWith(item.path));
+                        const Icon = item.icon;
 
-                  // Determine if this item has status indicators
-                  const hasStatusIndicator = (() => {
-                    switch (item.path) {
-                      case ROUTES.REGISTRY:
-                        return false;
-                      case ROUTES.PROVIDERS:
-                        return status.providers.hasOffline;
-                      case ROUTES.ANALYTICS:
-                        return status.analytics.hasAlerts;
-                      case ROUTES.SETTINGS:
-                        return status.settings.hasWarnings;
-                      case "/notifications":
-                        return unreadCount > 0;
-                      default:
-                        return false;
-                    }
-                  })();
+                        // Determine if this item has status indicators
+                        const hasStatusIndicator = (() => {
+                          switch (item.path) {
+                            case ROUTES.REGISTRY:
+                              return false;
+                            case ROUTES.PROVIDERS:
+                              return status.providers.hasOffline;
+                            case ROUTES.ANALYTICS:
+                              return status.analytics.hasAlerts;
+                            case ROUTES.SETTINGS:
+                              return status.settings.hasWarnings;
+                            case '/notifications':
+                              return unreadCount > 0;
+                            default:
+                              return false;
+                          }
+                        })();
 
-                  const getStatusBadge = () => {
-                    switch (item.path) {
-                      case ROUTES.REGISTRY:
-                        return null;
-                      case ROUTES.PROVIDERS:
-                        if (status.providers.hasOffline) {
-                          return {
-                            count: "!",
-                            color: "bg-warning"
-                          };
-                        }
-                        break;
-                      case ROUTES.ANALYTICS:
-                        if (status.analytics.hasAlerts) {
-                          return {
-                            count: "!",
-                            color: "bg-warning"
-                          };
-                        }
-                        break;
-                      case ROUTES.SETTINGS:
-                        if (status.settings.hasWarnings) {
-                          return {
-                            count: "!",
-                            color: "bg-warning"
-                          };
-                        }
-                        break;
-                      case "/notifications":
-                        if (unreadCount > 0) {
-                          return {
-                            count: unreadCount > 99 ? "99+" : unreadCount.toString(),
-                            color: "bg-error"
-                          };
-                        }
-                        break;
-                    }
-                    return null;
-                  };
+                        const getStatusBadge = () => {
+                          switch (item.path) {
+                            case ROUTES.REGISTRY:
+                              return null;
+                            case ROUTES.PROVIDERS:
+                              if (status.providers.hasOffline) {
+                                return {
+                                  count: '!',
+                                  color: 'bg-warning',
+                                };
+                              }
+                              break;
+                            case ROUTES.ANALYTICS:
+                              if (status.analytics.hasAlerts) {
+                                return {
+                                  count: '!',
+                                  color: 'bg-warning',
+                                };
+                              }
+                              break;
+                            case ROUTES.SETTINGS:
+                              if (status.settings.hasWarnings) {
+                                return {
+                                  count: '!',
+                                  color: 'bg-warning',
+                                };
+                              }
+                              break;
+                            case '/notifications':
+                              if (unreadCount > 0) {
+                                return {
+                                  count: unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                  color: 'bg-error',
+                                };
+                              }
+                              break;
+                          }
+                          return null;
+                        };
 
-                  const statusBadge = getStatusBadge();
-                  const itemIndex = allNavigableItems.findIndex(navItem => navItem.path === item.path);
-                  const isFocused = focusedIndex === itemIndex;
+                        const statusBadge = getStatusBadge();
+                        const itemIndex = allNavigableItems.findIndex(
+                          (navItem) => navItem.path === item.path
+                        );
+                        const isFocused = focusedIndex === itemIndex;
 
-                  return (
-                    <NavLink
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => onClose()}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                        "relative overflow-hidden",
-                        isActive
-                          ? "text-text-primary bg-bg-hover"
-                          : isFocused
-                          ? "text-text-primary bg-bg-hover ring-2 ring-border-focus"
-                          : "text-text-secondary hover:text-text-primary hover:bg-bg-hover"
-                      )}
-                    >
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeNav"
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-full bg-linear-to-b from-brand-500 to-brand-600"
-                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        />
-                      )}
-                      <Icon className={cn("w-5 h-5", isActive && "text-brand-500")} />
-                        <span className="flex-1">{item.label}</span>
-                        {statusBadge && (
-                          <span className={cn(
-                            "flex items-center justify-center min-w-[18px] h-[18px] text-xs font-bold text-white rounded-full text-[10px]",
-                            statusBadge.color
-                          )}>
-                            {statusBadge.count}
-                          </span>
-                        )}
-                      </NavLink>
-                    );
-                  })}
+                        return (
+                          <NavLink
+                            key={item.path}
+                            to={item.path}
+                            onClick={() => onClose()}
+                            className={cn(
+                              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+                              'relative overflow-hidden',
+                              isActive
+                                ? 'text-text-primary bg-bg-hover'
+                                : isFocused
+                                  ? 'text-text-primary bg-bg-hover ring-2 ring-border-focus'
+                                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                            )}
+                          >
+                            {isActive && (
+                              <motion.div
+                                layoutId="activeNav"
+                                className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-full bg-linear-to-b from-brand-500 to-brand-600"
+                                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                              />
+                            )}
+                            <Icon className={cn('w-5 h-5', isActive && 'text-brand-500')} />
+                            <span className="flex-1">{item.label}</span>
+                            {statusBadge && (
+                              <span
+                                className={cn(
+                                  'flex items-center justify-center min-w-[18px] h-[18px] text-xs font-bold text-white rounded-full text-[10px]',
+                                  statusBadge.color
+                                )}
+                              >
+                                {statusBadge.count}
+                              </span>
+                            )}
+                          </NavLink>
+                        );
+                      })}
                     </motion.div>
                   )}
                 </AnimatePresence>

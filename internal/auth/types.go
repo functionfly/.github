@@ -37,6 +37,8 @@ type OAuthCallbackResponse struct {
 	RefreshToken string        `json:"refresh_token"`
 	User         *storage.User `json:"user"`
 	NewUser      bool          `json:"new_user"`
+	// RedirectURI is set when the client requested a CLI/local redirect; redirect the user here with token params
+	RedirectURI string `json:"-"`
 }
 
 // Claims represents JWT claims

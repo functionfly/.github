@@ -10,10 +10,7 @@ interface MetricItem {
   title: string;
   value: string | number;
   previousValue?: string | number;
-  change?: {
-    value: number;
-    label: string;
-  };
+  change?: { value: number; label: string };
   icon?: ReactNode;
   sparklineData?: number[];
   trend?: "up" | "down" | "neutral";
@@ -82,7 +79,10 @@ export function MetricsGrid({
           ? calculateChange(metric.value, metric.previousValue)
           : null);
 
-        const trend = calculatedChange?.trend || metric.trend || "neutral";
+        const trend =
+          (calculatedChange && "trend" in calculatedChange ? calculatedChange.trend : undefined) ??
+          metric.trend ??
+          "neutral";
 
         return (
           <Card
@@ -122,7 +122,7 @@ export function MetricsGrid({
                       </div>
                     )}
                   </div>
-                  {calculatedChange?.label && (
+                  {calculatedChange && "label" in calculatedChange && calculatedChange.label && (
                     <p className="text-xs text-text-muted">
                       {calculatedChange.label}
                     </p>

@@ -22,6 +22,7 @@ type Handler struct {
 	prometheus *PrometheusClient
 	metrics    *PrometheusMetrics
 	authSvc    *auth.AuthService
+	statusHub  *StatusWebSocketHub // optional; when set, HandleWebSocketStatus uses this shared hub
 }
 
 // NewHandler creates a new status page handler
@@ -39,6 +40,13 @@ func NewHandler(repo RepositoryInterface, prometheusURL string, authSvc *auth.Au
 func (h *Handler) SetPrometheusClient(client *PrometheusClient) {
 	h.prometheus = client
 	h.metrics = NewPrometheusMetrics(client)
+}
+
+// SetStatusHub sets the shared WebSocket hub used by HandleWebSocketStatus when present.
+// Routes wire a single hub at startup (see routes.go: statusWSHub) so all /ws/v1/status connections
+// use one hub; if unset (e.g. in tests), HandleWebSocketStatus creates a temporary hub per request.
+func (h *Handler) SetStatusHub(hub *StatusWebSocketHub) {
+	h.statusHub = hub
 }
 
 // --- Status Endpoints ---

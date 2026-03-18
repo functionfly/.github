@@ -4,6 +4,7 @@
 package clock
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
 	"sync"
 )
@@ -22,7 +23,7 @@ type VirtualClock struct {
 // virtual_time = base_time + (tick_count * tick_size)
 func New(executionID string) *VirtualClock {
 	baseTime := deriveBaseTime(executionID)
-	
+
 	return &VirtualClock{
 		baseTime: baseTime,
 		tickCount: 0,
@@ -34,7 +35,7 @@ func New(executionID string) *VirtualClock {
 func (c *VirtualClock) Now() uint64 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	return c.baseTime + (c.tickCount * c.tickSize)
 }
 
@@ -42,7 +43,7 @@ func (c *VirtualClock) Now() uint64 {
 func (c *VirtualClock) Advance(delta uint64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if delta > 0 {
 		c.tickCount += delta / c.tickSize
 	}
@@ -52,7 +53,7 @@ func (c *VirtualClock) Advance(delta uint64) {
 func (c *VirtualClock) Tick() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.tickCount++
 }
 
@@ -60,7 +61,7 @@ func (c *VirtualClock) Tick() {
 func (c *VirtualClock) SetBase(base uint64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.baseTime = base
 }
 
@@ -68,7 +69,7 @@ func (c *VirtualClock) SetBase(base uint64) {
 func (c *VirtualClock) SetTickSize(size uint64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if size > 0 {
 		c.tickSize = size
 	}
@@ -78,7 +79,7 @@ func (c *VirtualClock) SetTickSize(size uint64) {
 func (c *VirtualClock) TickCount() uint64 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	return c.tickCount
 }
 
@@ -86,7 +87,7 @@ func (c *VirtualClock) TickCount() uint64 {
 func (c *VirtualClock) Reset(executionID string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.baseTime = deriveBaseTime(executionID)
 	c.tickCount = 0
 }
@@ -96,7 +97,7 @@ func (c *VirtualClock) Reset(executionID string) {
 func (c *VirtualClock) Sleep(duration uint64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	// Advance by the sleep duration (converted to ticks)
 	c.tickCount += duration / c.tickSize
 }
@@ -126,29 +127,8 @@ func (c *VirtualClock) Until(end uint64) uint64 {
 }
 
 // deriveBaseTime derives a deterministic base time from execution ID.
-// base_time = H(execution_id) mod 2^64
+// base_time = first 8 bytes of SHA-256(execution_id), little-endian.
 func deriveBaseTime(executionID string) uint64 {
-	// Use a simple hash for deterministic base time derivation
-	// In production, this should use a proper cryptographic hash
-	h := hashString(executionID)
-	return binary.LittleEndian.Uint64(h[:8])
-}
-
-// hashString is a simple non-cryptographic hash for base time derivation.
-func hashString(s string) [8]byte {
-	var h [8]byte
-	seed := uint64(0x1234567890abcdef)
-	
-	for i := 0; i < len(s); i++ {
-		seed = seed*31 + uint64(s[i])
-		h[i%8] = byte(seed)
-	}
-	
-	// Fill remaining bytes
-	for i := len(s); i < 8; i++ {
-		seed = seed*31 + uint64(i)
-		h[i] = byte(seed)
-	}
-	
-	return h
+	sum := sha256.Sum256([]byte(executionID))
+	return binary.LittleEndian.Uint64(sum[:8])
 }

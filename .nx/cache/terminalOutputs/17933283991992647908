@@ -1,0 +1,592 @@
+> vite
+
+[Vite] API proxy target: http://127.0.0.1:8080
+
+  [32m[1mVITE[22m v7.3.1[39m  [2mready in [0m[1m5344[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m3000[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://10.255.255.254:[1m3000[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.213.29:[1m3000[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.18.0.1:[1m3000[22m/[39m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:53:44 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@axe-core/react" from "src/components/dev/DevA11y.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36m/home/micro/projects/functionfly/web/dashboard/src/components/dev/DevA11y.tsx[39m:13:11
+[33m  22 |    useEffect(() => {
+  23 |      if (!import.meta.env.DEV) return;
+  24 |      import("@axe-core/react").then((mod) => {
+     |             ^
+  25 |        const init = mod.default;
+  26 |        if (typeof init === "function") init(React, ReactDOM, 1e3);[39m
+      at TransformPluginContext._formatLog (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28999:43)
+      at TransformPluginContext.error (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28996:14)
+      at normalizeUrl (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27119:18)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27177:32
+      at async Promise.all (index 6)
+      at async TransformPluginContext.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27145:4)
+      at async EnvironmentPluginContainer.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28797:14)
+      at async loadAndTransform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:22670:26)
+[2m10:53:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "@axe-core/react" from "src/components/dev/DevA11y.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36m/home/micro/projects/functionfly/web/dashboard/src/components/dev/DevA11y.tsx[39m:13:11
+[33m  22 |    useEffect(() => {
+  23 |      if (!import.meta.env.DEV) return;
+  24 |      import("@axe-core/react").then((mod) => {
+     |             ^
+  25 |        const init = mod.default;
+  26 |        if (typeof init === "function") init(React, ReactDOM, 1e3);[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:54:07 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@axe-core/react" from "src/components/dev/DevA11y.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36m/home/micro/projects/functionfly/web/dashboard/src/components/dev/DevA11y.tsx[39m:13:11
+[33m  22 |    useEffect(() => {
+  23 |      if (!import.meta.env.DEV) return;
+  24 |      import("@axe-core/react").then((mod) => {
+     |             ^
+  25 |        const init = mod.default;
+  26 |        if (typeof init === "function") init(React, ReactDOM, 1e3);[39m
+      at TransformPluginContext._formatLog (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28999:43)
+      at TransformPluginContext.error (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28996:14)
+      at normalizeUrl (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27119:18)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27177:32
+      at async Promise.all (index 6)
+      at async TransformPluginContext.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27145:4)
+      at async EnvironmentPluginContainer.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28797:14)
+      at async loadAndTransform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:22670:26)
+      at async viteTransformMiddleware (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:24542:20)
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:54:07 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@axe-core/react" from "src/components/dev/DevA11y.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36m/home/micro/projects/functionfly/web/dashboard/src/components/dev/DevA11y.tsx[39m:13:11
+[33m  22 |    useEffect(() => {
+  23 |      if (!import.meta.env.DEV) return;
+  24 |      import("@axe-core/react").then((mod) => {
+     |             ^
+  25 |        const init = mod.default;
+  26 |        if (typeof init === "function") init(React, ReactDOM, 1e3);[39m
+      at TransformPluginContext._formatLog (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28999:43)
+      at TransformPluginContext.error (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28996:14)
+      at normalizeUrl (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27119:18)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27177:32
+      at async Promise.all (index 6)
+      at async TransformPluginContext.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27145:4)
+      at async EnvironmentPluginContainer.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28797:14)
+      at async loadAndTransform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:22670:26)
+      at async viteTransformMiddleware (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:24542:20) [33m(x2)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:54:14 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@axe-core/react" from "src/components/dev/DevA11y.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36m/home/micro/projects/functionfly/web/dashboard/src/components/dev/DevA11y.tsx[39m:13:11
+[33m  22 |    useEffect(() => {
+  23 |      if (!import.meta.env.DEV) return;
+  24 |      import("@axe-core/react").then((mod) => {
+     |             ^
+  25 |        const init = mod.default;
+  26 |        if (typeof init === "function") init(React, ReactDOM, 1e3);[39m
+      at TransformPluginContext._formatLog (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28999:43)
+      at TransformPluginContext.error (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28996:14)
+      at normalizeUrl (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27119:18)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27177:32
+      at async Promise.all (index 6)
+      at async TransformPluginContext.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27145:4)
+      at async EnvironmentPluginContainer.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28797:14)
+      at async loadAndTransform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:22670:26)
+      at async viteTransformMiddleware (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:24542:20) [33m(x3)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:55:20 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/styles/index.css[22m
+[2m10:55:20 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "@axe-core/react" from "src/components/dev/DevA11y.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36m/home/micro/projects/functionfly/web/dashboard/src/components/dev/DevA11y.tsx[39m:14:30
+[33m  24 |      import(
+  25 |        /* @vite-ignore */
+  26 |        "@axe-core/react"
+     |        ^
+  27 |      ).then((mod) => {
+  28 |        const init = mod.default;[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:55:20 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@axe-core/react" from "src/components/dev/DevA11y.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36m/home/micro/projects/functionfly/web/dashboard/src/components/dev/DevA11y.tsx[39m:14:30
+[33m  24 |      import(
+  25 |        /* @vite-ignore */
+  26 |        "@axe-core/react"
+     |        ^
+  27 |      ).then((mod) => {
+  28 |        const init = mod.default;[39m
+      at TransformPluginContext._formatLog (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28999:43)
+      at TransformPluginContext.error (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28996:14)
+      at normalizeUrl (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27119:18)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27177:32
+      at async Promise.all (index 6)
+      at async TransformPluginContext.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27145:4)
+      at async EnvironmentPluginContainer.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28797:14)
+      at async loadAndTransform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:22670:26)
+      at async viteTransformMiddleware (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:24542:20)
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:55:20 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@axe-core/react" from "src/components/dev/DevA11y.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36m/home/micro/projects/functionfly/web/dashboard/src/components/dev/DevA11y.tsx[39m:14:30
+[33m  24 |      import(
+  25 |        /* @vite-ignore */
+  26 |        "@axe-core/react"
+     |        ^
+  27 |      ).then((mod) => {
+  28 |        const init = mod.default;[39m
+      at TransformPluginContext._formatLog (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28999:43)
+      at TransformPluginContext.error (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28996:14)
+      at normalizeUrl (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27119:18)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27177:32
+      at async Promise.all (index 6)
+      at async TransformPluginContext.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27145:4)
+      at async EnvironmentPluginContainer.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28797:14)
+      at async loadAndTransform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:22670:26)
+      at async viteTransformMiddleware (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:24542:20) [33m(x2)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:56:04 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/styles/index.css[22m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:56:17 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:56:18 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x2)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:56:42 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/dev/DevA11y.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:56:42 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@axe-core/react" from "src/components/dev/DevA11y.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36m/home/micro/projects/functionfly/web/dashboard/src/components/dev/DevA11y.tsx[39m:13:11
+[33m  22 |    useEffect(() => {
+  23 |      if (!import.meta.env.DEV) return;
+  24 |      import("@axe-core/react").then((mod) => {
+     |             ^
+  25 |        const init = mod.default;
+  26 |        if (typeof init === "function") init(React, ReactDOM, 1e3);[39m
+      at TransformPluginContext._formatLog (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28999:43)
+      at TransformPluginContext.error (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28996:14)
+      at normalizeUrl (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27119:18)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27177:32
+      at async Promise.all (index 6)
+      at async TransformPluginContext.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27145:4)
+      at async EnvironmentPluginContainer.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28797:14)
+      at async loadAndTransform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:22670:26)
+      at async viteTransformMiddleware (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:24542:20)
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:56:42 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "@axe-core/react" from "src/components/dev/DevA11y.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36m/home/micro/projects/functionfly/web/dashboard/src/components/dev/DevA11y.tsx[39m:13:11
+[33m  22 |    useEffect(() => {
+  23 |      if (!import.meta.env.DEV) return;
+  24 |      import("@axe-core/react").then((mod) => {
+     |             ^
+  25 |        const init = mod.default;
+  26 |        if (typeof init === "function") init(React, ReactDOM, 1e3);[39m
+      at TransformPluginContext._formatLog (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28999:43)
+      at TransformPluginContext.error (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28996:14)
+      at normalizeUrl (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27119:18)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27177:32
+      at async Promise.all (index 6)
+      at async TransformPluginContext.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:27145:4)
+      at async EnvironmentPluginContainer.transform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:28797:14)
+      at async loadAndTransform (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:22670:26)
+      at async viteTransformMiddleware (file:///home/micro/projects/functionfly/node_modules/.bun/vite@7.3.1+d6b64f69c58789f1/node_modules/vite/dist/node/chunks/config.js:24542:20) [33m(x2)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:56:53 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:56:53 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/components/dev/DevA11y.tsx[22m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:58:19 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m10:58:46 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x2)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:00:04 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x3)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:00:15 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x4)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:03:05 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x5)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:03:09 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x6)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:03:38 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x7)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:03:46 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x8)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:04:02 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x9)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:05:43 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x10)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:05:55 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x11)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:05:56 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x12)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:05:59 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x13)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:06:03 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x14)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:06:09 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/APIKeysPage.tsx, /src/styles/index.css, /src/styles/index.css?direct[22m [33m(x15)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:08:14 PM[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[Vite] API proxy target: http://127.0.0.1:8080
+[2m11:08:14 PM[22m [36m[1m[vite][22m[39m server restarted.
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m11:08:22 PM[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[Vite] API proxy target: http://127.0.0.1:8080
+[2m11:08:22 PM[22m [36m[1m[vite][22m[39m server restarted.

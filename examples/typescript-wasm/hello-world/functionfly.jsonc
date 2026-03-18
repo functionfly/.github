@@ -1,0 +1,23 @@
+{
+  "name": "hello-world",
+  "version": "1.0.0",
+  "runtime": "typescript-wasm",
+  "title": "Hello World (WASM)",
+  "description": "Basic TypeScript function compiled to WASM that returns a greeting",
+  "category": "examples",
+  "tags": ["typescript", "wasm", "hello-world", "basic"],
+  "entry": "main.ts",
+  "handler": "handler",
+  "memory": "128MB",
+  "timeout": "5s",
+  "environment": {
+    "GREETING": "Hello"
+  },
+  "capabilities": [
+    "fetch:read"
+  ],
+  "example": {
+    "input": { "name": "World" },
+    "output": { "message": "Hello, World!", "runtime": "typescript-wasm" }
+  }
+}

@@ -103,12 +103,26 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
 // Utility function for custom analytics integration
 // This function can be used if you need to send metrics to a custom analytics service
 export function reportWebVitalsToCustomAnalytics(metric: any) {
-  // Example: Send to custom analytics endpoint
   fetch('/api/analytics/web-vitals', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(metric)
   }).catch(error => {
     console.error('Failed to send web vitals to custom analytics:', error);
+  });
+}
+
+/** Send aggregated Web Vitals to your analytics endpoint (e.g. in production). */
+export function reportWebVitalsBatch(
+  metrics: WebVitalsMetrics,
+  context?: { page?: string }
+) {
+  const payload = { ...metrics, ...(context?.page && { page: context.page }) };
+  fetch('/api/analytics/web-vitals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).catch(() => {
+    // Silently ignore (endpoint may not be implemented yet)
   });
 }

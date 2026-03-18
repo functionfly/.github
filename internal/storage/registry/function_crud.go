@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -75,6 +76,26 @@ func (r *RegistryRepository) GetFunctionByAuthorName(author, name string) (*Regi
 	}
 
 	return &fn, nil
+}
+
+// UpdateFunctionSettings updates the settings JSONB for a registry function (e.g. custom_domains).
+func (r *RegistryRepository) UpdateFunctionSettings(id uuid.UUID, settings map[string]interface{}) error {
+	if settings == nil {
+		settings = make(map[string]interface{})
+	}
+	raw, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal settings: %w", err)
+	}
+	if err := r.db.Model(&RegistryFunction{}).Where("id = ?", id).Update("settings", raw).Error; err != nil {
+		return fmt.Errorf("failed to update function settings: %w", err)
+	}
+	if r.cache != nil {
+		go func() {
+			_ = r.cache.InvalidateFunction(context.Background(), id.String())
+		}()
+	}
+	return nil
 }
 
 // UpdateFunctionLatestVersion updates the latest version pointer

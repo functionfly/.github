@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
@@ -33,7 +34,13 @@ func NewCloudflareDeploymentClient(apiToken, accountID string) *CloudflareDeploy
 
 // Deploy uploads a Worker script and creates a deployment
 func (c *CloudflareDeploymentClient) Deploy(ctx context.Context, scriptContent []byte, scriptName string) (*DeploymentResult, error) {
-	// Upload the script to Workers API
+	if len(scriptContent) == 0 {
+		return nil, fmt.Errorf("script content cannot be empty")
+	}
+	if scriptName == "" {
+		return nil, fmt.Errorf("script name cannot be empty")
+	}
+
 	uploadURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/workers/scripts/%s", c.accountID, scriptName)
 
 	req, err := http.NewRequestWithContext(ctx, "PUT", uploadURL, bytes.NewReader(scriptContent))
@@ -42,7 +49,7 @@ func (c *CloudflareDeploymentClient) Deploy(ctx context.Context, scriptContent [
 	}
 
 	c.setAuthHeaders(req)
-	req.Header.Set("Content-Type", "application/javascript")
+	req.Header.Set("Content-Type", "application/javascript; charset=utf-8")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -65,19 +72,19 @@ func (c *CloudflareDeploymentClient) Deploy(ctx context.Context, scriptContent [
 		} `json:"errors"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&uploadResult); err != nil {
-		return nil, fmt.Errorf("failed to decode upload response: %w", err)
+	_ = json.NewDecoder(resp.Body).Decode(&uploadResult)
+
+	if !uploadResult.Success && len(uploadResult.Errors) > 0 {
+		return nil, fmt.Errorf("upload failed: %s", uploadResult.Errors[0].Message)
 	}
 
-	if !uploadResult.Success {
-		if len(uploadResult.Errors) > 0 {
-			return nil, fmt.Errorf("upload failed: %s", uploadResult.Errors[0].Message)
-		}
-		return nil, fmt.Errorf("upload failed with unknown error")
+	deploymentID := uploadResult.Result.ID
+	if deploymentID == "" {
+		deploymentID = scriptName
 	}
 
 	return &DeploymentResult{
-		DeploymentID: uploadResult.Result.ID,
+		DeploymentID: deploymentID,
 		Status:       common.DeploymentStatusSuccess,
 		Message:      "Worker script uploaded successfully",
 		Metadata: map[string]interface{}{
@@ -87,41 +94,53 @@ func (c *CloudflareDeploymentClient) Deploy(ctx context.Context, scriptContent [
 	}, nil
 }
 
-// SetEnvironmentVariables sets environment variables for a Worker
+// SetEnvironmentVariables sets environment variables for a Worker.
+// The Cloudflare API requires multipart/form-data with a "settings" part containing JSON bindings.
 func (c *CloudflareDeploymentClient) SetEnvironmentVariables(ctx context.Context, scriptName string, vars, secrets map[string]string) error {
-	// Combine vars and secrets (Cloudflare treats them similarly in the API)
-	env := make(map[string]interface{})
+	// Build bindings array: plain_text and secret_text use "name" and "text" (not "value").
+	type binding struct {
+		Type string `json:"type"`
+		Name string `json:"name"`
+		Text string `json:"text"`
+	}
+	var bindings []binding
 	for k, v := range vars {
-		env[k] = map[string]interface{}{
-			"type":  "plain_text",
-			"value": v,
-		}
+		bindings = append(bindings, binding{Type: "plain_text", Name: k, Text: v})
 	}
 	for k, v := range secrets {
-		env[k] = map[string]interface{}{
-			"type":  "secret_text",
-			"value": v,
-		}
+		bindings = append(bindings, binding{Type: "secret_text", Name: k, Text: v})
+	}
+	if len(bindings) == 0 {
+		return nil
+	}
+
+	settingsJSON, err := json.Marshal(map[string]interface{}{"bindings": bindings})
+	if err != nil {
+		return fmt.Errorf("failed to marshal bindings: %w", err)
+	}
+
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	part, err := w.CreateFormField("settings")
+	if err != nil {
+		return fmt.Errorf("failed to create form field: %w", err)
+	}
+	if _, err := part.Write(settingsJSON); err != nil {
+		return fmt.Errorf("failed to write settings part: %w", err)
+	}
+	contentType := w.FormDataContentType()
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("failed to close multipart writer: %w", err)
 	}
 
 	envURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/workers/scripts/%s/settings", c.accountID, scriptName)
-
-	envData := map[string]interface{}{
-		"bindings": env,
-	}
-
-	jsonData, err := json.Marshal(envData)
-	if err != nil {
-		return fmt.Errorf("failed to marshal environment data: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "PATCH", envURL, bytes.NewReader(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "PATCH", envURL, &buf)
 	if err != nil {
 		return fmt.Errorf("failed to create env request: %w", err)
 	}
 
 	c.setAuthHeaders(req)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", contentType)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -134,6 +153,31 @@ func (c *CloudflareDeploymentClient) SetEnvironmentVariables(ctx context.Context
 		return fmt.Errorf("set env failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
+	return nil
+}
+
+// EnableWorkersDev enables the Worker at <script>.<subdomain>.workers.dev.
+// When deploying via the upload API, workers.dev is disabled by default; call this after Deploy to make the Worker reachable at that URL.
+func (c *CloudflareDeploymentClient) EnableWorkersDev(ctx context.Context, scriptName string) error {
+	subdomainURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/workers/scripts/%s/subdomain", c.accountID, scriptName)
+	body := []byte(`{"enabled":true}`)
+	req, err := http.NewRequestWithContext(ctx, "POST", subdomainURL, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create subdomain request: %w", err)
+	}
+	c.setAuthHeaders(req)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to enable workers.dev: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("enable workers.dev failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
 	return nil
 }
 
@@ -474,40 +518,39 @@ type BlueGreenDeploymentResult struct {
 	SwitchedAt        time.Time
 }
 
-// DeployBlueGreen performs a blue/green deployment with DNS switching
-func (c *CloudflareDeploymentClient) DeployBlueGreen(ctx context.Context, scriptContent []byte, scriptName, zoneID, domain string, enableProxied bool) (*BlueGreenDeploymentResult, error) {
+// DeployBlueGreen performs a blue/green deployment with DNS switching.
+// workersSubdomain is the account's Workers subdomain (e.g. "mycompany" for mycompany.workers.dev).
+// If empty, accountID is used as fallback for backward compatibility (may not resolve for workers.dev).
+func (c *CloudflareDeploymentClient) DeployBlueGreen(ctx context.Context, scriptContent []byte, scriptName, zoneID, domain, workersSubdomain string, enableProxied bool) (*BlueGreenDeploymentResult, error) {
 	// Determine current active color (blue or green)
-	// We'll use timestamp to determine which one is newer
 	blueScriptName := scriptName + "-blue"
 	greenScriptName := scriptName + "-green"
 
-	// Deploy to the inactive color
 	var newScriptName string
 
-	// Check which version exists
 	blueExists := c.scriptExists(ctx, blueScriptName)
 	greenExists := c.scriptExists(ctx, greenScriptName)
 
 	if !blueExists && !greenExists {
-		// First deployment - use blue
 		newScriptName = blueScriptName
 	} else if blueExists && !greenExists {
 		newScriptName = greenScriptName
 	} else if !blueExists && greenExists {
 		newScriptName = blueScriptName
 	} else {
-		// Both exist - use green (toggle from blue)
 		newScriptName = greenScriptName
 	}
 
-	// Deploy to the new color
 	_, err := c.Deploy(ctx, scriptContent, newScriptName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy to %s: %w", newScriptName, err)
 	}
 
-	// Get the target for DNS - workers.dev subdomain
-	target := fmt.Sprintf("%s.%s.workers.dev", newScriptName, c.accountID)
+	// Workers.dev hostname: <script>.<workers_subdomain>.workers.dev (subdomain is from Cloudflare dashboard, not account ID)
+	if workersSubdomain == "" {
+		workersSubdomain = c.accountID
+	}
+	target := fmt.Sprintf("%s.%s.workers.dev", newScriptName, workersSubdomain)
 
 	// Switch DNS to point to new deployment
 	err = c.SwitchDNSForBlueGreen(ctx, zoneID, domain, target, enableProxied)
@@ -544,10 +587,10 @@ func (c *CloudflareDeploymentClient) scriptExists(ctx context.Context, scriptNam
 	return resp.StatusCode == http.StatusOK
 }
 
-// setAuthHeaders sets the required Cloudflare API authentication headers
+// setAuthHeaders sets the required Cloudflare API authentication headers.
+// Callers must set Content-Type themselves (e.g. application/javascript for script upload, application/json for JSON bodies).
 func (c *CloudflareDeploymentClient) setAuthHeaders(req *http.Request) {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiToken))
-	req.Header.Set("Content-Type", "application/json")
 }
 
 // DeploymentResult represents the result of a Cloudflare deployment operation

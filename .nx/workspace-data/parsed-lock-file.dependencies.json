@@ -15215,8 +15215,8 @@
     "type": "static"
   },
   {
-    "source": "npm:d3-shape@3.2.0",
-    "target": "npm:d3-path@3.1.0",
+    "source": "npm:d3-shape@2.1.0",
+    "target": "npm:d3-path@1.0.9",
     "type": "static"
   },
   {

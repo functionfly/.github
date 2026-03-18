@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -66,12 +67,15 @@ func runAdminCreateUser(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// Hash password (simplified - in production use proper bcrypt)
-	hashedPassword := hashPassword(adminPassword)
+	// Hash password with bcrypt
+	hashedPassword, err := hashPassword(adminPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
 
 	// Insert user
 	var userID string
-	err = db.QueryRow(`
+	err = db.QueryRowContext(cmd.Context(), `
 		INSERT INTO users (email, password_hash, tenant_id, role, created_at, updated_at)
 		VALUES ($1, $2, (SELECT id FROM tenants LIMIT 1), $3, NOW(), NOW())
 		RETURNING id
@@ -88,8 +92,11 @@ func runAdminCreateUser(cmd *cobra.Command) error {
 	return nil
 }
 
-// Simple hash function - in production use proper bcrypt
-func hashPassword(password string) string {
-	// This is a placeholder - in production use proper password hashing
-	return fmt.Sprintf("hashed:%s", password)
+// hashPassword hashes the password using bcrypt (same as rest of codebase).
+func hashPassword(password string) (string, error) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashed), nil
 }

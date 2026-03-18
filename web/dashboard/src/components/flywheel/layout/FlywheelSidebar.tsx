@@ -45,18 +45,18 @@ export function FlywheelSidebar({ className }: FlywheelSidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-full w-64 border-r border-slate-800 bg-slate-950 pt-16',
+        'flywheel-sidebar fixed left-0 top-0 z-40 h-full w-64 border-r border-border-default bg-bg-secondary pt-16',
         className
       )}
     >
       <div className="flex h-full flex-col">
         {/* New Thread Button */}
         <div className="px-4 py-3">
-          <NavLink
+            <NavLink
             to="/flywheel/threads/new"
             className={cn(
-              'flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-indigo-500',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950'
+              'flywheel-btn-new-thread flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-indigo-500',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary'
             )}
           >
             <Plus className="h-4 w-4" />
@@ -68,21 +68,20 @@ export function FlywheelSidebar({ className }: FlywheelSidebarProps) {
         <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
           {/* Primary Nav */}
           <div className="space-y-1">
-            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <p className="flywheel-nav-section-label px-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
               Main
             </p>
             {mainNavItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isActive || (item.path !== '/flywheel' && location.pathname.startsWith(item.path))
-                      ? 'bg-slate-900 text-indigo-400'
-                      : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
-                  )
-                }
+                className={({ isActive }) => {
+                  const active = isActive || (item.path !== '/flywheel' && location.pathname.startsWith(item.path));
+                  return cn(
+                    'flywheel-nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    active ? 'flywheel-nav-link-active bg-bg-hover text-indigo-400' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                  );
+                }}
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}
@@ -97,7 +96,7 @@ export function FlywheelSidebar({ className }: FlywheelSidebarProps) {
 
           {/* Discovery Nav */}
           <div className="space-y-1">
-            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <p className="flywheel-nav-section-label px-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
               Discovery
             </p>
             {discoveryNavItems.map((item) => (
@@ -106,10 +105,8 @@ export function FlywheelSidebar({ className }: FlywheelSidebarProps) {
                 to={item.path}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-slate-900 text-indigo-400'
-                      : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                    'flywheel-nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    isActive ? 'flywheel-nav-link-active bg-bg-hover text-indigo-400' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                   )
                 }
               >
@@ -121,7 +118,7 @@ export function FlywheelSidebar({ className }: FlywheelSidebarProps) {
 
           {/* Popular Tags */}
           <div className="space-y-2">
-            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <p className="flywheel-nav-section-label px-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
               Popular Tags
             </p>
             <div className="flex flex-wrap gap-1.5 px-3">
@@ -129,7 +126,7 @@ export function FlywheelSidebar({ className }: FlywheelSidebarProps) {
                 <NavLink
                   key={tag}
                   to={`/flywheel/threads?tags=${tag}`}
-                  className="rounded-md bg-slate-900 px-2 py-1 text-xs text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+                  className="flywheel-tag rounded-md bg-bg-tertiary px-2 py-1 text-xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
                 >
                   #{tag}
                 </NavLink>
@@ -139,8 +136,8 @@ export function FlywheelSidebar({ className }: FlywheelSidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-slate-800 p-4">
-          <p className="text-xs text-slate-400">
+        <div className="flywheel-sidebar-footer border-t border-border-default p-4">
+          <p className="text-xs text-text-muted">
             Flywheel Network™
             <br />
             Proof-of-Execution Knowledge Network

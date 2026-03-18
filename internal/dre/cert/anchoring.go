@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -21,14 +22,19 @@ const (
 	ChainAvalanche = "avalanche"
 )
 
-// SupportedChains returns the list of supported blockchain chains.
+// DefaultChain is the recommended chain for anchoring: lowest cost among major EVM L2s
+// (typically $0.001–0.02 per simple tx). Use when no chain preference is specified.
+const DefaultChain = ChainBase
+
+// SupportedChains returns the list of supported blockchain chains, ordered by
+// cost-efficiency (cheapest first): Base, Polygon, Arbitrum, Optimism, Avalanche, Ethereum.
 var SupportedChains = []string{
-	ChainEthereum,
-	ChainPolygon,
-	ChainArbitrum,
-	ChainOptimism,
-	ChainBase,
-	ChainAvalanche,
+	ChainBase,      // Best cost/safety: L2, ~$0.001–0.02/tx
+	ChainPolygon,   // Very cheap sidechain, ~$0.001–0.01/tx
+	ChainArbitrum,  // L2, ~$0.03–0.06/tx
+	ChainOptimism,  // L2, ~$0.06–0.10/tx
+	ChainAvalanche, // L1, variable
+	ChainEthereum,  // L1, highest cost; use for max assurance only
 }
 
 // AnchorReceipt contains the blockchain anchoring confirmation.
@@ -84,6 +90,9 @@ type EthereumAnchoringService struct {
 	contractAddresses map[string]string
 	// Private key for signing transactions (should be from secure storage)
 	privateKey string
+	// clientCache caches ethclient by chain (used by production implementation)
+	clientCache map[string]interface{}
+	clientMu    sync.Mutex
 }
 
 // NewEthereumAnchoringService creates a new Ethereum anchoring service.
@@ -100,85 +109,61 @@ func (s *EthereumAnchoringService) SetContractAddress(chain, address string) {
 }
 
 // Anchor submits the execution root hash to the blockchain.
-// This is a stub implementation - in production, this would interact with an Ethereum node.
+// Production: requires SetSigningKey, and for the chosen chain an RPC endpoint and contract address.
 func (s *EthereumAnchoringService) Anchor(ctx context.Context, req *AnchorRequest) (*AnchorReceipt, error) {
-	// Validate chain is supported
-	if !isChainSupported(req.Chain) {
-		return nil, fmt.Errorf("cert: unsupported chain: %s", req.Chain)
+	chain := req.Chain
+	if chain == "" {
+		chain = DefaultChain
 	}
-
-	// Validate execution root hash
+	if !isChainSupported(chain) {
+		return nil, fmt.Errorf("cert: unsupported chain: %s", chain)
+	}
 	if req.ExecutionRootHash == "" {
 		return nil, fmt.Errorf("cert: execution root hash is required")
 	}
 
-	// In a real implementation, this would:
-	// 1. Connect to the appropriate RPC endpoint
-	// 2. Prepare and sign a transaction to the anchoring contract
-	// 3. Submit the transaction and wait for confirmation
-	// 4. Return the transaction receipt
-
-	// Stub implementation returns a mock receipt
-	receipt := &AnchorReceipt{
-		Chain:          req.Chain,
-		BlockNumber:    12345678,
-		TxHash:        generateMockTxHash(req.ExecutionRootHash),
-		MerkleRoot:    req.ExecutionRootHash,
-		AnchorHash:    generateAnchorHash(req.ExecutionRootHash),
-		AnchoredAt:    time.Now().UTC(),
-		Confirmations: 12,
-		GasUsed:        21000,
-		ContractAddress: s.contractAddresses[req.Chain],
+	contractAddr := s.contractAddresses[chain]
+	if contractAddr == "" {
+		return nil, fmt.Errorf("cert: no contract address for chain %q (call SetContractAddress)", chain)
+	}
+	if s.rpcEndpoints[chain] == "" {
+		return nil, fmt.Errorf("cert: no RPC endpoint for chain %q", chain)
 	}
 
-	return receipt, nil
+	return s.anchorOnChain(ctx, chain, req.ExecutionRootHash, contractAddr)
 }
 
 // VerifyAnchor verifies that an anchor exists on the blockchain.
-// This is a stub implementation.
 func (s *EthereumAnchoringService) VerifyAnchor(ctx context.Context, receipt *AnchorReceipt) (bool, error) {
-	// In production, this would:
-	// 1. Query the blockchain to verify the transaction exists
-	// 2. Verify the merkle root matches
-	// 3. Check confirmations are sufficient
-
-	// Stub: verify basic fields exist
 	if receipt == nil {
 		return false, fmt.Errorf("cert: nil receipt")
 	}
-
 	if receipt.TxHash == "" {
 		return false, fmt.Errorf("cert: empty transaction hash")
 	}
-
 	if receipt.MerkleRoot == "" {
 		return false, fmt.Errorf("cert: empty merkle root")
 	}
-
-	// Stub: assume valid if all fields are present
-	return true, nil
+	if s.rpcEndpoints[receipt.Chain] == "" {
+		return false, fmt.Errorf("cert: no RPC endpoint for chain %q", receipt.Chain)
+	}
+	return s.verifyAnchorOnChain(ctx, receipt)
 }
 
-// GetMerkleProof returns the Merkle proof for an anchored hash.
-// This is a stub implementation.
+// GetMerkleProof returns the Merkle proof for an anchored hash from chain logs.
 func (s *EthereumAnchoringService) GetMerkleProof(ctx context.Context, chain, txHash string) (*MerkleProof, error) {
-	// In production, this would query the blockchain and construct the proof
-	// from event logs or storage proof
-
-	return &MerkleProof{
-		BlockNumber: 12345678,
-		TxHash:      txHash,
-		RootHash:    "0xroot", // Would be the actual stored root
-		Proof:      []string{},
-		LeafHash:   "0xleaf", // Would be the actual leaf
-	}, nil
+	if s.rpcEndpoints[chain] == "" {
+		return nil, fmt.Errorf("cert: no RPC endpoint for chain %q", chain)
+	}
+	return s.getMerkleProofOnChain(ctx, chain, txHash)
 }
 
 // GetBlockNumber returns the current block number for a chain.
-// This is a stub implementation.
 func (s *EthereumAnchoringService) GetBlockNumber(ctx context.Context, chain string) (int64, error) {
-	// In production, this would query the RPC endpoint
-	return 12345678, nil
+	if s.rpcEndpoints[chain] == "" {
+		return 0, fmt.Errorf("cert: no RPC endpoint for chain %q", chain)
+	}
+	return s.getBlockNumberOnChain(ctx, chain)
 }
 
 // isChainSupported checks if a chain is supported.

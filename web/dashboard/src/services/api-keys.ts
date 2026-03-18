@@ -1,21 +1,21 @@
-import { apiClient } from "@/api/client";
+import { apiClient } from '@/api/client';
 import type {
+  AddEnvironmentRequest,
+  AddPermissionRequest,
   APIKey,
   APIKeyCreateResponse,
+  APIKeyEnvironment,
+  APIKeyFilters,
   APIKeyListResponse,
   APIKeyPermission,
-  APIKeyEnvironment,
   APIKeyRotation,
+  AvailableEnvironment,
   CreateAPIKeyRequest,
-  UpdateAPIKeyRequest,
   RotateAPIKeyRequest,
-  AddPermissionRequest,
-  AddEnvironmentRequest,
-  APIKeyFilters,
-  PaginatedResponse,
-} from "@/types/api-key";
+  UpdateAPIKeyRequest,
+} from '@/types/api-key';
 
-const BASE_URL = "/v1/api-keys";
+const BASE_URL = '/v1/api-keys';
 
 /**
  * API Key Service
@@ -26,8 +26,11 @@ export const apiKeysService = {
    * Create a new API key
    */
   createKey: async (data: CreateAPIKeyRequest): Promise<APIKeyCreateResponse> => {
-    const res = await apiClient.post<{ data: APIKeyCreateResponse } | APIKeyCreateResponse>(BASE_URL, data);
-    return "data" in res && res.data != null ? res.data : (res as APIKeyCreateResponse);
+    const res = await apiClient.post<{ data: APIKeyCreateResponse } | APIKeyCreateResponse>(
+      BASE_URL,
+      data
+    );
+    return 'data' in res && res.data != null ? res.data : (res as APIKeyCreateResponse);
   },
 
   /**
@@ -39,32 +42,30 @@ export const apiKeysService = {
     pageSize = 10
   ): Promise<APIKeyListResponse> => {
     const params = new URLSearchParams();
-    params.append("page", String(page));
-    params.append("limit", String(pageSize)); // backend expects "limit"
+    params.append('page', String(page));
+    params.append('limit', String(pageSize)); // backend expects "limit"
 
     if (filters?.key_type) {
-      params.append("key_type", filters.key_type);
+      params.append('key_type', filters.key_type);
     }
     if (filters?.is_active !== undefined) {
-      params.append("is_active", String(filters.is_active));
+      params.append('is_active', String(filters.is_active));
     }
     if (filters?.expires_before) {
-      params.append("expires_before", filters.expires_before);
+      params.append('expires_before', filters.expires_before);
     }
     if (filters?.expires_after) {
-      params.append("expires_after", filters.expires_after);
+      params.append('expires_after', filters.expires_after);
     }
     if (filters?.search) {
-      params.append("search", filters.search);
+      params.append('search', filters.search);
     }
 
     type BackendListResponse = {
       data: APIKey[];
       meta?: { page: number; limit: number; total: number; total_pages: number };
     };
-    const response = await apiClient.get<BackendListResponse>(
-      `${BASE_URL}?${params.toString()}`
-    );
+    const response = await apiClient.get<BackendListResponse>(`${BASE_URL}?${params.toString()}`);
     const meta = response.meta;
     return {
       data: response.data ?? [],
@@ -80,7 +81,7 @@ export const apiKeysService = {
    */
   getKey: async (id: string): Promise<APIKey> => {
     const res = await apiClient.get<{ data: APIKey } | APIKey>(`${BASE_URL}/${id}`);
-    return res && typeof res === "object" && "data" in res && res.data != null
+    return res && typeof res === 'object' && 'data' in res && res.data != null
       ? res.data
       : (res as APIKey);
   },
@@ -90,7 +91,7 @@ export const apiKeysService = {
    */
   updateKey: async (id: string, data: UpdateAPIKeyRequest): Promise<APIKey> => {
     const res = await apiClient.patch<{ data: APIKey } | APIKey>(`${BASE_URL}/${id}`, data);
-    return res && typeof res === "object" && "data" in res && res.data != null
+    return res && typeof res === 'object' && 'data' in res && res.data != null
       ? res.data
       : (res as APIKey);
   },
@@ -120,9 +121,7 @@ export const apiKeysService = {
    * Get permissions for an API key
    */
   getPermissions: async (keyId: string): Promise<APIKeyPermission[]> => {
-    const response = await apiClient.get<APIKeyPermission[]>(
-      `${BASE_URL}/${keyId}/permissions`
-    );
+    const response = await apiClient.get<APIKeyPermission[]>(`${BASE_URL}/${keyId}/permissions`);
     return response;
   },
 
@@ -147,19 +146,32 @@ export const apiKeysService = {
   // Environments
 
   /**
+   * Get platform environments available to link to API keys (production API)
+   */
+  getAvailableEnvironments: async (): Promise<AvailableEnvironment[]> => {
+    const response = await apiClient.get<{ data: AvailableEnvironment[] } | AvailableEnvironment[]>(
+      `${BASE_URL}/environments/available`
+    );
+    return Array.isArray(response) ? response : (response?.data ?? []);
+  },
+
+  /**
    * Get environments linked to an API key
    */
   getEnvironments: async (keyId: string): Promise<APIKeyEnvironment[]> => {
-    const response = await apiClient.get<APIKeyEnvironment[]>(
+    const response = await apiClient.get<{ data: APIKeyEnvironment[] } | APIKeyEnvironment[]>(
       `${BASE_URL}/${keyId}/environments`
     );
-    return response;
+    return Array.isArray(response) ? response : (response?.data ?? []);
   },
 
   /**
    * Link an environment to an API key
    */
-  linkEnvironment: async (keyId: string, data: AddEnvironmentRequest): Promise<APIKeyEnvironment> => {
+  linkEnvironment: async (
+    keyId: string,
+    data: AddEnvironmentRequest
+  ): Promise<APIKeyEnvironment> => {
     const response = await apiClient.post<APIKeyEnvironment>(
       `${BASE_URL}/${keyId}/environments`,
       data
@@ -180,9 +192,7 @@ export const apiKeysService = {
    * Get rotation history for an API key
    */
   getRotationHistory: async (keyId: string): Promise<APIKeyRotation[]> => {
-    const response = await apiClient.get<APIKeyRotation[]>(
-      `${BASE_URL}/${keyId}/rotations`
-    );
+    const response = await apiClient.get<APIKeyRotation[]>(`${BASE_URL}/${keyId}/rotations`);
     return response;
   },
 };
@@ -192,7 +202,7 @@ export const apiKeysService = {
  * Used for authenticating requests using an API key
  */
 export const authenticateWithKey = async (apiKey: string): Promise<{ token: string }> => {
-  const response = await apiClient.post<{ token: string }>("/v1/auth/api-key", {
+  const response = await apiClient.post<{ token: string }>('/v1/auth/api-key', {
     api_key: apiKey,
   });
   return response;
@@ -201,20 +211,26 @@ export const authenticateWithKey = async (apiKey: string): Promise<{ token: stri
 /**
  * Local storage helpers for newly created API keys
  */
-export const API_KEY_STORAGE_KEY = "ff_new_api_key";
+export const API_KEY_STORAGE_KEY = 'ff_new_api_key';
 
 export const storeNewApiKey: (key: APIKeyCreateResponse) => void = (key) => {
   try {
-    localStorage.setItem(API_KEY_STORAGE_KEY, JSON.stringify({
-      key,
-      createdAt: new Date().toISOString(),
-    }));
+    localStorage.setItem(
+      API_KEY_STORAGE_KEY,
+      JSON.stringify({
+        key,
+        createdAt: new Date().toISOString(),
+      })
+    );
   } catch (error) {
-    console.error("Failed to store API key:", error);
+    console.error('Failed to store API key:', error);
   }
 };
 
-export const getStoredApiKey: () => { key: APIKeyCreateResponse; createdAt: string } | null = () => {
+export const getStoredApiKey: () => {
+  key: APIKeyCreateResponse;
+  createdAt: string;
+} | null = () => {
   try {
     const stored = localStorage.getItem(API_KEY_STORAGE_KEY);
     if (!stored) return null;
@@ -225,7 +241,7 @@ export const getStoredApiKey: () => { key: APIKeyCreateResponse; createdAt: stri
 
     return parsed;
   } catch (error) {
-    console.error("Failed to retrieve API key:", error);
+    console.error('Failed to retrieve API key:', error);
     return null;
   }
 };
@@ -234,6 +250,6 @@ export const clearStoredApiKey: () => void = () => {
   try {
     localStorage.removeItem(API_KEY_STORAGE_KEY);
   } catch (error) {
-    console.error("Failed to clear API key:", error);
+    console.error('Failed to clear API key:', error);
   }
 };

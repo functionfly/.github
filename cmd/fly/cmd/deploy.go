@@ -1,6 +1,5 @@
 /*
 Copyright © 2026 FunctionFly
-
 */
 package cmd
 
@@ -33,12 +32,13 @@ Examples:
 }
 
 var deployFlags struct {
-	env         string
-	preview     bool
-	force       bool
-	wait        bool
-	rollbackID  string
-	jsonOutput  bool
+	env           string
+	preview       bool
+	force         bool
+	wait          bool
+	rollbackID    string
+	jsonOutput    bool
+	skipTypeCheck bool
 }
 
 func init() {
@@ -51,6 +51,7 @@ func init() {
 	deployCmd.Flags().BoolVarP(&deployFlags.wait, "wait", "w", true, "Wait for deployment to complete")
 	deployCmd.Flags().StringVar(&deployFlags.rollbackID, "rollback-to", "", "Rollback to specific deployment ID")
 	deployCmd.Flags().BoolVarP(&deployFlags.jsonOutput, "json", "j", false, "Output results in JSON format")
+	deployCmd.Flags().BoolVar(&deployFlags.skipTypeCheck, "skip-type-check", false, "Skip TypeScript type checking during deployment")
 }
 
 // deployRun implements the deploy command
@@ -110,7 +111,16 @@ func performDeployment(m *manifest.Manifest, creds *credentials.Credentials, env
 
 	// 3. Bundle code
 	fmt.Println("✓ Bundling code...")
-	bundle, err := bundler.BundleWithWorkingDirectory(m, "")
+
+	// Create bundle options with skip type check if set
+	var bundleOptions *bundler.BundleOptions
+	if deployFlags.skipTypeCheck {
+		bundleOptions = &bundler.BundleOptions{
+			SkipTypeCheck: true,
+		}
+	}
+
+	bundle, err := bundler.BundleWithOptionsAndWorkingDirectory(m, bundleOptions, "")
 	if err != nil {
 		return fmt.Errorf("bundling failed: %v", err)
 	}
@@ -128,10 +138,10 @@ func performDeployment(m *manifest.Manifest, creds *credentials.Credentials, env
 
 	// 6. Prepare deployment request
 	deployReq := &cli.DeployRequest{
-		Provider:     "functionfly", // Default provider
-		Region:       "auto",        // Auto-select region
-		Artifact:     string(bundle), // Base64 encoded bundle
-		EnvVars:      map[string]string{"ENV": env},
+		Provider: "functionfly",  // Default provider
+		Region:   "auto",         // Auto-select region
+		Artifact: string(bundle), // Base64 encoded bundle
+		EnvVars:  map[string]string{"ENV": env},
 		ProviderConfig: map[string]interface{}{
 			"environment": env,
 			"force":       force,

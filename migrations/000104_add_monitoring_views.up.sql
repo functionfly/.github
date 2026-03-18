@@ -52,12 +52,13 @@ FROM pg_stat_user_indexes
 WHERE idx_scan = 0
 ORDER BY pg_relation_size(schemaname||'.'||indexrelname) DESC;
 
--- Query performance monitoring
+-- Query performance monitoring (DROP first so column types can change, e.g. integer -> bigint)
+DROP VIEW IF EXISTS db_query_performance CASCADE;
 DO $$
 BEGIN
     BEGIN
         EXECUTE $view$
-            CREATE OR REPLACE VIEW db_query_performance AS
+            CREATE VIEW db_query_performance AS
             SELECT
                 query,
                 calls,
@@ -66,10 +67,10 @@ BEGIN
                 rows,
                 round((total_exec_time / calls)::numeric, 2) as avg_time_per_call,
                 round((rows::float / calls)::numeric, 2) as avg_rows_per_call,
-                0 as temp_blks_read,
-                0 as temp_blks_written,
-                0 as blk_read_time,
-                0 as blk_write_time
+                0::bigint as temp_blks_read,
+                0::bigint as temp_blks_written,
+                0::double precision as blk_read_time,
+                0::double precision as blk_write_time
             FROM pg_stat_statements
             WHERE calls > 10
             ORDER BY mean_exec_time DESC
@@ -77,7 +78,7 @@ BEGIN
         $view$;
     EXCEPTION WHEN undefined_table THEN
         EXECUTE $view$
-            CREATE OR REPLACE VIEW db_query_performance AS
+            CREATE VIEW db_query_performance AS
             SELECT
                 NULL::text AS query,
                 0::bigint AS calls,

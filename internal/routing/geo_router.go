@@ -534,7 +534,9 @@ func (r *GeoRouter) getClientRegion(clientIP string) GeographicRegion {
 	return r.basicRegionDetection(clientIP)
 }
 
-// basicRegionDetection provides simple IP-based region detection as fallback
+// basicRegionDetection provides simple IP-based region detection when GeoIP
+// is unavailable or lookup fails. Uses first-octet heuristics only; for production
+// configure GeoIP (GeoIPDatabasePath) so GeoIP lookup is used instead.
 func (r *GeoRouter) basicRegionDetection(clientIP string) GeographicRegion {
 	// Handle private networks
 	if strings.HasPrefix(clientIP, "192.168.") || strings.HasPrefix(clientIP, "10.") ||
@@ -542,8 +544,7 @@ func (r *GeoRouter) basicRegionDetection(clientIP string) GeographicRegion {
 		return RegionNorthAmerica // Local/private networks
 	}
 
-	// Very basic geographic grouping based on IP ranges
-	// This is a rough approximation and should not be relied upon in production
+	// First-octet heuristic: rough geographic grouping by historic allocation
 	octets := strings.Split(clientIP, ".")
 	if len(octets) >= 1 {
 		firstOctet := octets[0]

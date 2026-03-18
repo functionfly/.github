@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -64,8 +64,17 @@ export function ManifestInputForm({
     setInternalValue(value || getDefaultValue(inputSpec));
   }, [value, inputSpec]);
 
+  // Only update when errors content actually changes (avoid loop when parent passes new [] each render)
   useEffect(() => {
-    setValidationErrors(errors);
+    setValidationErrors((prev) => {
+      if (
+        prev.length !== errors.length ||
+        errors.some((e, i) => prev[i]?.field !== e?.field || prev[i]?.message !== e?.message)
+      ) {
+        return errors;
+      }
+      return prev;
+    });
   }, [errors]);
 
   const handleChange = async (newValue: any) => {
@@ -299,10 +308,16 @@ interface FieldRendererProps {
 function FieldRenderer({ fieldKey, fieldSpec, value, onChange, disabled = false, error }: FieldRendererProps) {
   const fieldType = fieldSpec.type || 'string';
   const defaultValue = getDefaultValue(fieldSpec);
+  const hasSetDefault = useRef(false);
 
   useEffect(() => {
     if (value === undefined && defaultValue !== undefined) {
-      onChange(defaultValue);
+      if (!hasSetDefault.current) {
+        hasSetDefault.current = true;
+        onChange(defaultValue);
+      }
+    } else {
+      hasSetDefault.current = false;
     }
   }, [value, defaultValue, onChange]);
 

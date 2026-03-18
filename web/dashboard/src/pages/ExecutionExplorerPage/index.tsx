@@ -59,6 +59,7 @@ import {
   ExecutionRootBadge,
   MerkleExecutionTree,
   HashDiffViewer,
+  HashBlock,
   ReplayExecutionButton,
   ReplayModal,
   ReplayProgressTimeline,
@@ -73,6 +74,7 @@ import {
   CertificateList,
   FunctionHistoryTab,
 } from "@/components/dre";
+import type { ComponentType } from "@/components/dre";
 import { mapCertificateDetailToFXCertData } from "@/lib/dre";
 import { ReplayMode } from "@/components/dre/replay";
 
@@ -648,6 +650,31 @@ function ExecutionCard({
   );
 }
 
+const COMPONENT_DETAIL: Record<
+  ComponentType,
+  { label: string; description: string }
+> = {
+  input: { label: "Input", description: "Function input parameters" },
+  output: { label: "Output", description: "Function output result" },
+  environment: {
+    label: "Environment",
+    description: "Environment variables and config",
+  },
+  dependency: {
+    label: "Dependencies",
+    description: "External dependencies and packages",
+  },
+  trace: { label: "Trace", description: "Execution trace log" },
+  resource: {
+    label: "Resources",
+    description: "CPU, memory, and I/O usage",
+  },
+  metadata: {
+    label: "Metadata",
+    description: "Execution metadata and timing",
+  },
+};
+
 function ExecutionDetailView({
   execution,
   onReplay,
@@ -658,6 +685,10 @@ function ExecutionDetailView({
   onViewFullCert?: (certId: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [componentDetail, setComponentDetail] = useState<{
+    type: ComponentType;
+    hash: string;
+  } | null>(null);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -724,18 +755,81 @@ function ExecutionDetailView({
           resource: execution.component_hashes.resource,
           metadata: execution.component_hashes.metadata,
         }}
-        onNodeClick={(type, hash) => {
-          console.log("Node clicked:", type, hash);
-        }}
+        onNodeClick={(type, hash) => setComponentDetail({ type, hash })}
       />
 
-      {/* Trust Score Breakdown */}
+      {/* Component detail dialog (View details) */}
+      <Dialog
+        open={!!componentDetail}
+        onOpenChange={(open) => {
+          if (!open) setComponentDetail(null);
+        }}
+      >
+        <DialogContent
+          className="max-w-md"
+          onPointerDownOutside={() => setComponentDetail(null)}
+          onEscapeKeyDown={() => setComponentDetail(null)}
+        >
+          {componentDetail && (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {COMPONENT_DETAIL[componentDetail.type].label}
+                </DialogTitle>
+                <DialogDescription>
+                  {COMPONENT_DETAIL[componentDetail.type].description}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 pt-2">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wide">
+                  Component hash
+                </Label>
+                <HashBlock
+                  hash={componentDetail.hash}
+                  className="w-full"
+                />
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Trust Score Breakdown: use API trust when present, else derive from execution only (no mock values) */}
       <TrustScoreBreakdown
-        determinismScore={execution.determinism_tier === "full" ? 100 : execution.determinism_tier === "lite" ? 80 : 60}
-        replayConsistency={execution.roots_match ? 100 : 50}
-        resourceStability={95}
-        driftIncidents={execution.roots_match ? 0 : 1}
-        overallScore={execution.replay_verified_at ? 85 : 60}
+        determinismScore={
+          execution.trust != null
+            ? Math.round(execution.trust.determinism_score)
+            : execution.determinism_tier === "full"
+              ? 100
+              : execution.determinism_tier === "lite"
+                ? 80
+                : 60
+        }
+        replayConsistency={
+          execution.trust != null
+            ? Math.round(execution.trust.replay_consistency_score)
+            : execution.roots_match
+              ? 100
+              : 50
+        }
+        resourceStability={undefined}
+        driftIncidents={
+          execution.trust != null ? execution.trust.drift_incidents_total : 0
+        }
+        overallScore={
+          execution.trust != null
+            ? Math.round(execution.trust.trust_score)
+            : (() => {
+                const det =
+                  execution.determinism_tier === "full"
+                    ? 100
+                    : execution.determinism_tier === "lite"
+                      ? 80
+                      : 60;
+                const replay = execution.roots_match ? 100 : 50;
+                return Math.round((det + replay) / 2);
+              })()
+        }
       />
 
       {/* FX Certificate */}

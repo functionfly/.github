@@ -8,6 +8,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 )
 
 // Handler contains API key HTTP handlers
@@ -91,10 +92,12 @@ type UserClaims struct {
 	Email    string
 }
 
-// extractPathVars extracts path variables from the request
-// This is a simple implementation - in production you'd use gorilla/mux vars
+// extractPathVars extracts path variables from the request (e.g. "id" from /api-keys/{id}).
+// Uses gorilla/mux route vars; returns a non-nil map (empty if request wasn't matched by mux).
 func extractPathVars(r *http.Request) map[string]string {
-	// This will be replaced with actual mux.Vars(r) in the actual routes
-	// For now we return an empty map and rely on the router setting vars
-	return make(map[string]string)
+	v := mux.Vars(r)
+	if v == nil {
+		return make(map[string]string)
+	}
+	return v
 }

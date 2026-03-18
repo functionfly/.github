@@ -8,10 +8,13 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"unsafe"
 
+	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/dre/capsule"
 	drecert "github.com/functionfly/functionfly/internal/dre/cert"
 	drecrypto "github.com/functionfly/functionfly/internal/dre/crypto"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -244,9 +247,11 @@ func (h *Handler) HandleGetPassport(w http.ResponseWriter, r *http.Request) {
 
 // DivergenceSimulationRequest is the request body for divergence simulation.
 type DivergenceSimulationRequest struct {
-	MemoryLimit    int64  `json:"memory_limit"`
-	RuntimeVersion string `json:"runtime_version"`
-	Region         string `json:"region"`
+	MemoryLimit    int64           `json:"memory_limit"`
+	RuntimeVersion string          `json:"runtime_version"`
+	Region         string          `json:"region"`
+	Input          json.RawMessage `json:"input"`   // optional; default {} for re-execution
+	Version        string          `json:"version"` // optional; default latest
 }
 
 // HandleDivergenceSimulation simulates replay under modified constraints.
@@ -271,6 +276,24 @@ func (h *Handler) HandleDivergenceSimulation(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Get function version (latest or requested)
+	var fnVersion *registry.RegistryFunctionVersion
+	if req.Version != "" {
+		fnVersion, err = h.Repo.GetFunctionVersion(fn.ID, req.Version)
+	} else {
+		fnVersion, err = h.Repo.GetLatestFunctionVersion(fn.ID)
+	}
+	if err != nil || fnVersion == nil {
+		writeError(w, http.StatusNotFound, "function version not found")
+		return
+	}
+
+	// Default input for re-execution
+	input := req.Input
+	if input == nil {
+		input = json.RawMessage(`{}`)
+	}
+
 	// Build a modified capsule descriptor with the requested constraints
 	baseExecID := uuid.New().String()
 	modifiedCapsule := capsule.Default(baseExecID, "", "")
@@ -289,32 +312,83 @@ func (h *Handler) HandleDivergenceSimulation(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Build a simulated MEG with the modified environment
-	// (In production, this would actually re-execute the function)
-	simulatedMEG := &drecrypto.MEGResult{
-		ExecutionRootHash: drecrypto.HashString(drecrypto.TagMeta, []byte(modifiedHash+baseExecID)),
-		InputHash:         drecrypto.HashString(drecrypto.TagInput, []byte("simulated")),
-		EnvironmentHash:   modifiedHash,
-		DependencyHash:    drecrypto.HashString(drecrypto.TagDeps, []byte("[]")),
-		ResourceHash:      drecrypto.HashString(drecrypto.TagResource, []byte("{}")),
-		OutputHash:        drecrypto.HashString(drecrypto.TagOutput, []byte("simulated")),
-		MetadataHash:      drecrypto.HashString(drecrypto.TagMeta, []byte(baseExecID)),
+	memoryMB := fnVersion.MemoryMB
+	if req.MemoryLimit > 0 {
+		memoryMB = int(req.MemoryLimit)
+	}
+	maxCPUTimeMs := fnVersion.TimeoutMs
+
+	// Re-execute the function with the modified constraints when the function has WASM
+	var simulatedMEG *drecrypto.MEGResult
+	reExecuted := false
+	reExecError := ""
+
+	if len(fnVersion.WasmBinary) > 0 {
+		// storage.RegistryFunctionVersion is an alias for registry.RegistryFunctionVersion; same underlying type
+		fnVersionStorage := (*storage.RegistryFunctionVersion)(unsafe.Pointer(fnVersion))
+		output, execErr := execution.ExecuteLocally(fnVersionStorage, input, memoryMB, maxCPUTimeMs)
+		if execErr == nil {
+			reExecuted = true
+			inputBytes := input
+			if len(inputBytes) == 0 {
+				inputBytes = []byte("{}")
+			}
+			outputBytes := output
+			if outputBytes == nil {
+				outputBytes = []byte("null")
+			}
+			simulatedMEG = &drecrypto.MEGResult{
+				ExecutionRootHash: drecrypto.HashString(drecrypto.TagMeta, []byte(modifiedHash+baseExecID)),
+				InputHash:         drecrypto.HashString(drecrypto.TagInput, inputBytes),
+				EnvironmentHash:   modifiedHash,
+				DependencyHash:    drecrypto.HashString(drecrypto.TagDeps, []byte("[]")),
+				ResourceHash:      drecrypto.HashString(drecrypto.TagResource, []byte("{}")),
+				OutputHash:        drecrypto.HashString(drecrypto.TagOutput, outputBytes),
+				MetadataHash:      drecrypto.HashString(drecrypto.TagMeta, []byte(baseExecID)),
+			}
+		} else {
+			reExecError = execErr.Error()
+		}
+	}
+
+	// Fallback to simulated MEG when re-execution was not run or failed
+	if simulatedMEG == nil {
+		simulatedMEG = &drecrypto.MEGResult{
+			ExecutionRootHash: drecrypto.HashString(drecrypto.TagMeta, []byte(modifiedHash+baseExecID)),
+			InputHash:         drecrypto.HashString(drecrypto.TagInput, []byte("simulated")),
+			EnvironmentHash:   modifiedHash,
+			DependencyHash:    drecrypto.HashString(drecrypto.TagDeps, []byte("[]")),
+			ResourceHash:      drecrypto.HashString(drecrypto.TagResource, []byte("{}")),
+			OutputHash:        drecrypto.HashString(drecrypto.TagOutput, []byte("simulated")),
+			MetadataHash:      drecrypto.HashString(drecrypto.TagMeta, []byte(baseExecID)),
+		}
+	}
+
+	simulationPayload := map[string]interface{}{
+		"modified_capsule_hash": modifiedHash,
+		"simulated_root_hash":   simulatedMEG.ExecutionRootHash,
+		"constraints": map[string]interface{}{
+			"memory_limit":    req.MemoryLimit,
+			"runtime_version": req.RuntimeVersion,
+			"region":          req.Region,
+		},
+		"simulated_at": time.Now().UTC().Format(time.RFC3339),
+		"re_executed":  reExecuted,
+	}
+	if reExecError != "" {
+		simulationPayload["re_execution_skipped"] = true
+		simulationPayload["re_execution_error"] = reExecError
+	} else if reExecuted {
+		simulationPayload["note"] = "Function was re-executed with the modified constraints; MEG hashes reflect actual execution."
+	} else {
+		simulationPayload["note"] = "Simulated divergence (no WASM binary or re-execution skipped)."
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"function":    fmt.Sprintf("fx://%s/%s", author, name),
 		"function_id": fn.ID,
-		"simulation": map[string]interface{}{
-			"modified_capsule_hash": modifiedHash,
-			"simulated_root_hash":   simulatedMEG.ExecutionRootHash,
-			"constraints": map[string]interface{}{
-				"memory_limit":    req.MemoryLimit,
-				"runtime_version": req.RuntimeVersion,
-				"region":          req.Region,
-			},
-			"simulated_at": time.Now().UTC().Format(time.RFC3339),
-			"note":         "This is a simulated divergence analysis. Production replay requires actual function execution.",
-		},
+		"version":     fnVersion.Version,
+		"simulation":  simulationPayload,
 	})
 }
 
@@ -445,47 +519,59 @@ func (h *Handler) HandleGetExecution(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get associated certificate if available
-	certs, err := h.Repo.GetCertificatesByFunctionID(fn.ID, 1, 0)
+	// Get associated certificate if available (by execution ID for correct lookup)
+	cert, certErr := h.Repo.GetCertificateByExecutionID(executionID)
 	var certInfo map[string]interface{}
-	if err == nil && len(certs) > 0 {
-		for _, cert := range certs {
-			if cert.ExecutionID == executionID {
-				certInfo = map[string]interface{}{
-					"certificate_id":   cert.CertificateID,
-					"cert_level":       cert.CertLevel,
-					"certificate_hash": cert.CertificateHash,
-					"created_at":       cert.CreatedAt,
-					"anchored":         cert.Anchored,
-				}
-				break
+	var trustInfo map[string]interface{}
+	if certErr == nil && cert != nil {
+		certInfo = map[string]interface{}{
+			"certificate_id":   cert.CertificateID,
+			"cert_level":       cert.CertLevel,
+			"certificate_hash": cert.CertificateHash,
+			"created_at":       cert.CreatedAt,
+			"anchored":         cert.Anchored,
+		}
+		// Include trust section from FXCERT when present
+		var fxcert drecert.FXCert
+		if err := json.Unmarshal(cert.CertJSON, &fxcert); err == nil {
+			trustInfo = map[string]interface{}{
+				"trust_score":                fxcert.Trust.TrustScore,
+				"determinism_score":          fxcert.Trust.DeterminismScore,
+				"replay_consistency_score":   fxcert.Trust.ReplayConsistencyScore,
+				"drift_incidents_total":      fxcert.Trust.DriftIncidentsTotal,
+				"verified_executions_total": fxcert.Trust.VerifiedExecutionsTotal,
 			}
 		}
 	}
 
-	response := map[string]interface{}{
-		"execution": map[string]interface{}{
-			"execution_id":        rec.ExecutionID.String(),
-			"execution_root_hash": rec.ExecutionRootHash,
-			"version":             rec.Version,
-			"created_at":          rec.CreatedAt,
-			"determinism_tier":    rec.DeterminismTier,
-			"protocol_version":    rec.ProtocolVersion,
-			"replay_verified_at":  rec.ReplayVerifiedAt,
-			"replay_root_hash":    rec.ReplayRootHash,
-			"replay_node_id":      rec.ReplayNodeID,
-			"roots_match":         rec.ReplayRootHash != "" && rec.ReplayRootHash == rec.ExecutionRootHash,
-			"component_hashes": map[string]string{
-				"input":       rec.InputHash,
-				"output":      rec.OutputHash,
-				"environment": rec.EnvironmentHash,
-				"dependency":  rec.DependencyHash,
-				"trace":       rec.TraceHash,
-				"resource":    rec.ResourceHash,
-				"metadata":    rec.MetadataHash,
-			},
-			"certificate": certInfo,
+	execPayload := map[string]interface{}{
+		"execution_id":        rec.ExecutionID.String(),
+		"execution_root_hash": rec.ExecutionRootHash,
+		"version":             rec.Version,
+		"created_at":          rec.CreatedAt,
+		"determinism_tier":    rec.DeterminismTier,
+		"protocol_version":    rec.ProtocolVersion,
+		"replay_verified_at":  rec.ReplayVerifiedAt,
+		"replay_root_hash":    rec.ReplayRootHash,
+		"replay_node_id":      rec.ReplayNodeID,
+		"roots_match":         rec.ReplayRootHash != "" && rec.ReplayRootHash == rec.ExecutionRootHash,
+		"component_hashes": map[string]string{
+			"input":       rec.InputHash,
+			"output":      rec.OutputHash,
+			"environment": rec.EnvironmentHash,
+			"dependency":  rec.DependencyHash,
+			"trace":       rec.TraceHash,
+			"resource":    rec.ResourceHash,
+			"metadata":    rec.MetadataHash,
 		},
+		"certificate": certInfo,
+	}
+	if trustInfo != nil {
+		execPayload["trust"] = trustInfo
+	}
+
+	response := map[string]interface{}{
+		"execution": execPayload,
 	}
 
 	writeJSON(w, http.StatusOK, response)
@@ -525,48 +611,55 @@ func (h *Handler) HandleGetExecutionByHash(w http.ResponseWriter, r *http.Reques
 	}
 
 	executionID := rec.ExecutionID
+	cert, certErr := h.Repo.GetCertificateByExecutionID(executionID)
 	var certInfo map[string]interface{}
-	certs, err := h.Repo.GetCertificatesByFunctionID(fn.ID, 1, 0)
-	if err == nil && len(certs) > 0 {
-		for _, cert := range certs {
-			if cert.ExecutionID == executionID {
-				certInfo = map[string]interface{}{
-					"certificate_id":   cert.CertificateID,
-					"cert_level":       cert.CertLevel,
-					"certificate_hash": cert.CertificateHash,
-					"created_at":       cert.CreatedAt,
-					"anchored":         cert.Anchored,
-				}
-				break
+	var trustInfo map[string]interface{}
+	if certErr == nil && cert != nil {
+		certInfo = map[string]interface{}{
+			"certificate_id":   cert.CertificateID,
+			"cert_level":       cert.CertLevel,
+			"certificate_hash": cert.CertificateHash,
+			"created_at":       cert.CreatedAt,
+			"anchored":         cert.Anchored,
+		}
+		var fxcert drecert.FXCert
+		if err := json.Unmarshal(cert.CertJSON, &fxcert); err == nil {
+			trustInfo = map[string]interface{}{
+				"trust_score":                fxcert.Trust.TrustScore,
+				"determinism_score":          fxcert.Trust.DeterminismScore,
+				"replay_consistency_score":   fxcert.Trust.ReplayConsistencyScore,
+				"drift_incidents_total":      fxcert.Trust.DriftIncidentsTotal,
+				"verified_executions_total": fxcert.Trust.VerifiedExecutionsTotal,
 			}
 		}
 	}
 
-	response := map[string]interface{}{
-		"execution": map[string]interface{}{
-			"execution_id":        rec.ExecutionID.String(),
-			"execution_root_hash": rec.ExecutionRootHash,
-			"version":             rec.Version,
-			"created_at":          rec.CreatedAt,
-			"determinism_tier":    rec.DeterminismTier,
-			"protocol_version":    rec.ProtocolVersion,
-			"replay_verified_at":  rec.ReplayVerifiedAt,
-			"replay_root_hash":    rec.ReplayRootHash,
-			"replay_node_id":      rec.ReplayNodeID,
-			"roots_match":         rec.ReplayRootHash != "" && rec.ReplayRootHash == rec.ExecutionRootHash,
-			"component_hashes": map[string]string{
-				"input":       rec.InputHash,
-				"output":      rec.OutputHash,
-				"environment": rec.EnvironmentHash,
-				"dependency":  rec.DependencyHash,
-				"trace":       rec.TraceHash,
-				"resource":    rec.ResourceHash,
-				"metadata":    rec.MetadataHash,
-			},
-			"certificate": certInfo,
+	execPayload := map[string]interface{}{
+		"execution_id":        rec.ExecutionID.String(),
+		"execution_root_hash": rec.ExecutionRootHash,
+		"version":             rec.Version,
+		"created_at":          rec.CreatedAt,
+		"determinism_tier":    rec.DeterminismTier,
+		"protocol_version":    rec.ProtocolVersion,
+		"replay_verified_at":  rec.ReplayVerifiedAt,
+		"replay_root_hash":    rec.ReplayRootHash,
+		"replay_node_id":      rec.ReplayNodeID,
+		"roots_match":         rec.ReplayRootHash != "" && rec.ReplayRootHash == rec.ExecutionRootHash,
+		"component_hashes": map[string]string{
+			"input":       rec.InputHash,
+			"output":      rec.OutputHash,
+			"environment": rec.EnvironmentHash,
+			"dependency":  rec.DependencyHash,
+			"trace":       rec.TraceHash,
+			"resource":    rec.ResourceHash,
+			"metadata":    rec.MetadataHash,
 		},
+		"certificate": certInfo,
 	}
-	writeJSON(w, http.StatusOK, response)
+	if trustInfo != nil {
+		execPayload["trust"] = trustInfo
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"execution": execPayload})
 }
 
 // HandleGetExecutionTimeline returns time-bucketed metrics for executions (for conversation overlay).
@@ -579,6 +672,9 @@ func (h *Handler) HandleGetExecutionTimeline(w http.ResponseWriter, r *http.Requ
 	if metric == "" {
 		metric = "latency"
 	}
+	if metric != "latency" && metric != "errors" && metric != "trust" {
+		metric = "latency"
+	}
 
 	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
@@ -586,20 +682,43 @@ func (h *Handler) HandleGetExecutionTimeline(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Return placeholder timeline (buckets); in production wire to analytics/monitoring
-	buckets := make([]map[string]interface{}, 0)
-	for i := 0; i < 7; i++ {
-		buckets = append(buckets, map[string]interface{}{
-			"bucket":       time.Now().AddDate(0, 0, -6+i).Format("2006-01-02"),
-			"value":        80 + (i * 2),
-			"sample_count": 10 + i,
+	to := time.Now().UTC()
+	from := to.AddDate(0, 0, -7)
+	if fromStr := r.URL.Query().Get("from"); fromStr != "" {
+		if t, err := time.Parse("2006-01-02", fromStr); err == nil {
+			from = t.UTC()
+		}
+	}
+	if toStr := r.URL.Query().Get("to"); toStr != "" {
+		if t, err := time.Parse("2006-01-02", toStr); err == nil {
+			to = t.UTC()
+		}
+	}
+	if from.After(to) {
+		from, to = to, from
+	}
+
+	buckets, err := h.Repo.GetExecutionTimelineBuckets(fn.ID, from, to, metric)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("timeline: %v", err))
+		return
+	}
+
+	bucketMaps := make([]map[string]interface{}, 0, len(buckets))
+	for _, b := range buckets {
+		bucketMaps = append(bucketMaps, map[string]interface{}{
+			"bucket":       b.Bucket,
+			"value":        b.Value,
+			"sample_count": b.SampleCount,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"function":    fmt.Sprintf("fx://%s/%s", author, name),
 		"function_id": fn.ID,
 		"metric":      metric,
-		"buckets":     buckets,
+		"from":        from.Format("2006-01-02"),
+		"to":          to.Format("2006-01-02"),
+		"buckets":     bucketMaps,
 		"insight":     "",
 	})
 }

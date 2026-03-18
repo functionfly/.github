@@ -30,6 +30,15 @@ export interface ExecutionCertificate {
   anchored: boolean;
 }
 
+/** Trust metrics from FXCERT (included when execution has an associated certificate). */
+export interface ExecutionTrust {
+  trust_score: number;
+  determinism_score: number;
+  replay_consistency_score: number;
+  drift_incidents_total: number;
+  verified_executions_total: number;
+}
+
 export interface ExecutionDetail {
   execution_id: string;
   execution_root_hash: string;
@@ -43,6 +52,8 @@ export interface ExecutionDetail {
   roots_match: boolean;
   component_hashes: ComponentHashes;
   certificate?: ExecutionCertificate;
+  /** Trust score breakdown from FXCERT; present when execution has a certificate. */
+  trust?: ExecutionTrust;
 }
 
 export interface ExecutionListParams {

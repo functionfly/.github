@@ -39,6 +39,13 @@ export function AnalyticsPage() {
     enabled: functions.length > 0,
   });
 
+  // Fetch dashboard metrics (latency, success/error rate)
+  const { data: metricsData, isLoading: metricsLoading } = useQuery({
+    queryKey: ["analytics", "dashboard-metrics"],
+    queryFn: () => dashboardApi.getMetrics(),
+    enabled: functions.length > 0,
+  });
+
   // Process usage data for chart
   const usageChartData = useMemo(() => {
     const raw = usageData?.data ?? [];
@@ -69,10 +76,10 @@ export function AnalyticsPage() {
     return Math.round(totalRequests / raw.length);
   }, [usageData, totalRequests]);
 
-  // Simulated latency and error rate (in production, these would come from API)
-  const avgLatency = 45; // ms - would come from metrics API
-  const errorRate = 0.3; // percentage
-  const successRate = 99.7; // percentage
+  // Latency and success/error rate from dashboard metrics API
+  const avgLatency = metricsData?.avg_latency_ms != null ? Math.round(metricsData.avg_latency_ms) : undefined;
+  const successRate = metricsData?.uptime_pct != null ? Math.round(metricsData.uptime_pct * 10) / 10 : undefined;
+  const errorRate = successRate != null ? Math.round((100 - successRate) * 10) / 10 : undefined;
 
   const stats = [
     {
@@ -84,24 +91,24 @@ export function AnalyticsPage() {
     },
     {
       title: "Avg Latency",
-      value: functionsLoading ? "—" : avgLatency > 0 ? `${avgLatency}ms` : "—",
-      change: { value: 0, label: avgLatency > 0 ? "last 24h" : "no data yet" },
+      value: functionsLoading || metricsLoading ? "—" : avgLatency != null && avgLatency >= 0 ? `${avgLatency}ms` : "—",
+      change: { value: 0, label: avgLatency != null ? "last 7d" : "no data yet" },
       icon: <Clock className="w-5 h-5 text-brand-500" />,
-      trend: avgLatency > 0 && avgLatency < 100 ? "down" as const : "neutral" as const,
+      trend: avgLatency != null && avgLatency < 100 ? "down" as const : "neutral" as const,
     },
     {
       title: "Error Rate",
-      value: functionsLoading ? "—" : errorRate > 0 ? `${errorRate}%` : "0%",
-      change: { value: 0, label: errorRate > 0 ? "last 24h" : "no errors" },
+      value: functionsLoading || metricsLoading ? "—" : errorRate != null ? `${errorRate}%` : "—",
+      change: { value: 0, label: errorRate != null ? "last 7d" : "no data yet" },
       icon: <AlertTriangle className="w-5 h-5 text-error" />,
-      trend: errorRate < 1 ? "down" as const : "neutral" as const,
+      trend: errorRate != null && errorRate < 1 ? "down" as const : "neutral" as const,
     },
     {
       title: "Success Rate",
-      value: functionsLoading ? "—" : successRate > 0 ? `${successRate}%` : "—",
-      change: { value: 0, label: successRate > 0 ? "last 24h" : "no data yet" },
+      value: functionsLoading || metricsLoading ? "—" : successRate != null ? `${successRate}%` : "—",
+      change: { value: 0, label: successRate != null ? "last 7d" : "no data yet" },
       icon: <TrendingUp className="w-5 h-5 text-success" />,
-      trend: successRate > 99 ? "up" as const : "neutral" as const,
+      trend: successRate != null && successRate > 99 ? "up" as const : "neutral" as const,
     },
   ];
 
@@ -136,13 +143,13 @@ export function AnalyticsPage() {
       </div>
 
       {/* Loading or empty state */}
-      {(functionsLoading || usageLoading || executionRateLoading) && (
+      {(functionsLoading || usageLoading || executionRateLoading || metricsLoading) && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-text-muted" />
         </div>
       )}
 
-      {!functionsLoading && !usageLoading && !executionRateLoading && functions.length === 0 && (
+      {!functionsLoading && !usageLoading && !executionRateLoading && !metricsLoading && functions.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-text-secondary">No functions deployed yet. Deploy a function to see analytics.</p>
@@ -151,7 +158,7 @@ export function AnalyticsPage() {
       )}
 
       {/* Charts Grid - shown when functions exist */}
-      {!functionsLoading && !usageLoading && !executionRateLoading && functions.length > 0 && (
+      {!functionsLoading && !usageLoading && !executionRateLoading && !metricsLoading && functions.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
@@ -183,9 +190,15 @@ export function AnalyticsPage() {
                 <div className="h-[300px]">
                   <LineChart
                     data={executionChartData}
-                    dataKey="value"
+                    series={[
+                      {
+                        key: "value",
+                        name: "Executions",
+                        color: "#6366f1",
+                      },
+                    ]}
                     xAxisKey="time"
-                    color="#6366f1"
+                    showLegend={false}
                   />
                 </div>
               ) : (

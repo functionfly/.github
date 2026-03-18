@@ -273,8 +273,10 @@ point_in_time_recovery() {
 
     log_info "Starting point-in-time recovery to: $target_timestamp in region: $target_region"
 
-    # Find the closest backup before the target timestamp
-    # This is a simplified version - in production, you'd use WAL archival
+    # Find the closest backup before the target timestamp.
+    # Production PITR: enable Postgres archive_mode and archive_command (e.g. to S3/R2),
+    # then restore from the base backup and replay WAL up to target_timestamp.
+    # Use restore-database-pitr.sh (or your provider's PITR) for the actual restore.
 
     log_info "PITR requires WAL archiving to be enabled"
     log_info "Use restore-database-pitr.sh for full PITR functionality"

@@ -35,7 +35,7 @@ func BundleForWasmRuntimeWithWorkingDirectory(manifest *manifest.Manifest, worki
 
 		var bundleErr error
 		switch manifest.Runtime {
-		case "node18", "node20", "deno":
+		case "node18", "node20", "deno", "bun":
 			result, bundleErr = bundleJSForWasmRuntime(manifest)
 		case "python3.11", "python3.12", "python":
 			result, bundleErr = bundlePythonForWasmRuntime(manifest)

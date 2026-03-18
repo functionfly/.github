@@ -205,3 +205,62 @@ func NewCompilationErrorWithOutput(tool, file, output string, cause error) *Comp
 		Cause:  cause,
 	}
 }
+
+// TypeError represents a TypeScript type checking error
+type TypeError struct {
+	File    string
+	Line    int
+	Column  int
+	Message string
+	Code    string // TS error code like TS2307
+}
+
+// TypeErrorInfo contains detailed type error information
+type TypeErrorInfo struct {
+	message string
+	errors  []TypeError
+}
+
+func (e *TypeErrorInfo) Error() string {
+	var sb strings.Builder
+	sb.WriteString(e.message + "\n")
+	for _, err := range e.errors {
+		sb.WriteString(fmt.Sprintf("%s:%d:%d: error %s: %s\n",
+			err.File, err.Line, err.Column, err.Code, err.Message))
+	}
+	return sb.String()
+}
+
+// NewTypeError creates a new type error
+func NewTypeError(message string, errors []TypeError) error {
+	return &TypeErrorInfo{
+		message: message,
+		errors:  errors,
+	}
+}
+
+// NewTypeErrorWithDetails creates a new type error with details
+func NewTypeErrorWithDetails(errors []TypeError) error {
+	return &TypeErrorInfo{
+		message: "type checking failed",
+		errors:  errors,
+	}
+}
+
+// GetTypeErrors returns the type errors
+func (e *TypeErrorInfo) GetTypeErrors() []TypeError {
+	return e.errors
+}
+
+// FormatTypeErrors formats type errors for display
+func FormatTypeErrors(errors []TypeError) string {
+	var sb strings.Builder
+	for i, err := range errors {
+		if i > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(fmt.Sprintf("%s:%d:%d: error %s: %s",
+			err.File, err.Line, err.Column, err.Code, err.Message))
+	}
+	return sb.String()
+}

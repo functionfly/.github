@@ -43,6 +43,7 @@ import (
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
 	notificationHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/notifications"
+	papercliphandler "github.com/functionfly/functionfly/internal/api/handlers/paperclip"
 	"github.com/functionfly/functionfly/internal/api/handlers/playground"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
 	"github.com/functionfly/functionfly/internal/api/handlers/recommendations"
@@ -294,6 +295,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Initialize generation service with Redis-backed cache if available
 	factoryGeneration := initializeGenerationServiceWithCache(s.postgresDB.GORM, s.redisClient)
+	if detExec := registryexecution.NewRegistryDeterminismExecutorWithSandbox(registryRepo); detExec != nil {
+		factoryGeneration.SetDeterminismExecutor(detExec)
+	}
 
 	factoryTesting := testing.NewService(s.postgresDB.GORM, nil, nil)
 	factoryPublisher := agentdeployment.NewPublisher(s.postgresDB.GORM)
@@ -449,6 +453,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Configurable via AUTH_RATE_LIMIT_REQUESTS / AUTH_RATE_LIMIT_WINDOW_SECONDS env vars.
 	authRateLimiter := middleware.NewAuthRateLimiter()
 	vaultRateLimiter := middleware.NewVaultRateLimiter()
+	flywheelRateLimiter := middleware.NewFlywheelRateLimiter()
 
 	// Auth routes (public) - on main router and under /v1 for CLI (fly login --dev uses POST /v1/auth/login)
 	s.router.HandleFunc("/auth/login", authRateLimiter.Limit(authHandler.HandleLogin)).Methods("POST", "OPTIONS")
@@ -462,21 +467,23 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.HandleFunc("/auth/resend-verification", authRateLimiter.Limit(authHandler.HandleResendVerification)).Methods("POST", "OPTIONS")
 	s.router.HandleFunc("/auth/get-session", authHandler.HandleGetSession).Methods("GET", "OPTIONS")
 
-	// OAuth routes (public) - on main router, not /v1 subrouter
+	// OAuth routes (public) - on main router and under /v1 for dashboard (functionfly.com)
 	s.router.HandleFunc("/auth/oauth/providers", authHandler.HandleGetOAuthProviders).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/auth/oauth/url", authHandler.HandleGetOAuthURL).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/auth/oauth/{provider}/callback", authHandler.HandleOAuthCallback).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/oauth/providers", authHandler.HandleGetOAuthProviders).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/oauth/url", authHandler.HandleGetOAuthURL).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/validate", authMiddleware.RequireAuth(authHandler.HandleValidateToken)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/logout", authMiddleware.RequireAuth(authHandler.HandleLogout)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/verify-password", authMiddleware.RequireAuth(authHandler.HandleVerifyPassword)).Methods("POST", "OPTIONS")
 
 	// Password reset routes (public)
 	api.HandleFunc("/auth/password-reset", authRateLimiter.Limit(authHandler.HandlePasswordResetRequest)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/password-reset/confirm", authRateLimiter.Limit(authHandler.HandlePasswordResetConfirm)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/api-key", apiKeyAuthHandler.HandleAuthenticate).Methods("POST", "OPTIONS")
 
-	// User profile routes
-	// Public: get any user's profile by username
-	api.HandleFunc("/users/{username}", usersHandler.HandleGetPublicProfile).Methods("GET", "OPTIONS")
+	// User profile routes — register /users/me and /users/me/* before /users/{username}
+	// so that GET /v1/users/me is not matched as username "me" (which would 404).
 	// Protected: get/update current user's own profile
 	api.HandleFunc("/users/me", authMiddleware.RequireAuth(usersHandler.HandleGetMe)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/me", authMiddleware.RequireAuth(usersHandler.HandleUpdateMe)).Methods("PATCH", "OPTIONS")
@@ -491,6 +498,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/users/me/settings/notifications", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsNotificationsMe)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/settings/privacy", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsPrivacyMe)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/settings/visibility", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsVisibilityMe)).Methods("PATCH", "OPTIONS")
+	// User activity management (protected - for creating activity)
+	api.HandleFunc("/users/me/activity", authMiddleware.RequireAuth(usersHandler.HandleCreateUserActivity)).Methods("POST", "OPTIONS")
+	// User skills management (protected)
+	api.HandleFunc("/users/me/skills", authMiddleware.RequireAuth(usersHandler.HandleAddUserSkill)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/users/me/skills/{id}", authMiddleware.RequireAuth(usersHandler.HandleRemoveUserSkill)).Methods("DELETE", "OPTIONS")
+
+	// Public: get any user's profile by username (after /users/me so "me" is not captured as username)
+	api.HandleFunc("/users/{username}", usersHandler.HandleGetPublicProfile).Methods("GET", "OPTIONS")
 	// User settings by username (protected; requester must match username)
 	api.HandleFunc("/users/{username}/settings", authMiddleware.RequireAuth(usersHandler.HandleGetUserSettings)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/settings/profile", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsProfile)).Methods("PATCH", "OPTIONS")
@@ -506,11 +521,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/users/{username}/activity", usersHandler.HandleGetUserActivity).Methods("GET", "OPTIONS")
 	// User skills (public)
 	api.HandleFunc("/users/{username}/skills", usersHandler.HandleGetUserSkills).Methods("GET", "OPTIONS")
-	// User activity management (protected - for creating activity)
-	api.HandleFunc("/users/me/activity", authMiddleware.RequireAuth(usersHandler.HandleCreateUserActivity)).Methods("POST", "OPTIONS")
-	// User skills management (protected)
-	api.HandleFunc("/users/me/skills", authMiddleware.RequireAuth(usersHandler.HandleAddUserSkill)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/users/me/skills/{id}", authMiddleware.RequireAuth(usersHandler.HandleRemoveUserSkill)).Methods("DELETE", "OPTIONS")
 
 	// Follow routes (protected for write, public for read where noted)
 	// api is already under PathPrefix("/v1"), so use "/follow/..." not "/v1/follow/..."
@@ -532,6 +542,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/follow/me/stats", authMiddleware.RequireAuth(followHandler.HandleGetMyFollowStats)).Methods("GET", "OPTIONS")
 
 	// API keys (protected)
+	api.HandleFunc("/api-keys/environments/available", authMiddleware.RequireAuth(apiKeysHandler.HandleListAvailableEnvironments)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/api-keys", authMiddleware.RequireAuth(apiKeysHandler.HandleList)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/api-keys", authMiddleware.RequireAuth(apiKeysHandler.HandleCreate)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/api-keys/{id}", authMiddleware.RequireAuth(apiKeysHandler.HandleGet)).Methods("GET", "OPTIONS")
@@ -908,6 +919,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Update embed config requires authentication (function owner only)
 	api.HandleFunc("/registry/functions/{author}/{name}/embed", authMiddleware.RequireAuth(registryHandler.HandleUpdateEmbedConfig)).Methods("PUT", "OPTIONS")
 
+	// Function settings by author/name (dashboard: custom domains and future settings)
+	api.HandleFunc("/functions/{author}/{name}/settings", authMiddleware.RequireAuth(registryHandler.HandleGetFunctionSettings)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/functions/{author}/{name}/settings", authMiddleware.RequireAuth(registryHandler.HandlePatchFunctionSettings)).Methods("PATCH", "OPTIONS")
+
 	// Cache monitoring routes (public for metrics)
 	api.HandleFunc("/cache/stats", registryHandler.HandleGetCacheStats).Methods("GET")
 
@@ -1160,6 +1175,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Concurrency stats (protected)
 	protected.HandleFunc("/agent/concurrency/stats", authMiddleware.RequireAuth(aepHandler.HandleGetConcurrencyStats)).Methods("GET", "OPTIONS")
 
+	// Paperclip integration: webhook so Paperclip heartbeat can trigger FunctionFly agent execution
+	paperclipAdapter := papercliphandler.NewAdapter(logrus.New())
+	papercliphandler.RegisterRoutes(api, paperclipAdapter)
+
 	// ============================================================
 	// Flywheel Network routes (Proof-of-Execution Knowledge Network)
 	// ============================================================
@@ -1181,7 +1200,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Threads (public read, protected write)
 	api.HandleFunc("/flywheel/threads", flywheelHandler.ListThreads).Methods("GET", "OPTIONS")
-	api.HandleFunc("/flywheel/threads", authMiddleware.RequireAuth(flywheelHandler.CreateThread)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/flywheel/threads", flywheelRateLimiter.LimitCreateThread(authMiddleware.RequireAuth(flywheelHandler.CreateThread))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/flywheel/threads/{id}", flywheelHandler.GetThread).Methods("GET", "OPTIONS")
 	api.HandleFunc("/flywheel/threads/{id}", authMiddleware.RequireAuth(flywheelHandler.UpdateThread)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/flywheel/threads/{id}/resolve", authMiddleware.RequireAuth(flywheelHandler.ResolveThread)).Methods("POST", "OPTIONS")
@@ -1192,21 +1211,23 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// Replies (public read, protected write)
 	api.HandleFunc("/flywheel/threads/{id}/replies", flywheelHandler.ListReplies).Methods("GET", "OPTIONS")
-	api.HandleFunc("/flywheel/threads/{id}/replies", authMiddleware.RequireAuth(flywheelHandler.CreateReply)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/flywheel/threads/{id}/replies", flywheelRateLimiter.LimitCreateReply(authMiddleware.RequireAuth(flywheelHandler.CreateReply))).Methods("POST", "OPTIONS")
 
 	// Reply execution and verification (protected)
-	api.HandleFunc("/flywheel/replies/{id}/execute", authMiddleware.RequireAuth(flywheelHandler.ExecuteReply)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/flywheel/replies/{id}/execute", flywheelRateLimiter.LimitExecuteReply(authMiddleware.RequireAuth(flywheelHandler.ExecuteReply))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/flywheel/replies/{id}/verify", authMiddleware.RequireAuth(flywheelHandler.VerifyReply)).Methods("POST", "OPTIONS")
 
 	// Reputation (public read)
 	api.HandleFunc("/flywheel/reputation/me", authMiddleware.RequireAuth(flywheelHandler.GetMyReputation)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/flywheel/reputation/{user_id}", flywheelHandler.GetUserReputation).Methods("GET", "OPTIONS")
+	// Leaderboards: support both ?type=overall (query) and /leaderboards/overall (path)
+	api.HandleFunc("/flywheel/leaderboards", flywheelHandler.GetLeaderboardQuery).Methods("GET", "OPTIONS")
 	api.HandleFunc("/flywheel/leaderboards/{score_type}", flywheelHandler.GetLeaderboard).Methods("GET", "OPTIONS")
 
 	// Challenges (public read, protected write/submit)
 	api.HandleFunc("/flywheel/challenges", flywheelHandler.ListChallenges).Methods("GET", "OPTIONS")
 	api.HandleFunc("/flywheel/challenges/{id}", flywheelHandler.GetChallenge).Methods("GET", "OPTIONS")
-	api.HandleFunc("/flywheel/challenges/{id}/submit", authMiddleware.RequireAuth(flywheelHandler.SubmitChallenge)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/flywheel/challenges/{id}/submit", flywheelRateLimiter.LimitSubmitChallenge(authMiddleware.RequireAuth(flywheelHandler.SubmitChallenge))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/flywheel/challenges/{id}/leaderboard", flywheelHandler.GetChallengeLeaderboard).Methods("GET", "OPTIONS")
 
 	// WebSocket endpoint for real-time updates
@@ -1276,8 +1297,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/deployments/{deploymentId}", authMiddleware.RequireAuth(deploymentsHandler.HandleGetDeployment)).Methods("GET")
 	protected.HandleFunc("/deployments/{deploymentId}/rollback", authMiddleware.RequireAuth(advancedSecurityMiddleware.RequireHMACSignature(deploymentsHandler.HandleRollback))).Methods("POST")
 
-	// Health check (public)
+	// Health check (public) — /healthz for Fly, K8s, and adapters
 	s.router.HandleFunc("/health", s.handleHealth).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/healthz", s.handleHealth).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/detailed", s.handleDetailedHealth).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/check", s.handleHealthCheck).Methods("GET", "OPTIONS")
 
@@ -1285,10 +1307,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.HandleFunc("/maintenance/status", maintenanceHandler.HandleGetPublicStatus).Methods("GET", "OPTIONS")
 
 	// Status WebSocket endpoint (public - for real-time status updates)
-	// WS /ws/v1/status - Real-time status updates
+	// WS /ws/v1/status - Real-time status updates (single shared hub)
 	statusWSHub := statushandler.NewStatusWebSocketHub(statusHandler, logrus.New())
 	go statusWSHub.Run()
-	s.router.HandleFunc("/ws/v1/status", statusHandler.HandleWebSocket(statusWSHub)).Methods("GET")
+	statusHandler.SetStatusHub(statusWSHub)
+	s.router.HandleFunc("/ws/v1/status", statusHandler.HandleWebSocketStatus).Methods("GET")
 
 	// Prometheus metrics endpoint (public for scraping)
 	s.router.Handle("/metrics", promhttp.Handler()).Methods("GET")
@@ -1540,7 +1563,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Serve the SPA index.html for these reserved paths
 	s.router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
 		// Don't match API routes
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/v1/") || strings.HasPrefix(r.URL.Path, "/content/") || strings.HasPrefix(r.URL.Path, "/admin/") || r.URL.Path == "/health" {
+		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/v1/") || strings.HasPrefix(r.URL.Path, "/content/") || strings.HasPrefix(r.URL.Path, "/admin/") || r.URL.Path == "/health" || r.URL.Path == "/healthz" {
 			return false
 		}
 		pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
@@ -1551,7 +1574,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Use a custom matcher to avoid conflicting with API routes
 	s.router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
 		// Don't match API routes or reserved paths
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/content/") || strings.HasPrefix(r.URL.Path, "/admin/") || r.URL.Path == "/health" || strings.HasPrefix(r.URL.Path, "/v1/") {
+		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/content/") || strings.HasPrefix(r.URL.Path, "/admin/") || r.URL.Path == "/health" || r.URL.Path == "/healthz" || strings.HasPrefix(r.URL.Path, "/v1/") {
 			return false
 		}
 		// Match app slug pattern: /someSlug/somePath

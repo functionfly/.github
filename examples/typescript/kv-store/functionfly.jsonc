@@ -1,0 +1,21 @@
+{
+  "name": "kv-store",
+  "version": "1.0.0",
+  "runtime": "bun",
+  "title": "KV Store",
+  "description": "Demonstrates using KV storage in TypeScript functions",
+  "category": "examples",
+  "tags": ["typescript", "kv", "storage", "cache"],
+  "entry": "main.ts",
+  "handler": "handler",
+  "memory": "128MB",
+  "timeout": "5s",
+  "capabilities": ["kv"],
+  "environment": {
+    "KV_PREFIX": "demo:",
+  },
+  "example": {
+    "input": { "action": "get", "key": "test" },
+    "output": { "success": true, "value": "test-value" },
+  },
+}

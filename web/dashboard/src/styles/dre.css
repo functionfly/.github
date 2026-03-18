@@ -1,123 +1,235 @@
 /* ==========================================================================
-   DRE / Execution Explorer – Light Mode
-   Ensures Execution Explorer page and DRE detail UI (modal, cards, hashes)
-   use light backgrounds and dark text in light theme.
+   DRE / Execution Explorer – Theme-Aware Styles
+   Light: light backgrounds and dark text. Dark: dark backgrounds and light text.
    ========================================================================== */
 
-[data-theme="light"] .execution-explorer-page {
+/* --------------------------------------------------------------------------
+   Light Mode
+   -------------------------------------------------------------------------- */
+
+[data-theme='light'] .execution-explorer-page {
   background-color: var(--bg-primary) !important;
 }
 
-[data-theme="light"] .execution-explorer-page .text-foreground,
-[data-theme="light"] .execution-explorer-page h1,
-[data-theme="light"] .execution-explorer-page h2,
-[data-theme="light"] .execution-explorer-page h3 {
+[data-theme='light'] .execution-explorer-page .text-foreground,
+[data-theme='light'] .execution-explorer-page h1,
+[data-theme='light'] .execution-explorer-page h2,
+[data-theme='light'] .execution-explorer-page h3 {
   color: var(--text-primary) !important;
 }
 
-[data-theme="light"] .execution-explorer-page .text-muted-foreground {
+[data-theme='light'] .execution-explorer-page .text-muted-foreground {
   color: var(--text-muted) !important;
 }
 
-[data-theme="light"] .execution-explorer-page .bg-bg-primary\/60,
-[data-theme="light"] .execution-explorer-page [class*="Card"] {
+[data-theme='light'] .execution-explorer-page .bg-bg-primary\/60,
+[data-theme='light'] .execution-explorer-page [class*='Card'] {
   background-color: #ffffff !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
   color: #0f0f1a !important;
 }
 
-[data-theme="light"] .execution-explorer-page [class*="Card"] .text-muted-foreground,
-[data-theme="light"] .execution-explorer-page [class*="Card"] .text-text-secondary {
+[data-theme='light'] .execution-explorer-page [class*='Card'] .text-muted-foreground,
+[data-theme='light'] .execution-explorer-page [class*='Card'] .text-text-secondary {
   color: #4b5563 !important;
 }
 
-[data-theme="light"] .execution-explorer-page code,
-[data-theme="light"] .execution-explorer-page .font-mono {
+[data-theme='light'] .execution-explorer-page code,
+[data-theme='light'] .execution-explorer-page .font-mono {
   background-color: #f5f5f7 !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
   color: #0f0f1a !important;
 }
 
 /* Execution Detail Modal – light content */
-[data-theme="light"] .execution-explorer-detail-dialog {
+[data-theme='light'] .execution-explorer-detail-dialog {
   background-color: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
 }
 
-[data-theme="light"] .execution-explorer-detail-dialog [data-slot="dialog-content"],
-[data-theme="light"] .execution-explorer-detail-dialog > div {
+[data-theme='light'] .execution-explorer-detail-dialog [data-slot='dialog-content'],
+[data-theme='light'] .execution-explorer-detail-dialog > div {
   background-color: #ffffff !important;
   color: #0f0f1a !important;
 }
 
-[data-theme="light"] .execution-explorer-detail-dialog [class*="DialogTitle"],
-[data-theme="light"] .execution-explorer-detail-dialog [class*="DialogDescription"] {
+[data-theme='light'] .execution-explorer-detail-dialog [class*='DialogTitle'],
+[data-theme='light'] .execution-explorer-detail-dialog [class*='DialogDescription'] {
   color: #0f0f1a !important;
 }
 
-[data-theme="light"] .execution-explorer-detail-dialog .text-muted-foreground {
+[data-theme='light'] .execution-explorer-detail-dialog .text-muted-foreground {
   color: #4b5563 !important;
 }
 
-[data-theme="light"] .execution-explorer-detail-dialog [class*="Card"] {
+[data-theme='light'] .execution-explorer-detail-dialog [class*='Card'] {
   background-color: #fafafa !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
   color: #0f0f1a !important;
 }
 
-[data-theme="light"] .execution-explorer-detail-dialog .bg-bg-secondary {
+[data-theme='light'] .execution-explorer-detail-dialog .bg-bg-secondary {
   background-color: #f5f5f7 !important;
   border-color: rgba(0, 0, 0, 0.06) !important;
 }
 
-[data-theme="light"] .execution-explorer-detail-dialog .bg-bg-tertiary {
+[data-theme='light'] .execution-explorer-detail-dialog .bg-bg-tertiary {
   background-color: #f0f0f2 !important;
 }
 
-[data-theme="light"] .execution-explorer-detail-dialog .border-border-subtle {
+[data-theme='light'] .execution-explorer-detail-dialog .border-border-subtle {
   border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
-[data-theme="light"] .execution-explorer-detail-dialog [class*="CardTitle"],
-[data-theme="light"] .execution-explorer-detail-dialog [class*="CardDescription"] {
+[data-theme='light'] .execution-explorer-detail-dialog [class*='CardTitle'],
+[data-theme='light'] .execution-explorer-detail-dialog [class*='CardDescription'] {
   color: #0f0f1a !important;
 }
 
-[data-theme="light"] .execution-explorer-detail-dialog [class*="Badge"] {
+[data-theme='light'] .execution-explorer-detail-dialog [class*='Badge'] {
   background-color: #f1f5f9 !important;
   border-color: rgba(0, 0, 0, 0.12) !important;
   color: #0f0f1a !important;
 }
 
-[data-theme="light"] .execution-explorer-detail-dialog .font-mono,
-[data-theme="light"] .execution-explorer-detail-dialog code {
+[data-theme='light'] .execution-explorer-detail-dialog .font-mono,
+[data-theme='light'] .execution-explorer-detail-dialog code {
   background-color: #f1f5f9 !important;
   color: #0f0f1a !important;
 }
 
-/* DRE primitives inside modal – HashBlock, labels */
-[data-theme="light"] .execution-explorer-detail-dialog .text-xs.uppercase.tracking-wide {
+[data-theme='light'] .execution-explorer-detail-dialog .text-xs.uppercase.tracking-wide {
   color: #4b5563 !important;
 }
 
-/* Replay modal in light mode */
-[data-theme="light"] .execution-explorer-page [role="dialog"] {
+[data-theme='light'] .execution-explorer-page [role='dialog'] {
   background-color: #ffffff !important;
 }
 
-[data-theme="light"] .execution-explorer-page [role="dialog"] [class*="DialogContent"] {
+[data-theme='light'] .execution-explorer-page [role='dialog'] [class*='DialogContent'] {
   background-color: #ffffff !important;
   border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
-[data-theme="light"] .execution-explorer-page [role="dialog"] [class*="DialogTitle"],
-[data-theme="light"] .execution-explorer-page [role="dialog"] [class*="DialogDescription"],
-[data-theme="light"] .execution-explorer-page [role="dialog"] label,
-[data-theme="light"] .execution-explorer-page [role="dialog"] p {
+[data-theme='light'] .execution-explorer-page [role='dialog'] [class*='DialogTitle'],
+[data-theme='light'] .execution-explorer-page [role='dialog'] [class*='DialogDescription'],
+[data-theme='light'] .execution-explorer-page [role='dialog'] label,
+[data-theme='light'] .execution-explorer-page [role='dialog'] p {
   color: #0f0f1a !important;
 }
 
-[data-theme="light"] .execution-explorer-page [role="dialog"] .text-muted-foreground {
+[data-theme='light'] .execution-explorer-page [role='dialog'] .text-muted-foreground {
   color: #4b5563 !important;
+}
+
+/* Light: visible hover for Merkle tree rows and interactive blocks */
+[data-theme='light'] .execution-explorer-detail-dialog .hover\:bg-bg-secondary:hover {
+  background-color: #f0f0f5 !important;
+}
+
+[data-theme='light'] .execution-explorer-detail-dialog .hover\:bg-bg-tertiary:hover {
+  background-color: #e8eaed !important;
+}
+
+/* --------------------------------------------------------------------------
+   Dark Mode – explicit contrast and backgrounds
+   -------------------------------------------------------------------------- */
+
+[data-theme='dark'] .execution-explorer-page,
+:root:not([data-theme='light']) .execution-explorer-page {
+  background-color: var(--bg-primary) !important;
+}
+
+[data-theme='dark'] .execution-explorer-detail-dialog,
+:root:not([data-theme='light']) .execution-explorer-detail-dialog {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .execution-explorer-detail-dialog [class*='DialogTitle'],
+[data-theme='dark'] .execution-explorer-detail-dialog [class*='DialogDescription'],
+:root:not([data-theme='light']) .execution-explorer-detail-dialog [class*='DialogTitle'],
+:root:not([data-theme='light']) .execution-explorer-detail-dialog [class*='DialogDescription'] {
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .execution-explorer-detail-dialog .text-muted-foreground,
+:root:not([data-theme='light']) .execution-explorer-detail-dialog .text-muted-foreground {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme='dark'] .execution-explorer-detail-dialog .bg-bg-secondary,
+:root:not([data-theme='light']) .execution-explorer-detail-dialog .bg-bg-secondary {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .execution-explorer-detail-dialog .font-mono,
+[data-theme='dark'] .execution-explorer-detail-dialog code,
+:root:not([data-theme='light']) .execution-explorer-detail-dialog .font-mono,
+:root:not([data-theme='light']) .execution-explorer-detail-dialog code {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Dark: outline buttons (Lite, Debug) and secondary elements – readable text */
+[data-theme='dark']
+  .execution-explorer-detail-dialog
+  [data-slot='dialog-content']
+  button[class*='outline'],
+:root:not([data-theme='light'])
+  .execution-explorer-detail-dialog
+  [data-slot='dialog-content']
+  button[class*='outline'] {
+  color: var(--text-primary) !important;
+  border-color: var(--border-default) !important;
+}
+
+[data-theme='dark']
+  .execution-explorer-detail-dialog
+  [data-slot='dialog-content']
+  button[class*='outline']:hover,
+:root:not([data-theme='light'])
+  .execution-explorer-detail-dialog
+  [data-slot='dialog-content']
+  button[class*='outline']:hover {
+  background-color: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Dark: capsule version and small text */
+[data-theme='dark'] .execution-explorer-detail-dialog .text-muted-foreground.text-center,
+:root:not([data-theme='light'])
+  .execution-explorer-detail-dialog
+  .text-muted-foreground.text-center {
+  color: var(--text-secondary) !important;
+}
+
+/* Dark: Merkle tree row hover and "View details" link – use accent for visibility */
+[data-theme='dark'] .execution-explorer-detail-dialog a.dre-link-accent,
+[data-theme='dark'] .execution-explorer-detail-dialog button.dre-link-accent,
+:root:not([data-theme='light']) .execution-explorer-detail-dialog a.dre-link-accent,
+:root:not([data-theme='light']) .execution-explorer-detail-dialog button.dre-link-accent {
+  color: var(--color-brand-400) !important;
+}
+
+[data-theme='dark'] .execution-explorer-detail-dialog a.dre-link-accent:hover,
+[data-theme='dark'] .execution-explorer-detail-dialog button.dre-link-accent:hover,
+:root:not([data-theme='light']) .execution-explorer-detail-dialog a.dre-link-accent:hover,
+:root:not([data-theme='light']) .execution-explorer-detail-dialog button.dre-link-accent:hover {
+  color: var(--color-brand-300) !important;
+}
+
+/* Dark: Merkle tree row and hash block hover – visible contrast */
+[data-theme='dark'] .execution-explorer-detail-dialog .hover\:bg-bg-secondary:hover,
+:root:not([data-theme='light']) .execution-explorer-detail-dialog .hover\:bg-bg-secondary:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+[data-theme='dark'] .execution-explorer-detail-dialog .hover\:bg-bg-tertiary:hover,
+:root:not([data-theme='light']) .execution-explorer-detail-dialog .hover\:bg-bg-tertiary:hover {
+  background-color: var(--bg-hover) !important;
 }

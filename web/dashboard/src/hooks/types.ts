@@ -30,6 +30,8 @@ export interface NewNotificationEvent extends RealtimeEvent {
   notification_id: string;
   notification_type: 'info' | 'warning' | 'error' | 'success';
   title: string;
+  message?: string;
+  read_at?: string;
 }
 
 export interface PresenceEvent extends RealtimeEvent {

@@ -39,15 +39,16 @@ export function AgentsPage() {
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
 
   const slugFrom = (s: string) =>
-    s
+    (s ?? "")
       .trim()
       .toLowerCase()
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9-]/g, "");
+  const agentIdRaw = createForm.agentId ?? "";
   const agentIdInvalid =
-    createForm.agentId.trim() !== "" && /[^a-z0-9-]/.test(createForm.agentId.trim().toLowerCase());
-  const normalizedAgentId = slugFrom(createForm.agentId);
-  const existingAgentIds = agents.map((a) => a.agentId.toLowerCase());
+    agentIdRaw.trim() !== "" && /[^a-z0-9-]/.test(agentIdRaw.trim().toLowerCase());
+  const normalizedAgentId = slugFrom(agentIdRaw);
+  const existingAgentIds = agents.map((a) => (a.agentId ?? "").toLowerCase());
   const agentIdTaken =
     normalizedAgentId.length > 0 && existingAgentIds.includes(normalizedAgentId);
   const [agentIdTakenFromSubmit, setAgentIdTakenFromSubmit] = useState(false);
@@ -72,8 +73,8 @@ export function AgentsPage() {
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const agentId = createForm.agentId.trim().toLowerCase().replace(/\s+/g, "-");
-    const name = createForm.name.trim();
+    const agentId = (createForm.agentId ?? "").trim().toLowerCase().replace(/\s+/g, "-");
+    const name = (createForm.name ?? "").trim();
     if (!agentId || !name) {
       toast.error("Agent ID and name are required.");
       return;
@@ -131,8 +132,8 @@ export function AgentsPage() {
 
   const filteredAgents = agents.filter(
     (agent) =>
-      agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      agent.agentId.toLowerCase().includes(searchQuery.toLowerCase())
+      (agent.name ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (agent.agentId ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getStatusBadge = (status: string) => {
@@ -187,7 +188,7 @@ export function AgentsPage() {
 
       {/* Create Agent modal */}
       <Dialog open={createOpen} onOpenChange={handleCreateClose}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/15 text-brand-500">
@@ -200,13 +201,13 @@ export function AgentsPage() {
             </DialogDescription>
           </DialogHeader>
           {createdApiKey ? (
-            <div className="space-y-4">
+            <div className="space-y-4 min-w-0">
               <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2 text-sm text-green-700 dark:text-green-400">
                 <Check className="h-5 w-5 shrink-0" />
                 <span>Agent created. Copy the API key below — it won’t be shown again.</span>
               </div>
-              <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-3 font-mono text-sm">
-                <code className="min-w-0 flex-1 truncate">{createdApiKey}</code>
+              <div className="flex items-center gap-2 min-w-0 rounded-lg border bg-muted/50 p-3 font-mono text-sm overflow-hidden">
+                <code className="min-w-0 flex-1 truncate break-all">{createdApiKey}</code>
                 <Button
                   type="button"
                   variant="secondary"
@@ -227,7 +228,7 @@ export function AgentsPage() {
                   )}
                 </Button>
               </div>
-              <DialogFooter>
+              <DialogFooter className="mt-2">
                 <Button onClick={() => handleCreateClose(false)}>Done</Button>
               </DialogFooter>
             </div>
@@ -297,7 +298,7 @@ export function AgentsPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createSubmitting || agentIdInvalid || showAgentIdTaken || !createForm.name.trim() || !createForm.agentId.trim()}
+                  disabled={createSubmitting || agentIdInvalid || showAgentIdTaken || !(createForm.name ?? "").trim() || !(createForm.agentId ?? "").trim()}
                 >
                   {createSubmitting ? (
                     <>
@@ -354,9 +355,9 @@ export function AgentsPage() {
             <Card key={agent.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div className="space-y-1">
-                  <CardTitle className="text-lg">{agent.name}</CardTitle>
+                  <CardTitle className="text-lg">{agent.name ?? "—"}</CardTitle>
                   <CardDescription className="text-xs font-mono">
-                    {agent.agentId}
+                    {agent.agentId ?? "—"}
                   </CardDescription>
                 </div>
                 <Button variant="ghost" size="icon" aria-label="Agent options">

@@ -178,6 +178,40 @@ class RegistryApi {
       executed_at: string;
     }>(`/v1/registry/replay/${executionId}`);
   }
+
+  /** GET /v1/functions/{author}/{name}/settings — requires auth, returns function settings (e.g. custom domains). */
+  async getFunctionSettings(author: string, name: string) {
+    return apiClient.get<FunctionSettingsResponse>(`/v1/functions/${author}/${name}/settings`);
+  }
+
+  /** PATCH /v1/functions/{author}/{name}/settings — requires auth, updates settings (e.g. customDomains). */
+  async patchFunctionSettings(
+    author: string,
+    name: string,
+    data: { customDomains?: string[] }
+  ) {
+    return apiClient.patch<FunctionSettingsResponse>(`/v1/functions/${author}/${name}/settings`, data);
+  }
+}
+
+/** Response shape for GET /v1/functions/{author}/{name}/settings */
+export interface FunctionSettingsResponse {
+  id: string;
+  name: string;
+  author: string;
+  description: string;
+  isPublic: boolean;
+  isPublished: boolean;
+  allowAnonymousInvoke: boolean;
+  corsEnabled: boolean;
+  corsOrigins: string[];
+  timeout: number;
+  memory: number;
+  runtime: string;
+  providers: string[];
+  environmentVariables: Record<string, string>;
+  secrets: string[];
+  customDomains: string[];
 }
 
 export const registryApi = new RegistryApi();

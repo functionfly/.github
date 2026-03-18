@@ -10,6 +10,33 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// AvailableEnvironment is a platform environment that can be linked to an API key (GET /api-keys/environments/available).
+type AvailableEnvironment struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// Stable UUIDs for standard environments so links are consistent across tenants
+var (
+	envDevelopmentUUID = uuid.MustParse("a0000001-0001-5000-8000-000000000001")
+	envStagingUUID     = uuid.MustParse("a0000001-0001-5000-8000-000000000002")
+	envProductionUUID  = uuid.MustParse("a0000001-0001-5000-8000-000000000003")
+)
+
+// HandleListAvailableEnvironments handles GET /api/v1/api-keys/environments/available
+func (h *Handler) HandleListAvailableEnvironments(w http.ResponseWriter, r *http.Request) {
+	if _, ok := getUserClaims(r); !ok {
+		h.writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
+		return
+	}
+	envs := []AvailableEnvironment{
+		{ID: envDevelopmentUUID.String(), Name: "Development"},
+		{ID: envStagingUUID.String(), Name: "Staging"},
+		{ID: envProductionUUID.String(), Name: "Production"},
+	}
+	h.writeSuccess(w, envs)
+}
+
 // AddEnvironmentRequest represents a request to link an environment
 type AddEnvironmentRequest struct {
 	EnvironmentID   uuid.UUID `json:"environment_id"`

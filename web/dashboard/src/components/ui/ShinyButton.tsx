@@ -175,7 +175,23 @@ const ShinyButton = React.forwardRef<HTMLButtonElement, ShinyButtonProps>(
 
     if (asChild) {
       const child = React.Children.only(children);
-      const childChildren = child.props.children;
+      if (!React.isValidElement(child)) {
+        return (
+          <>
+            {styleElement}
+            <Slot
+              className={cn(shinyButtonVariants({ variant, size, className }))}
+              ref={ref}
+              {...props}
+            >
+              {children}
+            </Slot>
+          </>
+        );
+      }
+      type ChildWithChildren = React.ReactElement<{ children?: React.ReactNode }>;
+      const childEl = child as ChildWithChildren;
+      const childChildren = childEl.props.children;
 
       return (
         <>
@@ -185,7 +201,7 @@ const ShinyButton = React.forwardRef<HTMLButtonElement, ShinyButtonProps>(
             ref={ref}
             {...props}
           >
-            {React.cloneElement(child, {
+            {React.cloneElement(childEl, {
               children: isLoading ? (
                 <>
                   <svg

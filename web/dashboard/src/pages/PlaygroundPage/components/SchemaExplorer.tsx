@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronDown, Copy, Check, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, Check, ChevronDown, ChevronRight, Copy } from 'lucide-react';
+import { useState } from 'react';
 import { SchemaNode, flattenSchema, getTypeBadgeColor } from '../utils/schemaHelpers';
 
 interface SchemaExplorerProps {
@@ -95,9 +95,7 @@ function SchemaNodeItem({ node, depth, onFieldClick }: SchemaNodeItemProps) {
           </div>
 
           {node.description && (
-            <p className="text-text-muted mt-0.5 text-[11px] leading-relaxed">
-              {node.description}
-            </p>
+            <p className="text-text-muted mt-0.5 text-[11px] leading-relaxed">{node.description}</p>
           )}
 
           {node.example !== undefined && (
@@ -150,7 +148,7 @@ function SchemaNodeItem({ node, depth, onFieldClick }: SchemaNodeItemProps) {
           >
             {node.properties?.map((child) => (
               <SchemaNodeItem
-                key={child.key}
+                key={child.path}
                 node={child}
                 depth={depth + 1}
                 onFieldClick={onFieldClick}
@@ -198,12 +196,7 @@ export function SchemaExplorer({ schema, onFieldClick, className }: SchemaExplor
   return (
     <div className={cn('space-y-0.5', className)}>
       {nodes.map((node) => (
-        <SchemaNodeItem
-          key={node.key}
-          node={node}
-          depth={0}
-          onFieldClick={onFieldClick}
-        />
+        <SchemaNodeItem key={node.path} node={node} depth={0} onFieldClick={onFieldClick} />
       ))}
     </div>
   );

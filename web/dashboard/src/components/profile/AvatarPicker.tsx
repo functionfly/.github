@@ -2,26 +2,27 @@
  * AvatarPicker – change profile picture: upload or choose a default FunctionFly avatar.
  */
 
-import { useRef } from "react";
-import { Upload, User, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
+import { Loader2, Upload, User } from 'lucide-react';
+import { useRef } from 'react';
+import { toast } from 'sonner';
 
 const DEFAULT_AVATARS = [
-  { id: "default-1", url: "/avatars/default-1.svg", label: "FunctionFly FF" },
-  { id: "default-2", url: "/avatars/default-2.svg", label: "FunctionFly Bolt" },
+  { id: 'default-1', url: '/avatars/default-1.svg', label: 'FunctionFly FF' },
+  { id: 'default-2', url: '/avatars/default-2.svg', label: 'FunctionFly Bolt' },
 ] as const;
 
 const MAX_FILE_SIZE_MB = 5;
-const ACCEPT_IMAGES = "image/jpeg,image/png,image/webp,image/gif";
+const ACCEPT_IMAGES = 'image/jpeg,image/png,image/webp,image/gif';
 
 export interface AvatarPickerProps {
   open: boolean;
@@ -44,7 +45,8 @@ export function AvatarPicker({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      return; // TODO: toast "File too large"
+      toast.error(`File is too large. Maximum size is ${MAX_FILE_SIZE_MB} MB.`);
+      return;
     }
     const reader = new FileReader();
     reader.onload = () => {
@@ -53,7 +55,7 @@ export function AvatarPicker({
       onOpenChange(false);
     };
     reader.readAsDataURL(file);
-    e.target.value = "";
+    e.target.value = '';
   };
 
   const handleDefault = (url: string) => {
@@ -62,7 +64,7 @@ export function AvatarPicker({
   };
 
   const handleClear = () => {
-    onSelect("");
+    onSelect('');
     onOpenChange(false);
   };
 
@@ -108,8 +110,8 @@ export function AvatarPicker({
                   onClick={() => handleDefault(url)}
                   disabled={isLoading}
                   className={cn(
-                    "rounded-full ring-2 ring-transparent transition focus:outline-none focus:ring-2 focus:ring-brand-500",
-                    currentAvatar === url && "ring-brand-500"
+                    'rounded-full ring-2 ring-transparent transition focus:outline-none focus:ring-2 focus:ring-brand-500',
+                    currentAvatar === url && 'ring-brand-500'
                   )}
                   title={label}
                 >

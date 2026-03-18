@@ -38,7 +38,7 @@ export function FollowUserButton({
   const isLoading = isLoadingStatus || followMutation.isPending || unfollowMutation.isPending;
 
   const handleFollow = () => {
-    followMutation.mutate();
+    followMutation.mutate(undefined);
   };
 
   const handleUnfollow = () => {
@@ -136,7 +136,7 @@ export function FollowFunctionButton({
     if (isFollowing) {
       unfollowMutation.mutate();
     } else {
-      followMutation.mutate();
+      followMutation.mutate(undefined);
     }
   };
 

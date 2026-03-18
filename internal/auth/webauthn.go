@@ -115,7 +115,7 @@ func (s *WebAuthnService) BeginRegistration(userID uuid.UUID, displayName, email
 		return nil, nil, fmt.Errorf("failed to marshal options: %w", err)
 	}
 
-	// Marshal the session data for storage (in production, store in Redis/session)
+	// Marshal session data for the caller to store (e.g. API handler stores in Redis via WebAuthnSessionStore)
 	sessionJSON, err := json.Marshal(sessionData)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to marshal session: %w", err)
@@ -229,7 +229,7 @@ func (s *WebAuthnService) BeginLogin(userID uuid.UUID) ([]byte, []byte, error) {
 		return nil, nil, fmt.Errorf("failed to marshal options: %w", err)
 	}
 
-	// Marshal session data for storage
+	// Marshal session data for the caller to store (e.g. API handler stores in Redis via WebAuthnSessionStore)
 	sessionJSON, err := json.Marshal(sessionData)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to marshal session: %w", err)

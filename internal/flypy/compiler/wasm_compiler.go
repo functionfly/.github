@@ -70,6 +70,7 @@ md5 = "0.7"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v5"] }
+encoding_rs = "0.8"
 `
 	}
 

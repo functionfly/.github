@@ -213,9 +213,8 @@ func NewCacheMonitor(cacheService *CacheService, cdnService *CDNService, edgeCac
 	}
 }
 
-// CollectMetrics collects and updates all cache metrics
-func (m *CacheMonitor) CollectMetrics() error {
-	ctx := context.Background() // TODO: Use proper context
+// CollectMetrics collects and updates all cache metrics.
+func (m *CacheMonitor) CollectMetrics(ctx context.Context) error {
 
 	// Update memory cache metrics
 	if memMetrics := m.cacheService.GetMemoryStats(); memMetrics != nil {
@@ -247,9 +246,8 @@ func (m *CacheMonitor) CollectMetrics() error {
 	return nil
 }
 
-// GetComprehensiveStats returns comprehensive cache statistics
-func (m *CacheMonitor) GetComprehensiveStats() (map[string]interface{}, error) {
-	ctx := context.Background()
+// GetComprehensiveStats returns comprehensive cache statistics.
+func (m *CacheMonitor) GetComprehensiveStats(ctx context.Context) (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
 
 	// Memory cache stats

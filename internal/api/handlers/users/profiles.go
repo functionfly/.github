@@ -3,21 +3,52 @@ package users
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
+var errMissingOrInvalidAuth = errors.New("missing or invalid authorization")
+
+// extractClaimsFromRequest parses the Bearer token from r and validates it via authSvc.
+// Returns claims on success, or an error if missing/invalid.
+func extractClaimsFromRequest(r *http.Request, authSvc *auth.AuthService) (*auth.Claims, error) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return nil, errMissingOrInvalidAuth
+	}
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		return nil, errMissingOrInvalidAuth
+	}
+	return authSvc.ValidateToken(parts[1])
+}
+
 // HandleGetPublicProfile returns a user's public profile by username.
 // This endpoint is public — it never exposes email, tenantId, role, or any sensitive fields.
+// If username is "me", we require auth and return the current user (same as GET /users/me), so that
+// GET /v1/users/me works even when the router matches /users/{username} instead of /users/me.
 func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request) {
 	username := mux.Vars(r)["username"]
 	if username == "" {
 		writeJSONError(w, http.StatusBadRequest, "username is required")
+		return
+	}
+
+	if username == "me" {
+		claims, err := extractClaimsFromRequest(r, h.authSvc)
+		if err != nil {
+			writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		r = middleware.SetUserInContext(r, claims)
+		h.HandleGetMe(w, r)
 		return
 	}
 

@@ -1,5 +1,5 @@
 //! Node.js Runtime Executor
-//! 
+//!
 //! This module provides the core execution engine for JavaScript functions.
 //! It uses QuickJS compiled to WebAssembly for secure, isolated execution.
 
@@ -8,6 +8,7 @@ use std::time::Instant;
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+use sha2::{Sha256, Digest};
 use parking_lot::RwLock;
 use tracing::{info, warn, error, instrument};
 use uuid::Uuid;
@@ -22,7 +23,7 @@ use crate::{
 };
 
 /// Node.js Runtime Executor
-/// 
+///
 /// This is the main entry point for executing JavaScript functions.
 /// It handles:
 /// - Code compilation and caching
@@ -50,7 +51,7 @@ impl NodeExecutor {
     pub fn new(config: RuntimeConfig) -> Result<Self, RuntimeError> {
         // Validate configuration
         config.validate()?;
-        
+
         let sandbox = Sandbox::new(SandboxConfig {
             runtime_version: config.version.clone(),
             max_memory_mb: config.max_memory_mb,
@@ -59,17 +60,17 @@ impl NodeExecutor {
             network_enabled: config.network_enabled,
             env_vars: config.environment.clone(),
         })?;
-        
+
         let timeout_manager = TimeoutManager::new(config.max_timeout_ms);
         let memory_limiter = MemoryLimiter::new(config.max_memory_mb);
-        
+
         info!(
             "Created NodeExecutor with runtime: {:?}, max_memory: {}MB, max_timeout: {}ms",
             config.version,
             config.max_memory_mb,
             config.max_timeout_ms
         );
-        
+
         Ok(Self {
             config,
             sandbox,
@@ -82,9 +83,8 @@ impl NodeExecutor {
 
     /// Get a cached code entry or compile if not cached
     fn get_or_compile(&self, code: &str) -> Result<CachedCode, RuntimeError> {
-        // Simple hash for cache key (in production, use proper hashing)
-        let cache_key = format!("{:x}", md5_hash(code));
-        
+        let cache_key = code_cache_key(code);
+
         // Check cache
         {
             let cache = self.code_cache.read();
@@ -96,21 +96,21 @@ impl NodeExecutor {
                 }
             }
         }
-        
+
         // Compile code (in a real implementation, this would compile to WASM)
         let compiled = self.compile_code(code)?;
-        
+
         // Cache the compiled code
         let cached = CachedCode {
             compiled_at: Instant::now(),
             _bytecode: compiled,
         };
-        
+
         {
             let mut cache = self.code_cache.write();
             cache.insert(cache_key, cached.clone());
         }
-        
+
         self.metrics.cache_misses.inc();
         Ok(cached)
     }
@@ -119,13 +119,13 @@ impl NodeExecutor {
     fn compile_code(&self, code: &str) -> Result<Vec<u8>, RuntimeError> {
         // Validate code for security issues
         self.sandbox.validate_code(code)?;
-        
+
         // In a real implementation, this would:
         // 1. Parse the JavaScript
         // 2. Transform for WASM compatibility
         // 3. Compile to WASM
         // 4. Return the compiled bytecode
-        
+
         // For now, we just return the source as "bytecode"
         // This is a placeholder for the actual compilation
         Ok(code.as_bytes().to_vec())
@@ -138,23 +138,23 @@ impl NodeExecutor {
         input: &ExecutionInput,
     ) -> Result<serde_json::Value, RuntimeError> {
         let start = Instant::now();
-        
+
         // Get or compile the code
         let _cached = self.get_or_compile(code)?;
-        
+
         // Execute in sandbox
         let result = self.sandbox.execute(code, &input.data)?;
-        
+
         // Record execution time
         let exec_time = start.elapsed().as_millis() as u64;
         self.metrics.execution_time.observe(exec_time as f64);
-        
+
         info!(
             "Executed function {} in {}ms",
             input.metadata.request_id,
             exec_time
         );
-        
+
         Ok(result)
     }
 }
@@ -169,10 +169,10 @@ impl Runtime for NodeExecutor {
     ) -> ExecutionResult {
         let start = Instant::now();
         let request_id = input.metadata.request_id.clone();
-        
+
         // Record execution start
         self.metrics.total_executions.inc();
-        
+
         // Execute with timeout
         let result = tokio::time::timeout(
             Duration::from_millis(self.config.max_timeout_ms),
@@ -184,9 +184,9 @@ impl Runtime for NodeExecutor {
                 }
             })
         ).await;
-        
+
         let exec_time = start.elapsed().as_millis() as u64;
-        
+
         match result {
             Ok(Ok(Ok(output))) => {
                 ExecutionResult::success(request_id, output, exec_time)
@@ -257,12 +257,14 @@ impl Runtime for NodeExecutor {
     }
 }
 
-// Simple hash function for cache keys
-fn md5_hash(input: &str) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    input.hash(&mut hasher);
-    hasher.finish()
+/// Content-addressable cache key for compiled code (SHA-256).
+/// Same source code always yields the same key; different code yields different keys with
+/// negligible collision probability.
+fn code_cache_key(code: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(code.as_bytes());
+    let digest = hasher.finalize();
+    hex::encode(digest)
 }
 
 #[cfg(test)]
@@ -281,7 +283,7 @@ mod tests {
         let config = RuntimeConfig::default();
         let executor = NodeExecutor::new(config).unwrap();
         let info = executor.info();
-        
+
         assert!(info.features.contains(&"async_await".to_string()));
     }
 }

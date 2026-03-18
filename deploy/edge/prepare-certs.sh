@@ -34,26 +34,32 @@ shopt -u nullglob 2>/dev/null || true
 if [ -f "${CERTS_IN}/fullchain.pem" ]; then
   cp "${CERTS_IN}/fullchain.pem" "${CERTS_OUT}/fullchain.pem"
   echo "Using existing fullchain.pem from certs-in/"
-elif [ -f "${CONVERTED}/STAR_functionfly_com.pem" ] || compgen -G "${CONVERTED}/*functionfly*.pem" >/dev/null 2>&1; then
-  # Leaf: STAR_functionfly_com or any *functionfly*.pem
-  leaf="${CONVERTED}/STAR_functionfly_com.pem"
-  [ -f "$leaf" ] || leaf=$(ls "${CONVERTED}"/*functionfly*.pem 2>/dev/null | head -1)
-  cat "$leaf" > "${CERTS_OUT}/fullchain.pem"
-  # Append intermediates (each other .pem in CONVERTED that looks like a cert)
-  for f in "${CONVERTED}"/*.pem; do
-    [ -f "$f" ] || continue
-    [ "$f" = "$leaf" ] && continue
-    grep -q "BEGIN CERTIFICATE" "$f" && cat "$f" >> "${CERTS_OUT}/fullchain.pem"
-  done
-  echo "Built fullchain.pem from certs-in/"
 else
-  echo "Put your certs in: ${CERTS_IN}/"
-  echo "  - Leaf: STAR_functionfly_com.cer/.crt/.pem (or any *functionfly* cert)"
-  echo "  - Intermediates: Sectigo*, SSL2BUY*, USERTrust* (same folder; .cer/.crt/.pem)"
-  echo "  - Private key: privkey.pem"
-  echo ""
-  echo "If filenames are long, copy the folder from Windows (e.g. STAR_functionfly_com) into certs-in/ and run again."
-  exit 1
+  # Find leaf: prefer *functionfly*, then any cert; remaining .pem files are intermediates
+  leaf=""
+  for candidate in "${CONVERTED}/STAR_functionfly_com.pem" "${CONVERTED}"/*functionfly*.pem "${CONVERTED}"/*.pem; do
+    [ -f "$candidate" ] || continue
+    grep -q "BEGIN CERTIFICATE" "$candidate" || continue
+    leaf="$candidate"
+    break
+  done
+  if [ -n "$leaf" ] && [ -f "$leaf" ]; then
+    cat "$leaf" > "${CERTS_OUT}/fullchain.pem"
+    for f in "${CONVERTED}"/*.pem; do
+      [ -f "$f" ] || continue
+      [ "$f" = "$leaf" ] && continue
+      grep -q "BEGIN CERTIFICATE" "$f" && cat "$f" >> "${CERTS_OUT}/fullchain.pem"
+    done
+    echo "Built fullchain.pem from certs-in/"
+  else
+    echo "Put your certs in: ${CERTS_IN}/"
+    echo "  - Leaf: STAR_functionfly_com.cer/.crt/.pem (or any *functionfly* cert, or any .cer/.crt/.pem)"
+    echo "  - Intermediates: other .cer/.crt/.pem from your CA"
+    echo "  - Private key: privkey.pem or .key (from your CSR)"
+    echo ""
+    echo "Extract your zip (e.g. 2891200744.zip) into certs-in/, add privkey.pem if not in the zip, then run again."
+    exit 1
+  fi
 fi
 
 # Private key: optional if keys were generated on the VPS (use KEYS_ON_SERVER=1 when uploading)

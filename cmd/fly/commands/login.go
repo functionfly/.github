@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"runtime"
@@ -67,7 +68,13 @@ func runLogin(provider string, noBrowser bool, dev bool, emailFlag, passwordFlag
 	}
 	port := listener.Addr().(*net.TCPAddr).Port
 	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
-	authURL := fmt.Sprintf("%s/v1/auth/oauth/%s?redirect_uri=%s", baseURL, provider, callbackURL)
+
+	// Get OAuth URL from API (includes our redirect_uri so callback sends token to this CLI)
+	authURL, err := getOAuthURLFromAPI(baseURL, provider, callbackURL)
+	if err != nil {
+		return fmt.Errorf("get OAuth URL: %w", err)
+	}
+
 	fmt.Printf("🔐 Authenticating with %s...\n", provider)
 	if noBrowser {
 		fmt.Printf("\nOpen this URL in your browser:\n%s\n\n", authURL)
@@ -155,6 +162,37 @@ func runLogin(provider string, noBrowser bool, dev bool, emailFlag, passwordFlag
 	fmt.Printf("   Provider: %s\n", provider)
 	fmt.Printf("\nYour namespace: fx://%s/*\n", username)
 	return nil
+}
+
+// getOAuthURLFromAPI calls GET /auth/oauth/url?provider=...&redirect_uri=... and returns the URL to open in the browser.
+func getOAuthURLFromAPI(baseURL, provider, redirectURI string) (string, error) {
+	u := baseURL + "/auth/oauth/url?provider=" + url.QueryEscape(provider)
+	if redirectURI != "" {
+		u += "&redirect_uri=" + url.QueryEscape(redirectURI)
+	}
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return "", err
+	}
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned %d", resp.StatusCode)
+	}
+	var out struct {
+		URL string `json:"url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return "", err
+	}
+	if out.URL == "" {
+		return "", fmt.Errorf("API returned empty OAuth URL")
+	}
+	return out.URL, nil
 }
 
 func openBrowser(url string) error {

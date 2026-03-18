@@ -33,10 +33,9 @@ pub async fn run_server(
     logger: Arc<StructuredLogger>,
     startup_correlation_id: CorrelationId,
 ) -> Result<()> {
-    // Build CORS layer - configurable via cors_allow_origin config field.
-    // Defaults to Any (allow all) for local development convenience.
-    // In production, set cors_allow_origin to a specific origin (e.g. "https://app.example.com").
-    // When a specific origin is set, it is passed as a HeaderValue to allow_origin().
+    // Build CORS layer from config.cors_allow_origin (e.g. --cors-allow-origin on the CLI).
+    // Empty or "*" => allow all origins (default, for local dev). In production, set to a
+    // specific origin (e.g. "https://app.example.com") so only that origin is allowed.
     let cors = if config.cors_allow_origin.is_empty() || config.cors_allow_origin == "*" {
         CorsLayer::new()
             .allow_origin(Any)
@@ -117,6 +116,8 @@ pub async fn run_server(
             shared_state.cache.clone(),
             config.package_cache_dir.clone().into(),
             config.package_cache_size_mb,
+            config.network_whitelist.clone(),
+            config.strict_network_whitelist,
         ).unwrap_or_else(|e| {
             tracing::error!("Failed to create package manager: {}", e);
             panic!("Package manager creation failed");

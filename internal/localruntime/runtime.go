@@ -14,10 +14,14 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
 
+	"github.com/dop251/goja"
 	"github.com/fsnotify/fsnotify"
 	"github.com/functionfly/functionfly/internal/manifest"
 	"github.com/functionfly/functionfly/internal/monitoring"
@@ -36,6 +40,11 @@ type Runtime struct {
 	metrics         *monitoring.LocalRuntimeMetricsCollector
 	port            int
 	activeRequests  int64
+
+	// JS runtime (goja) for node18/node20; guarded by jsMu
+	jsVM         *goja.Runtime
+	jsHandlerFn  goja.Callable
+	jsMu         sync.Mutex
 
 	// Registry functionality
 	runtimeID       string
@@ -126,11 +135,108 @@ func (r *Runtime) loadFunction() error {
 
 	r.functionJS = string(data)
 
-	// For now, we'll use a simple eval-like approach
-	// In production, this would use a proper JS runtime likeotto or goja
 	r.function = r.createSimpleHandler()
 
+	// Initialize goja VM for JavaScript runtimes so the handler can execute user code
+	if r.manifest.Runtime == "node18" || r.manifest.Runtime == "node20" {
+		if err := r.initGoja(); err != nil {
+			return fmt.Errorf("failed to init JS runtime (goja): %w", err)
+		}
+	}
+
 	return nil
+}
+
+// initGoja creates a goja VM, runs the function source, and resolves the handler (module.exports or export default).
+func (r *Runtime) initGoja() error {
+	r.jsMu.Lock()
+	defer r.jsMu.Unlock()
+
+	vm := goja.New()
+	// Shim so CommonJS and ESM-style "export default" both work
+	wrapped := r.wrapJSForGoja(r.functionJS)
+	_, err := vm.RunString(wrapped)
+	if err != nil {
+		return fmt.Errorf("run JS: %w", err)
+	}
+
+	// Resolve handler: module.exports (function), module.exports.default, or module.exports.handler
+	moduleVal := vm.Get("module")
+	if moduleVal == nil || goja.IsNull(moduleVal) || goja.IsUndefined(moduleVal) {
+		return fmt.Errorf("JS did not define module.exports; use module.exports = function(input) { ... } or export default function ...")
+	}
+	exportsVal := moduleVal.ToObject(vm).Get("exports")
+	if exportsVal == nil || goja.IsUndefined(exportsVal) || goja.IsNull(exportsVal) {
+		return fmt.Errorf("module.exports is empty; use module.exports = function(input) { ... } or export default function ...")
+	}
+	var handler goja.Callable
+	// module.exports may be the function itself (CommonJS: module.exports = function(input) { ... })
+	if fn, ok := goja.AssertFunction(exportsVal); ok {
+		handler = fn
+	} else {
+		exportsObj := exportsVal.ToObject(vm)
+		for _, name := range []string{"default", "handler"} {
+			v := exportsObj.Get(name)
+			if v != nil && !goja.IsUndefined(v) && !goja.IsNull(v) {
+				if fn, ok := goja.AssertFunction(v); ok {
+					handler = fn
+					break
+				}
+			}
+		}
+		if handler == nil {
+			for _, key := range exportsObj.Keys() {
+				if fn, ok := goja.AssertFunction(exportsObj.Get(key)); ok {
+					handler = fn
+					break
+				}
+			}
+		}
+	}
+	if handler == nil {
+		return fmt.Errorf("no handler function on module.exports; use module.exports = function(input) { ... } or export default function ...")
+	}
+
+	r.jsVM = vm
+	r.jsHandlerFn = handler
+	return nil
+}
+
+// callGojaHandler invokes the JS handler with the given input. Caller must hold jsMu if using shared VM.
+func (r *Runtime) callGojaHandler(input interface{}) (goja.Value, error) {
+	if r.jsVM == nil || r.jsHandlerFn == nil {
+		return nil, fmt.Errorf("JS runtime not initialized")
+	}
+	// Convert input to a goja value: string as-is, or parse as JSON for object/array
+	var jsInput goja.Value
+	switch v := input.(type) {
+	case string:
+		trimmed := strings.TrimSpace(v)
+		if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
+			(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
+			var parsed interface{}
+			if err := json.Unmarshal([]byte(v), &parsed); err == nil {
+				jsInput = r.jsVM.ToValue(parsed)
+			} else {
+				jsInput = r.jsVM.ToValue(v)
+			}
+		} else {
+			jsInput = r.jsVM.ToValue(v)
+		}
+	default:
+		jsInput = r.jsVM.ToValue(v)
+	}
+	return r.jsHandlerFn(goja.Undefined(), jsInput)
+}
+
+// wrapJSForGoja wraps user JS so it runs under goja: injects module and converts export default to module.exports.
+var exportDefaultRE = regexp.MustCompile(`(?m)^\s*export\s+default\s+`)
+
+func (r *Runtime) wrapJSForGoja(source string) string {
+	const moduleShim = `var module = { exports: {} };`
+	// Convert "export default fn" to "module.exports = fn" so goja can run it
+	replaced := exportDefaultRE.ReplaceAllString(source, "module.exports = ")
+	return moduleShim + "\n" + replaced
 }
 
 // createSimpleHandler creates a simple handler based on the runtime
@@ -143,9 +249,21 @@ func (r *Runtime) createSimpleHandler() func(interface{}) (interface{}, error) {
 	}
 }
 
-// jsHandler handles JavaScript functions
+// jsHandler handles JavaScript functions via goja when initialized
 func (r *Runtime) jsHandler(input interface{}) (interface{}, error) {
-	// Simple passthrough for now - in production would use JS runtime
+	if r.jsHandlerFn != nil {
+		r.jsMu.Lock()
+		defer r.jsMu.Unlock()
+		val, err := r.callGojaHandler(input)
+		if err != nil {
+			return nil, err
+		}
+		if val == nil || goja.IsUndefined(val) || goja.IsNull(val) {
+			return nil, nil
+		}
+		return val.Export(), nil
+	}
+	// Fallback when no JS runtime (e.g. missing index.js or init failed)
 	inputStr, ok := input.(string)
 	if !ok {
 		return input, nil

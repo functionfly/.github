@@ -38,10 +38,14 @@ No extra variables. Files are stored under `./uploads` (or the directory configu
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `R2_ACCOUNT_ID` | Yes | Cloudflare account ID |
-| `AWS_ACCESS_KEY_ID` | Yes | R2 API token access key |
-| `AWS_SECRET_ACCESS_KEY` | Yes | R2 API token secret |
+| `R2_ACCESS_KEY_ID` | Yes* | R2 API token access key (preferred for Cloudflare-only setups) |
+| `R2_SECRET_ACCESS_KEY` | Yes* | R2 API token secret |
+| `AWS_ACCESS_KEY_ID` | Yes* | Alternative to R2_ACCESS_KEY_ID (same value from R2 API token) |
+| `AWS_SECRET_ACCESS_KEY` | Yes* | Alternative to R2_SECRET_ACCESS_KEY |
 | `R2_ENDPOINT` | No | Override endpoint (usually auto-detected) |
 | `R2_PUBLIC_URL` | No | Base URL for public object links (e.g. custom domain) |
+
+\* Use either `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY` or `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`. See [docs/CLOUDFLARE.md](CLOUDFLARE.md) for full Cloudflare configuration.
 
 ### AWS S3 (`STORAGE_BACKEND=s3`)
 

@@ -267,9 +267,8 @@ cdn.staging.functionfly.com {
         Cache-Control "public, max-age=86400, immutable"
     }
 
-    # Proxy to R2 staging bucket or static file server
-    # In staging, we proxy to the orchestrator API for now
-    # In production, this would be directly to R2/S3
+    # Staging: proxy to orchestrator. Production: use R2 as CDN origin
+    # (CNAME cdn.* to R2 custom domain; see docs/CDN_SETUP.md)
     reverse_proxy orchestrator-api:8080 {
         header_up X-Forwarded-Host {host}
         header_up X-Forwarded-Proto {scheme}

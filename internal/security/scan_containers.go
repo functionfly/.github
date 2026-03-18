@@ -322,8 +322,9 @@ func (sas *SecurityAuditService) scanContainerRuntime(ctx context.Context) ([]Vu
 		}
 	}
 
-	// Check for running containers with security issues
-	// This would require Docker API access in production
+	// Live inspection of running containers (inspect, processes, mounts) is not performed:
+	// it would require Docker API access (e.g. DOCKER_HOST / socket) and appropriate auth in production.
+	// Record an informational finding so operators know runtime checks are a possible extension.
 	vulnerabilities = append(vulnerabilities, Vulnerability{
 		ID:          generateVulnID(),
 		Title:       "Container Runtime Security Check",

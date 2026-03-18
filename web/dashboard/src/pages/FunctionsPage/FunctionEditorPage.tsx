@@ -164,7 +164,9 @@ export function FunctionEditorPage() {
           setCode(functionData.code);
           setEnvVars(functionData.envVars.map((env, index) => ({
             id: `env-${index + 1}`,
-            ...env
+            key: env.key ?? '',
+            value: env.value ?? '',
+            isSecret: env.isSecret ?? false,
           })));
 
           addLog("success", `Function data loaded successfully`);

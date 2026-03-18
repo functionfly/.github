@@ -239,13 +239,97 @@ func getHttpApiTemplate(name string) string {
 	return `"""
 HTTP API Function
 A RESTful API with built-in routing for CRUD operations.
+Uses env.kv for persistence when available; falls back to in-memory otherwise.
 """
 
 from datetime import datetime
+import json
 
-# In-memory storage for demo (use a database in production)
-users_db = {}
-user_id_counter = 1
+# Storage: env.kv (persistent) when available, else in-memory
+KV_PREFIX = "http_api_users:"
+_kv = None
+_memory_db = {}
+_memory_next_id = 1
+
+def _get_kv(env):
+    global _kv
+    if _kv is not None:
+        return _kv
+    if hasattr(env, "kv") and env.kv is not None:
+        _kv = env.kv
+        return _kv
+    return None
+
+async def _next_id(env):
+    kv = _get_kv(env)
+    if kv:
+        try:
+            raw = await kv.get(KV_PREFIX + "next_id")
+            n = int(raw) if raw else 1
+            await kv.set(KV_PREFIX + "next_id", str(n + 1))
+            return n
+        except Exception:
+            pass
+    global _memory_next_id
+    n = _memory_next_id
+    _memory_next_id += 1
+    return n
+
+async def _user_get(env, user_id):
+    kv = _get_kv(env)
+    if kv:
+        try:
+            raw = await kv.get(KV_PREFIX + str(user_id))
+            return json.loads(raw) if raw else None
+        except Exception:
+            pass
+    return _memory_db.get(user_id)
+
+async def _user_set(env, user_id, user):
+    kv = _get_kv(env)
+    if kv:
+        try:
+            await kv.set(KV_PREFIX + str(user_id), json.dumps(user))
+            ids_raw = await kv.get(KV_PREFIX + "ids")
+            ids = json.loads(ids_raw) if ids_raw else []
+            if user_id not in ids:
+                ids.append(user_id)
+                await kv.set(KV_PREFIX + "ids", json.dumps(ids))
+            return
+        except Exception:
+            pass
+    _memory_db[user_id] = user
+
+async def _user_delete(env, user_id):
+    kv = _get_kv(env)
+    if kv:
+        try:
+            await kv.delete(KV_PREFIX + str(user_id))
+            ids_raw = await kv.get(KV_PREFIX + "ids")
+            ids = json.loads(ids_raw) if ids_raw else []
+            if user_id in ids:
+                ids.remove(user_id)
+                await kv.set(KV_PREFIX + "ids", json.dumps(ids))
+            return
+        except Exception:
+            pass
+    _memory_db.pop(user_id, None)
+
+async def _user_list(env):
+    kv = _get_kv(env)
+    if kv:
+        try:
+            ids_raw = await kv.get(KV_PREFIX + "ids")
+            ids = json.loads(ids_raw) if ids_raw else []
+            out = []
+            for i in ids:
+                raw = await kv.get(KV_PREFIX + str(i))
+                if raw:
+                    out.append(json.loads(raw))
+            return out
+        except Exception:
+            pass
+    return list(_memory_db.values())
 
 
 async def fetch(request, env, ctx):
@@ -263,7 +347,6 @@ async def fetch(request, env, ctx):
     url = request.url
     method = request.method
 
-    # Health check endpoint
     if '/health' in url:
         return {
             "status": 200,
@@ -275,43 +358,53 @@ async def fetch(request, env, ctx):
             "headers": {"Content-Type": "application/json"}
         }
 
-    # User management endpoints
     if '/users' in url:
-        if method == 'GET':
-            user_list = list(users_db.values())
+        path = url.split("?")[0].rstrip("/")
+        parts = path.split("/")
+        user_id = parts[-1] if len(parts) > 0 and parts[-1].isdigit() else None
+
+        if method == 'GET' and user_id is None:
+            user_list = await _user_list(env)
             return {
                 "status": 200,
-                "body": {
-                    "users": user_list,
-                    "count": len(user_list)
-                },
+                "body": {"users": user_list, "count": len(user_list)},
                 "headers": {"Content-Type": "application/json"}
             }
 
-        if method == 'POST':
-            global user_id_counter
-            user_id = user_id_counter
-            user_id_counter += 1
+        if method == 'GET' and user_id is not None:
+            uid = int(user_id)
+            user = await _user_get(env, uid)
+            if user is None:
+                return {"status": 404, "body": {"error": "User not found"}, "headers": {"Content-Type": "application/json"}}
+            return {"status": 200, "body": user, "headers": {"Content-Type": "application/json"}}
 
-            user = {
-                "id": user_id,
-                "name": "New User",
-                "created_at": datetime.utcnow().isoformat()
-            }
-            users_db[user_id] = user
+        if method == 'POST' and user_id is None:
+            uid = await _next_id(env)
+            user = {"id": uid, "name": "New User", "created_at": datetime.utcnow().isoformat()}
+            await _user_set(env, uid, user)
+            return {"status": 201, "body": user, "headers": {"Content-Type": "application/json"}}
 
-            return {
-                "status": 201,
-                "body": user,
-                "headers": {"Content-Type": "application/json"}
-            }
+        if method == 'PUT' and user_id is not None:
+            uid = int(user_id)
+            body = {}
+            try:
+                body = await request.json() if hasattr(request, "json") else {}
+            except Exception:
+                pass
+            existing = await _user_get(env, uid)
+            if existing is None:
+                return {"status": 404, "body": {"error": "User not found"}, "headers": {"Content-Type": "application/json"}}
+            existing.update(body)
+            existing["id"] = uid
+            await _user_set(env, uid, existing)
+            return {"status": 200, "body": existing, "headers": {"Content-Type": "application/json"}}
 
-    # Default: 404 Not Found
-    return {
-        "status": 404,
-        "body": {"error": "Not found"},
-        "headers": {"Content-Type": "application/json"}
-    }
+        if method == 'DELETE' and user_id is not None:
+            uid = int(user_id)
+            await _user_delete(env, uid)
+            return {"status": 204, "body": None, "headers": {"Content-Type": "application/json"}}
+
+    return {"status": 404, "body": {"error": "Not found"}, "headers": {"Content-Type": "application/json"}}
 `
 }
 

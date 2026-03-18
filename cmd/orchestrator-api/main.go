@@ -21,6 +21,17 @@ func main() {
 	skipMigrations := flag.Bool("skip-migrations", false, "Skip database migrations")
 	flag.Parse()
 
+	// Prefer PORT from environment (e.g. Fly.io, 12-factor)
+	if p := os.Getenv("PORT"); p != "" {
+		var portVal int
+		if n, err := fmt.Sscanf(p, "%d", &portVal); n == 1 && err == nil && portVal > 0 {
+			*port = portVal
+		}
+	}
+	if *port <= 0 {
+		*port = 8080
+	}
+
 	// Configure logrus for structured JSON logging
 	logrus.SetFormatter(&logrus.JSONFormatter{
 		TimestampFormat: time.RFC3339Nano,
@@ -57,10 +68,10 @@ func main() {
 	// Create the API server
 	server := api.NewServer(db)
 
-	// Start server in a goroutine
+	// Start server in a goroutine (0.0.0.0 so Fly proxy and health checks can reach us)
 	done := make(chan error, 1)
 	go func() {
-		addr := fmt.Sprintf(":%d", *port)
+		addr := fmt.Sprintf("0.0.0.0:%d", *port)
 		logrus.WithField("addr", addr).Info("Starting HTTP server")
 		if err := server.ListenAndServe(addr); err != nil {
 			done <- err

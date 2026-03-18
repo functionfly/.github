@@ -141,7 +141,9 @@ pub fn add_fetch_function(
 ///    wildcard `*.domain.com` prefix).
 /// 4. If `strict_whitelist` is `false` (or the whitelist is empty), any
 ///    public host is allowed.
-fn is_network_request_allowed(url: &str, whitelist: &HashSet<String>, strict_whitelist: bool) -> bool {
+///
+/// Exposed for use by package download (and other host-initiated HTTP).
+pub(crate) fn is_network_request_allowed(url: &str, whitelist: &HashSet<String>, strict_whitelist: bool) -> bool {
     let parsed_url = match url::Url::parse(url) {
         Ok(u) => u,
         Err(_) => return false, // Reject unparseable URLs

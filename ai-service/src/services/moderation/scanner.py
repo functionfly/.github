@@ -1,11 +1,11 @@
 """Content scanner for policy violations.
 
-This module provides content scanning capabilities using regex patterns,
-keyword lists, and optional self-hosted ML (Detoxify) for:
-- PII (Personally Identifiable Information)
-- Secrets and API keys
-- Toxic content, hate speech, violence (ML or keyword fallback)
-- Other policy violations
+This module provides content scanning capabilities using:
+- Regex patterns for PII and secrets
+- Optional OpenAI Moderation API (omni-moderation-latest, 2026 recommended) for
+  toxic/hate/violence/sexual/self-harm/illicit when OPENAI_API_KEY is set
+- Optional self-hosted ML (Detoxify) when OpenAI is not used
+- Keyword fallback when no API/ML is available
 """
 
 import asyncio
@@ -13,6 +13,8 @@ import re
 import hashlib
 import logging
 from typing import List, Optional, Dict, Any, Tuple
+
+from ...config import settings
 from .results import Violation, ModerationCategory
 
 logger = logging.getLogger(__name__)
@@ -22,7 +24,6 @@ ML_MODERATION_MAX_CHARS = 2000
 
 # Score threshold above which we emit a violation (0.0-1.0)
 ML_MODERATION_THRESHOLD = 0.5
-
 
 # =============================================================================
 # Pattern Definitions
@@ -120,10 +121,10 @@ SECRET_PATTERNS = {
     ),
 }
 
-# Toxic content keywords (simple word list)
+# Toxic / policy-violation keywords. Used only when neither OpenAI Moderation API
+# nor Detoxify is available. Prefer moderation_provider=openai (or auto with
+# OPENAI_API_KEY) for production.
 TOXIC_KEYWORDS = [
-    # Note: This is a minimal example list. In production, use a proper
-    # content moderation API or more comprehensive list
     "malware",
     "phishing",
     "ransomware",
@@ -132,6 +133,14 @@ TOXIC_KEYWORDS = [
     "bypass",
     "inject",
     "exfiltrate",
+    "keylogger",
+    "trojan",
+    "backdoor",
+    "credential theft",
+    "ddos",
+    "sql injection",
+    "xss",
+    "csrf",
 ]
 
 # Fallback keyword lists when ML (Detoxify) is not installed or fails
@@ -237,6 +246,110 @@ def _scores_to_violations(scores: Dict[str, float]) -> List[Violation]:
     return violations
 
 
+# -----------------------------------------------------------------------------
+# OpenAI Moderation API (omni-moderation-latest recommended for 2026)
+# -----------------------------------------------------------------------------
+
+
+def _openai_categories_to_violations(result: Any) -> List[Violation]:
+    """Map OpenAI moderation result (first item) to our Violation list."""
+    violations: List[Violation] = []
+    if not result or not getattr(result, "results", None) or len(result.results) == 0:
+        return violations
+
+    r = result.results[0]
+    categories = getattr(r, "categories", None)
+    scores = getattr(r, "category_scores", None)
+    if not categories:
+        return violations
+
+    def score_for(name: str) -> float:
+        if not scores:
+            return 0.0
+        return getattr(scores, name, 0.0) or 0.0
+
+    def flagged(name: str) -> bool:
+        return getattr(categories, name, False) or False
+
+    # Hate -> HATE_SPEECH
+    if flagged("hate") or flagged("hate_threatening"):
+        violations.append(Violation(
+            category=ModerationCategory.HATE_SPEECH,
+            severity="high" if flagged("hate_threatening") else "medium",
+            message="Content flagged for hate (OpenAI Moderation)",
+            matched_pattern="openai_moderation",
+            location_start=None,
+            location_end=None,
+            confidence=round(max(score_for("hate"), score_for("hate_threatening")), 2),
+        ))
+
+    # Violence -> VIOLENCE
+    if flagged("violence") or flagged("violence_graphic"):
+        violations.append(Violation(
+            category=ModerationCategory.VIOLENCE,
+            severity="high" if flagged("violence_graphic") else "medium",
+            message="Content flagged for violence (OpenAI Moderation)",
+            matched_pattern="openai_moderation",
+            location_start=None,
+            location_end=None,
+            confidence=round(max(score_for("violence"), score_for("violence_graphic")), 2),
+        ))
+
+    # Sexual -> SEXUAL
+    if flagged("sexual") or flagged("sexual_minors"):
+        violations.append(Violation(
+            category=ModerationCategory.SEXUAL,
+            severity="critical" if flagged("sexual_minors") else "high",
+            message="Content flagged for sexual content (OpenAI Moderation)",
+            matched_pattern="openai_moderation",
+            location_start=None,
+            location_end=None,
+            confidence=round(max(score_for("sexual"), score_for("sexual_minors")), 2),
+        ))
+
+    # Harassment -> TOXIC
+    if flagged("harassment") or flagged("harassment_threatening"):
+        violations.append(Violation(
+            category=ModerationCategory.TOXIC,
+            severity="high" if flagged("harassment_threatening") else "medium",
+            message="Content flagged for harassment (OpenAI Moderation)",
+            matched_pattern="openai_moderation",
+            location_start=None,
+            location_end=None,
+            confidence=round(max(score_for("harassment"), score_for("harassment_threatening")), 2),
+        ))
+
+    # Self-harm -> TOXIC (we don't have a dedicated category)
+    if flagged("self_harm") or flagged("self_harm_intent") or flagged("self_harm_instructions"):
+        violations.append(Violation(
+            category=ModerationCategory.TOXIC,
+            severity="high",
+            message="Content flagged for self-harm (OpenAI Moderation)",
+            matched_pattern="openai_moderation",
+            location_start=None,
+            location_end=None,
+            confidence=round(max(
+                score_for("self_harm"),
+                score_for("self_harm_intent"),
+                score_for("self_harm_instructions"),
+            ), 2),
+        ))
+
+    # Illicit (optional on omni-moderation)
+    if getattr(categories, "illicit", False) or getattr(categories, "illicit_violent", False):
+        violations.append(Violation(
+            category=ModerationCategory.TOXIC,
+            severity="high" if getattr(categories, "illicit_violent", False) else "medium",
+            message="Content flagged for illicit (OpenAI Moderation)",
+            matched_pattern="openai_moderation",
+            location_start=None,
+            location_end=None,
+            confidence=round(max(score_for("illicit"), score_for("illicit_violent")), 2),
+        ))
+
+    return violations
+
+
 class ContentScanner:
     """Scanner for detecting policy violations in content."""
 
@@ -276,12 +389,12 @@ class ContentScanner:
         secret_violations = self._scan_secrets(content)
         violations.extend(secret_violations)
 
-        # Toxic / hate / violence: use self-hosted ML (Detoxify) when available
-        ml_violations = await self._run_ml_moderation(content)
-        if ml_violations:
-            violations.extend(ml_violations)
+        # Toxic / hate / violence / sexual: OpenAI Moderation API (2026 preferred),
+        # then Detoxify, then keyword fallback
+        harm_violations = await self._run_harm_moderation(content)
+        if harm_violations:
+            violations.extend(harm_violations)
         else:
-            # Fallback to keyword-based scans
             toxic_violations = self._scan_toxic(content)
             violations.extend(toxic_violations)
             hate_violations = self._scan_hate_speech(content)
@@ -305,6 +418,43 @@ class ContentScanner:
             )
 
         return violations
+
+    async def _run_harm_moderation(self, content: str) -> List[Violation]:
+        """Run harm detection: OpenAI Moderation API (preferred in 2026), then Detoxify, else []."""
+        if not content or not content.strip():
+            return []
+        provider = (settings.moderation_provider or "auto").lower()
+
+        # Prefer OpenAI Moderation API when key is set and provider is openai or auto
+        if provider in ("openai", "auto") and (settings.openai_api_key or "").strip():
+            try:
+                return await self._run_openai_moderation(content)
+            except Exception as e:
+                self._logger.debug("OpenAI moderation failed, falling back: %s", e)
+
+        # Self-hosted Detoxify when provider is detoxify or auto
+        if provider in ("detoxify", "auto"):
+            return await self._run_ml_moderation(content)
+
+        return []
+
+    async def _run_openai_moderation(self, content: str) -> List[Violation]:
+        """Call OpenAI Moderation API (omni-moderation-latest); return violations if any."""
+        text = content.strip()[:ML_MODERATION_MAX_CHARS]
+        if not text:
+            return []
+        try:
+            from openai import AsyncOpenAI
+
+            client = AsyncOpenAI(api_key=settings.openai_api_key)
+            result = await client.moderations.create(
+                input=text,
+                model=settings.openai_moderation_model,
+            )
+            return _openai_categories_to_violations(result)
+        except Exception as e:
+            self._logger.warning("OpenAI moderation API error: %s", e)
+            raise
 
     async def _run_ml_moderation(self, content: str) -> List[Violation]:
         """Run self-hosted Detoxify model in a thread; return violations if any."""

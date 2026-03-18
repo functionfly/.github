@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { RealtimeEvent } from './types';
+import { API_BASE_URL } from '../lib/constants';
 import axios from 'axios';
 
 // WebSocket connection state
@@ -42,10 +43,14 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
   eventTypeRef.current = eventType;
   onEventRef.current = onEvent;
 
-  // Get WebSocket URL: connect directly to API server
+  // Get WebSocket URL from same base as REST API (VITE_API_URL / API_BASE_URL)
   const getWebSocketUrl = useCallback(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const href = `${protocol}//localhost:8080/v1/monitoring/realtime`;
+    const base =
+      API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')
+        ? API_BASE_URL
+        : `${typeof window !== 'undefined' ? window.location.origin : ''}${API_BASE_URL}`;
+    const wsBase = base.replace(/^http/, 'ws');
+    const href = `${wsBase.replace(/\/$/, '')}/v1/monitoring/realtime`;
 
     const token = localStorage.getItem('ff-access-token');
     const url = new URL(href);

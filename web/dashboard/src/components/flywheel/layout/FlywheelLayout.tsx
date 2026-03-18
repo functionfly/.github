@@ -18,7 +18,7 @@ export function FlywheelLayout({ className }: FlywheelLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className={cn('min-h-screen bg-slate-950', className)}>
+    <div className={cn('flywheel-layout min-h-screen bg-bg-primary', className)}>
       {/* Top Bar */}
       <FlywheelTopBar
         onMenuClick={() => setIsMobileMenuOpen(true)}
@@ -102,10 +102,10 @@ export function FlywheelSection({
         <div className="flex items-center justify-between gap-4">
           <div>
             {title && (
-              <h2 className="text-xl font-semibold text-white">{title}</h2>
+              <h2 className="flywheel-section-title text-xl font-semibold text-text-primary">{title}</h2>
             )}
             {description && (
-              <p className="mt-1 text-sm text-slate-400">{description}</p>
+              <p className="flywheel-section-description mt-1 text-sm text-text-secondary">{description}</p>
             )}
           </div>
           {action && <div>{action}</div>}
@@ -133,15 +133,15 @@ export function FlywheelCard({
   onClick,
 }: FlywheelCardProps) {
   return (
-    <div
-      onClick={onClick}
-      className={cn(
-        'rounded-xl border border-slate-800 bg-slate-900 p-5',
-        hoverable && 'cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-700 hover:shadow-lg',
-        onClick && 'cursor-pointer',
-        className
-      )}
-    >
+        <div
+          onClick={onClick}
+          className={cn(
+        'flywheel-card rounded-xl border border-border-default bg-bg-tertiary p-5',
+            hoverable && 'cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-lg',
+            onClick && 'cursor-pointer',
+            className
+          )}
+        >
       {children}
     </div>
   );

@@ -26,9 +26,12 @@ type ExecutionAdapter struct {
 	logger       *logrus.Logger
 }
 
-// NewExecutionAdapter creates a new execution adapter. executor may be nil only for tests;
-// in production pass a real executor (e.g. from the execution package) so ExecuteFunction runs functions.
+// NewExecutionAdapter creates a new execution adapter. executor must be non-nil; use
+// execution.NewLocalExecutor() (e.g. as in internal/api/routes.go) so ExecuteFunction runs functions.
 func NewExecutionAdapter(registryRepo *registry.RegistryRepository, cacheService *cache.CacheService, executor RegistryFunctionExecutor, logger *logrus.Logger) *ExecutionAdapter {
+	if executor == nil {
+		panic("flywheel: executor is required; use execution.NewLocalExecutor() for production")
+	}
 	return &ExecutionAdapter{
 		registryRepo: registryRepo,
 		cacheService: cacheService,

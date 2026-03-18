@@ -246,20 +246,33 @@ func (r *Repository) RecordFeedback(ctx context.Context, feedback *Recommendatio
 	return r.db.WithContext(ctx).Create(feedback).Error
 }
 
-// GetPopularFunctions gets popular functions (for trending recommendations)
+// GetPopularFunctions gets popular functions (for trending recommendations), ordered by total co-occurrence count.
+// When category is set, only functions in that category with visibility = 'public' are returned.
 func (r *Repository) GetPopularFunctions(ctx context.Context, category *string, limit int) ([]string, error) {
-	var functionIDs []string
-	query := r.db.WithContext(ctx).
-		Model(&FunctionCooccurrence{}).
-		Select("DISTINCT CASE WHEN function_id_a = ? THEN function_id_b ELSE function_id_a END", uuid.Nil).
-		Order("co_occurrence_count DESC")
-
-	if category != nil && *category != "" {
-		query = query.Joins("JOIN registry_functions ON registry_functions.id = CASE WHEN function_co_occurrences.function_id_a = ? THEN function_co_occurrences.function_id_b ELSE function_co_occurrences.function_id_a END", uuid.Nil)
-		// Note: This is a simplified query; in production you'd want more sophisticated filtering
+	if limit <= 0 {
+		limit = 50
 	}
 
-	err := query.Limit(limit).Pluck("function_id", &functionIDs).Error
+	// Unpivot co-occurrences so each function gets its total count, then order by popularity.
+	// Join registry_functions when filtering by category so we only return public functions in that category.
+	baseQuery := `
+		SELECT fn_id::text
+		FROM (
+			SELECT function_id_a AS fn_id, co_occurrence_count AS cnt FROM function_co_occurrences
+			UNION ALL
+			SELECT function_id_b AS fn_id, co_occurrence_count AS cnt FROM function_co_occurrences
+		) t
+	`
+	args := []interface{}{}
+	if category != nil && *category != "" {
+		baseQuery += ` JOIN registry_functions rf ON rf.id = t.fn_id AND rf.category = ? AND rf.visibility = 'public'`
+		args = append(args, *category)
+	}
+	baseQuery += ` GROUP BY fn_id ORDER BY SUM(cnt) DESC LIMIT ?`
+	args = append(args, limit)
+
+	var functionIDs []string
+	err := r.db.WithContext(ctx).Raw(baseQuery, args...).Scan(&functionIDs).Error
 	return functionIDs, err
 }
 

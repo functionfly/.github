@@ -1157,16 +1157,16 @@ func (h *Handler) HandleResolveIncident(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(resolvedIncident)
 }
 
-// getEnvOrDefault gets environment variable or returns default value
+// getEnvOrDefault returns the environment variable value if set, otherwise a default.
 func getEnvOrDefault(key, defaultValue string) string {
-	// This is a simple implementation - in a real app you'd use os.Getenv
-	// For now, we'll use a hardcoded approach since we can't access env vars from this context
-	// In production, this would read from environment variables or configuration
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
 	switch key {
 	case "VITE_GOOGLE_ANALYTICS_ID":
-		return "G-XXXXXXXXXX" // This would come from environment
+		return "G-XXXXXXXXXX"
 	case "VITE_HOTJAR_SITE_ID":
-		return "0000000" // This would come from environment
+		return "0000000"
 	default:
 		return defaultValue
 	}

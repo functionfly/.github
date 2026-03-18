@@ -35,6 +35,7 @@ type RegistryFunction struct {
 	DeterministicScore float64         `json:"deterministic_score" gorm:"default:0"`
 	Capabilities       json.RawMessage `json:"capabilities" gorm:"type:jsonb"`           // Declared capabilities for sandbox enforcement
 	EmbedConfig        json.RawMessage `json:"embed_config,omitempty" gorm:"type:jsonb"` // Per-function embed configuration
+	Settings           json.RawMessage `json:"settings,omitempty" gorm:"type:jsonb"`     // Per-function settings (custom_domains, etc.)
 	TenantID           *uuid.UUID      `json:"tenant_id,omitempty" gorm:"type:uuid"`
 	OwnerUserID        *uuid.UUID      `json:"owner_user_id,omitempty" gorm:"type:uuid"`
 	CreatedAt          time.Time       `json:"created_at" gorm:"autoCreateTime"`

@@ -462,13 +462,13 @@ func generateClientID() string {
 	return "client_" + time.Now().Format("20060102150405") + "_" + strconv.Itoa(int(time.Now().UnixNano()%10000))
 }
 
-// HandleWebSocketStatus is the HTTP handler for status WebSocket connections
+// HandleWebSocketStatus is the HTTP handler for status WebSocket connections.
+// When h.statusHub is set (e.g. by routes), that shared hub is used; otherwise a temporary hub is created per request.
 func (h *Handler) HandleWebSocketStatus(w http.ResponseWriter, r *http.Request) {
-	// This method creates a temporary hub if needed, or uses an existing one
-	// In production, the hub should be created once and shared
-	hub := NewStatusWebSocketHub(h, logrus.New())
-	go hub.Run()
-
-	// Use the WebSocket handler
+	hub := h.statusHub
+	if hub == nil {
+		hub = NewStatusWebSocketHub(h, logrus.New())
+		go hub.Run()
+	}
 	h.HandleWebSocket(hub)(w, r)
 }

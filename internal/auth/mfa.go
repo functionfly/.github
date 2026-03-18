@@ -84,7 +84,7 @@ func (m *MFAService) SetupMFA(req MFASetupRequest) (*MFASetupResponse, error) {
 		backupCodes[i] = code
 	}
 
-	// Hash backup codes for storage (in production, use proper hashing)
+	// Hash backup codes with bcrypt before storage
 	hashedBackupCodes := make([]string, len(backupCodes))
 	for i, code := range backupCodes {
 		hashedBackupCodes[i] = hashBackupCode(code)

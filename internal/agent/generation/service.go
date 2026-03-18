@@ -1,6 +1,7 @@
 package generation
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -14,17 +15,25 @@ import (
 	"gorm.io/gorm"
 )
 
-// CodeGenerator generates function source code from a request (e.g. via LLM).
-// If not set, Service uses a template stub. In production, inject an implementation
-// that calls your LLM (OpenAI, Anthropic, etc.).
+// CodeGenerator generates function source code from a request.
+// Optional: when nil, Service uses a template stub. For production, inject an
+// implementation (e.g. LLM via OpenAI, Anthropic) via NewServiceWithGenerator.
 type CodeGenerator interface {
 	GenerateCode(ctx context.Context, req *GenerationRequest) (string, error)
+}
+
+// DeterminismExecutor runs a function with given input and returns the output.
+// Used by VerifyFunctionDeterminism to run the function multiple times and compare outputs.
+// Optional: when nil, only cert/hash is verified. Inject via SetDeterminismExecutor (e.g. registry/sandbox).
+type DeterminismExecutor interface {
+	Execute(ctx context.Context, functionID uuid.UUID, input []byte) (output []byte, err error)
 }
 
 // Service handles AI-powered function generation
 type Service struct {
 	db      *gorm.DB
-	codeGen CodeGenerator // optional; nil means use template stub
+	codeGen CodeGenerator       // optional; nil means use template stub
+	detExec DeterminismExecutor // optional; nil means only cert/hash in VerifyFunctionDeterminism
 }
 
 // NewService creates a new function generation service (template stub only).
@@ -36,6 +45,13 @@ func NewService(db *gorm.DB) *Service {
 // Use this to plug in an LLM-backed implementation.
 func NewServiceWithGenerator(db *gorm.DB, codeGen CodeGenerator) *Service {
 	return &Service{db: db, codeGen: codeGen}
+}
+
+// SetDeterminismExecutor sets the executor used for runtime determinism checks.
+// When set and testInputs are provided, VerifyFunctionDeterminism runs the function
+// with each input multiple times and verifies outputs are identical.
+func (s *Service) SetDeterminismExecutor(exec DeterminismExecutor) {
+	s.detExec = exec
 }
 
 // GenerationRequest represents a request to generate a function
@@ -155,7 +171,7 @@ func (s *Service) generateCode(ctx context.Context, req *GenerationRequest) (str
 	if s.codeGen != nil {
 		return s.codeGen.GenerateCode(ctx, req)
 	}
-	// Default: template stub with basic implementation (in production, use NewServiceWithGenerator with an LLM-backed implementation)
+	// No CodeGenerator set: use template stub. For production, construct with NewServiceWithGenerator(db, llmGenerator).
 	return s.generateDefaultCode(req), nil
 }
 
@@ -356,15 +372,14 @@ func (s *Service) GetGeneratedFunctions(ctx context.Context, agentID string) ([]
 	return functions, err
 }
 
-// VerifyFunctionDeterminism verifies if a function maintains deterministic behavior
+// VerifyFunctionDeterminism verifies if a function maintains deterministic behavior.
+// When s.detExec is set and testInputs are provided, runs the function with each input
+// multiple times and verifies outputs are identical; otherwise only cert and hash are checked.
 func (s *Service) VerifyFunctionDeterminism(ctx context.Context, functionID uuid.UUID, testInputs []map[string]any) (bool, string, error) {
 	var function identity.Function
 	if err := s.db.WithContext(ctx).Where("id = ?", functionID.String()).First(&function).Error; err != nil {
 		return false, "", err
 	}
-
-	// In production, this would actually run the function with test inputs
-	// and verify the outputs are identical
 
 	if function.DeterministicCertHash == nil {
 		return false, "Function not certified as deterministic", nil
@@ -376,7 +391,46 @@ func (s *Service) VerifyFunctionDeterminism(ctx context.Context, functionID uuid
 		return false, "Function has been modified since certification", nil
 	}
 
+	// Runtime check: run with each test input multiple times and compare outputs
+	if s.detExec != nil && len(testInputs) > 0 {
+		const numRuns = 2
+		for i, inp := range testInputs {
+			inputJSON, err := json.Marshal(inp)
+			if err != nil {
+				return false, fmt.Sprintf("test input %d: invalid JSON", i), nil
+			}
+			var first []byte
+			for run := 0; run < numRuns; run++ {
+				out, err := s.detExec.Execute(ctx, functionID, inputJSON)
+				if err != nil {
+					return false, fmt.Sprintf("test input %d run %d: %v", i, run+1, err), nil
+				}
+				normalized := normalizeJSON(out)
+				if run == 0 {
+					first = normalized
+					continue
+				}
+				if !bytes.Equal(first, normalized) {
+					return false, fmt.Sprintf("test input %d: outputs differed across runs (non-deterministic)", i), nil
+				}
+			}
+		}
+	}
+
 	return true, "Function is deterministic", nil
+}
+
+// normalizeJSON canonicalizes JSON for comparison (key order, spacing).
+func normalizeJSON(b []byte) []byte {
+	if len(b) == 0 {
+		return b
+	}
+	var v any
+	if err := json.Unmarshal(b, &v); err != nil {
+		return b
+	}
+	out, _ := json.Marshal(v)
+	return out
 }
 
 // PublishToMarketplace publishes a generated function to the marketplace

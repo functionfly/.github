@@ -198,9 +198,12 @@ func NewFlyDeploymentAdapter() *FlyAdapter {
 	return NewFlyAdapter()
 }
 
-// Deploy implements the DeploymentAdapter interface
+// Deploy implements the DeploymentAdapter interface. Fly.io requires a pre-pushed image: build and push
+// via flyctl or CI, or set provider_config.image to a full image reference. If not set, image defaults
+// to registry.fly.io/<app_name>:<version> (version defaults to "latest"). org_slug is required when
+// creating a new app (e.g. provider_config.org_slug = "personal").
 func (a *FlyAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
-	var apiToken, appName, orgSlug string
+	var apiToken, appName, orgSlug, imageRef string
 	if spec.ProviderConfig != nil {
 		if token, ok := spec.ProviderConfig["api_token"].(string); ok {
 			apiToken = token
@@ -210,6 +213,9 @@ func (a *FlyAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (*
 		}
 		if org, ok := spec.ProviderConfig["org_slug"].(string); ok {
 			orgSlug = org
+		}
+		if img, ok := spec.ProviderConfig["image"].(string); ok && img != "" {
+			imageRef = img
 		}
 	}
 	if appName == "" && spec.AppName != "" {
@@ -227,7 +233,15 @@ func (a *FlyAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (*
 		}, nil
 	}
 
-	result, err := client.Deploy(ctx, spec.Artifact, appName, spec.Version)
+	if imageRef == "" {
+		version := spec.Version
+		if version == "" {
+			version = "latest"
+		}
+		imageRef = fmt.Sprintf("registry.fly.io/%s:%s", appName, version)
+	}
+
+	result, err := client.Deploy(ctx, appName, imageRef)
 	if err != nil {
 		return &common.DeploymentResult{
 			Status:  common.DeploymentStatusFailed,
@@ -381,12 +395,12 @@ func (a *FlyAdapter) SetSecrets(ctx context.Context, providerConfig map[string]i
 
 	return &common.DeploymentResult{
 		DeploymentID: appName,
-		Status:        common.DeploymentStatusSuccess,
-		Message:       fmt.Sprintf("Successfully set %d secrets for app %s", len(secrets), appName),
+		Status:       common.DeploymentStatusSuccess,
+		Message:      fmt.Sprintf("Successfully set %d secrets for app %s", len(secrets), appName),
 		Metadata: map[string]interface{}{
 			"app_name":      appName,
 			"secrets_count": len(secrets),
-			"updated_at":   time.Now().Format(time.RFC3339),
+			"updated_at":    time.Now().Format(time.RFC3339),
 		},
 	}, nil
 }
@@ -419,8 +433,8 @@ func (a *FlyAdapter) UnsetSecret(ctx context.Context, providerConfig map[string]
 
 	return &common.DeploymentResult{
 		DeploymentID: appName,
-		Status:        common.DeploymentStatusSuccess,
-		Message:       fmt.Sprintf("Successfully unset secret %s for app %s", secretName, appName),
+		Status:       common.DeploymentStatusSuccess,
+		Message:      fmt.Sprintf("Successfully unset secret %s for app %s", secretName, appName),
 		Metadata: map[string]interface{}{
 			"app_name":    appName,
 			"secret_name": secretName,
@@ -458,8 +472,8 @@ func (a *FlyAdapter) ListSecrets(ctx context.Context, providerConfig map[string]
 
 	return &common.DeploymentResult{
 		DeploymentID: appName,
-		Status:        common.DeploymentStatusSuccess,
-		Message:       fmt.Sprintf("Found %d secrets for app %s", len(secrets), appName),
+		Status:       common.DeploymentStatusSuccess,
+		Message:      fmt.Sprintf("Found %d secrets for app %s", len(secrets), appName),
 		Metadata: map[string]interface{}{
 			"app_name":      appName,
 			"secrets":       secrets,

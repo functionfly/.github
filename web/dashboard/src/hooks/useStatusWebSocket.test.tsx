@@ -1,9 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach, jest } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactNode } from 'react';
-import { useStatusWebSocket, useRealtimeStatus } from './useStatusWebSocket';
-import * as statusApi from '@/api/status';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useRealtimeStatus, useStatusWebSocket } from './useStatusWebSocket';
 
 // Mock the toast notifications
 vi.mock('sonner', () => ({
@@ -27,12 +25,8 @@ const createWrapper = () => {
     },
   });
 
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+  return function Wrapper({ children }: { children: any }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 };
 
@@ -158,14 +152,11 @@ describe('useStatusWebSocket', () => {
     const onStatusUpdate = vi.fn();
     const queryClient = new QueryClient();
 
-    const wrapper = ({ children }: { children: ReactNode }) => (
+    const wrapper = ({ children }: { children: any }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
 
-    renderHook(
-      () => useStatusWebSocket({ enabled: true, onStatusUpdate }),
-      { wrapper }
-    );
+    renderHook(() => useStatusWebSocket({ enabled: true, onStatusUpdate }), { wrapper });
 
     // Connect
     act(() => {

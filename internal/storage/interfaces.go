@@ -40,8 +40,9 @@ type Repository interface {
 	VerifyPassword(userID uuid.UUID, password string) (bool, error)
 
 	// OAuth state (CSRF) — persisted for multi-instance OAuth flows
-	StoreOAuthState(ctx context.Context, state string, expiresAt time.Time) error
-	ValidateAndConsumeOAuthState(ctx context.Context, state string) (bool, error)
+	// redirectURI is optional; when set, callback redirects there with token (e.g. CLI local server).
+	StoreOAuthState(ctx context.Context, state string, expiresAt time.Time, redirectURI string) error
+	ValidateAndConsumeOAuthState(ctx context.Context, state string) (valid bool, redirectURI string, err error)
 	DeleteExpiredOAuthStates() (int64, error)
 
 	// Tenant operations

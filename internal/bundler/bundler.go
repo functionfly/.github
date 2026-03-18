@@ -8,6 +8,13 @@ import (
 // It handles different runtime types and delegates to appropriate bundlers.
 // Dependencies are automatically installed if specified in the manifest.
 func Bundle(manifest *manifest.Manifest) ([]byte, error) {
+	return BundleWithOptions(manifest, nil)
+}
+
+// BundleWithOptions creates a bundled version of the function code with custom options.
+// It handles different runtime types and delegates to appropriate bundlers.
+// Dependencies are automatically installed if specified in the manifest.
+func BundleWithOptions(manifest *manifest.Manifest, options *BundleOptions) ([]byte, error) {
 	if manifest == nil {
 		return nil, NewBundlerError("bundle", "manifest cannot be nil")
 	}
@@ -18,14 +25,14 @@ func Bundle(manifest *manifest.Manifest) ([]byte, error) {
 	}
 
 	switch manifest.Runtime {
-	case "node18", "node20", "deno":
-		return bundleJavaScript(manifest)
+	case "node18", "node20", "deno", "bun":
+		return bundleJavaScript(manifest, options)
 	case "python3.11":
 		return bundlePython(manifest)
 	default:
 		return nil, &RuntimeNotSupportedError{
 			Runtime:   manifest.Runtime,
-			Supported: []string{"node18", "node20", "deno", "python3.11"},
+			Supported: []string{"node18", "node20", "deno", "bun", "python3.11"},
 		}
 	}
 }
@@ -34,6 +41,13 @@ func Bundle(manifest *manifest.Manifest) ([]byte, error) {
 // with explicit working directory support for consistent path resolution.
 // Dependencies are automatically installed if specified in the manifest.
 func BundleWithWorkingDirectory(manifest *manifest.Manifest, workingDir string) ([]byte, error) {
+	return BundleWithOptionsAndWorkingDirectory(manifest, nil, workingDir)
+}
+
+// BundleWithOptionsAndWorkingDirectory creates a bundled version of the function code
+// with explicit working directory support and custom options.
+// Dependencies are automatically installed if specified in the manifest.
+func BundleWithOptionsAndWorkingDirectory(manifest *manifest.Manifest, options *BundleOptions, workingDir string) ([]byte, error) {
 	if manifest == nil {
 		return nil, NewBundlerError("bundle", "manifest cannot be nil")
 	}
@@ -48,7 +62,7 @@ func BundleWithWorkingDirectory(manifest *manifest.Manifest, workingDir string) 
 	var result []byte
 	err = WithWorkingDirectory(resolvedDir, func() error {
 		var bundleErr error
-		result, bundleErr = Bundle(manifest)
+		result, bundleErr = BundleWithOptions(manifest, options)
 		return bundleErr
 	})
 

@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { supabase, getUsersByIds, getUserLastActive } from '../lib/neon';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { supabase } from '../lib/neon';
 import { useAuthStore } from '../stores/authStore';
 import { useRealtimeSubscription } from './useRealtimeSubscription';
 
@@ -25,22 +25,18 @@ export function useRealtime() {
   }, []);
 
   // Set up real-time subscription for all channels
-  useRealtimeSubscription<RealtimeEvent>(
-    'deployments',
-    'deployment_update',
-    (event) => {
-      const channelSubs = subscriptionsRef.current.get('deployments');
-      if (channelSubs) {
-        channelSubs.forEach(callback => {
-          try {
-            callback(event);
-          } catch (error) {
-            console.error('Error in deployment subscription callback:', error);
-          }
-        });
-      }
+  useRealtimeSubscription<RealtimeEvent>('deployments', 'deployment_update', (event) => {
+    const channelSubs = subscriptionsRef.current.get('deployments');
+    if (channelSubs) {
+      channelSubs.forEach((callback) => {
+        try {
+          callback(event);
+        } catch (error) {
+          console.error('Error in deployment subscription callback:', error);
+        }
+      });
     }
-  );
+  });
 
   return {
     subscribe,
@@ -80,6 +76,8 @@ export interface NewNotificationEvent extends RealtimeEvent {
   notification_id: string;
   notification_type: 'info' | 'warning' | 'error' | 'success';
   title: string;
+  message?: string;
+  read_at?: string;
 }
 
 export interface PresenceEvent extends RealtimeEvent {
@@ -100,33 +98,34 @@ export function useUserNotifications() {
     `user_${user?.id}_notifications`,
     'new_notification',
     (event) => {
-      setNotifications(prev => [event, ...prev]);
-      setUnreadCount(prev => prev + 1);
+      setNotifications((prev) => [event, ...prev]);
+      setUnreadCount((prev) => prev + 1);
     }
   );
 
-  const markAsRead = useCallback(async (notificationId: string) => {
-    try {
-      const { error } = await supabase
-        .from('user_notifications')
-        .update({ read_at: new Date().toISOString() })
-        .eq('id', notificationId)
-        .eq('user_id', user?.id);
+  const markAsRead = useCallback(
+    async (notificationId: string) => {
+      try {
+        const { error } = await supabase
+          .from('user_notifications')
+          .update({ read_at: new Date().toISOString() })
+          .eq('id', notificationId)
+          .eq('user_id', user?.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setNotifications(prev =>
-        prev.map(n =>
-          n.notification_id === notificationId
-            ? { ...n, read_at: new Date().toISOString() }
-            : n
-        )
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  }, [user?.id]);
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.notification_id === notificationId ? { ...n, read_at: new Date().toISOString() } : n
+          )
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
+    },
+    [user?.id]
+  );
 
   const markAllAsRead = useCallback(async () => {
     try {
@@ -138,9 +137,7 @@ export function useUserNotifications() {
 
       if (error) throw error;
 
-      setNotifications(prev =>
-        prev.map(n => ({ ...n, read_at: new Date().toISOString() }))
-      );
+      setNotifications((prev) => prev.map((n) => ({ ...n, read_at: new Date().toISOString() })));
       setUnreadCount(0);
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
@@ -165,7 +162,7 @@ export function useProfileUpdates() {
     `user_${user?.id}_profile`,
     'profile_update',
     (event) => {
-      setProfileUpdates(prev => [event, ...prev]);
+      setProfileUpdates((prev) => [event, ...prev]);
     }
   );
 
@@ -184,7 +181,7 @@ export function useTenantUserStatus() {
     `tenant_${user?.tenantId}_users`,
     'user_status_change',
     (event) => {
-      setStatusChanges(prev => [event, ...prev]);
+      setStatusChanges((prev) => [event, ...prev]);
     }
   );
 
@@ -244,7 +241,7 @@ export function useDatabaseChanges(table: string, filter?: string) {
         ids: event.ids || [],
       };
 
-      setChanges(prev => [payload, ...prev.slice(0, 99)]); // Keep last 100 changes
+      setChanges((prev) => [payload, ...prev.slice(0, 99)]); // Keep last 100 changes
     }
   );
 
@@ -264,32 +261,20 @@ export function useActivityFeed() {
   const [activities, setActivities] = useState<RealtimeEvent[]>([]);
 
   // Combine multiple real-time sources
-  useRealtimeSubscription(
-    `user_${user?.id}_notifications`,
-    'new_notification',
-    (event) => {
-      setActivities(prev => [event, ...prev]);
-    }
-  );
+  useRealtimeSubscription(`user_${user?.id}_notifications`, 'new_notification', (event) => {
+    setActivities((prev) => [event, ...prev]);
+  });
 
-  useRealtimeSubscription(
-    `user_${user?.id}_profile`,
-    'profile_update',
-    (event) => {
-      setActivities(prev => [event, ...prev]);
-    }
-  );
+  useRealtimeSubscription(`user_${user?.id}_profile`, 'profile_update', (event) => {
+    setActivities((prev) => [event, ...prev]);
+  });
 
-  useRealtimeSubscription(
-    `tenant_${user?.tenantId}_users`,
-    'user_status_change',
-    (event) => {
-      setActivities(prev => [event, ...prev]);
-    }
-  );
+  useRealtimeSubscription(`tenant_${user?.tenantId}_users`, 'user_status_change', (event) => {
+    setActivities((prev) => [event, ...prev]);
+  });
 
-  return activities.sort((a, b) =>
-    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  return activities.sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 }
 
@@ -388,7 +373,10 @@ export function useDatabaseHealth() {
 
         // Transform API response to match our interface
         const transformedHealth: DatabaseHealth = {
-          status: (data.status === 'healthy' || data.status === 'degraded' || data.status === 'unhealthy') ? data.status : 'healthy',
+          status:
+            data.status === 'healthy' || data.status === 'degraded' || data.status === 'unhealthy'
+              ? data.status
+              : 'healthy',
           connections: {
             active: data.connections?.active || 0,
             idle: data.connections?.idle || 0,
@@ -407,7 +395,12 @@ export function useDatabaseHealth() {
           },
           replication: {
             lag: data.replication?.lag || 0,
-            status: (data.replication?.status === 'healthy' || data.replication?.status === 'lagging' || data.replication?.status === 'error') ? data.replication.status : 'healthy',
+            status:
+              data.replication?.status === 'healthy' ||
+              data.replication?.status === 'lagging' ||
+              data.replication?.status === 'error'
+                ? data.replication.status
+                : 'healthy',
           },
           lastUpdated: data.lastUpdated || new Date().toISOString(),
         };
@@ -424,23 +417,23 @@ export function useDatabaseHealth() {
             active: 0,
             idle: 0,
             total: 0,
-            max: 100
+            max: 100,
           },
           performance: {
             avgQueryTime: 0,
             slowQueries: 0,
-            throughput: 0
+            throughput: 0,
           },
           storage: {
             used: 0,
             total: 0,
-            growthRate: 0
+            growthRate: 0,
           },
           replication: {
             lag: 0,
-            status: 'healthy'
+            status: 'healthy',
           },
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
         };
         setHealth(mockHealth);
       } finally {
@@ -475,25 +468,19 @@ export function useDatabaseAlerts() {
     'db_alert_created',
     (event) => {
       if (event.type === 'db_alert_created' && event.data) {
-        setAlerts(prev => [event.data, ...prev.slice(0, 9)]); // Keep last 10 alerts
+        setAlerts((prev) => [event.data, ...prev.slice(0, 9)]); // Keep last 10 alerts
       }
     }
   );
 
   // Subscribe to alert resolutions
-  useRealtimeSubscription(
-    'database_alerts',
-    'db_alert_resolved',
-    (event) => {
-      if (event.type === 'db_alert_resolved' && event.data) {
-        setAlerts(prev => prev.map(alert =>
-          alert.id === event.data.id
-            ? { ...alert, resolved: true }
-            : alert
-        ));
-      }
+  useRealtimeSubscription('database_alerts', 'db_alert_resolved', (event) => {
+    if (event.type === 'db_alert_resolved' && event.data) {
+      setAlerts((prev) =>
+        prev.map((alert) => (alert.id === event.data.id ? { ...alert, resolved: true } : alert))
+      );
     }
-  );
+  });
 
   useEffect(() => {
     const fetchDatabaseAlerts = async () => {
@@ -664,7 +651,7 @@ export function useDeploymentUpdates(appId?: string) {
         return;
       }
 
-      setDeployments(prev => [event, ...prev.slice(0, 49)]); // Keep last 50 events
+      setDeployments((prev) => [event, ...prev.slice(0, 49)]); // Keep last 50 events
     }
   );
 
@@ -688,7 +675,7 @@ export function useFunctionExecutionUpdates(functionId?: string) {
         return;
       }
 
-      setExecutions(prev => [event, ...prev.slice(0, 99)]); // Keep last 100 events
+      setExecutions((prev) => [event, ...prev.slice(0, 99)]); // Keep last 100 events
     }
   );
 
@@ -707,7 +694,7 @@ export function useTeamUpdates(teamId?: string) {
     teamId ? `team_${teamId}` : `tenant_${user?.tenantId}_team`,
     'team_update',
     (event) => {
-      setTeamEvents(prev => [event, ...prev.slice(0, 49)]); // Keep last 50 events
+      setTeamEvents((prev) => [event, ...prev.slice(0, 49)]); // Keep last 50 events
     }
   );
 
@@ -725,7 +712,7 @@ export function useRegistryUpdates() {
     'registry_updates',
     'registry_update',
     (event) => {
-      setRegistryEvents(prev => [event, ...prev.slice(0, 49)]); // Keep last 50 events
+      setRegistryEvents((prev) => [event, ...prev.slice(0, 49)]); // Keep last 50 events
     }
   );
 
@@ -741,62 +728,34 @@ export function useEnhancedActivityFeed() {
   const [activities, setActivities] = useState<any[]>([]);
 
   // Existing subscriptions
-  useRealtimeSubscription(
-    `user_${user?.id}_notifications`,
-    'new_notification',
-    (event) => {
-      setActivities(prev => [{ ...event, category: 'notification' }, ...prev]);
-    }
-  );
+  useRealtimeSubscription(`user_${user?.id}_notifications`, 'new_notification', (event) => {
+    setActivities((prev) => [{ ...event, category: 'notification' }, ...prev]);
+  });
 
-  useRealtimeSubscription(
-    `user_${user?.id}_profile`,
-    'profile_update',
-    (event) => {
-      setActivities(prev => [{ ...event, category: 'profile' }, ...prev]);
-    }
-  );
+  useRealtimeSubscription(`user_${user?.id}_profile`, 'profile_update', (event) => {
+    setActivities((prev) => [{ ...event, category: 'profile' }, ...prev]);
+  });
 
-  useRealtimeSubscription(
-    `tenant_${user?.tenantId}_users`,
-    'user_status_change',
-    (event) => {
-      setActivities(prev => [{ ...event, category: 'user' }, ...prev]);
-    }
-  );
+  useRealtimeSubscription(`tenant_${user?.tenantId}_users`, 'user_status_change', (event) => {
+    setActivities((prev) => [{ ...event, category: 'user' }, ...prev]);
+  });
 
   // New real-time subscriptions
-  useRealtimeSubscription(
-    'deployments',
-    'deployment_update',
-    (event) => {
-      setActivities(prev => [{ ...event, category: 'deployment' }, ...prev]);
-    }
-  );
+  useRealtimeSubscription('deployments', 'deployment_update', (event) => {
+    setActivities((prev) => [{ ...event, category: 'deployment' }, ...prev]);
+  });
 
-  useRealtimeSubscription(
-    'function_executions',
-    'function_execution',
-    (event) => {
-      setActivities(prev => [{ ...event, category: 'function' }, ...prev]);
-    }
-  );
+  useRealtimeSubscription('function_executions', 'function_execution', (event) => {
+    setActivities((prev) => [{ ...event, category: 'function' }, ...prev]);
+  });
 
-  useRealtimeSubscription(
-    `tenant_${user?.tenantId}_team`,
-    'team_update',
-    (event) => {
-      setActivities(prev => [{ ...event, category: 'team' }, ...prev]);
-    }
-  );
+  useRealtimeSubscription(`tenant_${user?.tenantId}_team`, 'team_update', (event) => {
+    setActivities((prev) => [{ ...event, category: 'team' }, ...prev]);
+  });
 
-  useRealtimeSubscription(
-    'registry_updates',
-    'registry_update',
-    (event) => {
-      setActivities(prev => [{ ...event, category: 'registry' }, ...prev]);
-    }
-  );
+  useRealtimeSubscription('registry_updates', 'registry_update', (event) => {
+    setActivities((prev) => [{ ...event, category: 'registry' }, ...prev]);
+  });
 
   return activities
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())

@@ -1,0 +1,46 @@
+# Paperclip control-plane (authenticated + private).
+# Uses a dedicated Postgres container so we avoid embedded Postgres permission issues in Docker.
+# From repo root: docker compose -f deploy/paperclip/docker-compose.yml --env-file deploy/paperclip/.env up --build -d
+# See deploy/paperclip/README.md.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: paperclip
+      POSTGRES_PASSWORD: "${PAPERCLIP_DB_PASSWORD:-paperclip}"
+      POSTGRES_DB: paperclip
+    volumes:
+      - paperclip_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperclip -d paperclip"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 90s
+
+  paperclip:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PAPERCLIP_PORT:-3100}:3100"
+    environment:
+      HOST: "0.0.0.0"
+      PAPERCLIP_HOME: "/paperclip"
+      # Use Postgres container so embedded Postgres is not used (avoids permission issues in Docker)
+      DATABASE_URL: "postgresql://paperclip:${PAPERCLIP_DB_PASSWORD:-paperclip}@postgres:5432/paperclip"
+      PAPERCLIP_DEPLOYMENT_MODE: "${PAPERCLIP_DEPLOYMENT_MODE:-authenticated}"
+      PAPERCLIP_DEPLOYMENT_EXPOSURE: "${PAPERCLIP_DEPLOYMENT_EXPOSURE:-private}"
+      PAPERCLIP_PUBLIC_URL: "${PAPERCLIP_PUBLIC_URL:-http://localhost:3100}"
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+    volumes:
+      - "${PAPERCLIP_DATA_DIR:-./data/docker-paperclip}:/paperclip"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  paperclip_pgdata:

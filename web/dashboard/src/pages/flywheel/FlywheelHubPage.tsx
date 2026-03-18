@@ -40,19 +40,19 @@ function HeroSection() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-pink-600 px-6 py-12 sm:px-12 sm:py-16">
+    <section className="flywheel-hero relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-pink-600 px-6 py-12 sm:px-12 sm:py-16">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[length:24px_24px]" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-3xl text-center">
-        <h1 className="text-3xl font-bold text-white sm:text-4xl lg:text-5xl">
+        <h1 className="flywheel-hero-title text-3xl font-bold text-white sm:text-4xl lg:text-5xl">
           Proof-of-Execution
           <br />
           Knowledge Network
         </h1>
-        <p className="mt-4 text-lg text-indigo-100">
+        <p className="flywheel-hero-subtitle mt-4 text-lg text-indigo-100">
           Solve problems. Build reputation. Earn rewards.
         </p>
 
@@ -79,19 +79,19 @@ function HeroSection() {
         {/* Stats */}
         <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
-            <AnimatedCounter value={1234} />
+            <span className="flywheel-hero-stat"><AnimatedCounter value={1234} /></span>
             <p className="text-sm text-indigo-200">Active Threads</p>
           </div>
           <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
-            <AnimatedCounter value={567} />
+            <span className="flywheel-hero-stat"><AnimatedCounter value={567} /></span>
             <p className="text-sm text-indigo-200">Verified Solutions</p>
           </div>
           <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
-            <AnimatedCounter value={12} />
+            <span className="flywheel-hero-stat"><AnimatedCounter value={12} /></span>
             <p className="text-sm text-indigo-200">Active Challenges</p>
           </div>
           <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
-            <AnimatedCounter value={89000} suffix="+" />
+            <span className="flywheel-hero-stat"><AnimatedCounter value={89000} suffix="+" /></span>
             <p className="text-sm text-indigo-200">Reputation Points</p>
           </div>
         </div>
@@ -117,15 +117,15 @@ function CategoryCard({
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col items-center rounded-xl border border-slate-800 bg-slate-900 p-5 transition-all hover:border-slate-700 hover:bg-slate-800"
+      className="flywheel-category-card group flex flex-col items-center rounded-xl border border-border-default bg-bg-tertiary p-5 transition-all hover:border-border-strong hover:bg-bg-hover"
     >
       <div className={cn('rounded-lg p-3', color)}>
         <Icon className="h-6 w-6 text-white" />
       </div>
-      <h3 className="mt-3 font-medium text-white group-hover:text-indigo-400">
+      <h3 className="flywheel-category-title mt-3 font-medium text-text-primary group-hover:text-indigo-400">
         {name}
       </h3>
-      <p className="text-sm text-slate-500">{count} threads</p>
+      <p className="flywheel-category-count text-sm text-text-muted">{count} threads</p>
     </button>
   );
 }
@@ -179,7 +179,7 @@ export default function FlywheelHubPage() {
             <Button
               variant="ghost"
               onClick={() => navigate('/flywheel/challenges')}
-              className="text-indigo-400 hover:text-indigo-300"
+              className="flywheel-section-action text-indigo-400 hover:text-indigo-300"
             >
               View All
               <ArrowRight className="ml-2 h-4 w-4" />
@@ -189,7 +189,7 @@ export default function FlywheelHubPage() {
           {challengesLoading ? (
             <div className="grid gap-4 md:grid-cols-2">
               {[1, 2].map((i) => (
-                <div key={i} className="h-64 animate-pulse rounded-xl bg-slate-900" />
+                <div key={i} className="flywheel-skeleton h-64 animate-pulse rounded-xl bg-bg-tertiary" />
               ))}
             </div>
           ) : challengesData?.challenges.length ? (
@@ -200,8 +200,8 @@ export default function FlywheelHubPage() {
             </div>
           ) : (
             <FlywheelCard className="text-center py-8">
-              <Trophy className="mx-auto h-12 w-12 text-slate-600" />
-              <p className="mt-2 text-slate-500">No active challenges right now</p>
+              <Trophy className="flywheel-empty-icon mx-auto h-12 w-12 text-text-muted" />
+              <p className="flywheel-empty-text mt-2 text-text-secondary">No active challenges right now</p>
             </FlywheelCard>
           )}
         </FlywheelSection>
@@ -233,7 +233,7 @@ export default function FlywheelHubPage() {
                 <Button
                   variant="ghost"
                   onClick={() => navigate('/flywheel/threads')}
-                  className="text-indigo-400 hover:text-indigo-300"
+                  className="flywheel-section-action text-indigo-400 hover:text-indigo-300"
                 >
                   View All
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -253,8 +253,8 @@ export default function FlywheelHubPage() {
                   ))
                 ) : (
                   <FlywheelCard className="text-center py-8">
-                    <MessageSquare className="mx-auto h-12 w-12 text-slate-600" />
-                    <p className="mt-2 text-slate-500">No threads yet</p>
+                    <MessageSquare className="flywheel-empty-icon mx-auto h-12 w-12 text-text-muted" />
+                    <p className="flywheel-empty-text mt-2 text-text-secondary">No threads yet</p>
                   </FlywheelCard>
                 )}
               </div>
@@ -271,14 +271,14 @@ export default function FlywheelHubPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate('/flywheel/leaderboards')}
-                  className="text-indigo-400 hover:text-indigo-300"
+                  className="flywheel-section-action text-indigo-400 hover:text-indigo-300"
                 >
                   Full Rankings
                 </Button>
               }
             >
               {leaderboardLoading ? (
-                <div className="h-48 animate-pulse rounded-xl bg-slate-900" />
+                <div className="flywheel-skeleton h-48 animate-pulse rounded-xl bg-bg-tertiary" />
               ) : leaderboardData?.leaders.length ? (
                 <LeaderboardTable
                   entries={leaderboardData.leaders.slice(0, 5)}
@@ -295,8 +295,8 @@ export default function FlywheelHubPage() {
                     <BookOpen className="h-4 w-4 text-indigo-400" />
                   </div>
                   <div>
-                    <p className="font-medium text-white">Read the Guide</p>
-                    <p className="text-sm text-slate-500">
+                    <p className="flywheel-getting-title font-medium text-text-primary">Read the Guide</p>
+                    <p className="flywheel-getting-desc text-sm text-text-secondary">
                       Learn how to earn reputation and participate in challenges
                     </p>
                   </div>
@@ -306,8 +306,8 @@ export default function FlywheelHubPage() {
                     <Users className="h-4 w-4 text-emerald-400" />
                   </div>
                   <div>
-                    <p className="font-medium text-white">Join the Community</p>
-                    <p className="text-sm text-slate-500">
+                    <p className="flywheel-getting-title font-medium text-text-primary">Join the Community</p>
+                    <p className="flywheel-getting-desc text-sm text-text-secondary">
                       Connect with other builders and mentors
                     </p>
                   </div>
