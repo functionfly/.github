@@ -2,10 +2,11 @@
  * Admin Header Component
  */
 
-import { Link } from 'react-router-dom';
-import { LogOut, Bell, User } from 'lucide-react';
-import type { AdminUser } from '@/types';
+import { DarkModeToggle } from '@/components/common/DarkModeToggle';
 import { ROUTES } from '@/lib/constants';
+import type { AdminUser } from '@/types';
+import { Bell, LogOut, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface AdminHeaderProps {
   user: AdminUser | null;
@@ -25,7 +26,12 @@ function displayRole(role: string): string {
   return role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function AdminHeader({ user, onMenuClick, onLogout, showMenuButton = true }: AdminHeaderProps) {
+export function AdminHeader({
+  user,
+  onMenuClick,
+  onLogout,
+  showMenuButton = true,
+}: AdminHeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm shrink-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3 flex items-center justify-between">
@@ -37,7 +43,12 @@ export function AdminHeader({ user, onMenuClick, onLogout, showMenuButton = true
               aria-label="Toggle menu"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             </button>
           )}
@@ -61,6 +72,9 @@ export function AdminHeader({ user, onMenuClick, onLogout, showMenuButton = true
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
               </button>
 
+              {/* Dark Mode Toggle */}
+              <DarkModeToggle />
+
               {/* User block: pill-style container */}
               <div className="flex items-center gap-3 pl-3 pr-2 py-1.5 rounded-xl border border-gray-200 bg-linear-to-r from-gray-50 to-slate-50/80 shadow-sm min-w-0">
                 <Link
@@ -69,7 +83,9 @@ export function AdminHeader({ user, onMenuClick, onLogout, showMenuButton = true
                   title="View profile"
                 >
                   <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm shrink-0 ring-2 ring-white ring-offset-2 ring-offset-gray-50">
-                    {user.name?.trim() ? user.name.charAt(0).toUpperCase() : (user.email?.charAt(0) || 'A').toUpperCase()}
+                    {user.name?.trim()
+                      ? user.name.charAt(0).toUpperCase()
+                      : (user.email?.charAt(0) || 'A').toUpperCase()}
                   </div>
                   <div className="hidden sm:block text-left min-w-0">
                     <span className="text-sm font-semibold text-blue-700 hover:text-blue-800 hover:underline truncate block">

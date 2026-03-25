@@ -1,0 +1,16 @@
+# Cloudflare Pages — admin dashboard static deploy
+#
+# Prerequisites:
+#   bun run build
+#   wrangler login
+#   OR export CLOUDFLARE_API_TOKEN (Pages:Edit on your account)
+#
+# First-time: create the project (once):
+#   bunx wrangler pages project create functionfly-admin-dashboard --production-branch=master
+#
+# Deploy:
+#   bun run pages:deploy
+
+name = "functionfly-admin-dashboard"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "dist"

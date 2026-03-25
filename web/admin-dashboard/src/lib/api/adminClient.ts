@@ -3,17 +3,19 @@
  * Handles all API communication with HMAC signing for sensitive operations
  */
 
+import { CACHE_KEYS, getAdminApiBaseUrl } from '@/lib/constants';
+import { getCsrfToken, isCsrfTokenExpired, refreshCsrfToken } from '@/lib/security/csrf';
+import type { AdminAPIResponse } from '@/types';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { HMACRequestSigner } from './hmacSigner';
-import type { AdminAPIResponse } from '@/types';
-import { getAdminApiBaseUrl, CACHE_KEYS } from '@/lib/constants';
-import { getCsrfToken } from '@/lib/security/csrf';
 
 class AdminAPIClient {
   private client: AxiosInstance;
   private signer: HMACRequestSigner;
   private sessionToken: string | null = null;
   private deviceFingerprint: string | null = null;
+  private isRefreshingToken = false;
+  private refreshSubscribers: Array<(token: string | null) => void> = [];
 
   constructor() {
     const baseURL = getAdminApiBaseUrl();
@@ -37,7 +39,7 @@ class AdminAPIClient {
     this.signer = new HMACRequestSigner(sharedSecret);
 
     // Add request interceptor
-    this.client.interceptors.request.use((config) => {
+    this.client.interceptors.request.use(async (config) => {
       if (this.sessionToken) {
         config.headers.Authorization = `Bearer ${this.sessionToken}`;
       }
@@ -46,13 +48,44 @@ class AdminAPIClient {
         config.headers['X-Device-Fingerprint'] = this.deviceFingerprint;
       }
 
+      // Add CSRF token to mutating requests
+      const method = config.method?.toUpperCase();
+      if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
+        // Refresh token if expired before adding to request
+        if (isCsrfTokenExpired()) {
+          await this.refreshCsrfTokenSafely();
+        }
+        const csrf = getCsrfToken();
+        if (csrf) {
+          config.headers['X-CSRF-Token'] = csrf;
+        }
+      }
+
       return config;
     });
 
-    // Add response interceptor for error handling
+    // Add response interceptor for error handling and token refresh
     this.client.interceptors.response.use(
       (response) => response,
-      (error) => {
+      async (error) => {
+        const originalRequest = error.config;
+
+        // Handle CSRF token expiration (401 with csrf_token_invalid error)
+        if (
+          error.response?.status === 401 &&
+          error.response?.data?.error === 'csrf_token_invalid' &&
+          !originalRequest._retry
+        ) {
+          originalRequest._retry = true;
+
+          const newToken = await this.refreshCsrfTokenSafely();
+          if (newToken) {
+            originalRequest.headers['X-CSRF-Token'] = newToken;
+            return this.client(originalRequest);
+          }
+        }
+
+        // Handle session expiration
         if (error.response?.status === 401) {
           // Session expired, redirect to login
           window.location.href = '/auth/login?reason=session_expired';
@@ -60,6 +93,31 @@ class AdminAPIClient {
         return Promise.reject(error);
       }
     );
+  }
+
+  /**
+   * Safely refresh CSRF token with request coalescing
+   */
+  private async refreshCsrfTokenSafely(): Promise<string | null> {
+    if (this.isRefreshingToken) {
+      // Wait for ongoing refresh
+      return new Promise((resolve) => {
+        this.refreshSubscribers.push(resolve);
+      });
+    }
+
+    this.isRefreshingToken = true;
+    try {
+      const token = await refreshCsrfToken();
+      this.refreshSubscribers.forEach((cb) => cb(token));
+      return token;
+    } catch {
+      this.refreshSubscribers.forEach((cb) => cb(null));
+      return null;
+    } finally {
+      this.isRefreshingToken = false;
+      this.refreshSubscribers = [];
+    }
   }
 
   /**
@@ -87,14 +145,8 @@ class AdminAPIClient {
   /**
    * GET request
    */
-  async get<T>(
-    path: string,
-    config?: AxiosRequestConfig
-  ): Promise<AdminAPIResponse<T>> {
-    const response = await this.client.get<AdminAPIResponse<T>>(
-      path,
-      config
-    );
+  async get<T>(path: string, config?: AxiosRequestConfig): Promise<AdminAPIResponse<T>> {
+    const response = await this.client.get<AdminAPIResponse<T>>(path, config);
     return response.data;
   }
 
@@ -107,11 +159,7 @@ class AdminAPIClient {
     config?: AxiosRequestConfig
   ): Promise<AdminAPIResponse<T>> {
     const signedConfig = this.signRequest('POST', path, data, config);
-    const response = await this.client.post<AdminAPIResponse<T>>(
-      path,
-      data,
-      signedConfig
-    );
+    const response = await this.client.post<AdminAPIResponse<T>>(path, data, signedConfig);
     return response.data;
   }
 
@@ -124,26 +172,16 @@ class AdminAPIClient {
     config?: AxiosRequestConfig
   ): Promise<AdminAPIResponse<T>> {
     const signedConfig = this.signRequest('PATCH', path, data, config);
-    const response = await this.client.patch<AdminAPIResponse<T>>(
-      path,
-      data,
-      signedConfig
-    );
+    const response = await this.client.patch<AdminAPIResponse<T>>(path, data, signedConfig);
     return response.data;
   }
 
   /**
    * DELETE request with HMAC signing
    */
-  async delete<T>(
-    path: string,
-    config?: AxiosRequestConfig
-  ): Promise<AdminAPIResponse<T>> {
+  async delete<T>(path: string, config?: AxiosRequestConfig): Promise<AdminAPIResponse<T>> {
     const signedConfig = this.signRequest('DELETE', path, undefined, config);
-    const response = await this.client.delete<AdminAPIResponse<T>>(
-      path,
-      signedConfig
-    );
+    const response = await this.client.delete<AdminAPIResponse<T>>(path, signedConfig);
     return response.data;
   }
 
@@ -158,7 +196,8 @@ class AdminAPIClient {
   ): AxiosRequestConfig {
     const body = data ? JSON.stringify(data) : '';
     const { timestamp, signature } = this.signer.sign(method, path, body);
-    const csrfToken = getCsrfToken();
+    // Note: CSRF token is added in the request interceptor
+    // to ensure proper handling of token refresh
 
     return {
       ...config,
@@ -166,7 +205,6 @@ class AdminAPIClient {
         ...config?.headers,
         'X-FFLY-Timestamp': timestamp,
         'X-FFLY-Signature': signature,
-        ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
       },
     };
   }

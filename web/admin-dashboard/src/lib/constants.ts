@@ -35,41 +35,60 @@ export const ROUTES = {
   ADMIN_NEWSLETTER: '/newsletter',
   ADMIN_CONTENT_CALENDAR: '/content-calendar',
   ADMIN_FACTORY: '/factory',
+  ADMIN_MAINTENANCE: '/maintenance',
+  ADMIN_CACHE: '/cache',
+  ADMIN_MONITORING: '/monitoring',
+  ADMIN_CLOUDFLARE_ANALYTICS: '/cloudflare',
+  ADMIN_SUPPORT: '/support',
+  ADMIN_IP_ALLOWLIST: '/ip-allowlist',
+  ADMIN_SIEM: '/siem',
+  ADMIN_AUTH_AUDIT: '/auth-audit',
 };
 
 export const API_ROUTES = {
-  ADMIN_SESSION: '/admin/auth/session',
-  ADMIN_HEALTH: '/admin/health',
-  ADMIN_DASHBOARD_ACTIVITY: '/admin/dashboard/activity',
-  ADMIN_DASHBOARD_REVENUE: '/admin/dashboard/revenue',
-  ADMIN_DASHBOARD_QUICK_STATS: '/admin/dashboard/quick-stats',
-  ADMIN_TENANTS: '/admin/tenants',
-  ADMIN_USERS: '/admin/users',
-  ADMIN_AUDIT_EVENTS: '/admin/audit-events',
+  ADMIN_SESSION: '/auth/session',
+  ADMIN_HEALTH: '/health',
+  ADMIN_DASHBOARD_ACTIVITY: '/dashboard/activity',
+  ADMIN_DASHBOARD_REVENUE: '/dashboard/revenue',
+  ADMIN_DASHBOARD_QUICK_STATS: '/dashboard/quick-stats',
+  ADMIN_TENANTS: '/tenants',
+  ADMIN_USERS: '/users',
+  ADMIN_AUDIT_EVENTS: '/audit-events',
+  // Maintenance
+  ADMIN_MAINTENANCE: '/maintenance',
+  ADMIN_MAINTENANCE_TEMPLATES: '/maintenance/templates',
+  ADMIN_MAINTENANCE_SCHEDULE: '/maintenance/schedule',
+  ADMIN_MAINTENANCE_AUDIT: '/maintenance/audit',
+  // Cache
+  ADMIN_CACHE_STATS: '/cache/stats',
+  // Monitoring
+  ADMIN_MONITORING_ALERTS: '/monitoring/alerts',
+  ADMIN_MONITORING_METRICS: '/monitoring/metrics',
+  ADMIN_MONITORING_HEALTH: '/monitoring/health',
+  // Cloudflare Analytics
+  ADMIN_CLOUDFLARE_ANALYTICS: '/cloudflare/analytics',
+  // Security
+  ADMIN_SECURITY_METRICS: '/security/metrics',
+  ADMIN_SECURITY_CHECK_IP: '/security/check-ip',
+  ADMIN_SECURITY_SERVICES: '/security/services',
+  ADMIN_SECURITY_CERTIFICATES: '/security/certificates',
+  ADMIN_SECURITY_INCIDENTS: '/security/incidents',
+  ADMIN_SECURITY_COMPLIANCE: '/security/compliance',
+  ADMIN_SECURITY_MEASURES: '/security/measures',
 };
 
 export const SESSION = {
   TIMEOUT: parseInt(import.meta.env.VITE_SESSION_TIMEOUT || '1800000', 10),
-  IDLE_TIMEOUT: parseInt(
-    import.meta.env.VITE_IDLE_TIMEOUT || '900000',
-    10
-  ),
-  MFA_REVERIFY_INTERVAL: parseInt(
-    import.meta.env.VITE_MFA_REVERIFY_INTERVAL || '14400000',
-    10
-  ),
+  IDLE_TIMEOUT: parseInt(import.meta.env.VITE_IDLE_TIMEOUT || '900000', 10),
+  MFA_REVERIFY_INTERVAL: parseInt(import.meta.env.VITE_MFA_REVERIFY_INTERVAL || '14400000', 10),
   CHECK_INTERVAL: 60000, // 1 minute
 };
 
 export const SECURITY = {
-  ENABLE_IP_WHITELIST:
-    import.meta.env.VITE_ENABLE_IP_WHITELIST === 'true',
-  ENABLE_DEVICE_FINGERPRINT:
-    import.meta.env.VITE_ENABLE_DEVICE_FINGERPRINT === 'true',
-  ENABLE_AUDIT_LOGGING:
-    import.meta.env.VITE_ENABLE_AUDIT_LOGGING === 'true',
-  ENABLE_SESSION_RECORDING:
-    import.meta.env.VITE_ENABLE_SESSION_RECORDING === 'true',
+  ENABLE_IP_WHITELIST: import.meta.env.VITE_ENABLE_IP_WHITELIST === 'true',
+  ENABLE_DEVICE_FINGERPRINT: import.meta.env.VITE_ENABLE_DEVICE_FINGERPRINT === 'true',
+  ENABLE_AUDIT_LOGGING: import.meta.env.VITE_ENABLE_AUDIT_LOGGING === 'true',
+  ENABLE_SESSION_RECORDING: import.meta.env.VITE_ENABLE_SESSION_RECORDING === 'true',
 };
 
 export const CACHE_KEYS = {

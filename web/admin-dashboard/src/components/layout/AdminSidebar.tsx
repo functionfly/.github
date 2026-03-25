@@ -2,33 +2,36 @@
  * Admin Sidebar Component
  */
 
-import { Link, useLocation } from 'react-router-dom';
-import { X } from 'lucide-react';
-import {
-  LayoutDashboard,
-  Users,
-  Building2,
-  CreditCard,
-  FileText,
-  Settings,
-  BarChart3,
-  Shield,
-  Boxes,
-  Zap,
-  MessageSquare,
-  PanelTop,
-  CircleDot,
-  Landmark,
-  AlertTriangle,
-  Mail,
-  Calendar,
-  RotateCcw,
-  TrendingUp,
-  Factory,
-  BookOpen,
-} from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import clsx from 'clsx';
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  BookOpen,
+  Boxes,
+  Building2,
+  Calendar,
+  CircleDot,
+  Cloud,
+  CreditCard,
+  Factory,
+  FileText,
+  Landmark,
+  LayoutDashboard,
+  Mail,
+  MessageSquare,
+  PanelTop,
+  RotateCcw,
+  Settings,
+  Shield,
+  TrendingUp,
+  Users,
+  Wrench,
+  X,
+  Zap,
+} from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -161,6 +164,31 @@ const NAV_ITEMS = [
     path: ROUTES.ADMIN_FACTORY,
     icon: Factory,
   },
+  {
+    label: 'Maintenance',
+    path: ROUTES.ADMIN_MAINTENANCE,
+    icon: Wrench,
+  },
+  {
+    label: 'Cache',
+    path: ROUTES.ADMIN_CACHE,
+    icon: Boxes,
+  },
+  {
+    label: 'Monitoring',
+    path: ROUTES.ADMIN_MONITORING,
+    icon: Activity,
+  },
+  {
+    label: 'Cloudflare',
+    path: ROUTES.ADMIN_CLOUDFLARE_ANALYTICS,
+    icon: Cloud,
+  },
+  {
+    label: 'Support',
+    path: ROUTES.ADMIN_SUPPORT,
+    icon: MessageSquare,
+  },
 ];
 
 export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
@@ -173,9 +201,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   return (
     <>
       {/* Mobile overlay */}
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={onClose} />
-      )}
+      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={onClose} />}
 
       {/* Sidebar */}
       <aside
@@ -206,9 +232,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                     to={item.path}
                     className={clsx(
                       'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200',
-                      active
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-300 hover:bg-gray-800'
+                      active ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800'
                     )}
                   >
                     <Icon className="w-5 h-5" />
@@ -221,7 +245,9 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
           {/* Footer */}
           <div className="px-6 py-4 border-t border-gray-800">
-            <p className="text-xs text-gray-400">FunctionFly Admin © 2026</p>
+            <p className="text-xs text-gray-400">
+              FunctionFly LLC · Admin © {new Date().getFullYear()}
+            </p>
           </div>
         </div>
       </aside>

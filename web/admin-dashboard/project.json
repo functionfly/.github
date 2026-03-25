@@ -20,7 +20,7 @@
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "vite",
+        "command": "vite --host 0.0.0.0 --port 3002",
         "cwd": "web/admin-dashboard"
       }
     },

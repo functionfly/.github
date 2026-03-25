@@ -30,6 +30,12 @@ export function useRealtimeSubscription({
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Keep a ref to onEvent so changing the callback never recreates the WebSocket.
+  const onEventRef = useRef(onEvent);
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
+
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
@@ -59,8 +65,8 @@ export function useRealtimeSubscription({
     ws.onmessage = (message) => {
       try {
         const data = JSON.parse(message.data as string);
-        if (data.type === 'broadcast' && data.event === eventType && onEvent) {
-          onEvent(data.payload as RealtimeEvent);
+        if (data.type === 'broadcast' && data.event === eventType && onEventRef.current) {
+          onEventRef.current(data.payload as RealtimeEvent);
         }
       } catch {
         setError('Failed to parse realtime message');
@@ -81,7 +87,7 @@ export function useRealtimeSubscription({
     };
 
     wsRef.current = ws;
-  }, [channel, eventType, onEvent]);
+  }, [channel, eventType]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {

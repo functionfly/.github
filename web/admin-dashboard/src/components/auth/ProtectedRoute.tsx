@@ -1,22 +1,24 @@
 /**
  * Protected Route Component
- * Ensures user is authenticated before accessing admin pages
+ * Wraps routes that require authentication
  */
 
-import { Navigate, Outlet } from 'react-router-dom';
-import { useAdminAuth } from '@/hooks/useAdminAuth';
-import { AdminSecurityGate } from '@/components/security/AdminSecurityGate';
+import React from 'react';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { adminApiClient } from '../../lib/api/adminClient';
 
-export function ProtectedRoute() {
-  const { isAuthenticated, isSessionValid } = useAdminAuth();
+interface ProtectedRouteProps {
+  children?: React.ReactNode;
+}
 
-  if (!isAuthenticated || !isSessionValid()) {
-    return <Navigate to="/auth/login" replace />;
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const location = useLocation();
+  const isAuthenticated = adminApiClient.isAuthenticated();
+
+  if (!isAuthenticated) {
+    // Redirect to login page with return URL
+    return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
-  return (
-    <AdminSecurityGate>
-      <Outlet />
-    </AdminSecurityGate>
-  );
+  return <>{children ?? <Outlet />}</>;
 }
