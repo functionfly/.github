@@ -24,9 +24,17 @@ Builds Paperclip from source and runs a dedicated Postgres container (so embedde
    docker compose -f deploy/paperclip/docker-compose.yml --env-file deploy/paperclip/.env up --build -d
    ```
 
-3. Open `http://localhost:3100` (or your `PAPERCLIP_PUBLIC_URL`). Complete first-time onboarding (create board user, then create company).
+3. **First-time instance setup**: If the UI shows “Instance setup required”, generate the first admin invite by running onboard in the container (this creates config and prints a one-time invite URL):
 
-4. Run the setup script to create the FunctionFly company and initial org chart agents (see below).
+   ```bash
+   docker compose -f deploy/paperclip/docker-compose.yml --env-file deploy/paperclip/.env exec -e PAPERCLIP_HOME=/paperclip -w /app paperclip pnpm paperclipai onboard --yes
+   ```
+
+   Copy the printed **Invite URL** (e.g. `http://localhost:3100/invite/pcp_bootstrap_...`), open it in a browser, and create the first board user. The invite expires in a few days. If config already exists and you only need a new invite, run `pnpm paperclipai auth bootstrap-ceo` in the container instead.
+
+4. Open `http://localhost:3100` (or your `PAPERCLIP_PUBLIC_URL`). Log in with the board user, then create the FunctionFly company and agents (see below).
+
+5. Run the setup script to create the FunctionFly company and initial org chart agents (see below).
 
 ## Option B: Run from Paperclip repo (official quickstart)
 

@@ -132,10 +132,10 @@
     {
       "type": "CNAME",
       "name": "admin",
-      "content": "functionfly-dashboard.pages.dev",
+      "content": "functionfly-admin-dashboard.pages.dev",
       "proxied": true,
       "ttl": 300,
-      "description": "Admin UI (separate origin)"
+      "description": "Admin dashboard SPA (Cloudflare Pages project functionfly-admin-dashboard). Add admin.functionfly.com as custom domain on that project."
     },
     {
       "type": "CNAME",

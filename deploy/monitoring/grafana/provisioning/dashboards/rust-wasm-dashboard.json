@@ -1,0 +1,200 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "FunctionFly Rust/WASM Runtime",
+    "tags": ["functionfly", "wasm", "rust", "runtime"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Rust WASM Execution Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(wasm_rust_execution_duration_seconds_count[5m])",
+            "legendFormat": "{{function_name}}"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+      },
+      {
+        "id": 2,
+        "title": "Rust WASM Execution Duration (p95)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(wasm_rust_execution_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95 - {{function_name}}"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+      },
+      {
+        "id": 3,
+        "title": "Active Rust Instances",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "wasm_rust_instances_active_count",
+            "legendFormat": "{{function_name}}"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+      },
+      {
+        "id": 4,
+        "title": "Rust Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "wasm_rust_memory_usage_bytes / 1024 / 1024",
+            "legendFormat": "{{function_name}} - {{instance_id}}"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+      },
+      {
+        "id": 5,
+        "title": "Rust Cold Starts",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(wasm_rust_lifecycle_cold_starts_total[5m])",
+            "legendFormat": "{{function_name}}"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 }
+      },
+      {
+        "id": 6,
+        "title": "Rust Compilation Duration",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(wasm_rust_compilation_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95 - {{function_name}}"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 }
+      },
+      {
+        "id": 7,
+        "title": "Rust Compilation Errors",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(wasm_rust_compilation_errors_total[5m])",
+            "legendFormat": "{{function_name}} - {{error_category}}"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 }
+      },
+      {
+        "id": 8,
+        "title": "Rust Runtime Errors",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(wasm_rust_errors_total[5m])",
+            "legendFormat": "{{function_name}} - {{error_type}}"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 }
+      },
+      {
+        "id": 9,
+        "title": "Rust Instance Pool Size",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "wasm_rust_pool_size",
+            "legendFormat": "{{function_name}}"
+          }
+        ],
+        "gridPos": { "h": 6, "w": 8, "x": 0, "y": 32 }
+      },
+      {
+        "id": 10,
+        "title": "Rust Instance Pool Available",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "wasm_rust_pool_available",
+            "legendFormat": "{{function_name}}"
+          }
+        ],
+        "gridPos": { "h": 6, "w": 8, "x": 8, "y": 32 }
+      },
+      {
+        "id": 11,
+        "title": "Rust Instance Pool Hit Rate",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "avg(wasm_rust_pool_hit_rate)",
+            "legendFormat": "Average Hit Rate"
+          }
+        ],
+        "gridPos": { "h": 6, "w": 8, "x": 16, "y": 32 }
+      },
+      {
+        "id": 12,
+        "title": "Rust Execution Success Rate",
+        "type": "bargauge",
+        "targets": [
+          {
+            "expr": "sum(rate(wasm_rust_execution_duration_seconds_count{status=\"success\"}[5m])) / sum(rate(wasm_rust_execution_duration_seconds_count[5m])) * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "gridPos": { "h": 6, "w": 12, "x": 0, "y": 38 }
+      },
+      {
+        "id": 13,
+        "title": "Rust Error Rate",
+        "type": "bargauge",
+        "targets": [
+          {
+            "expr": "sum(rate(wasm_rust_errors_total[5m])) / sum(rate(wasm_rust_execution_duration_seconds_count[5m])) * 100",
+            "legendFormat": "Error Rate %"
+          }
+        ],
+        "gridPos": { "h": 6, "w": 12, "x": 12, "y": 38 }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "tenant_id",
+          "type": "query",
+          "query": "label_values(wasm_rust_instances_active_count, tenant_id)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*"
+        },
+        {
+          "name": "function_name",
+          "type": "query",
+          "query": "label_values(wasm_rust_instances_active_count{tenant_id=~\"$tenant_id\"}, function_name)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*"
+        }
+      ]
+    },
+    "annotations": {
+      "list": []
+    },
+    "refresh": "10s",
+    "schemaVersion": 27,
+    "version": 1,
+    "links": []
+  }
+}

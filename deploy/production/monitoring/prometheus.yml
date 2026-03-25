@@ -1,0 +1,73 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+  - "/etc/prometheus/alerts/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # FunctionFly Orchestrator API
+  - job_name: "functionfly-orchestrator"
+    static_configs:
+      - targets: ["orchestrator-api:9090"]
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # FunctionFly Health Monitor
+  - job_name: "functionfly-health-monitor"
+    static_configs:
+      - targets: ["health-monitor:9090"]
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # FunctionFly MicroVM Orchestrator (Enterprise tier — port 9091)
+  - job_name: "functionfly-microvm"
+    static_configs:
+      - targets: ["microvm-orchestrator:9091"]
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # PostgreSQL
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["postgres:5432"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Redis
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis:6379"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Caddy
+  - job_name: "caddy"
+    static_configs:
+      - targets: ["caddy:80"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Node Exporter (if available)
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+    scrape_interval: 30s
+
+  # Docker metrics (if available)
+  - job_name: "docker"
+    static_configs:
+      - targets: ["docker-exporter:9323"]
+    scrape_interval: 30s

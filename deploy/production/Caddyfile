@@ -1,0 +1,122 @@
+# FunctionFly Production Caddyfile
+# Reverse proxy configuration for production deployment
+
+{
+    email ${SSL_EMAIL}
+    acme_ca https://acme-v02.api.letsencrypt.org/directory
+}
+
+# Main domain
+${SSL_DOMAIN} {
+    # Dashboard
+    handle / {
+        root * /srv/dashboard
+        file_server
+        try_files {path} /index.html
+    }
+
+    # API
+    handle /api/* {
+        reverse_proxy orchestrator-api:8080 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+
+    # Health check
+    handle /health {
+        respond "OK" 200
+    }
+
+    # Security headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 100mb
+            roll_keep 10
+            roll_keep_for 720h
+        }
+        format json
+    }
+}
+
+# API subdomain (optional)
+api.${SSL_DOMAIN} {
+    reverse_proxy orchestrator-api:8080 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+    }
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+
+    log {
+        output file /var/log/caddy/api-access.log {
+            roll_size 100mb
+            roll_keep 10
+            roll_keep_for 720h
+        }
+        format json
+    }
+}
+
+# Monitoring subdomain (optional)
+monitoring.${SSL_DOMAIN} {
+    # Grafana
+    handle /grafana/* {
+        strip_prefix /grafana
+        reverse_proxy grafana:3000
+    }
+
+    # Prometheus
+    handle /prometheus/* {
+        strip_prefix /prometheus
+        reverse_proxy prometheus:9090
+    }
+
+    # Loki
+    handle /loki/* {
+        strip_prefix /loki
+        reverse_proxy loki:3100
+    }
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+
+    # Basic auth for monitoring
+    basicauth {
+        admin $2a$14$YOUR_BCRYPT_HASH_HERE
+    }
+
+    log {
+        output file /var/log/caddy/monitoring-access.log {
+            roll_size 100mb
+            roll_keep 10
+            roll_keep_for 720h
+        }
+        format json
+    }
+}

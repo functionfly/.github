@@ -1,0 +1,453 @@
+version: "3.8"
+
+services:
+  # =============================================================================
+  # DATABASE SERVICES
+  # =============================================================================
+
+  postgres:
+    image: postgres:17
+    container_name: functionfly-postgres-prod
+    environment:
+      POSTGRES_DB: functionfly_prod
+      POSTGRES_USER: functionfly_prod
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./deploy/database/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - postgres_prod_backups:/var/backups
+    ports:
+      - "127.0.0.1:5432:5432" # Only expose locally for security
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U functionfly_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+
+  # Read replica for better read performance
+  postgres-replica:
+    image: postgres:17
+    container_name: functionfly-postgres-replica
+    environment:
+      POSTGRES_DB: functionfly_prod
+      POSTGRES_USER: functionfly_prod
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # Replica configuration
+      REPLICATION_MODE: replica
+      PRIMARY_CONNINFO: "host=postgres port=5432 user=functionfly_prod password=${DB_PASSWORD} dbname=functionfly_prod"
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+      - ./deploy/database/postgresql-replica.conf:/etc/postgresql/postgresql.conf:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5433:5432" # Read replica on port 5433
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U functionfly_prod -h localhost -p 5432"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+
+  # Backup service
+  postgres-backup:
+    image: postgres:17
+    container_name: functionfly-postgres-backup
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - PGPASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_prod_backups:/backups
+      - ./scripts/backup-database.sh:/backup-database.sh:ro
+    command: >
+      sh -c "
+        echo '0 2 * * * /backup-database.sh production' > /etc/crontabs/root &&
+        crond -f -l 8
+      "
+    networks:
+      - functionfly-prod
+    restart: unless-stopped
+
+  # PgBouncer connection pooler
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: functionfly-pgbouncer
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=functionfly_prod
+      - DB_PASSWORD=${DB_PASSWORD}
+      - POOL_MODE=transaction # Better for web apps than session pooling
+      - MAX_CLIENT_CONN=1000
+      - DEFAULT_POOL_SIZE=20
+      - MIN_POOL_SIZE=5
+      - RESERVE_POOL_SIZE=5
+      - RESERVE_POOL_TIMEOUT=3
+      - MAX_DB_CONNECTIONS=50
+      - MAX_USER_CONNECTIONS=100
+      - QUERY_WAIT_TIMEOUT=120 # Wait up to 2 minutes for a connection
+      - IDLE_TRANSACTION_TIMEOUT=300 # Close idle transactions after 5 minutes
+      - SERVER_IDLE_TIMEOUT=600 # Close server connections after 10 minutes of inactivity
+      - SERVER_LIFETIME=3600 # Recycle server connections after 1 hour
+    ports:
+      - "127.0.0.1:6432:6432" # PgBouncer port
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "psql -h localhost -p 6432 -U functionfly_prod -d functionfly_prod -c 'SELECT 1'",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - functionfly-prod
+    restart: unless-stopped
+
+  # =============================================================================
+  # CACHE SERVICES
+  # =============================================================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: functionfly-redis-prod
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_prod_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+
+  # =============================================================================
+  # APPLICATION SERVICES
+  # =============================================================================
+
+  orchestrator-api:
+    image: functionfly/orchestrator:latest
+    container_name: functionfly-orchestrator-prod
+    environment:
+      - ENVIRONMENT=production
+      - DB_HOST=pgbouncer
+      - DB_PORT=6432
+      - DB_USER=functionfly_prod
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=functionfly_prod
+      - DB_SSLMODE=require
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - API_SHARED_SECRET=${API_SHARED_SECRET}
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      - METRICS_ENABLED=true
+      - METRICS_PORT=9090
+      - REQUEST_TRACING_ENABLED=true
+      - STRUCTURED_LOGGING_ENABLED=true
+      - HEALTH_CHECKS_ENABLED=true
+      - FLYWHEEL_ENABLED=true
+      - REALTIME_UPDATES_ENABLED=true
+      - WEBSOCKET_ENABLED=true
+    ports:
+      - "8080:8080"
+      - "9090:9090" # Metrics port
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "1"
+          memory: 1G
+
+  # Health monitor service
+  health-monitor:
+    image: functionfly/health-monitor:latest
+    container_name: functionfly-health-monitor-prod
+    environment:
+      - ENVIRONMENT=production
+      - DB_HOST=pgbouncer
+      - DB_PORT=6432
+      - DB_USER=functionfly_prod
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=functionfly_prod
+      - DB_SSLMODE=require
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      - HEALTH_CHECK_INTERVAL=30s
+      - HEALTH_CHECK_TIMEOUT=10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+  # =============================================================================
+  # MICROVM ORCHESTRATOR (Enterprise tier — CPython in Firecracker)
+  # Requires KVM (/dev/kvm) on the host and pre-built VM images in MICROVM_IMAGE_PATH.
+  # Set MICROVM_ENABLED=true to start this service; omit otherwise.
+  # =============================================================================
+
+  microvm-orchestrator:
+    image: functionfly/microvm-orchestrator:latest
+    container_name: functionfly-microvm-prod
+    profiles:
+      - microvm # start only with: docker compose --profile microvm up
+    environment:
+      - ENVIRONMENT=production
+      - FUNCTIONFLY_MICROVM_API_TOKEN=${MICROVM_API_TOKEN}
+      - FUNCTIONFLY_MICROVM_MAX_VMS_PER_TENANT=${MICROVM_MAX_VMS_PER_TENANT:-10}
+      # Tap device: must exist on the host (create with: ip tuntap add dev tap0 mode tap)
+      - FIRECRACKER_TAP_DEVICE=${FIRECRACKER_TAP_DEVICE:-tap0}
+      # Set to 1 to skip network config (no-network VMs, or when tap is not available)
+      - FIRECRACKER_SKIP_NETWORK=${FIRECRACKER_SKIP_NETWORK:-0}
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+    volumes:
+      # VM images (kernel + rootfs) — build with: make build-microvm-rootfs
+      - ${MICROVM_IMAGE_PATH:-/var/lib/functionfly/vmimages}:/var/lib/functionfly/vmimages:ro
+      # Allow access to host /dev/kvm for Firecracker
+      - /dev/kvm:/dev/kvm
+    devices:
+      - /dev/kvm:/dev/kvm
+    ports:
+      # Bind to loopback only: the orchestrator-api reaches it internally
+      - "127.0.0.1:9091:9091"
+    command:
+      - "--image-path=/var/lib/functionfly/vmimages"
+      - "--port=9091"
+      - "--max-vms=${MICROVM_MAX_VMS:-20}"
+      - "--vcpus=${MICROVM_VCPUS:-2}"
+      - "--memory-mb=${MICROVM_MEMORY_MB:-512}"
+      - "--warm-idle-secs=${MICROVM_WARM_IDLE_SECS:-600}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9091/health || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+    deploy:
+      resources:
+        limits:
+          # Each VM uses memory_mb; leave headroom for the orchestrator process itself.
+          cpus: "${MICROVM_CPU_LIMIT:-4}"
+          memory: "${MICROVM_MEMORY_LIMIT:-8G}"
+        reservations:
+          cpus: "1"
+          memory: 1G
+    cap_add:
+      # Required by Firecracker / tun/tap device creation
+      - NET_ADMIN
+    security_opt:
+      # seccomp profile allowing KVM ioctls
+      - "seccomp=unconfined" # Replace with a tailored profile in production
+
+  # =============================================================================
+  # REVERSE PROXY
+  # =============================================================================
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: functionfly-caddy-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      orchestrator-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+
+  # =============================================================================
+  # MONITORING SERVICES
+  # =============================================================================
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: functionfly-prometheus-prod
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=200h"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9091:9090"
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: functionfly-grafana-prod
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+
+  # =============================================================================
+  # SECURITY SERVICES
+  # =============================================================================
+
+  clamav:
+    image: clamav/clamav:latest
+    container_name: functionfly-clamav-prod
+    volumes:
+      - clamav_data:/var/lib/clamav
+    ports:
+      - "127.0.0.1:3310:3310"
+    healthcheck:
+      test: ["CMD-SHELL", "clamdcheck --ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+
+  # =============================================================================
+  # LOG AGGREGATION
+  # =============================================================================
+
+  loki:
+    image: grafana/loki:latest
+    container_name: functionfly-loki-prod
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./deploy/monitoring/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "127.0.0.1:3100:3100"
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: functionfly-promtail-prod
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./deploy/monitoring/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - functionfly-prod
+
+volumes:
+  postgres_prod_data:
+    driver: local
+  postgres_replica_data:
+    driver: local
+  postgres_prod_backups:
+    driver: local
+  redis_prod_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  clamav_data:
+    driver: local
+  loki_data:
+    driver: local
+
+networks:
+  functionfly-prod:
+    driver: bridge

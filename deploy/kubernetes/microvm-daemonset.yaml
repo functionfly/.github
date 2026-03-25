@@ -1,0 +1,268 @@
+---
+# MicroVM Orchestrator — DaemonSet on nodes with KVM support.
+#
+# Node requirements:
+#   - Linux with KVM: node must have /dev/kvm (nested virt or bare metal)
+#   - Label selector: functionfly.io/microvm=enabled
+#     kubectl label node <nodename> functionfly.io/microvm=enabled
+#   - VM images must be pre-populated on the host at MICROVM_IMAGE_PATH
+#     (use an InitContainer / DaemonSet or host provisioning to copy them)
+#
+# Secrets:
+#   - functionfly-secrets must contain:
+#       microvm-api-token  — bearer token for /execute endpoint
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: microvm-orchestrator
+  namespace: functionfly
+  labels:
+    app: microvm-orchestrator
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: microvm-orchestrator
+  namespace: functionfly
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: microvm-orchestrator
+  namespace: functionfly
+subjects:
+  - kind: ServiceAccount
+    name: microvm-orchestrator
+    namespace: functionfly
+roleRef:
+  kind: Role
+  name: microvm-orchestrator
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: microvm-orchestrator
+  namespace: functionfly
+  labels:
+    app: microvm-orchestrator
+    tier: enterprise
+spec:
+  selector:
+    matchLabels:
+      app: microvm-orchestrator
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: microvm-orchestrator
+        tier: enterprise
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: microvm-orchestrator
+
+      # Only schedule on nodes with /dev/kvm (labelled explicitly)
+      nodeSelector:
+        functionfly.io/microvm: enabled
+
+      tolerations:
+        - key: "functionfly.io/microvm"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+
+      hostPID: false
+      hostNetwork: false
+
+      initContainers:
+        # 1. Verify that /dev/kvm is available before starting.
+        - name: check-kvm
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -c /dev/kvm ]; then
+                echo "ERROR: /dev/kvm not found. This node does not support KVM."; exit 1
+              fi
+              echo "/dev/kvm present — OK"
+          volumeMounts:
+            - name: dev-kvm
+              mountPath: /dev/kvm
+
+        # 2. Create and configure tap devices for Firecracker VM networking.
+        #    Creates tap0..tap<MAX_VMS-1> with a bridge (ffly-br0) and enables IP forwarding.
+        #    Runs as root (privileged) because tap creation requires CAP_NET_ADMIN at the host.
+        - name: setup-tap
+          image: debian:bookworm-slim
+          securityContext:
+            privileged: true  # required for ip tuntap / iptables
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              MAX_TAPS="${MAX_TAP_DEVICES:-20}"
+              BRIDGE="ffly-br0"
+              SUBNET="172.20.0"
+
+              # Install iproute2 / iptables if not present
+              which ip >/dev/null 2>&1 || apt-get install -y --no-install-recommends iproute2 iptables >/dev/null 2>&1
+
+              # Create bridge (idempotent)
+              ip link show ${BRIDGE} >/dev/null 2>&1 || {
+                ip link add name ${BRIDGE} type bridge
+                ip addr add ${SUBNET}.1/24 dev ${BRIDGE}
+                ip link set ${BRIDGE} up
+              }
+
+              # Create tap devices
+              i=0
+              while [ $i -lt "${MAX_TAPS}" ]; do
+                TAP="tap${i}"
+                ip link show ${TAP} >/dev/null 2>&1 || {
+                  ip tuntap add dev ${TAP} mode tap
+                  ip link set ${TAP} master ${BRIDGE}
+                  ip link set ${TAP} up
+                  echo "Created ${TAP}"
+                }
+                i=$((i+1))
+              done
+
+              # Enable IP forwarding and NAT so VMs can reach the network whitelist
+              echo 1 > /proc/sys/net/ipv4/ip_forward
+              iptables -t nat -C POSTROUTING -s ${SUBNET}.0/24 -j MASQUERADE 2>/dev/null || \
+                iptables -t nat -A POSTROUTING -s ${SUBNET}.0/24 -j MASQUERADE
+
+              echo "Tap setup complete: ${MAX_TAPS} tap devices on bridge ${BRIDGE}"
+          env:
+            - name: MAX_TAP_DEVICES
+              value: "20"
+
+      containers:
+        - name: microvm-orchestrator
+          image: functionfly/microvm-orchestrator:latest
+          imagePullPolicy: Always
+          args:
+            - "--image-path=/var/lib/functionfly/vmimages"
+            - "--port=9091"
+            - "--max-vms=20"
+            - "--vcpus=2"
+            - "--memory-mb=512"
+            - "--warm-idle-secs=600"
+            - "--cleanup-interval-secs=60"
+
+          ports:
+            - name: http
+              containerPort: 9091
+              protocol: TCP
+
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: RUST_LOG
+              value: "info"
+            - name: FUNCTIONFLY_MICROVM_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: functionfly-secrets
+                  key: microvm-api-token
+            - name: FUNCTIONFLY_MICROVM_MAX_VMS_PER_TENANT
+              value: "10"
+            - name: FIRECRACKER_BINARY
+              value: "/usr/local/bin/firecracker"
+            # Tap device used by all VMs. The initContainer creates tap0..tapN on the bridge.
+            - name: FIRECRACKER_TAP_DEVICE
+              value: "tap0"
+            # Set to "1" only in environments without tap/KVM (e.g. integration tests)
+            - name: FIRECRACKER_SKIP_NETWORK
+              value: "0"
+
+          volumeMounts:
+            - name: vm-images
+              mountPath: /var/lib/functionfly/vmimages
+              readOnly: true
+            - name: dev-kvm
+              mountPath: /dev/kvm
+            - name: tmp
+              mountPath: /tmp
+
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "1000m"
+            limits:
+              memory: "16Gi"
+              cpu: "8000m"
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9091
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9091
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 2
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Firecracker needs /tmp for socket files
+            capabilities:
+              add:
+                - NET_ADMIN    # Required for tap device creation
+              drop:
+                - ALL
+
+      volumes:
+        - name: vm-images
+          hostPath:
+            path: /var/lib/functionfly/vmimages
+            type: DirectoryOrCreate
+        - name: dev-kvm
+          hostPath:
+            path: /dev/kvm
+            type: CharDevice
+        - name: tmp
+          emptyDir: {}
+
+---
+# Headless Service so the orchestrator-api pods can reach the DaemonSet pod on the same node.
+# Use FUNCTIONFLY_ORCHESTRATOR_URL=http://<nodeIP>:9091 or configure via downward API.
+apiVersion: v1
+kind: Service
+metadata:
+  name: microvm-orchestrator
+  namespace: functionfly
+  labels:
+    app: microvm-orchestrator
+spec:
+  selector:
+    app: microvm-orchestrator
+  clusterIP: None  # headless — direct per-pod addressing
+  ports:
+    - name: http
+      port: 9091
+      targetPort: 9091
+      protocol: TCP

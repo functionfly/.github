@@ -1,0 +1,117 @@
+groups:
+  - name: functionfly_microvm
+    interval: 30s
+    rules:
+      # ── Availability ──────────────────────────────────────────────────────────
+
+      - alert: MicroVMHighErrorRate
+        expr: |
+          rate(functionfly_microvm_execute_err[5m])
+            / (rate(functionfly_microvm_execute_total[5m]) + 1e-9) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "MicroVM error rate > 5 % ({{ $value | humanizePercentage }})"
+          description: >
+            More than 5 % of /execute requests are failing. Check orchestrator logs
+            for Firecracker spawn errors, OOM kills, or vsock timeouts.
+          runbook: "docs/runbooks/agent/AGENT_HIGH_ERROR_RATE.md"
+
+      - alert: MicroVMCriticalErrorRate
+        expr: |
+          rate(functionfly_microvm_execute_err[5m])
+            / (rate(functionfly_microvm_execute_total[5m]) + 1e-9) > 0.20
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "MicroVM error rate > 20 % ({{ $value | humanizePercentage }})"
+          description: >
+            Critical: more than 20 % of MicroVM executions are failing.
+            Immediate investigation required.
+          runbook: "docs/runbooks/agent/AGENT_HIGH_ERROR_RATE.md"
+
+      # ── Pool Exhaustion ───────────────────────────────────────────────────────
+
+      - alert: MicroVMPoolExhausted
+        expr: increase(functionfly_microvm_pool_exhausted_total[5m]) > 10
+        for: 1m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "MicroVM pool exhausted {{ $value | humanize }} times in last 5 min"
+          description: >
+            Tenant requests are being rejected because the VM pool is full.
+            Consider increasing --max-vms or FUNCTIONFLY_MICROVM_MAX_VMS_PER_TENANT,
+            or reducing warm-pool idle TTL.
+          runbook: "docs/runbooks/agent/AGENT_CONCURRENCY_LIMIT.md"
+
+      - alert: MicroVMActiveSaturation
+        expr: |
+          functionfly_microvm_active_vms
+            / (functionfly_microvm_max_vms + 1e-9) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "MicroVM pool > 90 % utilised ({{ $value | humanizePercentage }})"
+          description: >
+            Active VMs are above 90 % of capacity for 5+ minutes.
+            Pre-emptively increase pool size to avoid exhaustion.
+
+      # ── Firecracker Spawn Failures ────────────────────────────────────────────
+
+      - alert: FirecrackerSpawnFailures
+        expr: increase(functionfly_microvm_fc_spawn_failures_total[5m]) > 3
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Firecracker spawn failing ({{ $value | humanize }} failures / 5 min)"
+          description: >
+            The orchestrator cannot start Firecracker processes.
+            Possible causes: binary missing, KVM device unavailable, kernel image not found,
+            or system resource exhaustion.
+          runbook: "docs/runbooks/agent/AGENT_NO_EXECUTIONS.md"
+
+      # ── Latency ───────────────────────────────────────────────────────────────
+
+      - alert: MicroVMHighLatency
+        expr: |
+          rate(functionfly_microvm_execute_duration_seconds_total[5m])
+            / (rate(functionfly_microvm_execute_total[5m]) + 1e-9) > 30
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "MicroVM average execution latency > 30 s"
+          description: >
+            Average execution wall-time has exceeded 30 s over the past 5 minutes.
+            This may indicate cold-start pressure, memory balloon thrashing, or
+            network I/O inside the guest.
+          runbook: "docs/runbooks/agent/AGENT_HIGH_LATENCY.md"
+
+      # ── Silence / No Traffic ─────────────────────────────────────────────────
+
+      - alert: MicroVMNoExecutions
+        expr: |
+          sum(rate(functionfly_microvm_execute_total[15m])) == 0
+          and on() hour() >= 8 and on() hour() < 22
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "No MicroVM executions in the last 15 minutes (business hours)"
+          description: >
+            The MicroVM orchestrator has received no /execute requests during business
+            hours. Check that the local runtime is correctly configured with
+            FUNCTIONFLY_ORCHESTRATOR_URL pointing to this service.
+          runbook: "docs/runbooks/agent/AGENT_NO_EXECUTIONS.md"

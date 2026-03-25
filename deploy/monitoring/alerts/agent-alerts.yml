@@ -1,0 +1,144 @@
+groups:
+  - name: agent_alerts
+    rules:
+      # High error rate alert
+      - alert: AgentHighErrorRate
+        expr: |
+          rate(agent_execution_errors_total[5m])
+          / rate(agent_executions_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} has high error rate"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.functionfly.com/runbooks/agent-high-error-rate"
+
+      # Circuit breaker open alert
+      - alert: AgentCircuitOpen
+        expr: agent_circuit_state == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} circuit breaker is OPEN"
+          description: "Agent is temporarily unavailable due to circuit breaker"
+          runbook_url: "https://docs.functionfly.com/runbooks/agent-circuit-open"
+
+      # Quota nearly exhausted alert
+      - alert: AgentQuotaExhausted
+        expr: agent_quota_usage_ratio > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} quota nearly exhausted"
+          description: "Quota usage is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.functionfly.com/runbooks/agent-quota-exhausted"
+
+      # High latency alert
+      - alert: AgentHighLatency
+        expr: |
+          histogram_quantile(0.95, rate(agent_execution_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} has high latency"
+          description: "P95 latency is {{ $value }}s"
+          runbook_url: "https://docs.functionfly.com/runbooks/agent-high-latency"
+
+      # High policy violations alert
+      - alert: AgentPolicyViolations
+        expr: rate(agent_policy_violations_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} has high policy violations"
+          description: "{{ $value }} violations per second"
+          runbook_url: "https://docs.functionfly.com/runbooks/agent-policy-violations"
+
+      # High quota violations alert
+      - alert: AgentQuotaViolations
+        expr: rate(agent_quota_violations_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} has high quota violations"
+          description: "{{ $value }} violations per second"
+          runbook_url: "https://docs.functionfly.com/runbooks/agent-quota-violations"
+
+      # High retry rate alert
+      - alert: AgentHighRetryRate
+        expr: |
+          rate(agent_retry_attempts_total[5m])
+          / rate(agent_executions_total[5m]) > 0.3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} has high retry rate"
+          description: "Retry rate is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.functionfly.com/runbooks/agent-high-retry-rate"
+
+      # Concurrency limit reached alert
+      - alert: AgentConcurrencyLimitReached
+        expr: |
+          agent_concurrency_active
+          / agent_concurrency_limit > 0.9
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} concurrency limit nearly reached"
+          description: "Concurrency usage is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.functionfly.com/runbooks/agent-concurrency-limit"
+
+      # High cost alert
+      - alert: AgentHighCost
+        expr: |
+          rate(agent_cost_usd_total[1h]) * 3600 > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} has high cost"
+          description: "Hourly cost is ${{ $value }}"
+          runbook_url: "https://docs.functionfly.com/runbooks/agent-high-cost"
+
+      # No executions alert
+      - alert: AgentNoExecutions
+        expr: |
+          rate(agent_executions_total[10m]) == 0
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} has no executions"
+          description: "Agent has not executed any functions in the last 15 minutes"
+          runbook_url: "https://docs.functionfly.com/runbooks/agent-no-executions"
+
+      # P99 latency alert
+      - alert: AgentP99Latency
+        expr: |
+          histogram_quantile(0.99, rate(agent_execution_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} has very high P99 latency"
+          description: "P99 latency is {{ $value }}s"
+          runbook_url: "https://docs.functionfly.com/runbooks/agent-p99-latency"
+
+      # Circuit breaker half-open alert
+      - alert: AgentCircuitHalfOpen
+        expr: agent_circuit_state == 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent {{ $labels.agent_id }} circuit breaker is HALF-OPEN"
+          description: "Agent is in limited test traffic mode"
+          runbook_url: "https://docs.functionfly.com/runbooks/agent-circuit-half-open"
