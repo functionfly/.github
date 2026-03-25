@@ -14,8 +14,14 @@ var compileCmd = &cobra.Command{
 	Long: `Compile functions to different output formats.
 
 Supported compilers:
-  python    Compile Python functions to WebAssembly (WASM)`,
+  python    Compile Python functions to WebAssembly (WASM)
+  rust      Compile Rust functions to WebAssembly (WASM)`,
 	SilenceUsage: true,
+}
+
+// CompileCmd returns the compile command for attachment to the fly CLI
+func CompileCmd() *cobra.Command {
+	return compileCmd
 }
 
 func init() {
@@ -24,4 +30,7 @@ func init() {
 
 	// Add python subcommand (wraps flypy-go)
 	compileCmd.AddCommand(newCompilePythonCmd())
+
+	// Add rust subcommand
+	compileCmd.AddCommand(newCompileRustCmd())
 }

@@ -31,6 +31,7 @@ Core Commands:
   test      Enhanced testing with local validation and benchmarking
   update    Safely bump version without overwriting
   stats     Provides immediate feedback on function usage
+  compile   Compile functions to WebAssembly (python, rust)
 
 Enhanced Commands:
   test local    Run comprehensive local function tests
@@ -46,6 +47,7 @@ Example:
   fly login
   fly init slugify
   fly dev
+  fly compile rust -i ./Cargo.toml -o ./dist
   fly publish
   fly test
   fly stats`,
@@ -64,6 +66,9 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
+
+	// Add compile command
+	rootCmd.AddCommand(compileCmd)
 
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.fly.yaml)")
 }
