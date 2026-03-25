@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
-.PHONY: help build build-local-runtime test clean docker-up docker-down dev api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-fly build-fly-release release-dry-run release release-snapshot install-locally dist build-coming-soon
+.PHONY: help build build-local-runtime build-microvm-orchestrator test clean docker-up docker-down dev dev-neon api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version wasm-bundle staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-fly build-fly-release release-dry-run release release-snapshot install-locally dist build-coming-soon deploy-coming-soon deploy-admin-dashboard
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -17,6 +17,35 @@ build: ## Build all services
 build-local-runtime: ## Build the local Rust runtime
 	cd runtimes/local && cargo build --release
 	cp runtimes/local/target/release/functionfly-local bin/
+
+build-microvm-orchestrator: ## Build MicroVM orchestrator (HTTP on :9091; set FUNCTIONFLY_MICROVM_DEV_MODE=1 for host Python without Firecracker)
+	cd runtimes/microvm && cargo build --release
+	cp runtimes/microvm/target/release/functionfly-microvm bin/
+
+build-microvm-rootfs: ## Build CPython 3.11 ext4 rootfs for Firecracker (requires Docker + root). Set PYTHON_VER=3.12 for Python 3.12.
+	@echo "Building Firecracker rootfs (Python $${PYTHON_VER:-3.11})..."
+	@mkdir -p bin/vmimages
+	cd runtimes/microvm/images && bash build-rootfs.sh $${PYTHON_VER:-3.11} $(CURDIR)/bin/vmimages
+	@echo "Rootfs ready: bin/vmimages/python$${PYTHON_VER:-3.11}.ext4"
+	@echo "Next: copy a Firecracker-compatible vmlinux kernel to bin/vmimages/"
+
+dev-microvm: build-microvm-orchestrator ## Run MicroVM orchestrator in dev mode (host CPython, no Firecracker)
+	FUNCTIONFLY_MICROVM_DEV_MODE=1 ./bin/functionfly-microvm \
+		--port 9091 \
+		--image-path bin/vmimages \
+		--max-vms 4 \
+		--warm-idle-secs 120 \
+		--debug
+
+run-microvm: build-microvm-orchestrator ## Run MicroVM orchestrator in production mode (requires Firecracker + VM images in MICROVM_IMAGE_PATH)
+	@[ -f "$${MICROVM_IMAGE_PATH:-bin/vmimages}/python311.ext4" ] || \
+		{ echo "ERROR: rootfs not found. Run: make build-microvm-rootfs"; exit 1; }
+	@[ -n "$${FUNCTIONFLY_MICROVM_API_TOKEN:-}" ] || \
+		{ echo "ERROR: FUNCTIONFLY_MICROVM_API_TOKEN must be set for production"; exit 1; }
+	./bin/functionfly-microvm \
+		--image-path "$${MICROVM_IMAGE_PATH:-bin/vmimages}" \
+		--port "$${MICROVM_PORT:-9091}" \
+		--max-vms "$${MICROVM_MAX_VMS:-20}"
 
 build-fly: ## Build the fly CLI (bin/fly)
 	go build -o bin/fly ./cmd/fly
@@ -42,8 +71,10 @@ install-locally: ## Install fly CLI to GOPATH/bin
 dist: ## Build distribution packages for current platform only (no publish)
 	goreleaser build --clean --single-target
 
-build-coming-soon: ## Build dashboard for coming-soon-only deploy (output: web/dashboard/dist). Set VITE_API_URL if different.
-	cd web/dashboard && VITE_COMING_SOON_ONLY=true VITE_API_URL=$${VITE_API_URL:-https://api.functionfly.com} bun run build:standalone
+build-coming-soon: ## Build static coming-soon page for deploy (output: web/dashboard/dist). Uses web/coming-soon/index.html. Set API_URL to override feedback API (default https://api.functionfly.com).
+	@rm -rf web/dashboard/dist && mkdir -p web/dashboard/dist && cp -r web/coming-soon/* web/dashboard/dist/ && \
+	([ -z "$${API_URL:-}" ] || sed -i 's|<html lang="en">|<html lang="en" data-api-url="'"$$API_URL"'">|' web/dashboard/dist/index.html) && \
+	echo "Coming-soon built: web/dashboard/dist (API: $${API_URL:-https://api.functionfly.com})"
 
 deploy-coming-soon: build-coming-soon ## Build and deploy coming-soon to Cloudflare Pages. Requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in .env (see docs/DOMAIN_AND_COMING_SOON_SETUP.md).
 	@[ -f .env ] && set -a && . ./.env && set +a; \
@@ -51,6 +82,13 @@ deploy-coming-soon: build-coming-soon ## Build and deploy coming-soon to Cloudfl
 	if [ -z "$${CLOUDFLARE_ACCOUNT_ID:-}" ]; then echo "ERROR: CLOUDFLARE_ACCOUNT_ID not set (avoids API 10001). Add to .env: CLOUDFLARE_ACCOUNT_ID=your_account_id_from_dashboard_url"; exit 1; fi; \
 	npx wrangler pages project create functionfly-dashboard 2>/dev/null || true; \
 	npx wrangler pages deploy web/dashboard/dist --project-name=functionfly-dashboard --branch=master
+
+deploy-admin-dashboard: ## Build admin dashboard (vite) and deploy to Cloudflare Pages (project: functionfly-admin-dashboard). Requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in .env (same as deploy-coming-soon).
+	@[ -f .env ] && set -a && . ./.env && set +a; \
+	if [ -z "$${CLOUDFLARE_API_TOKEN:-}" ]; then echo "ERROR: CLOUDFLARE_API_TOKEN not set. Add to .env or export it."; exit 1; fi; \
+	if [ -z "$${CLOUDFLARE_ACCOUNT_ID:-}" ]; then echo "ERROR: CLOUDFLARE_ACCOUNT_ID not set. Add to .env (see deploy-coming-soon)." ; exit 1; fi; \
+	cd web/admin-dashboard && (bunx wrangler pages project create functionfly-admin-dashboard --production-branch=master 2>/dev/null || true) && \
+	bun run pages:deploy
 
 venv: ## Create .venv for local dev (Python from .python-version) and install functions/functionfly/requirements.txt. Run: source .venv/bin/activate
 	@python3 --version 2>/dev/null || { echo "Python 3 required (pyenv recommended: pyenv install 3.12)"; exit 1; }; \
@@ -144,6 +182,12 @@ docker-down: ## Stop docker services
 
 docker-logs: ## Show docker logs
 	docker compose logs -f
+
+dev-neon: ## Start API with Neon DB (no local Postgres). Requires .env with DATABASE_URL and Redis. See AGENTS.md.
+	@( set -a; [ -f .env ] && . ./.env; set +a; \
+	export REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} DEVELOPMENT=true SKIP_MIGRATION_VALIDATION=true VERIFICATION_ENABLED=false; \
+	echo "Starting API (Neon DB, Redis $$REDIS_ADDR)..."; \
+	exec ./bin/orchestrator-api --skip-migrations )
 
 dev: ## Start development environment (local Postgres + Redis, no Docker). Set DB_PORT=5434 for Docker Postgres. Start Prometheus with: docker compose up -d prometheus (then status page will show component health).
 	@echo "Using local services: DB_PORT=$${DB_PORT:-5432}, REDIS_ADDR=$${REDIS_ADDR:-localhost:6379}, PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091}"

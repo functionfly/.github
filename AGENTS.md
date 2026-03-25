@@ -13,9 +13,11 @@ See `README.md` for project overview and `CONTRIBUTING.md` for Git workflow. Thi
 | **Storage / DB** | `internal/storage/`, `internal/storage/sql/` | Repositories, migrations; Postgres + optional Redis |
 | **Auth** | `internal/auth/`, `internal/api/middleware/auth.go` | Sessions, GBA plugins (MFA, SAML, WebAuthn) |
 | **Dashboard (React)** | `web/dashboard/src/` | Vite SPA; `pages/`, `components/`, `hooks/`, `lib/` |
+| **Marketing site (Astro)** | `web/site/` | Static landing, trust, legal, blog shell; `bun run dev` → port **4321**; `bun run build` → `dist/` |
+| **Public docs (Astro)** | `web/docs/` | User-facing guides (synced Markdown); separate from dashboard; `bun run dev` → port **4322**; dashboard `/docs` redirects here |
 | **Deploy / edge** | `deploy/`, `deploy/edge/` | Caddy, DNS, VPS/edge scripts |
 | **Cloudflare** | `docs/CLOUDFLARE.md`, `deploy/cloudflare/`, `deploy/dns/` | DNS, CDN, R2, Workers, Tunnel, Pages |
-| **Docs** | `docs/` | Design and operational docs |
+| **Repo docs (Markdown)** | `docs/` | Design, ops, internal guides (not the public docs site) |
 | **Neon Postgres** | `docs/NEON.md` | Optional: use Neon for Postgres; set `DATABASE_URL` or `DB_*` |
 | **Local PG 17 + pgvector** | `docs/LOCAL_POSTGRES_17.md` | Migrate local Debian DB to PostgreSQL 17 with pgvector and extensions |
 
@@ -29,6 +31,8 @@ When adding API surface: add handler in `internal/api/handlers/`, register in `i
 |---------|-----------|------|
 | **Orchestrator API** (Go) | `./bin/orchestrator-api --skip-migrations` or `make dev` | 8080 |
 | **Dashboard** (Vite/React) | `cd web/dashboard && npx vite --host 0.0.0.0` | 3000 |
+| **Docs site** (Astro) | `cd web/docs && bun run dev` | 4322 |
+| **Marketing site** (Astro) | `cd web/site && bun run dev` | 4321 |
 | **PostgreSQL** | `sudo pg_ctlcluster 17 main start` (see `docs/LOCAL_POSTGRES_17.md` to replace PG 16 with 17) | 5432 |
 | **Redis** | `redis-server --daemonize yes` | 6379 |
 
@@ -36,14 +40,31 @@ When adding API surface: add handler in `internal/api/handlers/`, register in `i
 
 ## Starting the backend
 
+### Option A: Neon for dev (no local Postgres)
+
+If your `.env` sets `DATABASE_URL` (e.g. Neon connection string), the API uses it and **ignores** `DB_HOST`/`DB_PORT`. No local Postgres needed.
+
+1. **Redis** (required): `redis-server --daemonize yes`
+2. **Load env and run API:**
+
+   ```bash
+   source .env
+   export REDIS_ADDR=localhost:6379 DEVELOPMENT=true SKIP_MIGRATION_VALIDATION=true VERIFICATION_ENABLED=false
+   ./bin/orchestrator-api --skip-migrations
+   ```
+
+   Or: `make dev-neon` (sources `.env` and runs the API with the above flags).
+
+### Option B: Local Postgres
+
 1. **Start dependencies** (required first):
 
    ```bash
-   sudo pg_ctlcluster 17 main start
+   sudo pg_ctlcluster 17 main start   # or 16 if that's the cluster you have
    redis-server --daemonize yes
    ```
 
-2. **Environment:** Ensure `.env` exists (copy from `.env.example` if present). Then:
+2. **Environment:** Ensure `.env` exists. If using local DB (no `DATABASE_URL`), then:
 
    ```bash
    source .env
@@ -58,14 +79,35 @@ The `--skip-migrations` flag is required because the `migrations/` directory has
 
 ---
 
+## Nx (repo root)
+
+| Script | What runs |
+|--------|-----------|
+| `bun dev` | **dashboard** (3000), **marketing** `web/site` (4321), **docs** `web/docs` (4322) — the usual local trio for redirects between apps. |
+| `bun run dev:all` | Every project that defines `dev` (includes **admin-dashboard**, **blog-api**). |
+| `bun run dev:admin` | Admin SPA only (port **3002** via Nx). |
+| `bun run dev:blog` | Nest **blog-api** only. |
+
+`nx run <project> -t dev` works per app; `nx show projects` lists project names.
+
+---
+
 ## Starting the dashboard
+
+From repo root (matches Nx `dashboard` dev target):
+
+```bash
+nx run dashboard -t dev
+```
+
+Or directly:
 
 ```bash
 cd web/dashboard
 VITE_API_URL=http://localhost:8080 npx vite --host 0.0.0.0 --port 3000
 ```
 
-Vite proxies `/api/*` to the Go backend (port 8080). Use `VITE_API_URL` when the API is on a different host/port.
+Vite proxies `/api/*` to the Go backend (port 8080). Use `VITE_API_URL` when the API is on a different host/port. The package script `bun run dev` in `web/dashboard` may use Infisical; **Nx uses plain Vite** so local dev works without the Infisical CLI.
 
 ---
 
@@ -82,10 +124,11 @@ Vite proxies `/api/*` to the Go backend (port 8080). Use `VITE_API_URL` when the
 
 1. **Migrations:** Duplicate sequence numbers in `migrations/` (e.g. two `000001_*.sql`). Use `--skip-migrations` when starting the API; apply schema changes via direct SQL if needed.
 2. **resend-go:** Upgraded from v2.0.0 to v2.28.0. `ReplyTo` is now `string` (was `*string`); `client.Keys.Get()` was removed.
-3. **Stub packages:** `internal/adapters/functionfly`, `internal/api/handlers/statefabric`, `internal/storage/statefabric` — return "not implemented"; do not remove without replacing.
+3. **Stub / beta surfaces:** `internal/adapters/functionfly` still returns "not implemented" for some paths. State Fabric routes are registered (admin/platform); verify behavior before promising them in contracts. Grep for `not implemented` in `internal/api/handlers` before launch-critical features.
 4. **Postgres audit trigger:** `audit_trigger_function()` expects `ip_address` cast to `::inet` (fixed in DB setup).
-5. **Admin test account:** `admin@functionfly.local` / `admin123` (bcrypt).
+5. **Admin test account (local dev only):** `admin@functionfly.local` / `admin123` (bcrypt). For production, use `go run ./cmd/create-admin -production` and `ADMIN_CREATE_PASSWORD` — see `docs/ADMIN_SETUP_README.md`.
 6. **Dashboard:** `index.html` was added for Vite; `bun` is the JS package manager — run `bun install` from repo root for workspace deps.
+7. **Wallet low-balance alerts:** `AGENT_WALLET_LOW_BALANCE_USD` controls when low-balance notifications are sent (default: `5.00` USD).
 
 ---
 

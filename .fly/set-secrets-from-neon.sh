@@ -52,9 +52,9 @@ if [ -z "$DB_MASTER_KEY_PASSWORD" ]; then
     echo "Generated DB_MASTER_KEY_PASSWORD"
 fi
 
-# Application URLs (required for API and for coming-soon page: CORS allows functionfly.com to POST /v1/feedback)
+# Application URLs (required for API, coming-soon CORS, app + admin SPAs)
 BASE_URL="${BASE_URL:-https://api.functionfly.com}"
-CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-https://functionfly.com,https://www.functionfly.com}"
+CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com}"
 FRONTEND_URL="${FRONTEND_URL:-https://functionfly.com}"
 
 echo "Setting secrets..."
@@ -88,5 +88,5 @@ echo ""
 fly secrets list $APP_ARGS
 echo ""
 echo "=== Done ==="
-echo "Coming-soon page: CORS_ALLOWED_ORIGINS and FRONTEND_URL are set so functionfly.com can POST to /v1/feedback."
+echo "CORS_ALLOWED_ORIGINS includes marketing, app, and admin origins; FRONTEND_URL set for coming-soon / feedback."
 echo "If you need Redis: fly redis create --name functionfly-control-redis, then set REDIS_ADDR and re-run."

@@ -63,7 +63,7 @@ DB_MASTER_KEY_PASSWORD=""  # Generate with: openssl rand -hex 32
 
 # Application Configuration (required for coming-soon / CORS)
 BASE_URL="https://api.functionfly.com"
-CORS_ALLOWED_ORIGINS="https://functionfly.com,https://www.functionfly.com"
+CORS_ALLOWED_ORIGINS="https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com"
 FRONTEND_URL="https://functionfly.com"
 
 # =============================================================================

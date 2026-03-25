@@ -5,8 +5,8 @@ This directory contains the configuration and scripts for deploying the Function
 ## Prerequisites
 
 1. **Fly CLI installed**: `curl -L https://fly.io/install.sh | sh`
-2. **Fly account**: Sign up at https://fly.io
-3. **Neon PostgreSQL**: Create a project at https://neon.tech
+2. **Fly account**: Sign up at <https://fly.io>
+3. **Neon PostgreSQL**: Create a project at <https://neon.tech>
 4. **Redis**: Use Fly.io's managed Redis or an external provider
 
 ## Quick Start
@@ -35,7 +35,10 @@ Edit the variables at the top of `.fly/set-secrets.sh`, then run:
 # Or: FLY_APP=functionfly-control ./.fly/set-secrets.sh production
 ```
 
-**Option B – Manual `fly secrets set`**  
+**Option B – From your local `.env`**  
+See [docs/FLY_SECRETS_FROM_ENV.md](../docs/FLY_SECRETS_FROM_ENV.md) for `fly secrets set`, `fly secrets import`, and what not to upload.
+
+**Option C – Manual `fly secrets set`**  
 Replace values and run (use `--app YOUR_APP` if not in the app directory):
 
 ```bash
@@ -58,7 +61,7 @@ fly secrets set DB_MASTER_KEY_PASSWORD=your-secure-master-key --app functionfly-
 
 # Application (required for CORS and coming-soon frontend)
 fly secrets set BASE_URL=https://api.functionfly.com --app functionfly-control
-fly secrets set CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com --app functionfly-control
+fly secrets set CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com --app functionfly-control
 fly secrets set FRONTEND_URL=https://functionfly.com --app functionfly-control
 ```
 
@@ -118,11 +121,13 @@ The main configuration file includes:
 Neon provides two types of connection endpoints:
 
 1. **Direct connection** (for migrations):
+
    ```
    ep-xxx.us-east-1.aws.neon.tech
    ```
 
 2. **Pooled connection** (recommended for the app):
+
    ```
    ep-xxx-pooler.us-east-1.aws.neon.tech
    ```
@@ -166,6 +171,7 @@ fly redis list
 ## Health Checks
 
 The application exposes a `/health` endpoint that Fly.io uses for health checks. The endpoint returns:
+
 - `200 OK` when healthy
 - `500 Internal Server Error` when unhealthy
 
@@ -197,6 +203,7 @@ Edit `fly.toml` and change the VM size:
 ### Horizontal Scaling
 
 The configuration already enables:
+
 - `auto_start_machines = true`
 - `min_machines_running = 1`
 
@@ -205,26 +212,31 @@ To add more machines, use the Fly.io dashboard or CLI.
 ## Troubleshooting
 
 ### Check Logs
+
 ```bash
 fly logs -n 100
 ```
 
 ### SSH into Machine
+
 ```bash
 fly ssh console
 ```
 
 ### Check Health
+
 ```bash
 fly health check
 ```
 
 ### View Secrets
+
 ```bash
 fly secrets list
 ```
 
 ### Rollback
+
 ```bash
 fly releases
 fly rollback <release-version>
@@ -250,7 +262,7 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 ```
 
-Generate a token at: https://fly.io/docs/flyctl/access-tokens/
+Generate a token at: <https://fly.io/docs/flyctl/access-tokens/>
 
 ## Files in This Directory
 

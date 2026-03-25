@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 # ============================================================================
 # FunctionFly Staging Environment Docker Compose
@@ -26,7 +26,7 @@ services:
     container_name: functionfly-orchestrator-staging
     hostname: orchestrator-api
     ports:
-      - "8082:8080"  # Different port to avoid conflicts with dev/production
+      - "8082:8080" # Different port to avoid conflicts with dev/production
     environment:
       # Staging environment configuration
       - NODE_ENV=staging
@@ -65,7 +65,7 @@ services:
       - RATE_LIMIT_WINDOW_SECONDS=${RATE_LIMIT_WINDOW_SECONDS:-60}
 
       # CORS for staging
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://staging.functionfly.com,https://app.staging.functionfly.com,http://localhost:3000}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://staging.functionfly.com,https://app.staging.functionfly.com,https://admin.staging.functionfly.com,http://localhost:3000}
       - CORS_ALLOWED_METHODS=GET, POST, PUT, PATCH, DELETE, OPTIONS
       - CORS_ALLOWED_HEADERS=Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info
 
@@ -106,8 +106,8 @@ services:
       # Redis for artifact storage (staging can use local Redis or external)
       - REDIS_ADDR=${REDIS_ADDR:-redis:6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - REDIS_DB=${REDIS_DB:-1}  # Different DB than production
-      - ARTIFACT_TTL=${ARTIFACT_TTL:-24h}  # Shorter TTL for staging
+      - REDIS_DB=${REDIS_DB:-1} # Different DB than production
+      - ARTIFACT_TTL=${ARTIFACT_TTL:-24h} # Shorter TTL for staging
 
       # Cache configuration
       - CACHE_REDIS_ENABLED=${CACHE_REDIS_ENABLED:-true}
@@ -169,10 +169,10 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: '0.5'
+          cpus: "0.5"
         reservations:
           memory: 256M
-          cpus: '0.25'
+          cpus: "0.25"
 
   # Redis for artifact storage in staging
   redis:
@@ -180,7 +180,7 @@ services:
     container_name: functionfly-redis-staging
     hostname: redis
     ports:
-      - "127.0.0.1:6380:6379"  # Different port than dev/production (localhost only for security)
+      - "127.0.0.1:6380:6379" # Different port than dev/production (localhost only for security)
     volumes:
       - redis_staging_data:/data
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
@@ -196,7 +196,7 @@ services:
       resources:
         limits:
           memory: 256M
-          cpus: '0.25'
+          cpus: "0.25"
 
   # Caddy reverse proxy for staging
   caddy:
@@ -206,8 +206,8 @@ services:
     container_name: functionfly-caddy-staging
     hostname: caddy
     ports:
-      - "8083:80"   # Staging HTTP port
-      - "8444:443"  # Staging HTTPS port (if SSL is configured)
+      - "8083:80" # Staging HTTP port
+      - "8444:443" # Staging HTTPS port (if SSL is configured)
     depends_on:
       - orchestrator-api
     volumes:
@@ -222,7 +222,7 @@ services:
       resources:
         limits:
           memory: 128M
-          cpus: '0.25'
+          cpus: "0.25"
 
   # Health monitor for staging
   health-monitor:
@@ -276,7 +276,7 @@ services:
       resources:
         limits:
           memory: 128M
-          cpus: '0.25'
+          cpus: "0.25"
 
 volumes:
   redis_staging_data:
