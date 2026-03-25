@@ -1,0 +1,33 @@
+{
+  "author": "functionfly",
+  "name": "ndjson-stringify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Stringify to NDJSON",
+  "description": "Convert an array of values to NDJSON (Newline Delimited JSON) format.",
+  "category": "format",
+  "tags": ["ndjson", "json", "stringify", "streaming", "jsonl"],
+  "input": {
+    "type": "object",
+    "properties": { "data": { "type": "array" } },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "string" },
+      "count": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "data": [{ "a": 1 }, { "b": 2 }] },
+    "output": { "ok": true, "count": 2 }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-ner",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Named Entity Recognition (NER)",
+  "description": "Lightweight heuristic named entity recognition: extracts persons, organizations, and locations from text.",
+  "category": "social",
+  "tags": ["ner", "nlp", "entities", "persons", "organizations"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "entities": {}, "note": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "text": "Dr. Alice Smith joined Google Inc. She lives in New York City." }, "output": { "ok": true } }
+}

@@ -1,0 +1,44 @@
+{
+  "author": "functionfly",
+  "name": "inventory-check",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Check Inventory",
+  "description": "Check if inventory can fulfill an order. Returns in_stock status, fulfillment ability, and shortage quantity.",
+  "category": "ecommerce",
+  "tags": ["inventory", "stock", "fulfillment", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "stock_quantity": { "type": "integer" },
+      "requested_quantity": { "type": "integer", "default": 1 },
+      "low_stock_threshold": { "type": "integer", "default": 10 }
+    },
+    "required": ["stock_quantity"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "boolean" },
+      "can_fulfill": {},
+      "status": {},
+      "available": {},
+      "shortage": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 60,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "stock_quantity": 5,
+      "requested_quantity": 3,
+      "low_stock_threshold": 10
+    },
+    "output": { "ok": true, "can_fulfill": true, "status": "low_stock" }
+  }
+}

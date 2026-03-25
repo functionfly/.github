@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "is-object",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Object",
+  "description": "Check whether a value is a plain object (dictionary/map, not array or null).",
+  "category": "validation",
+  "tags": ["validation", "object", "dict", "type", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "description": "Value to check" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": {},
+      "result": { "type": "boolean" },
+      "keys": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": { "name": "Alice", "age": 30 } },
+    "output": {
+      "ok": true,
+      "value": { "name": "Alice", "age": 30 },
+      "result": true,
+      "keys": ["name", "age"]
+    }
+  }
+}

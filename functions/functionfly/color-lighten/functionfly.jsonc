@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "color-lighten",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Lighten Color",
+  "description": "Increase the HSL lightness of a color by a given amount (0-100).",
+  "category": "color",
+  "tags": ["color", "lighten", "hsl", "adjust"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "color": { "type": "string", "description": "Hex color" },
+      "amount": { "type": "number", "description": "Amount to lighten (0-100)", "default": 10 }
+    },
+    "required": ["color"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "original_lightness": { "type": "number" },
+      "new_lightness": { "type": "number" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "color": "#336699", "amount": 20 },
+    "output": { "ok": true }
+  }
+}

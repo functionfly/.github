@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "linkedin-share",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "LinkedIn Share URL",
+  "description": "Generate a LinkedIn share URL for a given article URL, title, and summary.",
+  "category": "social",
+  "tags": ["linkedin", "share", "social", "url"],
+  "input": { "type": "object", "properties": { "url": { "type": "string" }, "title": { "type": "string" }, "summary": { "type": "string" }, "source": { "type": "string" } }, "required": ["url"] },
+  "output": { "type": "object", "properties": { "ok": {}, "share_url": {}, "html": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "url": "https://example.com/article", "title": "My Article" }, "output": { "ok": true } }
+}

@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "image-pixelate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Pixelate Image",
+  "description": "Apply a pixelation/mosaic effect by downscaling and upscaling with nearest-neighbor interpolation.",
+  "category": "color",
+  "tags": ["image", "pixelate", "mosaic", "8bit", "effect"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string" },
+      "pixel_size": { "type": "integer", "description": "Size of each pixel block", "default": 10 },
+      "format": { "type": "string", "default": "JPEG" }
+    },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "format": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "...", "pixel_size": 20 }, "output": { "ok": true } }
+}

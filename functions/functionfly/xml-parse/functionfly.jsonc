@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "xml-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse XML",
+  "description": "Parse an XML string into a nested JSON-compatible object. Attributes are stored under '@attributes', text content under '#text'.",
+  "category": "format",
+  "tags": ["xml", "parse", "dom", "format"],
+  "input": { "type": "object", "properties": { "data": { "type": "string" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "root": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": { "input": { "data": "<root><item id=\"1\">Hello</item></root>" }, "output": { "ok": true } }
+}

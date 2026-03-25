@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "sanitize-path",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Sanitize Path",
+  "description": "Sanitize a file path by resolving traversal sequences, removing control characters, and normalizing separators.",
+  "category": "validation",
+  "tags": ["validation", "sanitize", "path", "file", "security", "traversal"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "File path to sanitize" },
+      "allow_absolute": {
+        "type": "boolean",
+        "description": "Allow absolute paths (leading /)",
+        "default": false
+      },
+      "separator": {
+        "type": "string",
+        "description": "Path separator to use in output",
+        "default": "/"
+      }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "string" },
+      "changed": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "../../etc/passwd" },
+    "output": {
+      "ok": true,
+      "value": "../../etc/passwd",
+      "result": "etc/passwd",
+      "changed": true
+    }
+  }
+}

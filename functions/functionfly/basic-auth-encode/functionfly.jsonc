@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "basic-auth-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Encode Basic Auth",
+  "description": "Encode a username and password into a Base64 HTTP Basic Authentication credential string.",
+  "category": "http",
+  "tags": ["http", "basic-auth", "encode", "authentication", "base64"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "username": { "type": "string", "description": "Username" },
+      "password": { "type": "string", "description": "Password", "default": "" }
+    },
+    "required": ["username"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "credentials": { "type": "string", "description": "Base64-encoded credentials" },
+      "header": { "type": "string", "description": "Full Authorization header value" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "username": "user", "password": "pass" },
+    "output": { "ok": true, "credentials": "dXNlcjpwYXNz", "header": "Basic dXNlcjpwYXNz" }
+  }
+}

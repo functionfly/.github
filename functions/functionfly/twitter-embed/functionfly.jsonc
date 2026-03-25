@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "twitter-embed",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Twitter/X Embed",
+  "description": "Generate a Twitter/X embedded tweet blockquote from a tweet URL or ID.",
+  "category": "social",
+  "tags": ["twitter", "embed", "tweet", "social"],
+  "input": { "type": "object", "properties": { "url": { "type": "string" }, "tweet_id": { "type": "string" }, "theme": { "type": "string", "enum": ["light", "dark"], "default": "light" }, "width": { "type": "integer", "default": 550 } } },
+  "output": { "type": "object", "properties": { "ok": {}, "embed_html": {}, "tweet_id": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "url": "https://twitter.com/user/status/12345678901234567" }, "output": { "ok": true } }
+}

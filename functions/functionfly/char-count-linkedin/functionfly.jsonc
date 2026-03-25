@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "char-count-linkedin",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "LinkedIn Character Count",
+  "description": "Count characters and check against LinkedIn limits for posts (3,000), articles (125,000), comments (1,250), and headlines.",
+  "category": "social",
+  "tags": ["linkedin", "character-count", "social", "text", "validation"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "content_type": { "type": "string", "enum": ["post", "article", "comment", "headline", "about"], "default": "post" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "char_count": {}, "limit": {}, "remaining": {}, "over_limit": {}, "fits": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "text": "Excited to announce a new milestone for our team!", "content_type": "post" }, "output": { "ok": true, "char_count": 49, "limit": 3000, "fits": true } }
+}

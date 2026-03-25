@@ -1,0 +1,56 @@
+{
+  "author": "functionfly",
+  "name": "tiered-pricing",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Tiered Pricing",
+  "description": "Determine the per-unit price based on quantity tiers (e.g. volume discounts). Each tier has min_qty, optional max_qty, and price.",
+  "category": "ecommerce",
+  "tags": ["pricing", "tiers", "volume", "discount", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "quantity": { "type": "integer" },
+      "tiers": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "min_qty": { "type": "integer" },
+            "max_qty": { "type": "integer" },
+            "price": { "type": "number" }
+          }
+        }
+      }
+    },
+    "required": ["quantity", "tiers"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "price_per_unit": {},
+      "quantity": {},
+      "total": {},
+      "applied_tier": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "quantity": 50,
+      "tiers": [
+        { "min_qty": 1, "price": 10 },
+        { "min_qty": 10, "price": 9 },
+        { "min_qty": 50, "price": 8 }
+      ]
+    },
+    "output": { "ok": true, "price_per_unit": 8, "total": 400.0 }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "image-dither",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Apply Dithering to Image",
+  "description": "Apply Floyd-Steinberg dithering with an adaptive palette to reduce color depth with minimal banding.",
+  "category": "color",
+  "tags": ["image", "dither", "floyd-steinberg", "palette", "reduce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string" },
+      "colors": { "type": "integer", "description": "Number of palette colors (2-256)", "default": 16 },
+      "format": { "type": "string", "default": "PNG" }
+    },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "format": {}, "colors": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "...", "colors": 8 }, "output": { "ok": true } }
+}

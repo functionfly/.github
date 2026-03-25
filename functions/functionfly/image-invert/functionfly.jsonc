@@ -1,0 +1,19 @@
+{
+  "author": "functionfly",
+  "name": "image-invert",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Invert Image Colors",
+  "description": "Invert all pixel values in an image (create a negative/inverted effect).",
+  "category": "color",
+  "tags": ["image", "invert", "negate", "negative", "filter"],
+  "input": {
+    "type": "object",
+    "properties": { "image": { "type": "string" }, "format": { "type": "string", "default": "JPEG" } },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "format": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "..." }, "output": { "ok": true } }
+}

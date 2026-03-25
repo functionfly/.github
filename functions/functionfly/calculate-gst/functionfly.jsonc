@@ -1,0 +1,24 @@
+{
+  "author": "functionfly",
+  "name": "calculate-gst",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate GST",
+  "description": "Calculate Goods and Services Tax (GST) for AU/NZ/India/Canada. Supports inclusive and exclusive modes.",
+  "category": "ecommerce",
+  "tags": ["gst", "tax", "australia", "nz", "india", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "price": { "type": "number" },
+      "rate": { "type": "number", "description": "GST rate %", "default": 10 },
+      "inclusive": { "type": "boolean", "default": false },
+      "country": { "type": "string", "default": "AU" }
+    },
+    "required": ["price"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "gst": {}, "net": {}, "gross": {}, "rate": {}, "country": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "price": 100, "rate": 10 }, "output": { "ok": true, "gst": 10.0, "gross": 110.0 } }
+}

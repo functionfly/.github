@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "twitter-urls",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract URLs from Tweet",
+  "description": "Extract all URLs from a tweet or social media text.",
+  "category": "social",
+  "tags": ["twitter", "urls", "links", "parse", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "urls": {}, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "text": "Check https://example.com and https://docs.example.com" }, "output": { "ok": true, "count": 2 } }
+}

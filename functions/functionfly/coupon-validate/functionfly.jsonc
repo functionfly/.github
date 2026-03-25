@@ -1,0 +1,46 @@
+{
+  "author": "functionfly",
+  "name": "coupon-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Validate Coupon Code",
+  "description": "Validate a coupon code against configurable rules (pattern, prefix, expiry, minimum cart total).",
+  "category": "ecommerce",
+  "tags": ["coupon", "promo", "validate", "discount", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "code": { "type": "string" },
+      "cart_total": { "type": "number" },
+      "rules": {
+        "type": "object",
+        "properties": {
+          "pattern": { "type": "string" },
+          "prefix": { "type": "string" },
+          "expires_at": { "type": "string" },
+          "min_cart_total": { "type": "number" }
+        }
+      }
+    },
+    "required": ["code"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "boolean" },
+      "valid": {},
+      "errors": {},
+      "error": {}
+    }
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "code": "SAVE20", "rules": { "prefix": "SAVE" } },
+    "output": { "ok": true, "valid": true }
+  }
+}

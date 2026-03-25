@@ -1,0 +1,19 @@
+{
+  "author": "functionfly",
+  "name": "toml-stringify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Stringify to TOML",
+  "description": "Convert a JSON-compatible object to TOML format (supports flat keys and one level of table nesting).",
+  "category": "format",
+  "tags": ["toml", "stringify", "serialize", "config"],
+  "input": {
+    "type": "object",
+    "properties": { "data": { "type": "object", "description": "Object to convert to TOML" } },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": { "input": { "data": { "server": { "host": "localhost", "port": 8080 } } }, "output": { "ok": true } }
+}

@@ -1,0 +1,34 @@
+{
+  "author": "functionfly",
+  "name": "bearer-token-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Bearer Token",
+  "description": "Extract the token from an HTTP Authorization header using the Bearer scheme.",
+  "category": "http",
+  "tags": ["http", "bearer", "token", "authorization", "extract", "jwt"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Authorization header value (e.g. 'Bearer <token>')" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "token": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "Bearer eyJhbGciOiJIUzI1NiJ9.abc.def" },
+    "output": { "ok": true, "token": "eyJhbGciOiJIUzI1NiJ9.abc.def" }
+  }
+}

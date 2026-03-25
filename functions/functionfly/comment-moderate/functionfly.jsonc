@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "comment-moderate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Moderate Comments",
+  "description": "Automatically moderate user comments, returning approve/flag/reject with detected issues (toxicity, spam, caps, URLs).",
+  "category": "social",
+  "tags": ["moderation", "comment", "content-safety", "spam", "social"],
+  "input": { "type": "object", "properties": { "comment": { "type": "string" }, "rules": { "type": "object" } }, "required": ["comment"] },
+  "output": { "type": "object", "properties": { "ok": {}, "action": {}, "issues": {}, "approved": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "comment": "Great article! Very helpful." }, "output": { "ok": true, "action": "approve", "approved": true } }
+}

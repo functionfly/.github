@@ -1,52 +1,33 @@
-import base64
-import io
-import subprocess
-import tempfile
-import os
+import re
+
+
+YOUTUBE_PATTERNS = [
+    r'(?:youtube\.com/watch\?[^"]*v=|youtu\.be/)([A-Za-z0-9_-]{11})',
+    r'youtube\.com/embed/([A-Za-z0-9_-]{11})',
+    r'youtube\.com/shorts/([A-Za-z0-9_-]{11})',
+]
+VIMEO_PATTERN = r'vimeo\.com/(?:video/)?(\d+)'
+
 
 def handler(event):
-    if isinstance(event, dict):
-        video_b64 = event.get("video_base64", "")
-        offset = event.get("offset_seconds", 0)
-    else:
-        video_b64, offset = "", 0
-    if not video_b64:
-        return {"ok": False, "error": "video_base64 is required"}
+    url = event.get("url") if isinstance(event, dict) else None
+    quality = event.get("quality", "hq")
+    if not url:
+        return {"ok": False, "error": "url is required"}
     try:
-        raw = base64.b64decode(str(video_b64).strip(), validate=True)
-    except Exception as e:
-        return {"ok": False, "error": f"Invalid base64: {e}"}
-    try:
-        import cv2
-        import numpy as np
-    except ImportError:
-        try:
-            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
-                f.write(raw)
-                path = f.name
-            out = subprocess.run(
-                ["ffmpeg", "-y", "-ss", str(float(offset)), "-i", path, "-vframes", "1", "-f", "image2pipe", "-vcodec", "png", "pipe:1"],
-                capture_output=True, timeout=15
-            )
-            os.unlink(path)
-            if out.returncode != 0 or not out.stdout:
-                return {"ok": False, "error": "ffmpeg failed or not installed; install opencv-python or ffmpeg"}
-            return {"ok": True, "image_base64": base64.b64encode(out.stdout).decode("ascii")}
-        except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-            return {"ok": False, "error": "opencv-python or ffmpeg required; pip install opencv-python"}
-    try:
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
-            f.write(raw)
-            path = f.name
-        cap = cv2.VideoCapture(path)
-        os.unlink(path)
-        if offset > 0:
-            cap.set(cv2.CAP_PROP_POS_MSEC, offset * 1000)
-        ok, frame = cap.read()
-        cap.release()
-        if not ok or frame is None:
-            return {"ok": False, "error": "Could not read video frame"}
-        _, buf = cv2.imencode(".png", frame)
-        return {"ok": True, "image_base64": base64.b64encode(buf.tobytes()).decode("ascii")}
+        u = str(url)
+        for pat in YOUTUBE_PATTERNS:
+            m = re.search(pat, u)
+            if m:
+                vid = m.group(1)
+                quality_map = {"default": "default", "mq": "mqdefault", "hq": "hqdefault", "sd": "sddefault", "max": "maxresdefault"}
+                q_key = quality_map.get(quality, "hqdefault")
+                thumb = f"https://img.youtube.com/vi/{vid}/{q_key}.jpg"
+                return {"ok": True, "result": thumb, "thumbnail_url": thumb, "platform": "youtube", "video_id": vid}
+        m = re.search(VIMEO_PATTERN, u)
+        if m:
+            vid = m.group(1)
+            return {"ok": True, "result": None, "thumbnail_url": None, "platform": "vimeo", "video_id": vid, "note": "Vimeo thumbnails require API access"}
+        return {"ok": True, "result": None, "thumbnail_url": None, "platform": "unknown", "note": "URL not recognized"}
     except Exception as e:
         return {"ok": False, "error": str(e)}

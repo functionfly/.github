@@ -1,0 +1,19 @@
+{
+  "author": "functionfly",
+  "name": "review-sentiment",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Analyze Review Sentiment",
+  "description": "Perform simple lexicon-based sentiment analysis on a product review text. Returns positive, negative, or neutral.",
+  "category": "ecommerce",
+  "tags": ["sentiment", "review", "nlp", "analytics", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": { "review": { "type": "string" } },
+    "required": ["review"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "sentiment": {}, "score": {}, "positive_count": {}, "negative_count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "review": "This product is absolutely amazing! Great quality and fast shipping." }, "output": { "ok": true, "sentiment": "positive", "score": 1.0 } }
+}

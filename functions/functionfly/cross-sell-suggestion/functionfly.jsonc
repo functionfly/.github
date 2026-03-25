@@ -1,0 +1,44 @@
+{
+  "author": "functionfly",
+  "name": "cross-sell-suggestion",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Cross-Sell Suggestion",
+  "description": "Suggest complementary products from different categories based on cart contents and configurable affinity rules.",
+  "category": "ecommerce",
+  "tags": ["cross-sell", "recommendation", "cart", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cart_items": { "type": "array" },
+      "available_products": { "type": "array" },
+      "affinity_rules": {
+        "type": "array",
+        "description": "[{trigger_categories, suggest_categories, weight}]"
+      },
+      "max_suggestions": { "type": "integer", "default": 3 }
+    },
+    "required": ["cart_items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "array" },
+      "count": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 300,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "cart_items": [{ "id": "1", "category": "shoes" }],
+      "available_products": [{ "id": "2", "category": "socks", "rating": 4 }]
+    },
+    "output": { "ok": true, "count": 1 }
+  }
+}

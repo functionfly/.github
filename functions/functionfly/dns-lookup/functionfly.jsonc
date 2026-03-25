@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "dns-lookup",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "DNS Lookup",
+  "description": "Resolve a hostname to one or more IP addresses using DNS.",
+  "category": "http",
+  "tags": ["dns", "lookup", "hostname", "ip", "resolve", "network"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "hostname": { "type": "string", "description": "Hostname to resolve" },
+      "record_type": { "type": "string", "description": "DNS record type (A, AAAA, ANY)", "default": "A", "enum": ["A", "AAAA", "ANY"] }
+    },
+    "required": ["hostname"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "hostname": { "type": "string" },
+      "record_type": { "type": "string" },
+      "addresses": { "type": "array", "items": { "type": "string" } },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 300,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "hostname": "example.com" },
+    "output": { "ok": true, "hostname": "example.com", "record_type": "A", "addresses": ["93.184.216.34"] }
+  }
+}

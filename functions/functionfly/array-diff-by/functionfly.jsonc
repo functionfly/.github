@@ -1,0 +1,43 @@
+{
+  "author": "functionfly",
+  "name": "array-diff-by",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Difference By Key",
+  "description": "Elements in the first array that are not present in the second array, compared by a specified key.",
+  "category": "arrays",
+  "tags": ["array", "difference", "diff", "key", "filter", "objects"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "Source array of objects" },
+      "other": { "type": "array", "description": "Array of objects to exclude" },
+      "key": { "type": "string", "description": "Key to use for comparison" }
+    },
+    "required": ["items", "other", "key"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "items": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}, {"id": 3, "name": "Carol"}],
+      "other": [{"id": 2, "name": "Bob"}],
+      "key": "id"
+    },
+    "output": {
+      "ok": true,
+      "result": [{"id": 1, "name": "Alice"}, {"id": 3, "name": "Carol"}]
+    }
+  }
+}

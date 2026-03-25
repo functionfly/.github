@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-highlights",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Content Highlights",
+  "description": "Extract text highlights — either contextual excerpts around specific keywords or the most notable sentences.",
+  "category": "social",
+  "tags": ["highlights", "excerpt", "content", "nlp", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "keywords": { "type": "array" }, "max_highlights": { "type": "integer", "default": 5 }, "context_words": { "type": "integer", "default": 15 } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "highlights": {}, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "text": "AI is revolutionizing healthcare. Machine learning helps doctors diagnose diseases faster.", "keywords": ["AI"] }, "output": { "ok": true, "count": 1 } }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "trending-score",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Trending Score",
+  "description": "Calculate a trending/ranking score using Hacker News, Reddit, or Wilson interval algorithms.",
+  "category": "social",
+  "tags": ["trending", "score", "ranking", "social", "algorithm"],
+  "input": { "type": "object", "properties": { "score": { "type": "number", "default": 0 }, "upvotes": { "type": "number", "default": 0 }, "downvotes": { "type": "number", "default": 0 }, "comments": { "type": "number", "default": 0 }, "created_at_unix": { "type": "number" }, "algorithm": { "type": "string", "enum": ["hacker_news", "reddit", "wilson"], "default": "hacker_news" } } },
+  "output": { "type": "object", "properties": { "ok": {}, "trending_score": {}, "algorithm": {}, "category": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 60, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "score": 150, "upvotes": 200, "downvotes": 50, "created_at_unix": 1700000000, "algorithm": "hacker_news" }, "output": { "ok": true, "trending_score": 2.34, "algorithm": "hacker_news" } }
+}

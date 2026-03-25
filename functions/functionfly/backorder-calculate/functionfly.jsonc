@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "name": "backorder-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Backorder",
+  "description": "Calculate backorder quantity (unmet demand) and fulfillment rate when demand exceeds stock.",
+  "category": "ecommerce",
+  "tags": ["backorder", "inventory", "demand", "fulfillment", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "demand": { "type": "integer", "description": "Requested quantity" },
+      "stock": { "type": "integer", "description": "Available stock" }
+    },
+    "required": ["demand", "stock"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "backorder_qty": {},
+      "fulfilled_qty": {},
+      "fulfillment_rate_pct": {},
+      "has_backorder": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 60,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "demand": 100, "stock": 75 },
+    "output": { "ok": true, "backorder_qty": 25, "fulfillment_rate_pct": 75.0 }
+  }
+}

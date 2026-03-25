@@ -1,0 +1,21 @@
+{
+  "author": "functionfly",
+  "name": "color-mix",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Mix Multiple Colors",
+  "description": "Average-mix two or more hex colors together to produce a combined color.",
+  "category": "color",
+  "tags": ["color", "mix", "blend", "average", "combine"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "colors": { "type": "array", "items": { "type": "string" }, "description": "Array of hex colors to mix" }
+    },
+    "required": ["colors"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "colors": ["#ff0000", "#0000ff", "#00ff00"] }, "output": { "ok": true, "result": "#555555" } }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "referral-code-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Referral Code",
+  "description": "Generate unique referral codes using random, hash-based, numeric, or alpha styles with optional prefix.",
+  "category": "social",
+  "tags": ["referral", "code", "generate", "marketing", "viral"],
+  "input": { "type": "object", "properties": { "user_id": { "type": "string" }, "length": { "type": "number", "default": 8 }, "prefix": { "type": "string", "default": "" }, "style": { "type": "string", "enum": ["random", "hash", "numeric", "alpha"], "default": "random" } } },
+  "output": { "type": "object", "properties": { "ok": {}, "referral_code": {}, "length": {}, "style": {}, "error": {} } },
+  "deterministic": false, "idempotent": false,
+  "cache_ttl": 0, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "user_id": "user_123", "style": "hash", "prefix": "FF", "length": 8 }, "output": { "ok": true, "referral_code": "FFAB12CD34" } }
+}

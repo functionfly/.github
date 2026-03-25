@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "image-edge-detect",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Edge Detection",
+  "description": "Detect edges in an image using Pillow filters (FIND_EDGES, EMBOSS, CONTOUR).",
+  "category": "color",
+  "tags": ["image", "edge", "detect", "filter", "contour"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string" },
+      "mode": { "type": "string", "default": "edges", "enum": ["edges", "emboss", "contour"] },
+      "format": { "type": "string", "default": "PNG" }
+    },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "format": {}, "mode": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "..." }, "output": { "ok": true } }
+}

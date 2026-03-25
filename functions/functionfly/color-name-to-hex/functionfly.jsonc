@@ -1,0 +1,24 @@
+{
+  "author": "functionfly",
+  "name": "color-name-to-hex",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Color Name to Hex",
+  "description": "Convert a CSS named color (e.g. 'tomato', 'cornflowerblue') to its hex value. Covers all 148 CSS named colors.",
+  "category": "color",
+  "tags": ["color", "name", "hex", "css", "convert"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string", "description": "CSS color name (e.g. 'tomato')" }
+    },
+    "required": ["name"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "name": {}, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "name": "tomato" }, "output": { "ok": true, "result": "#FF6347" } }
+}

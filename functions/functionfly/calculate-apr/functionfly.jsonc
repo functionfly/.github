@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "calculate-apr",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate APR",
+  "description": "Calculate the Annual Percentage Rate (APR) including fees for a loan.",
+  "category": "ecommerce",
+  "tags": ["apr", "annual-percentage-rate", "loan", "finance"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "principal": { "type": "number" },
+      "fees": { "type": "number", "default": 0 },
+      "monthly_payment": { "type": "number" },
+      "months": { "type": "integer", "default": 12 }
+    },
+    "required": ["principal"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": {}, "apr_pct": {}, "error": {} }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "principal": 1000,
+      "fees": 50,
+      "monthly_payment": 95,
+      "months": 12
+    },
+    "output": { "ok": true }
+  }
+}

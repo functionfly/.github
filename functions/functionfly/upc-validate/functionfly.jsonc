@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "upc-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Validate UPC Barcode",
+  "description": "Validate a UPC-A (12-digit) or UPC-E (6-digit) barcode using checksum validation.",
+  "category": "ecommerce",
+  "tags": ["upc", "barcode", "validate", "product", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": { "code": { "type": "string" } },
+    "required": ["code"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "boolean" },
+      "valid": {},
+      "type": {},
+      "check_digit": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "code": "012345678905" },
+    "output": { "ok": true, "valid": true, "type": "UPC-A" }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "author": "functionfly",
+  "name": "x509-parse-cert",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "X.509 Parse Certificate",
+  "description": "Parse an X.509 certificate (PEM or DER) and extract subject, issuer, validity dates, and public key info.",
+  "category": "crypto",
+  "tags": ["crypto", "x509", "certificate", "pki", "tls", "ssl"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "certificate": { "type": "string", "description": "PEM certificate string or Base64-encoded DER bytes" }
+    },
+    "required": ["certificate"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "object" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----" },
+    "output": { "ok": true, "result": { "subject": {}, "issuer": {}, "not_after": "2026-01-01T00:00:00+00:00" } }
+  }
+}

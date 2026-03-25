@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "zlib-decompress",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "zlib Decompress",
+  "description": "Decompress a Base64-encoded zlib payload.",
+  "category": "encoding",
+  "tags": ["compression", "zlib", "deflate", "decode", "decompress"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "Base64-encoded zlib-compressed data" },
+      "encoding": { "type": "string", "description": "Text encoding", "default": "utf-8" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "is_text": { "type": "boolean" },
+      "decompressed_size": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "data": "eJzLSM3JyVEEBAAAaAAj" },
+    "output": { "ok": true, "result": "Hello World", "is_text": true }
+  }
+}

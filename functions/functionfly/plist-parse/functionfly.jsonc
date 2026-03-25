@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "plist-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Apple Property List (plist)",
+  "description": "Parse an XML property list (plist) string into a structured object using Python's plistlib.",
+  "category": "format",
+  "tags": ["plist", "apple", "parse", "config", "ios", "macos"],
+  "input": { "type": "object", "properties": { "data": { "type": "string", "description": "XML plist string" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": { "input": { "data": "<?xml version='1.0'?><plist version='1.0'><dict><key>name</key><string>Alice</string></dict></plist>" }, "output": { "ok": true } }
+}

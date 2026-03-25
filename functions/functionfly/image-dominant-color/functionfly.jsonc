@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "image-dominant-color",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Dominant Color",
+  "description": "Extract the most dominant color(s) from a Base64-encoded image using color quantization.",
+  "category": "color",
+  "tags": ["color", "image", "dominant", "palette", "extract"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string", "description": "Base64-encoded image (JPEG, PNG, etc.)" },
+      "num_colors": { "type": "integer", "description": "Number of top colors to return", "default": 5 }
+    },
+    "required": ["image"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {}, "result": { "type": "string" }, "r": {}, "g": {}, "b": {},
+      "top_colors": { "type": "array" }, "error": {}
+    }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "..." }, "output": { "ok": true } }
+}

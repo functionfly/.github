@@ -1,0 +1,19 @@
+{
+  "author": "functionfly",
+  "name": "toml-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse TOML",
+  "description": "Parse a TOML string into a structured object using Python's built-in tomllib (Python 3.11+).",
+  "category": "format",
+  "tags": ["toml", "parse", "config", "format"],
+  "input": {
+    "type": "object",
+    "properties": { "data": { "type": "string", "description": "TOML-formatted string" } },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": { "input": { "data": "[server]\nhost = 'localhost'\nport = 8080" }, "output": { "ok": true, "result": { "server": { "host": "localhost", "port": 8080 } } } }
+}

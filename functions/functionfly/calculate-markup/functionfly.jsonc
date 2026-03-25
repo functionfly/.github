@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "calculate-markup",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Markup",
+  "description": "Calculate selling price from cost plus a markup percentage or fixed amount.",
+  "category": "ecommerce",
+  "tags": ["markup", "cost", "price", "profit", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cost": { "type": "number" },
+      "markup": { "type": "number" },
+      "type": { "type": "string", "enum": ["percent", "amount"], "default": "percent" }
+    },
+    "required": ["cost", "markup"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "cost": {}, "selling_price": {}, "profit": {}, "margin_pct": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "cost": 80, "markup": 25, "type": "percent" }, "output": { "ok": true, "result": 100.0, "profit": 20.0 } }
+}

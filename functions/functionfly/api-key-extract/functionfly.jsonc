@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "name": "api-key-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract API Key",
+  "description": "Extract an API key from request headers or query parameters, checking common locations.",
+  "category": "http",
+  "tags": ["http", "api-key", "extract", "authentication", "header", "query"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "headers": { "type": "object", "description": "Request headers", "default": {} },
+      "query_params": { "type": "object", "description": "Query parameters", "default": {} },
+      "header_name": { "type": "string", "description": "Custom header name to check", "default": "X-API-Key" },
+      "query_param_name": { "type": "string", "description": "Query param name to check", "default": "api_key" }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "api_key": { "type": "string" },
+      "source": { "type": "string", "description": "Where the key was found: 'header', 'authorization', or 'query'" },
+      "header_name": { "type": "string" },
+      "param_name": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "headers": { "X-API-Key": "my-secret-key-123" } },
+    "output": { "ok": true, "api_key": "my-secret-key-123", "source": "header", "header_name": "X-API-Key" }
+  }
+}

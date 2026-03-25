@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "hashtags-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Hashtags",
+  "description": "Extract unique hashtags from text with platform-specific rules for Twitter, Instagram, TikTok.",
+  "category": "social",
+  "tags": ["hashtags", "extract", "social", "text", "parse"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "platform": { "type": "string", "default": "twitter" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "hashtags": {}, "count": {}, "has_hashtags": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "text": "Loving this #sunset #photography today! #nature", "platform": "instagram" }, "output": { "ok": true, "hashtags": ["sunset", "photography", "nature"], "count": 3 } }
+}

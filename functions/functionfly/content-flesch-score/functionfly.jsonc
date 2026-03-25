@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-flesch-score",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Flesch Readability Score",
+  "description": "Calculate the Flesch Reading Ease score and Flesch-Kincaid Grade Level for text. Higher FRE = easier to read.",
+  "category": "social",
+  "tags": ["readability", "flesch", "content", "text-analysis", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "flesch_reading_ease": {}, "flesch_kincaid_grade": {}, "level": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "text": "The cat sat on the mat. It was a fat cat." }, "output": { "ok": true, "level": "5th grade (Very Easy)" } }
+}

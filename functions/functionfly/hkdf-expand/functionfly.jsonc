@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "hkdf-expand",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "HKDF Expand",
+  "description": "Derive a key using HKDF (HMAC-based Key Derivation Function, RFC 5869). Ideal for deriving multiple keys from a master secret.",
+  "category": "crypto",
+  "tags": ["crypto", "hkdf", "kdf", "key-derivation", "rfc5869"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "key_material": { "type": "string", "description": "Input keying material (hex or Base64)" },
+      "length": { "type": "integer", "description": "Output key length in bytes", "default": 32 },
+      "info": { "type": "string", "description": "Context/application-specific info string", "default": "" },
+      "salt": { "type": "string", "description": "Optional salt (hex or Base64)" },
+      "algorithm": { "type": "string", "description": "HMAC algorithm", "default": "sha256", "enum": ["sha256", "sha384", "sha512"] },
+      "output": { "type": "string", "description": "'hex' or 'base64'", "default": "hex", "enum": ["hex", "base64"] }
+    },
+    "required": ["key_material"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "algorithm": { "type": "string" },
+      "length": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "key_material": "aabbccdd...", "info": "encryption key", "length": 32 },
+    "output": { "ok": true }
+  }
+}

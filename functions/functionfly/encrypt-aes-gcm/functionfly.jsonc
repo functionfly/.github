@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "encrypt-aes-gcm",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "AES-GCM Encrypt",
+  "description": "Encrypt plaintext with AES-GCM (authenticated encryption). Returns ciphertext, authentication tag, and nonce.",
+  "category": "crypto",
+  "tags": ["crypto", "aes", "gcm", "aead", "encrypt", "authenticated"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "plaintext": { "description": "Data to encrypt" },
+      "key": { "type": "string", "description": "AES key (hex or Base64, 16/24/32 bytes)" },
+      "nonce": { "type": "string", "description": "Nonce (hex or Base64, 12 bytes; generated if omitted)" },
+      "aad": { "type": "string", "description": "Additional authenticated data (not encrypted, but authenticated)" }
+    },
+    "required": ["plaintext", "key"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string", "description": "Base64 ciphertext+tag (concatenated)" },
+      "ciphertext": { "type": "string" },
+      "tag": { "type": "string" },
+      "nonce": { "type": "string" },
+      "nonce_base64": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": { "plaintext": "Hello Secret", "key": "0123456789abcdef0123456789abcdef" },
+    "output": { "ok": true }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "author": "functionfly",
+  "name": "gift-card-balance",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Gift Card Balance",
+  "description": "Check gift card balance or calculate remaining balance after a charge.",
+  "category": "ecommerce",
+  "tags": ["gift-card", "balance", "payment", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "balance": {
+        "type": "number",
+        "description": "Current gift card balance"
+      },
+      "action": {
+        "type": "string",
+        "enum": ["check", "charge"],
+        "default": "check"
+      },
+      "amount_to_charge": { "type": "number" }
+    },
+    "required": ["balance"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "balance": {},
+      "new_balance": {},
+      "applied": {},
+      "remaining_to_pay": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "balance": 25, "action": "charge", "amount_to_charge": 30 },
+    "output": {
+      "ok": true,
+      "applied": 25,
+      "new_balance": 0,
+      "remaining_to_pay": 5
+    }
+  }
+}

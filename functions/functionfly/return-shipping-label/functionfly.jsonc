@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "return-shipping-label",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Return Shipping Label",
+  "description": "Generate a return shipping label record with tracking number for an order return.",
+  "category": "ecommerce",
+  "tags": ["return", "shipping", "label", "tracking", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "order_id": { "type": "string" },
+      "from_address": { "type": "object" },
+      "to_address": { "type": "object" },
+      "weight_kg": { "type": "number", "default": 0.5 },
+      "carrier": { "type": "string", "default": "standard" }
+    },
+    "required": ["order_id"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "label": {},
+      "tracking_number": {},
+      "error": {}
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "order_id": "ORD-12345", "weight_kg": 1.2, "carrier": "fedex" },
+    "output": { "ok": true, "tracking_number": "RETURNABCDEF012345" }
+  }
+}

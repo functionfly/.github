@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "bundle-price",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Bundle Price",
+  "description": "Calculate the discounted price for a bundle of items with a configurable bundle discount percentage.",
+  "category": "ecommerce",
+  "tags": ["bundle", "price", "discount", "package", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "description": "List of {price, quantity} items"
+      },
+      "bundle_discount_pct": { "type": "number", "default": 10 }
+    },
+    "required": ["items"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "subtotal": {},
+      "bundle_discount": {},
+      "bundle_price": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "items": [
+        { "price": 50, "quantity": 1 },
+        { "price": 30, "quantity": 2 }
+      ],
+      "bundle_discount_pct": 15
+    },
+    "output": { "ok": true, "bundle_price": 93.5 }
+  }
+}

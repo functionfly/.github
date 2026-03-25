@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-promise",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Promise",
+  "description": "Check whether a string contains JavaScript Promise syntax (new Promise, .then(), async, etc.).",
+  "category": "validation",
+  "tags": ["validation", "promise", "async", "javascript", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to check for Promise syntax" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "new Promise((resolve) => resolve(42))" },
+    "output": { "ok": true, "value": "new Promise((resolve) => resolve(42))", "result": true }
+  }
+}

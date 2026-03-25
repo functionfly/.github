@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "quoted-printable-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Quoted-Printable Encode",
+  "description": "Encode a string using Quoted-Printable encoding (used in MIME email).",
+  "category": "encoding",
+  "tags": ["encoding", "quoted-printable", "mime", "email"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "String to encode" },
+      "header": { "type": "boolean", "description": "Encode for use in email headers", "default": false }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "Subject: =?UTF-8?Q?Héllo?=" },
+    "output": { "ok": true, "result": "Subject: =3D=3FUTF-8=3FQ=3FH=C3=A9llo=3F=3D" }
+  }
+}

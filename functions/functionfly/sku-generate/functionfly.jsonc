@@ -1,0 +1,25 @@
+{
+  "author": "functionfly",
+  "name": "sku-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Product SKU",
+  "description": "Generate a Stock Keeping Unit (SKU) code from product name, category, variant, and optional sequence number.",
+  "category": "ecommerce",
+  "tags": ["sku", "product", "inventory", "generate", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "product_name": { "type": "string" },
+      "category": { "type": "string" },
+      "variant": { "type": "string" },
+      "supplier_code": { "type": "string" },
+      "sequence": { "type": "integer" }
+    },
+    "required": ["product_name"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "sku": {}, "error": {} } },
+  "deterministic": false, "idempotent": false,
+  "cache_ttl": 0, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "product_name": "Blue T-Shirt", "category": "Apparel", "variant": "Medium", "sequence": 42 }, "output": { "ok": true, "sku": "APP-BLUE-MED-0042" } }
+}

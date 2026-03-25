@@ -1,0 +1,26 @@
+{
+  "author": "functionfly",
+  "name": "image-watermark",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Add Text Watermark to Image",
+  "description": "Overlay a text watermark on an image at a specified position with configurable opacity.",
+  "category": "color",
+  "tags": ["image", "watermark", "text", "overlay", "branding"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string" },
+      "text": { "type": "string", "description": "Watermark text", "default": "Watermark" },
+      "opacity": { "type": "integer", "description": "Text opacity 0-255", "default": 128 },
+      "position": { "type": "string", "enum": ["bottom-right", "bottom-left", "top-right", "top-left", "center"], "default": "bottom-right" },
+      "font_size": { "type": "integer", "default": 24 },
+      "format": { "type": "string", "default": "PNG" }
+    },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "format": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "...", "text": "© FunctionFly", "position": "bottom-right" }, "output": { "ok": true } }
+}

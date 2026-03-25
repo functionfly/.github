@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "matches-pattern",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Matches Pattern",
+  "description": "Check whether a string matches a regular expression pattern.",
+  "category": "validation",
+  "tags": ["validation", "regex", "pattern", "match", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to test" },
+      "pattern": { "type": "string", "description": "Regular expression pattern" },
+      "flags": { "type": "string", "description": "Regex flags (i=case-insensitive, m=multiline, s=dotall, x=verbose)", "default": "" },
+      "full_match": { "type": "boolean", "description": "Require full string match (vs search)", "default": false }
+    },
+    "required": ["value", "pattern"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "match": { "type": "string" },
+      "groups": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "Hello World", "pattern": "^Hello", "flags": "i" },
+    "output": { "ok": true, "value": "Hello World", "result": true, "match": "Hello", "groups": [] }
+  }
+}

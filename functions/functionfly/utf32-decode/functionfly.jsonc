@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "utf32-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "UTF-32 Decode",
+  "description": "Decode Base64-encoded UTF-32 bytes back to a string.",
+  "category": "encoding",
+  "tags": ["encoding", "utf32", "unicode", "decode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "Base64-encoded UTF-32 bytes" },
+      "byte_order": { "type": "string", "description": "'little' or 'big'", "default": "little", "enum": ["little", "big"] }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "byte_order": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "SAAAAGQAAAA=", "byte_order": "little" },
+    "output": { "ok": true, "result": "Hi", "byte_order": "little" }
+  }
+}

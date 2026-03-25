@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "json-merge-patch",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "JSON Merge Patch",
+  "description": "Apply an RFC 7396 JSON Merge Patch to a target document. Null values in patch delete keys.",
+  "category": "format",
+  "tags": ["json", "merge", "patch", "rfc7396", "update"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "target": { "description": "Target JSON document" },
+      "patch": { "description": "Merge patch to apply" }
+    },
+    "required": ["target", "patch"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "target": { "a": 1, "b": 2 }, "patch": { "b": null, "c": 3 } }, "output": { "ok": true, "result": { "a": 1, "c": 3 } } }
+}

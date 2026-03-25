@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-octal",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Octal",
+  "description": "Check whether a string is a valid octal number (digits 0–7).",
+  "category": "validation",
+  "tags": ["validation", "octal", "number", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to check" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "0755" },
+    "output": { "ok": true, "value": "0755", "result": true }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "char-count-facebook",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Facebook Character Count",
+  "description": "Count characters and check against Facebook limits for posts (63,206), comments (8,000), and stories (500).",
+  "category": "social",
+  "tags": ["facebook", "character-count", "social", "text", "validation"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "content_type": { "type": "string", "enum": ["post", "comment", "story"], "default": "post" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "char_count": {}, "limit": {}, "remaining": {}, "over_limit": {}, "fits": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "text": "Excited to share this update!", "content_type": "post" }, "output": { "ok": true, "char_count": 29, "limit": 63206, "fits": true } }
+}

@@ -1,0 +1,49 @@
+{
+  "author": "functionfly",
+  "name": "cache-control-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Cache-Control",
+  "description": "Parse an HTTP Cache-Control header into structured directives.",
+  "category": "http",
+  "tags": ["http", "cache-control", "parse", "header", "cache"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Cache-Control header value" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "directives": { "type": "object" },
+      "max_age": { "type": "integer" },
+      "s_maxage": { "type": "integer" },
+      "no_cache": { "type": "boolean" },
+      "no_store": { "type": "boolean" },
+      "must_revalidate": { "type": "boolean" },
+      "public": { "type": "boolean" },
+      "private": { "type": "boolean" },
+      "immutable": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "public, max-age=31536000, immutable" },
+    "output": {
+      "ok": true, "value": "public, max-age=31536000, immutable",
+      "directives": { "public": true, "max-age": 31536000, "immutable": true },
+      "max_age": 31536000, "s_maxage": null, "no_cache": false,
+      "no_store": false, "must_revalidate": false, "public": true,
+      "private": false, "immutable": true
+    }
+  }
+}

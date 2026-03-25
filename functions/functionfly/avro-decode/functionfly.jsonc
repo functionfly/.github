@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "avro-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Avro Decode",
+  "description": "Decode Base64-encoded Apache Avro binary data to structured records. Requires fastavro.",
+  "category": "format",
+  "tags": ["avro", "apache", "decode", "binary", "schema"],
+  "input": { "type": "object", "properties": { "data": { "type": "string" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 128,
+  "example": { "input": { "data": "..." }, "output": { "ok": true } }
+}

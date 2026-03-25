@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "basic-auth-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Decode Basic Auth",
+  "description": "Decode a Base64-encoded HTTP Basic Authentication credential string into username and password.",
+  "category": "http",
+  "tags": ["http", "basic-auth", "decode", "authentication", "base64"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "credentials": { "type": "string", "description": "Base64-encoded credentials (or full 'Basic ...' header value)" }
+    },
+    "required": ["credentials"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "username": { "type": "string" },
+      "password": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "credentials": "dXNlcjpwYXNz" },
+    "output": { "ok": true, "username": "user", "password": "pass" }
+  }
+}

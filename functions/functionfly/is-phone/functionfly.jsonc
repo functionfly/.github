@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "is-phone",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Phone Number",
+  "description": "Validate whether a string is a valid phone number (E.164 or common formats).",
+  "category": "validation",
+  "tags": ["validation", "phone", "telephone", "e164", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Phone number to validate" },
+      "strict": { "type": "boolean", "description": "Strict E.164 validation", "default": false }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "normalized": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "+1 (555) 123-4567" },
+    "output": { "ok": true, "value": "+1 (555) 123-4567", "result": true, "normalized": "+15551234567" }
+  }
+}

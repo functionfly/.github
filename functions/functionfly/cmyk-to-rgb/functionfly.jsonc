@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "cmyk-to-rgb",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "CMYK to RGB",
+  "description": "Convert CMYK print color (0-100% each) to RGB components.",
+  "category": "color",
+  "tags": ["color", "cmyk", "rgb", "convert", "print"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "c": { "type": "number", "description": "Cyan (0-100)" },
+      "m": { "type": "number", "description": "Magenta (0-100)" },
+      "y": { "type": "number", "description": "Yellow (0-100)" },
+      "k": { "type": "number", "description": "Key/Black (0-100)" }
+    },
+    "required": ["c", "m", "y", "k"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "object" },
+      "hex": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "c": 0, "m": 66, "y": 80, "k": 0 },
+    "output": { "ok": true, "result": { "r": 255, "g": 87, "b": 51 } }
+  }
+}

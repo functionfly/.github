@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-hex",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Hex",
+  "description": "Validate whether a string is a valid hexadecimal string (optionally with 0x prefix).",
+  "category": "validation",
+  "tags": ["validation", "hex", "hexadecimal", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to validate" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "0xFF3300" },
+    "output": { "ok": true, "value": "0xFF3300", "result": true }
+  }
+}

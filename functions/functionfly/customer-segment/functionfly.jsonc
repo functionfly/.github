@@ -1,0 +1,43 @@
+{
+  "author": "functionfly",
+  "name": "customer-segment",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Customer Segmentation",
+  "description": "Classify a customer into an RFM segment: champions, loyal, new, potential_loyalists, at_risk, lost, or occasional.",
+  "category": "ecommerce",
+  "tags": ["segmentation", "rfm", "customer", "analytics", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "total_spent": { "type": "number", "default": 0 },
+      "order_count": { "type": "integer", "default": 0 },
+      "days_since_last_order": { "type": "number", "default": 9999 },
+      "customer_age_days": { "type": "number", "default": 1 }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "segment": {},
+      "description": {},
+      "rfm": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "total_spent": 500,
+      "order_count": 6,
+      "days_since_last_order": 15
+    },
+    "output": { "ok": true, "segment": "champions" }
+  }
+}

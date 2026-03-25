@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "uu-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "UUEncode",
+  "description": "Encode data using UUencoding (a historical binary-to-text encoding used in Usenet/email).",
+  "category": "encoding",
+  "tags": ["encoding", "uu", "uuencode", "legacy"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "String to UUencode" },
+      "name": { "type": "string", "description": "Filename embedded in UU header", "default": "file" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "Hello", "name": "hello.txt" },
+    "output": { "ok": true, "result": "begin 644 hello.txt\n%2&5L;&\\`\n`\nend" }
+  }
+}

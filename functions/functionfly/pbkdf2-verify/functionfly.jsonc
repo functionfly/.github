@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "pbkdf2-verify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "PBKDF2 Verify",
+  "description": "Verify a plaintext password against a PBKDF2 hash produced by pbkdf2-hash.",
+  "category": "encoding",
+  "tags": ["hash", "pbkdf2", "password", "verify", "security"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": { "type": "string", "description": "Plaintext password" },
+      "hash": { "type": "string", "description": "PBKDF2 hash string from pbkdf2-hash" }
+    },
+    "required": ["password", "hash"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 10000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "password": "mysecretpassword", "hash": "$pbkdf2-sha256$i=600000$..." },
+    "output": { "ok": true, "result": true }
+  }
+}

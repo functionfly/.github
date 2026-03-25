@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "generate-self-signed",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Self-Signed Certificate",
+  "description": "Generate a self-signed TLS certificate and private key for development/testing.",
+  "category": "crypto",
+  "tags": ["crypto", "x509", "certificate", "tls", "self-signed", "pki"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "common_name": { "type": "string", "description": "Common Name (CN) / hostname", "default": "localhost" },
+      "country": { "type": "string", "description": "2-letter country code", "default": "US" },
+      "org": { "type": "string", "description": "Organization name", "default": "My Organization" },
+      "valid_days": { "type": "integer", "description": "Certificate validity in days", "default": 365 },
+      "key_size": { "type": "integer", "description": "RSA key size", "default": 2048, "enum": [2048, 3072, 4096] },
+      "san_domains": { "type": "array", "items": { "type": "string" }, "description": "Additional SAN domains", "default": [] }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "certificate": { "type": "string" },
+      "private_key": { "type": "string" },
+      "common_name": { "type": "string" },
+      "valid_days": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 10000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "common_name": "myapp.local", "valid_days": 90 },
+    "output": { "ok": true, "common_name": "myapp.local", "valid_days": 90 }
+  }
+}

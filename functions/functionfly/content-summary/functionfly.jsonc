@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-summary",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Content Summary",
+  "description": "Extractive summarization: selects the most important sentences from a text based on keyword frequency.",
+  "category": "social",
+  "tags": ["summary", "nlp", "content", "extractive", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "max_sentences": { "type": "integer", "default": 3 }, "max_chars": { "type": "integer" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "summary": {}, "sentences_used": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 128,
+  "example": { "input": { "text": "Artificial intelligence is transforming industries. Machine learning enables computers to learn from data. Deep learning has achieved breakthroughs in vision and language.", "max_sentences": 2 }, "output": { "ok": true } }
+}

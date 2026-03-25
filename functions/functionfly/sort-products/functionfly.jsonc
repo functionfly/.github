@@ -1,0 +1,55 @@
+{
+  "author": "functionfly",
+  "name": "sort-products",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Sort Product List",
+  "description": "Sort a list of products by price, rating, name, popularity, creation date, or discount percentage.",
+  "category": "ecommerce",
+  "tags": ["sort", "products", "catalog", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "products": { "type": "array" },
+      "sort_by": {
+        "type": "string",
+        "enum": [
+          "price",
+          "rating",
+          "name",
+          "popularity_score",
+          "created_at",
+          "discount_pct"
+        ],
+        "default": "price"
+      },
+      "order": { "type": "string", "enum": ["asc", "desc"], "default": "asc" }
+    },
+    "required": ["products"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "array" },
+      "count": {},
+      "sorted_by": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 60,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "products": [
+        { "name": "B", "price": 20 },
+        { "name": "A", "price": 10 }
+      ],
+      "sort_by": "price"
+    },
+    "output": { "ok": true, "count": 2 }
+  }
+}

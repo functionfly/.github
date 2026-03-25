@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "cson-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse CSON",
+  "description": "Parse a CSON (CoffeeScript Object Notation) string into a structured object. Supports basic flat/nested key-value structures.",
+  "category": "format",
+  "tags": ["cson", "coffeescript", "parse", "config"],
+  "input": { "type": "object", "properties": { "data": { "type": "string" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": "name: 'Alice'\nage: 30" }, "output": { "ok": true } }
+}

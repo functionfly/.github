@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "punycode-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Punycode Decode",
+  "description": "Decode a Punycode-encoded domain name (ACE format) back to its Unicode form.",
+  "category": "encoding",
+  "tags": ["encoding", "punycode", "idn", "domain", "unicode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "Punycode domain to decode (e.g. 'xn--...')" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "original": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "xn--mnchen-3ya.de" },
+    "output": { "ok": true, "result": "münchen.de", "original": "xn--mnchen-3ya.de" }
+  }
+}

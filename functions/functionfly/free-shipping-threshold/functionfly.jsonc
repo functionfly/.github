@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "free-shipping-threshold",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Free Shipping Threshold Check",
+  "description": "Check if a cart total qualifies for free shipping and how much more is needed.",
+  "category": "ecommerce",
+  "tags": ["shipping", "free-shipping", "cart", "threshold", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cart_total": { "type": "number" },
+      "threshold": { "type": "number", "default": 50.0 },
+      "shipping_cost": { "type": "number", "default": 5.99 }
+    },
+    "required": ["cart_total"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "boolean" }, "qualifies_free_shipping": {}, "remaining_for_free_shipping": {}, "shipping_cost": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "cart_total": 45, "threshold": 50 }, "output": { "ok": true, "qualifies_free_shipping": false, "remaining_for_free_shipping": 5.0 } }
+}

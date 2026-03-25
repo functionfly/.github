@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "java-serialization",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Java Serialization",
+  "description": "Inspect Java serialization binary headers or encode with JSON fallback. Full Java serialization requires JVM.",
+  "category": "format",
+  "tags": ["java", "serialize", "format", "jvm", "binary"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {},
+      "mode": { "type": "string", "enum": ["encode", "inspect"], "default": "inspect" }
+    },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "bytes": {}, "note": {}, "format": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "name": "Alice" }, "mode": "encode" }, "output": { "ok": true } }
+}

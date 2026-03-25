@@ -1,0 +1,25 @@
+{
+  "author": "functionfly",
+  "name": "calculate-shipping",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Shipping Cost",
+  "description": "Estimate shipping cost based on weight, distance, and shipping method (standard/express/overnight/economy).",
+  "category": "ecommerce",
+  "tags": ["shipping", "logistics", "cost", "weight", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "weight": { "type": "number", "description": "Weight in kg" },
+      "distance": { "type": "number", "description": "Distance in km (optional)" },
+      "method": { "type": "string", "enum": ["standard", "express", "overnight", "economy"], "default": "standard" },
+      "base_rate": { "type": "number", "default": 5.0 },
+      "per_kg": { "type": "number", "default": 1.5 }
+    },
+    "required": ["weight"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "weight_kg": {}, "method": {}, "shipping_cost": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "weight": 2.5, "method": "express" }, "output": { "ok": true, "shipping_cost": 18.75 } }
+}

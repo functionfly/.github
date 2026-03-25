@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "webhook-signature-verify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Verify Webhook Signature",
+  "description": "Verify an HMAC webhook signature against the payload and secret (supports sha256, sha1, sha512).",
+  "category": "http",
+  "tags": ["http", "webhook", "signature", "hmac", "verify", "security"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "payload": { "description": "Request payload (string, object, or array)" },
+      "secret": { "type": "string", "description": "Webhook secret key" },
+      "signature": { "type": "string", "description": "Provided signature to verify" },
+      "algorithm": { "type": "string", "description": "Hash algorithm", "default": "sha256", "enum": ["sha256", "sha1", "sha512", "md5"] },
+      "prefix": { "type": "string", "description": "Prefix in the signature value (e.g. 'sha256=')", "default": "" }
+    },
+    "required": ["payload", "secret", "signature"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "valid": { "type": "boolean" },
+      "algorithm": { "type": "string" },
+      "expected": { "type": "string" },
+      "provided": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "payload": "{\"event\":\"push\"}",
+      "secret": "my_secret",
+      "signature": "sha256=abc123",
+      "algorithm": "sha256",
+      "prefix": "sha256="
+    },
+    "output": { "ok": true, "valid": false, "algorithm": "sha256" }
+  }
+}

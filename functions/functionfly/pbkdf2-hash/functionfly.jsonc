@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "pbkdf2-hash",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "PBKDF2 Hash",
+  "description": "Hash a password with PBKDF2-HMAC (NIST-recommended key derivation function). Uses 600,000 SHA-256 iterations by default.",
+  "category": "encoding",
+  "tags": ["hash", "pbkdf2", "password", "security", "nist", "key-derivation"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": { "type": "string", "description": "Password to hash" },
+      "iterations": { "type": "integer", "description": "HMAC iterations", "default": 600000 },
+      "algorithm": { "type": "string", "description": "HMAC algorithm", "default": "sha256", "enum": ["sha1", "sha256", "sha384", "sha512", "sha3_256", "sha3_512"] },
+      "dklen": { "type": "integer", "description": "Derived key length in bytes", "default": 32 },
+      "salt": { "type": "string", "description": "Base64-encoded salt (generated if omitted)" }
+    },
+    "required": ["password"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "salt": { "type": "string" },
+      "hash": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 10000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "password": "mysecretpassword", "iterations": 100000 },
+    "output": { "ok": true }
+  }
+}

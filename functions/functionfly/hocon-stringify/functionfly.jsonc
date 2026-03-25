@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "hocon-stringify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Stringify to HOCON",
+  "description": "Convert a structured object to HOCON format string.",
+  "category": "format",
+  "tags": ["hocon", "config", "stringify", "akka"],
+  "input": { "type": "object", "properties": { "data": { "type": "object" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "server": { "host": "localhost" } } }, "output": { "ok": true } }
+}

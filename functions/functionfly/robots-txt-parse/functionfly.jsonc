@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "robots-txt-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse robots.txt",
+  "description": "Parse a robots.txt file and extract user-agent rules (allow/disallow), sitemaps, and crawl-delay directives.",
+  "category": "social",
+  "tags": ["robots.txt", "seo", "crawling", "parse", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string", "description": "robots.txt content" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "rules": {}, "sitemaps": {}, "agents": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "text": "User-agent: *\nDisallow: /admin/\nSitemap: https://example.com/sitemap.xml" }, "output": { "ok": true, "agents": ["*"] } }
+}

@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "meta-tags-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Meta Tags",
+  "description": "Extract all meta tags (name/property/content) and page title from an HTML string.",
+  "category": "social",
+  "tags": ["meta-tags", "html", "seo", "web-scraping", "social"],
+  "input": {
+    "type": "object",
+    "properties": { "html": { "type": "string" } },
+    "required": ["html"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "meta_tags": {},
+      "title": {},
+      "count": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "html": "<title>My Page</title><meta name=\"description\" content=\"A page\">"
+    },
+    "output": {
+      "ok": true,
+      "title": "My Page",
+      "meta_tags": { "description": "A page" }
+    }
+  }
+}

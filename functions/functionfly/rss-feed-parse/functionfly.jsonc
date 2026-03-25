@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "rss-feed-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse RSS Feed",
+  "description": "Parse an RSS 2.0 XML feed and extract feed metadata and item list (title, link, description, pubDate, guid, author).",
+  "category": "social",
+  "tags": ["rss", "feed", "parse", "xml", "social"],
+  "input": { "type": "object", "properties": { "xml": { "type": "string" }, "max_items": { "type": "integer", "default": 20 } }, "required": ["xml"] },
+  "output": { "type": "object", "properties": { "ok": {}, "feed": {}, "items": {}, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 1000, "memory_mb": 128,
+  "example": { "input": { "xml": "<rss><channel><title>My Blog</title><item><title>Post 1</title></item></channel></rss>" }, "output": { "ok": true, "count": 1 } }
+}

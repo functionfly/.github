@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "name": "is-date-valid",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Date Valid",
+  "description": "Check if a date is a real calendar date (rejects Feb 31). Accepts date string or year/month/day integers.",
+  "category": "validation",
+  "tags": ["validation", "date", "calendar", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Date string" },
+      "year": { "type": "integer" },
+      "month": { "type": "integer" },
+      "day": { "type": "integer" }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "boolean" },
+      "year": { "type": "integer" },
+      "month": { "type": "integer" },
+      "day": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "year": 2024, "month": 2, "day": 29 },
+    "output": { "ok": true, "result": true, "year": 2024, "month": 2, "day": 29 }
+  }
+}

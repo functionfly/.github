@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "is-ip",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is IP Address",
+  "description": "Validate whether a string is a valid IP address (IPv4 or IPv6).",
+  "category": "validation",
+  "tags": ["validation", "ip", "ipv4", "ipv6", "network", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to validate" },
+      "version": { "type": "integer", "description": "IP version to check (4 or 6). Omit to accept both.", "enum": [4, 6] }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "version": { "type": "integer", "description": "Detected IP version (4 or 6)" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "192.168.0.1" },
+    "output": { "ok": true, "value": "192.168.0.1", "result": true, "version": 4 }
+  }
+}

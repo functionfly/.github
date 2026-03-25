@@ -1,0 +1,34 @@
+{
+  "author": "functionfly",
+  "name": "html-entity-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "HTML Entity Decode",
+  "description": "Decode HTML entities (&amp;, &lt;, &gt;, etc.) back to their original characters.",
+  "category": "encoding",
+  "tags": ["encoding", "html", "entities", "unescape", "decode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "HTML-entity-encoded string to decode" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "&lt;b&gt;Hello &amp; World&lt;/b&gt;" },
+    "output": { "ok": true, "result": "<b>Hello & World</b>" }
+  }
+}

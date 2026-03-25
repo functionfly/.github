@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "sanitize-filename",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Sanitize Filename",
+  "description": "Sanitize a filename by removing or replacing illegal characters, reserved names, and enforcing length limits.",
+  "category": "validation",
+  "tags": ["validation", "sanitize", "filename", "file", "security"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Filename to sanitize" },
+      "replacement": { "type": "string", "description": "Replacement for illegal characters", "default": "_" },
+      "max_length": { "type": "integer", "description": "Maximum filename length", "default": 255 }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "string" },
+      "changed": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "my file: <name>.txt" },
+    "output": { "ok": true, "value": "my file: <name>.txt", "result": "my file_ _name_.txt", "changed": true }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "image-average-color",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Average Color",
+  "description": "Calculate the average (mean) color across all pixels in an image.",
+  "category": "color",
+  "tags": ["color", "image", "average", "mean"],
+  "input": { "type": "object", "properties": { "image": { "type": "string" } }, "required": ["image"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "r": {}, "g": {}, "b": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "..." }, "output": { "ok": true } }
+}

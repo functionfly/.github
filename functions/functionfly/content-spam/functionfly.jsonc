@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-spam",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Spam Detection",
+  "description": "Detect spam content in emails or text using keyword patterns, caps ratio, and URL density heuristics.",
+  "category": "social",
+  "tags": ["spam", "moderation", "email", "content-safety", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "subject": { "type": "string" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "spam_score": {}, "is_spam": {}, "confidence": {}, "spam_indicators": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "text": "CLICK HERE NOW! Limited time FREE offer. Guaranteed results! Act NOW!" }, "output": { "ok": true, "is_spam": true } }
+}

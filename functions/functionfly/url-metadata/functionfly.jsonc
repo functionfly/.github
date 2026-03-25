@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "url-metadata",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "URL Metadata Extraction",
+  "description": "Extract metadata from a URL (domain, path, slug, query, fragment) without HTTP fetching. For OG tags, use og-tags-extract.",
+  "category": "social",
+  "tags": ["url", "metadata", "parse", "domain", "social"],
+  "input": { "type": "object", "properties": { "url": { "type": "string" } }, "required": ["url"] },
+  "output": { "type": "object", "properties": { "ok": {}, "domain": {}, "scheme": {}, "path": {}, "slug": {}, "inferred_title": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "url": "https://example.com/blog/my-first-post" }, "output": { "ok": true, "domain": "example.com", "slug": "my-first-post" } }
+}

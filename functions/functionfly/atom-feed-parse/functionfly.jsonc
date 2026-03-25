@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "atom-feed-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Atom Feed",
+  "description": "Parse an Atom (RFC 4287) XML feed and extract feed metadata and entry list.",
+  "category": "social",
+  "tags": ["atom", "feed", "parse", "xml", "social"],
+  "input": { "type": "object", "properties": { "xml": { "type": "string" }, "max_items": { "type": "integer", "default": 20 } }, "required": ["xml"] },
+  "output": { "type": "object", "properties": { "ok": {}, "feed": {}, "entries": {}, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 1000, "memory_mb": 128,
+  "example": { "input": { "xml": "<feed><title>Blog</title><entry><title>Post</title></entry></feed>" }, "output": { "ok": true, "count": 1 } }
+}

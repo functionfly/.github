@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "video-duration",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Video Duration",
+  "description": "Parse a video duration from ISO 8601 format (PT1H30M) or seconds into hours, minutes, seconds, and formatted string.",
+  "category": "social",
+  "tags": ["video", "duration", "time", "parse", "social"],
+  "input": { "type": "object", "properties": { "duration": { "type": "string", "description": "ISO 8601 duration or seconds" } }, "required": ["duration"] },
+  "output": { "type": "object", "properties": { "ok": {}, "total_seconds": {}, "formatted": {}, "hours": {}, "minutes": {}, "seconds": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "duration": "PT1H24M30S" }, "output": { "ok": true, "total_seconds": 5070, "formatted": "1:24:30" } }
+}

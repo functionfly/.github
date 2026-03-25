@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "color-greyscale",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Color to Greyscale",
+  "description": "Convert a color to its greyscale equivalent using luma, average, or lightness methods.",
+  "category": "color",
+  "tags": ["color", "greyscale", "grayscale", "convert"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "color": { "type": "string", "description": "Hex color" },
+      "method": { "type": "string", "description": "'luma' (perceptual), 'average', or 'lightness'", "default": "luma", "enum": ["luma", "average", "lightness"] }
+    },
+    "required": ["color"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "object" },
+      "hex": { "type": "string" },
+      "value": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "color": "#ff5733" },
+    "output": { "ok": true, "hex": "#7C7C7C", "value": 124 }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "author": "functionfly",
+  "name": "barcode-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Barcode",
+  "description": "Generate a valid EAN-13, UPC-A, or CODE128 barcode number with correct check digit.",
+  "category": "ecommerce",
+  "tags": ["barcode", "ean", "upc", "generate", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["EAN-13", "UPC-A", "CODE128"],
+        "default": "EAN-13"
+      },
+      "data": {
+        "type": "string",
+        "description": "Partial data to embed (optional)"
+      },
+      "prefix": {
+        "type": "string",
+        "description": "Country/manufacturer prefix (EAN-13)"
+      }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "barcode": {},
+      "type": {},
+      "check_digit": {},
+      "error": {}
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "type": "EAN-13", "prefix": "978" },
+    "output": { "ok": true, "barcode": "9781234567897" }
+  }
+}

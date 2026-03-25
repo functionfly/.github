@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "html-entity-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "HTML Entity Encode",
+  "description": "Encode special HTML characters (&, <, >, \", ') as HTML entities.",
+  "category": "encoding",
+  "tags": ["encoding", "html", "entities", "escape", "xss"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "String to encode" },
+      "quote": { "type": "boolean", "description": "Also encode quotes (\", ')", "default": true }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "<script>alert('xss')</script>" },
+    "output": { "ok": true, "result": "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;" }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-redirect",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Redirect Status",
+  "description": "Check if an HTTP status code indicates a redirect (3xx).",
+  "category": "http",
+  "tags": ["http", "status", "redirect", "3xx", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "status_code": { "type": "integer", "description": "HTTP status code" }
+    },
+    "required": ["status_code"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "status_code": { "type": "integer" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "status_code": 301 },
+    "output": { "ok": true, "status_code": 301, "result": true }
+  }
+}

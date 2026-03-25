@@ -1,0 +1,27 @@
+{
+  "author": "functionfly",
+  "name": "random-color",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Random Color",
+  "description": "Generate a random color. Optionally seed for reproducible results.",
+  "category": "color",
+  "tags": ["color", "random", "generate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "format": { "type": "string", "description": "'hex', 'rgb', or 'object'", "default": "hex", "enum": ["hex", "rgb", "object"] },
+      "seed": { "description": "Optional seed for reproducibility" }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": {}, "hex": {}, "css": {}, "r": {}, "g": {}, "b": {}, "error": {} }
+  },
+  "deterministic": false, "idempotent": false,
+  "cache_ttl": 0, "timeout_ms": 100, "memory_mb": 64,
+  "example": {
+    "input": { "format": "hex" },
+    "output": { "ok": true, "hex": "#A3F2C1" }
+  }
+}

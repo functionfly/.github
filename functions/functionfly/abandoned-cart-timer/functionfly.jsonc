@@ -1,0 +1,46 @@
+{
+  "author": "functionfly",
+  "name": "abandoned-cart-timer",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Abandoned Cart Detection",
+  "description": "Detect if a shopping cart has been abandoned based on idle time and determine if recovery email should be sent.",
+  "category": "ecommerce",
+  "tags": ["cart", "abandoned", "recovery", "email", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cart_created_at": {
+        "type": "integer",
+        "description": "Unix timestamp when cart was created"
+      },
+      "last_activity_at": {
+        "type": "integer",
+        "description": "Unix timestamp of last cart activity"
+      },
+      "abandonment_threshold_minutes": { "type": "integer", "default": 30 },
+      "recovery_window_hours": { "type": "integer", "default": 24 }
+    },
+    "required": ["cart_created_at"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "boolean" },
+      "is_abandoned": {},
+      "idle_minutes": {},
+      "should_send_recovery_email": {},
+      "error": {}
+    }
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "cart_created_at": 1710000000, "last_activity_at": 1710000000 },
+    "output": { "ok": true, "is_abandoned": true }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "ron-stringify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Stringify to RON",
+  "description": "Convert a structured object to RON (Rusty Object Notation) format.",
+  "category": "format",
+  "tags": ["ron", "rust", "stringify", "format"],
+  "input": { "type": "object", "properties": { "data": {} }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "name": "Alice", "age": 30 } }, "output": { "ok": true } }
+}

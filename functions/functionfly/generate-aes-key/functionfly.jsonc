@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "generate-aes-key",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate AES Key",
+  "description": "Generate a cryptographically secure random AES key (128, 192, or 256 bits).",
+  "category": "crypto",
+  "tags": ["crypto", "aes", "key-generation", "random", "security"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "key_size": { "type": "integer", "description": "Key size in bits: 128, 192, or 256", "default": 256, "enum": [128, 192, 256] },
+      "format": { "type": "string", "description": "Output format: 'hex' or 'base64'", "default": "hex", "enum": ["hex", "base64"] }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "key_size": { "type": "integer" },
+      "format": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "key_size": 256 },
+    "output": { "ok": true, "key_size": 256, "format": "hex" }
+  }
+}

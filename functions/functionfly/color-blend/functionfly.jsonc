@@ -1,0 +1,26 @@
+{
+  "author": "functionfly",
+  "name": "color-blend",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Blend Two Colors",
+  "description": "Linear interpolation between two hex colors. Weight 1.0 = pure color1, 0.0 = pure color2.",
+  "category": "color",
+  "tags": ["color", "blend", "mix", "interpolate", "lerp"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "color1": { "type": "string" },
+      "color2": { "type": "string" },
+      "weight": { "type": "number", "description": "0.0-1.0 blend weight towards color1", "default": 0.5 }
+    },
+    "required": ["color1", "color2"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "r": {}, "g": {}, "b": {}, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "color1": "#ff0000", "color2": "#0000ff", "weight": 0.5 }, "output": { "ok": true, "result": "#800080" } }
+}

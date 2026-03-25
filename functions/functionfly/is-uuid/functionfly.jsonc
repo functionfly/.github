@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "is-uuid",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is UUID",
+  "description": "Validate whether a string is a valid UUID (optionally checking a specific version).",
+  "category": "validation",
+  "tags": ["validation", "uuid", "guid", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to validate" },
+      "version": { "type": "integer", "description": "UUID version to check (1-5)", "minimum": 1, "maximum": 5 },
+      "strict": { "type": "boolean", "description": "Strict validation (hyphens required, valid variant bits)", "default": true }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "uuid_version": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "550e8400-e29b-41d4-a716-446655440000" },
+    "output": { "ok": true, "value": "550e8400-e29b-41d4-a716-446655440000", "result": true, "uuid_version": 4 }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "tiktok-embed",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate TikTok Embed",
+  "description": "Generate a TikTok embedded player iframe from a TikTok video URL or video ID.",
+  "category": "social",
+  "tags": ["tiktok", "embed", "video", "social"],
+  "input": { "type": "object", "properties": { "url": { "type": "string" }, "video_id": { "type": "string" }, "width": { "type": "integer", "default": 325 }, "height": { "type": "integer", "default": 575 } } },
+  "output": { "type": "object", "properties": { "ok": {}, "embed_html": {}, "embed_url": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "url": "https://www.tiktok.com/@user/video/7123456789" }, "output": { "ok": true } }
+}

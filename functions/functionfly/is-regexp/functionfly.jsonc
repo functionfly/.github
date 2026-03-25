@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "is-regexp",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is RegExp",
+  "description": "Validate whether a string is a valid regular expression pattern (Python regex or /pattern/flags notation).",
+  "category": "validation",
+  "tags": ["validation", "regexp", "regex", "pattern", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Regex pattern or /pattern/flags string to validate" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "pattern": { "type": "string" },
+      "flags": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "/^[a-z]+$/i" },
+    "output": { "ok": true, "value": "/^[a-z]+$/i", "result": true, "pattern": "^[a-z]+$", "flags": "i" }
+  }
+}

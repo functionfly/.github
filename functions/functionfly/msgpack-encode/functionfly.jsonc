@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "msgpack-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "MessagePack Encode",
+  "description": "Serialize data to MessagePack binary format and return as Base64. Requires msgpack library.",
+  "category": "format",
+  "tags": ["msgpack", "encode", "serialize", "binary", "format"],
+  "input": { "type": "object", "properties": { "data": { "description": "Data to encode" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "bytes": {}, "encoding": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "name": "Alice", "age": 30 } }, "output": { "ok": true } }
+}

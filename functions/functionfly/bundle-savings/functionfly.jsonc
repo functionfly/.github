@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "bundle-savings",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Bundle Savings",
+  "description": "Calculate how much a customer saves by buying a bundle vs purchasing items individually.",
+  "category": "ecommerce",
+  "tags": ["bundle", "savings", "discount", "package", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "individual_prices": {
+        "type": "array",
+        "description": "List of individual item prices"
+      },
+      "bundle_price": { "type": "number" }
+    },
+    "required": ["individual_prices", "bundle_price"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "savings": {},
+      "savings_pct": {},
+      "total_individual": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "individual_prices": [50, 30, 25], "bundle_price": 90 },
+    "output": { "ok": true, "savings": 15.0, "savings_pct": 14.29 }
+  }
+}

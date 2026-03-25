@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "price-format",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Format Price with Currency",
+  "description": "Format a numeric price with the appropriate currency symbol and decimal places for 30+ currencies.",
+  "category": "ecommerce",
+  "tags": ["price", "currency", "format", "locale", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "amount": { "type": "number" },
+      "currency": {
+        "type": "string",
+        "description": "ISO 4217 currency code",
+        "default": "USD"
+      },
+      "symbol_position": {
+        "type": "string",
+        "enum": ["before", "after"],
+        "default": "before"
+      }
+    },
+    "required": ["amount"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "string" },
+      "amount": {},
+      "currency": {},
+      "symbol": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "amount": 1234.56, "currency": "USD" },
+    "output": { "ok": true, "result": "$1,234.56" }
+  }
+}

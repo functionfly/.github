@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "engagement-rate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Engagement Rate",
+  "description": "Calculate social media engagement rate based on likes, comments, shares, saves vs followers or impressions.",
+  "category": "social",
+  "tags": ["engagement", "rate", "social", "analytics", "metrics"],
+  "input": { "type": "object", "properties": { "likes": { "type": "number", "default": 0 }, "comments": { "type": "number", "default": 0 }, "shares": { "type": "number", "default": 0 }, "saves": { "type": "number", "default": 0 }, "followers": { "type": "number" }, "impressions": { "type": "number" }, "metric_base": { "type": "string", "enum": ["followers", "impressions"], "default": "followers" } } },
+  "output": { "type": "object", "properties": { "ok": {}, "engagement_rate": {}, "quality": {}, "total_engagements": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "likes": 250, "comments": 30, "shares": 15, "followers": 10000, "metric_base": "followers" }, "output": { "ok": true, "engagement_rate": 2.95, "quality": "average" } }
+}

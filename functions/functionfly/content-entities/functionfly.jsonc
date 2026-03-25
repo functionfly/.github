@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-entities",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Content Entities",
+  "description": "Extract structured entities from text: URLs, emails, phones, dates, hashtags, mentions, cashtags, and proper nouns.",
+  "category": "social",
+  "tags": ["entities", "nlp", "extract", "text-analysis", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "entities": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "text": "Contact info@example.com or visit https://example.com. Call 555-123-4567. Follow @alice #tech" }, "output": { "ok": true } }
+}

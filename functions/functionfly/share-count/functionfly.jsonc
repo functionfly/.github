@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "share-count",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Social Share Count",
+  "description": "Get social share counts for a URL across platforms (requires platform API integration).",
+  "category": "social",
+  "tags": ["share", "count", "social", "analytics", "url"],
+  "input": { "type": "object", "properties": { "url": { "type": "string" }, "platform": { "type": "string", "default": "all" } }, "required": ["url"] },
+  "output": { "type": "object", "properties": { "ok": {}, "shares": {}, "total": {}, "note": {}, "error": {} } },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 5000, "memory_mb": 64,
+  "example": { "input": { "url": "https://example.com/blog/post" }, "output": { "ok": true, "shares": { "facebook": null, "twitter": null } } }
+}

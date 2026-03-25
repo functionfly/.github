@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-language-detect",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Detect Content Language",
+  "description": "Detect the language of a text using n-gram frequency analysis. Supports English, Spanish, French, German, Portuguese, Italian, Dutch, Russian, Chinese, Japanese, Arabic, and Korean.",
+  "category": "social",
+  "tags": ["language-detection", "nlp", "text-analysis", "i18n", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "top_n": { "type": "integer", "default": 3 } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "language": {}, "confidence": {}, "top_candidates": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "text": "The quick brown fox jumps over the lazy dog" }, "output": { "ok": true, "language": "en" } }
+}

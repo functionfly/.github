@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "url-encoded-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "URL Decode (Percent Decoding)",
+  "description": "Decode a percent-encoded URL string, optionally parsing query parameters into an object.",
+  "category": "encoding",
+  "tags": ["encoding", "url", "percent-decode", "urldecode", "query-string"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "URL-encoded string to decode" },
+      "as_object": { "type": "boolean", "description": "Parse as query string and return object", "default": false }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "description": "Decoded string or object" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "hello%20world%20%26%20more" },
+    "output": { "ok": true, "result": "hello world & more" }
+  }
+}

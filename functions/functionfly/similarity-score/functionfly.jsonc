@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "similarity-score",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Text Similarity Score",
+  "description": "Calculate similarity between two texts using Jaccard, cosine, or Levenshtein distance algorithms.",
+  "category": "social",
+  "tags": ["similarity", "text", "jaccard", "cosine", "levenshtein", "nlp"],
+  "input": { "type": "object", "properties": { "text1": { "type": "string" }, "text2": { "type": "string" }, "method": { "type": "string", "enum": ["jaccard", "cosine", "levenshtein"], "default": "jaccard" } }, "required": ["text1", "text2"] },
+  "output": { "type": "object", "properties": { "ok": {}, "similarity": {}, "similarity_percent": {}, "method": {}, "is_similar": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "text1": "The cat sat on the mat", "text2": "The cat sat on a mat", "method": "jaccard" }, "output": { "ok": true, "similarity": 0.75, "is_similar": true } }
+}

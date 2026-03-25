@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "order-id-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Order ID",
+  "description": "Generate a unique order identifier with configurable prefix, length, and style.",
+  "category": "ecommerce",
+  "tags": ["order", "id", "generate", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "prefix": { "type": "string", "default": "ORD" },
+      "length": { "type": "integer", "default": 10 },
+      "style": {
+        "type": "string",
+        "enum": ["alphanumeric", "numeric", "uuid-short"],
+        "default": "alphanumeric"
+      }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": {}, "order_id": {}, "error": {} }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "prefix": "ORD" },
+    "output": { "ok": true, "order_id": "ORD-A1B2C3D4E5" }
+  }
+}

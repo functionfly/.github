@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "argon2-hash",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Argon2 Hash",
+  "description": "Hash a password with Argon2id — winner of the Password Hashing Competition, resistant to GPU and side-channel attacks.",
+  "category": "encoding",
+  "tags": ["hash", "argon2", "password", "security", "phc"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": { "type": "string", "description": "Password to hash" },
+      "time_cost": { "type": "integer", "description": "Iterations", "default": 3 },
+      "memory_cost": { "type": "integer", "description": "Memory in KiB", "default": 65536 },
+      "parallelism": { "type": "integer", "description": "Degree of parallelism", "default": 4 },
+      "hash_len": { "type": "integer", "description": "Hash length in bytes", "default": 32 }
+    },
+    "required": ["password"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 10000,
+  "memory_mb": 256,
+  "example": {
+    "input": { "password": "mysecretpassword" },
+    "output": { "ok": true }
+  }
+}

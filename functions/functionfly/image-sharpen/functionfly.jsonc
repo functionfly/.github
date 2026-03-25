@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "image-sharpen",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Sharpen Image",
+  "description": "Sharpen an image using Pillow's sharpness enhancement (1.0=original, 2.0=double sharpness).",
+  "category": "color",
+  "tags": ["image", "sharpen", "enhance", "filter", "detail"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string" },
+      "factor": { "type": "number", "description": "Sharpness factor (1.0=original)", "default": 2.0 },
+      "format": { "type": "string", "default": "JPEG" }
+    },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "format": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "...", "factor": 3.0 }, "output": { "ok": true } }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "sitemap-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse XML Sitemap",
+  "description": "Parse an XML sitemap or sitemap index, extracting URLs with lastmod, changefreq, and priority attributes.",
+  "category": "social",
+  "tags": ["sitemap", "seo", "xml", "urls", "social"],
+  "input": { "type": "object", "properties": { "xml": { "type": "string" }, "max_urls": { "type": "integer", "default": 100 } }, "required": ["xml"] },
+  "output": { "type": "object", "properties": { "ok": {}, "type": {}, "urls": {}, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 128,
+  "example": { "input": { "xml": "<urlset><url><loc>https://example.com/</loc><priority>1.0</priority></url></urlset>" }, "output": { "ok": true, "count": 1 } }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "bsond-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "BSON Decode",
+  "description": "Decode Base64-encoded BSON binary data to a document. Requires bson.",
+  "category": "format",
+  "tags": ["bson", "mongodb", "decode", "binary", "format"],
+  "input": { "type": "object", "properties": { "data": { "type": "string" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": "..." }, "output": { "ok": true } }
+}

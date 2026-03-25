@@ -1,0 +1,21 @@
+{
+  "author": "functionfly",
+  "name": "purchase-history-analyze",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Analyze Purchase History",
+  "description": "Summarize and analyze a customer's purchase history: totals, averages, category breakdown, and purchase frequency.",
+  "category": "ecommerce",
+  "tags": ["purchase-history", "analytics", "customer", "rfm", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "purchases": { "type": "array", "description": "List of purchase objects with amount, category, optional date" }
+    },
+    "required": ["purchases"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "total_spent": {}, "total_orders": {}, "avg_order_value": {}, "favorite_category": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 500, "memory_mb": 128,
+  "example": { "input": { "purchases": [{"amount": 50, "category": "shoes"}, {"amount": 120, "category": "shoes"}, {"amount": 30, "category": "bags"}] }, "output": { "ok": true, "total_spent": 200.0, "favorite_category": "shoes" } }
+}

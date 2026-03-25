@@ -1,0 +1,25 @@
+{
+  "author": "functionfly",
+  "name": "json-patch",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "JSON Patch",
+  "description": "Apply RFC 6902 JSON Patch operations (add, remove, replace, move, copy, test) to a document.",
+  "category": "format",
+  "tags": ["json", "patch", "rfc6902", "diff", "update"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "document": { "description": "Target JSON document" },
+      "operations": { "type": "array", "description": "Array of RFC 6902 patch operations" }
+    },
+    "required": ["document", "operations"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "note": {}, "error": {} } },
+  "deterministic": true, "idempotent": false,
+  "cache_ttl": 0, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "document": { "a": 1 }, "operations": [{ "op": "add", "path": "/b", "value": 2 }] },
+    "output": { "ok": true, "result": { "a": 1, "b": 2 } }
+  }
+}

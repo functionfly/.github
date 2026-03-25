@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "mime-word-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "MIME Word Decode",
+  "description": "Decode RFC 2047 MIME encoded-words (=?charset?encoding?text?=) found in email headers.",
+  "category": "encoding",
+  "tags": ["encoding", "mime", "email", "rfc2047", "header", "decode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "MIME encoded-word string to decode" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "parts": { "type": "array", "items": { "type": "object" } },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "=?utf-8?q?H=C3=A9llo?=" },
+    "output": { "ok": true, "result": "Héllo" }
+  }
+}

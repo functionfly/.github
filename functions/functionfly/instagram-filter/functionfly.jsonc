@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "instagram-filter",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Apply Instagram-Style Filter",
+  "description": "Apply Instagram-style photo filters (Clarendon, Gingham, Moon, Lark, etc.) to a base64-encoded image. Requires Pillow.",
+  "category": "social",
+  "tags": ["instagram", "filter", "image", "photo", "social"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string", "description": "Base64-encoded image" },
+      "filter": { "type": "string", "default": "clarendon" },
+      "intensity": { "type": "number", "description": "Filter intensity 0-1", "default": 1.0 }
+    },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "filter": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "...", "filter": "moon" }, "output": { "ok": true } }
+}

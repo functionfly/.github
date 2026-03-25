@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "php-serialize",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "PHP Serialize",
+  "description": "Serialize data to PHP serialization format (like PHP's serialize() function). Supports null, bool, int, float, string, array/list/dict.",
+  "category": "format",
+  "tags": ["php", "serialize", "format", "legacy"],
+  "input": { "type": "object", "properties": { "data": {} }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "name": "Alice", "age": 30 } }, "output": { "ok": true, "result": "a:2:{s:4:\"name\";s:5:\"Alice\";s:3:\"age\";i:30;}" } }
+}

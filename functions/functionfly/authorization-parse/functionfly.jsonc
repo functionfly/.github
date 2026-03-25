@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "name": "authorization-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Authorization Header",
+  "description": "Parse an HTTP Authorization header, extracting the scheme and credentials (supports Basic, Bearer, Digest).",
+  "category": "http",
+  "tags": ["http", "authorization", "auth", "parse", "header", "basic", "bearer"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Authorization header value" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "scheme": { "type": "string" },
+      "credentials": { "type": "string" },
+      "token": { "type": "string", "description": "Bearer token (Bearer scheme only)" },
+      "username": { "type": "string", "description": "Username (Basic scheme only)" },
+      "password": { "type": "string", "description": "Password (Basic scheme only)" },
+      "params": { "type": "object", "description": "Params (Digest scheme only)" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.abc" },
+    "output": { "ok": true, "scheme": "Bearer", "credentials": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.abc", "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.abc" }
+  }
+}

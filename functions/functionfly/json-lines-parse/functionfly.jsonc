@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "json-lines-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse JSON Lines (JSONL)",
+  "description": "Parse a JSON Lines (JSONL) string where each line is a separate JSON value.",
+  "category": "format",
+  "tags": ["jsonl", "json-lines", "parse", "streaming", "ndjson"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string" },
+      "skip_empty": { "type": "boolean", "default": true }
+    },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "array" }, "count": {}, "errors": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 128,
+  "example": { "input": { "data": "{\"a\":1}\n{\"b\":2}" }, "output": { "ok": true, "result": [{ "a": 1 }, { "b": 2 }], "count": 2 } }
+}

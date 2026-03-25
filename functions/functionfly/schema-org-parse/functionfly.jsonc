@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "schema-org-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Schema.org Structured Data",
+  "description": "Parse Schema.org structured data from HTML JSON-LD blocks or a raw data object, returning typed schema items.",
+  "category": "social",
+  "tags": ["schema-org", "structured-data", "seo", "json-ld", "social"],
+  "input": { "type": "object", "properties": { "html": { "type": "string" }, "data": { "description": "Raw schema object or JSON string" } } },
+  "output": { "type": "object", "properties": { "ok": {}, "schemas": {}, "types": {}, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "data": { "@context": "https://schema.org", "@type": "Article", "name": "Test" } }, "output": { "ok": true, "types": ["Article"] } }
+}

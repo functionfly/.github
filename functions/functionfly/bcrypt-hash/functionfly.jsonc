@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "bcrypt-hash",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "bcrypt Hash",
+  "description": "Hash a password using bcrypt with an automatically generated salt. Safe for storing passwords.",
+  "category": "encoding",
+  "tags": ["hash", "bcrypt", "password", "security", "auth"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": { "type": "string", "description": "Password to hash" },
+      "rounds": { "type": "integer", "description": "Cost factor (work rounds, 2^rounds iterations)", "default": 12, "minimum": 4, "maximum": 31 }
+    },
+    "required": ["password"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string", "description": "bcrypt hash string" },
+      "rounds": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 64,
+  "example": {
+    "input": { "password": "mysecretpassword", "rounds": 10 },
+    "output": { "ok": true, "rounds": 10 }
+  }
+}

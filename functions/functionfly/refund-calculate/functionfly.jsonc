@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "refund-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Refund Amount",
+  "description": "Calculate the net refund amount for full, partial (by quantity), or custom refunds with optional restocking fee.",
+  "category": "ecommerce",
+  "tags": ["refund", "return", "payment", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "original_amount": { "type": "number" },
+      "refund_type": {
+        "type": "string",
+        "enum": ["full", "partial", "custom"],
+        "default": "full"
+      },
+      "quantity_returned": { "type": "integer" },
+      "quantity_ordered": { "type": "integer", "default": 1 },
+      "restocking_fee_pct": { "type": "number", "default": 0 },
+      "already_refunded": { "type": "number", "default": 0 },
+      "custom_amount": { "type": "number" }
+    },
+    "required": ["original_amount"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "net_refund": {},
+      "gross_refund": {},
+      "restocking_fee": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "original_amount": 100,
+      "refund_type": "partial",
+      "quantity_returned": 2,
+      "quantity_ordered": 5,
+      "restocking_fee_pct": 10
+    },
+    "output": { "ok": true, "net_refund": 36.0 }
+  }
+}

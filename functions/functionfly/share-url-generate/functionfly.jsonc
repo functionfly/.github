@@ -1,0 +1,25 @@
+{
+  "author": "functionfly",
+  "name": "share-url-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Social Share URL",
+  "description": "Generate a social share URL for Twitter, Facebook, LinkedIn, Reddit, WhatsApp, Telegram, Pinterest, Email, and Hacker News.",
+  "category": "social",
+  "tags": ["share", "social", "url", "button", "social"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "platform": { "type": "string", "enum": ["twitter", "facebook", "linkedin", "reddit", "whatsapp", "telegram", "pinterest", "email", "hacker-news"], "default": "twitter" },
+      "text": { "type": "string" },
+      "title": { "type": "string" },
+      "hashtags": { "type": "string" }
+    },
+    "required": ["url"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "share_url": {}, "platform": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "url": "https://example.com", "platform": "twitter", "text": "Check this out!" }, "output": { "ok": true } }
+}

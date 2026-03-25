@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "is-url",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is URL",
+  "description": "Validate whether a string is a valid URL with scheme and host.",
+  "category": "validation",
+  "tags": ["validation", "url", "format", "check", "web"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to validate" },
+      "require_tld": { "type": "boolean", "description": "Require a TLD in the hostname", "default": true }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "https://example.com/path?q=1" },
+    "output": { "ok": true, "value": "https://example.com/path?q=1", "result": true }
+  }
+}

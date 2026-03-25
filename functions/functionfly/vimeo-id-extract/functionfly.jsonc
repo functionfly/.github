@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "vimeo-id-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Vimeo Video ID",
+  "description": "Extract the Vimeo video ID from any Vimeo URL.",
+  "category": "social",
+  "tags": ["vimeo", "video", "id", "url", "social"],
+  "input": { "type": "object", "properties": { "url": { "type": "string" } }, "required": ["url"] },
+  "output": { "type": "object", "properties": { "ok": {}, "video_id": {}, "embed_url": {}, "watch_url": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "url": "https://vimeo.com/123456789" }, "output": { "ok": true, "video_id": "123456789" } }
+}

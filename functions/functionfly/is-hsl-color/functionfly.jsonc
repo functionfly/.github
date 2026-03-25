@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "name": "is-hsl-color",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is HSL Color",
+  "description": "Validate whether a string is a valid CSS hsl() or hsla() color value.",
+  "category": "validation",
+  "tags": ["validation", "color", "hsl", "hsla", "css", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Color string to validate (e.g. 'hsl(120, 100%, 50%)')" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "h": { "type": "integer" },
+      "s": { "type": "integer" },
+      "l": { "type": "integer" },
+      "alpha": { "type": "number" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "hsl(120, 100%, 50%)" },
+    "output": { "ok": true, "value": "hsl(120, 100%, 50%)", "result": true, "h": 120, "s": 100, "l": 50, "alpha": null }
+  }
+}

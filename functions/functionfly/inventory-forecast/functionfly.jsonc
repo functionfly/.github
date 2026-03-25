@@ -1,0 +1,25 @@
+{
+  "author": "functionfly",
+  "name": "inventory-forecast",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Inventory Forecast",
+  "description": "Forecast inventory depletion, stockout date, and reorder timing based on current stock and daily demand.",
+  "category": "ecommerce",
+  "tags": ["inventory", "forecast", "stockout", "reorder", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "current_stock": { "type": "number" },
+      "daily_demand": { "type": "number" },
+      "lead_time_days": { "type": "number", "default": 7 },
+      "forecast_days": { "type": "integer", "default": 30 },
+      "demand_growth_pct": { "type": "number", "description": "Annual demand growth %", "default": 0 }
+    },
+    "required": ["current_stock", "daily_demand"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "days_of_stock_remaining": {}, "will_stockout_in_forecast": {}, "reorder_point": {}, "suggested_reorder_day": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "current_stock": 200, "daily_demand": 15, "lead_time_days": 5, "forecast_days": 30 }, "output": { "ok": true, "days_of_stock_remaining": 13, "will_stockout_in_forecast": true } }
+}

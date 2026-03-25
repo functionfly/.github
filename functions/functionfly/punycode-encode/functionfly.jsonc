@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "punycode-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Punycode Encode",
+  "description": "Encode an internationalized domain name (IDN) to Punycode (ASCII-Compatible Encoding).",
+  "category": "encoding",
+  "tags": ["encoding", "punycode", "idn", "domain", "unicode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "Unicode domain name to encode" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "original": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "münchen.de" },
+    "output": { "ok": true, "result": "xn--mnchen-3ya.de", "original": "münchen.de" }
+  }
+}

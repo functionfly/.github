@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "generate-iv",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate IV / Nonce",
+  "description": "Generate a cryptographically secure random initialization vector (IV) or nonce.",
+  "category": "crypto",
+  "tags": ["crypto", "iv", "nonce", "random", "aes"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "size": { "type": "integer", "description": "Size in bytes (8-64; 12 for GCM, 16 for CBC)", "default": 16 },
+      "format": { "type": "string", "description": "'hex' or 'base64'", "default": "hex", "enum": ["hex", "base64"] }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "size": { "type": "integer" },
+      "format": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "size": 12 },
+    "output": { "ok": true, "size": 12, "format": "hex" }
+  }
+}

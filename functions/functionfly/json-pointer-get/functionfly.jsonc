@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "json-pointer-get",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "JSON Pointer Get",
+  "description": "Retrieve a value from a JSON document using an RFC 6901 JSON Pointer (e.g. '/users/0/name').",
+  "category": "format",
+  "tags": ["json", "pointer", "rfc6901", "extract", "get"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "description": "JSON document" },
+      "pointer": { "type": "string", "description": "RFC 6901 JSON Pointer (e.g. '/users/0/name')", "default": "" }
+    },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "users": [{ "name": "Alice" }] }, "pointer": "/users/0/name" }, "output": { "ok": true, "result": "Alice" } }
+}

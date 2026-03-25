@@ -1,0 +1,25 @@
+{
+  "author": "functionfly",
+  "name": "demand-forecast",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Demand Forecasting",
+  "description": "Forecast future demand from historical data using moving average, exponential smoothing, or linear trend methods.",
+  "category": "ecommerce",
+  "tags": ["demand", "forecast", "prediction", "analytics", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "historical_demand": { "type": "array", "description": "List of historical demand numbers" },
+      "periods_ahead": { "type": "integer", "default": 1 },
+      "method": { "type": "string", "enum": ["moving_average", "exponential_smoothing", "linear_trend"], "default": "moving_average" },
+      "window": { "type": "integer", "description": "Periods for moving average", "default": 3 },
+      "alpha": { "type": "number", "description": "Smoothing factor for exponential smoothing", "default": 0.3 }
+    },
+    "required": ["historical_demand"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "forecasts": {}, "method": {}, "historical_mean": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 500, "memory_mb": 128,
+  "example": { "input": { "historical_demand": [100, 120, 110, 130, 125], "periods_ahead": 3, "method": "moving_average" }, "output": { "ok": true, "forecasts": [121.67, 121.67, 121.67] } }
+}

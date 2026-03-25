@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "xml-rpc-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "XML-RPC Encode (Request)",
+  "description": "Encode a method name and parameters as an XML-RPC request string using Python's xmlrpc.client.",
+  "category": "format",
+  "tags": ["xmlrpc", "xml", "rpc", "encode", "serialize"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "method": { "type": "string" },
+      "params": { "type": "array", "default": [] }
+    },
+    "required": ["method"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "method": "add", "params": [1, 2] }, "output": { "ok": true } }
+}

@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "murmurhash",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "MurmurHash3",
+  "description": "Calculate MurmurHash3 — a fast, well-distributed non-cryptographic hash. Uses mmh3 if available, otherwise pure-Python x86_32.",
+  "category": "encoding",
+  "tags": ["hash", "murmurhash", "murmur", "fast-hash", "non-cryptographic"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "description": "Data to hash" },
+      "seed": { "type": "integer", "description": "Seed value", "default": 0 }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string", "description": "Hex digest" },
+      "decimal": { "type": "integer" },
+      "library": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "Hello World" },
+    "output": { "ok": true }
+  }
+}

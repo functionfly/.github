@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "thrift-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Apache Thrift Encode",
+  "description": "Encode data using Apache Thrift. Full support requires thrift library and generated classes. Returns JSON fallback otherwise.",
+  "category": "format",
+  "tags": ["thrift", "apache", "encode", "binary", "rpc"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {},
+      "protocol": { "type": "string", "default": "binary", "enum": ["binary", "compact", "json"] }
+    },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "note": {}, "format": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": { "input": { "data": { "id": 1 } }, "output": { "ok": true } }
+}

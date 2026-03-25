@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "search-rank",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Search Ranking",
+  "description": "Rank a list of products by relevance to a search query, combining text matching, rating, popularity, and price.",
+  "category": "ecommerce",
+  "tags": ["search", "rank", "relevance", "products", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "query": { "type": "string" },
+      "products": { "type": "array" },
+      "weights": { "type": "object" }
+    },
+    "required": ["query", "products"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "array" },
+      "count": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 60,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "query": "wireless headphones",
+      "products": [{ "name": "Wireless Headphones Pro", "rating": 4.5 }]
+    },
+    "output": { "ok": true, "count": 1 }
+  }
+}

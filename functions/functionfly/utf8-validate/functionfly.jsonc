@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "utf8-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "UTF-8 Validate",
+  "description": "Validate that a string or Base64-encoded bytes is valid UTF-8.",
+  "category": "encoding",
+  "tags": ["encoding", "utf8", "validate", "unicode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "String to validate (or Base64 bytes if is_base64=true)" },
+      "is_base64": { "type": "boolean", "description": "Treat data as Base64-encoded bytes", "default": false }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "boolean" },
+      "byte_length": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "Hello World" },
+    "output": { "ok": true, "result": true, "byte_length": 11 }
+  }
+}

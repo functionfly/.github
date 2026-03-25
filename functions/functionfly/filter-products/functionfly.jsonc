@@ -1,0 +1,55 @@
+{
+  "author": "functionfly",
+  "name": "filter-products",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Filter Products",
+  "description": "Filter a product list by price range, category, rating, tags, brand, and in-stock status.",
+  "category": "ecommerce",
+  "tags": ["filter", "products", "catalog", "search", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "products": { "type": "array" },
+      "filters": {
+        "type": "object",
+        "properties": {
+          "min_price": { "type": "number" },
+          "max_price": { "type": "number" },
+          "min_rating": { "type": "number" },
+          "category": {},
+          "tags": { "type": "array" },
+          "brand": {},
+          "in_stock": { "type": "boolean" }
+        }
+      }
+    },
+    "required": ["products"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "array" },
+      "count": {},
+      "original_count": {},
+      "filters_applied": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 60,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "products": [
+        { "name": "A", "price": 10, "category": "shoes" },
+        { "name": "B", "price": 200, "category": "bags" }
+      ],
+      "filters": { "max_price": 50 }
+    },
+    "output": { "ok": true, "count": 1 }
+  }
+}

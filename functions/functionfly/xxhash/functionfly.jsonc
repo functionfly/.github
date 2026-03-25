@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "xxhash",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "xxHash",
+  "description": "Calculate xxHash — an extremely fast non-cryptographic hash. Supports xxh32, xxh64, xxh3_64, xxh3_128.",
+  "category": "encoding",
+  "tags": ["hash", "xxhash", "fast-hash", "non-cryptographic"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "description": "Data to hash" },
+      "variant": { "type": "string", "description": "Hash variant", "default": "xxh64", "enum": ["xxh32", "xxh64", "xxh3_64", "xxh3_128"] },
+      "seed": { "type": "integer", "description": "Seed value", "default": 0 }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "decimal": { "type": "integer" },
+      "variant": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "Hello World" },
+    "output": { "ok": true, "variant": "xxh64" }
+  }
+}

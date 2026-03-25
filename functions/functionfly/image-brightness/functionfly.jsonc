@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "image-brightness",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Adjust Image Brightness",
+  "description": "Adjust image brightness by a factor (1.0=original, 0=black, 2.0=twice as bright).",
+  "category": "color",
+  "tags": ["image", "brightness", "adjust", "pillow"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string", "description": "Base64-encoded image" },
+      "factor": { "type": "number", "description": "Brightness factor (1.0=original)", "default": 1.5 },
+      "format": { "type": "string", "description": "Output format", "default": "JPEG" }
+    },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "format": {}, "factor": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "...", "factor": 1.5 }, "output": { "ok": true } }
+}

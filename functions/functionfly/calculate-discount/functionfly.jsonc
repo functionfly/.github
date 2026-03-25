@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "calculate-discount",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Discount",
+  "description": "Calculate the discount amount and final price. Supports percentage and fixed amount discounts.",
+  "category": "ecommerce",
+  "tags": ["discount", "price", "sale", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "price": { "type": "number" },
+      "discount": { "type": "number" },
+      "type": { "type": "string", "enum": ["percent", "amount"], "default": "percent" }
+    },
+    "required": ["price", "discount"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "original": {}, "discount_amount": {}, "final_price": {}, "savings_pct": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "price": 200, "discount": 25, "type": "percent" }, "output": { "ok": true, "discount_amount": 50.0, "final_price": 150.0 } }
+}

@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "name": "keccak",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Keccak / SHA-3",
+  "description": "Calculate Keccak/SHA-3 cryptographic hash. Supports SHA3-224/256/384/512 and SHAKE-128/256.",
+  "category": "encoding",
+  "tags": ["hash", "keccak", "sha3", "cryptographic", "ethereum"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "description": "Data to hash" },
+      "variant": { "type": "string", "description": "Hash variant", "default": "sha3_256", "enum": ["sha3_224", "sha3_256", "keccak_256", "sha3_384", "sha3_512", "shake_128", "shake_256"] },
+      "length": { "type": "integer", "description": "Output length in bytes for SHAKE variants", "default": 32 }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "algorithm": { "type": "string" },
+      "variant": { "type": "string" },
+      "digest_bits": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "Hello World", "variant": "sha3_256" },
+    "output": { "ok": true, "digest_bits": 256 }
+  }
+}

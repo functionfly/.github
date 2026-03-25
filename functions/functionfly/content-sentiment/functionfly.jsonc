@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-sentiment",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Content Sentiment Analysis",
+  "description": "Analyze the sentiment of a text (positive/negative/neutral) using a lexicon-based approach with negation handling.",
+  "category": "social",
+  "tags": ["sentiment", "nlp", "text-analysis", "content", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "sentiment": {}, "score": {}, "positive_count": {}, "negative_count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "text": "The product is absolutely amazing and works great!" }, "output": { "ok": true, "sentiment": "positive" } }
+}

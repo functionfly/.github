@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "comment-count",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Social Comment Count",
+  "description": "Get comment counts for content across social platforms (requires platform API integration).",
+  "category": "social",
+  "tags": ["comments", "count", "social", "analytics", "engagement"],
+  "input": { "type": "object", "properties": { "content_id": { "type": "string" }, "platform": { "type": "string", "default": "all" } }, "required": ["content_id"] },
+  "output": { "type": "object", "properties": { "ok": {}, "comments": {}, "total": {}, "note": {}, "error": {} } },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 5000, "memory_mb": 64,
+  "example": { "input": { "content_id": "video_abc123", "platform": "youtube" }, "output": { "ok": true, "comments": { "youtube": null } } }
+}

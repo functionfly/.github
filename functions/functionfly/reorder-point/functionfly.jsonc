@@ -1,0 +1,49 @@
+{
+  "author": "functionfly",
+  "name": "reorder-point",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Reorder Point",
+  "description": "Calculate the inventory reorder point (ROP) using average daily demand, lead time, and safety stock.",
+  "category": "ecommerce",
+  "tags": ["reorder", "inventory", "safety-stock", "supply-chain", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "daily_demand": { "type": "number" },
+      "lead_time_days": { "type": "number" },
+      "safety_stock_days": { "type": "number", "default": 2 },
+      "demand_std_dev": { "type": "number" },
+      "service_level_z": {
+        "type": "number",
+        "description": "Z-score for service level (1.65=95%)",
+        "default": 1.65
+      }
+    },
+    "required": ["daily_demand", "lead_time_days"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "reorder_point": {},
+      "safety_stock": {},
+      "demand_during_lead_time": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "daily_demand": 20,
+      "lead_time_days": 5,
+      "safety_stock_days": 3
+    },
+    "output": { "ok": true, "reorder_point": 160, "safety_stock": 60 }
+  }
+}

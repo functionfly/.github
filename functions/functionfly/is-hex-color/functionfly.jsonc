@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "is-hex-color",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Hex Color",
+  "description": "Validate whether a string is a valid CSS hex color (#RGB, #RGBA, #RRGGBB, #RRGGBBAA).",
+  "category": "validation",
+  "tags": ["validation", "color", "hex", "css", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Color string to validate (e.g. '#FF3300')" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "has_alpha": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "#FF3300" },
+    "output": { "ok": true, "value": "#FF3300", "result": true, "has_alpha": false }
+  }
+}

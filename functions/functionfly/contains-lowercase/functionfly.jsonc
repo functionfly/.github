@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "contains-lowercase",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Contains Lowercase",
+  "description": "Check whether a string contains at least one lowercase letter.",
+  "category": "validation",
+  "tags": ["validation", "lowercase", "string", "password", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to check" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "hello" },
+    "output": { "ok": true, "value": "hello", "result": true }
+  }
+}

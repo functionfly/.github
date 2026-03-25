@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "facet-aggregates",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Faceted Search Aggregates",
+  "description": "Generate faceted search aggregates from a product list (counts per category, brand, rating bucket, price range, tags).",
+  "category": "ecommerce",
+  "tags": ["facets", "aggregates", "search", "filter", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "products": { "type": "array" },
+      "facets": {
+        "type": "array",
+        "description": "Fields to aggregate (e.g. ['category','brand','rating_bucket','price_range'])",
+        "default": ["category", "brand", "rating_bucket"]
+      }
+    },
+    "required": ["products"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "object" },
+      "total": {},
+      "facets": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 60,
+  "timeout_ms": 1000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "products": [
+        { "category": "shoes" },
+        { "category": "bags" },
+        { "category": "shoes" }
+      ],
+      "facets": ["category"]
+    },
+    "output": {
+      "ok": true,
+      "result": { "category": [{ "value": "shoes", "count": 2 }] }
+    }
+  }
+}

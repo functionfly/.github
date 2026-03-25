@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "scrypt-hash",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "scrypt Hash",
+  "description": "Hash a password with scrypt — a memory-hard function from the standard library.",
+  "category": "encoding",
+  "tags": ["hash", "scrypt", "password", "security", "key-derivation"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": { "type": "string", "description": "Password to hash" },
+      "n": { "type": "integer", "description": "CPU/memory cost factor (must be power of 2)", "default": 16384 },
+      "r": { "type": "integer", "description": "Block size", "default": 8 },
+      "p": { "type": "integer", "description": "Parallelization factor", "default": 1 },
+      "dklen": { "type": "integer", "description": "Derived key length in bytes", "default": 32 },
+      "salt": { "type": "string", "description": "Base64-encoded salt (generated if omitted)" }
+    },
+    "required": ["password"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "salt": { "type": "string" },
+      "hash": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 10000,
+  "memory_mb": 256,
+  "example": {
+    "input": { "password": "mysecretpassword" },
+    "output": { "ok": true }
+  }
+}

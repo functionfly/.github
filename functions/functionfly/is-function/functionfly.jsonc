@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-function",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Function",
+  "description": "Check whether a string looks like a JavaScript function definition (arrow or named function).",
+  "category": "validation",
+  "tags": ["validation", "function", "javascript", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to check for function syntax" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "(x) => x * 2" },
+    "output": { "ok": true, "value": "(x) => x * 2", "result": true }
+  }
+}

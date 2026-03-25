@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "favicon-get",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Get Favicon URL",
+  "description": "Extract favicon URLs from HTML, returning all declared icon links and defaulting to /favicon.ico.",
+  "category": "social",
+  "tags": ["favicon", "icon", "html", "meta", "url"],
+  "input": { "type": "object", "properties": { "html": { "type": "string" }, "base_url": { "type": "string" } }, "required": ["html"] },
+  "output": { "type": "object", "properties": { "ok": {}, "favicon_url": {}, "all_favicons": {}, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "html": "<link rel='icon' href='/favicon.png' sizes='32x32'>", "base_url": "https://example.com" }, "output": { "ok": true, "favicon_url": "/favicon.png", "count": 1 } }
+}

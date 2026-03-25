@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "xml-stringify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Stringify to XML",
+  "description": "Convert a JSON-compatible object (with a single root key) to an XML string.",
+  "category": "format",
+  "tags": ["xml", "stringify", "serialize", "format"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "object", "description": "Object with single root element key" },
+      "indent": { "type": "boolean", "default": true }
+    },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": { "input": { "data": { "root": { "item": { "#text": "Hello" } } } }, "output": { "ok": true } }
+}

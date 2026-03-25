@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "plist-stringify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Stringify to Apple Property List (plist)",
+  "description": "Serialize a Python dict to XML plist format using Python's plistlib.",
+  "category": "format",
+  "tags": ["plist", "apple", "stringify", "serialize", "ios", "macos"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "object" },
+      "format": { "type": "string", "enum": ["xml", "binary"], "default": "xml" }
+    },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "name": "Alice", "age": 30 } }, "output": { "ok": true } }
+}

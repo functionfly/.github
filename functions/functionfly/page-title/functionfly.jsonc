@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "page-title",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Page Title",
+  "description": "Extract the page title from HTML, checking <title> tag and og:title meta tag.",
+  "category": "social",
+  "tags": ["title", "html", "meta", "og", "seo"],
+  "input": { "type": "object", "properties": { "html": { "type": "string" } }, "required": ["html"] },
+  "output": { "type": "object", "properties": { "ok": {}, "title": {}, "og_title": {}, "best_title": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "html": "<html><head><title>My Page Title</title></head></html>" }, "output": { "ok": true, "title": "My Page Title", "best_title": "My Page Title" } }
+}

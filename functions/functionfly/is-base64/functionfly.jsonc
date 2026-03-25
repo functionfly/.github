@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "is-base64",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Base64",
+  "description": "Validate whether a string is valid Base64 (standard or URL-safe).",
+  "category": "validation",
+  "tags": ["validation", "base64", "encoding", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to validate" },
+      "url_safe": { "type": "boolean", "description": "Check URL-safe Base64 variant", "default": false }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "url_safe": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "SGVsbG8gV29ybGQ=" },
+    "output": { "ok": true, "value": "SGVsbG8gV29ybGQ=", "result": true, "url_safe": false }
+  }
+}

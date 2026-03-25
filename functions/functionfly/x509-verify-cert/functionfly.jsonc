@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "name": "x509-verify-cert",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "X.509 Verify Certificate",
+  "description": "Verify an X.509 certificate — check validity period and optionally verify the signature against a CA certificate.",
+  "category": "crypto",
+  "tags": ["crypto", "x509", "certificate", "verify", "tls", "pki"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "certificate": { "type": "string", "description": "PEM certificate to verify" },
+      "ca_certificate": { "type": "string", "description": "PEM CA certificate to verify signature against (optional)" },
+      "check_expiry": { "type": "boolean", "description": "Check validity period", "default": true }
+    },
+    "required": ["certificate"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "boolean" },
+      "checks": { "type": "object" },
+      "not_before": { "type": "string" },
+      "not_after": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "certificate": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----" },
+    "output": { "ok": true, "result": true }
+  }
+}

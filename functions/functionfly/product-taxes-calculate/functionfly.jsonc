@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "product-taxes-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Product Taxes",
+  "description": "Calculate taxes for products with category-specific rates (standard, reduced, zero, exempt, luxury, food, digital).",
+  "category": "ecommerce",
+  "tags": ["tax", "product", "category", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "price": { "type": "number" },
+      "base_rate": { "type": "number", "description": "Base tax rate %" },
+      "product_category": { "type": "string", "default": "standard" },
+      "quantity": { "type": "integer", "default": 1 },
+      "jurisdiction": { "type": "string" }
+    },
+    "required": ["price", "base_rate"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "effective_rate_pct": {},
+      "unit_tax": {},
+      "total_tax": {},
+      "total_price": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "price": 100,
+      "base_rate": 20,
+      "product_category": "reduced",
+      "quantity": 3
+    },
+    "output": { "ok": true, "total_tax": 30.0, "total_price": 330.0 }
+  }
+}

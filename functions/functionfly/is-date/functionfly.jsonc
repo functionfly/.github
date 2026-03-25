@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "is-date",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Date",
+  "description": "Validate whether a string is a parseable date, optionally checking a specific format.",
+  "category": "validation",
+  "tags": ["validation", "date", "datetime", "format", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Date string to validate" },
+      "format": { "type": "string", "description": "Optional strptime format string (e.g. '%Y-%m-%d')" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "format": { "type": "string", "description": "Format that matched" },
+      "parsed": { "type": "string", "description": "ISO 8601 parsed date" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "2024-01-15" },
+    "output": { "ok": true, "value": "2024-01-15", "result": true, "format": "%Y-%m-%d", "parsed": "2024-01-15T00:00:00" }
+  }
+}

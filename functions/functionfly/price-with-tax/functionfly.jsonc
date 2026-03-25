@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "price-with-tax",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Price With Tax",
+  "description": "Add a tax percentage to a price and return the total price including tax.",
+  "category": "ecommerce",
+  "tags": ["price", "tax", "total", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "price": { "type": "number" },
+      "rate": { "type": "number", "description": "Tax rate %" }
+    },
+    "required": ["price", "rate"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "net": {}, "tax": {}, "total": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "price": 99.99, "rate": 10 }, "output": { "ok": true, "result": 109.99, "tax": 10.0 } }
+}

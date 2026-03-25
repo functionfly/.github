@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "dynamic-pricing",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Dynamic Price Calculation",
+  "description": "Calculate a dynamic price based on demand level, stock level, time-of-day, and competitor pricing signals.",
+  "category": "ecommerce",
+  "tags": ["dynamic-pricing", "demand", "supply", "pricing", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "base_price": { "type": "number" },
+      "demand_level": {
+        "type": "number",
+        "description": "0.0 (low) to 1.0 (high)",
+        "default": 0.5
+      },
+      "stock_level": {
+        "type": "number",
+        "description": "0.0 (depleted) to 1.0 (full)",
+        "default": 0.5
+      },
+      "time_of_day_factor": { "type": "number", "default": 1.0 },
+      "competitor_price": { "type": "number" },
+      "min_price": { "type": "number", "default": 0 },
+      "max_price_multiplier": { "type": "number", "default": 2.0 }
+    },
+    "required": ["base_price"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "dynamic_price": {},
+      "multiplier": {},
+      "factors": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 300,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "base_price": 100, "demand_level": 0.8, "stock_level": 0.1 },
+    "output": { "ok": true, "dynamic_price": 142.8 }
+  }
+}

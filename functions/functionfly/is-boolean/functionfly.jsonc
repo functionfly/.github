@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "is-boolean",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Boolean",
+  "description": "Check whether a value is boolean or a boolean-like string (true/false, yes/no, 1/0, on/off).",
+  "category": "validation",
+  "tags": ["validation", "boolean", "bool", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "description": "Value to check" },
+      "strict": { "type": "boolean", "description": "Only accept actual boolean values, not string representations", "default": false }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": {},
+      "result": { "type": "boolean" },
+      "parsed": { "type": "boolean", "description": "Parsed boolean value" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "yes" },
+    "output": { "ok": true, "value": "yes", "result": true, "parsed": true }
+  }
+}

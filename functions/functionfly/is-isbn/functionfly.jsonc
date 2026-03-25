@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "is-isbn",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is ISBN",
+  "description": "Validate an ISBN-10 or ISBN-13 book identifier.",
+  "category": "validation",
+  "tags": ["validation", "isbn", "book", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "ISBN to validate (hyphens and spaces allowed)" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "isbn_type": { "type": "string", "description": "ISBN-10 or ISBN-13" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "978-3-16-148410-0" },
+    "output": { "ok": true, "value": "978-3-16-148410-0", "result": true, "isbn_type": "ISBN-13" }
+  }
+}

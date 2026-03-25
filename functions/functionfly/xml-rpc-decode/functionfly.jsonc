@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "xml-rpc-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "XML-RPC Decode",
+  "description": "Parse an XML-RPC request or response string to extract the method name and parameters.",
+  "category": "format",
+  "tags": ["xmlrpc", "xml", "rpc", "decode", "parse"],
+  "input": { "type": "object", "properties": { "data": { "type": "string" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "object" }, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": "<?xml version='1.0'?><methodCall><methodName>add</methodName><params><param><value><int>1</int></value></param></params></methodCall>" }, "output": { "ok": true } }
+}

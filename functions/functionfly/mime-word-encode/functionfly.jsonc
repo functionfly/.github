@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "mime-word-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "MIME Word Encode",
+  "description": "Encode a string as an RFC 2047 MIME encoded-word (for use in email headers).",
+  "category": "encoding",
+  "tags": ["encoding", "mime", "email", "rfc2047", "header"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "String to encode" },
+      "charset": { "type": "string", "description": "Character set", "default": "utf-8" },
+      "encoding": { "type": "string", "description": "'q' for Quoted-Printable or 'b' for Base64", "default": "q", "enum": ["q", "b"] }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "Subject: Héllo World" },
+    "output": { "ok": true, "result": "=?utf-8?q?Subject=3A_H=C3=A9llo_World?=" }
+  }
+}

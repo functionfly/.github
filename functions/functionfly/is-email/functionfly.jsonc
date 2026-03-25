@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-email",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Email",
+  "description": "Validate whether a string is a properly formatted email address.",
+  "category": "validation",
+  "tags": ["validation", "email", "format", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to validate" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "user@example.com" },
+    "output": { "ok": true, "value": "user@example.com", "result": true }
+  }
+}

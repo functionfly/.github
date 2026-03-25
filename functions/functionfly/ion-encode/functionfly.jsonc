@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "ion-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Amazon Ion Encode",
+  "description": "Encode data to Amazon Ion format (text or binary). Requires amazon.ion library.",
+  "category": "format",
+  "tags": ["ion", "amazon", "encode", "format", "aws"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {},
+      "binary": { "type": "boolean", "default": false }
+    },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "format": {}, "bytes": {}, "note": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": { "input": { "data": { "name": "Alice" } }, "output": { "ok": true } }
+}

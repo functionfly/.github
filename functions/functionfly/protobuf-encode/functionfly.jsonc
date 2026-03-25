@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "protobuf-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Protocol Buffers Encode",
+  "description": "Encode data using Protocol Buffers. Requires protobuf library and a compiled message descriptor. Returns JSON fallback if library unavailable.",
+  "category": "format",
+  "tags": ["protobuf", "proto", "google", "encode", "binary"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {},
+      "descriptor": { "type": "string", "description": "Base64-encoded FileDescriptorProto" }
+    },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "note": {}, "format": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 128,
+  "example": { "input": { "data": { "id": 1 } }, "output": { "ok": true } }
+}

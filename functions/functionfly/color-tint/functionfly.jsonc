@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "color-tint",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Color Tint (Mix with White)",
+  "description": "Mix a color with white by a given weight (0=original, 1=pure white).",
+  "category": "color",
+  "tags": ["color", "tint", "white", "lighten", "mix"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "color": { "type": "string" },
+      "weight": { "type": "number", "description": "Amount of white (0-1)", "default": 0.5 }
+    },
+    "required": ["color"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "color": "#ff5733", "weight": 0.5 }, "output": { "ok": true } }
+}

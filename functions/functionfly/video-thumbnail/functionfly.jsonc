@@ -3,54 +3,20 @@
   "name": "video-thumbnail",
   "version": "1.0.0",
   "runtime": "python3.12",
-  "title": "Video Thumbnail",
-  "description": "Extract thumbnail from video (first frame or at offset). Requires opencv-python or ffmpeg.",
-  "category": "media",
-  "tags": [
-    "video",
-    "thumbnail",
-    "media"
-  ],
+  "title": "Get Video Thumbnail URL",
+  "description": "Get the thumbnail URL for a YouTube or Vimeo video URL. Supports default, mq, hq, sd, max quality levels.",
+  "category": "social",
+  "tags": ["video", "thumbnail", "youtube", "vimeo", "social"],
   "input": {
     "type": "object",
     "properties": {
-      "video_base64": {
-        "type": "string"
-      },
-      "offset_seconds": {
-        "type": "number",
-        "default": 0
-      }
+      "url": { "type": "string" },
+      "quality": { "type": "string", "enum": ["default", "mq", "hq", "sd", "max"], "default": "hq" }
     },
-    "required": [
-      "video_base64"
-    ]
+    "required": ["url"]
   },
-  "output": {
-    "type": "object",
-    "properties": {
-      "ok": {
-        "type": "boolean"
-      },
-      "image_base64": {
-        "type": "string"
-      },
-      "error": {
-        "type": "string"
-      }
-    }
-  },
-  "deterministic": true,
-  "idempotent": true,
-  "cache_ttl": 3600,
-  "timeout_ms": 15000,
-  "memory_mb": 512,
-  "example": {
-    "input": {
-      "video_base64": "AAAA"
-    },
-    "output": {
-      "ok": false
-    }
-  }
+  "output": { "type": "object", "properties": { "ok": {}, "thumbnail_url": {}, "platform": {}, "video_id": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "url": "https://youtu.be/dQw4w9WgXcQ" }, "output": { "ok": true, "thumbnail_url": "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg" } }
 }

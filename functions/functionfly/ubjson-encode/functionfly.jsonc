@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "ubjson-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "UBJSON Encode",
+  "description": "Encode data to Universal Binary JSON (UBJSON) format. Requires py-ubjson.",
+  "category": "format",
+  "tags": ["ubjson", "encode", "binary", "format"],
+  "input": { "type": "object", "properties": { "data": {} }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "bytes": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "x": 42 } }, "output": { "ok": true } }
+}

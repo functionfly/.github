@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "is-json",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is JSON",
+  "description": "Validate whether a string is valid JSON.",
+  "category": "validation",
+  "tags": ["validation", "json", "format", "check", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": {
+        "type": "string",
+        "description": "String to validate as JSON"
+      }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "type": {
+        "type": "string",
+        "description": "JSON root type (dict, list, str, int, float, bool, NoneType)"
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "{\"key\": \"value\"}" },
+    "output": {
+      "ok": true,
+      "value": "{\"key\": \"value\"}",
+      "result": true,
+      "type": "dict"
+    }
+  }
+}

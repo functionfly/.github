@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "generate-ecc-key",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate ECC Key Pair",
+  "description": "Generate an Elliptic Curve Cryptography (ECC) private/public key pair.",
+  "category": "crypto",
+  "tags": ["crypto", "ecc", "ecdsa", "key-generation", "asymmetric"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "curve": { "type": "string", "description": "Elliptic curve", "default": "P-256", "enum": ["P-256", "P-384", "P-521", "secp256k1"] }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "private_key": { "type": "string" },
+      "public_key": { "type": "string" },
+      "curve": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "curve": "P-256" },
+    "output": { "ok": true, "curve": "P-256" }
+  }
+}

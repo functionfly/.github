@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "pbkdf2-derive",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "PBKDF2 Multi-Purpose Key Derive",
+  "description": "Derive multiple named sub-keys from a single master password using PBKDF2, one per purpose (e.g. 'encryption', 'auth', 'signing').",
+  "category": "crypto",
+  "tags": ["crypto", "pbkdf2", "kdf", "key-derivation", "multi-key"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": { "type": "string", "description": "Master password or secret" },
+      "purposes": { "type": "array", "items": { "type": "string" }, "description": "Named purposes for sub-keys", "default": ["encryption", "authentication"] },
+      "iterations": { "type": "integer", "description": "PBKDF2 iterations", "default": 600000 },
+      "key_length": { "type": "integer", "description": "Key length per purpose in bytes", "default": 32 },
+      "algorithm": { "type": "string", "description": "HMAC algorithm", "default": "sha256" }
+    },
+    "required": ["password"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "object", "description": "Map of purpose -> hex key" },
+      "algorithm": { "type": "string" },
+      "key_length": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 15000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "password": "master-secret", "purposes": ["encryption", "mac"] },
+    "output": { "ok": true, "result": { "encryption": "...", "mac": "..." } }
+  }
+}

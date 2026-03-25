@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "cashtag-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Cashtags",
+  "description": "Extract stock ticker cashtags ($AAPL, $TSLA) from financial social media text.",
+  "category": "social",
+  "tags": ["cashtag", "ticker", "stocks", "finance", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "cashtags": {}, "count": {}, "has_cashtags": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "text": "Bought more $AAPL and $TSLA today! $BTC to the moon 🚀" }, "output": { "ok": true, "cashtags": ["AAPL", "TSLA", "BTC"], "count": 3 } }
+}

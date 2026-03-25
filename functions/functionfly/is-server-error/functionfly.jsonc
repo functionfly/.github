@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-server-error",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Server Error Status",
+  "description": "Check if an HTTP status code indicates a server error (5xx).",
+  "category": "http",
+  "tags": ["http", "status", "server-error", "5xx", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "status_code": { "type": "integer", "description": "HTTP status code" }
+    },
+    "required": ["status_code"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "status_code": { "type": "integer" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "status_code": 500 },
+    "output": { "ok": true, "status_code": 500, "result": true }
+  }
+}

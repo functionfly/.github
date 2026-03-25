@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "invite-link-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Invite Link",
+  "description": "Generate unique invite/referral links with tokens, optional expiry, and campaign tracking parameters.",
+  "category": "social",
+  "tags": ["invite", "link", "referral", "generate", "marketing"],
+  "input": { "type": "object", "properties": { "base_url": { "type": "string" }, "user_id": { "type": "string" }, "campaign": { "type": "string", "default": "" }, "expires_in_hours": { "type": "number" }, "token_length": { "type": "number", "default": 12 } }, "required": ["base_url"] },
+  "output": { "type": "object", "properties": { "ok": {}, "invite_url": {}, "token": {}, "expires_at_unix": {}, "error": {} } },
+  "deterministic": false, "idempotent": false,
+  "cache_ttl": 0, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "base_url": "https://app.example.com/signup", "user_id": "user_42", "campaign": "summer", "expires_in_hours": 72 }, "output": { "ok": true, "invite_url": "https://app.example.com/signup?ref=abc123def456&c=summer&uid=a1b2c3" } }
+}

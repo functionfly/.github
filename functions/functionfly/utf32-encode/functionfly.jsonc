@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "utf32-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "UTF-32 Encode",
+  "description": "Encode a string to UTF-32 bytes (Base64-encoded output).",
+  "category": "encoding",
+  "tags": ["encoding", "utf32", "unicode", "encode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "String to encode" },
+      "byte_order": { "type": "string", "description": "'little' or 'big'", "default": "little", "enum": ["little", "big"] }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "byte_length": { "type": "integer" },
+      "byte_order": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "Hi" },
+    "output": { "ok": true, "byte_length": 8, "byte_order": "little" }
+  }
+}

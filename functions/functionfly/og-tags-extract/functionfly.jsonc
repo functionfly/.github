@@ -1,0 +1,19 @@
+{
+  "author": "functionfly",
+  "name": "og-tags-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Open Graph Tags",
+  "description": "Extract Open Graph (og:title, og:description, og:image, og:url, etc.) meta tags from an HTML string.",
+  "category": "social",
+  "tags": ["open-graph", "og", "meta-tags", "html", "social"],
+  "input": {
+    "type": "object",
+    "properties": { "html": { "type": "string" } },
+    "required": ["html"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "og_tags": {}, "has_og": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "html": "<meta property=\"og:title\" content=\"Hello World\">" }, "output": { "ok": true, "og_tags": { "title": "Hello World" } } }
+}

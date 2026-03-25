@@ -1,0 +1,49 @@
+{
+  "author": "functionfly",
+  "name": "customer-ltv",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Customer Lifetime Value (LTV)",
+  "description": "Calculate the expected revenue from a customer over their lifetime using AOV, purchase frequency, and lifespan.",
+  "category": "ecommerce",
+  "tags": ["ltv", "clv", "customer", "lifetime-value", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "avg_order_value": { "type": "number" },
+      "purchase_frequency": {
+        "type": "number",
+        "description": "Average purchases per year"
+      },
+      "customer_lifespan_years": { "type": "number", "default": 3 },
+      "profit_margin_pct": { "type": "number", "default": 100 },
+      "discount_rate_pct": { "type": "number", "default": 0 }
+    },
+    "required": ["avg_order_value", "purchase_frequency"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "ltv": {},
+      "discounted_ltv": {},
+      "annual_revenue": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "avg_order_value": 60,
+      "purchase_frequency": 4,
+      "customer_lifespan_years": 5,
+      "profit_margin_pct": 40
+    },
+    "output": { "ok": true, "ltv": 480.0 }
+  }
+}

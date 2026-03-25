@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "crc32",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "CRC32 Checksum",
+  "description": "Calculate CRC32 checksum of a string or data. Useful for integrity checks.",
+  "category": "encoding",
+  "tags": ["hash", "crc32", "checksum", "integrity"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "description": "Data to checksum" },
+      "format": { "type": "string", "description": "Output format: 'decimal' or 'hex'", "default": "decimal", "enum": ["decimal", "hex"] }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {},
+      "hex": { "type": "string" },
+      "decimal": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "Hello World" },
+    "output": { "ok": true, "result": 222957957, "hex": "0d4a1185", "decimal": 222957957 }
+  }
+}

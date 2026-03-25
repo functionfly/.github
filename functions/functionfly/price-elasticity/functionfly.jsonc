@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "price-elasticity",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Price Elasticity of Demand",
+  "description": "Calculate price elasticity of demand (PED = %ΔQ / %ΔP) and classify as elastic, inelastic, or unit elastic.",
+  "category": "ecommerce",
+  "tags": ["elasticity", "demand", "pricing", "economics", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "price_change_pct": { "type": "number" },
+      "demand_change_pct": { "type": "number" },
+      "price_a": { "type": "number" },
+      "demand_a": { "type": "number" },
+      "price_b": { "type": "number" },
+      "demand_b": { "type": "number" }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "elasticity": {},
+      "classification": {},
+      "interpretation": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "price_change_pct": 10, "demand_change_pct": -15 },
+    "output": { "ok": true, "elasticity": -1.5, "classification": "elastic" }
+  }
+}

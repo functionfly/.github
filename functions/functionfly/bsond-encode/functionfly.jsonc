@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "bsond-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "BSON Encode",
+  "description": "Encode a document to BSON (Binary JSON) format. Requires bson or pymongo.",
+  "category": "format",
+  "tags": ["bson", "mongodb", "encode", "binary", "format"],
+  "input": { "type": "object", "properties": { "data": { "type": "object" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "bytes": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "name": "Alice" } }, "output": { "ok": true } }
+}

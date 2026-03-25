@@ -1,0 +1,45 @@
+{
+  "author": "functionfly",
+  "name": "qr-code-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate QR Code",
+  "description": "Generate a QR code image (PNG as base64) from any data string. Requires qrcode[pil] library.",
+  "category": "ecommerce",
+  "tags": ["qr-code", "barcode", "generate", "image", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "Data to encode" },
+      "error_correction": {
+        "type": "string",
+        "enum": ["L", "M", "Q", "H"],
+        "default": "M"
+      },
+      "size": {
+        "type": "integer",
+        "description": "Box size in pixels",
+        "default": 10
+      }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "description": "Base64 PNG image" },
+      "format": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "data": "https://example.com" },
+    "output": { "ok": true, "format": "png_base64" }
+  }
+}

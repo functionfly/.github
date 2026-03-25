@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "name": "customer-satisfaction",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Customer Satisfaction Score (CSAT)",
+  "description": "Calculate CSAT from a list of satisfaction ratings. Returns percentage satisfied, average score, and grade.",
+  "category": "ecommerce",
+  "tags": ["csat", "satisfaction", "survey", "analytics", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "scores": { "type": "array", "description": "List of numeric ratings" },
+      "max_score": { "type": "integer", "default": 5 }
+    },
+    "required": ["scores"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "csat_pct": {},
+      "avg_score": {},
+      "satisfied_pct": {},
+      "grade": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "scores": [5, 4, 5, 3, 5, 4, 4] },
+    "output": { "ok": true, "csat_pct": 85.71, "grade": "Excellent" }
+  }
+}

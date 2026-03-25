@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "is-mobile-phone",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Mobile Phone",
+  "description": "Validate whether a string is a valid mobile phone number in international format.",
+  "category": "validation",
+  "tags": ["validation", "mobile", "phone", "e164", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Phone number to validate" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "normalized": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "+1-800-555-0123" },
+    "output": { "ok": true, "value": "+1-800-555-0123", "result": true, "normalized": "+18005550123" }
+  }
+}

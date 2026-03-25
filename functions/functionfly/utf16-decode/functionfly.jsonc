@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "utf16-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "UTF-16 Decode",
+  "description": "Decode Base64-encoded UTF-16 bytes back to a string, with automatic BOM detection.",
+  "category": "encoding",
+  "tags": ["encoding", "utf16", "unicode", "decode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "Base64-encoded UTF-16 bytes" },
+      "byte_order": { "type": "string", "description": "'auto', 'little', or 'big'", "default": "auto", "enum": ["auto", "little", "big"] }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "byte_order": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "/v8IAGUAbABsAG8A" },
+    "output": { "ok": true, "result": "Hello", "byte_order": "little" }
+  }
+}

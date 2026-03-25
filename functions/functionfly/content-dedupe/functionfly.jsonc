@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-dedupe",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Content Deduplication",
+  "description": "Remove near-duplicate content items from a list using Jaccard similarity with word shingling.",
+  "category": "social",
+  "tags": ["dedupe", "duplicate", "similarity", "content", "text"],
+  "input": { "type": "object", "properties": { "items": { "type": "array" }, "threshold": { "type": "number", "default": 0.8 }, "key": { "type": "string", "default": "text" } }, "required": ["items"] },
+  "output": { "type": "object", "properties": { "ok": {}, "unique_items": {}, "unique_count": {}, "duplicates_found": {}, "duplicate_pairs": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 128,
+  "example": { "input": { "items": [{"text": "The quick brown fox"}, {"text": "The quick brown fox jumps"}, {"text": "Something completely different"}], "threshold": 0.5 }, "output": { "ok": true, "unique_count": 2, "duplicates_found": 1 } }
+}

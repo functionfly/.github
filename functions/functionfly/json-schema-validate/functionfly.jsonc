@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "json-schema-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "JSON Schema Validate",
+  "description": "Validate data against a JSON Schema. Uses jsonschema library if available, with a basic fallback.",
+  "category": "format",
+  "tags": ["json", "schema", "validate", "jsonschema"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "description": "Data to validate" },
+      "schema": { "type": "object", "description": "JSON Schema to validate against" }
+    },
+    "required": ["data", "schema"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "boolean" }, "valid": {}, "errors": { "type": "array" }, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 128,
+  "example": { "input": { "data": { "name": "Alice" }, "schema": { "type": "object", "required": ["name"] } }, "output": { "ok": true, "valid": true } }
+}

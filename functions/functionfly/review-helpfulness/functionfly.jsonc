@@ -1,0 +1,26 @@
+{
+  "author": "functionfly",
+  "name": "review-helpfulness",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Review Helpfulness Score",
+  "description": "Calculate a review's helpfulness score using Wilson score confidence interval, vote ratio, length, images, and verified purchase status.",
+  "category": "ecommerce",
+  "tags": ["review", "helpfulness", "score", "ranking", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "helpful_votes": { "type": "integer" },
+      "total_votes": { "type": "integer" },
+      "review_age_days": { "type": "number", "default": 1 },
+      "review_length": { "type": "integer", "description": "Character count of review text" },
+      "has_images": { "type": "boolean", "default": false },
+      "verified_purchase": { "type": "boolean", "default": false }
+    },
+    "required": ["helpful_votes", "total_votes"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "helpfulness_score": {}, "wilson_lower_bound": {}, "grade": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "helpful_votes": 45, "total_votes": 50, "review_length": 300, "verified_purchase": true }, "output": { "ok": true, "grade": "very_helpful" } }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-classify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Content Classification",
+  "description": "Classify text into categories: technology, sports, finance, health, politics, entertainment, science, business, travel, food.",
+  "category": "social",
+  "tags": ["classification", "nlp", "content", "categories", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "top_n": { "type": "integer", "default": 3 } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "category": {}, "top_categories": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "text": "Apple released new iPhone with advanced AI chip and camera." }, "output": { "ok": true, "category": "technology" } }
+}

@@ -1,0 +1,19 @@
+{
+  "author": "functionfly",
+  "name": "ean-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Validate EAN Barcode",
+  "description": "Validate an EAN-8 or EAN-13 barcode using its checksum digit.",
+  "category": "ecommerce",
+  "tags": ["ean", "barcode", "validate", "product", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": { "code": { "type": "string", "description": "EAN-8 or EAN-13 number" } },
+    "required": ["code"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "boolean" }, "valid": {}, "type": {}, "check_digit": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "code": "5901234123457" }, "output": { "ok": true, "valid": true, "type": "EAN-13" } }
+}

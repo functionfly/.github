@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "virality-score",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Virality Score",
+  "description": "Calculate a virality score (0-100) for content based on shares, likes, comments, views, and time.",
+  "category": "social",
+  "tags": ["virality", "score", "social", "analytics", "trending"],
+  "input": { "type": "object", "properties": { "shares": { "type": "number", "default": 0 }, "likes": { "type": "number", "default": 0 }, "comments": { "type": "number", "default": 0 }, "views": { "type": "number" }, "time_hours": { "type": "number", "default": 24 } } },
+  "output": { "type": "object", "properties": { "ok": {}, "virality_score": {}, "category": {}, "velocity": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "shares": 500, "likes": 2000, "comments": 150, "views": 50000, "time_hours": 6 }, "output": { "ok": true, "virality_score": 62.5, "category": "high" } }
+}

@@ -1,0 +1,24 @@
+{
+  "author": "functionfly",
+  "name": "image-threshold",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Apply Binary Threshold to Image",
+  "description": "Convert an image to pure black and white using a luminance threshold value.",
+  "category": "color",
+  "tags": ["image", "threshold", "binary", "bw", "black-and-white"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string" },
+      "threshold": { "type": "integer", "description": "Luminance threshold (0-255)", "default": 128 },
+      "invert": { "type": "boolean", "description": "Invert output", "default": false },
+      "format": { "type": "string", "default": "PNG" }
+    },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "format": {}, "threshold": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "...", "threshold": 128 }, "output": { "ok": true } }
+}

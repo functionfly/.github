@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "fnv-hash",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "FNV Hash",
+  "description": "Calculate FNV (Fowler–Noll–Vo) non-cryptographic hash. Supports FNV-1 and FNV-1a in 32-bit and 64-bit.",
+  "category": "encoding",
+  "tags": ["hash", "fnv", "fnv1a", "non-cryptographic", "fast-hash"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "description": "Data to hash" },
+      "variant": { "type": "string", "description": "Hash variant", "default": "fnv1a_64", "enum": ["fnv1_32", "fnv1a_32", "fnv1_64", "fnv1a_64"] }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "decimal": { "type": "integer" },
+      "variant": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "Hello World", "variant": "fnv1a_64" },
+    "output": { "ok": true, "variant": "fnv1a_64" }
+  }
+}

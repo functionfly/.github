@@ -1,0 +1,43 @@
+{
+  "author": "functionfly",
+  "name": "churn-prediction",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Predict Customer Churn",
+  "description": "Estimate the probability that a customer will churn based on recency and frequency metrics (RFM model).",
+  "category": "ecommerce",
+  "tags": ["churn", "retention", "prediction", "customer", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "days_since_last_purchase": { "type": "number" },
+      "avg_purchase_interval_days": { "type": "number", "default": 30 },
+      "total_orders": { "type": "integer", "default": 1 },
+      "customer_age_days": { "type": "number", "default": 365 }
+    },
+    "required": ["days_since_last_purchase"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "churn_probability": {},
+      "churn_risk": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "days_since_last_purchase": 90,
+      "avg_purchase_interval_days": 30,
+      "total_orders": 5
+    },
+    "output": { "ok": true, "churn_risk": "high" }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "php-unserialize",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "PHP Unserialize",
+  "description": "Deserialize a PHP serialized string back to its original data structure. Supports null, bool, int, float, string, array.",
+  "category": "format",
+  "tags": ["php", "unserialize", "deserialize", "format", "legacy"],
+  "input": { "type": "object", "properties": { "data": { "type": "string" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": "a:2:{s:4:\"name\";s:5:\"Alice\";s:3:\"age\";i:30;}" }, "output": { "ok": true, "result": { "name": "Alice", "age": 30 } } }
+}

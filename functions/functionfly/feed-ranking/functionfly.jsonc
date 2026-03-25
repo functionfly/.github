@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "feed-ranking",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Feed Ranking Algorithm",
+  "description": "Rank a list of content items for social feed display using EdgeRank, time-decay, or gravity algorithms.",
+  "category": "social",
+  "tags": ["feed", "ranking", "algorithm", "social", "content"],
+  "input": { "type": "object", "properties": { "items": { "type": "array", "items": { "type": "object" } }, "algorithm": { "type": "string", "enum": ["edge_rank", "time_decay", "gravity"], "default": "edge_rank" }, "half_life_hours": { "type": "number", "default": 24 } }, "required": ["items"] },
+  "output": { "type": "object", "properties": { "ok": {}, "items": {}, "count": {}, "algorithm": {}, "error": {} } },
+  "deterministic": false, "idempotent": false,
+  "cache_ttl": 60, "timeout_ms": 500, "memory_mb": 128,
+  "example": { "input": { "items": [{"id": 1, "likes": 100, "comments": 20, "shares": 5, "created_at_unix": 1700000000}, {"id": 2, "likes": 50, "comments": 5, "shares": 50, "created_at_unix": 1700003600}], "algorithm": "edge_rank" }, "output": { "ok": true, "count": 2 } }
+}

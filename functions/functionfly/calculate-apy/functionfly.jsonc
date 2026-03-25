@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "calculate-apy",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate APY",
+  "description": "Calculate the Annual Percentage Yield (APY) from a nominal rate and compounding frequency. APY = (1 + r/n)^n - 1.",
+  "category": "ecommerce",
+  "tags": ["apy", "annual-percentage-yield", "savings", "finance"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "rate": { "type": "number", "description": "Nominal annual rate %" },
+      "compounds_per_year": { "type": "integer", "default": 12 }
+    },
+    "required": ["rate"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "apy_pct": {},
+      "apr_pct": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "rate": 5, "compounds_per_year": 12 },
+    "output": { "ok": true, "apy_pct": 5.116 }
+  }
+}

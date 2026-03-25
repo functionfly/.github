@@ -1,0 +1,44 @@
+{
+  "author": "functionfly",
+  "name": "calculate-interest",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Simple Interest",
+  "description": "Calculate simple interest (I = P × r × t) for a principal amount, rate, and time period.",
+  "category": "ecommerce",
+  "tags": ["interest", "simple-interest", "finance", "loan"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "principal": { "type": "number" },
+      "rate": { "type": "number", "description": "Annual interest rate %" },
+      "time": { "type": "number", "default": 1 },
+      "time_unit": {
+        "type": "string",
+        "enum": ["years", "months", "days"],
+        "default": "years"
+      }
+    },
+    "required": ["principal", "rate"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "interest": {},
+      "total": {},
+      "principal": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "principal": 1000, "rate": 5, "time": 3 },
+    "output": { "ok": true, "interest": 150.0, "total": 1150.0 }
+  }
+}

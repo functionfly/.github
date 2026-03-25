@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "youtube-id-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract YouTube Video ID",
+  "description": "Extract the YouTube video ID from any YouTube URL (watch, youtu.be, embed, shorts, v).",
+  "category": "social",
+  "tags": ["youtube", "video", "id", "url", "social"],
+  "input": { "type": "object", "properties": { "url": { "type": "string" } }, "required": ["url"] },
+  "output": { "type": "object", "properties": { "ok": {}, "video_id": {}, "embed_url": {}, "thumbnail_url": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }, "output": { "ok": true, "video_id": "dQw4w9WgXcQ" } }
+}

@@ -1,0 +1,49 @@
+{
+  "author": "functionfly",
+  "name": "wishlist-similarity",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Wishlist Similarity",
+  "description": "Calculate similarity between two customer wishlists using Jaccard or Overlap coefficient. Useful for collaborative filtering.",
+  "category": "ecommerce",
+  "tags": [
+    "wishlist",
+    "similarity",
+    "recommendation",
+    "collaborative-filtering",
+    "ecommerce"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "wishlist_a": { "type": "array", "description": "List of product IDs" },
+      "wishlist_b": { "type": "array" },
+      "similarity_type": {
+        "type": "string",
+        "enum": ["jaccard", "overlap"],
+        "default": "jaccard"
+      }
+    },
+    "required": ["wishlist_a", "wishlist_b"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "similarity": {},
+      "common_items": {},
+      "common_count": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "wishlist_a": [1, 2, 3, 4], "wishlist_b": [2, 3, 5, 6] },
+    "output": { "ok": true, "similarity": 0.3333, "common_count": 2 }
+  }
+}

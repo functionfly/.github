@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "twitter-text-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Twitter/X Text",
+  "description": "Parse a tweet/post text to extract mentions, hashtags, cashtags, URLs, and calculate character count.",
+  "category": "social",
+  "tags": ["twitter", "tweet", "parse", "mentions", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "mentions": {}, "hashtags": {}, "cashtags": {}, "urls": {}, "char_count": {}, "over_limit": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "text": "Hey @user! Check out #trending at https://example.com" }, "output": { "ok": true, "mentions": ["user"], "hashtags": ["trending"] } }
+}

@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "price-alert",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Price Alert Check",
+  "description": "Check if a product's current price meets a price alert threshold (below, above, or percent_drop).",
+  "category": "ecommerce",
+  "tags": ["price", "alert", "notification", "watchlist", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "current_price": { "type": "number" },
+      "alert_price": {
+        "type": "number",
+        "description": "Threshold price or percent drop"
+      },
+      "alert_type": {
+        "type": "string",
+        "enum": ["below", "above", "percent_drop"],
+        "default": "below"
+      },
+      "original_price": { "type": "number" }
+    },
+    "required": ["current_price", "alert_price"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "boolean" },
+      "triggered": {},
+      "price_drop": {},
+      "price_drop_pct": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 60,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "current_price": 79.99,
+      "alert_price": 80,
+      "alert_type": "below"
+    },
+    "output": { "ok": true, "triggered": true }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "duplicate-detect",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Detect Duplicate Content",
+  "description": "Check if two text strings are duplicates using exact match, normalized fingerprinting, or Jaccard shingling.",
+  "category": "social",
+  "tags": ["duplicate", "detect", "similarity", "text", "content"],
+  "input": { "type": "object", "properties": { "text1": { "type": "string" }, "text2": { "type": "string" }, "threshold": { "type": "number", "default": 0.8 } }, "required": ["text1", "text2"] },
+  "output": { "type": "object", "properties": { "ok": {}, "is_duplicate": {}, "similarity": {}, "method": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "text1": "The quick brown fox jumps over the lazy dog", "text2": "The quick brown fox jumped over a lazy dog" }, "output": { "ok": true, "is_duplicate": true, "similarity": 0.82 } }
+}

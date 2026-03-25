@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "iso-8859-1-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "ISO-8859-1 Encode",
+  "description": "Encode a string to ISO-8859-1 (Latin-1) bytes, returning Base64-encoded output.",
+  "category": "encoding",
+  "tags": ["encoding", "iso-8859-1", "latin1", "encode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "String to encode" },
+      "errors": { "type": "string", "description": "Error handling: 'strict', 'ignore', 'replace'", "default": "strict" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "byte_length": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "Héllo" },
+    "output": { "ok": true, "byte_length": 5 }
+  }
+}

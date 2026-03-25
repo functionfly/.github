@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "twitter-card-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Twitter Card Meta Tags",
+  "description": "Extract Twitter Card meta tags (twitter:card, twitter:title, twitter:description, twitter:image) from an HTML string.",
+  "category": "social",
+  "tags": ["twitter", "twitter-card", "meta-tags", "html", "social"],
+  "input": { "type": "object", "properties": { "html": { "type": "string" } }, "required": ["html"] },
+  "output": { "type": "object", "properties": { "ok": {}, "twitter_card": {}, "card_type": {}, "has_card": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "html": "<meta name=\"twitter:card\" content=\"summary_large_image\">" }, "output": { "ok": true, "card_type": "summary_large_image" } }
+}

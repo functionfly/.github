@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "mentions-detect",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Detect @Mentions",
+  "description": "Detect and extract @mention handles from text, with platform-specific validation rules.",
+  "category": "social",
+  "tags": ["mentions", "detect", "social", "text", "parse"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "platform": { "type": "string", "enum": ["twitter", "instagram", "github", "generic"], "default": "twitter" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "mentions": {}, "count": {}, "has_mentions": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "text": "Thanks @alice and @bob for the help! cc @charlie", "platform": "twitter" }, "output": { "ok": true, "mentions": ["alice", "bob", "charlie"], "count": 3 } }
+}

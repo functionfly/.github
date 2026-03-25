@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "cson-stringify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Stringify to CSON",
+  "description": "Convert an object to CSON (CoffeeScript Object Notation) format.",
+  "category": "format",
+  "tags": ["cson", "coffeescript", "stringify", "config"],
+  "input": { "type": "object", "properties": { "data": { "type": "object" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "name": "Alice", "age": 30 } }, "output": { "ok": true } }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "ron-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse RON (Rusty Object Notation)",
+  "description": "Parse RON (Rusty Object Notation) data. Uses ron-parser if available. Falls back to simplified JSON-like parsing.",
+  "category": "format",
+  "tags": ["ron", "rust", "parse", "format", "config"],
+  "input": { "type": "object", "properties": { "data": { "type": "string" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "note": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": { "input": { "data": "(name: \"Alice\", age: 30)" }, "output": { "ok": true } }
+}

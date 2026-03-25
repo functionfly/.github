@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-toxicity",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Content Toxicity Detection",
+  "description": "Detect toxic content (profanity, threats, identity attacks) in text. Lexicon-based heuristic approach.",
+  "category": "social",
+  "tags": ["toxicity", "moderation", "content-safety", "nlp", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "toxicity_score": {}, "is_toxic": {}, "severity": {}, "categories": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "text": "I love this product, it's great!" }, "output": { "ok": true, "is_toxic": false, "severity": "low" } }
+}

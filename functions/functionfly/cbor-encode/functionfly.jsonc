@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "cbor-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "CBOR Encode",
+  "description": "Encode data to Concise Binary Object Representation (CBOR, RFC 7049) format. Requires cbor2.",
+  "category": "format",
+  "tags": ["cbor", "encode", "serialize", "binary", "iot"],
+  "input": { "type": "object", "properties": { "data": {} }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "bytes": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "sensor": 42 } }, "output": { "ok": true } }
+}

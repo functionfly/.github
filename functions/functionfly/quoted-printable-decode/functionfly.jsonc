@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "quoted-printable-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Quoted-Printable Decode",
+  "description": "Decode a Quoted-Printable encoded string.",
+  "category": "encoding",
+  "tags": ["encoding", "quoted-printable", "mime", "email", "decode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "Quoted-Printable encoded string" },
+      "header": { "type": "boolean", "description": "Data was encoded for email headers", "default": false },
+      "encoding": { "type": "string", "description": "Text encoding of the decoded bytes", "default": "utf-8" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "H=C3=A9llo" },
+    "output": { "ok": true, "result": "Héllo" }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "pickle-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Python Pickle Encode",
+  "description": "Serialize Python-compatible data to pickle format (Base64 output). WARNING: only unpickle trusted data.",
+  "category": "format",
+  "tags": ["pickle", "python", "serialize", "encode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {},
+      "protocol": { "type": "integer", "default": 5 }
+    },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "bytes": {}, "protocol": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "key": "value" } }, "output": { "ok": true } }
+}

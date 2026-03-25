@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "contains-number",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Contains Number",
+  "description": "Check whether a string contains at least one numeric digit.",
+  "category": "validation",
+  "tags": ["validation", "number", "digit", "string", "password", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to check" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "abc123" },
+    "output": { "ok": true, "value": "abc123", "result": true }
+  }
+}

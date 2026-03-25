@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "hsl-to-rgb",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "HSL to RGB",
+  "description": "Convert HSL (hue 0-360, saturation 0-100%, lightness 0-100%) to RGB components.",
+  "category": "color",
+  "tags": ["color", "hsl", "rgb", "convert"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "h": { "type": "number", "description": "Hue (0-360)" },
+      "s": { "type": "number", "description": "Saturation (0-100)" },
+      "l": { "type": "number", "description": "Lightness (0-100)" }
+    },
+    "required": ["h", "s", "l"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "object" },
+      "css": { "type": "string" },
+      "hex": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "h": 14.11, "s": 100, "l": 60 },
+    "output": { "ok": true, "result": { "r": 255, "g": 87, "b": 51 } }
+  }
+}

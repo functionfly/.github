@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "encrypt-aes-cbc",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "AES-CBC Encrypt",
+  "description": "Encrypt plaintext with AES in CBC mode with PKCS7 padding. Returns Base64 ciphertext and IV.",
+  "category": "crypto",
+  "tags": ["crypto", "aes", "cbc", "encrypt", "symmetric"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "plaintext": { "description": "Data to encrypt" },
+      "key": { "type": "string", "description": "AES key (hex or Base64 encoded, 16/24/32 bytes)" },
+      "iv": { "type": "string", "description": "IV (hex or Base64, 16 bytes; generated if omitted)" }
+    },
+    "required": ["plaintext", "key"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string", "description": "Base64-encoded ciphertext" },
+      "iv": { "type": "string", "description": "IV as hex" },
+      "iv_base64": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": { "plaintext": "Hello Secret World", "key": "0123456789abcdef0123456789abcdef" },
+    "output": { "ok": true }
+  }
+}

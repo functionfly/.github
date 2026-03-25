@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "image-blur",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Blur Image",
+  "description": "Apply Gaussian blur to an image with a configurable radius.",
+  "category": "color",
+  "tags": ["image", "blur", "gaussian", "filter", "smooth"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string" },
+      "radius": { "type": "number", "description": "Blur radius in pixels", "default": 2.0 },
+      "format": { "type": "string", "default": "JPEG" }
+    },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "format": {}, "radius": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "...", "radius": 5 }, "output": { "ok": true } }
+}

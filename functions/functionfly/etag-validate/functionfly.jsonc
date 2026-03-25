@@ -1,0 +1,46 @@
+{
+  "author": "functionfly",
+  "name": "etag-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "ETag Validate",
+  "description": "Validate and parse an HTTP ETag header value, detecting strong vs weak ETags.",
+  "category": "http",
+  "tags": ["http", "etag", "validate", "cache", "header"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "etag": {
+        "type": "string",
+        "description": "ETag header value to validate"
+      }
+    },
+    "required": ["etag"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "valid": { "type": "boolean" },
+      "etag": { "type": "string" },
+      "weak": { "type": "boolean" },
+      "value": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "etag": "\"abc123\"" },
+    "output": {
+      "ok": true,
+      "valid": true,
+      "etag": "\"abc123\"",
+      "weak": false,
+      "value": "abc123"
+    }
+  }
+}

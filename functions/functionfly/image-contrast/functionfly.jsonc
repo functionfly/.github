@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "image-contrast",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Image Contrast (RMS)",
+  "description": "Calculate the RMS (root mean square) contrast of an image as a measure of luminance variation.",
+  "category": "color",
+  "tags": ["image", "contrast", "rms", "measure", "analysis"],
+  "input": { "type": "object", "properties": { "image": { "type": "string" } }, "required": ["image"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "rms_contrast": {}, "mean_luminance": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "..." }, "output": { "ok": true } }
+}

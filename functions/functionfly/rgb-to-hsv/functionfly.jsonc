@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "rgb-to-hsv",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "RGB to HSV",
+  "description": "Convert RGB color (0-255 each) to HSV (hue 0-360°, saturation 0-100%, value 0-100%).",
+  "category": "color",
+  "tags": ["color", "rgb", "hsv", "hsb", "convert"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "r": { "type": "integer" },
+      "g": { "type": "integer" },
+      "b": { "type": "integer" }
+    },
+    "required": ["r", "g", "b"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "object", "properties": { "h": {}, "s": {}, "v": {} } },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "r": 255, "g": 87, "b": 51 },
+    "output": { "ok": true, "result": { "h": 14.11, "s": 80.0, "v": 100.0 } }
+  }
+}

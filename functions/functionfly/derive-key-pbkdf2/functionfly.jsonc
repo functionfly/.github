@@ -1,0 +1,42 @@
+{
+  "author": "functionfly",
+  "name": "derive-key-pbkdf2",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Derive Key (PBKDF2)",
+  "description": "Derive a cryptographic key from a password using PBKDF2-HMAC.",
+  "category": "crypto",
+  "tags": ["crypto", "pbkdf2", "kdf", "key-derivation", "password"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": { "type": "string", "description": "Input password or passphrase" },
+      "salt": { "type": "string", "description": "Salt (hex or Base64)" },
+      "iterations": { "type": "integer", "description": "HMAC iterations", "default": 600000 },
+      "length": { "type": "integer", "description": "Output key length in bytes", "default": 32 },
+      "algorithm": { "type": "string", "description": "HMAC algorithm", "default": "sha256" },
+      "output": { "type": "string", "description": "'hex' or 'base64'", "default": "hex", "enum": ["hex", "base64"] }
+    },
+    "required": ["password", "salt"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "algorithm": { "type": "string" },
+      "iterations": { "type": "integer" },
+      "length": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 10000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "password": "mypassword", "salt": "aabbcc..." },
+    "output": { "ok": true }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "xml-entity-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "XML Entity Encode",
+  "description": "Encode special XML characters (&, <, >) as XML entities. Optionally encode additional characters.",
+  "category": "encoding",
+  "tags": ["encoding", "xml", "entities", "escape"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "String to encode" },
+      "entities": { "type": "object", "description": "Additional entity mappings (e.g. {'\"': '&quot;'})", "default": {} }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "<root>Hello & World</root>" },
+    "output": { "ok": true, "result": "&lt;root&gt;Hello &amp; World&lt;/root&gt;" }
+  }
+}

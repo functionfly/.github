@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-undefined",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Undefined",
+  "description": "Check whether a value is undefined (missing key or null in JSON context).",
+  "category": "validation",
+  "tags": ["validation", "undefined", "null", "missing", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "description": "Value to check (omit entirely to test for missing)" }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": {},
+      "result": { "type": "boolean" },
+      "key_present": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": null },
+    "output": { "ok": true, "value": null, "result": true, "key_present": true }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "recommendation-score",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Product Recommendation Score",
+  "description": "Score a product for recommendation to a customer based on category match, rating, popularity, and recency.",
+  "category": "ecommerce",
+  "tags": [
+    "recommendation",
+    "personalization",
+    "score",
+    "product",
+    "ecommerce"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "product": {
+        "type": "object",
+        "description": "Product with category, rating, popularity_score, days_old"
+      },
+      "customer_history": {
+        "type": "array",
+        "description": "List of past purchases with category"
+      },
+      "weights": { "type": "object" }
+    },
+    "required": ["product"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "recommendation_score": {},
+      "component_scores": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 300,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "product": {
+        "category": "electronics",
+        "rating": 4.5,
+        "popularity_score": 0.8
+      },
+      "customer_history": [{ "category": "electronics" }]
+    },
+    "output": { "ok": true, "recommendation_score": 0.725 }
+  }
+}

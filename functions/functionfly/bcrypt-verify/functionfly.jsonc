@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "bcrypt-verify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "bcrypt Verify",
+  "description": "Verify a plaintext password against a bcrypt hash.",
+  "category": "encoding",
+  "tags": ["hash", "bcrypt", "password", "verify", "auth"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": { "type": "string", "description": "Plaintext password to check" },
+      "hash": { "type": "string", "description": "bcrypt hash to verify against" }
+    },
+    "required": ["password", "hash"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "boolean", "description": "true if password matches hash" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 64,
+  "example": {
+    "input": { "password": "mysecretpassword", "hash": "$2b$10$..." },
+    "output": { "ok": true, "result": true }
+  }
+}

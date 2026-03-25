@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-reading-time",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Estimate Content Reading Time",
+  "description": "Estimate the reading time for a text based on words-per-minute reading speed (default 238 WPM, Medium standard).",
+  "category": "social",
+  "tags": ["reading-time", "content", "text", "blog", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "wpm": { "type": "integer", "default": 238 }, "image_time_seconds": { "type": "number", "default": 12 } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "reading_time_minutes": {}, "formatted": {}, "word_count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "text": "This is a sample article about coding and technology..." }, "output": { "ok": true, "formatted": "1 sec read" } }
+}

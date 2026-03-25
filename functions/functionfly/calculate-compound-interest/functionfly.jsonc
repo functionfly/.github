@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "calculate-compound-interest",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Compound Interest",
+  "description": "Calculate compound interest: A = P(1 + r/n)^(nt). Supports configurable compounding frequency.",
+  "category": "ecommerce",
+  "tags": ["compound-interest", "finance", "investment", "savings"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "principal": { "type": "number" },
+      "rate": { "type": "number", "description": "Annual rate %" },
+      "time": {
+        "type": "number",
+        "description": "Time in years",
+        "default": 1
+      },
+      "compounds_per_year": {
+        "type": "integer",
+        "description": "Compounding frequency (12=monthly)",
+        "default": 12
+      }
+    },
+    "required": ["principal", "rate"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "final_amount": {},
+      "interest_earned": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "principal": 1000, "rate": 5, "time": 10 },
+    "output": { "ok": true, "final_amount": 1647.01 }
+  }
+}

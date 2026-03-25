@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-alpha",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Alpha",
+  "description": "Check whether a string contains only alphabetic characters (letters only, no digits or symbols).",
+  "category": "validation",
+  "tags": ["validation", "alpha", "letters", "string", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to check" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "HelloWorld" },
+    "output": { "ok": true, "value": "HelloWorld", "result": true }
+  }
+}

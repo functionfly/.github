@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "profanity-filter",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Profanity Filter",
+  "description": "Detect and optionally replace profanity/slurs in text. Returns filtered text and list of found words.",
+  "category": "social",
+  "tags": ["profanity", "filter", "moderation", "content-safety", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "replacement": { "type": "string", "default": "***" }, "partial_match": { "type": "boolean", "default": false } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "filtered_text": {}, "has_profanity": {}, "count": {}, "found": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "text": "This is a damn good product!" }, "output": { "ok": true, "has_profanity": true, "filtered_text": "This is a *** good product!" } }
+}

@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "stock-level-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Stock Level",
+  "description": "Calculate closing stock level from opening stock, units received, sold, returned, damaged, and reserved.",
+  "category": "ecommerce",
+  "tags": ["stock", "inventory", "level", "warehouse", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "opening_stock": { "type": "integer" },
+      "units_received": { "type": "integer", "default": 0 },
+      "units_sold": { "type": "integer", "default": 0 },
+      "units_returned": { "type": "integer", "default": 0 },
+      "units_damaged": { "type": "integer", "default": 0 },
+      "units_reserved": { "type": "integer", "default": 0 }
+    },
+    "required": ["opening_stock"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "closing_stock": {},
+      "available_stock": {},
+      "inventory_turnover": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 60,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "opening_stock": 100,
+      "units_received": 50,
+      "units_sold": 30,
+      "units_damaged": 2
+    },
+    "output": { "ok": true, "closing_stock": 118 }
+  }
+}

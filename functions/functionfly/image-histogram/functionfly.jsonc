@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "image-histogram",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Color Histogram",
+  "description": "Generate pixel frequency histograms for the R, G, B color channels of an image (256 bins each).",
+  "category": "color",
+  "tags": ["image", "histogram", "channel", "analysis", "frequency"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string" },
+      "channel": { "type": "string", "description": "'all', 'r', 'g', or 'b'", "default": "all", "enum": ["all", "r", "g", "b"] }
+    },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "channel": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "..." }, "output": { "ok": true } }
+}

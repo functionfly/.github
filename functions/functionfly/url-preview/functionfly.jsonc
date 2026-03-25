@@ -1,0 +1,43 @@
+{
+  "author": "functionfly",
+  "name": "url-preview",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "URL Preview Data",
+  "description": "Generate URL preview metadata including domain, path, slug, HTTPS status, and optional HTML meta extraction.",
+  "category": "social",
+  "tags": ["url", "preview", "metadata", "social", "link"],
+  "input": {
+    "type": "object",
+    "properties": { "url": { "type": "string" }, "html": { "type": "string" } },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "url": {},
+      "domain": {},
+      "title": {},
+      "description": {},
+      "image": {},
+      "is_https": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "url": "https://blog.example.com/my-great-post" },
+    "output": {
+      "ok": true,
+      "domain": "blog.example.com",
+      "slug": "my-great-post",
+      "readable_slug": "My Great Post",
+      "is_https": true
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "deflate-compress",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Deflate Compress",
+  "description": "Compress data using raw Deflate algorithm, returning Base64-encoded output.",
+  "category": "encoding",
+  "tags": ["compression", "deflate", "encode", "zlib"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "description": "Data to compress" },
+      "level": { "type": "integer", "description": "Compression level 0-9", "default": 9, "minimum": 0, "maximum": 9 }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "original_size": { "type": "integer" },
+      "compressed_size": { "type": "integer" },
+      "ratio": { "type": "number" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "data": "Hello World" },
+    "output": { "ok": true, "original_size": 11, "compressed_size": 13 }
+  }
+}

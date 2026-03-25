@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "json-path-query",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "JSONPath Query",
+  "description": "Query JSON data using JSONPath expressions (e.g. '$.users[*].name'). Uses jsonpath-ng if available.",
+  "category": "format",
+  "tags": ["json", "jsonpath", "query", "extract"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "description": "JSON data to query" },
+      "query": { "type": "string", "description": "JSONPath expression (e.g. '$.store.books[0].title')" }
+    },
+    "required": ["data", "query"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "array" }, "count": {}, "note": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 128,
+  "example": { "input": { "data": { "users": [{ "name": "Alice" }, { "name": "Bob" }] }, "query": "$.users[*].name" }, "output": { "ok": true, "result": ["Alice", "Bob"] } }
+}

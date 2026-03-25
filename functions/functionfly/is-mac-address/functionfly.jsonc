@@ -1,0 +1,44 @@
+{
+  "author": "functionfly",
+  "name": "is-mac-address",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is MAC Address",
+  "description": "Validate whether a string is a valid MAC address (colon, dash, dot, or no separator).",
+  "category": "validation",
+  "tags": ["validation", "mac", "mac-address", "network", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "MAC address to validate" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "format": {
+        "type": "string",
+        "description": "Detected format: colon, dash, dot, or none"
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "00:1A:2B:3C:4D:5E" },
+    "output": {
+      "ok": true,
+      "value": "00:1A:2B:3C:4D:5E",
+      "result": true,
+      "format": "colon"
+    }
+  }
+}

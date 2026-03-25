@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "brotli-compress",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Brotli Compress",
+  "description": "Compress data with Brotli algorithm (excellent for text/web content), returning Base64-encoded output.",
+  "category": "encoding",
+  "tags": ["compression", "brotli", "encode", "web"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "description": "Data to compress" },
+      "quality": { "type": "integer", "description": "Quality level 0-11 (11=best)", "default": 11, "minimum": 0, "maximum": 11 }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "original_size": { "type": "integer" },
+      "compressed_size": { "type": "integer" },
+      "ratio": { "type": "number" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "data": "Hello World Hello World Hello World" },
+    "output": { "ok": true, "original_size": 35, "compressed_size": 18 }
+  }
+}

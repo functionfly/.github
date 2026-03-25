@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "length-range",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Length Range",
+  "description": "Check whether the length of a string, array, or object is within a specified range.",
+  "category": "validation",
+  "tags": ["validation", "length", "range", "string", "array", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "description": "Value to check length of" },
+      "min": { "type": "integer", "description": "Minimum length (inclusive)", "default": 0 },
+      "max": { "type": "integer", "description": "Maximum length (inclusive)" }
+    },
+    "required": ["value", "max"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": {},
+      "result": { "type": "boolean" },
+      "length": { "type": "integer" },
+      "min": { "type": "integer" },
+      "max": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "hello", "min": 3, "max": 10 },
+    "output": { "ok": true, "value": "hello", "result": true, "length": 5, "min": 3, "max": 10 }
+  }
+}

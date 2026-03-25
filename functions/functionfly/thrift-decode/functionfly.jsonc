@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "thrift-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Apache Thrift Decode",
+  "description": "Decode Apache Thrift binary data. Full support requires thrift library + IDL. Falls back to JSON decoding.",
+  "category": "format",
+  "tags": ["thrift", "apache", "decode", "binary"],
+  "input": { "type": "object", "properties": { "data": { "type": "string" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "note": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": { "input": { "data": "..." }, "output": { "ok": true } }
+}

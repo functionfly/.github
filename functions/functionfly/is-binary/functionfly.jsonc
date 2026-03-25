@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-binary",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Binary",
+  "description": "Check whether a string is a valid binary number (only 0s and 1s, optionally prefixed with 0b).",
+  "category": "validation",
+  "tags": ["validation", "binary", "number", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to check" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "0b1010" },
+    "output": { "ok": true, "value": "0b1010", "result": true }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "etag-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "ETag Generate",
+  "description": "Generate an HTTP ETag header value from content using MD5 hash.",
+  "category": "http",
+  "tags": ["http", "etag", "cache", "hash", "header"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "content": { "description": "Content to generate ETag for (string, object, or array)" },
+      "weak": { "type": "boolean", "description": "Generate a weak ETag (W/\"...\")", "default": false }
+    },
+    "required": ["content"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "etag": { "type": "string" },
+      "weak": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "content": "Hello, World!" },
+    "output": { "ok": true, "etag": "\"65a8e27d8879283831b664bd8b7f0ad4\"", "weak": false }
+  }
+}

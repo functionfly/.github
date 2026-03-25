@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "rgb-to-hex",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "RGB to Hex",
+  "description": "Convert RGB(A) components (0-255) to a CSS hex color string.",
+  "category": "color",
+  "tags": ["color", "rgb", "hex", "convert", "css"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "r": { "type": "integer", "description": "Red (0-255)" },
+      "g": { "type": "integer", "description": "Green (0-255)" },
+      "b": { "type": "integer", "description": "Blue (0-255)" },
+      "a": { "type": "integer", "description": "Alpha (0-255, optional)" },
+      "uppercase": { "type": "boolean", "description": "Uppercase hex output", "default": true }
+    },
+    "required": ["r", "g", "b"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "r": 255, "g": 87, "b": 51 },
+    "output": { "ok": true, "result": "#FF5733" }
+  }
+}

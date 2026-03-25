@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "loyalty-points",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Loyalty Points",
+  "description": "Calculate loyalty points earnings, redemptions, and balances. Supports earn, redeem, and balance actions.",
+  "category": "ecommerce",
+  "tags": ["loyalty", "points", "rewards", "customer", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": ["earn", "redeem", "balance"],
+        "default": "earn"
+      },
+      "amount": {
+        "type": "number",
+        "description": "Purchase amount for earning"
+      },
+      "current_points": { "type": "number", "default": 0 },
+      "points_per_dollar": { "type": "number", "default": 1 },
+      "cents_per_point": {
+        "type": "number",
+        "description": "Redemption value in cents per point",
+        "default": 1
+      },
+      "redeem_points": { "type": "integer" }
+    },
+    "required": ["action"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "points_earned": {},
+      "discount_value": {},
+      "new_balance": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "action": "earn", "amount": 50, "points_per_dollar": 2 },
+    "output": { "ok": true, "points_earned": 100, "new_balance": 100 }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "properties-stringify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Stringify to Java Properties",
+  "description": "Convert a flat object to Java .properties format (key=value pairs).",
+  "category": "format",
+  "tags": ["properties", "java", "stringify", "config"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "object" },
+      "comment": { "type": "string", "description": "Optional header comment" }
+    },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "db.host": "localhost", "db.port": "5432" } }, "output": { "ok": true } }
+}

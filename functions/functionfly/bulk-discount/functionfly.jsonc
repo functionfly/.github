@@ -1,0 +1,43 @@
+{
+  "author": "functionfly",
+  "name": "bulk-discount",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Bulk Discount",
+  "description": "Calculate quantity-based bulk discounts with configurable tier thresholds.",
+  "category": "ecommerce",
+  "tags": ["bulk", "discount", "quantity", "pricing", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "price": { "type": "number" },
+      "quantity": { "type": "integer" },
+      "thresholds": {
+        "type": "array",
+        "description": "Custom tiers [{min_qty, discount_pct}]"
+      }
+    },
+    "required": ["price", "quantity"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "discount_pct": {},
+      "discounted_price": {},
+      "total": {},
+      "savings": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "price": 20, "quantity": 30 },
+    "output": { "ok": true, "discount_pct": 10, "total": 540.0 }
+  }
+}

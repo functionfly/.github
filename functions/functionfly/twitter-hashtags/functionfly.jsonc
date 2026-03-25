@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "twitter-hashtags",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Twitter Hashtags",
+  "description": "Extract all #hashtags from a tweet or social media text.",
+  "category": "social",
+  "tags": ["twitter", "hashtags", "parse", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "hashtags": {}, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "text": "Excited about #AI and #MachineLearning today!" }, "output": { "ok": true, "hashtags": ["ai", "machinelearning"], "count": 2 } }
+}

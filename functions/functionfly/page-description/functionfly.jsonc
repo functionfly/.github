@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "page-description",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Page Description",
+  "description": "Extract meta description from HTML, checking meta[name=description] and og:description tags.",
+  "category": "social",
+  "tags": ["description", "meta", "html", "seo", "og"],
+  "input": { "type": "object", "properties": { "html": { "type": "string" } }, "required": ["html"] },
+  "output": { "type": "object", "properties": { "ok": {}, "description": {}, "meta_description": {}, "og_description": {}, "length": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "html": "<meta name='description' content='A great page about stuff.'>" }, "output": { "ok": true, "description": "A great page about stuff.", "length": 25 } }
+}

@@ -1,0 +1,25 @@
+{
+  "author": "functionfly",
+  "name": "calculate-tax",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Sales Tax",
+  "description": "Calculate the sales tax amount for a given price and tax rate percentage.",
+  "category": "ecommerce",
+  "tags": ["tax", "sales-tax", "price", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "price": { "type": "number", "description": "Pre-tax price" },
+      "rate": { "type": "number", "description": "Tax rate percentage (e.g. 8.5 for 8.5%)" }
+    },
+    "required": ["price", "rate"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "number" }, "tax": {}, "price": {}, "rate": {}, "total": {}, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "price": 100, "rate": 8.5 }, "output": { "ok": true, "tax": 8.5, "total": 108.5 } }
+}

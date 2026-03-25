@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-originality",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Content Originality Score",
+  "description": "Score text originality based on unique word ratio, phrase repetition, and cliché detection.",
+  "category": "social",
+  "tags": ["originality", "content-quality", "nlp", "writing", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "originality_score": {}, "unique_word_ratio": {}, "cliche_count": {}, "grade": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "text": "The innovative approach uses cutting-edge technology to transform complex data pipelines." }, "output": { "ok": true, "grade": "original" } }
+}

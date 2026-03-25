@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "zstd-decompress",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Zstandard Decompress",
+  "description": "Decompress a Base64-encoded Zstandard-compressed payload.",
+  "category": "encoding",
+  "tags": ["compression", "zstd", "zstandard", "decode", "decompress"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "Base64-encoded Zstandard-compressed data" },
+      "encoding": { "type": "string", "description": "Text encoding", "default": "utf-8" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "is_text": { "type": "boolean" },
+      "decompressed_size": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "data": "KLUv/QRYWQAAaGVsbG8gd29ybGQ=" },
+    "output": { "ok": true, "result": "hello world", "is_text": true }
+  }
+}

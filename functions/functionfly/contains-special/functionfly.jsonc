@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "contains-special",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Contains Special Character",
+  "description": "Check whether a string contains at least one special character (non-alphanumeric, non-space).",
+  "category": "validation",
+  "tags": ["validation", "special", "symbol", "string", "password", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to check" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "special_chars": { "type": "array", "items": { "type": "string" } },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "P@ssw0rd!" },
+    "output": { "ok": true, "value": "P@ssw0rd!", "result": true, "special_chars": ["@", "!"] }
+  }
+}

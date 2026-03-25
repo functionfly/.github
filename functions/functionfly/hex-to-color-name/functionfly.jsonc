@@ -1,0 +1,24 @@
+{
+  "author": "functionfly",
+  "name": "hex-to-color-name",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Hex to Nearest CSS Color Name",
+  "description": "Find the exact or nearest CSS named color for a given hex value.",
+  "category": "color",
+  "tags": ["color", "name", "hex", "css", "nearest"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "hex": { "type": "string", "description": "Hex color to look up" }
+    },
+    "required": ["hex"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "exact": { "type": "boolean" }, "distance": {}, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "hex": "#FF6347" }, "output": { "ok": true, "result": "tomato", "exact": true } }
+}

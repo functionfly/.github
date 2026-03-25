@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "price-without-tax",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Price Without Tax",
+  "description": "Extract the pre-tax (net) price from a tax-inclusive gross price.",
+  "category": "ecommerce",
+  "tags": ["price", "tax", "net", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "price": { "type": "number", "description": "Tax-inclusive price" },
+      "rate": { "type": "number", "description": "Tax rate %" }
+    },
+    "required": ["price", "rate"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "gross": {},
+      "net": {},
+      "tax": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "price": 110, "rate": 10 },
+    "output": { "ok": true, "result": 100.0, "tax": 10.0 }
+  }
+}

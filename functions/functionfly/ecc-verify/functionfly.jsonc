@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "ecc-verify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "ECDSA Verify",
+  "description": "Verify an ECDSA signature against a message using an ECC public key.",
+  "category": "crypto",
+  "tags": ["crypto", "ecc", "ecdsa", "verify", "signature"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "message": { "description": "Original message" },
+      "signature": { "type": "string", "description": "Base64-encoded DER signature from ecc-sign" },
+      "public_key": { "type": "string", "description": "PEM-encoded ECC public key" },
+      "algorithm": { "type": "string", "description": "Hash algorithm", "default": "sha256", "enum": ["sha256", "sha384", "sha512"] }
+    },
+    "required": ["message", "signature", "public_key"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "message": "Hello", "signature": "...", "public_key": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----" },
+    "output": { "ok": true, "result": true }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "upsell-suggestion",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Upsell Suggestion",
+  "description": "Suggest higher-priced products from the same category as upsell candidates, ranked by rating and price proximity.",
+  "category": "ecommerce",
+  "tags": ["upsell", "recommendation", "products", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "current_product": { "type": "object" },
+      "available_products": { "type": "array" },
+      "max_suggestions": { "type": "integer", "default": 3 },
+      "upsell_price_threshold_pct": {
+        "type": "number",
+        "description": "Max % above current price to suggest",
+        "default": 50
+      }
+    },
+    "required": ["current_product"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "array" },
+      "count": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 300,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "current_product": { "id": "1", "price": 50, "category": "shoes" },
+      "available_products": [
+        { "id": "2", "price": 70, "category": "shoes", "rating": 4.5 }
+      ]
+    },
+    "output": { "ok": true, "count": 1 }
+  }
+}

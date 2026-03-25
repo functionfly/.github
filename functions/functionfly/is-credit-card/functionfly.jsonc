@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "is-credit-card",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Credit Card",
+  "description": "Validate a credit card number using the Luhn algorithm and detect the card type.",
+  "category": "validation",
+  "tags": ["validation", "credit-card", "luhn", "payment", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Credit card number (spaces and dashes allowed)" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "card_type": { "type": "string", "description": "Detected card type (visa, mastercard, amex, etc.)" },
+      "luhn_valid": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "4532015112830366" },
+    "output": { "ok": true, "value": "4532015112830366", "result": true, "card_type": "visa", "luhn_valid": true }
+  }
+}

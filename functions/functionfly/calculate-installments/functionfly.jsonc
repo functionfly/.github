@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "calculate-installments",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Payment Installments",
+  "description": "Calculate equal monthly installment (EMI) payments for a principal amount with optional interest rate.",
+  "category": "ecommerce",
+  "tags": ["installments", "emi", "payment", "loan", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "principal": { "type": "number" },
+      "installments": {
+        "type": "integer",
+        "description": "Number of installments"
+      },
+      "annual_rate": {
+        "type": "number",
+        "description": "Annual interest rate %",
+        "default": 0
+      }
+    },
+    "required": ["principal", "installments"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "monthly_payment": {},
+      "total": {},
+      "interest": {},
+      "installments": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "principal": 1200, "installments": 12, "annual_rate": 12 },
+    "output": { "ok": true, "monthly_payment": 106.62 }
+  }
+}

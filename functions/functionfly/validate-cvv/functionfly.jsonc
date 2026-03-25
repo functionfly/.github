@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "validate-cvv",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Validate CVV/CVC",
+  "description": "Validate that a CVV/CVC security code has the correct length (3 digits for most cards, 4 for Amex).",
+  "category": "ecommerce",
+  "tags": ["cvv", "cvc", "credit-card", "validate", "security"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cvv": { "type": "string" },
+      "card_type": { "type": "string", "description": "'amex' for 4-digit CVV, others for 3-digit", "default": "unknown" }
+    },
+    "required": ["cvv"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "boolean" }, "valid": {}, "length": {}, "expected_length": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "cvv": "123" }, "output": { "ok": true, "valid": true } }
+}

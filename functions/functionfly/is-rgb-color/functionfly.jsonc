@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "name": "is-rgb-color",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is RGB Color",
+  "description": "Validate whether a string is a valid CSS rgb() or rgba() color value.",
+  "category": "validation",
+  "tags": ["validation", "color", "rgb", "rgba", "css", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Color string to validate (e.g. 'rgb(255, 0, 0)')" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "r": { "type": "integer" },
+      "g": { "type": "integer" },
+      "b": { "type": "integer" },
+      "alpha": { "type": "number" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "rgb(255, 0, 0)" },
+    "output": { "ok": true, "value": "rgb(255, 0, 0)", "result": true, "r": 255, "g": 0, "b": 0, "alpha": null }
+  }
+}

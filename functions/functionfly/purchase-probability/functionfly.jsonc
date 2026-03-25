@@ -1,0 +1,45 @@
+{
+  "author": "functionfly",
+  "name": "purchase-probability",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Purchase Probability",
+  "description": "Estimate the probability a visitor will make a purchase based on behavioral signals (page views, cart add, time on page, etc.).",
+  "category": "ecommerce",
+  "tags": ["conversion", "probability", "behavior", "analytics", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "page_views": { "type": "integer", "default": 0 },
+      "time_on_page_seconds": { "type": "number", "default": 0 },
+      "cart_add": { "type": "boolean", "default": false },
+      "wishlist_add": { "type": "boolean", "default": false },
+      "returning_customer": { "type": "boolean", "default": false },
+      "price": { "type": "number", "default": 50 },
+      "avg_conversion_rate": { "type": "number", "default": 0.02 }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "purchase_probability": {},
+      "confidence": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 60,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "page_views": 3, "cart_add": true, "time_on_page_seconds": 120 },
+    "output": {
+      "ok": true,
+      "purchase_probability": 0.52,
+      "confidence": "high"
+    }
+  }
+}

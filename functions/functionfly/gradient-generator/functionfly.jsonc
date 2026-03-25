@@ -1,0 +1,27 @@
+{
+  "author": "functionfly",
+  "name": "gradient-generator",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "CSS Gradient Generator",
+  "description": "Generate a CSS linear gradient between two colors with a configurable number of stops.",
+  "category": "color",
+  "tags": ["color", "gradient", "css", "linear", "stops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "color1": { "type": "string", "description": "Start hex color" },
+      "color2": { "type": "string", "description": "End hex color" },
+      "steps": { "type": "integer", "description": "Number of color stops (2-50)", "default": 5 },
+      "direction": { "type": "string", "description": "CSS gradient direction", "default": "to right" }
+    },
+    "required": ["color1", "color2"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string", "description": "CSS linear-gradient() value" }, "stops": { "type": "array" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "color1": "#ff0000", "color2": "#0000ff", "steps": 3 }, "output": { "ok": true } }
+}

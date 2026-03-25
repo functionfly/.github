@@ -1,0 +1,19 @@
+{
+  "author": "functionfly",
+  "name": "json-lines-stringify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Stringify to JSON Lines (JSONL)",
+  "description": "Convert an array of values to JSON Lines format (one JSON value per line).",
+  "category": "format",
+  "tags": ["jsonl", "json-lines", "stringify", "streaming", "ndjson"],
+  "input": {
+    "type": "object",
+    "properties": { "data": { "type": "array" } },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "string" }, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 128,
+  "example": { "input": { "data": [{ "a": 1 }, { "b": 2 }] }, "output": { "ok": true, "count": 2 } }
+}

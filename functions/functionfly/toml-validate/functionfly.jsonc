@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "toml-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Validate TOML",
+  "description": "Check if a string is valid TOML syntax and return a validation result with error details.",
+  "category": "format",
+  "tags": ["toml", "validate", "lint", "config"],
+  "input": { "type": "object", "properties": { "data": { "type": "string" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "boolean" }, "valid": {}, "message": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": "[server]\nhost = 'localhost'" }, "output": { "ok": true, "valid": true } }
+}

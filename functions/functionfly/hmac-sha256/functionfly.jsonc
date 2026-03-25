@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "hmac-sha256",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "HMAC-SHA256",
+  "description": "Compute HMAC-SHA256 message authentication code for a message and secret key.",
+  "category": "encoding",
+  "tags": ["hmac", "sha256", "mac", "signature", "auth", "webhook"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "message": { "description": "Message to authenticate" },
+      "secret": { "type": "string", "description": "Secret key" },
+      "output": { "type": "string", "description": "Output format: 'hex', 'base64', or 'base64url'", "default": "hex", "enum": ["hex", "base64", "base64url"] }
+    },
+    "required": ["message", "secret"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "algorithm": { "type": "string" },
+      "output_format": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "message": "Hello World", "secret": "mysecret" },
+    "output": { "ok": true, "algorithm": "HMAC-SHA256" }
+  }
+}

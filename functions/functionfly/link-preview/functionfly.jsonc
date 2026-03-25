@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "link-preview",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Link Preview",
+  "description": "Extract link preview data (title, description, image, site name) from HTML for social sharing cards.",
+  "category": "social",
+  "tags": ["preview", "link", "og", "social", "card"],
+  "input": { "type": "object", "properties": { "html": { "type": "string" }, "url": { "type": "string" } }, "required": ["html"] },
+  "output": { "type": "object", "properties": { "ok": {}, "title": {}, "description": {}, "image": {}, "url": {}, "site_name": {}, "has_preview": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "html": "<meta property='og:title' content='Hello'><meta property='og:description' content='World'><meta property='og:image' content='https://img.com/a.jpg'>" }, "output": { "ok": true, "title": "Hello", "description": "World", "has_preview": true } }
+}

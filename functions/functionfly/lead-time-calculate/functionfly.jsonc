@@ -1,0 +1,24 @@
+{
+  "author": "functionfly",
+  "name": "lead-time-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Lead Time",
+  "description": "Calculate order lead time from order/receive dates or by summing supplier, processing, and transit days.",
+  "category": "ecommerce",
+  "tags": ["lead-time", "supply-chain", "inventory", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "order_date": { "type": "string", "description": "YYYY-MM-DD" },
+      "receive_date": { "type": "string", "description": "YYYY-MM-DD" },
+      "supplier_days": { "type": "number" },
+      "processing_days": { "type": "number", "default": 0 },
+      "transit_days": { "type": "number", "default": 0 }
+    }
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "lead_time_days": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "order_date": "2026-03-01", "receive_date": "2026-03-15" }, "output": { "ok": true, "lead_time_days": 14 } }
+}

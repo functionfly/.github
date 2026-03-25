@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "argon2-verify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Argon2 Verify",
+  "description": "Verify a plaintext password against an Argon2 PHC hash string.",
+  "category": "encoding",
+  "tags": ["hash", "argon2", "password", "verify", "auth"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": { "type": "string", "description": "Plaintext password" },
+      "hash": { "type": "string", "description": "Argon2 PHC hash string" }
+    },
+    "required": ["password", "hash"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 10000,
+  "memory_mb": 256,
+  "example": {
+    "input": { "password": "mysecretpassword", "hash": "$argon2id$v=19$..." },
+    "output": { "ok": true, "result": true }
+  }
+}

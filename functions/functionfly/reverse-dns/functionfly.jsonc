@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "reverse-dns",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Reverse DNS Lookup",
+  "description": "Resolve an IP address to its hostname using reverse DNS (PTR record).",
+  "category": "http",
+  "tags": ["dns", "reverse", "ptr", "ip", "hostname", "network"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "ip": { "type": "string", "description": "IP address to reverse-resolve" }
+    },
+    "required": ["ip"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "ip": { "type": "string" },
+      "hostname": { "type": "string" },
+      "aliases": { "type": "array", "items": { "type": "string" } },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 300,
+  "timeout_ms": 5000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "ip": "8.8.8.8" },
+    "output": { "ok": true, "ip": "8.8.8.8", "hostname": "dns.google", "aliases": [] }
+  }
+}

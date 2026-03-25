@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-plagiarism",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Plagiarism Check",
+  "description": "Check text similarity between two documents using Jaccard shingle overlap. Detects potential plagiarism.",
+  "category": "social",
+  "tags": ["plagiarism", "similarity", "content", "text-analysis", "social"],
+  "input": { "type": "object", "properties": { "text_a": { "type": "string" }, "text_b": { "type": "string" }, "threshold": { "type": "number", "default": 0.5 }, "shingle_size": { "type": "integer", "default": 5 } }, "required": ["text_a", "text_b"] },
+  "output": { "type": "object", "properties": { "ok": {}, "similarity": {}, "is_plagiarized": {}, "shared_shingles": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 128,
+  "example": { "input": { "text_a": "The quick brown fox jumps over the lazy dog.", "text_b": "The quick brown fox jumps over the lazy cat." }, "output": { "ok": true } }
+}

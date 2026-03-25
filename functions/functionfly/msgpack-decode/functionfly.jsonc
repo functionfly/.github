@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "msgpack-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "MessagePack Decode",
+  "description": "Deserialize Base64-encoded MessagePack binary data back to a structured object.",
+  "category": "format",
+  "tags": ["msgpack", "decode", "deserialize", "binary", "format"],
+  "input": { "type": "object", "properties": { "data": { "type": "string", "description": "Base64-encoded MessagePack bytes" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": "..." }, "output": { "ok": true } }
+}

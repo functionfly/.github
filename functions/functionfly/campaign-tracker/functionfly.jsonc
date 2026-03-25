@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "campaign-tracker",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Campaign Performance Tracker",
+  "description": "Calculate key campaign performance metrics: CTR, conversion rate, CPC, CPM, CPA, ROAS, and ROI.",
+  "category": "social",
+  "tags": ["campaign", "analytics", "ctr", "roas", "roi", "marketing"],
+  "input": { "type": "object", "properties": { "clicks": { "type": "number", "default": 0 }, "impressions": { "type": "number", "default": 0 }, "conversions": { "type": "number", "default": 0 }, "spend": { "type": "number", "default": 0 }, "revenue": { "type": "number", "default": 0 }, "campaign_name": { "type": "string", "default": "" } } },
+  "output": { "type": "object", "properties": { "ok": {}, "ctr_percent": {}, "conversion_rate_percent": {}, "cpc": {}, "cpm": {}, "cpa": {}, "roas": {}, "roi_percent": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "clicks": 1000, "impressions": 50000, "conversions": 25, "spend": 500, "revenue": 1250, "campaign_name": "Spring Sale" }, "output": { "ok": true, "ctr_percent": "2.0%", "conversion_rate_percent": "2.5%", "roas": 2.5, "roi_percent": "150.0%" } }
+}

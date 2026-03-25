@@ -1,0 +1,49 @@
+{
+  "author": "functionfly",
+  "name": "coupon-discount",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Coupon Discount",
+  "description": "Calculate the discount amount from a coupon (percent, fixed amount, or free shipping) with optional max cap.",
+  "category": "ecommerce",
+  "tags": ["coupon", "discount", "promo", "cart", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cart_total": { "type": "number" },
+      "discount_type": {
+        "type": "string",
+        "enum": ["percent", "fixed", "free_shipping"],
+        "default": "percent"
+      },
+      "discount_value": { "type": "number" },
+      "max_discount": { "type": "number" },
+      "min_cart_total": { "type": "number", "default": 0 }
+    },
+    "required": ["cart_total", "discount_value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "discount_amount": {},
+      "final_total": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "cart_total": 100,
+      "discount_type": "percent",
+      "discount_value": 20,
+      "max_discount": 15
+    },
+    "output": { "ok": true, "discount_amount": 15, "final_total": 85.0 }
+  }
+}

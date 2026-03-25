@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "locale-price-format",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Format Price by Locale",
+  "description": "Format a price according to locale conventions (decimal/thousands separators, symbol position) for 17 locales.",
+  "category": "ecommerce",
+  "tags": ["price", "locale", "currency", "format", "i18n"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "amount": { "type": "number" },
+      "locale": {
+        "type": "string",
+        "description": "BCP 47 locale tag",
+        "default": "en-US"
+      }
+    },
+    "required": ["amount"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "string" },
+      "locale": {},
+      "currency": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "amount": 1234.56, "locale": "de-DE" },
+    "output": { "ok": true, "result": "€1.234,56" }
+  }
+}

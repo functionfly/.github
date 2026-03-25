@@ -1,0 +1,19 @@
+{
+  "author": "functionfly",
+  "name": "net-promoter-score",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Net Promoter Score (NPS)",
+  "description": "Calculate NPS from a list of 0-10 likelihood-to-recommend ratings. Breaks down promoters, passives, and detractors.",
+  "category": "ecommerce",
+  "tags": ["nps", "customer-satisfaction", "survey", "analytics", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": { "scores": { "type": "array", "description": "List of 0-10 ratings" } },
+    "required": ["scores"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "nps": {}, "promoters": {}, "detractors": {}, "grade": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 128,
+  "example": { "input": { "scores": [9, 10, 8, 7, 6, 10, 9, 5, 10] }, "output": { "ok": true, "nps": 33.3, "grade": "Good" } }
+}

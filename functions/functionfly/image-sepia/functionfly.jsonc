@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "image-sepia",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Sepia Filter",
+  "description": "Apply a vintage sepia tone effect to an image using the classic RGB matrix transform.",
+  "category": "color",
+  "tags": ["image", "sepia", "vintage", "filter", "tone"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string" },
+      "intensity": { "type": "number", "description": "Effect intensity 0.0-1.0", "default": 1.0 },
+      "format": { "type": "string", "default": "JPEG" }
+    },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "format": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 10000, "memory_mb": 256,
+  "example": { "input": { "image": "..." }, "output": { "ok": true } }
+}

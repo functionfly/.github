@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "calculate-margin",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate Profit Margin",
+  "description": "Calculate gross profit margin percentage from revenue and cost.",
+  "category": "ecommerce",
+  "tags": ["margin", "profit", "revenue", "cost", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "revenue": { "type": "number" },
+      "cost": { "type": "number" }
+    },
+    "required": ["revenue", "cost"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "profit": {}, "margin_pct": {}, "markup_pct": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "revenue": 100, "cost": 60 }, "output": { "ok": true, "result": 40.0, "profit": 40.0, "margin_pct": 40.0 } }
+}

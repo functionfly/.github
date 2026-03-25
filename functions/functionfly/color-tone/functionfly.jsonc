@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "color-tone",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Color Tone (Mix with Grey)",
+  "description": "Mix a color with medium grey (#808080) by a given weight (0=original, 1=pure grey).",
+  "category": "color",
+  "tags": ["color", "tone", "grey", "gray", "mix", "muted"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "color": { "type": "string" },
+      "weight": { "type": "number", "description": "Amount of grey (0-1)", "default": 0.5 }
+    },
+    "required": ["color"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "color": "#ff5733", "weight": 0.5 }, "output": { "ok": true } }
+}

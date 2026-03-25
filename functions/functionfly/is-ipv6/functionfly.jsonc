@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-ipv6",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is IPv6",
+  "description": "Validate whether a string is a valid IPv6 address.",
+  "category": "validation",
+  "tags": ["validation", "ipv6", "ip", "network", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to validate" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "2001:db8::1" },
+    "output": { "ok": true, "value": "2001:db8::1", "result": true }
+  }
+}

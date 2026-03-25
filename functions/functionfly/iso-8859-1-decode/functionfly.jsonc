@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "iso-8859-1-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "ISO-8859-1 Decode",
+  "description": "Decode Base64-encoded ISO-8859-1 (Latin-1) bytes back to a Unicode string.",
+  "category": "encoding",
+  "tags": ["encoding", "iso-8859-1", "latin1", "decode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "Base64-encoded ISO-8859-1 bytes" },
+      "errors": { "type": "string", "description": "Error handling: 'strict', 'ignore', 'replace'", "default": "strict" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "SGVIZG8=" },
+    "output": { "ok": true, "result": "Hello" }
+  }
+}

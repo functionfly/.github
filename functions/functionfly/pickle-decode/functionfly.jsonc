@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "pickle-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Python Pickle Decode",
+  "description": "Deserialize Base64-encoded pickle data. By default only allows safe types (dict/list/str/int/float/bool). WARNING: never unpickle untrusted data.",
+  "category": "format",
+  "tags": ["pickle", "python", "deserialize", "decode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string" },
+      "allow_unsafe": { "type": "boolean", "default": false }
+    },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": "..." }, "output": { "ok": true } }
+}

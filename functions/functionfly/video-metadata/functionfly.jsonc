@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "video-metadata",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Video Metadata",
+  "description": "Extract metadata (platform, video ID, embed URL, thumbnail, oEmbed URL) from a YouTube or Vimeo video URL.",
+  "category": "social",
+  "tags": ["video", "metadata", "youtube", "vimeo", "social"],
+  "input": { "type": "object", "properties": { "url": { "type": "string" } }, "required": ["url"] },
+  "output": { "type": "object", "properties": { "ok": {}, "platform": {}, "video_id": {}, "embed_url": {}, "thumbnail_url": {}, "oembed_url": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "url": "https://youtu.be/dQw4w9WgXcQ" }, "output": { "ok": true, "platform": "youtube", "video_id": "dQw4w9WgXcQ" } }
+}

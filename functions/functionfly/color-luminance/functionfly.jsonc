@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "color-luminance",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Color Relative Luminance",
+  "description": "Calculate the WCAG 2.1 relative luminance of a color (0=black, 1=white). Used for contrast ratio calculations.",
+  "category": "color",
+  "tags": ["color", "luminance", "wcag", "accessibility", "a11y"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "color": { "type": "string", "description": "Hex color (alternative to r,g,b)" },
+      "r": { "type": "integer" },
+      "g": { "type": "integer" },
+      "b": { "type": "integer" }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "number", "description": "Relative luminance (0.0 to 1.0)" },
+      "luminance": { "type": "number" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "color": "#ffffff" },
+    "output": { "ok": true, "result": 1.0 }
+  }
+}

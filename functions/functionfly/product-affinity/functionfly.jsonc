@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "product-affinity",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Product Affinity Score",
+  "description": "Calculate the affinity (lift, support, confidence) between two products using market basket analysis.",
+  "category": "ecommerce",
+  "tags": ["affinity", "market-basket", "recommendation", "lift", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "product_a_orders": { "type": "integer" },
+      "product_b_orders": { "type": "integer" },
+      "both_orders": { "type": "integer" },
+      "total_orders": { "type": "integer" }
+    },
+    "required": [
+      "product_a_orders",
+      "product_b_orders",
+      "both_orders",
+      "total_orders"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "lift": {},
+      "support": {},
+      "confidence_a_to_b": {},
+      "interpretation": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "product_a_orders": 100,
+      "product_b_orders": 80,
+      "both_orders": 60,
+      "total_orders": 500
+    },
+    "output": { "ok": true, "lift": 3.75, "interpretation": "strong" }
+  }
+}

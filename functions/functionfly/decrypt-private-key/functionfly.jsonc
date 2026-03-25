@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "decrypt-private-key",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Decrypt Private Key",
+  "description": "Decrypt a passphrase-protected PEM private key, returning the unencrypted key.",
+  "category": "crypto",
+  "tags": ["crypto", "private-key", "pem", "decrypt", "passphrase"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "private_key": { "type": "string", "description": "Passphrase-protected PEM private key" },
+      "passphrase": { "type": "string", "description": "Passphrase to decrypt with" }
+    },
+    "required": ["private_key", "passphrase"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string", "description": "Unencrypted PEM private key" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "private_key": "-----BEGIN ENCRYPTED PRIVATE KEY-----\n...", "passphrase": "mysecretpass" },
+    "output": { "ok": true }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "scrypt-verify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "scrypt Verify",
+  "description": "Verify a plaintext password against a scrypt hash produced by scrypt-hash.",
+  "category": "encoding",
+  "tags": ["hash", "scrypt", "password", "verify", "security"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "password": { "type": "string", "description": "Plaintext password" },
+      "hash": { "type": "string", "description": "scrypt hash string from scrypt-hash" }
+    },
+    "required": ["password", "hash"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 10000,
+  "memory_mb": 256,
+  "example": {
+    "input": { "password": "mysecretpassword", "hash": "$scrypt$n=16384$r=8$p=1$..." },
+    "output": { "ok": true, "result": true }
+  }
+}

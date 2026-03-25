@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "calculate-vat",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Calculate VAT",
+  "description": "Calculate Value Added Tax (VAT). Supports both exclusive (add to price) and inclusive (already in price) modes.",
+  "category": "ecommerce",
+  "tags": ["vat", "tax", "europe", "price", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "price": { "type": "number" },
+      "rate": { "type": "number", "description": "VAT rate %" },
+      "inclusive": { "type": "boolean", "description": "true if price already includes VAT", "default": false }
+    },
+    "required": ["price", "rate"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "vat": {}, "net": {}, "gross": {}, "rate": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "price": 100, "rate": 20 }, "output": { "ok": true, "vat": 20.0, "gross": 120.0 } }
+}

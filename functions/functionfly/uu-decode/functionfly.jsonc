@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "uu-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "UUDecode",
+  "description": "Decode UUencoded data back to its original content.",
+  "category": "encoding",
+  "tags": ["encoding", "uu", "uudecode", "legacy"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "UUencoded string (including begin/end headers)" },
+      "encoding": { "type": "string", "description": "Text encoding for output", "default": "utf-8" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "name": { "type": "string" },
+      "is_text": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "begin 644 hello.txt\n%2&5L;&\\`\n`\nend" },
+    "output": { "ok": true, "result": "Hello", "name": "hello.txt", "is_text": true }
+  }
+}

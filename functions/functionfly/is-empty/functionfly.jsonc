@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-empty",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Empty",
+  "description": "Check whether a value is empty (null, empty string, empty array, or empty object).",
+  "category": "validation",
+  "tags": ["validation", "empty", "null", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "description": "Value to check" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": {},
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "" },
+    "output": { "ok": true, "value": "", "result": true }
+  }
+}

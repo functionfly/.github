@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "lz4-compress",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "LZ4 Compress",
+  "description": "Compress data with LZ4 (extremely fast compression), returning Base64-encoded output.",
+  "category": "encoding",
+  "tags": ["compression", "lz4", "encode", "fast"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "description": "Data to compress" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "original_size": { "type": "integer" },
+      "compressed_size": { "type": "integer" },
+      "ratio": { "type": "number" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "data": "Hello World Hello World Hello World" },
+    "output": { "ok": true, "original_size": 35 }
+  }
+}

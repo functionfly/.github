@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "unicode-escape",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Unicode Escape",
+  "description": "Escape Unicode characters in a string to \\uXXXX notation.",
+  "category": "encoding",
+  "tags": ["encoding", "unicode", "escape", "json"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "String to escape" },
+      "non_ascii_only": { "type": "boolean", "description": "Only escape non-ASCII characters (>127)", "default": true }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "héllo" },
+    "output": { "ok": true, "result": "h\\u00e9llo" }
+  }
+}

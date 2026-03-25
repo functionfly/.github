@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "short-url-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Short URL",
+  "description": "Generate a short URL code for a given long URL with configurable length and base URL.",
+  "category": "social",
+  "tags": ["short-url", "url", "link", "shortener", "social"],
+  "input": { "type": "object", "properties": { "url": { "type": "string" }, "length": { "type": "integer", "default": 7 }, "base_url": { "type": "string", "default": "https://sht.fly/" }, "custom_code": { "type": "string" } }, "required": ["url"] },
+  "output": { "type": "object", "properties": { "ok": {}, "short_url": {}, "code": {}, "original_url": {}, "error": {} } },
+  "deterministic": false, "idempotent": false,
+  "cache_ttl": 0, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "url": "https://example.com/very/long/path", "base_url": "https://sht.fly/" }, "output": { "ok": true } }
+}

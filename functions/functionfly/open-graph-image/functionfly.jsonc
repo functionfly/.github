@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "open-graph-image",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Open Graph Image",
+  "description": "Extract the social sharing image URL from HTML, checking og:image, twitter:image, then first <img> tag.",
+  "category": "social",
+  "tags": ["og", "image", "social", "meta", "preview"],
+  "input": { "type": "object", "properties": { "html": { "type": "string" } }, "required": ["html"] },
+  "output": { "type": "object", "properties": { "ok": {}, "image_url": {}, "og_image": {}, "twitter_image": {}, "found": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "html": "<meta property='og:image' content='https://example.com/image.jpg'>" }, "output": { "ok": true, "image_url": "https://example.com/image.jpg", "found": true } }
+}

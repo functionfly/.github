@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "properties-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Java Properties",
+  "description": "Parse a Java .properties file format string (key=value pairs, # comments) into a flat object.",
+  "category": "format",
+  "tags": ["properties", "java", "parse", "config"],
+  "input": { "type": "object", "properties": { "data": { "type": "string" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": "db.host=localhost\n# comment\ndb.port=5432" }, "output": { "ok": true } }
+}

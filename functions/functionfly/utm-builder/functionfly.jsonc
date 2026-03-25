@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "utm-builder",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "UTM Parameter Builder",
+  "description": "Build UTM-tagged URLs for campaign tracking with source, medium, campaign, term, and content parameters.",
+  "category": "social",
+  "tags": ["utm", "campaign", "tracking", "url", "analytics"],
+  "input": { "type": "object", "properties": { "url": { "type": "string" }, "utm_source": { "type": "string" }, "utm_medium": { "type": "string" }, "utm_campaign": { "type": "string" }, "utm_term": { "type": "string" }, "utm_content": { "type": "string" } }, "required": ["url", "utm_source", "utm_medium", "utm_campaign"] },
+  "output": { "type": "object", "properties": { "ok": {}, "url": {}, "utm_params": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "url": "https://example.com/product", "utm_source": "newsletter", "utm_medium": "email", "utm_campaign": "spring_sale_2024" }, "output": { "ok": true, "url": "https://example.com/product?utm_source=newsletter&utm_medium=email&utm_campaign=spring_sale_2024" } }
+}

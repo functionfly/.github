@@ -1,0 +1,43 @@
+{
+  "author": "functionfly",
+  "name": "array-union-by",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Array Union By Key",
+  "description": "Union of two arrays of objects, deduplicating by a specified key.",
+  "category": "arrays",
+  "tags": ["array", "union", "key", "deduplicate", "objects"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "items": { "type": "array", "description": "First array of objects" },
+      "other": { "type": "array", "description": "Second array of objects" },
+      "key": { "type": "string", "description": "Key to use for comparison" }
+    },
+    "required": ["items", "other", "key"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "array" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "items": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}],
+      "other": [{"id": 2, "name": "Bob"}, {"id": 3, "name": "Carol"}],
+      "key": "id"
+    },
+    "output": {
+      "ok": true,
+      "result": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}, {"id": 3, "name": "Carol"}]
+    }
+  }
+}

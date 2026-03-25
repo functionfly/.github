@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "is-postal-code",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Postal Code",
+  "description": "Validate a postal/ZIP code for a given country (US, GB, CA, DE, FR, AU, JP, IN, BR, and more).",
+  "category": "validation",
+  "tags": ["validation", "postal-code", "zip", "address", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "Postal code to validate" },
+      "country": {
+        "type": "string",
+        "description": "ISO 3166-1 alpha-2 country code (e.g. 'US', 'GB')"
+      }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "country": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "90210", "country": "US" },
+    "output": { "ok": true, "value": "90210", "result": true, "country": "US" }
+  }
+}

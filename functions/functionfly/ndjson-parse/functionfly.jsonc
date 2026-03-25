@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "ndjson-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse NDJSON",
+  "description": "Parse Newline Delimited JSON (NDJSON) where each line is a JSON value. Identical to JSONL.",
+  "category": "format",
+  "tags": ["ndjson", "json", "parse", "streaming", "jsonl"],
+  "input": { "type": "object", "properties": { "data": { "type": "string" } }, "required": ["data"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "array" }, "count": {}, "errors": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 128,
+  "example": { "input": { "data": "{\"a\":1}\n{\"b\":2}" }, "output": { "ok": true, "count": 2 } }
+}

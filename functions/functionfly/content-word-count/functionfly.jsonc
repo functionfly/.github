@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-word-count",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Content Word Count",
+  "description": "Count words, characters, sentences, paragraphs, and unique words in a text (strips HTML tags).",
+  "category": "social",
+  "tags": ["word-count", "content", "text", "analytics", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "word_count": {}, "char_count": {}, "sentence_count": {}, "unique_words": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "text": "The quick brown fox jumps over the lazy dog." }, "output": { "ok": true, "word_count": 9, "sentence_count": 1 } }
+}

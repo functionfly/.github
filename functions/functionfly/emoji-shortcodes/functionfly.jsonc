@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "emoji-shortcodes",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Convert Emoji Shortcodes",
+  "description": "Convert emoji shortcodes (:smile:) to Unicode emoji characters, or reverse (emoji to shortcodes).",
+  "category": "social",
+  "tags": ["emoji", "shortcodes", "convert", "unicode", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "direction": { "type": "string", "enum": ["to_emoji", "to_shortcode"], "default": "to_emoji" } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "converted": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "text": "Hello :wave: how are you :smile:" }, "output": { "ok": true, "converted": "Hello 👋 how are you 😄" } }
+}

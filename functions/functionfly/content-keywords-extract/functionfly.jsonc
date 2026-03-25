@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "content-keywords-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Content Keywords",
+  "description": "Extract the most frequent keywords and bigram phrases from a text, filtering stop words.",
+  "category": "social",
+  "tags": ["keywords", "nlp", "content", "seo", "social"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "top_n": { "type": "integer", "default": 10 }, "min_length": { "type": "integer", "default": 3 }, "include_phrases": { "type": "boolean", "default": true } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "keywords": {}, "phrases": {}, "total_words": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "text": "Machine learning and artificial intelligence are transforming the world of data science." }, "output": { "ok": true, "keywords": [{ "word": "machine", "count": 1 }] } }
+}

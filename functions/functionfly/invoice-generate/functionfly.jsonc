@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "name": "invoice-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Invoice Number",
+  "description": "Generate a formatted invoice number with optional prefix, date, and sequence number.",
+  "category": "ecommerce",
+  "tags": ["invoice", "billing", "generate", "number", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "prefix": { "type": "string", "default": "INV" },
+      "sequence": {
+        "type": "integer",
+        "description": "Optional sequential number"
+      },
+      "date_based": { "type": "boolean", "default": true }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "string" },
+      "invoice_number": {},
+      "error": {}
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "prefix": "INV", "sequence": 1042 },
+    "output": { "ok": true, "result": "INV-20260320-01042" }
+  }
+}

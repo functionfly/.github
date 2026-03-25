@@ -1,0 +1,19 @@
+{
+  "author": "functionfly",
+  "name": "validate-expiry",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Validate Card Expiry Date",
+  "description": "Check if a credit card expiry date (MM/YY or MM/YYYY) is valid and not expired.",
+  "category": "ecommerce",
+  "tags": ["credit-card", "expiry", "validate", "payment"],
+  "input": {
+    "type": "object",
+    "properties": { "expiry": { "type": "string", "description": "Expiry date e.g. '12/25'" } },
+    "required": ["expiry"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": { "type": "boolean" }, "valid": {}, "expired": {}, "month": {}, "year": {}, "error": {} } },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "expiry": "12/28" }, "output": { "ok": true, "valid": true, "expired": false } }
+}

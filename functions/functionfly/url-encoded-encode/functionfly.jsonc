@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "url-encoded-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "URL Encode (Percent Encoding)",
+  "description": "Percent-encode a string or object as URL-safe encoded form data.",
+  "category": "encoding",
+  "tags": ["encoding", "url", "percent-encode", "urlencode", "query-string"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "description": "String or object to encode" },
+      "mode": { "type": "string", "description": "'component' (encodes everything) or 'full' (preserves URL structure chars)", "default": "component", "enum": ["component", "full"] },
+      "safe": { "type": "string", "description": "Characters to leave unencoded", "default": "" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "hello world & more" },
+    "output": { "ok": true, "result": "hello%20world%20%26%20more" }
+  }
+}

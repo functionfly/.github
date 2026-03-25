@@ -1,0 +1,25 @@
+{
+  "author": "functionfly",
+  "name": "color-fade",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Fade Color (Add Transparency)",
+  "description": "Decrease the opacity of a color by a given amount (0-1), returning an rgba() CSS value.",
+  "category": "color",
+  "tags": ["color", "fade", "opacity", "alpha", "transparency", "rgba"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "color": { "type": "string", "description": "Hex color" },
+      "amount": { "type": "number", "description": "Fade amount (0=no change, 1=fully transparent)", "default": 0.5 }
+    },
+    "required": ["color"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "alpha": {}, "r": {}, "g": {}, "b": {}, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "color": "#ff5733", "amount": 0.3 }, "output": { "ok": true, "result": "rgba(255,87,51,0.7)", "alpha": 0.7 } }
+}

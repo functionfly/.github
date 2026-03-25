@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "unicode-emoji",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Unicode Emoji Tools",
+  "description": "Work with Unicode emoji: extract, strip, replace, or get codepoints from text.",
+  "category": "social",
+  "tags": ["emoji", "unicode", "strip", "codepoints", "text"],
+  "input": { "type": "object", "properties": { "text": { "type": "string" }, "action": { "type": "string", "enum": ["info", "strip", "replace"], "default": "info" }, "replacement": { "type": "string", "default": " " } }, "required": ["text"] },
+  "output": { "type": "object", "properties": { "ok": {}, "emojis": {}, "codepoints": {}, "has_emoji": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "text": "Hello 😀 World 🌍", "action": "info" }, "output": { "ok": true, "count": 2, "has_emoji": true } }
+}

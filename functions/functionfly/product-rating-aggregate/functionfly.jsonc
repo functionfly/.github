@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "product-rating-aggregate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Aggregate Product Ratings",
+  "description": "Aggregate a list of product ratings into average, distribution, median, and percentage by star level.",
+  "category": "ecommerce",
+  "tags": ["rating", "review", "aggregate", "analytics", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "ratings": { "type": "array", "description": "List of numeric ratings" },
+      "max_stars": { "type": "integer", "default": 5 }
+    },
+    "required": ["ratings"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "average_rating": {}, "distribution": {}, "five_star_pct": {}, "total_reviews": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 500, "memory_mb": 128,
+  "example": { "input": { "ratings": [5, 4, 5, 3, 5, 4, 2, 5, 4, 5] }, "output": { "ok": true, "average_rating": 4.2, "five_star_pct": 50.0 } }
+}

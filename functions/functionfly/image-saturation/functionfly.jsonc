@@ -1,0 +1,23 @@
+{
+  "author": "functionfly",
+  "name": "image-saturation",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Adjust Image Saturation",
+  "description": "Adjust image color saturation by a factor (0=greyscale, 1=original, 2=double).",
+  "category": "color",
+  "tags": ["image", "saturation", "color", "enhance", "pillow"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string" },
+      "factor": { "type": "number", "default": 1.5 },
+      "format": { "type": "string", "default": "JPEG" }
+    },
+    "required": ["image"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "format": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 5000, "memory_mb": 256,
+  "example": { "input": { "image": "...", "factor": 2.0 }, "output": { "ok": true } }
+}

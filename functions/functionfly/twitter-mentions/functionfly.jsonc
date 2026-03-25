@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "twitter-mentions",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Twitter Mentions",
+  "description": "Extract all @mention usernames from a tweet or social media text.",
+  "category": "social",
+  "tags": ["twitter", "mentions", "parse", "social"],
+  "input": {
+    "type": "object",
+    "properties": { "text": { "type": "string" } },
+    "required": ["text"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "mentions": {}, "count": {}, "error": {} }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "text": "Thanks @alice and @bob for the help!" },
+    "output": { "ok": true, "mentions": ["alice", "bob"], "count": 2 }
+  }
+}

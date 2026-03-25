@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "generate-rsa-key",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate RSA Key Pair",
+  "description": "Generate a new RSA private/public key pair in PEM or DER format.",
+  "category": "crypto",
+  "tags": ["crypto", "rsa", "key-generation", "asymmetric", "pki"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "key_size": { "type": "integer", "description": "Key size in bits", "default": 2048, "enum": [1024, 2048, 3072, 4096] },
+      "public_exponent": { "type": "integer", "description": "Public exponent", "default": 65537 },
+      "format": { "type": "string", "description": "'pem' or 'der'", "default": "pem", "enum": ["pem", "der"] }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "private_key": { "type": "string" },
+      "public_key": { "type": "string" },
+      "format": { "type": "string" },
+      "key_size": { "type": "integer" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 10000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "key_size": 2048 },
+    "output": { "ok": true, "key_size": 2048, "format": "pem" }
+  }
+}

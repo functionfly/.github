@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "is-integer",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Integer",
+  "description": "Check whether a value is an integer (no decimal part).",
+  "category": "validation",
+  "tags": ["validation", "integer", "number", "int", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "description": "Value to check" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": {},
+      "result": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": 42 },
+    "output": { "ok": true, "value": 42, "result": true }
+  }
+}

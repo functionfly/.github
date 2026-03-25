@@ -1,0 +1,22 @@
+{
+  "author": "functionfly",
+  "name": "dotnet-binary-format",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": ".NET Binary Format",
+  "description": "Stub for .NET Binary Serialization format. Returns JSON-encoded fallback since .NET BinaryFormatter requires the .NET runtime.",
+  "category": "format",
+  "tags": ["dotnet", "binary", "format", "csharp", "serialize"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {},
+      "mode": { "type": "string", "enum": ["encode", "decode"], "default": "encode" }
+    },
+    "required": ["data"]
+  },
+  "output": { "type": "object", "properties": { "ok": {}, "result": {}, "note": {}, "format": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": { "input": { "data": { "name": "Alice" }, "mode": "encode" }, "output": { "ok": true } }
+}

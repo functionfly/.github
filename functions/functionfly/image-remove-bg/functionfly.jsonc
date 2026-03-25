@@ -1,0 +1,24 @@
+{
+  "author": "functionfly",
+  "name": "image-remove-bg",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Remove Image Background",
+  "description": "Remove the background from an image. Uses rembg (AI-powered) if available, with a simple threshold fallback.",
+  "category": "color",
+  "tags": ["image", "background", "remove", "transparent", "rembg"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string", "description": "Base64-encoded image" }
+    },
+    "required": ["image"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "format": {}, "note": {}, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 30000, "memory_mb": 512,
+  "example": { "input": { "image": "..." }, "output": { "ok": true, "format": "PNG" } }
+}

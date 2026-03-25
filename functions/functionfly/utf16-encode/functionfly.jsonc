@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "name": "utf16-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "UTF-16 Encode",
+  "description": "Encode a string to UTF-16 bytes (Base64-encoded output), with optional BOM and byte order control.",
+  "category": "encoding",
+  "tags": ["encoding", "utf16", "unicode", "encode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "String to encode" },
+      "bom": { "type": "boolean", "description": "Include byte order mark", "default": true },
+      "byte_order": { "type": "string", "description": "Byte order: 'little' or 'big'", "default": "little", "enum": ["little", "big"] }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string", "description": "Base64-encoded UTF-16 bytes" },
+      "byte_length": { "type": "integer" },
+      "byte_order": { "type": "string" },
+      "bom": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "data": "Hello" },
+    "output": { "ok": true, "result": "/v8IAGIAZQBSAG8A", "byte_length": 12, "byte_order": "little", "bom": true }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "json-ld-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract JSON-LD Structured Data",
+  "description": "Extract all JSON-LD (application/ld+json) structured data blocks from an HTML page.",
+  "category": "social",
+  "tags": ["json-ld", "structured-data", "seo", "schema-org", "social"],
+  "input": { "type": "object", "properties": { "html": { "type": "string" } }, "required": ["html"] },
+  "output": { "type": "object", "properties": { "ok": {}, "json_ld": {}, "count": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 200, "memory_mb": 64,
+  "example": { "input": { "html": "<script type=\"application/ld+json\">{\"@type\":\"Article\"}</script>" }, "output": { "ok": true, "count": 1 } }
+}

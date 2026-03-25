@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "derive-address",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Derive Address from Public Key",
+  "description": "Derive a blockchain address (Ethereum, Bitcoin P2PKH) or SSH fingerprint from a public key.",
+  "category": "crypto",
+  "tags": ["crypto", "address", "ethereum", "bitcoin", "public-key", "blockchain"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "public_key": { "type": "string", "description": "PEM or Base64-encoded DER public key" },
+      "scheme": { "type": "string", "description": "Address scheme", "default": "ethereum", "enum": ["ethereum", "bitcoin_p2pkh", "ssh_fingerprint"] }
+    },
+    "required": ["public_key"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": { "type": "string" },
+      "scheme": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "public_key": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----", "scheme": "ethereum" },
+    "output": { "ok": true, "scheme": "ethereum" }
+  }
+}

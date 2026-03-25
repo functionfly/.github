@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "cart-value-breakpoints",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Cart Value Tier Breakpoints",
+  "description": "Determine which cart value tier a customer is in and how much more to spend to reach the next tier.",
+  "category": "ecommerce",
+  "tags": ["cart", "tiers", "breakpoints", "benefits", "ecommerce"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cart_total": { "type": "number" },
+      "breakpoints": {
+        "type": "array",
+        "description": "Custom tier definitions [{min, max, tier, benefits}]"
+      }
+    },
+    "required": ["cart_total"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "current_tier": {},
+      "next_tier": {},
+      "amount_to_next_tier": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "cart_total": 35 },
+    "output": { "ok": true, "result": "silver", "amount_to_next_tier": 15.0 }
+  }
+}

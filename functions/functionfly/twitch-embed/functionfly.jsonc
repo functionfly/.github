@@ -1,0 +1,15 @@
+{
+  "author": "functionfly",
+  "name": "twitch-embed",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Twitch Embed",
+  "description": "Generate a Twitch embedded player iframe for a channel, video, or clip.",
+  "category": "social",
+  "tags": ["twitch", "embed", "video", "stream", "social"],
+  "input": { "type": "object", "properties": { "channel": { "type": "string" }, "video_id": { "type": "string" }, "clip_id": { "type": "string" }, "parent": { "type": "string", "default": "localhost" }, "width": { "type": "integer", "default": 640 }, "height": { "type": "integer", "default": 360 } } },
+  "output": { "type": "object", "properties": { "ok": {}, "embed_html": {}, "embed_url": {}, "error": {} } },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 100, "memory_mb": 64,
+  "example": { "input": { "channel": "ninja", "parent": "example.com" }, "output": { "ok": true } }
+}

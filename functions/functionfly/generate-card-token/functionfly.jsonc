@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "generate-card-token",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Card Token",
+  "description": "Generate an opaque, non-reversible payment card token from card metadata (last4 digits). Safe to store, never the actual card number.",
+  "category": "ecommerce",
+  "tags": ["card", "token", "payment", "tokenize", "security"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "last4": { "type": "string", "description": "Last 4 digits of card" },
+      "card_type": { "type": "string", "default": "unknown" },
+      "expiry": { "type": "string" },
+      "prefix": { "type": "string", "default": "tok" }
+    },
+    "required": ["last4"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "token": {},
+      "last4": {},
+      "card_type": {},
+      "created_at": {},
+      "error": {}
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "last4": "4242", "card_type": "visa" },
+    "output": { "ok": true, "token": "tok_abc123..." }
+  }
+}

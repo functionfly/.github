@@ -1,0 +1,42 @@
+{
+  "author": "functionfly",
+  "name": "retry-backoff",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Retry Backoff",
+  "description": "Calculate exponential (or other) backoff delay in milliseconds for retry logic.",
+  "category": "http",
+  "tags": ["retry", "backoff", "exponential", "delay", "resilience", "http"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "attempt": { "type": "integer", "description": "Zero-based attempt number (0 = first retry)", "minimum": 0 },
+      "base_delay": { "type": "number", "description": "Base delay in milliseconds", "default": 1000 },
+      "max_delay": { "type": "number", "description": "Maximum delay in milliseconds", "default": 30000 },
+      "multiplier": { "type": "number", "description": "Exponential multiplier", "default": 2.0 },
+      "jitter": { "type": "boolean", "description": "Add random jitter to prevent thundering herd", "default": true },
+      "strategy": { "type": "string", "description": "Backoff strategy", "default": "exponential", "enum": ["exponential", "linear", "constant", "fibonacci"] }
+    },
+    "required": ["attempt"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "attempt": { "type": "integer" },
+      "delay_ms": { "type": "integer" },
+      "strategy": { "type": "string" },
+      "jitter_applied": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 100,
+  "memory_mb": 64,
+  "example": {
+    "input": { "attempt": 3, "base_delay": 1000, "max_delay": 30000, "jitter": false },
+    "output": { "ok": true, "attempt": 3, "delay_ms": 8000, "strategy": "exponential", "jitter_applied": false }
+  }
+}

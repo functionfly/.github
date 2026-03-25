@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "is-xml",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is XML",
+  "description": "Validate whether a string is well-formed XML.",
+  "category": "validation",
+  "tags": ["validation", "xml", "format", "check", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "string", "description": "String to validate as XML" }
+    },
+    "required": ["value"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "value": { "type": "string" },
+      "result": { "type": "boolean" },
+      "root_tag": { "type": "string", "description": "Root element tag name" },
+      "parse_error": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 200,
+  "memory_mb": 64,
+  "example": {
+    "input": { "value": "<root><child>text</child></root>" },
+    "output": { "ok": true, "value": "<root><child>text</child></root>", "result": true, "root_tag": "root" }
+  }
+}
