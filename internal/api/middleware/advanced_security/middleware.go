@@ -312,6 +312,13 @@ func (asm *AdvancedSecurityMiddleware) DDoSProtection(next http.HandlerFunc) htt
 			return
 		}
 
+		// The coming-soon waitlist endpoint must be publicly accessible.
+		// Exempt it from bot/traffic blocking to avoid false positives.
+		if r.Method == http.MethodPost && r.URL.Path == "/v1/feedback" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		clientIP := getClientIP(r)
 
 		// Never block or track loopback (localhost) so local dev works
@@ -399,6 +406,12 @@ func (asm *AdvancedSecurityMiddleware) GeoBlocking(next http.HandlerFunc) http.H
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Skip for health checks so Fly, K8s, and load balancers always get 200
 		if r.URL.Path == "/health" || r.URL.Path == "/healthz" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Keep coming-soon waitlist publicly accessible.
+		if r.Method == http.MethodPost && r.URL.Path == "/v1/feedback" {
 			next.ServeHTTP(w, r)
 			return
 		}

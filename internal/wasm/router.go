@@ -34,6 +34,9 @@ const (
 	// RuntimeJavaScriptQuickJS represents QuickJS JavaScript runtime
 	RuntimeJavaScriptQuickJS RuntimeType = "javascript-quickjs"
 
+	// RuntimeRust represents Rust WASM (wasm32-wasi) runtime
+	RuntimeRust RuntimeType = "rust"
+
 	// RuntimeUnknown represents an unknown runtime
 	RuntimeUnknown RuntimeType = "unknown"
 )
@@ -42,7 +45,7 @@ const (
 func (r RuntimeType) IsValid() bool {
 	switch r {
 	case RuntimePython, RuntimePythonWASM, RuntimeJavaScript, RuntimeTypeScriptWASM,
-		RuntimePythonWasi, RuntimeJavaScriptQuickJS:
+		RuntimePythonWasi, RuntimeJavaScriptQuickJS, RuntimeRust:
 		return true
 	default:
 		return false
@@ -224,6 +227,8 @@ func RuntimeTypeFromString(s string) RuntimeType {
 		return RuntimePythonWasi
 	case "javascript-quickjs", "quickjs":
 		return RuntimeJavaScriptQuickJS
+	case "rust", "rs":
+		return RuntimeRust
 	default:
 		return RuntimeUnknown
 	}

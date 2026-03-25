@@ -38,10 +38,14 @@ func (f *RegistryFunction) ToInfo(version *RegistryFunctionVersion) map[string]i
 
 // ToInfoWithRating converts function to info with optional rating data
 func (f *RegistryFunction) ToInfoWithRating(version *RegistryFunctionVersion, rating *RegistryFunctionRating) map[string]interface{} {
+	versionStr := ""
+	if version != nil {
+		versionStr = version.Version
+	}
 	info := map[string]interface{}{
 		"author":         f.Author,
 		"name":           f.Name,
-		"version":        version.Version,
+		"version":        versionStr,
 		"visibility":     f.Visibility,
 		"price_per_call": f.PricePerCall,
 		"reliability":    f.ReliabilityScore,

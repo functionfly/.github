@@ -50,7 +50,7 @@ func NewService(repo Repository, db *storage.PostgresDB, emailSvc email.Service,
 
 	// Initialize queue and dispatcher
 	s.queue = NewQueue(repo, logger)
-	s.dispatcher = NewDispatcher(s.channels, repo, logger)
+	s.dispatcher = NewDispatcher(s.channels, repo, db, logger)
 	s.templates = NewTemplateEngine(repo)
 
 	return s
@@ -130,6 +130,48 @@ func (s *Service) SendWelcome(ctx context.Context, userID uuid.UUID) error {
 		Body:     "We're glad you're here. Deploy your first function or explore the docs to get started.",
 		Channels: []string{ChannelInApp},
 		Priority: PriorityNormal,
+	})
+	return err
+}
+
+// SendWalletTopUp notifies a user after credits are added to an agent wallet.
+func (s *Service) SendWalletTopUp(ctx context.Context, userID uuid.UUID, agentID string, amountUSD, newBalanceUSD float64) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     TypeBillingWalletToppedUp,
+		Category: CategoryBilling,
+		Title:    "Wallet Top-Up Successful",
+		Body:     fmt.Sprintf("Your wallet was topped up by $%.2f. New balance: $%.2f.", amountUSD, newBalanceUSD),
+		Data: JSONMap{
+			"agent_id":        agentID,
+			"amount_usd":      amountUSD,
+			"new_balance_usd": newBalanceUSD,
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityNormal,
+	})
+	return err
+}
+
+// SendWalletLowBalance notifies a user when wallet balance drops below threshold.
+func (s *Service) SendWalletLowBalance(ctx context.Context, userID uuid.UUID, agentID string, balanceUSD, thresholdUSD float64) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     TypeBillingWalletLowBalance,
+		Category: CategoryBilling,
+		Title:    "Low Wallet Balance",
+		Body: fmt.Sprintf(
+			"Wallet balance is low ($%.2f). It is now at or below your alert threshold of $%.2f.",
+			balanceUSD,
+			thresholdUSD,
+		),
+		Data: JSONMap{
+			"agent_id":      agentID,
+			"balance_usd":   balanceUSD,
+			"threshold_usd": thresholdUSD,
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityHigh,
 	})
 	return err
 }
@@ -376,19 +418,26 @@ func (q *Queue) worker(dispatcher *Dispatcher) {
 	}
 }
 
+// userLookup is the minimal interface the Dispatcher needs to resolve full user details.
+type userLookup interface {
+	GetUserByID(userID uuid.UUID) (*storage.User, error)
+}
+
 // Dispatcher handles notification delivery to channels
 type Dispatcher struct {
-	channels map[string]Channel
-	repo     Repository
-	logger   *logrus.Logger
+	channels   map[string]Channel
+	repo       Repository
+	userLookup userLookup
+	logger     *logrus.Logger
 }
 
 // NewDispatcher creates a new dispatcher
-func NewDispatcher(channels map[string]Channel, repo Repository, logger *logrus.Logger) *Dispatcher {
+func NewDispatcher(channels map[string]Channel, repo Repository, ul userLookup, logger *logrus.Logger) *Dispatcher {
 	return &Dispatcher{
-		channels: channels,
-		repo:     repo,
-		logger:   logger,
+		channels:   channels,
+		repo:       repo,
+		userLookup: ul,
+		logger:     logger,
 	}
 }
 
@@ -399,11 +448,14 @@ func (d *Dispatcher) Dispatch(ctx context.Context, n *Notification) error {
 		return fmt.Errorf("failed to update notification status: %w", err)
 	}
 
-	// Get user from storage
-	// Note: We need to get the user to pass to channels
-	// For now, we'll create a minimal user struct with just the ID
-	user := &storage.User{
-		ID: n.UserID,
+	// Resolve full user details so channels (e.g. email) have the address, name, etc.
+	user := &storage.User{ID: n.UserID}
+	if d.userLookup != nil {
+		if u, err := d.userLookup.GetUserByID(n.UserID); err != nil {
+			d.logger.WithError(err).WithField("user_id", n.UserID).Warn("failed to look up user for notification dispatch; email channel will be skipped")
+		} else if u != nil {
+			user = u
+		}
 	}
 
 	successCount := 0

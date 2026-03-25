@@ -10,7 +10,9 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/payment"
+	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
+	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
@@ -42,11 +44,15 @@ type SubscriptionResponse struct {
 // Handler handles billing portal and subscription management (Stripe).
 type Handler struct {
 	repo storage.Repository
+	// Platform-fee wallet (registry credits balance for publish fees, etc.)
+	platformFees *storageregistry.PlatformFeeRepository
+	// State Fabric add-on entitlements (optional; nil returns empty entitlements).
+	sfAddons *statefabricaddons.Repository
 }
 
 // NewHandler creates a new billing handler.
-func NewHandler(repo storage.Repository) *Handler {
-	return &Handler{repo: repo}
+func NewHandler(repo storage.Repository, platformFees *storageregistry.PlatformFeeRepository, sfAddons *statefabricaddons.Repository) *Handler {
+	return &Handler{repo: repo, platformFees: platformFees, sfAddons: sfAddons}
 }
 
 // CreatePortalSessionRequest is the request body for creating a billing portal session.
@@ -239,6 +245,10 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 		writeJSONError(w, http.StatusNotFound, "No subscription found")
 		return
 	}
+	if subscription == nil {
+		writeJSONError(w, http.StatusNotFound, "No subscription found")
+		return
+	}
 
 	// Get tenant to access Stripe customer ID for payment method info
 	tenant, err := h.repo.GetTenantByID(claims.TenantID)
@@ -265,11 +275,15 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Convert storage.Subscription to response format
+	// Convert storage.Subscription to response format (PricingTier may be nil if tier was deleted or not loaded)
+	plan := ""
+	if subscription.PricingTier != nil {
+		plan = subscription.PricingTier.Name
+	}
 	response := SubscriptionResponse{
 		ID:                   subscription.ID,
 		TenantID:             subscription.TenantID,
-		Plan:                 subscription.PricingTier.Name,
+		Plan:                 plan,
 		Status:               subscription.Status,
 		StripeSubscriptionID: subscription.ID.String(), // Use subscription ID as reference
 		CurrentPeriodStart:   &subscription.CurrentPeriodStart,

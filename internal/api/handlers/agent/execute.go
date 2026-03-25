@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/agent/attribution"
@@ -11,6 +13,7 @@ import (
 	agentquota "github.com/functionfly/functionfly/internal/agent/quota"
 	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/paperclip/costbridge"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -148,6 +151,19 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "FUNCTION_NOT_FOUND", fmt.Sprintf("function %s/%s not found", author, name))
 		return
 	}
+	chargeUSD := fn.PricePerCall
+
+	if chargeUSD > 0 {
+		controls, controlsErr := h.billingCtrl.GetOrCreateControls(r.Context(), agentID)
+		if controlsErr != nil {
+			writeError(w, http.StatusInternalServerError, "BILLING_CONTROLS_FAILED", "failed to load billing controls")
+			return
+		}
+		if controls.CreditBalanceUSD < chargeUSD {
+			writeError(w, http.StatusPaymentRequired, "INSUFFICIENT_CREDIT_BALANCE", fmt.Sprintf("insufficient balance: need $%.4f", chargeUSD))
+			return
+		}
+	}
 
 	fnVersion, err := h.registryRepo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
@@ -165,11 +181,64 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 
 	latencyMs := int(time.Since(execStart).Milliseconds())
 	outcome := attribution.OutcomeSuccess
+	executionCostUSD := 0.0
 	var errorCode *string
 	if execErr != nil {
 		outcome = attribution.OutcomeError
 		code := execErr.Error()
 		errorCode = &code
+	} else {
+		executionCostUSD = chargeUSD
+
+		if chargeUSD > 0 {
+			consumeUpdate, consumeErr := h.billingCtrl.ConsumeCredits(r.Context(), agentID, chargeUSD)
+			if consumeErr != nil {
+				logrus.WithError(consumeErr).WithFields(logrus.Fields{
+					"agent_id":   agentID,
+					"execution":  executionID,
+					"charge_usd": chargeUSD,
+				}).Warn("failed to consume credits after execution")
+				writeError(w, http.StatusPaymentRequired, "CREDIT_CONSUME_FAILED", consumeErr.Error())
+				return
+			}
+
+			lowBalanceThreshold := walletLowBalanceThresholdUSD()
+			if h.notificationSvc != nil &&
+				consumeUpdate != nil &&
+				consumeUpdate.PreviousUSD > lowBalanceThreshold &&
+				consumeUpdate.CurrentUSD <= lowBalanceThreshold {
+				userIDs, usersErr := h.userRepo.ListUserIDsByTenant(r.Context(), tenantID)
+				if usersErr != nil {
+					logrus.WithError(usersErr).WithField("tenant_id", tenantID).Warn("failed to list tenant users for low-balance notification")
+				} else if len(userIDs) > 0 {
+					err = h.notificationSvc.Broadcast(r.Context(), notification.BroadcastRequest{
+						UserIDs:  userIDs,
+						Type:     notification.TypeBillingWalletLowBalance,
+						Category: notification.CategoryBilling,
+						Title:    "Low Wallet Balance",
+						Body: fmt.Sprintf(
+							"Wallet balance for agent %s is low ($%.2f). It is now at or below your alert threshold of $%.2f.",
+							agentID,
+							consumeUpdate.CurrentUSD,
+							lowBalanceThreshold,
+						),
+						Data: notification.JSONMap{
+							"agent_id":      agentID,
+							"balance_usd":   consumeUpdate.CurrentUSD,
+							"threshold_usd": lowBalanceThreshold,
+						},
+						Channels: []string{notification.ChannelInApp, notification.ChannelEmail},
+						Priority: notification.PriorityHigh,
+					})
+					if err != nil {
+						logrus.WithError(err).WithFields(logrus.Fields{
+							"tenant_id": tenantID,
+							"agent_id":  agentID,
+						}).Warn("failed to broadcast low-balance notification")
+					}
+				}
+			}
+		}
 	}
 
 	// 9. Record attribution
@@ -189,6 +258,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		InputHash:   attribution.HashInput(req.Input),
 		OutputHash:  outputHash,
 		LatencyMs:   latencyMs,
+		CostUSD:     executionCostUSD,
 		Outcome:     outcome,
 		ErrorCode:   errorCode,
 		Timestamp:   time.Now(),
@@ -207,9 +277,9 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	if record.CostUSD >= 0 {
 		cfg := costbridge.FromEnv()
 		_ = costbridge.ReportCost(r.Context(), cfg, record.CostUSD, map[string]string{
-			"execution_id":  executionID,
-			"function_uri":  record.FunctionURI,
-			"agent_id":      agentID,
+			"execution_id": executionID,
+			"function_uri": record.FunctionURI,
+			"agent_id":     agentID,
 		})
 	}
 
@@ -315,4 +385,18 @@ func (h *Handler) executeViaRegistry(r *http.Request, author, name, version stri
 
 func generateExecutionID() string {
 	return "exec_" + fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+func walletLowBalanceThresholdUSD() float64 {
+	const defaultThreshold = 5.0
+	raw := os.Getenv("AGENT_WALLET_LOW_BALANCE_USD")
+	if raw == "" {
+		return defaultThreshold
+	}
+
+	parsed, err := strconv.ParseFloat(raw, 64)
+	if err != nil || parsed <= 0 {
+		return defaultThreshold
+	}
+	return parsed
 }

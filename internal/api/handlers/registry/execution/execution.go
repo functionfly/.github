@@ -22,7 +22,7 @@ func (h *Handler) createExecuteFunction(fnVersion *storage.RegistryFunctionVersi
 		// Check if function has WASM binary (local execution)
 		if len(fnVersion.WasmBinary) > 0 {
 			// Execute using sandbox executor - all runtimes use the same path
-			output, execErr := executeLocallyWithLimits(fnVersion, execReq.Input, maxMemoryMB, maxCPUTimeMs)
+			output, execErr := executeLocallyWithLimits(fnVersion, execReq.Input, maxMemoryMB, maxCPUTimeMs, fn, h.BackendRepo)
 			if execErr != nil {
 				if execError, ok := execErr.(*ExecutionError); ok {
 					*resourceUsage = execError.ResourceUsage
@@ -33,7 +33,7 @@ func (h *Handler) createExecuteFunction(fnVersion *storage.RegistryFunctionVersi
 		} else if fnVersion.SourceCode.Valid && fnVersion.SourceCode.String != "" {
 			// Lazy bundling: bundle source code to WASM at execution time
 			// This is triggered when publish didn't bundle (for faster publish)
-			return executeWithLazyBundling(fnVersion, execReq.Input, maxMemoryMB, maxCPUTimeMs, resourceUsage)
+			return executeWithLazyBundling(fnVersion, execReq.Input, maxMemoryMB, maxCPUTimeMs, resourceUsage, fn, h.BackendRepo)
 		} else if fnVersion.BackendID != nil {
 			// Execute via specific assigned backend
 			backend, err := h.BackendRepo.GetBackendByID(*fnVersion.BackendID)

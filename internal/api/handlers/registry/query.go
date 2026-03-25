@@ -117,6 +117,32 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(info)
 }
 
+// buildRegistryFunctionInfos loads latest versions and ratings in two queries instead of 2N per-function calls.
+func (h *Handler) buildRegistryFunctionInfos(functions []storageregistry.RegistryFunction) ([]map[string]interface{}, error) {
+	if len(functions) == 0 {
+		return nil, nil
+	}
+	ids := make([]uuid.UUID, len(functions))
+	for i := range functions {
+		ids[i] = functions[i].ID
+	}
+	versions, err := h.repo.ListLatestVersionsForFunctions(ids)
+	if err != nil {
+		return nil, err
+	}
+	ratings, err := h.repo.GetRatingsByFunctionIDs(ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]map[string]interface{}, len(functions))
+	for i, fn := range functions {
+		v := versions[fn.ID]
+		rating := ratings[fn.ID]
+		out[i] = fn.ToInfoWithRating(v, rating)
+	}
+	return out, nil
+}
+
 // HandleListFunctions handles listing functions
 func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -137,12 +163,11 @@ func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var funcInfos []map[string]interface{}
-	for _, fn := range functions {
-		fnVersion, _ := h.repo.GetLatestFunctionVersion(fn.ID)
-		// Get rating for trust score
-		rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
-		funcInfos = append(funcInfos, fn.ToInfoWithRating(fnVersion, rating))
+	funcInfos, err := h.buildRegistryFunctionInfos(functions)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to enrich function list")
+		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		return
 	}
 
 	response := functionregistry.ListFunctionsResponse{
@@ -180,12 +205,11 @@ func (h *Handler) HandleSearchFunctions(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var funcInfos []map[string]interface{}
-	for _, fn := range functions {
-		fnVersion, _ := h.repo.GetLatestFunctionVersion(fn.ID)
-		// Get rating for trust score
-		rating, _ := h.repo.GetRatingByFunctionID(fn.ID)
-		funcInfos = append(funcInfos, fn.ToInfoWithRating(fnVersion, rating))
+	funcInfos, err := h.buildRegistryFunctionInfos(functions)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to enrich search results")
+		http.Error(w, "Failed to search functions", http.StatusInternalServerError)
+		return
 	}
 
 	response := functionregistry.ListFunctionsResponse{

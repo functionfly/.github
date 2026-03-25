@@ -32,23 +32,38 @@ func NewDenoDeploymentClient(apiToken, projectID string) *DenoDeploymentClient {
 }
 
 // Deploy uploads a deployment to Deno Deploy
-func (c *DenoDeploymentClient) Deploy(ctx context.Context, scriptContent []byte, domain string, env map[string]string) (*common.DeploymentResult, error) {
-	// Create deployment request
-	deploymentData := map[string]interface{}{
-		"url":  "data:text/typescript;base64," + base64.StdEncoding.EncodeToString(scriptContent),
-		"envs": env,
+// For WASM artifacts, Deno can run them natively
+func (c *DenoDeploymentClient) Deploy(ctx context.Context, scriptContent []byte, domain string, env map[string]string, runtime common.Runtime) (*common.DeploymentResult, error) {
+	// Determine how to deploy based on runtime type
+	var payload map[string]interface{}
+
+	switch runtime {
+	case common.RuntimeWASM, common.RuntimeRust:
+		// Deno can natively run WASM - create a loader script
+		wasmLoader := createDenoWASMLoader(scriptContent)
+		encodedScript := base64.StdEncoding.EncodeToString([]byte(wasmLoader))
+		payload = map[string]interface{}{
+			"url":  "data:text/typescript;base64," + encodedScript,
+			"envs": env,
+		}
+	default:
+		// Standard JavaScript/TypeScript deployment
+		encodedScript := base64.StdEncoding.EncodeToString(scriptContent)
+		payload = map[string]interface{}{
+			"url":  "data:text/typescript;base64," + encodedScript,
+			"envs": env,
+		}
 	}
 
 	if domain != "" {
-		deploymentData["domains"] = []string{domain}
+		payload["domains"] = []string{domain}
 	}
 
-	jsonData, err := json.Marshal(deploymentData)
+	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal deployment data: %w", err)
 	}
 
-	// Use Deno Deploy API
 	deployURL := fmt.Sprintf("https://dash.deno.com/api/projects/%s/deployments", c.projectID)
 
 	req, err := http.NewRequestWithContext(ctx, "POST", deployURL, bytes.NewReader(jsonData))
@@ -82,7 +97,6 @@ func (c *DenoDeploymentClient) Deploy(ctx context.Context, scriptContent []byte,
 		return nil, fmt.Errorf("failed to decode deployment response: %w", err)
 	}
 
-	// Map status to common status
 	var status common.DeploymentStatus
 	switch deployResult.Status {
 	case "success", "succeeded":
@@ -100,12 +114,36 @@ func (c *DenoDeploymentClient) Deploy(ctx context.Context, scriptContent []byte,
 		Status:       status,
 		Message:      deployResult.Message,
 		Metadata: map[string]interface{}{
-			"url":     deployResult.URL,
-			"domain":  deployResult.Domain,
-			"project": c.projectID,
+			"url":         deployResult.URL,
+			"domain":      deployResult.Domain,
+			"project":     c.projectID,
+			"runtime":     string(runtime),
 			"deployed_at": time.Now().Format(time.RFC3339),
 		},
 	}, nil
+}
+
+// createDenoWASMLoader creates a Deno TypeScript loader for WASM modules
+func createDenoWASMLoader(wasmContent []byte) string {
+	encodedWASM := base64.StdEncoding.EncodeToString(wasmContent)
+	return fmt.Sprintf(`const wasmModule = Uint8Array.from(atob("%s"), c => c.charCodeAt(0));
+let wasmInstance = null;
+async function initWASM() {
+  if (!wasmInstance) {
+    const module = new WebAssembly.Module(wasmModule);
+    wasmInstance = await WebAssembly.instantiate(module, {wasi_snapshot_preview1:{fd_write:()=>0,proc_exit:()=>{throw new Error("exit")}}});
+  }
+  return wasmInstance.exports;
+}
+Deno.serve(async (req) => {
+  try {
+    const exports = await initWASM();
+    if (exports._start) exports._start();
+    return new Response("WASM on Deno: OK", {headers:{"Content-Type":"text/plain"}});
+  } catch (e) {
+    return new Response("Error: "+e.message, {status:500});
+  }
+});`, encodedWASM)
 }
 
 // SetEnvironmentVariables sets environment variables for a deployment
@@ -246,9 +284,9 @@ func (c *DenoDeploymentClient) GetDeploymentStatus(ctx context.Context, deployme
 }
 
 // Rollback redeploys a previous version
-func (c *DenoDeploymentClient) Rollback(ctx context.Context, scriptContent []byte, domain string, env map[string]string) (*common.DeploymentResult, error) {
+func (c *DenoDeploymentClient) Rollback(ctx context.Context, scriptContent []byte, domain string, env map[string]string, runtime common.Runtime) (*common.DeploymentResult, error) {
 	// Rollback is essentially redeploying with the previous artifact
-	result, err := c.Deploy(ctx, scriptContent, domain, env)
+	result, err := c.Deploy(ctx, scriptContent, domain, env, runtime)
 	if err != nil {
 		return nil, err
 	}

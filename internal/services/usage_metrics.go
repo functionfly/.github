@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage/state"
@@ -79,6 +80,7 @@ type AggregationService struct {
 	config   *AggregationConfig
 	logger   *logrus.Logger
 	stopChan chan struct{}
+	stopOnce sync.Once
 }
 
 // NewAggregationService creates a new usage metrics aggregation service
@@ -132,9 +134,11 @@ func (s *AggregationService) StartAggregationRoutine(ctx context.Context) {
 	}()
 }
 
-// Stop stops the aggregation service
+// Stop stops the aggregation service (safe if Shutdown is invoked more than once).
 func (s *AggregationService) Stop() {
-	close(s.stopChan)
+	s.stopOnce.Do(func() {
+		close(s.stopChan)
+	})
 }
 
 // AggregateUsage performs the aggregation of usage metrics

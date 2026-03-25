@@ -43,15 +43,6 @@ func (f *CodeGeneratorFactory) CreateGenerator() (generation.CodeGenerator, erro
 	}
 }
 
-// MustCreateGenerator creates the appropriate CodeGenerator and panics on error
-func (f *CodeGeneratorFactory) MustCreateGenerator() generation.CodeGenerator {
-	gen, err := f.CreateGenerator()
-	if err != nil {
-		panic(fmt.Sprintf("failed to create generator: %v", err))
-	}
-	return gen
-}
-
 // CreateOpenRouterGenerator creates an OpenRouter-based generator
 // This is used when Mode is InferenceModeAPI
 func (f *CodeGeneratorFactory) CreateOpenRouterGenerator(apiKey string) *generation.OpenRouterClient {

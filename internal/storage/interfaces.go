@@ -27,11 +27,16 @@ type Repository interface {
 	GetUserByVerificationToken(token string) (*User, error)
 	GetUserBySocialProvider(provider, providerID string) (*User, error)
 	ListUsers() ([]*User, error)
+	ListUserIDsByTenant(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
+	ListActiveUsersByTenant(ctx context.Context, tenantID uuid.UUID) ([]*User, error)
+	CountActiveUsersByTenant(ctx context.Context, tenantID uuid.UUID) (int, error)
 	UpdateUser(ctx context.Context, userID uuid.UUID, updates map[string]interface{}) (*User, error)
 	UpdateUserEmailVerification(ctx context.Context, userID uuid.UUID, verified bool, token *string, expiresAt *time.Time) error
 	UpdateUserProviderData(userID uuid.UUID, providerData map[string]interface{}) error
 	UpdateUserSettings(userID uuid.UUID, settings map[string]interface{}) error
 	GetUserSettings(userID uuid.UUID) (map[string]interface{}, error)
+	DeactivateUser(ctx context.Context, userID, deactivatedBy uuid.UUID) error
+	ReactivateUser(ctx context.Context, userID uuid.UUID) error
 	// MFA operations
 	UpdateUserMFA(userID uuid.UUID, secret *string, enabled bool, backupCodes []string, lastUsed *time.Time) error
 	UpdateUserMFAEnabled(userID uuid.UUID, enabled bool) error
@@ -105,10 +110,49 @@ type Repository interface {
 	GetCouponByCode(code string) (*Coupon, error)
 	RedeemCoupon(ctx context.Context, couponID, tenantID uuid.UUID, subscriptionID *uuid.UUID) (*CouponRedemption, error)
 
+	// Revenue System Phase 1 - Trust Layer Monetization
+	// Verification Fees
+	GetVerificationFeeByLevel(level string) (*VerificationFee, error)
+	ListVerificationFees() ([]*VerificationFee, error)
+
+	// Function Verification Payments
+	CreateFunctionVerificationPayment(ctx context.Context, payment *FunctionVerificationPayment) error
+	GetFunctionVerificationPaymentByID(id uuid.UUID) (*FunctionVerificationPayment, error)
+	UpdateFunctionVerificationPaymentStatus(ctx context.Context, id uuid.UUID, status string, stripePIID *string) error
+	GetFunctionVerificationPaymentsByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*FunctionVerificationPayment, error)
+
+	// Publisher Earnings
+	CreatePublisherEarning(ctx context.Context, earning *PublisherEarning) error
+	GetPublisherEarningsByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*PublisherEarning, error)
+	GetPublisherEarningsSummary(ctx context.Context, tenantID uuid.UUID) (pending, available, withdrawn int, err error)
+	GetPublisherEarningsByPeriod(ctx context.Context, tenantID uuid.UUID, year int) ([]*PublisherEarning, error)
+
+	// Agent Subscriptions
+	CreateAgentSubscription(ctx context.Context, sub *AgentSubscription) error
+	GetAgentSubscriptionByAgentID(ctx context.Context, agentID uuid.UUID) (*AgentSubscription, error)
+	GetAgentSubscriptionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*AgentSubscription, error)
+	UpdateAgentSubscriptionStatus(ctx context.Context, id uuid.UUID, status string) error
+
+	// Agent Usage
+	CreateAgentUsage(ctx context.Context, usage *AgentUsage) error
+	GetAgentUsageByAgentID(ctx context.Context, agentID uuid.UUID, limit, offset int) ([]*AgentUsage, error)
+	GetAgentUsageSummary(ctx context.Context, agentID uuid.UUID) (totalCalls, billableCalls, overageCalls, estimatedCost int, err error)
+
+	// Platform Fees
+	CreatePlatformFee(ctx context.Context, fee *PlatformFee) error
+	GetPlatformFeesByPeriod(ctx context.Context, year, month int) ([]*PlatformFee, error)
+	GetPlatformFeesSummary(ctx context.Context) (totalCollected, totalRefunded, totalPaidOut int, err error)
+
+	// Pricing Tiers Extended (with Moat fields)
+	ListPricingTiersExtended() ([]*PricingTierExtended, error)
+	GetPricingTierExtendedByID(id uuid.UUID) (*PricingTierExtended, error)
+
 	// App operations
 	CreateApp(name, slug string, tenantID uuid.UUID) (*App, error)
 	GetAppByID(id uuid.UUID) (*App, error)
 	GetAppBySlug(slug string) (*App, error)
+	// GetAppBySlugAndTenant returns an app by slug scoped to the tenant (dashboard / tenant APIs).
+	GetAppBySlugAndTenant(slug string, tenantID uuid.UUID) (*App, error)
 	ListAppsByTenant(tenantID uuid.UUID) ([]*App, error)
 
 	// Backend operations
@@ -190,7 +234,7 @@ type Repository interface {
 	CreateFeedback(feedback *Feedback) (*Feedback, error)
 	GetFeedbackByID(id uuid.UUID) (*Feedback, error)
 	GetFeedbackByUser(userID *uuid.UUID, userEmail *string, limit, offset int) ([]Feedback, error)
-	ListFeedback(limit, offset int, statusFilter *string) ([]Feedback, error)
+	ListFeedback(limit, offset int, statusFilter *string, typeFilter *string) ([]Feedback, error)
 	UpdateFeedbackStatus(id uuid.UUID, status string) error
 	CreateFeedbackAttachment(attachment *FeedbackAttachment) (*FeedbackAttachment, error)
 	GetFeedbackAttachments(feedbackID uuid.UUID) ([]FeedbackAttachment, error)
@@ -334,6 +378,7 @@ type Repository interface {
 	UpdateProviderStatus(providerID string, status string) error
 	UpdateProvider(ctx context.Context, providerID string, updates map[string]interface{}) (*Provider, error)
 	ShareProviderWithTeam(providerID string, teamID string) error
+	DeleteProvider(ctx context.Context, providerID string, userID uuid.UUID) error
 
 	// Encryption operations
 	EncryptField(value string) (string, error)

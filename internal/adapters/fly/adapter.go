@@ -481,3 +481,179 @@ func (a *FlyAdapter) ListSecrets(ctx context.Context, providerConfig map[string]
 		},
 	}, nil
 }
+
+// RotateSecrets implements ExtendedDeploymentAdapter - rotates secrets for a Fly.io app
+// This creates new secrets and removes old ones
+func (a *FlyAdapter) RotateSecrets(ctx context.Context, providerConfig map[string]interface{}, newSecrets map[string]string) (*common.DeploymentResult, error) {
+	var apiToken, appName string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := providerConfig["app_name"].(string); ok {
+			appName = name
+		}
+	}
+	if apiToken == "" || appName == "" {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "missing required Fly.io config: api_token, app_name",
+		}, fmt.Errorf("missing required Fly.io config: api_token, app_name")
+	}
+
+	client := NewFlyDeploymentClient(apiToken)
+
+	// Get current secrets
+	oldSecrets, err := client.ListSecrets(ctx, appName)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to list current secrets: %v", err),
+		}, fmt.Errorf("failed to list current secrets: %w", err)
+	}
+
+	// Set new secrets
+	if err := client.SetSecrets(ctx, appName, newSecrets); err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to set new secrets: %v", err),
+		}, fmt.Errorf("failed to set new secrets: %w", err)
+	}
+
+	// Remove old secrets that are not in the new set
+	removedCount := 0
+	for secretName := range oldSecrets {
+		if _, exists := newSecrets[secretName]; !exists {
+			if err := client.UnsetSecret(ctx, appName, secretName); err != nil {
+				// Log but don't fail - secret might have been removed already
+				continue
+			}
+			removedCount++
+		}
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID: appName,
+		Status:       common.DeploymentStatusSuccess,
+		Message:      fmt.Sprintf("Successfully rotated secrets for app %s (set %d new, removed %d old)", appName, len(newSecrets), removedCount),
+		Metadata: map[string]interface{}{
+			"app_name":        appName,
+			"new_secrets":     len(newSecrets),
+			"removed_secrets": removedCount,
+			"rotated_at":      time.Now().Format(time.RFC3339),
+		},
+	}, nil
+}
+
+// GetAppInfo implements ExtendedDeploymentAdapter - gets app information from Fly.io
+func (a *FlyAdapter) GetAppInfo(ctx context.Context, providerConfig map[string]interface{}) (*common.DeploymentResult, error) {
+	var apiToken, appName string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := providerConfig["app_name"].(string); ok {
+			appName = name
+		}
+	}
+	if apiToken == "" || appName == "" {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "missing required Fly.io config: api_token, app_name",
+		}, fmt.Errorf("missing required Fly.io config: api_token, app_name")
+	}
+
+	client := NewFlyDeploymentClient(apiToken)
+	appInfo, err := client.GetAppInfo(ctx, appName)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to get app info: %v", err),
+		}, fmt.Errorf("failed to get app info: %w", err)
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID: appName,
+		Status:       common.DeploymentStatusSuccess,
+		Message:      fmt.Sprintf("Retrieved app info for %s", appName),
+		Metadata:     appInfo,
+	}, nil
+}
+
+// ListAppRegions implements ExtendedDeploymentAdapter - lists regions where app has machines
+func (a *FlyAdapter) ListAppRegions(ctx context.Context, providerConfig map[string]interface{}) (*common.DeploymentResult, error) {
+	var apiToken, appName string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := providerConfig["app_name"].(string); ok {
+			appName = name
+		}
+	}
+	if apiToken == "" || appName == "" {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "missing required Fly.io config: api_token, app_name",
+		}, fmt.Errorf("missing required Fly.io config: api_token, app_name")
+	}
+
+	client := NewFlyDeploymentClient(apiToken)
+	regions, err := client.ListAppRegions(ctx, appName)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to list app regions: %v", err),
+		}, fmt.Errorf("failed to list app regions: %w", err)
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID: appName,
+		Status:       common.DeploymentStatusSuccess,
+		Message:      fmt.Sprintf("Found %d regions for app %s", len(regions), appName),
+		Metadata: map[string]interface{}{
+			"app_name":      appName,
+			"regions":       regions,
+			"regions_count": len(regions),
+		},
+	}, nil
+}
+
+// ScaleApp implements ExtendedDeploymentAdapter - scales app to specified number of machines in a region
+func (a *FlyAdapter) ScaleApp(ctx context.Context, providerConfig map[string]interface{}, region string, count int) (*common.DeploymentResult, error) {
+	var apiToken, appName string
+	if providerConfig != nil {
+		if token, ok := providerConfig["api_token"].(string); ok {
+			apiToken = token
+		}
+		if name, ok := providerConfig["app_name"].(string); ok {
+			appName = name
+		}
+	}
+	if apiToken == "" || appName == "" {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "missing required Fly.io config: api_token, app_name",
+		}, fmt.Errorf("missing required Fly.io config: api_token, app_name")
+	}
+
+	client := NewFlyDeploymentClient(apiToken)
+	if err := client.ScaleApp(ctx, appName, region, count); err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to scale app: %v", err),
+		}, fmt.Errorf("failed to scale app: %w", err)
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID: appName,
+		Status:       common.DeploymentStatusSuccess,
+		Message:      fmt.Sprintf("Scaled app %s to %d machines in region %s", appName, count, region),
+		Metadata: map[string]interface{}{
+			"app_name":    appName,
+			"region":      region,
+			"target_count": count,
+			"scaled_at":   time.Now().Format(time.RFC3339),
+		},
+	}, nil
+}

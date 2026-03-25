@@ -20,23 +20,37 @@ import (
 
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/manifest"
+	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
 )
 
+// EnterpriseExecutionConfig holds config for Enterprise tier (MicroVM) execution
+type EnterpriseExecutionConfig struct {
+	Enabled                bool
+	OrchestratorURL        string
+	Tier                   string // "medium" or "high" for enterprise
+	TenantID               string
+	PythonPackages         []string
+	NetworkWhitelist       []string
+	StrictNetworkWhitelist bool
+	PackageCachingEnabled  bool
+}
+
 // SandboxExecutor handles execution of WASM modules in a sandboxed environment
 // It communicates with the local runtime via HTTP
 type SandboxExecutor struct {
-	runtimePath string
-	tempDir     string
-	runtimePort int
-	runtimeCmd  *exec.Cmd
-	httpClient  *http.Client
-	runtimeMu   sync.Mutex
-	isRunning   bool
-	wasmPath    string
-	wasmHash    string // SHA-256 hash of the loaded WASM binary
-	fnVersion   *storage.RegistryFunctionVersion
+	runtimePath    string
+	tempDir        string
+	runtimePort    int
+	runtimeCmd     *exec.Cmd
+	httpClient     *http.Client
+	runtimeMu      sync.Mutex
+	isRunning      bool
+	wasmPath       string
+	wasmHash       string // SHA-256 hash of the loaded WASM binary
+	fnVersion      *storage.RegistryFunctionVersion
+	enterpriseConf *EnterpriseExecutionConfig
 }
 
 // hashWasmBinary computes a hex-encoded SHA-256 hash of the given WASM bytes.
@@ -126,11 +140,12 @@ func (se *SandboxExecutor) stopRuntime() {
 
 // ExecuteFunction executes a function version with the given input
 func (se *SandboxExecutor) ExecuteFunction(fnVersion *storage.RegistryFunctionVersion, input []byte, timeoutMs int) ([]byte, error) {
-	return se.ExecuteFunctionWithLimits(fnVersion, input, timeoutMs, fnVersion.MemoryMB, timeoutMs)
+	return se.ExecuteFunctionWithLimits(fnVersion, input, timeoutMs, fnVersion.MemoryMB, timeoutMs, nil)
 }
 
-// ExecuteFunctionWithLimits executes a function version with specific resource limits
-func (se *SandboxExecutor) ExecuteFunctionWithLimits(fnVersion *storage.RegistryFunctionVersion, input []byte, timeoutMs, maxMemoryMB, maxCPUTimeMs int) ([]byte, error) {
+// ExecuteFunctionWithLimits executes a function version with specific resource limits.
+// enterpriseConf is optional; when set for python-microvm runtime, enables MicroVM execution.
+func (se *SandboxExecutor) ExecuteFunctionWithLimits(fnVersion *storage.RegistryFunctionVersion, input []byte, timeoutMs, maxMemoryMB, maxCPUTimeMs int, enterpriseConf *EnterpriseExecutionConfig) ([]byte, error) {
 	if len(fnVersion.WasmBinary) == 0 {
 		return nil, fmt.Errorf("function version has no WASM binary")
 	}
@@ -144,6 +159,8 @@ func (se *SandboxExecutor) ExecuteFunctionWithLimits(fnVersion *storage.Registry
 	needsRestart := !se.isRunning || se.wasmHash != incomingHash
 	currentWasmPath := se.wasmPath
 	se.runtimeMu.Unlock()
+
+	se.enterpriseConf = enterpriseConf
 
 	var wasmPath string
 	if needsRestart {
@@ -212,9 +229,11 @@ func (se *SandboxExecutor) ensureRuntimeRunning(ctx context.Context, wasmPath st
 	// The original language runtime (python, nodejs) is just metadata about the source
 	runtimeType := fnVersion.Runtime
 
-	// If we have a WASM binary, always use "wasm" runtime for execution
-	// The local runtime needs to know it's executing WASM, not Python/JS source
-	if len(fnVersion.WasmBinary) > 0 {
+	// If we have a WASM binary (magic bytes), use "wasm" runtime.
+	// For python-microvm, WasmBinary holds Python source - keep python-microvm.
+	if len(fnVersion.WasmBinary) >= 4 &&
+		fnVersion.WasmBinary[0] == 0x00 && fnVersion.WasmBinary[1] == 0x61 &&
+		fnVersion.WasmBinary[2] == 0x73 && fnVersion.WasmBinary[3] == 0x6D {
 		runtimeType = "wasm"
 	}
 
@@ -258,15 +277,61 @@ func (se *SandboxExecutor) ensureRuntimeRunning(ctx context.Context, wasmPath st
 		"original_runtime": fnVersion.Runtime,
 	}).Info("Starting local runtime HTTP server")
 
-	// Create the command
+	// Enterprise tier: add args for MicroVM when runtime is python-microvm (must be before exec.Command)
+	if se.enterpriseConf != nil && se.enterpriseConf.Enabled && fnVersion.Runtime == plans.RuntimePythonMicroVM {
+		args = append(args,
+			"--enterprise-enabled",
+			"--orchestrator-url", se.enterpriseConf.OrchestratorURL,
+			"--tier", se.enterpriseConf.Tier,
+		)
+		if se.enterpriseConf.TenantID != "" {
+			args = append(args, "--tenant-id", se.enterpriseConf.TenantID)
+		}
+		for _, pkg := range se.enterpriseConf.PythonPackages {
+			if strings.TrimSpace(pkg) != "" {
+				args = append(args, "--python-packages", pkg)
+			}
+		}
+		for _, host := range se.enterpriseConf.NetworkWhitelist {
+			if strings.TrimSpace(host) != "" {
+				args = append(args, "--network-whitelist", host)
+			}
+		}
+		if se.enterpriseConf.StrictNetworkWhitelist {
+			args = append(args, "--strict-network-whitelist")
+		}
+		if se.enterpriseConf.PackageCachingEnabled {
+			cacheDir := filepath.Join(se.tempDir, "package-cache")
+			_ = os.MkdirAll(cacheDir, 0o700)
+			args = append(args,
+				"--package-caching-enabled",
+				"--package-cache-dir", cacheDir,
+			)
+		}
+		logrus.WithFields(logrus.Fields{
+			"tenant_id":  se.enterpriseConf.TenantID,
+			"packages":   len(se.enterpriseConf.PythonPackages),
+			"net_wl_len": len(se.enterpriseConf.NetworkWhitelist),
+		}).Debug("Enterprise MicroVM execution enabled")
+	}
+
+	// Create the command (args must be complete above)
 	se.runtimeCmd = exec.CommandContext(ctx, se.runtimePath, args...)
 	se.runtimeCmd.Dir = se.tempDir
 
-	// Set environment variables for resource limits
-	se.runtimeCmd.Env = append(os.Environ(),
+	// Build subprocess environment: inherit host env, add resource limits, and
+	// forward the MicroVM API token so the local runtime can authenticate to the
+	// orchestrator without it appearing in the CLI args (which show up in ps/logs).
+	runtimeEnv := append(os.Environ(),
 		fmt.Sprintf("FUNCTIONFLY_MEMORY_LIMIT_MB=%d", maxMemoryMB),
 		fmt.Sprintf("FUNCTIONFLY_CPU_LIMIT_MS=%d", maxCPUTimeMs),
 	)
+	if se.enterpriseConf != nil && se.enterpriseConf.Enabled {
+		if tok := os.Getenv("FUNCTIONFLY_MICROVM_API_TOKEN"); tok != "" {
+			runtimeEnv = append(runtimeEnv, "FUNCTIONFLY_MICROVM_API_TOKEN="+tok)
+		}
+	}
+	se.runtimeCmd.Env = runtimeEnv
 
 	// Don't capture stdout/stderr to buffers - this can cause the process to block
 	// when the buffers fill up. Instead, let the process write to its own stdout/stderr.
@@ -472,12 +537,14 @@ func findLocalRuntime() (string, error) {
 
 // ExecuteLocally runs a registry function version locally (sandbox/WASM) with the given resource limits.
 // It is the exported entry point for use by flywheel and other callers that need to run registry functions.
+// Pass fn=nil, backendRepo=nil when tenant context is not available (enterprise MicroVM will be disabled).
 func ExecuteLocally(fnVersion *storage.RegistryFunctionVersion, input json.RawMessage, maxMemoryMB, maxCPUTimeMs int) (json.RawMessage, error) {
-	return executeLocallyWithLimits(fnVersion, input, maxMemoryMB, maxCPUTimeMs)
+	return executeLocallyWithLimits(fnVersion, input, maxMemoryMB, maxCPUTimeMs, nil, nil)
 }
 
-// executeLocallyWithLimits executes a function locally with specific resource limits
-func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input json.RawMessage, maxMemoryMB, maxCPUTimeMs int) (json.RawMessage, error) {
+// executeLocallyWithLimits executes a function locally with specific resource limits.
+// fn and backendRepo are optional; when provided and tenant has enterprise plan, enables MicroVM for python-microvm runtime.
+func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input json.RawMessage, maxMemoryMB, maxCPUTimeMs int, fn *storage.RegistryFunction, backendRepo storage.Repository) (json.RawMessage, error) {
 	// Create sandbox executor
 	executor, err := NewSandboxExecutor()
 	if err != nil {
@@ -505,7 +572,8 @@ func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input 
 		}
 	}
 
-	output, err := executor.ExecuteFunctionWithLimits(fnVersion, inputBytes, fnVersion.TimeoutMs, maxMemoryMB, maxCPUTimeMs)
+	enterpriseConf := buildEnterpriseConfig(fnVersion, fn, backendRepo)
+	output, err := executor.ExecuteFunctionWithLimits(fnVersion, inputBytes, fnVersion.TimeoutMs, maxMemoryMB, maxCPUTimeMs, enterpriseConf)
 	if err != nil {
 		if execErr, ok := err.(*ExecutionError); ok {
 			return nil, execErr
@@ -523,6 +591,92 @@ func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input 
 	return json.RawMessage(output), nil
 }
 
+// microvmManifestExtras parses optional Enterprise / Python fields from stored manifest JSON.
+// Supports both `{"function":{...}}` and flat manifests.
+type microvmManifestExtras struct {
+	Function *struct {
+		Python *struct {
+			Packages []string `json:"packages"`
+		} `json:"python"`
+		Enterprise *struct {
+			NetworkAllowlist         []string `json:"network_allowlist"`
+			PackageCacheEnabled      *bool    `json:"package_cache_enabled"`
+			StrictNetworkWhitelist   *bool    `json:"strict_network_whitelist"`
+		} `json:"enterprise"`
+	} `json:"function"`
+	Python *struct {
+		Packages []string `json:"packages"`
+	} `json:"python"`
+	Enterprise *struct {
+		NetworkAllowlist       []string `json:"network_allowlist"`
+		PackageCacheEnabled    *bool    `json:"package_cache_enabled"`
+		StrictNetworkWhitelist *bool    `json:"strict_network_whitelist"`
+	} `json:"enterprise"`
+}
+
+func parseMicroVMManifest(manifest json.RawMessage) (pkgs []string, net []string, pkgCache, strictNet bool) {
+	if len(manifest) == 0 {
+		return nil, nil, false, false
+	}
+	var m microvmManifestExtras
+	if err := json.Unmarshal(manifest, &m); err != nil {
+		return nil, nil, false, false
+	}
+	if m.Function != nil {
+		if m.Function.Python != nil && len(m.Function.Python.Packages) > 0 {
+			pkgs = append(pkgs, m.Function.Python.Packages...)
+		}
+		if m.Function.Enterprise != nil {
+			net = append(net, m.Function.Enterprise.NetworkAllowlist...)
+			if m.Function.Enterprise.PackageCacheEnabled != nil {
+				pkgCache = *m.Function.Enterprise.PackageCacheEnabled
+			}
+			if m.Function.Enterprise.StrictNetworkWhitelist != nil {
+				strictNet = *m.Function.Enterprise.StrictNetworkWhitelist
+			}
+		}
+	}
+	if m.Python != nil && len(m.Python.Packages) > 0 {
+		pkgs = append(pkgs, m.Python.Packages...)
+	}
+	if m.Enterprise != nil {
+		net = append(net, m.Enterprise.NetworkAllowlist...)
+		if m.Enterprise.PackageCacheEnabled != nil {
+			pkgCache = *m.Enterprise.PackageCacheEnabled
+		}
+		if m.Enterprise.StrictNetworkWhitelist != nil {
+			strictNet = *m.Enterprise.StrictNetworkWhitelist
+		}
+	}
+	return pkgs, net, pkgCache, strictNet
+}
+
+// buildEnterpriseConfig builds EnterpriseExecutionConfig when tenant has enterprise plan and runtime is python-microvm.
+func buildEnterpriseConfig(fnVersion *storage.RegistryFunctionVersion, fn *storage.RegistryFunction, backendRepo storage.Repository) *EnterpriseExecutionConfig {
+	if fn == nil || fn.TenantID == nil || backendRepo == nil || fnVersion.Runtime != plans.RuntimePythonMicroVM {
+		return nil
+	}
+	plan := getTenantPlanFromContext(backendRepo, *fn.TenantID)
+	if plan != plans.PlanEnterprise {
+		return nil
+	}
+	orchestratorURL := os.Getenv("FUNCTIONFLY_ORCHESTRATOR_URL")
+	if orchestratorURL == "" {
+		orchestratorURL = "http://localhost:9090"
+	}
+	pkgs, net, pkgCache, strictNet := parseMicroVMManifest(fnVersion.Manifest)
+	return &EnterpriseExecutionConfig{
+		Enabled:                true,
+		OrchestratorURL:        orchestratorURL,
+		Tier:                   "high",
+		TenantID:               fn.TenantID.String(),
+		PythonPackages:         pkgs,
+		NetworkWhitelist:       net,
+		StrictNetworkWhitelist: strictNet,
+		PackageCachingEnabled:  pkgCache,
+	}
+}
+
 // entryFilenameForRuntime returns the default entry filename for a runtime (used for lazy bundling).
 func entryFilenameForRuntime(runtime string) string {
 	switch {
@@ -537,7 +691,7 @@ func entryFilenameForRuntime(runtime string) string {
 
 // executeWithLazyBundling bundles source code to WASM at execution time
 // This is used when publish didn't bundle (for faster publish)
-func executeWithLazyBundling(fnVersion *storage.RegistryFunctionVersion, input json.RawMessage, maxMemoryMB, maxCPUTimeMs int, resourceUsage **ResourceUsage) (json.RawMessage, error) {
+func executeWithLazyBundling(fnVersion *storage.RegistryFunctionVersion, input json.RawMessage, maxMemoryMB, maxCPUTimeMs int, resourceUsage **ResourceUsage, fn *storage.RegistryFunction, backendRepo storage.Repository) (json.RawMessage, error) {
 	// Get source code from the function version
 	sourceCode := fnVersion.SourceCode.String
 	if sourceCode == "" {
@@ -548,6 +702,27 @@ func executeWithLazyBundling(fnVersion *storage.RegistryFunctionVersion, input j
 	var m manifest.Manifest
 	if err := json.Unmarshal(fnVersion.Manifest, &m); err != nil {
 		return nil, fmt.Errorf("failed to parse manifest: %w", err)
+	}
+
+	// python-microvm: use Python source directly (no WASM compilation); CPython runs in Firecracker
+	if fnVersion.Runtime == plans.RuntimePythonMicroVM {
+		logrus.WithFields(logrus.Fields{
+			"function_id": fnVersion.FunctionID,
+			"version":     fnVersion.Version,
+			"runtime":     fnVersion.Runtime,
+		}).Info("Using Python source for MicroVM (no WASM bundle)")
+
+		bundledFnVersion := *fnVersion
+		bundledFnVersion.WasmBinary = []byte(sourceCode) // Python source as "binary" for runtime
+
+		output, execErr := executeLocallyWithLimits(&bundledFnVersion, input, maxMemoryMB, maxCPUTimeMs, fn, backendRepo)
+		if execErr != nil {
+			if execError, ok := execErr.(*ExecutionError); ok {
+				*resourceUsage = execError.ResourceUsage
+			}
+			return nil, execErr
+		}
+		return output, nil
 	}
 
 	// Create a temp dir and write registry source there so the bundler uses it instead of CWD
@@ -594,7 +769,7 @@ func executeWithLazyBundling(fnVersion *storage.RegistryFunctionVersion, input j
 	bundledFnVersion.WasmBinary = wasmBytes
 
 	// Execute the bundled function
-	output, execErr := executeLocallyWithLimits(&bundledFnVersion, input, maxMemoryMB, maxCPUTimeMs)
+	output, execErr := executeLocallyWithLimits(&bundledFnVersion, input, maxMemoryMB, maxCPUTimeMs, fn, backendRepo)
 	if execErr != nil {
 		if execError, ok := execErr.(*ExecutionError); ok {
 			*resourceUsage = execError.ResourceUsage
@@ -606,7 +781,7 @@ func executeWithLazyBundling(fnVersion *storage.RegistryFunctionVersion, input j
 
 // executeLocally executes a function locally (used in verification)
 func executeLocally(fnVersion *storage.RegistryFunctionVersion, input json.RawMessage) (json.RawMessage, error) {
-	return executeLocallyWithLimits(fnVersion, input, fnVersion.MemoryMB, fnVersion.TimeoutMs)
+	return executeLocallyWithLimits(fnVersion, input, fnVersion.MemoryMB, fnVersion.TimeoutMs, nil, nil)
 }
 
 // executeOnBackend executes a function on a specific backend

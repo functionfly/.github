@@ -6,22 +6,24 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // AgentBillingControls holds the economic controls for an agent
 type AgentBillingControls struct {
-	ID                 uuid.UUID          `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	AgentID            string             `json:"agent_id" gorm:"uniqueIndex;not null"`
-	SpendCapMonthlyUSD *float64           `json:"spend_cap_monthly_usd,omitempty" gorm:"type:decimal(10,2)"`
-	SpendCapDailyUSD   *float64           `json:"spend_cap_daily_usd,omitempty" gorm:"type:decimal(10,2)"`
-	CreditBalanceUSD   float64            `json:"credit_balance_usd" gorm:"type:decimal(10,2);not null;default:0"`
-	BillingMode        string             `json:"billing_mode" gorm:"not null;default:'per_agent'"` // per_agent | per_tenant | per_team
-	TeamID             *uuid.UUID         `json:"team_id,omitempty" gorm:"type:uuid"`
-	AlertThresholds    []float64          `json:"alert_thresholds" gorm:"type:decimal[]"`
-	CreatedAt          time.Time          `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt          time.Time          `json:"updated_at" gorm:"autoUpdateTime"`
+	ID                 uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AgentID            string     `json:"agent_id" gorm:"uniqueIndex;not null"`
+	SpendCapMonthlyUSD *float64   `json:"spend_cap_monthly_usd,omitempty" gorm:"type:decimal(10,2)"`
+	SpendCapDailyUSD   *float64   `json:"spend_cap_daily_usd,omitempty" gorm:"type:decimal(10,2)"`
+	CreditBalanceUSD   float64    `json:"credit_balance_usd" gorm:"type:decimal(10,2);not null;default:0"`
+	BillingMode        string     `json:"billing_mode" gorm:"not null;default:'per_agent'"` // per_agent | per_tenant | per_team
+	TeamID             *uuid.UUID `json:"team_id,omitempty" gorm:"type:uuid"`
+	AlertThresholds    pq.Float64Array `json:"alert_thresholds" gorm:"type:decimal[]"`
+	CreatedAt          time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt          time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // TableName returns the GORM table name
@@ -31,14 +33,22 @@ func (AgentBillingControls) TableName() string {
 
 // SpendSummary holds a summary of agent spending
 type SpendSummary struct {
-	AgentID          string    `json:"agent_id"`
-	Period           string    `json:"period"`
-	TotalCallsUSD    float64   `json:"total_calls_usd"`
-	CreditBalance    float64   `json:"credit_balance_usd"`
-	SpendCapMonthly  *float64  `json:"spend_cap_monthly_usd,omitempty"`
-	SpendCapDaily    *float64  `json:"spend_cap_daily_usd,omitempty"`
-	CapUtilization   float64   `json:"cap_utilization_pct"` // 0-100
-	GeneratedAt      time.Time `json:"generated_at"`
+	AgentID         string    `json:"agent_id"`
+	Period          string    `json:"period"`
+	TotalCallsUSD   float64   `json:"total_calls_usd"`
+	CreditBalance   float64   `json:"credit_balance_usd"`
+	SpendCapMonthly *float64  `json:"spend_cap_monthly_usd,omitempty"`
+	SpendCapDaily   *float64  `json:"spend_cap_daily_usd,omitempty"`
+	CapUtilization  float64   `json:"cap_utilization_pct"` // 0-100
+	GeneratedAt     time.Time `json:"generated_at"`
+}
+
+// CreditBalanceUpdate captures a credit balance mutation.
+type CreditBalanceUpdate struct {
+	AgentID     string  `json:"agent_id"`
+	AmountUSD   float64 `json:"amount_usd"`
+	PreviousUSD float64 `json:"previous_balance_usd"`
+	CurrentUSD  float64 `json:"current_balance_usd"`
 }
 
 // CreditPurchaseRequest is the request to pre-purchase execution credits
@@ -76,11 +86,11 @@ func (c *Controller) GetOrCreateControls(ctx context.Context, agentID string) (*
 	if err == gorm.ErrRecordNotFound {
 		// Create default controls
 		controls = AgentBillingControls{
-			ID:              uuid.New(),
-			AgentID:         agentID,
+			ID:               uuid.New(),
+			AgentID:          agentID,
 			CreditBalanceUSD: 0,
-			BillingMode:     BillingModePerAgent,
-			AlertThresholds: []float64{0.5, 0.8, 0.95},
+			BillingMode:      BillingModePerAgent,
+			AlertThresholds:  pq.Float64Array{0.5, 0.8, 0.95},
 		}
 		if err := c.db.WithContext(ctx).Create(&controls).Error; err != nil {
 			return nil, fmt.Errorf("failed to create billing controls: %w", err)
@@ -121,27 +131,57 @@ func (c *Controller) CheckSpendCap(ctx context.Context, agentID string, estimate
 	return true, nil
 }
 
-// ConsumeCredits deducts from the agent's credit balance
-func (c *Controller) ConsumeCredits(ctx context.Context, agentID string, amount float64) error {
+// ConsumeCredits deducts from the agent's credit balance transactionally.
+func (c *Controller) ConsumeCredits(ctx context.Context, agentID string, amount float64) (*CreditBalanceUpdate, error) {
 	if amount <= 0 {
+		return &CreditBalanceUpdate{
+			AgentID:     agentID,
+			AmountUSD:   amount,
+			PreviousUSD: 0,
+			CurrentUSD:  0,
+		}, nil
+	}
+
+	var update CreditBalanceUpdate
+	update.AgentID = agentID
+	update.AmountUSD = amount
+
+	err := c.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var controls AgentBillingControls
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("agent_id = ?", agentID).
+			First(&controls).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return fmt.Errorf("billing controls not found for agent: %s", agentID)
+			}
+			return fmt.Errorf("failed to lock billing controls: %w", err)
+		}
+
+		update.PreviousUSD = controls.CreditBalanceUSD
+		if controls.CreditBalanceUSD < amount {
+			return fmt.Errorf("insufficient credit balance for agent %s (required: $%.6f)", agentID, amount)
+		}
+
+		newBalance := controls.CreditBalanceUSD - amount
+		if err := tx.Model(&AgentBillingControls{}).
+			Where("agent_id = ?", agentID).
+			Update("credit_balance_usd", newBalance).Error; err != nil {
+			return fmt.Errorf("failed to consume credits: %w", err)
+		}
+
+		update.CurrentUSD = newBalance
 		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	result := c.db.WithContext(ctx).Model(&AgentBillingControls{}).
-		Where("agent_id = ? AND credit_balance_usd >= ?", agentID, amount).
-		Update("credit_balance_usd", gorm.Expr("credit_balance_usd - ?", amount))
-
-	if result.Error != nil {
-		return fmt.Errorf("failed to consume credits: %w", result.Error)
-	}
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("insufficient credit balance for agent %s (required: $%.6f)", agentID, amount)
-	}
-
-	return nil
+	return &update, nil
 }
 
-// AddCredits adds to the agent's credit balance (after purchase)
+// AddCredits adds to the agent's credit balance (after purchase).
+// If no billing controls record exists yet for the agent, one is created with this
+// amount as the initial balance so that a first-ever top-up always succeeds.
 func (c *Controller) AddCredits(ctx context.Context, agentID string, amount float64) error {
 	if amount <= 0 {
 		return fmt.Errorf("credit amount must be positive")
@@ -155,7 +195,17 @@ func (c *Controller) AddCredits(ctx context.Context, agentID string, amount floa
 		return fmt.Errorf("failed to add credits: %w", result.Error)
 	}
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("agent billing controls not found: %s", agentID)
+		// No controls row exists yet — create one with this amount as the opening balance.
+		controls := AgentBillingControls{
+			ID:               uuid.New(),
+			AgentID:          agentID,
+			CreditBalanceUSD: amount,
+			BillingMode:      BillingModePerAgent,
+			AlertThresholds:  pq.Float64Array{0.5, 0.8, 0.95},
+		}
+		if err := c.db.WithContext(ctx).Create(&controls).Error; err != nil {
+			return fmt.Errorf("failed to create billing controls with initial credits: %w", err)
+		}
 	}
 
 	return nil

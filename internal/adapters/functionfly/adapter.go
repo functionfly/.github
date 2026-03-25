@@ -2,7 +2,9 @@ package functionfly
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -16,6 +18,7 @@ import (
 
 const (
 	ProviderName   = "functionfly-edge"
+	WASMProviderName = "functionfly-wasm"
 	RequestTimeout = 30 * time.Second
 	HealthPath     = "/healthz"
 	// AppNameMaxLen and allowed pattern to prevent path traversal and injection
@@ -27,9 +30,12 @@ var appNameRegex = regexp.MustCompile(appNamePatternStr)
 
 // FunctionFlyAdapter implements ProviderAdapter and DeploymentAdapter for FunctionFly Edge.
 // Edge is a zero-deployment provider: functions are served from the edge URL; deploy only validates and returns the URL.
+// For WASM runtime, it pushes the WASM artifact to the WASM edge service.
 type FunctionFlyAdapter struct {
 	signer *signing.RequestSigner
 	client *http.Client
+	// wasmClient is used for WASM deployments (nil means use default client)
+	wasmClient *http.Client
 }
 
 // NewFunctionFlyAdapter creates a new FunctionFly Edge adapter with default HTTP client.
@@ -173,7 +179,88 @@ func baseURLFromSpec(spec *common.DeploymentSpec) string {
 	return "https://edge.functionfly.com"
 }
 
-// Deploy validates the spec and returns the deployment URL. FunctionFly Edge is zero-deploy; no artifact is pushed.
+// wasmURLFromSpec returns the WASM edge service URL from provider config or default.
+func wasmURLFromSpec(spec *common.DeploymentSpec) string {
+	if spec != nil && spec.ProviderConfig != nil {
+		if u, ok := spec.ProviderConfig["wasm_url"].(string); ok && u != "" {
+			return strings.TrimSuffix(u, "/")
+		}
+	}
+	return "http://localhost:8080" // Default to local for development
+}
+
+// deployWASM pushes the WASM artifact to the WASM edge service.
+func (a *FunctionFlyAdapter) deployWASM(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
+	wasmURL := wasmURLFromSpec(spec)
+
+	// Prepare the WASM artifact (base64 encoded)
+	artifact := spec.Artifact
+	if len(artifact) == 0 {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "WASM artifact is required for WASM runtime",
+		}, nil
+	}
+
+	// Create deployment request to WASM edge service
+	deployURL := fmt.Sprintf("%s/deploy/%s", wasmURL, spec.AppName)
+
+	// Wrap the WASM bytes in JSON with base64 encoding
+	encoded := base64.StdEncoding.EncodeToString(artifact)
+	payload := fmt.Sprintf(`{"wasm":"%s"}`, encoded)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, deployURL, strings.NewReader(payload))
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to create WASM deployment request: %v", err),
+		}, nil
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Use WASM client or default client
+	client := a.wasmClient
+	if client == nil {
+		client = a.client
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to deploy WASM function: %v", err),
+		}, nil
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("WASM deployment failed: %s", string(body)),
+		}, nil
+	}
+
+	// Return successful deployment
+	deploymentURL := fmt.Sprintf("%s/%s", wasmURL, spec.AppName)
+	return &common.DeploymentResult{
+		Status:        common.DeploymentStatusSuccess,
+		Message:       "WASM function deployed successfully",
+		DeploymentURL: deploymentURL,
+		DeploymentID:  spec.AppName,
+		Metadata: map[string]interface{}{
+			"provider": WASMProviderName,
+			"runtime":  string(common.RuntimeWASM),
+			"endpoint": deploymentURL,
+			"deployed": true,
+		},
+	}, nil
+}
+
+// Deploy validates the spec and returns the deployment URL.
+// For WASM runtime, the artifact is pushed to the WASM edge service.
+// For other runtimes, FunctionFly Edge is zero-deploy; no artifact is pushed.
 func (a *FunctionFlyAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
 	if spec == nil {
 		return &common.DeploymentResult{
@@ -187,6 +274,13 @@ func (a *FunctionFlyAdapter) Deploy(ctx context.Context, spec *common.Deployment
 			Message: err.Error(),
 		}, nil
 	}
+
+	// Handle WASM runtime - deploy the artifact to WASM edge service
+	if spec.Runtime == common.RuntimeWASM || spec.Runtime == common.RuntimeRust {
+		return a.deployWASM(ctx, spec)
+	}
+
+	// Default: zero-deploy edge proxy
 	base := baseURLFromSpec(spec)
 	// Build URL safely: base is already validated or default; AppName is validated
 	deploymentURL := base + "/" + spec.AppName

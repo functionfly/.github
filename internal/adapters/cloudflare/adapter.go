@@ -185,8 +185,14 @@ func (a *CloudflareAdapter) Deploy(ctx context.Context, spec *common.DeploymentS
 
 	client := NewCloudflareDeploymentClient(apiToken, accountID)
 
-	// Deploy the script
-	result, err := client.Deploy(ctx, spec.Artifact, scriptName)
+	// Determine runtime (default to JavaScript if not specified)
+	runtime := spec.Runtime
+	if runtime == "" {
+		runtime = common.RuntimeJavaScript
+	}
+
+	// Deploy the script with runtime type
+	result, err := client.Deploy(ctx, spec.Artifact, scriptName, runtime)
 	if err != nil {
 		return &common.DeploymentResult{
 			Status:  common.DeploymentStatusFailed,
@@ -308,9 +314,15 @@ func (a *CloudflareAdapter) Rollback(ctx context.Context, spec *common.Deploymen
 		return nil, fmt.Errorf("missing required Cloudflare config: account_id, api_token, script_name")
 	}
 
+	// Determine runtime (default to JavaScript if not specified)
+	runtime := spec.Runtime
+	if runtime == "" {
+		runtime = common.RuntimeJavaScript
+	}
+
 	// For Cloudflare rollback, we redeploy the previous artifact
 	client := NewCloudflareDeploymentClient(apiToken, accountID)
-	return client.Rollback(ctx, spec.Artifact, scriptName)
+	return client.Rollback(ctx, spec.Artifact, scriptName, runtime)
 }
 
 // DeployBlueGreen performs a blue/green deployment with DNS switching
@@ -342,6 +354,12 @@ func (a *CloudflareAdapter) DeployBlueGreen(ctx context.Context, spec *common.De
 		return nil, fmt.Errorf("missing required blue/green config: zone_id, domain")
 	}
 
+	// Determine runtime (default to JavaScript if not specified)
+	runtime := spec.Runtime
+	if runtime == "" {
+		runtime = common.RuntimeJavaScript
+	}
+
 	// Workers.dev CNAME target: script-name.<workers_subdomain>.workers.dev (set in Cloudflare Workers dashboard)
 	var workersSubdomain string
 	if spec.ProviderConfig != nil {
@@ -353,7 +371,7 @@ func (a *CloudflareAdapter) DeployBlueGreen(ctx context.Context, spec *common.De
 	client := NewCloudflareDeploymentClient(apiToken, accountID)
 
 	// Perform blue/green deployment
-	result, err := client.DeployBlueGreen(ctx, spec.Artifact, scriptName, zoneID, domain, workersSubdomain, enableProxied)
+	result, err := client.DeployBlueGreen(ctx, spec.Artifact, scriptName, zoneID, domain, workersSubdomain, enableProxied, runtime)
 	if err != nil {
 		return &common.DeploymentResult{
 			Status:  common.DeploymentStatusFailed,

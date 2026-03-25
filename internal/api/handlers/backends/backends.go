@@ -8,14 +8,13 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/adapters/common"
+	"github.com/functionfly/functionfly/internal/api/apputil"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/types"
 	"github.com/functionfly/functionfly/internal/api/utils"
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/routing"
 	"github.com/functionfly/functionfly/internal/storage"
-	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -41,29 +40,12 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-	appIDStr := vars["appId"]
-	appID, err := uuid.Parse(appIDStr)
-	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	if resolveErr != nil {
+		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
 	}
-
-	// Verify app exists and user has access
-	app, err := h.repo.GetAppByID(appID)
-	if err != nil {
-		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get app")
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
-		return
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-	if app.TenantID != user.TenantID {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
-	}
+	appID := app.ID
 
 	// Get tenant to check plan limits
 	tenant, err := h.repo.GetTenantByID(app.TenantID)
@@ -161,29 +143,12 @@ func (h *Handler) HandleListBackends(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-	appIDStr := vars["appId"]
-	appID, err := uuid.Parse(appIDStr)
-	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	if resolveErr != nil {
+		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
 	}
-
-	// Verify app exists and user has access
-	app, err := h.repo.GetAppByID(appID)
-	if err != nil {
-		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get app")
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
-		return
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-	if app.TenantID != user.TenantID {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
-	}
+	appID := app.ID
 
 	backends, err := h.repo.ListBackendsByAppID(appID)
 	if err != nil {
@@ -206,29 +171,12 @@ func (h *Handler) HandleGetRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-	appIDStr := vars["appId"]
-	appID, err := uuid.Parse(appIDStr)
-	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	if resolveErr != nil {
+		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
 	}
-
-	// Verify app exists and user has access
-	app, err := h.repo.GetAppByID(appID)
-	if err != nil {
-		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get app")
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
-		return
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-	if app.TenantID != user.TenantID {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
-	}
+	appID := app.ID
 
 	// Get tenant for plan information
 	tenant, err := h.repo.GetTenantByID(app.TenantID)
@@ -273,29 +221,12 @@ func (h *Handler) HandleDeployBlueGreen(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	vars := mux.Vars(r)
-	appIDStr := vars["appId"]
-	appID, err := uuid.Parse(appIDStr)
-	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	if resolveErr != nil {
+		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
 	}
-
-	// Verify app exists and user has access
-	app, err := h.repo.GetAppByID(appID)
-	if err != nil {
-		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get app")
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
-		return
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-	if app.TenantID != user.TenantID {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
-	}
+	appID := app.ID
 
 	// Parse request body
 	var req struct {
@@ -359,29 +290,12 @@ func (h *Handler) HandleLinkProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-	appIDStr := vars["appId"]
-	appID, err := uuid.Parse(appIDStr)
-	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	if resolveErr != nil {
+		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
 	}
-
-	// Verify app exists and user has access
-	app, err := h.repo.GetAppByID(appID)
-	if err != nil {
-		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get app")
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
-		return
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-	if app.TenantID != user.TenantID {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
-	}
+	appID := app.ID
 
 	// Parse request body
 	var req struct {
@@ -435,29 +349,12 @@ func (h *Handler) HandleSetSecrets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-	appIDStr := vars["appId"]
-	appID, err := uuid.Parse(appIDStr)
-	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	if resolveErr != nil {
+		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
 	}
-
-	// Verify app exists and user has access
-	app, err := h.repo.GetAppByID(appID)
-	if err != nil {
-		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get app")
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
-		return
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-	if app.TenantID != user.TenantID {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
-	}
+	appID := app.ID
 
 	// Parse request body
 	var req struct {
@@ -511,28 +408,12 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-	appIDStr := vars["appId"]
-	appID, err := uuid.Parse(appIDStr)
-	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	if resolveErr != nil {
+		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
 	}
-
-	// Verify app exists and user has access
-	app, err := h.repo.GetAppByID(appID)
-	if err != nil {
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
-		return
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-	if app.TenantID != user.TenantID {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
-	}
+	appID := app.ID
 
 	// Parse request body
 	var req struct {

@@ -60,6 +60,20 @@ func (r *AppRepository) GetAppBySlug(slug string) (*App, error) {
 	return &app, nil
 }
 
+// GetAppBySlugAndTenant retrieves an app by slug within a tenant.
+func (r *AppRepository) GetAppBySlugAndTenant(slug string, tenantID uuid.UUID) (*App, error) {
+	var app App
+	err := r.db.Where("slug = ? AND tenant_id = ?", slug, tenantID).First(&app).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get app: %w", err)
+	}
+
+	return &app, nil
+}
+
 // ListAppsByTenant lists all apps for a tenant.
 // The apps table does not use RLS; a simple filtered query is used.
 func (r *AppRepository) ListAppsByTenant(tenantID uuid.UUID) ([]*App, error) {

@@ -84,6 +84,18 @@ type HealthCheckResult struct {
 	Version      string
 }
 
+// Runtime represents the type of runtime/artifact for deployment
+type Runtime string
+
+const (
+	// RuntimeJavaScript is for JavaScript/TypeScript functions
+	RuntimeJavaScript Runtime = "javascript"
+	// RuntimeWASM is for WebAssembly modules (compiled from any language)
+	RuntimeWASM Runtime = "wasm"
+	// RuntimeRust is for Rust functions compiled to WASM
+	RuntimeRust Runtime = "rust"
+)
+
 // DeploymentSpec defines the standardized specification for deploying to any provider
 type DeploymentSpec struct {
 	// Artifact contains the deployment artifact (bundle bytes or reference)
@@ -106,6 +118,8 @@ type DeploymentSpec struct {
 	ProviderConfig map[string]interface{}
 	// Timeout specifies the deployment timeout duration
 	Timeout *time.Duration
+	// Runtime specifies the type of runtime/artifact (JavaScript, WASM, Rust)
+	Runtime Runtime
 }
 
 // DeploymentResult represents the result of a deployment operation

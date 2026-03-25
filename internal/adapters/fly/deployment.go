@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +36,8 @@ type FlyDeploymentClient struct {
 	baseURL    string
 	lastReq    time.Time
 	reqMu      sync.Mutex
+	storeMu    sync.RWMutex
+	artifacts  map[string]map[string]*DeploymentArtifact
 }
 
 // NewFlyDeploymentClient creates a new Fly.io deployment client using FLY_API_HOSTNAME or default.
@@ -49,6 +52,7 @@ func NewFlyDeploymentClientWithBase(apiToken, baseURL string) *FlyDeploymentClie
 		apiToken:   apiToken,
 		baseURL:    strings.TrimSuffix(baseURL, "/"),
 		lastReq:    time.Time{},
+		artifacts:  make(map[string]map[string]*DeploymentArtifact),
 	}
 }
 
@@ -133,7 +137,7 @@ func (c *FlyDeploymentClient) EnsureApp(ctx context.Context, appName, orgSlug st
 }
 
 // Deploy creates a Machine for the app using the given image reference. The image must already exist
-// (e.g. built and pushed via flyctl deploy or CI). imageRef defaults to registry.fly.io/<appName>:<version>.
+// (e.g. built and pushed via flyctl or CI). imageRef defaults to registry.fly.io/<appName>:<version>.
 func (c *FlyDeploymentClient) Deploy(ctx context.Context, appName, imageRef string) (*FlyDeployResult, error) {
 	if imageRef == "" {
 		return nil, fmt.Errorf("image ref is required for Fly deploy (image must be pre-pushed to registry.fly.io or set provider_config.image)")
@@ -394,6 +398,34 @@ func (c *FlyDeploymentClient) GetDeploymentStatus(ctx context.Context, appName, 
 	}
 }
 
+// WaitForDeployment polls deployment status until it reaches a terminal state
+func (c *FlyDeploymentClient) WaitForDeployment(ctx context.Context, appName, machineID string, timeout time.Duration) (common.DeploymentStatus, error) {
+	deadline := time.Now().Add(timeout)
+	pollInterval := 5 * time.Second
+
+	for time.Now().Before(deadline) {
+		status, err := c.GetDeploymentStatus(ctx, appName, machineID)
+		if err != nil {
+			return common.DeploymentStatusFailed, err
+		}
+
+		// Check if we've reached a terminal state
+		if status == common.DeploymentStatusSuccess || status == common.DeploymentStatusFailed {
+			return status, nil
+		}
+
+		// Wait before next poll
+		select {
+		case <-ctx.Done():
+			return common.DeploymentStatusFailed, ctx.Err()
+		case <-time.After(pollInterval):
+			continue
+		}
+	}
+
+	return common.DeploymentStatusFailed, fmt.Errorf("deployment timed out after %v", timeout)
+}
+
 // flyMachine is a subset of the Machines API response for list/get
 type flyMachine struct {
 	ID     string                 `json:"id"`
@@ -493,4 +525,257 @@ func (c *FlyDeploymentClient) Rollback(ctx context.Context, appName, version str
 			"rollback_initiated": time.Now().Format(time.RFC3339),
 		},
 	}, nil
+}
+
+// GetAppInfo retrieves app information from Fly.io
+func (c *FlyDeploymentClient) GetAppInfo(ctx context.Context, appName string) (map[string]interface{}, error) {
+	c.rateLimit()
+	appURL := fmt.Sprintf("%s/v1/apps/%s", c.baseURL, appName)
+	req, err := http.NewRequestWithContext(ctx, "GET", appURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create get app request: %w", err)
+	}
+	c.setAuthHeaders(req)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get app info: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("get app info failed with status %d: %s", resp.StatusCode, string(body))
+	}
+	var appInfo map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&appInfo); err != nil {
+		return nil, fmt.Errorf("failed to decode app info: %w", err)
+	}
+	return appInfo, nil
+}
+
+// ListAppRegions lists all regions where an app has machines
+func (c *FlyDeploymentClient) ListAppRegions(ctx context.Context, appName string) ([]string, error) {
+	machines, err := c.ListMachines(ctx, appName)
+	if err != nil {
+		return nil, err
+	}
+
+	regionSet := make(map[string]bool)
+	for _, m := range machines {
+		if m.Region != "" {
+			regionSet[m.Region] = true
+		}
+	}
+
+	regions := make([]string, 0, len(regionSet))
+	for region := range regionSet {
+		regions = append(regions, region)
+	}
+	return regions, nil
+}
+
+// ScaleApp scales an app to the specified number of machines in a region
+func (c *FlyDeploymentClient) ScaleApp(ctx context.Context, appName, region string, count int) error {
+	machines, err := c.ListMachines(ctx, appName)
+	if err != nil {
+		return err
+	}
+
+	// Count machines in the target region
+	regionCount := 0
+	for _, m := range machines {
+		if m.Region == region {
+			regionCount++
+		}
+	}
+
+	// If we need more machines, create them
+	if regionCount < count {
+		// Get the first machine's config as a template
+		if len(machines) == 0 {
+			return fmt.Errorf("no machines found to use as template")
+		}
+
+		templateConfig := machines[0].Config
+		for i := regionCount; i < count; i++ {
+			c.rateLimit()
+			machinesURL := fmt.Sprintf("%s/v1/apps/%s/machines", c.baseURL, appName)
+			machineConfig := map[string]interface{}{
+				"config": templateConfig,
+				"region": region,
+			}
+			jsonData, err := json.Marshal(machineConfig)
+			if err != nil {
+				return fmt.Errorf("failed to marshal machine config: %w", err)
+			}
+			req, err := http.NewRequestWithContext(ctx, "POST", machinesURL, bytes.NewReader(jsonData))
+			if err != nil {
+				return fmt.Errorf("failed to create scale request: %w", err)
+			}
+			c.setAuthHeaders(req)
+			resp, err := c.httpClient.Do(req)
+			if err != nil {
+				return fmt.Errorf("failed to scale app: %w", err)
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+				body, _ := io.ReadAll(resp.Body)
+				return fmt.Errorf("scale app failed with status %d: %s", resp.StatusCode, string(body))
+			}
+		}
+	}
+
+	return nil
+}
+
+// DeploymentArtifact represents a stored deployment artifact
+type DeploymentArtifact struct {
+	AppName     string    `json:"app_name"`
+	ImageRef    string    `json:"image_ref"`
+	Version     string    `json:"version"`
+	DeployedAt  time.Time `json:"deployed_at"`
+	DeployedBy  string    `json:"deployed_by"`
+	MachineID   string    `json:"machine_id"`
+	Region      string    `json:"region"`
+	Status      string    `json:"status"`
+}
+
+// StoreDeploymentArtifact stores a deployment artifact for rollback history
+func (c *FlyDeploymentClient) StoreDeploymentArtifact(ctx context.Context, artifact *DeploymentArtifact) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+	if artifact == nil {
+		return fmt.Errorf("artifact is required")
+	}
+	if strings.TrimSpace(artifact.AppName) == "" {
+		return fmt.Errorf("artifact app name is required")
+	}
+	if strings.TrimSpace(artifact.Version) == "" {
+		return fmt.Errorf("artifact version is required")
+	}
+	if artifact.DeployedAt.IsZero() {
+		artifact.DeployedAt = time.Now().UTC()
+	}
+	copied := *artifact
+	c.storeMu.Lock()
+	defer c.storeMu.Unlock()
+	if c.artifacts[copied.AppName] == nil {
+		c.artifacts[copied.AppName] = make(map[string]*DeploymentArtifact)
+	}
+	c.artifacts[copied.AppName][copied.Version] = &copied
+	return nil
+}
+
+// ListDeploymentArtifacts lists deployment artifacts for rollback history
+func (c *FlyDeploymentClient) ListDeploymentArtifacts(ctx context.Context, appName string, limit int) ([]*DeploymentArtifact, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+	if strings.TrimSpace(appName) == "" {
+		return nil, fmt.Errorf("app name is required")
+	}
+	c.storeMu.RLock()
+	defer c.storeMu.RUnlock()
+	byVersion := c.artifacts[appName]
+	if len(byVersion) == 0 {
+		return []*DeploymentArtifact{}, nil
+	}
+	artifacts := make([]*DeploymentArtifact, 0, len(byVersion))
+	for _, a := range byVersion {
+		copied := *a
+		artifacts = append(artifacts, &copied)
+	}
+	sort.Slice(artifacts, func(i, j int) bool {
+		return artifacts[i].DeployedAt.After(artifacts[j].DeployedAt)
+	})
+	if limit > 0 && len(artifacts) > limit {
+		artifacts = artifacts[:limit]
+	}
+	return artifacts, nil
+}
+
+// GetDeploymentArtifact gets a specific deployment artifact
+func (c *FlyDeploymentClient) GetDeploymentArtifact(ctx context.Context, appName, version string) (*DeploymentArtifact, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+	if strings.TrimSpace(appName) == "" {
+		return nil, fmt.Errorf("app name is required")
+	}
+	if strings.TrimSpace(version) == "" {
+		return nil, fmt.Errorf("version is required")
+	}
+	c.storeMu.RLock()
+	defer c.storeMu.RUnlock()
+	artifact, ok := c.artifacts[appName][version]
+	if !ok {
+		return nil, fmt.Errorf("deployment artifact not found")
+	}
+	copied := *artifact
+	return &copied, nil
+}
+
+// DeleteDeploymentArtifact deletes a deployment artifact
+func (c *FlyDeploymentClient) DeleteDeploymentArtifact(ctx context.Context, appName, version string) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+	if strings.TrimSpace(appName) == "" {
+		return fmt.Errorf("app name is required")
+	}
+	if strings.TrimSpace(version) == "" {
+		return fmt.Errorf("version is required")
+	}
+	c.storeMu.Lock()
+	defer c.storeMu.Unlock()
+	versions := c.artifacts[appName]
+	if len(versions) == 0 {
+		return nil
+	}
+	delete(versions, version)
+	if len(versions) == 0 {
+		delete(c.artifacts, appName)
+	}
+	return nil
+}
+
+// GetRollbackHistory gets rollback history for an app
+func (c *FlyDeploymentClient) GetRollbackHistory(ctx context.Context, appName string, limit int) ([]*DeploymentArtifact, error) {
+	artifacts, err := c.ListDeploymentArtifacts(ctx, appName, 0)
+	if err != nil {
+		return nil, err
+	}
+	rollbackArtifacts := make([]*DeploymentArtifact, 0, len(artifacts))
+	for _, artifact := range artifacts {
+		if artifact.Status == "rollback" || artifact.Status == "rollback_failed" {
+			rollbackArtifacts = append(rollbackArtifacts, artifact)
+		}
+	}
+	if limit > 0 && len(rollbackArtifacts) > limit {
+		rollbackArtifacts = rollbackArtifacts[:limit]
+	}
+	return rollbackArtifacts, nil
+}
+
+// RecordRollback records a rollback event
+func (c *FlyDeploymentClient) RecordRollback(ctx context.Context, appName, fromVersion, toVersion string, success bool) error {
+	status := "rollback"
+	if !success {
+		status = "rollback_failed"
+	}
+	return c.StoreDeploymentArtifact(ctx, &DeploymentArtifact{
+		AppName:    appName,
+		ImageRef:   fmt.Sprintf("registry.fly.io/%s:%s", appName, toVersion),
+		Version:    fmt.Sprintf("rollback:%s->%s@%d", fromVersion, toVersion, time.Now().UTC().UnixNano()),
+		DeployedAt: time.Now().UTC(),
+		Status:     status,
+	})
 }

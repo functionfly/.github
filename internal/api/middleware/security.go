@@ -261,8 +261,9 @@ func (sm *SecurityMiddleware) CORSMiddleware(next http.HandlerFunc) http.Handler
 		w.Header().Set("Access-Control-Allow-Headers", allowedHeaders)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-		// Handle preflight requests
+		// Handle preflight requests (browser caches for 24h)
 		if r.Method == "OPTIONS" {
+			w.Header().Set("Access-Control-Max-Age", "86400")
 			w.WriteHeader(http.StatusOK)
 			return
 		}

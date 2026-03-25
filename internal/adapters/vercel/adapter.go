@@ -177,6 +177,14 @@ func (a *VercelAdapter) GetRequestTimeout() time.Duration {
 
 // Deploy implements the DeploymentAdapter interface
 func (a *VercelAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
+	// Check for WASM runtime - Vercel does not support WASM
+	if spec.Runtime == common.RuntimeWASM || spec.Runtime == common.RuntimeRust {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "WASM is not supported on Vercel Edge Functions. Please use Cloudflare Workers or Deno Deploy for WASM/Rust functions.",
+		}, nil
+	}
+
 	// Extract standardized and Vercel-specific config
 	var apiToken, teamID, projectName string
 	if spec.ProviderConfig != nil {

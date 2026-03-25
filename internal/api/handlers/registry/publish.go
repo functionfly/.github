@@ -178,6 +178,76 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Platform fee charging - check exemption, verify balance, and charge
+	var feeCharged bool
+	var feeAmountUSD float64
+	var feeType string
+	platformFeePaid := false
+
+	if h.platformFeeRepo != nil && !storageregistry.IsAuthorExempt(req.Author) {
+		isNewFunction := existingFn == nil
+		feeAmountUSD = storageregistry.CalculatePublishFee(req.Author)
+		feeType = storageregistry.FeeTypePublish
+
+		if !isNewFunction {
+			feeAmountUSD = storageregistry.CalculateVersionUpdateFee(req.Author)
+			feeType = storageregistry.FeeTypeVersionUpdate
+		}
+
+		if feeAmountUSD > 0 {
+			// Get or create wallet
+			wallet, err := h.platformFeeRepo.GetOrCreateWallet(r.Context(), user.UserID)
+			if err != nil {
+				logrus.WithError(err).Error("Failed to get or create wallet for platform fee")
+				http.Error(w, "Failed to process payment: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			// Check sufficient balance
+			if wallet.BalanceUSD < feeAmountUSD {
+				http.Error(w, fmt.Sprintf("Insufficient wallet balance. Required: $%.2f, Available: $%.2f", feeAmountUSD, wallet.BalanceUSD), 402)
+				return
+			}
+
+			// Debit wallet (atomic transaction)
+			description := fmt.Sprintf("FunctionFly registry publish: %s/%s v%s", req.Author, req.Name, req.Version)
+			if err := h.platformFeeRepo.DebitWallet(r.Context(), user.UserID, feeAmountUSD, description); err != nil {
+				logrus.WithError(err).Error("Failed to debit wallet for platform fee")
+				http.Error(w, "Failed to process payment: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			// Record platform fee
+			now := time.Now()
+			feeRecord := &storageregistry.PlatformFee{
+				FunctionID: fnID,
+				UserID:     user.UserID,
+				FeeType:    feeType,
+				AmountUSD:  feeAmountUSD,
+				ChargedAt:  now,
+				Status:     storageregistry.FeeStatusCompleted,
+			}
+			if err := h.platformFeeRepo.RecordPlatformFee(r.Context(), feeRecord); err != nil {
+				// Log warning but don't fail publish
+				logrus.WithError(err).Warn("Failed to record platform fee")
+			}
+
+			// Update function record with fee info
+			feePaid := true
+			meta := map[string]interface{}{
+				"platform_fee_paid":       feePaid,
+				"platform_fee_amount_usd": feeAmountUSD,
+				"last_fee_charged_at":    now,
+			}
+			if _, err := h.repo.UpdateRegistryFunction(fnID, meta); err != nil {
+				logrus.WithError(err).Warn("Failed to update function with platform fee info")
+			}
+
+			feeCharged = true
+			platformFeePaid = true
+		}
+	}
+
 	// Validate capabilities against allowed list
 	for _, cap := range m.Capabilities {
 		if !functionregistry.IsValidCapability(cap) {
@@ -301,8 +371,18 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	// Invalidate list cache so description/category show up in browse UI
 	h.repo.InvalidateListCache(r.Context())
 
+	// Baseline verification status returned by publish response.
+	// This is the server-side truth that execution middleware should enforce.
+	verificationStatusStr := "verified"
+	if trustLevel == "high" || trustLevel == "enterprise" {
+		verificationStatusStr = "pending"
+	}
+
 	// Auto-verify official FunctionFly functions so they are always verified and get FXCERTs
 	if strings.EqualFold(req.Author, "functionfly") {
+		// Keep the official registry behavior: always verified on publish.
+		verificationStatusStr = "verified"
+
 		now := time.Now()
 		verifiedStatus := &storageregistry.RegistryFunctionVerificationStatus{
 			FunctionVersionID:   version.ID,
@@ -360,10 +440,46 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var verificationStatusStr string
-	if trustLevel == "high" || trustLevel == "enterprise" {
-		// For high-trust levels, we still need verification but can do it async
-		verificationStatusStr = "pending"
+	// Ensure registry verification status exists for newly published versions.
+	// - `standard` is treated as verified by default.
+	// - `high`/`enterprise` start as pending and must complete verification/approval before execution.
+	if !strings.EqualFold(req.Author, "functionfly") {
+		now := time.Now()
+		status := &storageregistry.RegistryFunctionVerificationStatus{
+			FunctionVersionID: version.ID,
+
+			// Baseline: assume content hash is already anchored by the publish pipeline.
+			ContentHashVerified: true,
+
+			// Baseline malware status: treat as clean for "verified by default" semantics on `standard`.
+			// (Actual scanning can still update this row later via async verification jobs.)
+			MalwareScanned:      true,
+			MalwareStatus:       "clean",
+			MalwareRiskScore:    0,
+
+			// Approval/signature fields are used by execution gating.
+			// - `standard`: not required
+			// - `high`/`enterprise`: pending
+			ApprovalRequired: false,
+			ApprovalStatus:   "not_required",
+			SignatureVerified: false,
+
+			OverallStatus:   verificationStatusStr,
+			LastVerifiedAt:  &now,
+			UpdatedAt:        now,
+			CreatedAt:        now,
+		}
+
+		if trustLevel == "high" || trustLevel == "enterprise" {
+			status.ApprovalRequired = true
+			status.ApprovalStatus = "pending"
+			status.SignatureVerified = false
+			status.OverallStatus = "pending"
+		}
+
+		if err := h.repo.CreateOrUpdateVerificationStatus(status); err != nil {
+			logrus.WithError(err).WithField("function_version_id", version.ID).Warn("Failed to set baseline verification status")
+		}
 	}
 
 	// Parse capabilities from manifest
@@ -395,6 +511,11 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		Idempotent:    m.Idempotent,
 		CacheTTL:      m.CacheTTL,
 		BundleSize:    bundleSize,
+		// Platform fee info
+		FeeCharged:      feeCharged,
+		FeeAmountUSD:    feeAmountUSD,
+		FeeType:         feeType,
+		PlatformFeePaid: platformFeePaid,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

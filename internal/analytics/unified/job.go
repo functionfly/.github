@@ -2,6 +2,7 @@ package unified
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -12,6 +13,7 @@ type SyncJob struct {
 	store    *EventStore
 	interval time.Duration
 	stopCh   chan struct{}
+	stopOnce sync.Once
 	log      *logrus.Logger
 }
 
@@ -64,7 +66,9 @@ func (j *SyncJob) Start(ctx context.Context) {
 	}()
 }
 
-// Stop stops the sync job.
+// Stop stops the sync job (safe if Shutdown is invoked more than once).
 func (j *SyncJob) Stop() {
-	close(j.stopCh)
+	j.stopOnce.Do(func() {
+		close(j.stopCh)
+	})
 }

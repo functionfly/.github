@@ -184,6 +184,12 @@ func (a *DenoAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (
 		projectID = "functionfly-deployment" // Default project ID
 	}
 
+	// Determine runtime (default to JavaScript if not specified)
+	runtime := spec.Runtime
+	if runtime == "" {
+		runtime = common.RuntimeJavaScript
+	}
+
 	// Combine env vars and secrets for deployment
 	env := make(map[string]string)
 	for k, v := range spec.EnvVars {
@@ -195,7 +201,7 @@ func (a *DenoAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (
 
 	// Create deployment client and deploy
 	client := NewDenoDeploymentClient(apiToken, projectID)
-	return client.Deploy(ctx, spec.Artifact, domain, env)
+	return client.Deploy(ctx, spec.Artifact, domain, env, runtime)
 }
 
 // SetEnv implements the DeploymentAdapter interface
@@ -297,7 +303,13 @@ func (a *DenoAdapter) Rollback(ctx context.Context, spec *common.DeploymentSpec)
 		env[k] = v
 	}
 
+	// Determine runtime (default to JavaScript if not specified)
+	runtime := spec.Runtime
+	if runtime == "" {
+		runtime = common.RuntimeJavaScript
+	}
+
 	// Create deployment client and rollback (redeploy)
 	client := NewDenoDeploymentClient(apiToken, projectID)
-	return client.Rollback(ctx, spec.Artifact, domain, env)
+	return client.Rollback(ctx, spec.Artifact, domain, env, runtime)
 }

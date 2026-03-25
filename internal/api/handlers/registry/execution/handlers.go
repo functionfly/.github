@@ -99,8 +99,12 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate runtime for tenant's plan - check if runtime is allowed
-	if fnVersion.Runtime == plans.RuntimePythonMicroVM && fn.TenantID != nil {
-		// For restricted runtimes, we need to check the tenant's plan
+	if fnVersion.Runtime == plans.RuntimePythonMicroVM {
+		if fn.TenantID == nil {
+			h.writeError(w, http.StatusForbidden, functionregistry.ErrCodeInvalidInput,
+				"python-microvm runtime requires a tenant-owned function (Enterprise tier)")
+			return
+		}
 		tenantPlan := getTenantPlanFromContext(h.BackendRepo, *fn.TenantID)
 		if err := validateRuntimeForPlan(tenantPlan, fnVersion.Runtime); err != nil {
 			logrus.WithError(err).Warn("Runtime validation failed")
@@ -182,6 +186,27 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 
 	// Calculate execution time
 	durationMs := int(time.Since(startTime).Milliseconds())
+
+	// Enterprise MicroVM billing — log usage metrics for downstream aggregation.
+	if fnVersion.Runtime == plans.RuntimePythonMicroVM && fn.TenantID != nil {
+		tenantPlan := getTenantPlanFromContext(h.BackendRepo, *fn.TenantID)
+		if billing := plans.CalculateMicroVMBilling(
+			tenantPlan,
+			1, // single request
+			float64(durationMs)/1000.0,
+			maxMemoryMB,
+			float64(durationMs)/1000.0,
+		); billing != nil {
+			logrus.WithFields(logrus.Fields{
+				"tenant_id":       *fn.TenantID,
+				"duration_ms":     durationMs,
+				"memory_mb":       maxMemoryMB,
+				"compute_charges": billing.ComputeCharges,
+				"memory_charges":  billing.MemoryCharges,
+				"total_cents":     billing.TotalCents,
+			}).Info("MicroVM billing record")
+		}
+	}
 
 	// Determine outcome
 	outcome, errorCode := determineOutcome(executionErr, statusCode)

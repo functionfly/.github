@@ -35,6 +35,16 @@ type (
 	ExecutionPassport    = registry.ExecutionPassport
 	PassportUpdate       = registry.PassportUpdate
 	DREScores            = registry.DREScores
+
+	// Trust Scoring type aliases
+	TrustHistory           = registry.TrustHistory
+	ExecutionMetrics       = registry.ExecutionMetrics
+	TrustScoreWeights      = registry.TrustScoreWeights
+	TrustScoreWeightsConfig = registry.TrustScoreWeightsConfig
+	TrustScoreJob         = registry.TrustScoreJob
+	TrustScoreResponse    = registry.TrustScoreResponse
+	TrustHistoryResponse   = registry.TrustHistoryResponse
+	TrustTier              = registry.TrustTier
 )
 
 // ============================================

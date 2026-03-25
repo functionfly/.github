@@ -11,15 +11,17 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/monitoring"
+	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	repo "github.com/functionfly/functionfly/internal/storage/statefabric"
 )
 
 type Handler struct {
-	repo *repo.Repository
+	repo     *repo.Repository
+	sfAddons *statefabricaddons.Repository
 }
 
-func NewHandler(r *repo.Repository) *Handler {
-	return &Handler{repo: r}
+func NewHandler(r *repo.Repository, sfAddons *statefabricaddons.Repository) *Handler {
+	return &Handler{repo: r, sfAddons: sfAddons}
 }
 
 type createFabricRequest struct {
@@ -112,6 +114,23 @@ func parseID(w http.ResponseWriter, value string, label string) (uuid.UUID, bool
 		return uuid.Nil, false
 	}
 	return id, true
+}
+
+func (h *Handler) requireAddon(w http.ResponseWriter, r *http.Request, tenantID uuid.UUID, addonID string) bool {
+	if h.sfAddons == nil {
+		writeErr(w, http.StatusForbidden, "This feature requires a paid add-on")
+		return false
+	}
+	ok, err := h.sfAddons.HasActiveAddon(r.Context(), tenantID, addonID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "failed to verify add-on entitlement")
+		return false
+	}
+	if !ok {
+		writeErr(w, http.StatusPaymentRequired, "add-on required")
+		return false
+	}
+	return true
 }
 
 func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
@@ -255,6 +274,9 @@ func (h *Handler) HandleGetMetrics(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !h.requireAddon(w, r, tenantID, "advanced_insights") {
+		return
+	}
 	fabricID, parsed := parseID(w, mux.Vars(r)["id"], "state fabric id")
 	if !parsed {
 		return
@@ -297,6 +319,12 @@ func (h *Handler) HandleCreateStore(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
+	}
+	switch req.Type {
+	case "vector", "embedding", "ai-memory":
+		if !h.requireAddon(w, r, tenantID, "ai_memory_pack") {
+			return
+		}
 	}
 	store, err := h.repo.CreateStore(r.Context(), tenantID, fabricID, req.Name, req.Type, req.MaxSize, req.Region)
 	if err != nil {
@@ -454,6 +482,9 @@ func (h *Handler) HandleListEvents(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !h.requireAddon(w, r, tenantID, "advanced_security_pack") {
+		return
+	}
 	fabricID, parsed := parseID(w, mux.Vars(r)["id"], "state fabric id")
 	if !parsed {
 		return
@@ -552,6 +583,9 @@ func (h *Handler) HandleListReplays(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !h.requireAddon(w, r, tenantID, "hot_cache_booster") {
+		return
+	}
 	fabricID, parsed := parseID(w, mux.Vars(r)["id"], "state fabric id")
 	if !parsed {
 		return
@@ -567,6 +601,9 @@ func (h *Handler) HandleListReplays(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleCreateReplay(w http.ResponseWriter, r *http.Request) {
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
+		return
+	}
+	if !h.requireAddon(w, r, tenantID, "hot_cache_booster") {
 		return
 	}
 	fabricID, parsed := parseID(w, mux.Vars(r)["id"], "state fabric id")
@@ -589,6 +626,9 @@ func (h *Handler) HandleCreateReplay(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetReplay(w http.ResponseWriter, r *http.Request) {
 	tenantID, _, ok := tenantAndUser(r, w)
 	if !ok {
+		return
+	}
+	if !h.requireAddon(w, r, tenantID, "hot_cache_booster") {
 		return
 	}
 	vars := mux.Vars(r)

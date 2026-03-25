@@ -14,9 +14,10 @@ const (
 	EnterpriseMaxProvidersPerApp = 5
 
 	// Default request limits per month
-	StarterMaxRequestsPerMonth           = 100_000
-	DefaultProMaxRequestsPerMonth        = 500_000
-	DefaultEnterpriseMaxRequestsPerMonth = 10_000_000
+	// NOTE: These must match the frontend PLANS limits in web/dashboard/src/lib/constants.ts
+	StarterMaxRequestsPerMonth           = 1_000_000   // 1M requests - matches frontend Starter
+	DefaultProMaxRequestsPerMonth        = 10_000_000 // 10M requests - matches frontend Professional
+	DefaultEnterpriseMaxRequestsPerMonth = -1           // Unlimited (-1 = unlimited in our system)
 
 	// Secrets limits per tenant
 	StarterMaxSecrets    = 10
@@ -50,9 +51,10 @@ const (
 )
 
 // Plan type constants
+// NOTE: "professional" must match frontend plan-utils.ts PlanTier type
 const (
 	PlanStarter    = "starter"
-	PlanPro        = "pro"
+	PlanPro        = "professional" // Was "pro" - changed for consistency with frontend
 	PlanEnterprise = "enterprise"
 )
 
@@ -144,6 +146,15 @@ const (
 	AgentEnterprisePriceCents = 250000 // $2500+/month base
 )
 
+// User seat limits per plan
+const (
+	StarterMaxUsers           = 3
+	ProMaxUsers              = 10
+	EnterpriseMaxUsers       = -1 // Unlimited
+	SeatWarningThresholdValue = 0.80 // Warn at 80% of limit
+	SeatGracePeriodDays       = 30  // Days to remove users after downgrade
+)
+
 // Runtime type constants
 const (
 	RuntimeWasm          = "wasm"
@@ -164,6 +175,85 @@ func IsAgentTier(plan string) bool {
 		return true
 	}
 	return false
+}
+
+// MaxUsersPerPlan returns the maximum number of users allowed for a plan
+// Returns -1 for unlimited (enterprise)
+func MaxUsersPerPlan(plan string) int {
+	switch plan {
+	case PlanPro:
+		return ProMaxUsers
+	case PlanEnterprise:
+		return EnterpriseMaxUsers
+	case PlanStarter:
+		fallthrough
+	default:
+		return StarterMaxUsers
+	}
+}
+
+// SeatWarningThreshold returns the percentage (0.0-1.0) at which to warn about seat usage
+func SeatWarningThreshold() float64 {
+	return SeatWarningThresholdValue
+}
+
+// GetSeatGracePeriodDays returns the number of days a tenant has to remove users
+// after a downgrade causes them to exceed the new limit
+func GetSeatGracePeriodDays() int {
+	return SeatGracePeriodDays
+}
+
+// IsSeatLimitReached checks if the tenant has reached their seat limit
+// currentUsers is the number of active (non-deactivated) users
+func IsSeatLimitReached(plan string, currentUsers int) bool {
+	maxUsers := MaxUsersPerPlan(plan)
+	if maxUsers == -1 {
+		return false // Unlimited
+	}
+	return currentUsers >= maxUsers
+}
+
+// IsSeatWarningThreshold checks if the tenant has reached the warning threshold
+// currentUsers is the number of active (non-deactivated) users
+func IsSeatWarningThreshold(plan string, currentUsers int) bool {
+	maxUsers := MaxUsersPerPlan(plan)
+	if maxUsers == -1 {
+		return false // Unlimited
+	}
+	warningAt := float64(maxUsers) * SeatWarningThresholdValue
+	return float64(currentUsers) >= warningAt
+}
+
+// SeatUsageInfo provides information about seat usage for a tenant
+type SeatUsageInfo struct {
+	Plan           string
+	CurrentUsers   int
+	MaxUsers       int
+	WarningPercent float64
+	IsUnlimited    bool
+	IsAtLimit      bool
+	IsAtWarning    bool
+}
+
+// GetSeatUsage returns detailed seat usage information
+func GetSeatUsage(plan string, currentUsers int) *SeatUsageInfo {
+	maxUsers := MaxUsersPerPlan(plan)
+	isUnlimited := maxUsers == -1
+
+	info := &SeatUsageInfo{
+		Plan:           plan,
+		CurrentUsers:   currentUsers,
+		MaxUsers:       maxUsers,
+		WarningPercent: SeatWarningThresholdValue * 100,
+		IsUnlimited:    isUnlimited,
+	}
+
+	if !isUnlimited {
+		info.IsAtLimit = currentUsers >= maxUsers
+		info.IsAtWarning = float64(currentUsers) >= float64(maxUsers)*SeatWarningThresholdValue
+	}
+
+	return info
 }
 
 // AgentMaxCallsPerMinute returns the calls-per-minute limit for an AEP plan
@@ -251,7 +341,7 @@ func MaxProviders(plan string) int {
 // Returns -1 for unlimited (enterprise).
 func GetMaxCustomDomains(plan string) int {
 	switch strings.ToLower(plan) {
-	case PlanPro, "professional":
+	case PlanPro:
 		return ProMaxCustomDomains
 	case PlanEnterprise:
 		return EnterpriseMaxCustomDomains

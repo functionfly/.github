@@ -93,12 +93,12 @@ func (c *EmailChannel) buildHTMLBody(n *Notification) string {
             <p>%s</p>
         </div>
         <div class="footer">
-            <p>&copy; 2024 FunctionFly. All rights reserved.</p>
+            %s
         </div>
     </div>
 </body>
 </html>
-`, n.Title, n.Title, n.Body)
+`, n.Title, n.Title, n.Body, email.TransactionalEmailCopyrightHTML())
 }
 
 // buildTextBody builds the plain text email body
@@ -110,7 +110,7 @@ func (c *EmailChannel) buildTextBody(n *Notification) string {
 %s
 
 ---
-© 2024 FunctionFly. All rights reserved.
-`, n.Title, n.Body)
+%s
+`, n.Title, n.Body, email.TransactionalEmailCopyrightPlain())
 }
 

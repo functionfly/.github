@@ -88,13 +88,13 @@ func (s *Service) ListingAgent(ctx context.Context, req *CreateAgentListingReque
 
 // CreateAgentListingRequest represents a request to create an agent listing
 type CreateAgentListingRequest struct {
-	AgentID                string
-	ListingType            string // worker | manager | infrastructure
-	PricingModel           string // free | per_call | subscription | revenue_share
-	PricePerCall           *float64
-	SubscriptionMonthlyUSD *float64
-	RevenueSharePercent    *float64
-	IsActive               bool
+	AgentID                string   `json:"agent_id"`
+	ListingType            string   `json:"listing_type"` // worker | manager | infrastructure
+	PricingModel           string   `json:"pricing_model"` // free | per_call | subscription | revenue_share
+	PricePerCall           *float64 `json:"price_per_call,omitempty"`
+	SubscriptionMonthlyUSD *float64 `json:"subscription_monthly_usd,omitempty"`
+	RevenueSharePercent    *float64 `json:"revenue_share_percent,omitempty"`
+	IsActive               bool     `json:"is_active"`
 }
 
 // ListingFunction creates a marketplace listing for a function

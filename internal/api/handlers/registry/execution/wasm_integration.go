@@ -267,8 +267,8 @@ func ExecuteWASMWithIntegration(
 	tenantID, functionID uuid.UUID,
 ) (json.RawMessage, error) {
 	if executor == nil {
-		// Fall back to original execution
-		return executeLocallyWithLimits(fnVersion, input, maxMemoryMB, maxCPUTimeMs)
+		// Fall back to original execution (no tenant context for enterprise)
+		return executeLocallyWithLimits(fnVersion, input, maxMemoryMB, maxCPUTimeMs, nil, nil)
 	}
 
 	// Determine runtime type from function version

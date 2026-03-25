@@ -9,6 +9,8 @@ import (
 
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
@@ -37,6 +39,7 @@ type PostgresDB struct {
 	userRepository         *UserRepository
 	tenantRepository       *TenantRepository
 	billingRepository      *BillingRepository
+	revenueRepository      *RevenueRepository
 	auditRepository        *AuditRepository
 	appRepository          *AppRepository
 	backendRepository      *BackendRepository
@@ -96,6 +99,38 @@ func NewPostgresDB() (*PostgresDB, error) {
 	return NewPostgresDBWithOptions(false)
 }
 
+// openMigrateSQLDB opens a dedicated *sql.DB for golang-migrate. Pooled Neon/PgBouncer
+// endpoints need the simple query protocol; using lib/pq here still fails
+// pg_advisory_lock with "unnamed prepared statement does not exist".
+func openMigrateSQLDB(config *DatabaseConfig) (*sql.DB, error) {
+	if config.ConnectionString != "" {
+		pgxConfig, err := pgx.ParseConfig(config.ConnectionString)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse DATABASE_URL for migration connection: %w", err)
+		}
+		pgxConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+		dsn := stdlib.RegisterConnConfig(pgxConfig)
+		db, err := sql.Open("pgx", dsn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open migration database: %w", err)
+		}
+		if err := configureConnectionPool(db, config); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("failed to configure migration connection pool: %w", err)
+		}
+		return db, nil
+	}
+	db, err := sql.Open("postgres", buildConnectionString(config))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open migration database: %w", err)
+	}
+	if err := configureConnectionPool(db, config); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to configure migration connection pool: %w", err)
+	}
+	return db, nil
+}
+
 func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) {
 	config, err := loadDatabaseConfig()
 	if err != nil {
@@ -104,9 +139,28 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 
 	connStr := buildConnectionString(config)
 
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database connection: %w", err)
+	var db *sql.DB
+	var gormDSN string
+	if config.ConnectionString != "" {
+		// Use pgx with simple protocol for Neon/PgBouncer to avoid "unnamed prepared statement does not exist".
+		// lib/pq does not support disabling server-side prepared statements for parameterized queries.
+		pgxConfig, err := pgx.ParseConfig(config.ConnectionString)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse DATABASE_URL for pgx: %w", err)
+		}
+		pgxConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+		gormDSN = stdlib.RegisterConnConfig(pgxConfig)
+		db, err = sql.Open("pgx", gormDSN)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open database connection: %w", err)
+		}
+	} else {
+		gormDSN = connStr
+		var err error
+		db, err = sql.Open("postgres", connStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open database connection: %w", err)
+		}
 	}
 
 	// Configure connection pool
@@ -131,9 +185,14 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 		"sslmode":  config.SSLMode,
 	}).Info("Connected to PostgreSQL database")
 
-	// Initialize GORM
-	gormDB, err := gorm.Open(postgres.Open(connStr), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+	// Initialize GORM. When using pgx (DATABASE_URL), same driver and simple protocol. Otherwise lib/pq with PrepareStmt: false for pooler safety.
+	gormCfg := postgres.Config{DSN: gormDSN}
+	if config.ConnectionString != "" {
+		gormCfg.DriverName = "pgx"
+	}
+	gormDB, err := gorm.Open(postgres.New(gormCfg), &gorm.Config{
+		Logger:      logger.Default.LogMode(logger.Info),
+		PrepareStmt: false,
 	})
 	if err != nil {
 		db.Close()
@@ -182,6 +241,7 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 	postgresDB.userRepository = NewUserRepository(postgresDB)
 	postgresDB.tenantRepository = NewTenantRepository(postgresDB)
 	postgresDB.billingRepository = NewBillingRepository(postgresDB)
+	postgresDB.revenueRepository = NewRevenueRepository(postgresDB.DB)
 	postgresDB.auditRepository = NewAuditRepository(postgresDB)
 	postgresDB.appRepository = NewAppRepository(postgresDB)
 	postgresDB.backendRepository = NewBackendRepository(postgresDB)

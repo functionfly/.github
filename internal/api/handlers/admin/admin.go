@@ -16,6 +16,8 @@ import (
 	"github.com/functionfly/functionfly/internal/api/utils"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/monitoring"
+	"github.com/functionfly/functionfly/internal/plans"
+	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -27,14 +29,21 @@ type Handler struct {
 	repo             storage.Repository
 	authSvc          *auth.AuthService
 	unifiedAnalytics *unified.Service
+	sfAddons         *statefabricaddons.Repository
 }
 
 // NewHandler creates a new admin handler. unifiedAnalytics may be nil (tenant metrics will be placeholders).
-func NewHandler(repo storage.Repository, authSvc *auth.AuthService, unifiedAnalytics *unified.Service) *Handler {
+func NewHandler(
+	repo storage.Repository,
+	authSvc *auth.AuthService,
+	unifiedAnalytics *unified.Service,
+	sfAddons *statefabricaddons.Repository,
+) *Handler {
 	return &Handler{
 		repo:             repo,
 		authSvc:          authSvc,
 		unifiedAnalytics: unifiedAnalytics,
+		sfAddons:         sfAddons,
 	}
 }
 
@@ -128,6 +137,22 @@ func (h *Handler) HandleUpdateTenant(w http.ResponseWriter, r *http.Request) {
 
 	// Get before state for audit
 	beforeTenant, _ := h.repo.GetTenantByID(tenantID)
+	if beforeTenant == nil {
+		http.Error(w, "Tenant not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if plan is being changed and if new plan would exceed seat limit
+	if newPlan, ok := updates["plan"].(string); ok && newPlan != "" {
+		newMaxUsers := plans.MaxUsersPerPlan(newPlan)
+		if newMaxUsers != -1 {
+			if currentCount, err := h.repo.CountActiveUsersByTenant(r.Context(), tenantID); err == nil && currentCount > newMaxUsers {
+				gracePeriodEnd := time.Now().AddDate(0, 0, plans.GetSeatGracePeriodDays())
+				updates["seat_grace_period_end"] = gracePeriodEnd
+				logrus.WithFields(logrus.Fields{"tenant_id": tenantID, "new_plan": newPlan, "current_users": currentCount, "max_users": newMaxUsers, "grace_period_end": gracePeriodEnd}).Info("Plan downgrade exceeded seat limit - grace period started")
+			}
+		}
+	}
 
 	tenant, err := h.repo.UpdateTenant(r.Context(), tenantID, updates)
 	if err != nil {
@@ -171,6 +196,158 @@ func (h *Handler) HandleDeleteTenant(w http.ResponseWriter, r *http.Request) {
 	utils.LogAuditEvent(r.Context(), h.repo, r, "tenant.delete", "tenant", &tenantID, beforeTenant, nil, true)
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleGetSeatUsage returns seat usage information for a tenant
+// GET /v1/admin/tenants/{tenantId}/seat-usage
+func (h *Handler) HandleGetSeatUsage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tenantIDStr := vars["tenantId"]
+	tenantID, err := uuid.Parse(tenantIDStr)
+	if err != nil {
+		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		return
+	}
+
+	tenant, err := h.repo.GetTenantByID(tenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant")
+		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		return
+	}
+	if tenant == nil {
+		http.Error(w, "Tenant not found", http.StatusNotFound)
+		return
+	}
+
+	// Count active users for this tenant
+	activeUserCount, err := h.repo.CountActiveUsersByTenant(r.Context(), tenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to count active users")
+		http.Error(w, "Failed to get seat usage", http.StatusInternalServerError)
+		return
+	}
+
+	// Get seat usage info from plans package
+	seatInfo := plans.GetSeatUsage(tenant.Plan, activeUserCount)
+
+	// Include grace period info if set
+	var gracePeriodEndsAt *time.Time
+	if tenant.SeatGracePeriodEnd != nil {
+		gracePeriodEndsAt = tenant.SeatGracePeriodEnd
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"tenant_id":         tenantID,
+		"tenant_name":       tenant.Name,
+		"plan":              seatInfo.Plan,
+		"current_users":     seatInfo.CurrentUsers,
+		"max_users":         seatInfo.MaxUsers,
+		"is_unlimited":      seatInfo.IsUnlimited,
+		"is_at_limit":       seatInfo.IsAtLimit,
+		"is_at_warning":     seatInfo.IsAtWarning,
+		"warning_threshold": seatInfo.WarningPercent,
+		"grace_period_ends": gracePeriodEndsAt,
+	})
+}
+
+// HandleDeactivateUser deactivates a user (soft delete)
+// POST /v1/admin/users/{userId}/deactivate
+func (h *Handler) HandleDeactivateUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userIDStr := vars["userId"]
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get the current admin user (who is performing the deactivation)
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	deactivatedBy := claims.UserID
+
+	// Get user before deactivation for audit
+	user, err := h.repo.GetUserByID(userID)
+	if err != nil {
+		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user")
+		http.Error(w, "Failed to get user", http.StatusInternalServerError)
+		return
+	}
+	if user == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	if user.DeactivatedAt != nil {
+		http.Error(w, "User is already deactivated", http.StatusConflict)
+		return
+	}
+
+	// Deactivate the user
+	if err := h.repo.DeactivateUser(r.Context(), userID, deactivatedBy); err != nil {
+		logrus.WithError(err).WithField("user_id", userID).Error("Failed to deactivate user")
+		http.Error(w, "Failed to deactivate user", http.StatusInternalServerError)
+		return
+	}
+
+	// Log audit event
+	utils.LogAuditEvent(r.Context(), h.repo, r, "user.deactivated", "user", &userID, user, nil, true)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "User deactivated successfully",
+		"user_id": userID,
+	})
+}
+
+// HandleReactivateUser reactivates a previously deactivated user
+// POST /v1/admin/users/{userId}/reactivate
+func (h *Handler) HandleReactivateUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userIDStr := vars["userId"]
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get user before reactivation for audit
+	user, err := h.repo.GetUserByID(userID)
+	if err != nil {
+		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get user")
+		http.Error(w, "Failed to get user", http.StatusInternalServerError)
+		return
+	}
+	if user == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	if user.DeactivatedAt == nil {
+		http.Error(w, "User is not deactivated", http.StatusConflict)
+		return
+	}
+
+	// Reactivate the user
+	if err := h.repo.ReactivateUser(r.Context(), userID); err != nil {
+		logrus.WithError(err).WithField("user_id", userID).Error("Failed to reactivate user")
+		http.Error(w, "Failed to reactivate user", http.StatusInternalServerError)
+		return
+	}
+
+	// Log audit event
+	utils.LogAuditEvent(r.Context(), h.repo, r, "user.reactivated", "user", &userID, user, nil, true)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "User reactivated successfully",
+		"user_id": userID,
+	})
 }
 
 // HandleListUsers lists all platform users (all tenants) for admin management.

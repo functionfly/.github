@@ -163,10 +163,20 @@ func parsePostgresURL(s string) (*parsedPostgresURL, error) {
 }
 
 // buildConnectionString creates a PostgreSQL connection string from config.
-// If config.ConnectionString is set (e.g. from DATABASE_URL for Neon), it is returned as-is.
+// If config.ConnectionString is set (e.g. from DATABASE_URL for Neon), it is used and
+// prefer_simple_protocol=1 is appended so lib/pq does not use prepared statements,
+// which break with PgBouncer/Neon pooled connections (e.g. "unnamed prepared statement does not exist").
 func buildConnectionString(config *DatabaseConfig) string {
 	if config.ConnectionString != "" {
-		return config.ConnectionString
+		s := config.ConnectionString
+		if !strings.Contains(s, "prefer_simple_protocol=") {
+			if strings.Contains(s, "?") {
+				s += "&prefer_simple_protocol=1"
+			} else {
+				s += "?prefer_simple_protocol=1"
+			}
+		}
+		return s
 	}
 	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		config.Host, config.Port, config.User, config.Password, config.Database, config.SSLMode)

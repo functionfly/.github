@@ -499,6 +499,30 @@ func (r *UserRepository) listUsersMinimal() ([]*User, error) {
 	return users, nil
 }
 
+// ListUserIDsByTenant returns all user IDs for a tenant.
+func (r *UserRepository) ListUserIDsByTenant(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error) {
+	query := `SELECT id FROM users WHERE tenant_id = $1`
+	rows, err := r.db.QueryContext(ctx, query, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tenant user ids: %w", err)
+	}
+	defer rows.Close()
+
+	var userIDs []uuid.UUID
+	for rows.Next() {
+		var userID uuid.UUID
+		if err := rows.Scan(&userID); err != nil {
+			return nil, fmt.Errorf("failed to scan tenant user id: %w", err)
+		}
+		userIDs = append(userIDs, userID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed iterating tenant user ids: %w", err)
+	}
+
+	return userIDs, nil
+}
+
 // UpdateUser updates user fields dynamically
 func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updates map[string]interface{}) (*User, error) {
 	// Get current user
@@ -580,13 +604,19 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 		argIndex++
 	}
 
+	if dob, ok := updates["date_of_birth"].(*time.Time); ok {
+		setParts = append(setParts, fmt.Sprintf("date_of_birth = $%d", argIndex))
+		args = append(args, dob)
+		argIndex++
+	}
+
 	if len(setParts) == 0 {
 		return current, nil // No updates
 	}
 
 	setParts = append(setParts, "updated_at = NOW()")
 
-	query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d RETURNING id, tenant_id, username, email, password_hash, role, company_name, name, bio, location, website, job_title, twitter_url, github_url, linkedin_url, created_at, updated_at",
+	query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d RETURNING id, tenant_id, username, email, password_hash, role, company_name, name, bio, location, website, job_title, twitter_url, github_url, linkedin_url, date_of_birth, created_at, updated_at",
 		strings.Join(setParts, ", "), argIndex)
 
 	args = append(args, userID)
@@ -602,9 +632,11 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 	var twitterURLNull sql.NullString
 	var githubURLNull sql.NullString
 	var linkedinURLNull sql.NullString
+	var dateOfBirthNull sql.NullTime
 	err = r.db.QueryRow(query, args...).Scan(
 		&updated.ID, &updated.TenantID, &usernameNull, &updated.Email, &updated.PasswordHash, &updated.Role, &companyNameNull, &nameNull, &bioNull,
 		&locationNull, &websiteNull, &jobTitleNull, &twitterURLNull, &githubURLNull, &linkedinURLNull,
+		&dateOfBirthNull,
 		&updated.CreatedAt, &updated.UpdatedAt)
 	if err == nil && usernameNull.Valid {
 		updated.Username = &usernameNull.String
@@ -635,6 +667,10 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 	}
 	if err == nil && linkedinURLNull.Valid {
 		updated.LinkedInURL = &linkedinURLNull.String
+	}
+	if err == nil && dateOfBirthNull.Valid {
+		t := dateOfBirthNull.Time
+		updated.DateOfBirth = &t
 	}
 
 	if err != nil {
@@ -842,4 +878,96 @@ func (r *UserRepository) VerifyPassword(userID uuid.UUID, password string) (bool
 	}
 
 	return true, nil
+}
+
+// ListActiveUsersByTenant lists all active (non-deactivated) users for a tenant
+func (r *UserRepository) ListActiveUsersByTenant(ctx context.Context, tenantID uuid.UUID) ([]*User, error) {
+	query := `SELECT id, tenant_id, username, email, password_hash, role, email_verified,
+		company_name, deactivated_at, deactivated_by, created_at, updated_at
+		FROM users WHERE tenant_id = $1 AND deactivated_at IS NULL ORDER BY created_at DESC`
+
+	rows, err := r.db.QueryContext(ctx, query, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list active users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		user := &User{}
+		var username, companyName, role sql.NullString
+		var deactivatedAt sql.NullTime
+		var deactivatedBy uuid.NullUUID
+
+		if err := rows.Scan(
+			&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role,
+			&user.EmailVerified, &companyName, &deactivatedAt, &deactivatedBy,
+			&user.CreatedAt, &user.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+
+		if username.Valid {
+			user.Username = &username.String
+		}
+		if companyName.Valid {
+			user.CompanyName = &companyName.String
+		}
+		if role.Valid {
+			user.Role = role.String
+		}
+		if deactivatedAt.Valid {
+			user.DeactivatedAt = &deactivatedAt.Time
+		}
+		if deactivatedBy.Valid {
+			user.DeactivatedBy = &deactivatedBy.UUID
+		}
+
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
+// CountActiveUsersByTenant counts all active (non-deactivated) users for a tenant
+func (r *UserRepository) CountActiveUsersByTenant(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND deactivated_at IS NULL`,
+		tenantID).Scan(&count)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to count active users: %w", err)
+	}
+
+	return count, nil
+}
+
+// DeactivateUser soft-deletes a user (sets deactivated_at and deactivated_by)
+func (r *UserRepository) DeactivateUser(ctx context.Context, userID, deactivatedBy uuid.UUID) error {
+	now := time.Now()
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE users SET deactivated_at = $1, deactivated_by = $2, updated_at = $3
+		WHERE id = $4 AND deactivated_at IS NULL`,
+		now, deactivatedBy, now, userID)
+
+	if err != nil {
+		return fmt.Errorf("failed to deactivate user: %w", err)
+	}
+
+	return nil
+}
+
+// ReactivateUser reactivates a previously deactivated user
+func (r *UserRepository) ReactivateUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE users SET deactivated_at = NULL, deactivated_by = NULL, updated_at = $1
+		WHERE id = $2`,
+		time.Now(), userID)
+
+	if err != nil {
+		return fmt.Errorf("failed to reactivate user: %w", err)
+	}
+
+	return nil
 }

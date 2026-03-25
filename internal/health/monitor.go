@@ -3,6 +3,7 @@ package health
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"sync"
 	"time"
@@ -19,21 +20,68 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// CircuitBreakerConfig holds configurable circuit breaker settings
+type CircuitBreakerConfig struct {
+	// FailureThreshold is the number of consecutive failures before opening the circuit
+	FailureThreshold int
+	// SuccessThreshold is the number of successes in half-open state before closing
+	SuccessThreshold int
+	// OpenTimeout is the base timeout before moving to half-open state
+	OpenTimeout time.Duration
+	// MaxOpenTimeout is the maximum timeout with exponential backoff
+	MaxOpenTimeout time.Duration
+	// BackoffMultiplier is the multiplier for exponential backoff
+	BackoffMultiplier float64
+	// HalfOpenMaxRequests is the maximum number of requests allowed in half-open state
+	HalfOpenMaxRequests int
+}
+
+// DefaultCircuitBreakerConfig returns production-ready circuit breaker defaults
+func DefaultCircuitBreakerConfig() *CircuitBreakerConfig {
+	return &CircuitBreakerConfig{
+		FailureThreshold:    3,
+		SuccessThreshold:    2,
+		OpenTimeout:         30 * time.Second,
+		MaxOpenTimeout:      5 * time.Minute,
+		BackoffMultiplier:   2.0,
+		HalfOpenMaxRequests: 3,
+	}
+}
+
 // Monitor handles backend health monitoring and circuit breaker management
 type Monitor struct {
-	repo          storage.Repository
-	probeInterval time.Duration
-	stopChan      chan struct{}
-	wg            sync.WaitGroup
-	stopOnce      sync.Once
+	repo              storage.Repository
+	probeInterval     time.Duration
+	stopChan          chan struct{}
+	wg                sync.WaitGroup
+	stopOnce          sync.Once
+	circuitConfig     *CircuitBreakerConfig
+	openCircuits      map[uuid.UUID]time.Time // Track when circuits were opened for backoff
+	openCircuitsMutex sync.RWMutex
 }
 
 // NewMonitor creates a new health monitor
 func NewMonitor(repo storage.Repository) *Monitor {
 	return &Monitor{
 		repo:          repo,
-		probeInterval: 5 * time.Second, // Probe every 5 seconds
+		probeInterval: 5 * time.Second,
 		stopChan:      make(chan struct{}),
+		circuitConfig: DefaultCircuitBreakerConfig(),
+		openCircuits:  make(map[uuid.UUID]time.Time),
+	}
+}
+
+// NewMonitorWithConfig creates a new health monitor with custom circuit breaker config
+func NewMonitorWithConfig(repo storage.Repository, config *CircuitBreakerConfig) *Monitor {
+	if config == nil {
+		config = DefaultCircuitBreakerConfig()
+	}
+	return &Monitor{
+		repo:          repo,
+		probeInterval: 5 * time.Second,
+		stopChan:      make(chan struct{}),
+		circuitConfig: config,
+		openCircuits:  make(map[uuid.UUID]time.Time),
 	}
 }
 
@@ -211,7 +259,7 @@ func (m *Monitor) getAdapterForProvider(provider string) common.ProviderAdapter 
 	}
 }
 
-// handleCircuitBreaker manages circuit breaker state transitions
+// handleCircuitBreaker manages circuit breaker state transitions with configurable thresholds and exponential backoff
 func (m *Monitor) handleCircuitBreaker(backendID uuid.UUID, healthy bool) {
 	requestID := fmt.Sprintf("circuit-breaker-%s-%d", backendID.String(), time.Now().Unix())
 
@@ -230,21 +278,28 @@ func (m *Monitor) handleCircuitBreaker(backendID uuid.UUID, healthy bool) {
 	newState := state.State
 	now := time.Now()
 
-	// Circuit breaker logic
+	// Circuit breaker logic with configurable thresholds
 	switch state.State {
 	case "closed":
 		if !healthy {
 			state.FailCount++
-			// If we have 3 failures in a row, open the circuit
-			if state.FailCount >= 3 {
+			// Use configurable failure threshold
+			if state.FailCount >= m.circuitConfig.FailureThreshold {
 				newState = "open"
 				state.SinceTs = now
 				state.LastFailureTs = &now
+
+				// Track when circuit was opened for exponential backoff
+				m.openCircuitsMutex.Lock()
+				m.openCircuits[backendID] = now
+				m.openCircuitsMutex.Unlock()
+
 				logger.WithFields(logrus.Fields{
-					"old_state":         "closed",
-					"new_state":         "open",
-					"fail_count":        state.FailCount,
-					"transition_reason": "failure_threshold_reached",
+					"old_state":          "closed",
+					"new_state":          "open",
+					"fail_count":         state.FailCount,
+					"failure_threshold":  m.circuitConfig.FailureThreshold,
+					"transition_reason":  "failure_threshold_reached",
 				}).Warn("Circuit breaker opened")
 			}
 		} else {
@@ -255,37 +310,56 @@ func (m *Monitor) handleCircuitBreaker(backendID uuid.UUID, healthy bool) {
 		}
 
 	case "open":
-		// Check if we should move to half-open (after 30 seconds)
-		if now.Sub(state.SinceTs) > 30*time.Second {
+		// Calculate timeout with exponential backoff
+		timeout := m.calculateBackoffTimeout(backendID)
+
+		if now.Sub(state.SinceTs) > timeout {
 			newState = "half-open"
 			state.SinceTs = now
 			logger.WithFields(logrus.Fields{
 				"old_state":         "open",
 				"new_state":         "half-open",
 				"time_since_open":   now.Sub(state.SinceTs).String(),
+				"backoff_timeout":   timeout.String(),
 				"transition_reason": "timeout_expired",
 			}).Info("Circuit breaker moving to half-open")
 		}
 
 	case "half-open":
 		if healthy {
-			// Success in half-open, close the circuit
-			newState = "closed"
-			state.SinceTs = now
-			state.FailCount = 0
+			// Use configurable success threshold
 			state.SuccessCount++
-			state.LastSuccessTs = &now
-			logger.WithFields(logrus.Fields{
-				"old_state":         "half-open",
-				"new_state":         "closed",
-				"transition_reason": "success_in_half_open",
-			}).Info("Circuit breaker closed")
+			if state.SuccessCount >= m.circuitConfig.SuccessThreshold {
+				newState = "closed"
+				state.SinceTs = now
+				state.FailCount = 0
+
+				// Remove from open circuits tracking
+				m.openCircuitsMutex.Lock()
+				delete(m.openCircuits, backendID)
+				m.openCircuitsMutex.Unlock()
+
+				logger.WithFields(logrus.Fields{
+					"old_state":          "half-open",
+					"new_state":          "closed",
+					"success_count":      state.SuccessCount,
+					"success_threshold":  m.circuitConfig.SuccessThreshold,
+					"transition_reason":  "success_in_half_open",
+				}).Info("Circuit breaker closed")
+			}
 		} else {
-			// Failure in half-open, go back to open
+			// Failure in half-open, go back to open with incremented backoff
 			newState = "open"
 			state.SinceTs = now
 			state.FailCount++
+			state.SuccessCount = 0
 			state.LastFailureTs = &now
+
+			// Update open time for backoff calculation
+			m.openCircuitsMutex.Lock()
+			m.openCircuits[backendID] = now
+			m.openCircuitsMutex.Unlock()
+
 			logger.WithFields(logrus.Fields{
 				"old_state":         "half-open",
 				"new_state":         "open",
@@ -310,3 +384,35 @@ func (m *Monitor) handleCircuitBreaker(backendID uuid.UUID, healthy bool) {
 		}
 	}
 }
+
+// calculateBackoffTimeout calculates exponential backoff timeout for circuit breaker
+func (m *Monitor) calculateBackoffTimeout(backendID uuid.UUID) time.Duration {
+	m.openCircuitsMutex.RLock()
+	openTime, exists := m.openCircuits[backendID]
+	m.openCircuitsMutex.RUnlock()
+
+	if !exists {
+		return m.circuitConfig.OpenTimeout
+	}
+
+	// Calculate how many times the circuit has been opened
+	elapsed := time.Since(openTime)
+	baseTimeout := m.circuitConfig.OpenTimeout
+
+	// Exponential backoff: timeout = base * (multiplier ^ attempts)
+	// Approximate attempts from elapsed time
+	attempts := int(elapsed / baseTimeout)
+	if attempts < 0 {
+		attempts = 0
+	}
+
+	backoffTimeout := time.Duration(float64(baseTimeout) * math.Pow(m.circuitConfig.BackoffMultiplier, float64(attempts)))
+
+	// Cap at maximum timeout
+	if backoffTimeout > m.circuitConfig.MaxOpenTimeout {
+		backoffTimeout = m.circuitConfig.MaxOpenTimeout
+	}
+
+	return backoffTimeout
+}
+

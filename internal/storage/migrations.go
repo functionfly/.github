@@ -51,7 +51,7 @@ func RunMigrationsWithValidation(db *PostgresDB) (*MigrationResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load database config: %w", err)
 	}
-	migrateConn, err := sql.Open("postgres", buildConnectionString(config))
+	migrateConn, err := openMigrateSQLDB(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open migration connection: %w", err)
 	}

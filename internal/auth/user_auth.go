@@ -257,6 +257,41 @@ func userToLoginUser(u *storage.User) *LoginUser {
 	return lu
 }
 
+// minimumSignupAge is the minimum age required to create an account (COPPA-aligned threshold).
+const minimumSignupAge = 13
+
+func ageFromBirthdateUTC(birth time.Time, now time.Time) int {
+	birth = birth.UTC()
+	now = now.UTC()
+	age := now.Year() - birth.Year()
+	anniversary := time.Date(now.Year(), birth.Month(), birth.Day(), 0, 0, 0, 0, time.UTC)
+	if now.Before(anniversary) {
+		age--
+	}
+	return age
+}
+
+func parseDateOfBirthForSignup(s string) (time.Time, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}, fmt.Errorf("date of birth is required")
+	}
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid date of birth")
+	}
+	t = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+	today := time.Now().UTC()
+	todayDate := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
+	if t.After(todayDate) {
+		return time.Time{}, fmt.Errorf("date of birth cannot be in the future")
+	}
+	if ageFromBirthdateUTC(t, today) < minimumSignupAge {
+		return time.Time{}, fmt.Errorf("you must be at least %d years old to register", minimumSignupAge)
+	}
+	return t, nil
+}
+
 // Signup creates a new user account (unverified, requires email confirmation)
 func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 	// Validate required fields
@@ -346,33 +381,43 @@ func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 		tenantID = tenant.ID
 	}
 
+	dob, err := parseDateOfBirthForSignup(req.DateOfBirth)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create user with verification token
 	user, err := a.repo.CreateUser(req.Email, hashedPassword, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	// Set optional username and company name if provided
-	if req.Username != "" || req.CompanyName != "" {
-		updates := make(map[string]interface{})
-		if req.Username != "" {
-			updates["username"] = req.Username
-		}
-		if req.CompanyName != "" {
-			updates["company_name"] = req.CompanyName
-		}
-		if _, err := a.repo.UpdateUser(context.Background(), user.ID, updates); err != nil {
-			// Log but don't fail signup - user can set these later
-			fmt.Printf("Warning: failed to set username/company name: %v\n", err)
-		} else {
-			if req.Username != "" {
-				user.Username = &req.Username
-			}
-			if req.CompanyName != "" {
-				user.CompanyName = &req.CompanyName
-			}
-		}
+	// Profile fields: username, company, display name, date of birth
+	updates := map[string]interface{}{
+		"date_of_birth": &dob,
 	}
+	if req.Username != "" {
+		updates["username"] = req.Username
+	}
+	if req.CompanyName != "" {
+		updates["company_name"] = req.CompanyName
+	}
+	if strings.TrimSpace(req.Name) != "" {
+		updates["name"] = strings.TrimSpace(req.Name)
+	}
+	if _, err := a.repo.UpdateUser(context.Background(), user.ID, updates); err != nil {
+		return nil, fmt.Errorf("failed to save profile: %w", err)
+	}
+	if req.Username != "" {
+		user.Username = &req.Username
+	}
+	if req.CompanyName != "" {
+		user.CompanyName = &req.CompanyName
+	}
+	if strings.TrimSpace(req.Name) != "" {
+		user.Name = strings.TrimSpace(req.Name)
+	}
+	user.DateOfBirth = &dob
 
 	// Set verification details
 	err = a.repo.UpdateUserEmailVerification(nil, user.ID, false, &verificationToken, &expiresAt)

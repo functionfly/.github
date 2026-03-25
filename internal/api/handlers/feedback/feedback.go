@@ -3,8 +3,10 @@ package feedback
 import (
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -17,6 +19,8 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 )
 
 // Handler handles feedback-related HTTP requests
@@ -114,6 +118,15 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Normalize IP for Postgres INET (address only, no port). Use nil if not parseable so DB accepts NULL.
+	ipAddr := r.RemoteAddr
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		ipAddr = host
+	}
+	if ipAddr != "" && net.ParseIP(ipAddr) == nil {
+		ipAddr = "" // invalid for INET; store as NULL
+	}
+
 	// Create feedback
 	feedback := &storage.Feedback{
 		FeedbackType: feedbackType,
@@ -123,12 +136,19 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 		BrowserInfo:  browserInfo,
 		UserID:       userID,
 		UserEmail:    userEmail,
-		IPAddress:    r.RemoteAddr,
+		IPAddress:    ipAddr,
 		UserAgent:    r.Header.Get("User-Agent"),
 	}
 
 	createdFeedback, err := h.repo.CreateFeedback(feedback)
 	if err != nil {
+		logrus.WithError(err).WithField("feedback_type", feedbackType).Error("CreateFeedback failed")
+		// If DB rejects feedback_type (e.g. launch_waitlist not in CHECK), tell operator to run migration
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23514" && strings.Contains(strings.ToLower(pqErr.Message), "feedback_type") {
+			http.Error(w, `{"error":"Launch waitlist is not enabled. Run migration 20260328000000_feedback_launch_waitlist on the database."}`, http.StatusBadRequest)
+			return
+		}
 		http.Error(w, `{"error":"Failed to create feedback"}`, http.StatusInternalServerError)
 		return
 	}
@@ -247,12 +267,14 @@ func (h *Handler) GetFeedbackHistory(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ListFeedback handles GET /v1/admin/feedback (admin only)
+// ListFeedback handles GET /v1/admin/feedback (admin only).
+// Query params: limit, offset, status, feedback_type (e.g. feedback_type=launch_waitlist for waitlist signups).
 func (h *Handler) ListFeedback(w http.ResponseWriter, r *http.Request) {
 	// Parse query parameters
 	limit := 50 // Default limit for admin
 	offset := 0
 	var statusFilter *string
+	var typeFilter *string
 
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l >= 1 && l <= 100 {
@@ -270,8 +292,12 @@ func (h *Handler) ListFeedback(w http.ResponseWriter, r *http.Request) {
 		statusFilter = &status
 	}
 
+	if ft := r.URL.Query().Get("feedback_type"); ft != "" {
+		typeFilter = &ft
+	}
+
 	// Get feedback list
-	feedbacks, err := h.repo.ListFeedback(limit, offset, statusFilter)
+	feedbacks, err := h.repo.ListFeedback(limit, offset, statusFilter, typeFilter)
 	if err != nil {
 		http.Error(w, `{"error":"Failed to retrieve feedback"}`, http.StatusInternalServerError)
 		return
@@ -435,7 +461,7 @@ func (h *Handler) ExportFeedback(w http.ResponseWriter, r *http.Request) {
 	dateTo := r.URL.Query().Get("date_to")
 
 	// Get all feedback (admin can see all)
-	feedbacks, err := h.repo.ListFeedback(10000, 0, nil) // Get up to 10k records
+	feedbacks, err := h.repo.ListFeedback(10000, 0, nil, nil) // Get up to 10k records
 	if err != nil {
 		http.Error(w, `{"error":"Failed to retrieve feedback"}`, http.StatusInternalServerError)
 		return

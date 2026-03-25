@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -89,6 +90,201 @@ func listProviderFromStorage(p *storage.Provider) map[string]interface{} {
 	}
 }
 
+// connectedProviderResponse is the shape returned to the dashboard for a connected provider.
+func connectedProviderResponse(p *storage.Provider) map[string]interface{} {
+	status := "pending"
+	switch p.Status {
+	case "active":
+		status = "online"
+	case "inactive":
+		status = "offline"
+	case "error":
+		status = "degraded"
+	}
+	return map[string]interface{}{
+		"id":          p.ID,
+		"name":        p.Provider,
+		"status":      status,
+		"connectedAt": p.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+// HandleConnectProvider validates an API token for the given provider and, if valid, saves
+// it encrypted in the database. Returns a ConnectedProvider JSON object on success.
+func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		ProviderID string `json:"providerId"`
+		APIKey     string `json:"apiKey"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if req.ProviderID == "" {
+		http.Error(w, "providerId is required", http.StatusBadRequest)
+		return
+	}
+
+	// FunctionFly Edge is managed infrastructure — no external token needed.
+	// Idempotent: same as other providers — one row per user (connect used to INSERT every time).
+	if req.ProviderID == "functionfly-edge" {
+		if existing, _ := h.repo.GetProviderByUserAndType(claims.UserID, "functionfly-edge"); existing != nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"provider": connectedProviderResponse(existing),
+			})
+			return
+		}
+		idBytes := make([]byte, 16)
+		rand.Read(idBytes)
+		provider := &storage.Provider{
+			ID:       hex.EncodeToString(idBytes),
+			UserID:   claims.UserID,
+			Provider: "functionfly-edge",
+			Token:    "managed",
+			Status:   "active",
+		}
+		if err := h.repo.CreateProvider(provider); err != nil {
+			logrus.WithError(err).Error("Failed to store functionfly-edge provider")
+			http.Error(w, "Failed to enable provider", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"provider": connectedProviderResponse(provider),
+		})
+		return
+	}
+
+	// External providers require a non-empty API key.
+	if req.APIKey == "" {
+		http.Error(w, "apiKey is required", http.StatusBadRequest)
+		return
+	}
+
+	// Map frontend provider IDs to backend provider names used in validation.
+	providerName := req.ProviderID
+	switch req.ProviderID {
+	case "workers":
+		providerName = "cloudflare"
+	}
+
+	// Validate the token against the external provider's API.
+	validation := h.validateProviderToken(providerName, req.APIKey)
+	if !validation.IsValid {
+		http.Error(w, validation.Message, http.StatusUnprocessableEntity)
+		return
+	}
+
+	// If a provider of this type already exists for the user, update it.
+	existing, _ := h.repo.GetProviderByUserAndType(claims.UserID, req.ProviderID)
+	if existing != nil {
+		if _, err := h.repo.UpdateProvider(r.Context(), existing.ID, map[string]interface{}{
+			"token":  req.APIKey,
+			"status": "active",
+		}); err != nil {
+			logrus.WithError(err).Error("Failed to update existing provider")
+			http.Error(w, "Failed to update provider", http.StatusInternalServerError)
+			return
+		}
+		existing.Status = "active"
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"provider": connectedProviderResponse(existing),
+		})
+		return
+	}
+
+	// Create new provider record.
+	idBytes := make([]byte, 16)
+	rand.Read(idBytes)
+	provider := &storage.Provider{
+		ID:       hex.EncodeToString(idBytes),
+		UserID:   claims.UserID,
+		Provider: req.ProviderID,
+		Token:    req.APIKey,
+		Status:   "active",
+	}
+	if err := h.repo.CreateProvider(provider); err != nil {
+		logrus.WithError(err).Error("Failed to store provider")
+		http.Error(w, "Failed to save provider", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"provider": connectedProviderResponse(provider),
+	})
+}
+
+// HandleDisconnectProvider deletes a connected provider for the authenticated user.
+func (h *Handler) HandleDisconnectProvider(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	vars := mux.Vars(r)
+	providerID := vars["providerId"]
+	if providerID == "" {
+		http.Error(w, "providerId is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.DeleteProvider(r.Context(), providerID, claims.UserID); err != nil {
+		logrus.WithError(err).WithField("providerID", providerID).Error("Failed to delete provider")
+		http.Error(w, "Failed to disconnect provider", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleTestConnection tests whether the stored credentials for a provider still work.
+func (h *Handler) HandleTestConnection(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	vars := mux.Vars(r)
+	providerID := vars["providerId"]
+
+	provider, err := h.repo.GetProviderByUserAndType(claims.UserID, providerID)
+	if err != nil || provider == nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Provider not found"})
+		return
+	}
+
+	// FunctionFly Edge is always reachable.
+	if providerID == "functionfly-edge" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "FunctionFly Edge is operational"})
+		return
+	}
+
+	providerName := providerID
+	if providerID == "workers" {
+		providerName = "cloudflare"
+	}
+
+	result := h.validateProviderToken(providerName, provider.Token)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": result.IsValid,
+		"message": result.Message,
+	})
+}
+
 // HandleListProviders returns the current user's connected providers (no tokens).
 func (h *Handler) HandleListProviders(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
@@ -102,8 +298,17 @@ func (h *Handler) HandleListProviders(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to list providers", http.StatusInternalServerError)
 		return
 	}
+	// One logical connection per provider slug; prefer newest row if duplicates exist (legacy bug).
+	sort.SliceStable(providers, func(i, j int) bool {
+		return providers[i].CreatedAt.After(providers[j].CreatedAt)
+	})
+	seen := make(map[string]struct{}, len(providers))
 	out := make([]map[string]interface{}, 0, len(providers))
 	for _, p := range providers {
+		if _, dup := seen[p.Provider]; dup {
+			continue
+		}
+		seen[p.Provider] = struct{}{}
 		out = append(out, listProviderFromStorage(p))
 	}
 	w.Header().Set("Content-Type", "application/json")

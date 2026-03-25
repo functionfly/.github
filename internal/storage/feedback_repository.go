@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,15 +26,39 @@ func (r *FeedbackRepository) CreateFeedback(feedback *Feedback) (*Feedback, erro
 	feedback.CreatedAt = time.Now()
 	feedback.UpdatedAt = time.Now()
 
-	_, err := r.db.Exec(`
+	// ip_address is INET; pass nil when empty so Postgres accepts NULL
+	var ipAddr interface{} = feedback.IPAddress
+	if feedback.IPAddress == "" {
+		ipAddr = nil
+	}
+	// priority has a CHECK constraint; pass nil when empty so Postgres uses the column DEFAULT ('medium')
+	var priority interface{} = feedback.Priority
+	if feedback.Priority == "" {
+		priority = nil
+	}
+
+	// Wrap in a transaction so Neon's pgBouncer (transaction pool mode) pins a single
+	// backend connection for the Parse→Bind→Execute→Sync sequence that lib/pq sends.
+	// Without this, pgBouncer can route Bind to a different backend, causing
+	// "unnamed prepared statement does not exist".
+	tx, err := r.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	_, err = tx.Exec(`
 		INSERT INTO feedback (id, user_id, user_email, feedback_type, subject, message, priority, browser_info, status, ip_address, user_agent, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
 		feedback.ID, feedback.UserID, feedback.UserEmail, feedback.FeedbackType, feedback.Subject,
-		feedback.Message, feedback.Priority, feedback.BrowserInfo, feedback.Status,
-		feedback.IPAddress, feedback.UserAgent, feedback.CreatedAt, feedback.UpdatedAt)
-
+		feedback.Message, priority, feedback.BrowserInfo, feedback.Status,
+		ipAddr, feedback.UserAgent, feedback.CreatedAt, feedback.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create feedback: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit feedback: %w", err)
 	}
 
 	return feedback, nil
@@ -144,26 +169,37 @@ func (r *FeedbackRepository) GetFeedbackByUser(userID *uuid.UUID, userEmail *str
 	return feedbacks, nil
 }
 
-// ListFeedback retrieves feedback submissions with pagination (admin only)
-func (r *FeedbackRepository) ListFeedback(limit, offset int, statusFilter *string) ([]Feedback, error) {
+// ListFeedback retrieves feedback submissions with pagination (admin only).
+// typeFilter can be e.g. "launch_waitlist" to list only waitlist signups.
+func (r *FeedbackRepository) ListFeedback(limit, offset int, statusFilter *string, typeFilter *string) ([]Feedback, error) {
 	var feedbacks []Feedback
 	var query string
 	var args []interface{}
+	var where []string
+	var n int
 
 	if statusFilter != nil {
-		query = `
-			SELECT id, user_id, user_email, feedback_type, subject, message, priority, browser_info, status, ip_address, user_agent, created_at, updated_at
-			FROM feedback
-			WHERE status = $1
-			ORDER BY created_at DESC
-			LIMIT $2 OFFSET $3`
-		args = []interface{}{*statusFilter, limit, offset}
+		n++
+		where = append(where, fmt.Sprintf("status = $%d", n))
+	}
+	if typeFilter != nil {
+		n++
+		where = append(where, fmt.Sprintf("feedback_type = $%d", n))
+	}
+
+	baseSelect := `
+		SELECT id, user_id, user_email, feedback_type, subject, message, priority, browser_info, status, ip_address, user_agent, created_at, updated_at
+		FROM feedback`
+	if len(where) > 0 {
+		query = baseSelect + " WHERE " + strings.Join(where, " AND ") + " ORDER BY created_at DESC LIMIT $" + fmt.Sprintf("%d", n+1) + " OFFSET $" + fmt.Sprintf("%d", n+2)
+		for _, a := range []*string{statusFilter, typeFilter} {
+			if a != nil {
+				args = append(args, *a)
+			}
+		}
+		args = append(args, limit, offset)
 	} else {
-		query = `
-			SELECT id, user_id, user_email, feedback_type, subject, message, priority, browser_info, status, ip_address, user_agent, created_at, updated_at
-			FROM feedback
-			ORDER BY created_at DESC
-			LIMIT $1 OFFSET $2`
+		query = baseSelect + " ORDER BY created_at DESC LIMIT $1 OFFSET $2"
 		args = []interface{}{limit, offset}
 	}
 

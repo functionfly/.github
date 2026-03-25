@@ -65,7 +65,9 @@ type SignupRequest struct {
 	ConfirmPassword string `json:"confirmPassword"`
 	TermsAccepted   bool   `json:"termsAccepted"`
 	Username        string `json:"username,omitempty"`
+	Name            string `json:"name,omitempty"`
 	CompanyName     string `json:"companyName,omitempty"`
+	DateOfBirth     string `json:"dateOfBirth"` // YYYY-MM-DD
 	RecaptchaToken  string `json:"recaptchaToken,omitempty"`
 }
 

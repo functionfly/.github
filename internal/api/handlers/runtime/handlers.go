@@ -150,6 +150,15 @@ func (h *Handler) ListRuntimes(w http.ResponseWriter, r *http.Request) {
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
+		{
+			ID:          "python-microvm",
+			Name:        "Python (MicroVM)",
+			Version:     "Enterprise",
+			Status:      "beta",
+			Features:    []string{"CPython 3.11+", "NumPy/Pandas", "C extensions", "Firecracker isolation"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -206,6 +215,15 @@ func (h *Handler) GetRuntimeInfo(w http.ResponseWriter, r *http.Request) {
 			Version:     "3.11",
 			Status:      "stable",
 			Features:    []string{"async/await", "Type hints", "f-strings"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		"python-microvm": {
+			ID:          "python-microvm",
+			Name:        "Python (MicroVM)",
+			Version:     "Enterprise",
+			Status:      "beta",
+			Features:    []string{"CPython 3.11+", "NumPy/Pandas", "C extensions", "Firecracker isolation"},
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},

@@ -72,22 +72,24 @@ const (
 	TypeDeploymentStarted = "deployment.started"
 
 	// Billing notifications
-	TypeBillingInvoiceGenerated = "billing.invoice_generated"
-	TypeBillingPaymentFailed    = "billing.payment_failed"
-	TypeBillingPaymentSuccess   = "billing.payment_success"
+	TypeBillingInvoiceGenerated     = "billing.invoice_generated"
+	TypeBillingPaymentFailed        = "billing.payment_failed"
+	TypeBillingPaymentSuccess       = "billing.payment_success"
 	TypeBillingSubscriptionExpiring = "billing.subscription_expiring"
+	TypeBillingWalletToppedUp       = "billing.wallet_topped_up"
+	TypeBillingWalletLowBalance     = "billing.wallet_low_balance"
 
 	// Security notifications
-	TypeSecurityPasswordChanged  = "security.password_changed"
-	TypeSecurityMFAEnabled       = "security.mfa_enabled"
-	TypeSecurityNewDeviceLogin   = "security.new_device_login"
+	TypeSecurityPasswordChanged    = "security.password_changed"
+	TypeSecurityMFAEnabled         = "security.mfa_enabled"
+	TypeSecurityNewDeviceLogin     = "security.new_device_login"
 	TypeSecuritySuspiciousActivity = "security.suspicious_activity"
 
 	// Team notifications
-	TypeTeamInvitation        = "team.invitation"
-	TypeTeamMemberAdded       = "team.member_added"
-	TypeTeamMemberRemoved     = "team.member_removed"
-	TypeTeamRoleChanged       = "team.role_changed"
+	TypeTeamInvitation    = "team.invitation"
+	TypeTeamMemberAdded   = "team.member_added"
+	TypeTeamMemberRemoved = "team.member_removed"
+	TypeTeamRoleChanged   = "team.role_changed"
 
 	// System notifications
 	TypeSystemMaintenance     = "system.maintenance"
@@ -96,18 +98,18 @@ const (
 	TypeWelcome               = "system.welcome"
 
 	// Function notifications
-	TypeFunctionPublished     = "function.published"
-	TypeFunctionUpdated       = "function.updated"
-	TypeFunctionDeprecated    = "function.deprecated"
-	TypeFunctionExecuted     = "function.executed"
-	TypeFunctionError        = "function.error"
+	TypeFunctionPublished  = "function.published"
+	TypeFunctionUpdated    = "function.updated"
+	TypeFunctionDeprecated = "function.deprecated"
+	TypeFunctionExecuted   = "function.executed"
+	TypeFunctionError      = "function.error"
 
 	// Registry notifications
 	TypeRegistryNewVersion    = "registry.new_version"
 	TypeRegistryFunctionRated = "registry.function_rated"
 
 	// Follow notifications
-	TypeFollowStarted          = "follow.started"
+	TypeFollowStarted         = "follow.started"
 	TypeFollowFunctionUpdated = "follow.function_updated"
 	TypeFollowNewVersion      = "follow.function_new_version"
 )

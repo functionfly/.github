@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/functionfly/functionfly/internal/api/apputil"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/types"
 	"github.com/functionfly/functionfly/internal/deployment"
@@ -38,29 +39,12 @@ func (h *Handler) HandleDeploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(r)
-	appIDStr := vars["appId"]
-	appID, err := uuid.Parse(appIDStr)
-	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	if resolveErr != nil {
+		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
 	}
-
-	// Verify app exists and user has access
-	app, err := h.repo.GetAppByID(appID)
-	if err != nil {
-		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get app")
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
-		return
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-	if app.TenantID != user.TenantID {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
-	}
+	appID := app.ID
 
 	var req types.DeployRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -116,29 +100,12 @@ func (h *Handler) HandleListDeployments(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	vars := mux.Vars(r)
-	appIDStr := vars["appId"]
-	appID, err := uuid.Parse(appIDStr)
-	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+	app, resolveErr := apputil.ResolveAppForRequest(h.repo, user, r)
+	if resolveErr != nil {
+		http.Error(w, resolveErr.Message, resolveErr.Status)
 		return
 	}
-
-	// Verify app exists and user has access
-	app, err := h.repo.GetAppByID(appID)
-	if err != nil {
-		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get app")
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
-		return
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-	if app.TenantID != user.TenantID {
-		http.Error(w, "Access denied", http.StatusForbidden)
-		return
-	}
+	appID := app.ID
 
 	// Get limit from query params
 	limitStr := r.URL.Query().Get("limit")

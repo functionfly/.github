@@ -25,6 +25,7 @@ type Handler struct {
 	cdnService      *cache.CDNService
 	edgeCache       *cache.EdgeCacheService
 	realtimeMonitor *monitoring.RealtimeMonitor
+	platformFeeRepo  *registry.PlatformFeeRepository
 	// DRE execution node config (optional): when set, FXCERTs are signed
 	dreNodeKey      ed25519.PrivateKey
 	drePlatformKey  ed25519.PrivateKey
@@ -34,7 +35,7 @@ type Handler struct {
 
 // NewHandler creates a new registry handler.
 // DRE node key is loaded from env (DRE_NODE_PRIVATE_KEY or DRE_NODE_PRIVATE_KEY_PATH); when set, FXCERTs are signed.
-func NewHandler(repo *registry.RegistryRepository, backendRepo storage.Repository, cacheService *cache.CacheService, cdnService *cache.CDNService, edgeCache *cache.EdgeCacheService, realtimeMonitor *monitoring.RealtimeMonitor) *Handler {
+func NewHandler(repo *registry.RegistryRepository, backendRepo storage.Repository, cacheService *cache.CacheService, cdnService *cache.CDNService, edgeCache *cache.EdgeCacheService, realtimeMonitor *monitoring.RealtimeMonitor, platformFeeRepo *registry.PlatformFeeRepository) *Handler {
 	h := &Handler{
 		repo:            repo,
 		backendRepo:     backendRepo,
@@ -42,6 +43,7 @@ func NewHandler(repo *registry.RegistryRepository, backendRepo storage.Repositor
 		cdnService:      cdnService,
 		edgeCache:       edgeCache,
 		realtimeMonitor: realtimeMonitor,
+		platformFeeRepo: platformFeeRepo,
 	}
 	key, nodeID, region, err := dre.LoadNodeKeyFromEnv()
 	if err != nil {

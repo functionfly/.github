@@ -309,6 +309,11 @@ type PublishResponse struct {
 	Idempotent    bool     `json:"idempotent"`
 	CacheTTL      int      `json:"cache_ttl,omitempty"`
 	BundleSize    int      `json:"bundle_size,omitempty"`
+	// Platform fee info
+	FeeCharged      bool    `json:"fee_charged"`
+	FeeAmountUSD    float64 `json:"fee_amount_usd,omitempty"`
+	FeeType         string  `json:"fee_type,omitempty"` // "publish" or "version_update"
+	PlatformFeePaid bool    `json:"platform_fee_paid"`
 }
 
 // FunctionInfo represents public function information

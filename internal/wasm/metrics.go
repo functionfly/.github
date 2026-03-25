@@ -151,6 +151,120 @@ var (
 		[]string{"runtime", "tenant_id"},
 	)
 
+	// ============================================
+	// Rust-specific WASM metrics
+	// ============================================
+
+	// Rust compilation duration histogram - time to compile Rust to WASM
+	rustCompilationDurationHistogram = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: "wasm_rust",
+			Subsystem: "compilation",
+			Name:      "duration_seconds",
+			Help:      "Time to compile Rust to WASM in seconds",
+			Buckets:   []float64{0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300},
+		},
+		[]string{"tenant_id", "function_name", "compiler_version"},
+	)
+
+	// Rust instance count gauge - number of active Rust WASM instances
+	rustInstanceCountGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "wasm_rust",
+			Subsystem: "instances",
+			Name:      "active_count",
+			Help:      "Number of currently active Rust WASM instances",
+		},
+		[]string{"tenant_id", "function_name"},
+	)
+
+	// Rust execution duration histogram - function execution time
+	rustExecutionDurationHistogram = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: "wasm_rust",
+			Subsystem: "execution",
+			Name:      "duration_seconds",
+			Help:      "Rust WASM function execution time in seconds",
+			Buckets:   []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5},
+		},
+		[]string{"tenant_id", "function_name", "status"},
+	)
+
+	// Rust memory usage gauge - memory consumption per instance
+	rustMemoryUsageGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "wasm_rust",
+			Subsystem: "memory",
+			Name:      "usage_bytes",
+			Help:      "Memory consumption per Rust WASM instance in bytes",
+		},
+		[]string{"tenant_id", "function_name", "instance_id"},
+	)
+
+	// Rust errors counter - compilation and runtime errors
+	rustErrorsCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "wasm_rust",
+			Subsystem: "errors",
+			Name:      "total",
+			Help:      "Total number of Rust compilation and runtime errors",
+		},
+		[]string{"tenant_id", "function_name", "error_type"},
+	)
+
+	// Rust cold starts counter - cold start frequency
+	rustColdStartsCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "wasm_rust",
+			Subsystem: "lifecycle",
+			Name:      "cold_starts_total",
+			Help:      "Total number of Rust WASM cold starts",
+		},
+		[]string{"tenant_id", "function_name"},
+	)
+
+	// Rust instance pool metrics
+	rustPoolSizeGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "wasm_rust",
+			Subsystem: "pool",
+			Name:      "size",
+			Help:      "Total Rust WASM instance pool size",
+		},
+		[]string{"tenant_id", "function_name"},
+	)
+
+	rustPoolAvailableGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "wasm_rust",
+			Subsystem: "pool",
+			Name:      "available",
+			Help:      "Number of available Rust WASM instances in pool",
+		},
+		[]string{"tenant_id", "function_name"},
+	)
+
+	rustPoolHitRateGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "wasm_rust",
+			Subsystem: "pool",
+			Name:      "hit_rate",
+			Help:      "Rust WASM instance pool hit rate as a percentage",
+		},
+		[]string{"tenant_id", "function_name"},
+	)
+
+	// Rust compilation errors counter - specifically for compilation failures
+	rustCompilationErrorsCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "wasm_rust",
+			Subsystem: "compilation",
+			Name:      "errors_total",
+			Help:      "Total number of Rust compilation errors",
+		},
+		[]string{"tenant_id", "function_name", "error_category"},
+	)
+
 	// Global metrics mutex for thread-safe updates
 	metricsMu sync.RWMutex
 )
@@ -227,6 +341,105 @@ func (m *MetricsRecorder) RecordExecutionWithSizes(duration time.Duration, statu
 	if outputSize > 0 {
 		m.RecordOutputSize(outputSize)
 	}
+}
+
+// ============================================
+// Rust-specific metrics recording methods
+// ============================================
+
+// RecordRustCompilation records Rust compilation duration
+func RecordRustCompilation(tenantID, functionName, compilerVersion string, duration time.Duration) {
+	rustCompilationDurationHistogram.WithLabelValues(tenantID, functionName, compilerVersion).Observe(duration.Seconds())
+}
+
+// RecordRustInstanceCount records the number of active Rust WASM instances
+func RecordRustInstanceCount(tenantID, functionName string, count int) {
+	rustInstanceCountGauge.WithLabelValues(tenantID, functionName).Set(float64(count))
+}
+
+// RecordRustExecution records Rust WASM function execution duration
+func RecordRustExecution(tenantID, functionName, status string, duration time.Duration) {
+	rustExecutionDurationHistogram.WithLabelValues(tenantID, functionName, status).Observe(duration.Seconds())
+}
+
+// RecordRustMemoryUsage records memory usage for a Rust WASM instance
+func RecordRustMemoryUsage(tenantID, functionName, instanceID string, bytes uint64) {
+	rustMemoryUsageGauge.WithLabelValues(tenantID, functionName, instanceID).Set(float64(bytes))
+}
+
+// RecordRustError records a Rust compilation or runtime error
+func RecordRustError(tenantID, functionName, errorType string) {
+	rustErrorsCounter.WithLabelValues(tenantID, functionName, errorType).Inc()
+}
+
+// RecordRustColdStart records a Rust WASM cold start
+func RecordRustColdStart(tenantID, functionName string) {
+	rustColdStartsCounter.WithLabelValues(tenantID, functionName).Inc()
+}
+
+// UpdateRustPoolMetrics updates Rust instance pool metrics
+func UpdateRustPoolMetrics(tenantID, functionName string, totalSize, availableCount int, hitRate float64) {
+	rustPoolSizeGauge.WithLabelValues(tenantID, functionName).Set(float64(totalSize))
+	rustPoolAvailableGauge.WithLabelValues(tenantID, functionName).Set(float64(availableCount))
+	rustPoolHitRateGauge.WithLabelValues(tenantID, functionName).Set(hitRate)
+}
+
+// RecordRustCompilationError records a Rust compilation error
+func RecordRustCompilationError(tenantID, functionName, errorCategory string) {
+	rustCompilationErrorsCounter.WithLabelValues(tenantID, functionName, errorCategory).Inc()
+}
+
+// RustMetricsRecorder provides a dedicated recorder for Rust-specific metrics
+type RustMetricsRecorder struct {
+	tenantID        string
+	functionName    string
+	compilerVersion string
+}
+
+// NewRustMetricsRecorder creates a new Rust metrics recorder
+func NewRustMetricsRecorder(tenantID, functionName, compilerVersion string) *RustMetricsRecorder {
+	return &RustMetricsRecorder{
+		tenantID:        tenantID,
+		functionName:    functionName,
+		compilerVersion: compilerVersion,
+	}
+}
+
+// RecordCompilation records compilation duration
+func (r *RustMetricsRecorder) RecordCompilation(duration time.Duration) {
+	rustCompilationDurationHistogram.WithLabelValues(r.tenantID, r.functionName, r.compilerVersion).Observe(duration.Seconds())
+}
+
+// RecordExecution records execution duration with status
+func (r *RustMetricsRecorder) RecordExecution(duration time.Duration, status string) {
+	rustExecutionDurationHistogram.WithLabelValues(r.tenantID, r.functionName, status).Observe(duration.Seconds())
+}
+
+// RecordMemoryUsage records memory usage for an instance
+func (r *RustMetricsRecorder) RecordMemoryUsage(instanceID string, bytes uint64) {
+	rustMemoryUsageGauge.WithLabelValues(r.tenantID, r.functionName, instanceID).Set(float64(bytes))
+}
+
+// RecordError records an error
+func (r *RustMetricsRecorder) RecordError(errorType string) {
+	rustErrorsCounter.WithLabelValues(r.tenantID, r.functionName, errorType).Inc()
+}
+
+// RecordColdStart records a cold start
+func (r *RustMetricsRecorder) RecordColdStart() {
+	rustColdStartsCounter.WithLabelValues(r.tenantID, r.functionName).Inc()
+}
+
+// UpdatePoolMetrics updates pool metrics
+func (r *RustMetricsRecorder) UpdatePoolMetrics(totalSize, availableCount int, hitRate float64) {
+	rustPoolSizeGauge.WithLabelValues(r.tenantID, r.functionName).Set(float64(totalSize))
+	rustPoolAvailableGauge.WithLabelValues(r.tenantID, r.functionName).Set(float64(availableCount))
+	rustPoolHitRateGauge.WithLabelValues(r.tenantID, r.functionName).Set(hitRate)
+}
+
+// RecordCompilationError records a compilation error
+func (r *RustMetricsRecorder) RecordCompilationError(errorCategory string) {
+	rustCompilationErrorsCounter.WithLabelValues(r.tenantID, r.functionName, errorCategory).Inc()
 }
 
 // WasmMetricsCollector implements prometheus.Collector for custom metrics
@@ -350,3 +563,4 @@ func StringToFloat64(s string) float64 {
 	v, _ := strconv.ParseFloat(s, 64)
 	return v
 }
+

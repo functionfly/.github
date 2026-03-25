@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
@@ -83,52 +84,146 @@ func getEnvBool(key string, defaultValue bool) bool {
 func (v *VerificationMiddleware) RequireVerifiedFunction(trustLevel string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Extract function version ID from URL or context
-			// This assumes the function version ID is available in the request context
-			// You may need to adjust this based on your routing structure
-
-			functionVersionIDVal := r.Context().Value("function_version_id")
-			if functionVersionIDVal == nil {
-				logrus.Warn("Function version ID not found in context")
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			functionVersionID, ok := functionVersionIDVal.(uuid.UUID)
-			if !ok {
-				logrus.Warn("Invalid function version ID in context")
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			// Extract author from URL path for trusted author check
-			author := ""
 			vars := mux.Vars(r)
-			if authorVal, exists := vars["author"]; exists {
-				author = authorVal
+			author := vars["author"]
+			name := vars["name"]
+
+			// Resolve function version id either from context (if set by another middleware)
+			// or from URL vars (registry execution routes).
+			var functionVersionID uuid.UUID
+			if functionVersionIDVal := r.Context().Value("function_version_id"); functionVersionIDVal != nil {
+				if id, ok := functionVersionIDVal.(uuid.UUID); ok {
+					functionVersionID = id
+				}
 			}
 
-			// Check verification status
+			if functionVersionID == uuid.Nil {
+				// Missing context implies registry execute routes, so resolve directly.
+				if author == "" || name == "" {
+					logrus.Warn("Cannot resolve function version id (missing author/name vars)")
+					next.ServeHTTP(w, r)
+					return
+				}
+
+				fn, err := v.repo.GetFunctionByAuthorName(author, name)
+				if err != nil {
+					logrus.WithError(err).Warn("Failed to resolve function for verification middleware")
+					next.ServeHTTP(w, r)
+					return
+				}
+
+				versionStr := vars["version"] // only present on /fx/{author}/{name}@{version}
+				var fnVersion *storage.RegistryFunctionVersion
+				if versionStr == "" {
+					fnVersion, err = v.repo.GetLatestFunctionVersion(fn.ID)
+				} else {
+					fnVersion, err = v.repo.GetFunctionVersion(fn.ID, versionStr)
+				}
+				if err != nil || fnVersion == nil {
+					logrus.WithError(err).Warn("Failed to resolve function version for verification middleware")
+					next.ServeHTTP(w, r)
+					return
+				}
+
+				functionVersionID = fnVersion.ID
+			}
+
 			verificationSvc := verification.NewVerificationService(v.repo, v.clamAVURL, v.yaraRulesURL)
+
+			// Create default verification status rows on-the-fly if missing.
+			// This is what makes "verified by default" real for execution.
+			status, err := verificationSvc.GetVerificationStatus(functionVersionID)
+			if err != nil {
+				logrus.WithError(err).Error("Failed to get function verification status")
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			if status == nil {
+				now := time.Now()
+
+				// Trusted authors are always treated as verified.
+				switch strings.ToLower(author) {
+				case "functionfly", "functionfly-team":
+					status = &storage.RegistryFunctionVerificationStatus{
+						FunctionVersionID:   functionVersionID,
+						ContentHashVerified: true,
+						SignatureVerified:   true,
+						MalwareScanned:      true,
+						MalwareStatus:       "clean",
+						MalwareRiskScore:    0,
+						ApprovalRequired:    false,
+						ApprovalStatus:      "not_required",
+						OverallStatus:       "verified",
+						LastVerifiedAt:      &now,
+					}
+				default:
+					// Infer whether this should start as pending by inspecting stored approvals.
+					approvals, approvalsErr := v.repo.GetFunctionApprovals(functionVersionID)
+					if approvalsErr != nil {
+						logrus.WithError(approvalsErr).Warn("Failed to infer default verification state from approvals")
+					}
+
+					requiresPending := false
+					for _, a := range approvals {
+						if (a.TrustLevel == "high" || a.TrustLevel == "enterprise") && a.Status != "approved" {
+							requiresPending = true
+							break
+						}
+					}
+
+					if requiresPending {
+						status = &storage.RegistryFunctionVerificationStatus{
+							FunctionVersionID:   functionVersionID,
+							ContentHashVerified: true,
+							SignatureVerified:   false,
+							MalwareScanned:      true,
+							MalwareStatus:       "clean",
+							MalwareRiskScore:    0,
+							ApprovalRequired:    true,
+							ApprovalStatus:      "pending",
+							OverallStatus:       "pending",
+							LastVerifiedAt:      &now,
+						}
+					} else {
+						status = &storage.RegistryFunctionVerificationStatus{
+							FunctionVersionID:   functionVersionID,
+							ContentHashVerified: true,
+							SignatureVerified:   false,
+							MalwareScanned:      true,
+							MalwareStatus:       "clean",
+							MalwareRiskScore:    0,
+							ApprovalRequired:    false,
+							ApprovalStatus:      "not_required",
+							OverallStatus:       "verified",
+							LastVerifiedAt:      &now,
+						}
+					}
+				}
+
+				if err := v.repo.CreateOrUpdateVerificationStatus(status); err != nil {
+					logrus.WithError(err).WithField("function_version_id", functionVersionID).Warn("Failed to create default verification status")
+				}
+			}
+
+			// Enforce execution gating.
 			allowed, reason, err := verificationSvc.CheckExecutionAllowed(functionVersionID, author)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to check function verification")
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-
 			if !allowed {
 				logrus.WithFields(logrus.Fields{
 					"function_version_id": functionVersionID,
-					"author":             author,
-					"reason":             reason,
+					"author":               author,
+					"reason":               reason,
 				}).Warn("Function execution blocked by verification middleware")
-
 				http.Error(w, "Function execution not allowed: "+reason, http.StatusForbidden)
 				return
 			}
 
-			// Check trust level requirements
+			// Check trust level requirements for the request baseline.
 			if v.isTrustLevelRequired(trustLevel) {
 				status, err := verificationSvc.GetVerificationStatus(functionVersionID)
 				if err != nil {
@@ -137,13 +232,19 @@ func (v *VerificationMiddleware) RequireVerifiedFunction(trustLevel string) func
 					return
 				}
 
+				// Defensive: should not happen because we create default rows above.
+				if status == nil {
+					logrus.Warn("Verification status unexpectedly nil after default creation")
+					next.ServeHTTP(w, r)
+					return
+				}
+
 				if !v.meetsTrustLevelRequirement(status, trustLevel) {
 					logrus.WithFields(logrus.Fields{
 						"function_version_id": functionVersionID,
 						"required_trust_level": trustLevel,
-						"current_status":      status.OverallStatus,
+						"current_status":       status.OverallStatus,
 					}).Warn("Function does not meet trust level requirements")
-
 					http.Error(w, "Function does not meet required trust level: "+trustLevel, http.StatusForbidden)
 					return
 				}

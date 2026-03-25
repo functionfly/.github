@@ -54,6 +54,10 @@ func (db *PostgresDB) ListUsers() ([]*User, error) {
 	return db.userRepository.ListUsers()
 }
 
+func (db *PostgresDB) ListUserIDsByTenant(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error) {
+	return db.userRepository.ListUserIDsByTenant(ctx, tenantID)
+}
+
 func (db *PostgresDB) UpdateUser(ctx context.Context, userID uuid.UUID, updates map[string]interface{}) (*User, error) {
 	return db.userRepository.UpdateUser(ctx, userID, updates)
 }
@@ -72,6 +76,26 @@ func (db *PostgresDB) UpdateUserSettings(userID uuid.UUID, settings map[string]i
 
 func (db *PostgresDB) GetUserSettings(userID uuid.UUID) (map[string]interface{}, error) {
 	return db.userRepository.GetUserSettings(userID)
+}
+
+// ListActiveUsersByTenant lists all active (non-deactivated) users for a tenant
+func (db *PostgresDB) ListActiveUsersByTenant(ctx context.Context, tenantID uuid.UUID) ([]*User, error) {
+	return db.userRepository.ListActiveUsersByTenant(ctx, tenantID)
+}
+
+// CountActiveUsersByTenant counts all active (non-deactivated) users for a tenant
+func (db *PostgresDB) CountActiveUsersByTenant(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	return db.userRepository.CountActiveUsersByTenant(ctx, tenantID)
+}
+
+// DeactivateUser soft-deletes a user (sets deactivated_at and deactivated_by)
+func (db *PostgresDB) DeactivateUser(ctx context.Context, userID, deactivatedBy uuid.UUID) error {
+	return db.userRepository.DeactivateUser(ctx, userID, deactivatedBy)
+}
+
+// ReactivateUser reactivates a previously deactivated user
+func (db *PostgresDB) ReactivateUser(ctx context.Context, userID uuid.UUID) error {
+	return db.userRepository.ReactivateUser(ctx, userID)
 }
 
 func (db *PostgresDB) UpdateUserMFA(userID uuid.UUID, secret *string, enabled bool, backupCodes []string, lastUsed *time.Time) error {
@@ -176,6 +200,10 @@ func (db *PostgresDB) GetAppBySlug(slug string) (*App, error) {
 	return db.appRepository.GetAppBySlug(slug)
 }
 
+func (db *PostgresDB) GetAppBySlugAndTenant(slug string, tenantID uuid.UUID) (*App, error) {
+	return db.appRepository.GetAppBySlugAndTenant(slug, tenantID)
+}
+
 func (db *PostgresDB) ListAppsByTenant(tenantID uuid.UUID) ([]*App, error) {
 	return db.appRepository.ListAppsByTenant(tenantID)
 }
@@ -263,6 +291,103 @@ func (db *PostgresDB) GetCouponByCode(code string) (*Coupon, error) {
 
 func (db *PostgresDB) RedeemCoupon(ctx context.Context, couponID, tenantID uuid.UUID, subscriptionID *uuid.UUID) (*CouponRedemption, error) {
 	return db.billingRepository.RedeemCoupon(ctx, couponID, tenantID, subscriptionID)
+}
+
+// Revenue System Phase 1 - Trust Layer Monetization
+
+// Verification Fees
+func (db *PostgresDB) GetVerificationFeeByLevel(level string) (*VerificationFee, error) {
+	return db.revenueRepository.GetVerificationFeeByLevel(level)
+}
+
+func (db *PostgresDB) ListVerificationFees() ([]*VerificationFee, error) {
+	return db.revenueRepository.ListVerificationFees()
+}
+
+// Function Verification Payments
+func (db *PostgresDB) CreateFunctionVerificationPayment(ctx context.Context, payment *FunctionVerificationPayment) error {
+	return db.revenueRepository.CreateFunctionVerificationPayment(ctx, payment)
+}
+
+func (db *PostgresDB) GetFunctionVerificationPaymentByID(id uuid.UUID) (*FunctionVerificationPayment, error) {
+	return db.revenueRepository.GetFunctionVerificationPaymentByID(id)
+}
+
+func (db *PostgresDB) UpdateFunctionVerificationPaymentStatus(ctx context.Context, id uuid.UUID, status string, stripePIID *string) error {
+	return db.revenueRepository.UpdateFunctionVerificationPaymentStatus(ctx, id, status, stripePIID)
+}
+
+func (db *PostgresDB) GetFunctionVerificationPaymentsByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*FunctionVerificationPayment, error) {
+	return db.revenueRepository.GetFunctionVerificationPaymentsByTenant(ctx, tenantID, limit, offset)
+}
+
+// Publisher Earnings
+func (db *PostgresDB) CreatePublisherEarning(ctx context.Context, earning *PublisherEarning) error {
+	return db.revenueRepository.CreatePublisherEarning(ctx, earning)
+}
+
+func (db *PostgresDB) GetPublisherEarningsByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*PublisherEarning, error) {
+	return db.revenueRepository.GetPublisherEarningsByTenant(ctx, tenantID, limit, offset)
+}
+
+func (db *PostgresDB) GetPublisherEarningsSummary(ctx context.Context, tenantID uuid.UUID) (pending, available, withdrawn int, err error) {
+	return db.revenueRepository.GetPublisherEarningsSummary(ctx, tenantID)
+}
+
+func (db *PostgresDB) GetPublisherEarningsByPeriod(ctx context.Context, tenantID uuid.UUID, year int) ([]*PublisherEarning, error) {
+	return db.revenueRepository.GetPublisherEarningsByPeriod(ctx, tenantID, year)
+}
+
+// Agent Subscriptions
+func (db *PostgresDB) CreateAgentSubscription(ctx context.Context, sub *AgentSubscription) error {
+	return db.revenueRepository.CreateAgentSubscription(ctx, sub)
+}
+
+func (db *PostgresDB) GetAgentSubscriptionByAgentID(ctx context.Context, agentID uuid.UUID) (*AgentSubscription, error) {
+	return db.revenueRepository.GetAgentSubscriptionByAgentID(ctx, agentID)
+}
+
+func (db *PostgresDB) GetAgentSubscriptionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*AgentSubscription, error) {
+	return db.revenueRepository.GetAgentSubscriptionsByTenant(ctx, tenantID)
+}
+
+func (db *PostgresDB) UpdateAgentSubscriptionStatus(ctx context.Context, id uuid.UUID, status string) error {
+	return db.revenueRepository.UpdateAgentSubscriptionStatus(ctx, id, status)
+}
+
+// Agent Usage
+func (db *PostgresDB) CreateAgentUsage(ctx context.Context, usage *AgentUsage) error {
+	return db.revenueRepository.CreateAgentUsage(ctx, usage)
+}
+
+func (db *PostgresDB) GetAgentUsageByAgentID(ctx context.Context, agentID uuid.UUID, limit, offset int) ([]*AgentUsage, error) {
+	return db.revenueRepository.GetAgentUsageByAgentID(ctx, agentID, limit, offset)
+}
+
+func (db *PostgresDB) GetAgentUsageSummary(ctx context.Context, agentID uuid.UUID) (totalCalls, billableCalls, overageCalls, estimatedCost int, err error) {
+	return db.revenueRepository.GetAgentUsageSummary(ctx, agentID)
+}
+
+// Platform Fees
+func (db *PostgresDB) CreatePlatformFee(ctx context.Context, fee *PlatformFee) error {
+	return db.revenueRepository.CreatePlatformFee(ctx, fee)
+}
+
+func (db *PostgresDB) GetPlatformFeesByPeriod(ctx context.Context, year, month int) ([]*PlatformFee, error) {
+	return db.revenueRepository.GetPlatformFeesByPeriod(ctx, year, month)
+}
+
+func (db *PostgresDB) GetPlatformFeesSummary(ctx context.Context) (totalCollected, totalRefunded, totalPaidOut int, err error) {
+	return db.revenueRepository.GetPlatformFeesSummary(ctx)
+}
+
+// Pricing Tiers Extended
+func (db *PostgresDB) ListPricingTiersExtended() ([]*PricingTierExtended, error) {
+	return db.revenueRepository.ListPricingTiersExtended()
+}
+
+func (db *PostgresDB) GetPricingTierExtendedByID(id uuid.UUID) (*PricingTierExtended, error) {
+	return db.revenueRepository.GetPricingTierExtendedByID(id)
 }
 
 // Backend operations
@@ -481,8 +606,8 @@ func (db *PostgresDB) GetFeedbackByUser(userID *uuid.UUID, userEmail *string, li
 	return db.feedbackRepository.GetFeedbackByUser(userID, userEmail, limit, offset)
 }
 
-func (db *PostgresDB) ListFeedback(limit, offset int, statusFilter *string) ([]Feedback, error) {
-	return db.feedbackRepository.ListFeedback(limit, offset, statusFilter)
+func (db *PostgresDB) ListFeedback(limit, offset int, statusFilter *string, typeFilter *string) ([]Feedback, error) {
+	return db.feedbackRepository.ListFeedback(limit, offset, statusFilter, typeFilter)
 }
 
 func (db *PostgresDB) UpdateFeedbackStatus(id uuid.UUID, status string) error {
@@ -1135,6 +1260,19 @@ func (db *PostgresDB) GetProvidersByUser(userID uuid.UUID) ([]*Provider, error) 
 
 func (db *PostgresDB) UpdateProviderStatus(providerID string, status string) error {
 	return db.GORM.Model(&Provider{}).Where("id = ?", providerID).Update("status", status).Error
+}
+
+func (db *PostgresDB) DeleteProvider(ctx context.Context, providerID string, userID uuid.UUID) error {
+	result := db.GORM.WithContext(ctx).
+		Where("id = ? AND user_id = ?", providerID, userID).
+		Delete(&Provider{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("provider not found or access denied")
+	}
+	return nil
 }
 
 func (db *PostgresDB) ListAllProviders(ctx context.Context) ([]*Provider, error) {

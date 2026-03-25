@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -103,7 +104,7 @@ func (r *RegistryRepository) GetExecutionTimelineBuckets(functionID uuid.UUID, f
 		WHERE function_id = $1 AND timestamp >= $2 AND timestamp < $3
 		GROUP BY %s
 		ORDER BY bucket
-	`, dayExpr, valueExpr, dayExpr, dayExpr)
+	`, dayExpr, valueExpr, dayExpr)
 
 	var rows []struct {
 		Bucket      string  `gorm:"column:bucket"`
@@ -326,6 +327,22 @@ func (r *RegistryRepository) GetRatingByFunctionID(functionID uuid.UUID) (*Regis
 	}
 
 	return &rating, nil
+}
+
+// GetRatingsByFunctionIDs loads ratings for many functions in one query (used by registry list/search).
+func (r *RegistryRepository) GetRatingsByFunctionIDs(functionIDs []uuid.UUID) (map[uuid.UUID]*RegistryFunctionRating, error) {
+	if len(functionIDs) == 0 {
+		return map[uuid.UUID]*RegistryFunctionRating{}, nil
+	}
+	var ratings []RegistryFunctionRating
+	if err := r.db.Where("function_id IN ?", functionIDs).Find(&ratings).Error; err != nil {
+		return nil, fmt.Errorf("failed to batch-load ratings: %w", err)
+	}
+	out := make(map[uuid.UUID]*RegistryFunctionRating, len(ratings))
+	for i := range ratings {
+		out[ratings[i].FunctionID] = &ratings[i]
+	}
+	return out, nil
 }
 
 // UpdateFunctionPopularity sets the popularity score for a function
@@ -657,7 +674,8 @@ func (r *RegistryRepository) detectIPClusters() ([]IPClusterRow, error) {
 				COUNT(DISTINCT function_id) as function_count,
 				COUNT(*) as execution_count,
 				MIN(timestamp) as first_seen,
-				MAX(timestamp) as last_seen
+				MAX(timestamp) as last_seen,
+				array_agg(DISTINCT tenant_id::text) FILTER (WHERE tenant_id IS NOT NULL) as tenant_ids
 			FROM registry_function_executions
 			WHERE caller_ip IS NOT NULL AND caller_ip != ''
 				AND timestamp > NOW() - INTERVAL '7 days'
@@ -670,12 +688,13 @@ func (r *RegistryRepository) detectIPClusters() ([]IPClusterRow, error) {
 	`
 
 	var rows []struct {
-		IPRange        string    `json:"ip_range"`
-		TenantCount    int       `json:"tenant_count"`
-		FunctionCount  int       `json:"function_count"`
-		ExecutionCount int       `json:"execution_count"`
-		FirstSeen      time.Time `json:"first_seen"`
-		LastSeen       time.Time `json:"last_seen"`
+		IPRange        string         `json:"ip_range"`
+		TenantCount    int            `json:"tenant_count"`
+		FunctionCount  int            `json:"function_count"`
+		ExecutionCount int            `json:"execution_count"`
+		FirstSeen      time.Time      `json:"first_seen"`
+		LastSeen       time.Time      `json:"last_seen"`
+		TenantIDs      pq.StringArray `json:"tenant_ids" gorm:"type:text[]"`
 	}
 
 	if err := r.db.Raw(query).Scan(&rows).Error; err != nil {
@@ -693,9 +712,11 @@ func (r *RegistryRepository) detectIPClusters() ([]IPClusterRow, error) {
 			patterns = append(patterns, "Many tenants from same IP range")
 		}
 
+		associated := make([]string, len(row.TenantIDs))
+		copy(associated, row.TenantIDs)
 		clusters = append(clusters, IPClusterRow{
 			IPRange:           row.IPRange,
-			AssociatedTenants: []string{}, // Would need separate query to get tenant names
+			AssociatedTenants: associated,
 			RiskLevel:         riskLevel,
 			CommonPatterns:    patterns,
 			FirstSeen:         row.FirstSeen,
@@ -791,12 +812,14 @@ func calculateSuspiciousTenants(botPatterns []BotPatternRow, ipClusters []IPClus
 		}
 	}
 
-	// For IP clusters, we can't easily get tenant names without additional queries
-	// So we'll estimate based on cluster sizes
 	for _, cluster := range ipClusters {
-		if cluster.RiskLevel == "high" {
-			// Assume most tenants in high-risk clusters are suspicious
-			// This is a simplification - in reality we'd need to get actual tenant lists
+		if cluster.RiskLevel != "high" {
+			continue
+		}
+		for _, tenant := range cluster.AssociatedTenants {
+			if tenant != "" {
+				tenantSet[tenant] = true
+			}
 		}
 	}
 

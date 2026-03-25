@@ -78,12 +78,12 @@ func (s *ResendService) SendVerificationEmail(user *storage.User, verificationTo
             <p>If you didn't create an account, please ignore this email.</p>
         </div>
         <div class="footer">
-            <p>&copy; 2024 FunctionFly. All rights reserved.</p>
+            %s
         </div>
     </div>
 </body>
 </html>
-`, verificationURL, verificationURL)
+`, verificationURL, verificationURL, TransactionalEmailCopyrightHTML())
 
 	textBody := fmt.Sprintf(`Welcome to FunctionFly!
 
@@ -124,8 +124,8 @@ func (s *ResendService) SendPasswordResetEmail(user *storage.User, resetToken st
 <a href="%s" class="button">Reset Password</a>
 <p>If you didn't request a password reset, you can safely ignore this email.</p>
 </div>
-<div class="footer"><p>&copy; FunctionFly. All rights reserved.</p></div>
-</div></body></html>`, resetURL)
+<div class="footer">%s</div>
+</div></body></html>`, resetURL, TransactionalEmailCopyrightHTML())
 
 	textBody := fmt.Sprintf("Reset your FunctionFly password by visiting: %s\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email.", resetURL)
 
@@ -206,13 +206,13 @@ func (s *ResendService) SendBreachNotification(recipients []string, breachDetail
             <p>For additional information or concerns, please contact our Data Protection Officer.</p>
         </div>
         <div class="footer">
-            <p>&copy; 2024 FunctionFly. All rights reserved.</p>
+            %s
             <p>This notification is sent in compliance with GDPR Article 33.</p>
         </div>
     </div>
 </body>
 </html>
-`, breachType, detectionTime, affectedUsers, riskLevel)
+`, breachType, detectionTime, affectedUsers, riskLevel, TransactionalEmailCopyrightHTML())
 
 	textBody := fmt.Sprintf(`DATA BREACH NOTIFICATION - GDPR Article 33 Compliance
 

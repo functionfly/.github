@@ -80,6 +80,32 @@ func (r *RegistryRepository) GetLatestFunctionVersion(functionID uuid.UUID) (*Re
 	return &v, nil
 }
 
+// ListLatestVersionsForFunctions returns the latest published version per function ID in one query.
+// It omits wasm_binary and source_code so registry list responses stay small (avoids N large row reads).
+func (r *RegistryRepository) ListLatestVersionsForFunctions(functionIDs []uuid.UUID) (map[uuid.UUID]*RegistryFunctionVersion, error) {
+	if len(functionIDs) == 0 {
+		return map[uuid.UUID]*RegistryFunctionVersion{}, nil
+	}
+	var rows []RegistryFunctionVersion
+	// PostgreSQL: one row per function_id (latest by published_at).
+	err := r.db.Raw(`
+		SELECT DISTINCT ON (function_id)
+			id, function_id, version, manifest, runtime, timeout_ms, memory_mb, deterministic, cache_ttl, capabilities,
+			side_effects, idempotent, deployment_id, backend_id, content_hash, source_hash, bundle_size, published_at, updated_at
+		FROM registry_function_versions
+		WHERE function_id IN ?
+		ORDER BY function_id, published_at DESC
+	`, functionIDs).Scan(&rows)
+	if err != nil {
+		return nil, fmt.Errorf("failed to batch-load latest versions: %w", err)
+	}
+	out := make(map[uuid.UUID]*RegistryFunctionVersion, len(rows))
+	for i := range rows {
+		out[rows[i].FunctionID] = &rows[i]
+	}
+	return out, nil
+}
+
 // ListFunctionVersions lists all versions of a function
 func (r *RegistryRepository) ListFunctionVersions(functionID uuid.UUID) ([]RegistryFunctionVersion, error) {
 	var versions []RegistryFunctionVersion

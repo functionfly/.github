@@ -18,6 +18,7 @@ type User struct {
 	Role          string    `json:"role,omitempty" gorm:"size:50"` // Platform role for admin users
 	EmailVerified bool      `json:"email_verified" gorm:"default:false"`
 	CompanyName   *string   `json:"company_name,omitempty" gorm:"size:255"`
+	DateOfBirth   *time.Time `json:"date_of_birth,omitempty" gorm:"column:date_of_birth;type:date"`
 	Bio           *string   `json:"bio,omitempty" gorm:"type:text"`
 	// Extended profile fields
 	Location              *string                `json:"location,omitempty" gorm:"size:255"`
@@ -39,6 +40,9 @@ type User struct {
 	MFAEnabled     bool       `json:"mfa_enabled" gorm:"default:false"`             // Whether MFA is enabled for this user
 	MFABackupCodes []string   `json:"mfa_backup_codes,omitempty" gorm:"type:jsonb"` // Backup codes for MFA recovery
 	MFALastUsed    *time.Time `json:"mfa_last_used,omitempty"`                      // Last time MFA was used
+	// Deactivation fields (for user management instead of hard delete)
+	DeactivatedAt  *time.Time `json:"deactivated_at,omitempty"`
+	DeactivatedBy  *uuid.UUID `json:"deactivated_by,omitempty"`
 	// Team collaboration fields
 	Teams []TeamMembership `json:"teams,omitempty" gorm:"foreignKey:UserID"`
 	// Profile-related associations
@@ -107,6 +111,9 @@ type Tenant struct {
 	ConcurrentSessions *int           `json:"concurrent_sessions,omitempty"`           // Maximum concurrent sessions per user
 	MFAPolicy          string         `json:"mfa_policy" gorm:"default:'optional'"`    // 'disabled', 'optional', 'required'
 	SessionPersistence bool           `json:"session_persistence" gorm:"default:true"` // Whether sessions persist across browser restarts
+	// Seat management fields
+	SeatGracePeriodEnd *time.Time    `json:"seat_grace_period_end,omitempty"`   // Grace period end after downgrade
+	SeatWarningSentAt *time.Time    `json:"seat_warning_sent_at,omitempty"`    // Last seat warning notification
 	Users              []User         `json:"users,omitempty" gorm:"foreignKey:TenantID"`
 	Apps               []App          `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
 	Teams              []Team         `json:"teams,omitempty" gorm:"foreignKey:TenantID"`

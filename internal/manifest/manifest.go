@@ -308,9 +308,10 @@ func (m *Manifest) Validate() error {
 		"python3.11": true,
 		"deno":       true,
 		"bun":        true,
+		"rust":       true,
 	}
 	if !validRuntimes[m.Runtime] {
-		return fmt.Errorf("runtime must be one of: node18, node20, python3.11, deno, bun")
+		return fmt.Errorf("runtime must be one of: node18, node20, python3.11, deno, bun, rust")
 	}
 
 	// Entry file validation (if provided)
@@ -329,6 +330,7 @@ func (m *Manifest) Validate() error {
 			"python3.11": {".py"},
 			"deno":       {".js", ".ts"},
 			"bun":        {".js", ".ts"},
+			"rust":       {".rs"},
 		}
 		ext := filepath.Ext(m.Entry)
 		if validExts, ok := validExtensions[m.Runtime]; ok {
