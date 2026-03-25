@@ -1,0 +1,22 @@
+---
+import ContentPage from '../layouts/ContentPage.astro';
+import { APP_DASHBOARD_ORIGIN } from '../config';
+---
+
+<ContentPage
+  title="Pricing — FunctionFly"
+  description="FunctionFly pricing: start free, scale with usage and trust features."
+>
+  <h1>Pricing</h1>
+  <p class="lead">
+    We are rolling out public pricing with the launch. Start free on the dashboard; paid tiers will align usage, verification, and
+    Trust API access.
+  </p>
+  <h2>Get started</h2>
+  <p>Create an account to run functions and see current limits in product.</p>
+  <div class="actions">
+    <a class="btn-primary" href={APP_DASHBOARD_ORIGIN}>Open dashboard</a>
+    <a class="btn-outline" href="/contact">Contact sales</a>
+  </div>
+  <p class="muted" style="margin-top: 2rem;">For volume, enterprise, or custom trust policies, email sales from the contact page.</p>
+</ContentPage>

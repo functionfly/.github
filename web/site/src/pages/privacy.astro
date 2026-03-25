@@ -1,0 +1,407 @@
+---
+import ContentPage from '../layouts/ContentPage.astro';
+import { APP_DASHBOARD_ORIGIN } from '../config';
+---
+
+<ContentPage
+  title="Privacy & Cookie Policy — FunctionFly"
+  description="How FunctionFly collects, uses, and protects your data; cookie practices and your rights."
+  contentWidth="wide"
+>
+  <div class="legal-header">
+    <div class="legal-header-icon" aria-hidden="true">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      </svg>
+    </div>
+    <h1>Privacy &amp; Cookie Policy</h1>
+    <p class="lead" style="margin-bottom: 0;">
+      Your privacy is important to us. This page explains how we collect, use, and protect your data.
+    </p>
+    <p class="muted">Last updated: March 25, 2026</p>
+  </div>
+
+  <div class="legal-card" id="cookies">
+    <h2>Your cookie preferences</h2>
+    <p>
+      On the <strong>FunctionFly dashboard</strong>, you can review and update non-essential cookies using the cookie banner or preference
+      controls in the app. This marketing site is mostly static; essential cookies may still apply where needed for security or preferences.
+    </p>
+    <p>
+      <a href={APP_DASHBOARD_ORIGIN} class="btn-primary" style="display: inline-flex; margin-top: 0.5rem;">Open dashboard</a>
+    </p>
+  </div>
+
+  <div class="legal-card">
+    <h2>Privacy Policy</h2>
+    <p>
+      <strong>Data controller:</strong> FunctionFly LLC (d/b/a FunctionFly), a Wyoming limited liability company with principal operations in
+      Fort Worth, Texas, United States.
+    </p>
+    <p class="muted">
+      These disclosures supplement our <a href="/terms">Terms of Service</a>, including sections on acceptable use and regulated data.
+    </p>
+
+    <h3>Sensitive and regulated data</h3>
+    <p>
+      Do not submit PCI data, PHI, or sensitive government-issued identifiers through the Service unless we have explicitly agreed to support
+      that data in writing. Contact us first before sending regulated or highly sensitive data.
+    </p>
+
+    <h3>Information we collect</h3>
+    <p>
+      We collect information you provide directly to us, such as when you create an account, use our services, publish or execute functions, or
+      contact us for support. We also collect certain technical data necessary to operate and secure the Service.
+    </p>
+    <ul>
+      <li><strong>Account and profile information</strong> (email, name, company, authentication and session data)</li>
+      <li><strong>Billing and transaction metadata</strong> (subscription status, invoice IDs, wallet activity, and related records)</li>
+      <li><strong>Function and execution data</strong> (function metadata you publish, deployment/configuration details, execution timestamps, latency, and error logs)</li>
+      <li><strong>Agent and API usage</strong> (API keys you create, agent identities you register, quotas/limits events, and policy enforcement outcomes)</li>
+      <li><strong>Device, browser, and network information</strong> (IP address, user agent, approximate location, and security signals)</li>
+      <li>
+        <strong>Vault data</strong>: when you use the vault, we process encrypted ciphertext and operational metadata. We do not receive your vault
+        passphrase and cannot decrypt your vault secrets by design.
+      </li>
+      <li><strong>Support communications</strong> (messages and attachments you send to us)</li>
+      <li>
+        <strong>AI-assisted interactions</strong> (prompts, chat messages, and related context you send through AI features such as FlyMind, in-app
+        assistants, or semantic search)
+      </li>
+    </ul>
+
+    <h3>How we use your information</h3>
+    <ul>
+      <li>Provide and maintain our services</li>
+      <li>Process transactions and send related information</li>
+      <li>Send technical notices and support messages</li>
+      <li>Communicate with you about products and services</li>
+      <li>Improve our services through analytics</li>
+      <li>Operate AI-assisted features you choose to use (chat, search, embeddings, moderation, and optimization)</li>
+      <li>Prevent fraud, abuse, and security incidents; enforce rate limits and acceptable use</li>
+      <li>Comply with legal obligations and respond to lawful requests</li>
+    </ul>
+
+    <h3>Legal bases for processing (EEA/UK)</h3>
+    <p>
+      Where EEA/UK data protection laws apply, we process personal information only when we have a valid legal basis:
+    </p>
+    <ul>
+      <li><strong>Contract</strong> — to provide the services you request and perform our Terms of Service</li>
+      <li><strong>Legitimate interests</strong> — to secure, improve, and operate the Service in ways that are not overridden by your rights</li>
+      <li><strong>Legal obligations</strong> — to comply with applicable laws, regulations, and lawful requests</li>
+      <li><strong>Consent</strong> — where required, and which you can withdraw at any time for future processing</li>
+    </ul>
+
+    <h3>Information sharing</h3>
+    <p>
+      We do not sell, trade, or otherwise transfer your personal information to third parties without your consent, except as described in
+      this policy.
+    </p>
+    <ul>
+      <li>Service providers and subprocessors that help us operate the Service (including hosting, email, payments, and analytics as described below)</li>
+      <li>To comply with applicable law, legal process, or lawful requests, or to protect the rights, property, and safety of FunctionFly, our users, or others</li>
+      <li>In connection with a merger, acquisition, financing, reorganization, bankruptcy, or asset sale, with notice where appropriate</li>
+      <li>With your direction, instruction, or consent</li>
+    </ul>
+
+    <h3>Automated processing and decision-making</h3>
+    <p>
+      We use automated systems to help detect abuse, fraud, security threats, quota misuse, and other policy violations. These systems may
+      flag events for investigation or trigger protective controls. Where required by law, we do not make decisions that produce legal or
+      similarly significant effects based solely on automated processing without appropriate human review.
+    </p>
+
+    <h3>AI services, model inference, and training</h3>
+    <p>
+      FunctionFly may operate an internal AI layer (for example our <strong>FlyMind</strong> AI service) that powers features such as
+      LLM-assisted chat and guidance, semantic search and embeddings, routing/optimization suggestions, anomaly detection, and content moderation
+      (including optional third-party moderation APIs when configured).
+    </p>
+    <p>
+      When you use these features, we send your prompts, messages, function metadata, code snippets, logs, or other inputs you submit to the
+      configured <strong>model providers</strong> (for example OpenAI, Anthropic, Ollama, or OpenRouter) to generate responses, embeddings, or
+      moderation scores. We use that processing to operate the Service—not to train or fine-tune FunctionFly-owned general-purpose models on your
+      content unless we obtain your <strong>explicit consent</strong> and describe that program separately.
+    </p>
+    <p>
+      Third-party model providers may process inputs under their own terms and privacy policies (including how they use data for safety,
+      abuse prevention, and model improvement). We encourage you to review those policies when you choose a provider or model.
+    </p>
+    <p>
+      We may use <strong>aggregated or de-identified operational telemetry</strong> (for example latency, error rates, routing outcomes, and usage
+      patterns) to improve reliability and internal optimization models. That is separate from using your conversation prompts to train a
+      consumer-facing LLM.
+    </p>
+    <p>
+      Our product design and engineering documentation targets <strong>not retaining LLM interactions long-term</strong> for training purposes; short-lived
+      storage may still occur for session continuity, debugging, support, security, or legal compliance where required.
+    </p>
+
+    <h3>Data retention</h3>
+    <p>
+      We retain your personal information for different periods of time depending on the type of data and the purpose for which it was
+      collected:
+    </p>
+    <h4>Account data</h4>
+    <p>
+      Account information, profile data, and authentication details are retained for as long as your account remains active and for up to 3
+      years after account deletion to comply with legal obligations and resolve disputes.
+    </p>
+    <h4>Usage and analytics data</h4>
+    <p>
+      Usage analytics, performance metrics, and security logs are typically retained for up to 2 years to help us improve our services, resolve
+      incidents, and maintain system security.
+    </p>
+    <h4>Execution and platform logs</h4>
+    <p>
+      Operational logs related to function execution, API requests, policy enforcement, and billing events are retained for varying periods
+      depending on the log type and purpose (for example, debugging, abuse prevention, or financial recordkeeping). We may retain certain records
+      longer where required by law.
+    </p>
+    <h4>Communication records</h4>
+    <p>
+      Customer support communications and service-related messages are retained for 3 years for quality assurance and legal compliance
+      purposes.
+    </p>
+    <h4>Marketing data</h4>
+    <p>
+      Marketing preferences and campaign interaction data are retained for 1 year after your last interaction with our marketing
+      communications.
+    </p>
+    <p>
+      We may retain data longer when required by law, involved in legal proceedings, or necessary for legitimate business purposes. You can
+      request deletion of your data at any time.
+    </p>
+
+    <h3>Third-party services</h3>
+    <p>
+      We work with trusted third-party service providers to operate our business and deliver our services. These providers may have access
+      to your personal information only to perform specific tasks on our behalf:
+    </p>
+    <h4>Analytics and performance monitoring</h4>
+    <ul>
+      <li>Sentry — error tracking and application monitoring (dashboard)</li>
+      <li>Website analytics providers (if enabled) — used to understand site usage and improve content</li>
+    </ul>
+    <h4>Payment processing</h4>
+    <ul>
+      <li>Stripe — secure payment processing and transaction management</li>
+    </ul>
+    <h4>AI and language model providers</h4>
+    <ul>
+      <li>OpenAI — LLM completions, embeddings, and optional moderation API when configured</li>
+      <li>Anthropic — LLM completions when configured</li>
+      <li>Ollama — local or self-hosted LLM and embeddings when configured</li>
+      <li>OpenRouter — model routing for chat when configured (see provider capabilities for embeddings)</li>
+    </ul>
+    <h4>Cloud infrastructure and hosting</h4>
+    <ul>
+      <li>S3-compatible object storage — storing artifacts and files (provider varies by deployment)</li>
+      <li>Cloudflare — content delivery network and security services</li>
+      <li>Vercel — frontend deployment and hosting platform</li>
+    </ul>
+    <h4>Communication services</h4>
+    <ul>
+      <li>Resend — transactional email delivery (production/staging)</li>
+      <li>
+        SMTP providers you configure — for example Gmail, SendGrid, or Mailgun (depending on your deployment and settings)
+      </li>
+    </ul>
+    <p>
+      All third-party providers are contractually obligated to maintain the confidentiality and security of your personal information and may
+      only use it for the specific purposes we authorize.
+    </p>
+
+    <h3>International data transfers</h3>
+    <p>
+      FunctionFly operates globally, and your personal information may be transferred to and processed in countries other than your own. We
+      implement appropriate safeguards to protect your data during international transfers:
+    </p>
+    <h4>Data transfer mechanisms</h4>
+    <ul>
+      <li>Standard Contractual Clauses (SCCs) approved by the European Commission</li>
+      <li>Adequacy decisions for transfers to countries with equivalent privacy protections</li>
+      <li>Binding Corporate Rules for intra-group transfers</li>
+      <li>Your explicit consent when required by applicable law</li>
+    </ul>
+    <h4>Data hosting locations</h4>
+    <p>
+      Your data may be stored and processed in data centers located in the United States, European Union, and other jurisdictions. We use
+      industry-leading cloud providers with robust security certifications.
+    </p>
+    <h4>Cross-border data flows</h4>
+    <p>
+      When transferring data across borders, we ensure that appropriate safeguards are in place, including encryption in transit and at
+      rest, access controls, and regular security assessments.
+    </p>
+    <p>
+      If you are located in the European Economic Area or other regions with strict data transfer requirements, you have the right to
+      obtain details about the safeguards we use for international data transfers.
+    </p>
+
+    <h3>Security measures</h3>
+    <p>
+      We implement comprehensive security measures to protect your personal information against unauthorized access, alteration,
+      disclosure, or destruction:
+    </p>
+    <h4>Encryption</h4>
+    <ul>
+      <li>Data in transit: TLS 1.3 encryption for all data transmissions</li>
+      <li>Data at rest: AES-256 encryption for stored data</li>
+      <li>Database encryption: transparent data encryption for sensitive information</li>
+    </ul>
+    <h4>Access controls</h4>
+    <ul>
+      <li>Role-based access control (RBAC) limiting data access to authorized personnel</li>
+      <li>Multi-factor authentication (MFA) for all administrative access</li>
+      <li>Regular access reviews and automated deprovisioning</li>
+      <li>Principle of least privilege applied to all systems</li>
+    </ul>
+    <h4>Security monitoring</h4>
+    <ul>
+      <li>24/7 security monitoring and intrusion detection systems</li>
+      <li>Regular security audits and vulnerability assessments</li>
+      <li>Automated threat detection and response systems</li>
+      <li>Security information and event management (SIEM) systems</li>
+    </ul>
+    <h4>Breach response procedures</h4>
+    <p>
+      In the event of a security breach, we have established incident response procedures that include immediate containment, investigation,
+      notification to affected users within 72 hours (when legally required), and remediation measures. We maintain comprehensive breach logs
+      and conduct post-incident reviews to prevent future occurrences.
+    </p>
+    <p>
+      While we implement robust security measures, no system is completely immune to risks. We regularly update our security practices based
+      on emerging threats and industry best practices.
+    </p>
+
+    <h3>Children&apos;s privacy</h3>
+    <p>FunctionFly is committed to protecting children&apos;s privacy online. Our services are not intended for children under 13 years of age.</p>
+    <h4>COPPA compliance</h4>
+    <p>
+      We comply with the Children&apos;s Online Privacy Protection Act (COPPA) and similar international laws regarding children&apos;s privacy. We
+      do not knowingly collect personal information from children under 13 without verifiable parental consent.
+    </p>
+    <h4>Age verification</h4>
+    <p>
+      During account registration, users must confirm they are at least 13 years old. If we become aware that we have collected personal
+      information from a child under 13, we will take steps to delete such information promptly.
+    </p>
+    <h4>Parental rights</h4>
+    <p>
+      Parents or guardians may request to review, modify, or delete personal information collected from their child under 13. To exercise
+      these rights, please contact us using the information provided below.
+    </p>
+    <h4>Content and features</h4>
+    <p>
+      Our platform is designed for business and professional use. We do not offer features specifically targeted at children, and we do not
+      collect information for marketing to children.
+    </p>
+    <p>If you believe we have collected information from a child under 13 without proper consent, please contact us immediately.</p>
+
+    <h3>Zero-knowledge vault</h3>
+    <p>
+      Secrets you store in the vault are encrypted client-side. We process ciphertext and metadata needed to operate the feature; we do not
+      receive your vault passphrase and cannot decrypt your secrets by design.
+    </p>
+  </div>
+
+  <div class="legal-card">
+    <h2>Cookie details</h2>
+    <p class="muted">
+      Status below describes typical categories. Exact storage depends on your choices in the app and this site.
+    </p>
+
+    <div class="cookie-category">
+      <p><strong>Necessary cookies</strong> <span class="badge">Always active</span></p>
+      <p>Essential cookies required for the website to function properly. These cannot be disabled.</p>
+      <p><strong>Purpose:</strong> Session management, authentication, security features<br /><strong>Duration:</strong> Session / 1 year</p>
+    </div>
+    <div class="cookie-category">
+      <p><strong>Analytics cookies</strong> <span class="badge-muted badge">Opt-in on dashboard</span></p>
+      <p>Help us understand how visitors interact with our website by collecting anonymous information.</p>
+      <p><strong>Purpose:</strong> Usage analytics, performance monitoring, error tracking<br /><strong>Duration:</strong> Up to 2 years</p>
+    </div>
+    <div class="cookie-category">
+      <p><strong>Marketing cookies</strong> <span class="badge-muted badge">Opt-in on dashboard</span></p>
+      <p>Used to deliver personalized advertisements and track campaign effectiveness where enabled.</p>
+      <p><strong>Purpose:</strong> Targeted advertising, retargeting, social media integration<br /><strong>Duration:</strong> Up to 1 year</p>
+    </div>
+    <div class="cookie-category">
+      <p><strong>Functionality cookies</strong> <span class="badge-muted badge">Opt-in on dashboard</span></p>
+      <p>Enable enhanced functionality and personalization features.</p>
+      <p><strong>Purpose:</strong> Language preferences, UI customization, feature preferences<br /><strong>Duration:</strong> Up to 1 year</p>
+    </div>
+  </div>
+
+  <div class="legal-card">
+    <h2>Your rights</h2>
+    <h4>GDPR rights (EU users)</h4>
+    <ul>
+      <li>Right to access your personal data</li>
+      <li>Right to rectification of inaccurate data</li>
+      <li>Right to erasure (&quot;right to be forgotten&quot;)</li>
+      <li>Right to restrict processing</li>
+      <li>Right to data portability</li>
+      <li>Right to object to processing</li>
+    </ul>
+    <h4>CCPA rights (California users)</h4>
+    <ul>
+      <li>Right to know what personal information is collected</li>
+      <li>Right to know if personal information is sold or shared</li>
+      <li>Right to opt-out of the sale of personal information</li>
+      <li>Right to delete personal information</li>
+      <li>Right to non-discrimination for exercising CCPA rights</li>
+    </ul>
+    <h4>Exercising your rights</h4>
+    <p>
+      To exercise applicable privacy rights, contact us at <a href="mailto:privacy@functionfly.com">privacy@functionfly.com</a>. We may need
+      to verify your identity before fulfilling a request.
+    </p>
+    <ul>
+      <li>Verification may require confirming account ownership or recent account activity</li>
+      <li>Authorized agents may submit requests on your behalf where permitted by law</li>
+      <li>We generally respond within 30 to 45 days, depending on the law that applies to your request</li>
+      <li>Where required, you may request an appeal or review of a rights decision</li>
+    </ul>
+    <h4>U.S. state privacy disclosures</h4>
+    <p>
+      FunctionFly does not sell personal information for monetary consideration. We also do not share personal information for cross-context
+      behavioral advertising unless we disclose that practice and provide any legally required opt-out controls.
+    </p>
+  </div>
+
+  <div class="legal-card">
+    <h2>Changes to this policy</h2>
+    <p>
+      We may update this Privacy &amp; Cookie Policy from time to time. We will update the &quot;Last updated&quot; date on this page when changes are
+      posted, and we will provide additional notice for material changes where required by law.
+    </p>
+  </div>
+
+  <div class="legal-card">
+    <h2>Contact us</h2>
+    <p>If you have any questions about this Privacy Policy or our cookie practices, please contact us:</p>
+    <p>
+      <strong>Legal entity:</strong> FunctionFly LLC (d/b/a FunctionFly), Wyoming (operations: Fort Worth, Texas, United States)
+    </p>
+    <p>
+      <strong>Email:</strong>
+      <a href="mailto:privacy@functionfly.com">privacy@functionfly.com</a>
+    </p>
+    <p>
+      <strong>Phone:</strong> +1 (555) 123-4567
+    </p>
+  </div>
+
+  <p style="text-align: center;">
+    <a href="/" class="back-home">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"></path>
+      </svg>
+      Back to home
+    </a>
+  </p>
+</ContentPage>

@@ -1,0 +1,26 @@
+---
+import ContentPage from '../layouts/ContentPage.astro';
+import { APP_DASHBOARD_ORIGIN } from '../config';
+---
+
+<ContentPage
+  title="Contact — FunctionFly"
+  description="Contact FunctionFly for sales, support, and partnerships."
+>
+  <h1>Contact</h1>
+  <p class="lead">Reach the team for sales, security questions, or partnerships.</p>
+  <p class="muted" style="margin-top: 0.5rem;">
+    FunctionFly LLC (d/b/a FunctionFly), formed in Wyoming — operating in Fort Worth, Texas, United States
+  </p>
+  <h2>Sales &amp; enterprise</h2>
+  <p><a href="mailto:sales@functionfly.com">sales@functionfly.com</a></p>
+  <h2>General</h2>
+  <p>
+    <a href="mailto:hello@functionfly.com">hello@functionfly.com</a>
+  </p>
+  <h2>Dashboard</h2>
+  <p>Signed-in users can use in-app flows for account issues where available.</p>
+  <div class="actions">
+    <a class="btn-primary" href={APP_DASHBOARD_ORIGIN}>Go to dashboard</a>
+  </div>
+</ContentPage>

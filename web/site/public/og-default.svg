@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <rect x="80" y="220" width="72" height="72" rx="16" fill="#6366f1"/>
+  <path d="M98 256L116 238L134 256L116 274L98 256Z" fill="white"/>
+  <text x="180" y="285" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="56" font-weight="700">FunctionFly</text>
+  <text x="80" y="380" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="32">Trusted functions for AI agents</text>
+</svg>

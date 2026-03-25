@@ -1,0 +1,467 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { APP_DASHBOARD_ORIGIN } from '../config';
+---
+
+<Layout
+  title="Trust Layer for AI Agents — FunctionFly"
+  description="Verification levels, signed attestations, revocation, and the Trust API: the trust infrastructure AI agents need to select safe tools."
+>
+  <section class="trust-hero">
+    <div class="container">
+      <div class="badge">Trust, explained</div>
+      <h1>The Trust Layer for AI Agents</h1>
+      <p class="lead">
+        Agents do not need “more tools.” They need tools they can trust. FunctionFly turns functions into
+        verified, signed, auditable building blocks with execution-backed trust scores.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container grid-2">
+      <div class="card">
+        <h2>Verification levels</h2>
+        <p class="muted">Each level adds deeper assurance before a tool can be considered “trusted.”</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-k">L1</div>
+            <div class="step-v">
+              Format checks
+              <div class="step-s">Validate manifest structure and I/O schema.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-k">L2</div>
+            <div class="step-v">
+              Security scans
+              <div class="step-s">Scan for risky behaviors and validate capability constraints.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-k">L3</div>
+            <div class="step-v">
+              Code review
+              <div class="step-s">Manual and automated review of safety-relevant aspects.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-k">L4</div>
+            <div class="step-v">
+              Platform verified
+              <div class="step-s">Signed and reviewed as official/recommended tooling.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Signing, attestations, revocation</h2>
+        <p class="muted">Trust is portable because verification becomes an immutable record.</p>
+        <ul class="list">
+          <li><strong>Signing:</strong> Function artifacts include platform signatures.</li>
+          <li><strong>Attestations:</strong> Verifiable records of what was checked and when.</li>
+          <li><strong>Revocation:</strong> If a tool is flagged, it can be downgraded or removed from trusted pools.</li>
+        </ul>
+
+        <div class="callout">
+          <div class="callout-title">What agents see</div>
+          <div class="callout-body">
+            A trust score and policy-relevant metadata (capabilities, constraints, and verification level).
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container grid-3">
+      <div class="card">
+        <h2>Execution-backed trust</h2>
+        <p class="muted">
+          Trust scores compound from real execution history so “it ran” and “it ran safely” are both represented.
+        </p>
+      </div>
+      <div class="card">
+        <h2>Zero-knowledge vault</h2>
+        <p class="muted">
+          Secrets are encrypted client-side. FunctionFly stores ciphertext only, enabling agent tools without exposing plaintext secrets.
+        </p>
+      </div>
+      <div class="card">
+        <h2>Trust API (usage-based)</h2>
+        <p class="muted">
+          Query attestations, trust scores, and revocation state. Bill on usage so agent workloads can adapt trust dynamically.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section comparison">
+    <div class="container">
+      <h2>Why FunctionFly wins on trust</h2>
+      <p class="muted comparison-intro">No other platform combines verification, trust scoring, and zero-knowledge security.</p>
+      <div class="comparison-table">
+        <div class="comparison-header">
+          <div class="comparison-cell">Feature</div>
+          <div class="comparison-cell highlight">FunctionFly</div>
+          <div class="comparison-cell">RapidAPI</div>
+          <div class="comparison-cell">Toolhouse</div>
+          <div class="comparison-cell">The Agora</div>
+        </div>
+        <div class="comparison-row">
+          <div class="comparison-cell">Trust scoring</div>
+          <div class="comparison-cell highlight"><span class="check">✓</span></div>
+          <div class="comparison-cell"><span class="dash">—</span></div>
+          <div class="comparison-cell"><span class="dash">—</span></div>
+          <div class="comparison-cell"><span class="partial">Partial</span></div>
+        </div>
+        <div class="comparison-row">
+          <div class="comparison-cell">Multi-level verification</div>
+          <div class="comparison-cell highlight"><span class="check">✓</span></div>
+          <div class="comparison-cell"><span class="dash">—</span></div>
+          <div class="comparison-cell"><span class="dash">—</span></div>
+          <div class="comparison-cell"><span class="check">✓</span></div>
+        </div>
+        <div class="comparison-row">
+          <div class="comparison-cell">Zero-knowledge vault</div>
+          <div class="comparison-cell highlight"><span class="check">✓</span></div>
+          <div class="comparison-cell"><span class="dash">—</span></div>
+          <div class="comparison-cell"><span class="dash">—</span></div>
+          <div class="comparison-cell"><span class="dash">—</span></div>
+        </div>
+        <div class="comparison-row">
+          <div class="comparison-cell">Function execution</div>
+          <div class="comparison-cell highlight"><span class="check">✓</span></div>
+          <div class="comparison-cell"><span class="dash">—</span></div>
+          <div class="comparison-cell"><span class="dash">—</span></div>
+          <div class="comparison-cell"><span class="dash">—</span></div>
+        </div>
+        <div class="comparison-row">
+          <div class="comparison-cell">Agent-native tool discovery</div>
+          <div class="comparison-cell highlight"><span class="check">✓</span></div>
+          <div class="comparison-cell"><span class="dash">—</span></div>
+          <div class="comparison-cell"><span class="check">✓</span></div>
+          <div class="comparison-cell"><span class="dash">—</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="container">
+      <h2>Ready to build with trusted tools?</h2>
+      <p class="muted">
+        Browse trusted functions in the marketplace, or run your own agent trust policy to select tools safely.
+      </p>
+      <div class="actions">
+        <a class="btn primary" href={APP_DASHBOARD_ORIGIN}>Get Started Free</a>
+        <a class="btn secondary" href="/pricing">See trust-aligned pricing</a>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    .trust-hero {
+      padding: 6rem 1rem 4rem;
+      background:
+        radial-gradient(ellipse at top, rgba(99, 102, 241, 0.18) 0%, transparent 55%),
+        radial-gradient(ellipse at bottom right, rgba(16, 185, 129, 0.12) 0%, transparent 55%),
+        var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.45rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      background: rgba(30, 41, 59, 0.45);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-size: 3.25rem;
+      line-height: 1.05;
+      margin-bottom: 1.25rem;
+      letter-spacing: -0.02em;
+    }
+
+    .lead {
+      color: var(--color-text-muted);
+      font-size: 1.15rem;
+      line-height: 1.65;
+      max-width: 760px;
+    }
+
+    .section {
+      padding: 3.5rem 0;
+      background: rgba(15, 23, 42, 0.2);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+
+    .card {
+      border: 1px solid var(--color-border);
+      background: rgba(30, 41, 59, 0.35);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .muted {
+      color: var(--color-text-muted);
+      line-height: 1.65;
+      margin-bottom: 1rem;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 1.25rem;
+    }
+
+    .step {
+      display: flex;
+      gap: 0.9rem;
+      align-items: flex-start;
+    }
+
+    .step-k {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.22);
+      font-family: var(--font-mono);
+      color: var(--color-text);
+      font-weight: 600;
+    }
+
+    .step-v {
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
+    .step-s {
+      font-weight: 400;
+      margin-top: 0.2rem;
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+    }
+
+    .list {
+      margin: 0;
+      padding-left: 1.2rem;
+      color: var(--color-text-muted);
+      line-height: 1.8;
+    }
+
+    .callout {
+      margin-top: 1.25rem;
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px dashed rgba(99, 102, 241, 0.35);
+      background: rgba(99, 102, 241, 0.08);
+    }
+
+    .callout-title {
+      font-family: var(--font-mono);
+      color: var(--color-text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .callout-body {
+      color: var(--color-text);
+      line-height: 1.6;
+    }
+
+    .cta {
+      padding: 3.5rem 0 5rem;
+      border-top: 1px solid var(--color-border);
+      background:
+        radial-gradient(ellipse at center, rgba(99, 102, 241, 0.22) 0%, transparent 58%),
+        var(--color-bg);
+    }
+
+    .cta h2 {
+      margin-bottom: 0.8rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .primary {
+      background: var(--color-primary);
+      color: white;
+    }
+
+    .primary:hover {
+      background: var(--color-primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .secondary {
+      background: transparent;
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+    }
+
+    .secondary:hover {
+      border-color: rgba(99, 102, 241, 0.6);
+    }
+
+    @media (max-width: 900px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+      h1 {
+        font-size: 2.35rem;
+      }
+    }
+
+    .comparison {
+      padding: 4rem 0;
+    }
+
+    .comparison h2 {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .comparison-intro {
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .comparison-table {
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(30, 41, 59, 0.35);
+    }
+
+    .comparison-header,
+    .comparison-row {
+      display: grid;
+      grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr;
+      gap: 1px;
+    }
+
+    .comparison-header {
+      background: rgba(99, 102, 241, 0.1);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .comparison-row {
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .comparison-row:last-child {
+      border-bottom: none;
+    }
+
+    .comparison-cell {
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+    }
+
+    .comparison-cell:first-child {
+      justify-content: flex-start;
+      font-weight: 500;
+    }
+
+    .comparison-header .comparison-cell {
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+    }
+
+    .comparison-cell.highlight {
+      background: rgba(99, 102, 241, 0.15);
+      font-weight: 600;
+    }
+
+    .check {
+      color: var(--color-secondary);
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .partial {
+      color: var(--color-warning, #f59e0b);
+      font-size: 0.85rem;
+    }
+
+    .dash {
+      color: var(--color-text-muted);
+    }
+
+    @media (max-width: 768px) {
+      .comparison-header,
+      .comparison-row {
+        grid-template-columns: 1.5fr 1fr 1fr 1fr;
+      }
+      .comparison-cell:nth-child(4) {
+        display: none;
+      }
+      .comparison-header .comparison-cell:nth-child(4) {
+        display: none;
+      }
+    }
+  </style>
+</Layout>
+

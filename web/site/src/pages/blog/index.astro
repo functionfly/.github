@@ -1,7 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-
-const BLOG_API = import.meta.env.PUBLIC_BLOG_API_URL || 'http://localhost:3000';
+import { BLOG_API_ORIGIN } from '../../config';
 
 let posts: Array<{
   id: string;
@@ -16,10 +15,12 @@ let posts: Array<{
 let error: string | null = null;
 
 try {
-  const res = await fetch(`${BLOG_API}/api/v1/blog/posts?limit=50`);
+  const res = await fetch(`${BLOG_API_ORIGIN}/api/v1/blog/posts?limit=50`);
   if (res.ok) {
     const json = await res.json();
     posts = json.data || [];
+  } else {
+    error = `Blog API returned ${res.status}`;
   }
 } catch (e) {
   error = e instanceof Error ? e.message : 'Failed to load posts';
@@ -30,135 +31,284 @@ try {
   title="Blog - FunctionFly"
   description="FunctionFly blog: tutorials, product updates, and edge computing insights."
 >
-  <section class="blog-page">
-    <div class="container">
-      <header class="blog-header">
-        <h1>Blog</h1>
-        <p class="blog-subtitle">Tutorials, product updates, and edge computing insights.</p>
-      </header>
+  <div class="blog-surface">
+    <section class="blog-page">
+      <div class="blog-inner">
+        <header class="blog-hero">
+          <div class="blog-hero-pill">
+            <svg class="blog-hero-pill-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
+            <span>Insights &amp; updates</span>
+          </div>
+          <h1 class="blog-title">
+            <span class="blog-title-gradient">Blog</span>
+          </h1>
+          <p class="blog-subtitle">Tutorials, product updates, and edge computing insights.</p>
+        </header>
 
-      {error && (
-        <p class="blog-error">Unable to load posts. Make sure the blog API is running.</p>
-      )}
+        {error && (
+          <div class="blog-panel blog-panel--error" role="alert">
+            <p class="blog-panel-title">Couldn’t load posts</p>
+            <p class="blog-panel-text">{error}</p>
+            <p class="blog-panel-hint">
+              Set <code>PUBLIC_BLOG_API_URL</code> in <code>web/site/.env</code> and run the Nest blog API
+              (<code>cmd/blog-api</code>), then rebuild or refresh.
+            </p>
+          </div>
+        )}
 
-      {!error && posts.length === 0 && (
-        <p class="blog-empty">No posts yet. Check back soon.</p>
-      )}
+        {!error && posts.length === 0 && (
+          <div class="blog-panel blog-panel--empty">
+            <div class="blog-empty-icon" aria-hidden="true">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
+            </div>
+            <p class="blog-empty-title">No posts yet</p>
+            <p class="blog-empty-text">Check back soon for tutorials and product news.</p>
+          </div>
+        )}
 
-      {!error && posts.length > 0 && (
-        <ul class="post-list">
-          {posts.map((post) => (
-            <li class="post-card">
-              <a href={`/blog/${post.slug}`} class="post-link">
-                <h2 class="post-title">{post.title}</h2>
-                <p class="post-description">{post.description || ''}</p>
-                <div class="post-meta">
-                  {post.publishedAt && (
-                    <time datetime={post.publishedAt}>
-                      {new Date(post.publishedAt).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </time>
-                  )}
-                  {post.author?.name && <span class="post-author">{post.author.name}</span>}
-                  {post.category?.title && (
-                    <span class="post-category">{post.category.title}</span>
-                  )}
-                </div>
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  </section>
+        {!error && posts.length > 0 && (
+          <ul class="post-grid">
+            {posts.map((post) => (
+              <li>
+                <a href={`/blog/${post.slug}`} class="post-card">
+                  <div class="post-card-inner">
+                    <h2 class="post-card-title">{post.title}</h2>
+                    <p class="post-card-desc">{post.description || ''}</p>
+                    <div class="post-card-meta">
+                      {post.publishedAt && (
+                        <time datetime={post.publishedAt}>
+                          {new Date(post.publishedAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })}
+                        </time>
+                      )}
+                      {post.author?.name && <span class="post-card-author">{post.author.name}</span>}
+                      {post.category?.title && (
+                        <span class="post-card-cat">{post.category.title}</span>
+                      )}
+                    </div>
+                  </div>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  </div>
 </Layout>
 
 <style>
-  .blog-page {
-    padding: 4rem 2rem 6rem;
+  .blog-surface {
+    position: relative;
+    overflow: hidden;
   }
 
-  .container {
+  .blog-surface::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.18), transparent 55%),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(16, 185, 129, 0.06), transparent 45%);
+  }
+
+  .blog-page {
+    position: relative;
+    padding: 3rem 1.5rem 5rem;
+  }
+
+  .blog-inner {
     max-width: 720px;
     margin: 0 auto;
   }
 
-  .blog-header {
-    margin-bottom: 3rem;
+  .blog-hero {
+    text-align: center;
+    margin-bottom: 0.5rem;
   }
 
-  .blog-header h1 {
-    font-size: 2.5rem;
+  .blog-hero-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-secondary);
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    margin-bottom: 1.25rem;
+  }
+
+  .blog-hero-pill-icon {
+    flex-shrink: 0;
+    opacity: 0.9;
+  }
+
+  .blog-title {
+    font-size: clamp(2.25rem, 5vw, 3rem);
     font-weight: 700;
-    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 0.75rem;
+  }
+
+  .blog-title-gradient {
+    background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 45%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
   .blog-subtitle {
     color: var(--color-text-muted);
     font-size: 1.125rem;
+    line-height: 1.6;
+    max-width: 32rem;
+    margin: 0 auto 2.5rem;
   }
 
-  .blog-error,
-  .blog-empty {
-    color: var(--color-text-muted);
+  .blog-panel {
+    border-radius: 12px;
+    padding: 2rem 1.5rem;
     text-align: center;
-    padding: 3rem;
   }
 
-  .post-list {
+  .blog-panel--error {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+  }
+
+  .blog-panel--empty {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px dashed var(--color-border);
+  }
+
+  .blog-panel-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--color-text);
+  }
+
+  .blog-panel-text {
+    color: var(--color-text-muted);
+    font-size: 0.9375rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .blog-panel-hint {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+    max-width: 28rem;
+    margin: 0 auto;
+  }
+
+  .blog-panel-hint code {
+    font-family: var(--font-mono);
+    font-size: 0.75em;
+    padding: 0.1em 0.35em;
+    background: var(--color-bg);
+    border-radius: 4px;
+    color: var(--color-text);
+  }
+
+  .blog-empty-icon {
+    color: var(--color-text-muted);
+    opacity: 0.5;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: center;
+  }
+
+  .blog-empty-title {
+    font-weight: 600;
+    font-size: 1.125rem;
+    margin-bottom: 0.35rem;
+    color: var(--color-text);
+  }
+
+  .blog-empty-text {
+    color: var(--color-text-muted);
+    font-size: 0.9375rem;
+  }
+
+  .post-grid {
     list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .post-card {
-    border-bottom: 1px solid var(--color-border);
-    padding: 2rem 0;
-  }
-
-  .post-card:first-child {
-    padding-top: 0;
-  }
-
-  .post-link {
     display: block;
-    color: inherit;
-    transition: opacity 0.2s;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: rgba(30, 41, 59, 0.5);
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
   }
 
-  .post-link:hover {
-    opacity: 0.9;
+  .post-card:hover {
+    border-color: rgba(99, 102, 241, 0.45);
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.6);
+    transform: translateY(-2px);
   }
 
-  .post-title {
-    font-size: 1.5rem;
+  .post-card-inner {
+    padding: 1.5rem 1.5rem 1.35rem;
+  }
+
+  .post-card-title {
+    font-size: 1.25rem;
     font-weight: 600;
+    line-height: 1.35;
     margin-bottom: 0.5rem;
+    color: var(--color-text);
   }
 
-  .post-description {
+  .post-card-desc {
     color: var(--color-text-muted);
     font-size: 0.9375rem;
     line-height: 1.6;
     margin-bottom: 1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
-  .post-meta {
+  .post-card-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
-    font-size: 0.875rem;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    font-size: 0.8125rem;
     color: var(--color-text-muted);
   }
 
-  .post-author::before {
+  .post-card-author::before,
+  .post-card-cat::before {
     content: '·';
-    margin-right: 1rem;
+    margin-right: 0.75rem;
+    color: var(--color-border);
   }
 
-  .post-category::before {
-    content: '·';
-    margin-right: 1rem;
+  .post-card-cat {
+    color: var(--color-secondary);
+    font-weight: 500;
   }
 </style>

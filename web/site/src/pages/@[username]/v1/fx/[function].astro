@@ -25,6 +25,25 @@ try {
 
 const title = func ? `${func.name} by @${username} - FunctionFly` : `${functionName} - FunctionFly`;
 const description = func?.description || `Function ${functionName} by @${username} on FunctionFly`;
+
+const curlSnippet = `curl -X POST https://functionfly.com/fx/${username}/${functionName} \\
+  -H "Content-Type: application/json" \\
+  -d '{ "input": "your input" }'`;
+
+const jsSnippet = `const response = await fetch('https://functionfly.com/fx/${username}/${functionName}', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ input: 'your input' })
+});
+const result = await response.json();`;
+
+const pySnippet = `import requests
+
+response = requests.post(
+    'https://functionfly.com/fx/${username}/${functionName}',
+    json={'input': 'your input'}
+)
+result = response.json()`;
 ---
 
 <BaseLayout title={title} description={description}>
@@ -138,38 +157,19 @@ const description = func?.description || `Function ${functionName} by @${usernam
             {/* cURL */}
             <div>
               <h3 class="text-lg font-semibold text-gray-900 mb-3">cURL</h3>
-              <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
-curl -X POST https://functionfly.com/fx/{username}/{functionName} \
-  -H "Content-Type: application/json" \
-  -d '{ "input": "your input" }'
-              </pre>
+              <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">{curlSnippet}</pre>
             </div>
 
             {/* JavaScript */}
             <div>
               <h3 class="text-lg font-semibold text-gray-900 mb-3">JavaScript</h3>
-              <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
-const response = await fetch('https://functionfly.com/fx/{username}/{functionName}', {{
-  method: 'POST',
-  headers: {{ 'Content-Type': 'application/json' }},
-  body: JSON.stringify({{ input: 'your input' }})
-}});
-const result = await response.json();
-              </pre>
+              <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">{jsSnippet}</pre>
             </div>
 
             {/* Python */}
             <div>
               <h3 class="text-lg font-semibold text-gray-900 mb-3">Python</h3>
-              <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
-import requests
-
-response = requests.post(
-    'https://functionfly.com/fx/{username}/{functionName}',
-    json={{'input': 'your input'}}
-)
-result = response.json()
-              </pre>
+              <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">{pySnippet}</pre>
             </div>
           </div>
         </div>

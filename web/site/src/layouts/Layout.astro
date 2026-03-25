@@ -1,10 +1,30 @@
 ---
+import { APP_DASHBOARD_ORIGIN, SITE_ORIGIN } from '../config';
+
 interface Props {
   title: string;
   description?: string;
+  /** Absolute or site-relative image URL for Open Graph */
+  ogImage?: string;
 }
 
-const { title, description = "Deploy serverless functions to the global edge with FunctionFly - the fastest way to run your code closest to your users." } = Astro.props;
+const {
+  title,
+  description = 'FunctionFly is the trust layer for AI agents - verified functions, trust scores, and zero-knowledge vault. Publish once, run everywhere, get paid.',
+  ogImage,
+} = Astro.props;
+
+const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
+
+function navClass(href: string): string {
+  if (href.startsWith('http')) return '';
+  const h = href.replace(/\/$/, '') || '/';
+  if (h === '/') return pathname === '/' ? 'nav-active' : '';
+  return pathname === h || pathname.startsWith(`${h}/`) ? 'nav-active' : '';
+}
+
+const canonicalURL = new URL(Astro.url.pathname, SITE_ORIGIN).toString();
+const ogUrl = ogImage?.startsWith('http') ? ogImage : new URL(ogImage || '/og-default.svg', SITE_ORIGIN).toString();
 ---
 
 <!doctype html>
@@ -13,10 +33,23 @@ const { title, description = "Deploy serverless functions to the global edge wit
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalURL} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogUrl} />
+    <meta property="og:site_name" content="FunctionFly" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogUrl} />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -26,17 +59,19 @@ const { title, description = "Deploy serverless functions to the global edge wit
       <nav class="nav">
         <a href="/" class="logo">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="8" fill="#6366F1"/>
-            <path d="M8 16L16 8L24 16L16 24L8 16Z" fill="white"/>
-            <path d="M12 16L16 12L20 16L16 20L12 16Z" fill="#6366F1"/>
+            <rect width="32" height="32" rx="8" fill="#6366F1"></rect>
+            <path d="M8 16L16 8L24 16L16 24L8 16Z" fill="white"></path>
+            <path d="M12 16L16 12L20 16L16 20L12 16Z" fill="#6366F1"></path>
           </svg>
           <span>FunctionFly</span>
         </a>
         <div class="nav-links">
-          <a href="/docs">Docs</a>
-          <a href="/pricing">Pricing</a>
-          <a href="/blog">Blog</a>
-          <a href="https://app.functionfly.com" class="nav-cta">Dashboard</a>
+          <a href="/docs" class:list={[navClass('/docs')]}>Docs</a>
+          <a href="/for-agents" class:list={[navClass('/for-agents')]}>For AI Agents</a>
+          <a href="/trust" class:list={[navClass('/trust')]}>Trust</a>
+          <a href="/pricing" class:list={[navClass('/pricing')]}>Pricing</a>
+          <a href="/blog" class:list={[navClass('/blog')]}>Blog</a>
+          <a href={APP_DASHBOARD_ORIGIN} class="nav-cta">Dashboard</a>
         </div>
       </nav>
     </header>
@@ -47,16 +82,18 @@ const { title, description = "Deploy serverless functions to the global edge wit
       <div class="footer-content">
         <div class="footer-brand">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="8" fill="#6366F1"/>
-            <path d="M8 16L16 8L24 16L16 24L8 16Z" fill="white"/>
-            <path d="M12 16L16 12L20 16L16 20L12 16Z" fill="#6366F1"/>
+            <rect width="32" height="32" rx="8" fill="#6366F1"></rect>
+            <path d="M8 16L16 8L24 16L16 24L8 16Z" fill="white"></path>
+            <path d="M12 16L16 12L20 16L16 20L12 16Z" fill="#6366F1"></path>
           </svg>
-          <p>Deploy serverless functions to the global edge.</p>
+          <p>The trust layer for AI agents. Publish once, run everywhere, get paid.</p>
         </div>
         <div class="footer-links">
           <div class="footer-column">
             <h4>Product</h4>
             <a href="/docs">Documentation</a>
+            <a href="/trust">Trust layer</a>
+            <a href="/for-agents">For AI agents</a>
             <a href="/pricing">Pricing</a>
             <a href="/changelog">Changelog</a>
           </div>
@@ -65,6 +102,7 @@ const { title, description = "Deploy serverless functions to the global edge wit
             <a href="/about">About</a>
             <a href="/blog">Blog</a>
             <a href="/careers">Careers</a>
+            <a href="/contact">Contact</a>
           </div>
           <div class="footer-column">
             <h4>Legal</h4>
@@ -74,7 +112,7 @@ const { title, description = "Deploy serverless functions to the global edge wit
         </div>
       </div>
       <div class="footer-bottom">
-        <p>&copy; {new Date().getFullYear()} FunctionFly. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} FunctionFly LLC (d/b/a FunctionFly). All rights reserved.</p>
       </div>
     </footer>
   </body>
@@ -82,13 +120,13 @@ const { title, description = "Deploy serverless functions to the global edge wit
 
 <style is:global>
   :root {
-    --color-primary: #6366F1;
-    --color-primary-dark: #4F46E5;
-    --color-secondary: #10B981;
-    --color-bg: #0F172A;
-    --color-bg-light: #1E293B;
-    --color-text: #F8FAFC;
-    --color-text-muted: #94A3B8;
+    --color-primary: #6366f1;
+    --color-primary-dark: #4f46e5;
+    --color-secondary: #10b981;
+    --color-bg: #0f172a;
+    --color-bg-light: #1e293b;
+    --color-text: #f8fafc;
+    --color-text-muted: #94a3b8;
     --color-border: #334155;
     --font-sans: 'Inter', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
@@ -161,6 +199,15 @@ const { title, description = "Deploy serverless functions to the global edge wit
 
   .nav-links a:hover {
     color: var(--color-text);
+  }
+
+  .nav-active {
+    color: var(--color-secondary) !important;
+    font-weight: 600;
+  }
+
+  .nav-active:hover {
+    color: var(--color-text) !important;
   }
 
   .nav-cta {

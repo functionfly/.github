@@ -1,11 +1,11 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-
-const BLOG_API = import.meta.env.PUBLIC_BLOG_API_URL || 'http://localhost:3000';
+import { slateBodyToHtml } from '../../lib/slate-to-html';
+import { BLOG_API_ORIGIN } from '../../config';
 
 export async function getStaticPaths() {
   try {
-    const res = await fetch(`${BLOG_API}/api/v1/blog/posts?limit=200`);
+    const res = await fetch(`${BLOG_API_ORIGIN}/api/v1/blog/posts?limit=200`);
     if (!res.ok) return [];
     const json = await res.json();
     const posts = json.data || [];
@@ -36,7 +36,7 @@ let post: {
 } | null = null;
 
 try {
-  const res = await fetch(`${BLOG_API}/api/v1/blog/posts/${encodeURIComponent(slug)}`);
+  const res = await fetch(`${BLOG_API_ORIGIN}/api/v1/blog/posts/${encodeURIComponent(slug)}`);
   if (res.ok) {
     post = await res.json();
   }
@@ -48,128 +48,147 @@ if (!post) {
   return Astro.redirect('/blog');
 }
 
-// Simple render of common rich-text body (e.g. paragraph blocks with text children)
-function renderBody(body: unknown): string {
-  if (body == null) return '';
-  if (typeof body === 'string') return body;
-  if (Array.isArray(body)) {
-    return body
-      .map((block) => {
-        if (block && typeof block === 'object' && 'children' in block) {
-          const children = (block as { children?: unknown[] }).children;
-          if (Array.isArray(children)) {
-            return children
-              .map((c) => (c && typeof c === 'object' && 'text' in c ? (c as { text: string }).text : ''))
-              .join('');
-          }
-        }
-        return '';
-      })
-      .filter(Boolean)
-      .join('\n\n');
-  }
-  return '';
-}
-
-const bodyHtml = renderBody(post.body);
+const bodyHtml = slateBodyToHtml(post.body);
 const metaTitle = post.seoTitle || post.title;
 const metaDesc = post.seoDescription || post.description;
 ---
 
 <Layout title={`${metaTitle} - FunctionFly Blog`} description={metaDesc || undefined}>
-  <article class="blog-post">
-    <div class="container">
-      <header class="post-header">
-        <a href="/blog" class="back-link">← Blog</a>
-        <h1 class="post-title">{post.title}</h1>
-        <div class="post-meta">
-          {post.publishedAt && (
-            <time datetime={post.publishedAt}>
-              {new Date(post.publishedAt).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </time>
+  <div class="blog-surface">
+    <article class="blog-post">
+      <div class="blog-inner">
+        <a href="/blog" class="back-link">
+          <span class="back-link-icon" aria-hidden="true">←</span>
+          Blog
+        </a>
+
+        <header class="post-hero">
+          <h1 class="post-title">
+            <span class="post-title-gradient">{post.title}</span>
+          </h1>
+          <div class="post-meta">
+            {post.publishedAt && (
+              <time datetime={post.publishedAt}>
+                {new Date(post.publishedAt).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </time>
+            )}
+            {post.author?.name && <span class="post-author">{post.author.name}</span>}
+            {post.category?.title && (
+              <a href={`/blog?category=${post.category.slug}`} class="post-category">
+                {post.category.title}
+              </a>
+            )}
+          </div>
+          {post.heroImage?.url && (
+            <img
+              src={post.heroImage.url}
+              alt={post.heroImage.alt || post.title}
+              class="post-hero-img"
+            />
           )}
-          {post.author?.name && <span class="post-author">{post.author.name}</span>}
-          {post.category?.title && (
-            <a href={`/blog?category=${post.category.slug}`} class="post-category">
-              {post.category.title}
-            </a>
+        </header>
+
+        <div class="post-article-card">
+          <div class="post-content">
+            {bodyHtml ? (
+              <div class="post-body" set:html={bodyHtml} />
+            ) : (
+              <p class="post-lead">{post.description}</p>
+            )}
+          </div>
+
+          {post.tags && post.tags.length > 0 && (
+            <footer class="post-footer">
+              <p class="post-tags-label">Tags</p>
+              <ul class="tag-list">
+                {post.tags.map((tag) => (
+                  <li>
+                    <span class="tag">{tag}</span>
+                  </li>
+                ))}
+              </ul>
+            </footer>
           )}
         </div>
-        {post.heroImage?.url && (
-          <img
-            src={post.heroImage.url}
-            alt={post.heroImage.alt || post.title}
-            class="post-hero"
-          />
-        )}
-      </header>
-
-      <div class="post-content">
-        {bodyHtml ? (
-          <div class="post-body">
-            {bodyHtml.split('\n\n').map((p) => (
-              <p>{p}</p>
-            ))}
-          </div>
-        ) : (
-          <p class="post-description">{post.description}</p>
-        )}
       </div>
-
-      {post.tags && post.tags.length > 0 && (
-        <footer class="post-footer">
-          <ul class="tag-list">
-            {post.tags.map((tag) => (
-              <li><span class="tag">{tag}</span></li>
-            ))}
-          </ul>
-        </footer>
-      )}
-    </div>
-  </article>
+    </article>
+  </div>
 </Layout>
 
 <style>
-  .blog-post {
-    padding: 4rem 2rem 6rem;
+  .blog-surface {
+    position: relative;
+    overflow: hidden;
   }
 
-  .container {
+  .blog-surface::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.14), transparent 55%),
+      radial-gradient(ellipse 50% 30% at 100% 10%, rgba(16, 185, 129, 0.05), transparent 40%);
+  }
+
+  .blog-post {
+    position: relative;
+    padding: 2.5rem 1.5rem 5rem;
+  }
+
+  .blog-inner {
     max-width: 720px;
     margin: 0 auto;
   }
 
   .back-link {
-    display: inline-block;
-    color: var(--color-text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     font-size: 0.875rem;
-    margin-bottom: 1.5rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-bottom: 1.75rem;
     transition: color 0.2s;
   }
 
   .back-link:hover {
-    color: var(--color-text);
+    color: var(--color-secondary);
   }
 
-  .post-header {
-    margin-bottom: 2rem;
+  .back-link-icon {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .post-hero {
+    margin-bottom: 1.75rem;
   }
 
   .post-title {
-    font-size: 2.25rem;
+    font-size: clamp(1.875rem, 4vw, 2.5rem);
     font-weight: 700;
-    line-height: 1.2;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
     margin-bottom: 1rem;
+  }
+
+  .post-title-gradient {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
   .post-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
     font-size: 0.875rem;
     color: var(--color-text-muted);
   }
@@ -177,42 +196,133 @@ const metaDesc = post.seoDescription || post.description;
   .post-author::before,
   .post-category::before {
     content: '·';
-    margin-right: 0.75rem;
+    margin-right: 0.5rem;
+    color: var(--color-border);
   }
 
   .post-category {
-    color: var(--color-primary);
+    color: var(--color-secondary);
+    font-weight: 500;
     transition: opacity 0.2s;
   }
 
   .post-category:hover {
-    opacity: 0.8;
+    opacity: 0.85;
   }
 
-  .post-hero {
+  .post-hero-img {
     width: 100%;
     margin-top: 1.5rem;
-    border-radius: 8px;
+    border-radius: 12px;
     border: 1px solid var(--color-border);
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.45);
+  }
+
+  .post-article-card {
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: rgba(30, 41, 59, 0.45);
+    padding: 2rem 1.5rem 2.25rem;
   }
 
   .post-content {
-    line-height: 1.7;
+    line-height: 1.75;
+    font-size: 1.0625rem;
+    color: var(--color-text);
   }
 
-  .post-description {
+  .post-lead {
     color: var(--color-text-muted);
     font-size: 1.125rem;
+    line-height: 1.65;
   }
 
-  .post-body p {
-    margin-bottom: 1rem;
+  .post-body :global(p) {
+    margin-bottom: 1.1rem;
+    color: #e2e8f0;
+  }
+
+  .post-body :global(h2),
+  .post-body :global(h3),
+  .post-body :global(h4) {
+    margin-top: 1.75rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-text);
+  }
+
+  .post-body :global(h2) {
+    font-size: 1.5rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .post-body :global(h3) {
+    font-size: 1.25rem;
+  }
+
+  .post-body :global(a) {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.2s;
+  }
+
+  .post-body :global(a:hover) {
+    color: #a5b4fc;
+  }
+
+  .post-body :global(.blog-code-block) {
+    margin: 1.35rem 0;
+    padding: 1rem 1.25rem;
+    font-size: 0.875rem;
+    color: #e2e8f0;
+    background: #0f172a;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    overflow-x: auto;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .post-body :global(.blog-code-block code) {
+    font-family: var(--font-mono);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .post-body :global(.blog-list) {
+    margin: 1rem 0 1rem 1.25rem;
+    color: #e2e8f0;
+  }
+
+  .post-body :global(.blog-list li) {
+    margin-bottom: 0.5rem;
+  }
+
+  .post-body :global(code:not(.blog-code-block code)) {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    padding: 0.12em 0.4em;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    color: #e2e8f0;
   }
 
   .post-footer {
-    margin-top: 3rem;
-    padding-top: 2rem;
+    margin-top: 2.25rem;
+    padding-top: 1.5rem;
     border-top: 1px solid var(--color-border);
+  }
+
+  .post-tags-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.75rem;
   }
 
   .tag-list {
@@ -224,10 +334,11 @@ const metaDesc = post.seoDescription || post.description;
 
   .tag {
     display: inline-block;
-    padding: 0.25rem 0.75rem;
-    background: var(--color-bg-light);
+    padding: 0.35rem 0.85rem;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.25);
     border-radius: 9999px;
     font-size: 0.8125rem;
-    color: var(--color-text-muted);
+    color: #c7d2fe;
   }
 </style>

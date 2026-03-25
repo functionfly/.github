@@ -1,0 +1,40 @@
+---
+import ContentPage from '../layouts/ContentPage.astro';
+import { APP_DASHBOARD_ORIGIN, DOCS_ORIGIN } from '../config';
+
+const syncScriptUrl =
+  'https://github.com/functionfly/functionfly/blob/main/web/docs/scripts/sync-docs.mjs';
+---
+
+<ContentPage
+  title="Documentation — FunctionFly"
+  description="FunctionFly technical documentation: public guides (web/docs) synced from the repo docs/ tree, plus in-app dashboard docs."
+>
+  <h1>Documentation</h1>
+  <p class="lead">
+    The public documentation site is built from <strong>web/docs</strong> (Astro). Only a small, reviewed set of pages from the repository
+    <strong>docs/</strong> tree is copied at build time (trust API, protocol, security overview, quick start, and similar). Internal runbooks,
+    production/staging playbooks, and operator-only guides are <strong>not</strong> published on the public docs host. The dashboard adds in-app docs when you are signed in.
+  </p>
+  <h2>Public docs site</h2>
+  <p>
+    <a href={DOCS_ORIGIN} rel="noopener noreferrer">{DOCS_ORIGIN}</a>
+    — public guides and API references (see <a href={`${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`}>all public pages</a>).
+  </p>
+  <h2>Source in this repo</h2>
+  <ul>
+    <li>
+      <a href="https://github.com/functionfly/functionfly/tree/main/docs" rel="noopener noreferrer">docs/</a>
+      — full Markdown library (public + internal). Only entries in the sync allowlist appear on the public site.
+    </li>
+    <li>
+      <a href={syncScriptUrl} rel="noopener noreferrer">web/docs/scripts/sync-docs.mjs</a>
+      — copies allowlisted files from <code>docs/</code> into <code>web/docs/src/content/docs</code> before <code>astro build</code>.
+    </li>
+  </ul>
+  <div class="actions">
+    <a class="btn-primary" href={DOCS_ORIGIN} rel="noopener noreferrer">Open docs site</a>
+    <a class="btn-outline" href={`${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`}>All guides</a>
+    <a class="btn-outline" href={`${APP_DASHBOARD_ORIGIN}/docs`}>Dashboard docs (sign in)</a>
+  </div>
+</ContentPage>

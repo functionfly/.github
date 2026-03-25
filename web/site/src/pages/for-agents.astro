@@ -1,0 +1,116 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { DOCS_ORIGIN } from '../config';
+
+const trustApiUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/trust-api/`;
+---
+
+<Layout
+  title="For AI Agents — FunctionFly"
+  description="Manifests, trust scores, and the Trust API: how agents discover and run verified tools safely on FunctionFly."
+>
+  <section class="hero">
+    <div class="container">
+      <h1>Built for agents that need real trust signals</h1>
+      <p class="lead">
+        FunctionFly exposes functions with clear manifests, verification metadata, and execution-backed trust scores—so policies can
+        distinguish “callable” from “appropriate to call.”
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container grid">
+      <div class="card">
+        <h2>Discovery &amp; manifests</h2>
+        <p>
+          Tools ship with structured configuration and I/O schemas so agents (and orchestrators) can match intent to capability without
+          guessing.
+        </p>
+      </div>
+      <div class="card">
+        <h2>Trust API</h2>
+        <p>
+          Query attestations, scores, and revocation-friendly metadata to enforce budgets and trust tiers at selection time and runtime.
+        </p>
+        <p><a class="link" href={trustApiUrl}>Trust API docs →</a></p>
+      </div>
+      <div class="card">
+        <h2>Human + platform verification</h2>
+        <p>
+          Verification levels stack from format checks through platform-signed tooling. See the full model on the Trust page.
+        </p>
+        <p><a class="link" href="/trust">How trust works →</a></p>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    padding: 4rem 1.5rem 2rem;
+    text-align: center;
+    background: radial-gradient(ellipse at top, rgba(99, 102, 241, 0.12) 0%, transparent 55%), var(--color-bg);
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 1rem;
+  }
+
+  .lead {
+    font-size: 1.125rem;
+    color: var(--color-text-muted);
+    line-height: 1.65;
+  }
+
+  .section {
+    padding: 2rem 1.5rem 5rem;
+  }
+
+  .grid {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .card {
+    background: var(--color-bg-light);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+
+  .card h2 {
+    font-size: 1.125rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .card p {
+    color: var(--color-text-muted);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
+  }
+
+  .link {
+    color: var(--color-secondary);
+    font-weight: 500;
+  }
+
+  .link:hover {
+    color: var(--color-text);
+  }
+</style>
