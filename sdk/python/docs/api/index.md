@@ -5,6 +5,7 @@ This document provides comprehensive API reference documentation for the FlyPy P
 ## Table of Contents
 
 - [Core API](#core-api)
+- [Agent Integrations API](#agent-integrations-api)
 - [Decorators](#decorators)
 - [Schema System](#schema-system)
 - [Build System](#build-system)
@@ -29,6 +30,59 @@ def function(
     execution_mode: ExecutionMode = ExecutionMode.DETERMINISTIC,
 ) -> Callable
 ```
+
+## Agent Integrations API
+
+### TrustPolicy
+
+```python
+from flypy import TrustPolicy
+
+policy = TrustPolicy(
+    min_trust_score=80,          # default
+    require_verified=True,       # default
+    required_trust_levels=["high"],
+    capabilities_allow=["http_get"],
+    capabilities_deny=["secrets_read"],
+)
+```
+
+`TrustPolicy.policy_hash()` returns a deterministic hash used in execution metadata.
+
+### AgentClient
+
+```python
+from flypy import AgentClient
+
+client = AgentClient(
+    api_base="https://api.functionfly.com",
+    api_key="...",
+    timeout_seconds=10.0,
+    max_retries=2,
+)
+```
+
+Key methods:
+- `search_registry(query, category=None, min_rating=None, limit=20, offset=0)`
+- `get_function_profile(author, name, expand_manifest=True)`
+- `get_ai_schema(author, name)`
+- `discover_trusted_functions(policy, query, category=None, limit=20)`
+- `execute_trusted_tool(trusted_function, policy, tool_input)`
+
+### Framework Adapters
+
+```python
+from flypy import LangChainAdapter, AutoGenAdapter, CrewAIAdapter
+```
+
+Each adapter exposes:
+- `build_tools(policy, query, category=None, limit=20)`
+- `execute_tool(trusted_function, policy, tool_input)` (LangChain adapter)
+
+All adapters route execution through FunctionFly and include audit metadata:
+- `tool_id`
+- `author`, `name`, `version`
+- `policy_hash`
 
 The main decorator that marks a function as a FlyPy function.
 

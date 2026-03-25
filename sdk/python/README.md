@@ -8,6 +8,22 @@ A Python SDK for compiling deterministic Python functions to WebAssembly for exe
 pip install flypy
 ```
 
+### Agent Framework Integrations (Optional)
+
+Install only what you need:
+
+```bash
+pip install "flypy[agents-langchain]"
+pip install "flypy[agents-autogen]"
+pip install "flypy[agents-crewai]"
+```
+
+Or install all integration dependencies:
+
+```bash
+pip install "flypy[agents]"
+```
+
 ## Quick Start
 
 ### Basic Usage
@@ -36,6 +52,33 @@ def handler(event):
         "total": total
     }
 ```
+
+### Trusted Tool Integrations (LangChain/AutoGen/CrewAI)
+
+```python
+from flypy import AgentClient, LangChainAdapter, TrustPolicy
+
+client = AgentClient(
+    api_base="https://api.functionfly.com",
+    api_key="your-api-key",
+)
+adapter = LangChainAdapter(client)
+
+# Fail-closed defaults:
+#   require_verified=True
+#   min_trust_score=80
+policy = TrustPolicy(required_trust_levels=["high"])
+tools = adapter.build_tools(policy=policy, query="text transform", limit=5)
+
+if tools and isinstance(tools[0], dict):
+    result = tools[0]["callable"](text="hello")
+    print(result["metadata"]["policy_hash"])
+```
+
+Execution metadata includes:
+- `tool_id`
+- `author`, `name`, `version`
+- `policy_hash` for trust-decision auditability
 
 ### With Explicit Schemas
 

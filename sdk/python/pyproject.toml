@@ -47,6 +47,20 @@ build = [
     "build>=1.0.0",
     "twine>=5.0.0",
 ]
+agents-langchain = [
+    "langchain-core>=1.2.20",
+]
+agents-autogen = [
+    "pyautogen>=0.10.0",
+]
+agents-crewai = [
+    "crewai>=1.11.0",
+]
+agents = [
+    "langchain-core>=1.2.20",
+    "pyautogen>=0.10.0",
+    "crewai>=1.11.0",
+]
 
 [project.scripts]
 flypy = "flypy.cli:main"

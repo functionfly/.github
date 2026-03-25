@@ -61,6 +61,20 @@ setup(
             "build>=1.0.0",
             "twine>=5.0.0",
         ],
+        "agents-langchain": [
+            "langchain-core>=0.2.0",
+        ],
+        "agents-autogen": [
+            "pyautogen>=0.2.0",
+        ],
+        "agents-crewai": [
+            "crewai>=0.70.0",
+        ],
+        "agents": [
+            "langchain-core>=0.2.0",
+            "pyautogen>=0.2.0",
+            "crewai>=0.70.0",
+        ],
     },
     entry_points={
         "console_scripts": [

@@ -58,6 +58,17 @@ from .state import (
     restore_snapshot,
     get_client,
 )
+from .agent_types import (
+    TrustPolicy,
+    TrustedFunction,
+    ToolExecutionMetadata,
+    ToolExecutionEnvelope,
+    AgentClientError,
+    AgentHTTPError,
+    TrustPolicyError,
+)
+from .agent_client import AgentClient
+from .adapters import LangChainAdapter, AutoGenAdapter, CrewAIAdapter
 from .version import __version__
 
 __all__ = [
@@ -95,5 +106,16 @@ __all__ = [
     "create_snapshot",
     "restore_snapshot",
     "get_client",
+    "TrustPolicy",
+    "TrustedFunction",
+    "ToolExecutionMetadata",
+    "ToolExecutionEnvelope",
+    "AgentClientError",
+    "AgentHTTPError",
+    "TrustPolicyError",
+    "AgentClient",
+    "LangChainAdapter",
+    "AutoGenAdapter",
+    "CrewAIAdapter",
     "__version__",
 ]
