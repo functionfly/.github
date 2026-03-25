@@ -298,38 +298,47 @@ New runtime option in [`functionfly.jsonc`](examples/python/functionfly.jsonc):
 
 ### Phase 1: Foundation (Weeks 1-2)
 
-- [ ] Add Enterprise tier to plans/limits.go
-- [ ] Create microvm orchestrator module structure
-- [ ] Set up Firecracker build environment
-- [ ] Create base VM image with CPython
+- [x] Add Enterprise tier to plans/limits.go
+- [x] Create microvm orchestrator module structure
+- [x] Set up Firecracker config (configs/firecracker.json)
+- [x] Create base VM image with CPython (images/Dockerfile.python311)
 
 ### Phase 2: Core Execution (Weeks 3-4)
 
-- [ ] Implement Firecracker API client
-- [ ] Build VM lifecycle management (start/stop)
-- [ ] Create execution agent for VM
-- [ ] Implement input/output passing via vsock
+- [x] Implement Firecracker API client
+- [x] Build VM lifecycle management (start/stop)
+- [x] Create execution agent for VM (images/agent)
+- [x] Implement input/output passing via vsock
+- [x] Add MicroVM HTTP API (/execute, /health, /stats)
 
 ### Phase 3: Integration (Weeks 5-6)
 
-- [ ] Integrate with existing API routing
-- [ ] Add tier-based runtime selection
-- [ ] Implement warm pool management
-- [ ] Add monitoring/metrics
+- [x] Integrate with existing API routing
+- [x] Add tier-based runtime selection (enterprise config in sandbox)
+- [x] Implement warm pool management (orchestrator)
+- [x] Add monitoring/metrics (GET `/metrics` Prometheus text on orchestrator)
 
 ### Phase 4: Enterprise Features (Weeks 7-8)
 
-- [ ] Add network whitelist support
-- [ ] Implement package caching
-- [ ] Add resource limit enforcement
-- [ ] Security hardening
+- [x] Partial: network whitelist / package cache — flags exist on local runtime (`--network-whitelist`, `--package-caching-enabled`); wire through sandbox env in a follow-up
+- [x] Resource limit enforcement — `internal/plans` `ValidateMicroVMResources`; orchestrator honors `memory_mb` / `vcpus` / `timeout_ms` on requests
+- [x] Partial: security hardening — tenant required for `python-microvm`; dev mode isolated to `FUNCTIONFLY_MICROVM_DEV_MODE`
 
-### Phase 5: Testing & Production (Weeks 9-10)
+### Phase 5: Production Hardening (Weeks 9-10)
 
-- [ ] Load testing and optimization
-- [ ] Security audit
-- [ ] Documentation
-- [ ] Gradual rollout (10% → 50% → 100%)
+- [x] Security: `FUNCTIONFLY_MICROVM_API_TOKEN` bearer-token auth on `/execute` + `/stats`; dev-mode guard refuses start when `ENVIRONMENT=production`
+- [x] Port cleanup: microvm orchestrator default changed from 9090 → **9091** (avoids Prometheus collision)
+- [x] Per-tenant concurrency quotas: `FUNCTIONFLY_MICROVM_MAX_VMS_PER_TENANT` (default 10) enforced in orchestrator
+- [x] Billing wired: `CalculateMicroVMBilling` called per execution in `HandleExecute`; results logged as structured fields for downstream aggregation
+- [x] Network whitelist + package cache forwarded end-to-end: Go `--tenant-id` / `--network-whitelist` / `--strict-network-whitelist` / `--package-caching-enabled` → local runtime → `MicroVMExecutionRequest` → orchestrator
+- [x] VM image build pipeline: `runtimes/microvm/images/build-rootfs.sh` + `make build-microvm-rootfs` / `make dev-microvm` / `make run-microvm`
+- [x] Extended Prometheus metrics: cumulative duration, pool-exhausted counter, fc-spawn-failures counter, active/warm/max VM gauges; separate `/metrics` endpoint (unauthenticated for scraping)
+- [x] Prometheus alert rules: `deploy/monitoring/alerts/microvm-alerts.yml` (error rate, pool exhaustion, FC spawn failures, latency, no-traffic)
+- [x] Docker Compose: `microvm-orchestrator` service with `--profile microvm` in `deploy/production/docker-compose.yml`; KVM device pass-through, loopback-only port
+- [x] Kubernetes: `deploy/kubernetes/microvm-daemonset.yaml` — DaemonSet on `functionfly.io/microvm=enabled` nodes, RBAC, KVM device, headless Service
+- [ ] Load testing and chaos testing (pool exhaustion, FC crash recovery)
+- [ ] External security audit
+- [ ] Gradual rollout (10% → 50% → 100%) via feature flag in tenant config
 
 ## Tradeoffs Summary
 

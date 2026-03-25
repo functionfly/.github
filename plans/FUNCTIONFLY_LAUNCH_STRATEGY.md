@@ -601,7 +601,9 @@
 **Timeline**: Day 61–180  
 **Goal**: Comprehensive ecosystem coverage
 
-### Category 3.1: E-Commerce (75 functions)
+### Category 3.1: E-Commerce (75 functions) ✅ COMPLETE
+
+- [x] **E-Commerce (3.1)** — All 75 complete: calculate-tax/vat/gst, price-with/without-tax, calculate-discount/markup/margin, calculate-shipping, free-shipping-threshold, validate-credit-card, credit-card-type, generate-card-token, validate-expiry/cvv, luhn-validate, calculate-installments/interest/compound-interest/apr/apy, price-format, currency-symbol-get/validate, locale-price-format, invoice-generate, order-id-generate, sku-generate, barcode-generate, qr-code-generate, ean-validate, upc-validate, product-taxes-calculate, tiered-pricing, bulk-discount, coupon-validate/discount, loyalty-points, gift-card-balance, refund-calculate, return-shipping-label, inventory-check, stock-level-calculate, reorder-point, lead-time-calculate, backorder-calculate, abandoned-cart-timer, cart-value-breakpoints, customer-ltv, churn-prediction, product-affinity, recommendation-score, search-rank, sort-products, filter-products, facet-aggregates, price-alert, wishlist-similarity, purchase-probability, customer-segment, purchase-history-analyze, upsell-suggestion, cross-sell-suggestion, bundle-price/savings, dynamic-pricing, price-elasticity, demand-forecast, inventory-forecast, return-rate, net-promoter-score, customer-satisfaction, review-sentiment, product-rating-aggregate, review-helpfulness.
 
 | Function Name | Description | Category | Runtime |
 |---------------|-------------|----------|---------|
@@ -681,7 +683,9 @@
 | `product-rating-aggregate` | Aggregate ratings | ecommerce | python3.12 |
 | `review-helpfulness` | Review helpfulness score | ecommerce | python3.12 |
 
-### Category 3.2: Social & Content (75 functions)
+### Category 3.2: Social & Content (75 functions) ✅ COMPLETE
+
+- [x] **Social & Content (3.2)** — All 75 complete: og-tags-extract, twitter-card-extract, meta-tags-extract, json-ld-extract, schema-org-parse, oembed-parse, url-metadata, rss-feed-parse, atom-feed-parse, sitemap-parse, robots-txt-parse, open-graph-image, favicon-get, page-title, page-description, link-preview, url-preview, twitter-text-parse, twitter-mentions, twitter-hashtags, twitter-urls, mentions-detect, hashtags-extract, cashtag-extract, char-count-twitter, char-count-facebook, char-count-linkedin, twitch-embed, tiktok-embed, instagram-embed, twitter-embed, facebook-embed, linkedin-share, share-url-generate, short-url-generate, utm-builder, utm-parse, campaign-tracker, referral-code-generate, invite-link-generate, video-thumbnail, video-duration, video-metadata, youtube-id-extract, vimeo-id-extract, content-word-count, content-reading-time, content-flesch-score, content-sentiment, content-language-detect, content-keywords-extract, content-summary, content-highlights, content-entities, content-ner, content-classify, content-toxicity, content-spam, content-plagiarism, content-originality, comment-moderate, profanity-filter, emoji-extract, emoji-shortcodes, unicode-emoji, share-count, like-count, comment-count, engagement-rate, virality-score, trending-score, feed-ranking, content-dedupe, duplicate-detect, similarity-score.
 
 | Function Name | Description | Category | Runtime |
 |---------------|-------------|----------|---------|
@@ -1225,16 +1229,19 @@ Prioritized actions to move from plan → live registry. Tick as you go.
 - [x] **Phase 1 launch** — 150 functions live, all tested and documented. (150 functions in `functions/functionfly/`, all covered by unit tests; publish via `fly publish-batch functions/functionfly` when ready.)
 
 **Optional dependencies (for full behavior):**
+
 - **Security (1.4):** `cryptography` for AES and RSA; `bleach` for stronger HTML sanitization; `user-agents` for richer user-agent parsing; `PyJWT` and `bcrypt` for JWT and password functions. These are listed in `functions/functionfly/requirements.txt` and pre-installed in the MicroVM Python images (`runtimes/microvm/images/Dockerfile.python311`, `Dockerfile.python312`).
 - **Date & time (1.5):** All 25 use only the standard library (`datetime`, `zoneinfo`, `email.utils` for RFC 2822).
 
 ### Short-term (Phase 2 prep)
 
-- [x] **Arrays (2.1)** — Batch 1: array-chunk … array-zip (16). Batch 2: array-slice, array-compact, array-pluck, array-pluck-deep, array-find-index, array-find-last-index, array-binary-search, array-diff, array-intersection, array-union, array-sort-by, array-min, array-max, array-sum, array-average (15). Remaining 44 to do in batches.
-- [ ] **HTTP (2.2)** — Implement http-* helpers, url-parse/build, headers/cookies, auth helpers, retry-backoff.
-- [ ] **Validation (2.3)** — Implement is-* and sanitize-* set.
-- [ ] **Encoding (2.4)** — Gzip, Brotli, base variants, UTF/entity encoding.
-- [ ] **Color (2.5)** and **Crypto (2.6)** and **Format (2.7)** — Schedule and batch by priority.
+- [x] **Arrays (2.1)** — All 75 complete: batches 1–3 (array-chunk … array-delete), plus array-union-by, array-intersection-by, array-diff-by.
+- [x] **HTTP (2.2)** — All 50 complete: http-* methods, url-parse/build, headers/cookies, dns-lookup, reverse-dns, status helpers (http-status-text, http-status-category, is-redirect, is-success, is-client-error, is-server-error), etag-generate/validate, last-modified-parse, cache-control-parse, authorization-parse, basic-auth-decode/encode, bearer-token-extract, api-key-extract, webhook-signature-verify, retry-backoff.
+- [x] **Validation (2.3)** — All 50+ complete: is-email, is-url, is-ipv4/v6/ip, is-domain, is-credit-card, is-isbn, is-phone, is-date, is-json, is-xml, is-base64, is-hex, is-uuid, is-mac-address, is-postal-code, is-ascii, is-alphanumeric, is-alpha, is-numeric, is-mobile-phone, is-hex-color, is-rgb-color, is-hsl-color, is-octal, is-binary, is-float, is-integer, is-boolean, is-array, is-object, is-empty, is-defined, is-null, is-undefined, is-function, is-promise, is-regexp, is-date-valid, is-leap-year-validate, in-range, length-range, matches-pattern, contains-value/uppercase/lowercase/number/special, sanitize-filename, sanitize-path.
+- [x] **Encoding (2.4)** — All 51 complete: gzip/deflate/zlib/brotli/lz4/zstd compress+decompress, utf8-validate, utf16/utf32/iso-8859-1 encode+decode, url-encoded/punycode/html-entity/xml-entity/unicode/quoted-printable/uu/mime-word encode+decode, crc32, adler32, xxhash, murmurhash, fnv-hash, keccak, bcrypt/argon2/scrypt/pbkdf2 hash+verify, hmac-sha256, hmac-sha512.
+- [x] **Crypto (2.6)** — All 25 complete: generate-aes-key, generate-iv, generate-salt, encrypt/decrypt-aes-cbc, encrypt/decrypt-aes-gcm, generate-rsa-key, rsa-sign/verify, generate-ecc-key, ecc-sign/verify, derive-key-pbkdf2/scrypt/argon2, hkdf-expand, pbkdf2-derive, x509-parse-cert, x509-verify-cert, generate-self-signed, encrypt/decrypt-private-key, derive-address, verify-signature.
+- [x] **Color (2.5)** — All 50 complete: hex↔rgb, rgb↔hsl, rgb↔hsv, cmyk↔rgb, color-blend/lighten/darken/saturate/desaturate/fade/greyscale/invert/complement/contrast/luminance/mix/tint/shade/tone, is-light/dark-color, random-color, color-name↔hex, gradient-generator, palette-generator (complementary/analogous/triadic/tetradic/split-complementary/monochromatic), image-dominant/average-color, image-brightness/contrast/contrast-adjust/saturation/hue-rotate/sepia/invert/blur/sharpen/edge-detect/pixelate/dither/color-quantize/histogram/threshold/remove-bg/watermark.
+- [x] **Format (2.7)** — All 52 complete: toml-parse/stringify/validate, ini-parse/stringify, xml-parse/stringify, json-schema-validate, json-path-query, json-pointer-get, json-merge-patch, json-patch, cson-parse/stringify, hocon-parse/stringify, properties-parse/stringify, plist-parse/stringify, ron-parse/stringify, msgpack-encode/decode, cbor-encode/decode, ubjson-encode/decode, bsond-encode/decode, avro-encode/decode, protobuf-encode/decode (JSON fallback), thrift-encode/decode (JSON fallback), ion-encode/decode, flatbuffers-encode/decode (JSON fallback), pickle-encode/decode, php-serialize/unserialize, dotnet-binary-format (JSON fallback), java-serialization (JSON fallback), xml-rpc-encode/decode, json-lines-parse/stringify, ndjson-parse/stringify.
 
 ### Later (Phase 3)
 

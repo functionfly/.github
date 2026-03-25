@@ -182,7 +182,7 @@ All domains should use Cloudflare's **Full (strict)** SSL/TLS encryption mode wi
 
 - **Always Use HTTPS**: Enabled
 - **Automatic HTTPS Rewrites**: Enabled
-- **HTTP Strict Transport Security (HSTS)**: 
+- **HTTP Strict Transport Security (HSTS)**:
   - Max Age: 12 months
   - Include subdomains: Yes
   - Preload: Yes
@@ -594,7 +594,7 @@ RATE_LIMIT_REQUESTS=200
 RATE_LIMIT_WINDOW_SECONDS=60
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS=https://staging.functionfly.com,https://app.staging.functionfly.com,http://localhost:3000
+CORS_ALLOWED_ORIGINS=https://staging.functionfly.com,https://app.staging.functionfly.com,https://admin.staging.functionfly.com,http://localhost:3000
 CORS_ALLOWED_METHODS=GET,POST,PUT,PATCH,DELETE,OPTIONS
 CORS_ALLOWED_HEADERS=Accept,Content-Type,Content-Length,Accept-Encoding,X-CSRF-Token,Authorization,X-FFLY-Timestamp,X-FFLY-Signature,x-neon-client-info
 
