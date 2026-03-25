@@ -16,15 +16,24 @@ print_success() { echo -e "${GREEN}✅ $1${NC}"; }
 print_warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 print_error()   { echo -e "${RED}❌ $1${NC}"; }
 
-command -v psql >/dev/null 2>&1 || {
-    print_error "psql not found. Install PostgreSQL client tools."
-    exit 1
-}
+USE_GO_HELPER=0
 
-command -v htpasswd >/dev/null 2>&1 || {
-    print_error "htpasswd not found. Install apache2-utils (e.g. apt install apache2-utils) for bcrypt password hashing."
-    exit 1
-}
+# Some dev environments (like minimal containers/WSL images) may not have the
+# `postgresql-client-*` package installed. If so, `psql` may exist but be
+# non-functional; in that case, fall back to the Go helper.
+if [ "${FORCE_GO_HELPER:-}" = "1" ]; then
+    USE_GO_HELPER=1
+fi
+
+if ! command -v psql >/dev/null 2>&1; then
+    USE_GO_HELPER=1
+elif ! psql --version >/dev/null 2>&1; then
+    USE_GO_HELPER=1
+fi
+
+if ! command -v htpasswd >/dev/null 2>&1; then
+    USE_GO_HELPER=1
+fi
 
 DEFAULT_EMAIL="enterprise-test@functionfly.local"
 DEFAULT_PASSWORD="enterprise123"
@@ -92,6 +101,22 @@ DB_NAME="${DB_NAME:-$DEFAULT_DB_NAME}"
 
 export PGPASSWORD="${PGPASSWORD:-$DB_PASSWORD}"
 export PGPASSWORD="${PGPASSWORD:-postgres}"
+
+if [ "$USE_GO_HELPER" -eq 1 ]; then
+    print_warning "Using Go helper (psql/htpasswd not available or not functional)."
+    SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+    ROOT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+    (cd "$ROOT_DIR" && go run "./scripts/create-enterprise-test-account" \
+        --email "$EMAIL" \
+        --password "$PASSWORD" \
+        --tenant-id "$TENANT_ID" \
+        --db-url "${DATABASE_URL:-}" \
+        --db-host "$DB_HOST" \
+        --db-port "$DB_PORT" \
+        --db-user "$DB_USER" \
+        --db-name "$DB_NAME")
+    exit $?
+fi
 
 print_info "Generating password hash..."
 # htpasswd -n outputs "user:hash"; use a dummy user and strip it. -B = bcrypt, -C 10 = cost.
