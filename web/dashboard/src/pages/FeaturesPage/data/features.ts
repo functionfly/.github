@@ -1,268 +1,250 @@
+import { DOCS_SITE_URL } from '@/lib/constants';
 import {
   ArrowRightLeft,
-  Network,
+  BarChart3,
   Brain,
   Code2,
-  Users,
-  BarChart3,
-  Settings,
   Globe,
-} from "lucide-react";
-import { DOCS_SITE_URL } from "@/lib/constants";
-import { Feature, categoryColors } from "../types";
-import { PredictiveRoutingIllustration } from "../illustrations";
-import { GlobalNetworkIllustration } from "../illustrations";
+  Network,
+  Settings,
+  Users,
+} from 'lucide-react';
+import { GlobalNetworkIllustration, PredictiveRoutingIllustration } from '../illustrations';
+import { Feature, categoryColors } from '../types';
 
 export const features: Feature[] = [
   {
     icon: ArrowRightLeft,
-    title: "Fast Failover",
+    title: 'Fast Failover',
     description:
-      "Sub-second failover between providers ensures your users never experience downtime. Our intelligent routing automatically redirects traffic to healthy endpoints. Available in all plans including Free tier.",
-    category: "Reliability",
+      'Sub-second failover between providers ensures your users never experience downtime. Our intelligent routing automatically redirects traffic to healthy endpoints. Available in all plans including Free tier.',
+    category: 'Reliability',
     highlights: [
-      "<100ms failover time",
-      "Automatic health monitoring",
-      "Zero-downtime deployments",
+      '<100ms failover time',
+      'Automatic health monitoring',
+      'Zero-downtime deployments',
     ],
     cta: {
-      text: "Test Failover Demo",
-      action: "demo",
-      link: "#interactive-demos"
+      text: 'Test Failover Demo',
+      action: 'demo',
+      link: '#interactive-demos',
     },
     detailedContent: {
       overview:
-        "Our fast failover system uses multiple layers of health checking to ensure your applications stay online.",
+        'Our fast failover system uses multiple layers of health checking to ensure your applications stay online.',
       technicalDetails: [
-        "Multi-layer health checks (HTTP, TCP, DNS)",
-        "Circuit breaker pattern implementation",
-        "Automated rollback capabilities",
-        "Real-time provider status monitoring",
+        'Multi-layer health checks (HTTP, TCP, DNS)',
+        'Circuit breaker pattern implementation',
+        'Automated rollback capabilities',
+        'Real-time provider status monitoring',
       ],
       benefits: [
-        "Zero downtime during provider outages",
-        "Automatic recovery without manual intervention",
-        "Seamless user experience during failures",
-        "Detailed incident reporting and analytics",
+        'Zero downtime during provider outages',
+        'Automatic recovery without manual intervention',
+        'Seamless user experience during failures',
+        'Detailed incident reporting and analytics',
       ],
       implementation:
-        "Failover decisions are made in <50ms using distributed consensus algorithms across our global control plane.",
+        'Failover decisions are made in <50ms using distributed consensus algorithms across our global control plane.',
     },
-    ...categoryColors["Reliability"],
+    ...categoryColors['Reliability'],
   },
   {
     icon: Network,
-    title: "Multi-Provider Deployment",
+    title: 'Multi-Provider Deployment',
     description:
-      "Deploy your functions to multiple edge providers simultaneously. No vendor lock-in, maximum flexibility, and global distribution. Pro plan required for production deployments.",
-    category: "Deployment",
+      'Deploy your functions to multiple edge providers simultaneously. No vendor lock-in, maximum flexibility, and global distribution. Pro plan required for production deployments.',
+    category: 'Deployment',
     highlights: [
-      "Vercel, Netlify, Fly.io, Cloudflare",
-      "Load balancing across providers",
-      "Geographic distribution",
+      'Vercel, Netlify, Fly.io, Cloudflare',
+      'Load balancing across providers',
+      'Geographic distribution',
     ],
     cta: {
-      text: "Try Multi-Provider Deployment",
-      action: "demo",
-      link: "#interactive-demos"
+      text: 'Try Multi-Provider Deployment',
+      action: 'demo',
+      link: '#interactive-demos',
     },
     detailedContent: {
-      overview:
-        "Deploy to multiple providers simultaneously with our unified deployment pipeline.",
+      overview: 'Deploy to multiple providers simultaneously with our unified deployment pipeline.',
       technicalDetails: [
-        "Unified deployment API across all providers",
-        "Provider-specific optimization layers",
-        "Atomic deployment transactions",
-        "Rollback capabilities across providers",
+        'Unified deployment API across all providers',
+        'Provider-specific optimization layers',
+        'Atomic deployment transactions',
+        'Rollback capabilities across providers',
       ],
       benefits: [
-        "No vendor lock-in - switch providers anytime",
-        "Redundant deployment for high availability",
-        "Cost optimization through provider selection",
-        "Geographic coverage expansion",
+        'No vendor lock-in - switch providers anytime',
+        'Redundant deployment for high availability',
+        'Cost optimization through provider selection',
+        'Geographic coverage expansion',
       ],
       implementation:
-        "Our orchestration layer manages deployments using Kubernetes-style controllers with provider-specific adapters.",
+        'Our orchestration layer manages deployments using Kubernetes-style controllers with provider-specific adapters.',
     },
-    ...categoryColors["Deployment"],
+    ...categoryColors['Deployment'],
   },
   {
     icon: Brain,
-    title: "Predictive Routing",
+    title: 'Predictive Routing',
     description:
-      "AI-powered traffic routing analyzes real-time health metrics to predict and prevent issues before they impact users. Pro plan feature with advanced ML algorithms.",
-    category: "Intelligence",
+      'AI-powered traffic routing analyzes real-time health metrics to predict and prevent issues before they impact users. Pro plan feature with advanced ML algorithms.',
+    category: 'Intelligence',
     highlights: [
-      "Machine learning algorithms",
-      "Real-time health monitoring",
-      "Proactive issue prevention",
+      'Machine learning algorithms',
+      'Real-time health monitoring',
+      'Proactive issue prevention',
     ],
     illustration: PredictiveRoutingIllustration,
     cta: {
-      text: "Experience AI Routing",
-      action: "demo",
-      link: "#interactive-demos"
+      text: 'Experience AI Routing',
+      action: 'demo',
+      link: '#interactive-demos',
     },
     detailedContent: {
       overview:
-        "Machine learning algorithms predict and prevent issues before they impact your users.",
+        'Machine learning algorithms predict and prevent issues before they impact your users.',
       technicalDetails: [
-        "LSTM neural networks for time-series prediction",
-        "Real-time anomaly detection using statistical models",
-        "Multi-armed bandit algorithms for optimal routing",
-        "Historical data analysis with 99.9% uptime tracking",
+        'LSTM neural networks for time-series prediction',
+        'Real-time anomaly detection using statistical models',
+        'Multi-armed bandit algorithms for optimal routing',
+        'Historical data analysis with 99.9% uptime tracking',
       ],
       benefits: [
-        "Proactive issue prevention reduces incidents by 80%",
-        "Intelligent load balancing improves performance",
-        "Predictive scaling prevents resource exhaustion",
-        "Automated incident response and recovery",
+        'Proactive issue prevention reduces incidents by 80%',
+        'Intelligent load balancing improves performance',
+        'Predictive scaling prevents resource exhaustion',
+        'Automated incident response and recovery',
       ],
       implementation:
-        "Our AI models are trained on millions of deployment events and continuously updated using reinforcement learning.",
+        'Our AI models are trained on millions of deployment events and continuously updated using reinforcement learning.',
     },
-    ...categoryColors["Intelligence"],
+    ...categoryColors['Intelligence'],
   },
   {
     icon: Code2,
-    title: "Developer Experience",
+    title: 'Developer Experience',
     description:
-      "Seamless deployment with Git integration, CLI tools, and comprehensive APIs. Deploy in minutes, not hours. Core features available in Free tier.",
-    category: "Developer Tools",
-    highlights: [
-      "Git integration",
-      "CLI and API support",
-      "TypeScript/JavaScript support",
-    ],
+      'Seamless deployment with Git integration, CLI tools, and comprehensive APIs. Deploy in minutes, not hours. Core features available in Free tier.',
+    category: 'Developer Tools',
+    highlights: ['Git integration', 'CLI and API support', 'TypeScript/JavaScript support'],
     cta: {
-      text: "Get Started with CLI",
-      action: "link",
-      link: `${DOCS_SITE_URL}/cli`
+      text: 'Get Started with CLI',
+      action: 'link',
+      link: `${DOCS_SITE_URL}/docs/cli`,
     },
-    ...categoryColors["Developer Tools"],
+    ...categoryColors['Developer Tools'],
   },
   {
     icon: Users,
-    title: "Team Collaboration",
+    title: 'Team Collaboration',
     description:
-      "Invite team members, manage permissions, and collaborate on deployments with role-based access control. Up to 3 team members in Free tier.",
-    category: "Collaboration",
-    highlights: [
-      "Role-based permissions",
-      "Team member invites",
-      "Audit logs and tracking",
-    ],
+      'Invite team members, manage permissions, and collaborate on deployments with role-based access control. Up to 3 team members in Free tier.',
+    category: 'Collaboration',
+    highlights: ['Role-based permissions', 'Team member invites', 'Audit logs and tracking'],
     cta: {
-      text: "Invite Team Members",
-      action: "link",
-      link: "/dashboard/team"
+      text: 'Invite Team Members',
+      action: 'link',
+      link: '/dashboard/team',
     },
-    ...categoryColors["Collaboration"],
+    ...categoryColors['Collaboration'],
   },
   {
     icon: BarChart3,
-    title: "Advanced Analytics",
+    title: 'Advanced Analytics',
     description:
-      "Comprehensive analytics with custom dashboards, performance metrics, and detailed insights into your deployments. Basic metrics in Free tier, advanced analytics in Pro plan.",
-    category: "Monitoring",
-    highlights: [
-      "Real-time metrics",
-      "Custom dashboards",
-      "Performance insights",
-    ],
+      'Comprehensive analytics with custom dashboards, performance metrics, and detailed insights into your deployments. Basic metrics in Free tier, advanced analytics in Pro plan.',
+    category: 'Monitoring',
+    highlights: ['Real-time metrics', 'Custom dashboards', 'Performance insights'],
     cta: {
-      text: "View Analytics Dashboard",
-      action: "link",
-      link: "/dashboard/analytics"
+      text: 'View Analytics Dashboard',
+      action: 'link',
+      link: '/dashboard/analytics',
     },
     detailedContent: {
       overview:
-        "Get deep insights into your deployments with comprehensive analytics and custom dashboards.",
+        'Get deep insights into your deployments with comprehensive analytics and custom dashboards.',
       technicalDetails: [
-        "Real-time metrics collection with <1s latency",
-        "Custom dashboard builder with drag-and-drop interface",
-        "Advanced querying with SQL-like syntax",
-        "Integration with external monitoring tools",
+        'Real-time metrics collection with <1s latency',
+        'Custom dashboard builder with drag-and-drop interface',
+        'Advanced querying with SQL-like syntax',
+        'Integration with external monitoring tools',
       ],
       benefits: [
-        "Data-driven optimization decisions",
-        "Performance bottleneck identification",
-        "Cost analysis and optimization insights",
-        "Compliance reporting and audit trails",
+        'Data-driven optimization decisions',
+        'Performance bottleneck identification',
+        'Cost analysis and optimization insights',
+        'Compliance reporting and audit trails',
       ],
       implementation:
-        "Built on ClickHouse for high-performance analytics with real-time data ingestion and processing.",
+        'Built on ClickHouse for high-performance analytics with real-time data ingestion and processing.',
     },
-    ...categoryColors["Monitoring"],
+    ...categoryColors['Monitoring'],
   },
   {
     icon: Settings,
-    title: "Flexible Configuration",
+    title: 'Flexible Configuration',
     description:
-      "Configure environments, custom domains, environment variables, and deployment settings with granular control. Custom domains require Pro plan.",
-    category: "Configuration",
-    highlights: [
-      "Environment management",
-      "Custom domains",
-      "Advanced settings",
-    ],
+      'Configure environments, custom domains, environment variables, and deployment settings with granular control. Custom domains require Pro plan.',
+    category: 'Configuration',
+    highlights: ['Environment management', 'Custom domains', 'Advanced settings'],
     cta: {
-      text: "Configure Environment",
-      action: "link",
-      link: "/settings"
+      text: 'Configure Environment',
+      action: 'link',
+      link: '/settings',
     },
     detailedContent: {
       overview:
-        "Fine-tune your deployments with granular configuration options and environment management.",
+        'Fine-tune your deployments with granular configuration options and environment management.',
       technicalDetails: [
-        "Environment-specific configuration inheritance",
-        "Secret management with encryption at rest",
-        "Custom domain SSL certificate automation",
-        "Advanced routing rules and middleware configuration",
+        'Environment-specific configuration inheritance',
+        'Secret management with encryption at rest',
+        'Custom domain SSL certificate automation',
+        'Advanced routing rules and middleware configuration',
       ],
       benefits: [
-        "Secure environment variable management",
-        "Custom domain support with automatic SSL",
-        "Granular access control per environment",
-        "Configuration as code with Git integration",
+        'Secure environment variable management',
+        'Custom domain support with automatic SSL',
+        'Granular access control per environment',
+        'Configuration as code with Git integration',
       ],
       implementation:
-        "Configuration is stored encrypted and distributed globally using our edge network for low-latency access.",
+        'Configuration is stored encrypted and distributed globally using our edge network for low-latency access.',
     },
-    ...categoryColors["Configuration"],
+    ...categoryColors['Configuration'],
   },
   {
     icon: Globe,
-    title: "Global Edge Network",
+    title: 'Global Edge Network',
     description:
-      "Deploy to 200+ edge locations worldwide for optimal performance and reduced latency for your users. Full global coverage in Pro plan.",
-    category: "Infrastructure",
-    highlights: ["200+ edge locations", "Global CDN", "Optimal performance"],
+      'Deploy to 200+ edge locations worldwide for optimal performance and reduced latency for your users. Full global coverage in Pro plan.',
+    category: 'Infrastructure',
+    highlights: ['200+ edge locations', 'Global CDN', 'Optimal performance'],
     illustration: GlobalNetworkIllustration,
     cta: {
-      text: "Explore Edge Locations",
-      action: "demo",
-      link: "#interactive-demos"
+      text: 'Explore Edge Locations',
+      action: 'demo',
+      link: '#interactive-demos',
     },
     detailedContent: {
       overview:
-        "Leverage our global edge network with 200+ locations for optimal performance worldwide.",
+        'Leverage our global edge network with 200+ locations for optimal performance worldwide.',
       technicalDetails: [
-        "Anycast routing for optimal path selection",
-        "Edge-side compute with WebAssembly runtime",
-        "Global database replication with RPO <1s",
-        "Content delivery network with edge caching",
+        'Anycast routing for optimal path selection',
+        'Edge-side compute with WebAssembly runtime',
+        'Global database replication with RPO <1s',
+        'Content delivery network with edge caching',
       ],
       benefits: [
-        "Sub-100ms latency worldwide",
-        "Automatic traffic optimization",
-        "DDoS protection at the edge",
-        "Compliance with regional data regulations",
+        'Sub-100ms latency worldwide',
+        'Automatic traffic optimization',
+        'DDoS protection at the edge',
+        'Compliance with regional data regulations',
       ],
       implementation:
-        "Our edge network uses BGP anycast routing and runs on bare metal in 200+ data centers worldwide.",
+        'Our edge network uses BGP anycast routing and runs on bare metal in 200+ data centers worldwide.',
     },
-    ...categoryColors["Infrastructure"],
+    ...categoryColors['Infrastructure'],
   },
 ];
 

@@ -177,7 +177,7 @@ export function NotificationsPage() {
         title="Notifications"
         subtitle="Stay updated on your functions, trust scores, and system alerts"
         breadcrumbs={[
-          { label: 'Dashboard', path: '/dashboard' },
+          { label: 'Home', path: '/dashboard' },
           { label: 'Notifications' },
         ]}
         actions={[

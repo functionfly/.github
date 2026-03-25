@@ -1,8 +1,8 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import type { User, Session, LoginRequest, SignupRequest, SignupResponse } from "@/types";
-import { apiClient } from "@/api/client";
-import { getApiBaseUrl } from "@/lib/constants";
+import { apiClient } from '@/api/client';
+import { getApiBaseUrl } from '@/lib/constants';
+import type { LoginRequest, Session, SignupRequest, SignupResponse, User } from '@/types';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 // Extend window interface
 declare global {
@@ -46,8 +46,8 @@ const authStore = create<AuthState>()(
       mfaRequired: false,
 
       initialize: async () => {
-        const jwtToken = localStorage.getItem("ff-access-token");
-        const refreshToken = localStorage.getItem("ff-refresh-token");
+        const jwtToken = localStorage.getItem('ff-access-token');
+        const refreshToken = localStorage.getItem('ff-refresh-token');
 
         if (!jwtToken) {
           set({ user: null, session: null, isAuthenticated: false, authChecked: true });
@@ -63,10 +63,10 @@ const authStore = create<AuthState>()(
           // If token is still valid, validate with backend
           if (expiresAt > currentTime) {
             const apiUrl = getApiBaseUrl();
-          const response = await fetch(`${apiUrl}/v1/auth/validate`, {
-              method: "GET",
+            const response = await fetch(`${apiUrl}/v1/auth/validate`, {
+              method: 'GET',
               headers: {
-                "Authorization": `Bearer ${jwtToken}`,
+                Authorization: `Bearer ${jwtToken}`,
               },
             });
 
@@ -88,9 +88,9 @@ const authStore = create<AuthState>()(
 
               const session: Session = {
                 access_token: jwtToken,
-                refresh_token: refreshToken || "",
+                refresh_token: refreshToken || '',
                 expires_at: expiresAt,
-                token_type: "bearer",
+                token_type: 'bearer',
                 user: {
                   id: user.id,
                   email: user.email,
@@ -149,13 +149,13 @@ const authStore = create<AuthState>()(
 
                 // Decode new token to get expiration
                 const newPayload = JSON.parse(atob(refreshData.token.split('.')[1]));
-                const newExpiresAt = newPayload.exp || (Math.floor(Date.now() / 1000) + (30 * 60)); // 30 minutes fallback
+                const newExpiresAt = newPayload.exp || Math.floor(Date.now() / 1000) + 30 * 60; // 30 minutes fallback
 
                 const session: Session = {
                   access_token: refreshData.token,
                   refresh_token: refreshData.refresh_token,
                   expires_at: newExpiresAt,
-                  token_type: "bearer",
+                  token_type: 'bearer',
                   user: {
                     id: user.id,
                     email: user.email,
@@ -182,8 +182,8 @@ const authStore = create<AuthState>()(
           }
 
           // If we get here, both token validation and refresh failed
-          localStorage.removeItem("ff-access-token");
-          localStorage.removeItem("ff-refresh-token");
+          localStorage.removeItem('ff-access-token');
+          localStorage.removeItem('ff-refresh-token');
           set({
             user: null,
             session: null,
@@ -193,8 +193,8 @@ const authStore = create<AuthState>()(
           });
         } catch {
           // Network or parse error during validation — clear auth state
-          localStorage.removeItem("ff-access-token");
-          localStorage.removeItem("ff-refresh-token");
+          localStorage.removeItem('ff-access-token');
+          localStorage.removeItem('ff-refresh-token');
           set({
             user: null,
             session: null,
@@ -290,7 +290,7 @@ const authStore = create<AuthState>()(
 
           // Decode JWT to get actual expiration time
           const payload = JSON.parse(atob(authData.token.split('.')[1]));
-          const expiresAt = payload.exp || (Math.floor(Date.now() / 1000) + (24 * 60 * 60));
+          const expiresAt = payload.exp || Math.floor(Date.now() / 1000) + 24 * 60 * 60;
 
           const loginSession: Session = {
             access_token: authData.token,
@@ -319,11 +319,15 @@ const authStore = create<AuthState>()(
           // Reload API client token cache
           apiClient.reloadToken();
         } catch (error) {
-          let errorMessage = "Login failed";
+          let errorMessage = 'Login failed';
           if (error instanceof Error) {
             errorMessage = error.message;
-            if (error.name === "TypeError" && (error.message === "Failed to fetch" || error.message.includes("NetworkError"))) {
-              errorMessage = "Cannot reach the server. Check that the API is running and try again.";
+            if (
+              error.name === 'TypeError' &&
+              (error.message === 'Failed to fetch' || error.message.includes('NetworkError'))
+            ) {
+              errorMessage =
+                'Cannot reach the server. Check that the API is running and try again.';
             }
           }
           set({
@@ -348,11 +352,13 @@ const authStore = create<AuthState>()(
             body: JSON.stringify({
               email: data.email,
               password: data.password,
-              confirmPassword: data.password,
+              confirmPassword: data.confirmPassword,
               name: data.name,
+              dateOfBirth: data.dateOfBirth,
               username: data.username || undefined,
               companyName: data.companyName || undefined,
-              termsAccepted: true,
+              inviteCode: data.inviteCode || undefined,
+              termsAccepted: data.termsAccepted,
             }),
           });
 
@@ -371,7 +377,7 @@ const authStore = create<AuthState>()(
             requiresVerification: authData.requiresVerification || false,
           };
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "Signup failed";
+          const errorMessage = error instanceof Error ? error.message : 'Signup failed';
           set({
             error: errorMessage,
             isLoading: false,
@@ -390,7 +396,7 @@ const authStore = create<AuthState>()(
             await fetch(`${apiUrl}/auth/logout`, {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${token}`,
+                Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json',
               },
             });
@@ -415,9 +421,7 @@ const authStore = create<AuthState>()(
       clearError: () => set({ error: null }),
 
       setUserPlan: (plan: string) =>
-        set((state) =>
-          state.user ? { user: { ...state.user, plan } } : {}
-        ),
+        set((state) => (state.user ? { user: { ...state.user, plan } } : {})),
 
       verifyMFA: async (code: string) => {
         set({ isLoading: true, error: null });
@@ -428,13 +432,15 @@ const authStore = create<AuthState>()(
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ code }),
           });
 
           if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'MFA verification failed' }));
+            const errorData = await response
+              .json()
+              .catch(() => ({ message: 'MFA verification failed' }));
             throw new Error(errorData.message || 'Invalid code. Please try again.');
           }
 
@@ -453,7 +459,7 @@ const authStore = create<AuthState>()(
           // Reload API client token cache
           apiClient.reloadToken();
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "MFA verification failed";
+          const errorMessage = error instanceof Error ? error.message : 'MFA verification failed';
           set({
             error: errorMessage,
             isLoading: false,
@@ -463,11 +469,11 @@ const authStore = create<AuthState>()(
       },
     }),
     {
-      name: "auth-storage",
+      name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
         session: state.session,
-        isAuthenticated: state.isAuthenticated
+        isAuthenticated: state.isAuthenticated,
       }),
     }
   )

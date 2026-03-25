@@ -1,12 +1,15 @@
-import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { APP_TAGLINE } from "@/lib/constants";
-import { Link } from "react-router-dom";
+import { Button } from '@/components/ui/button';
+import { APP_TAGLINE } from '@/lib/constants';
+import { motion } from 'framer-motion';
+import { ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function HeroSection() {
   return (
-    <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden mesh-gradient-bg hero-section-enhanced" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <section
+      className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden mesh-gradient-bg hero-section-enhanced"
+      style={{ backgroundColor: 'var(--bg-primary)' }}
+    >
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-500/20 rounded-full blur-[128px] animate-float light-mode-enhanced" />
@@ -39,9 +42,9 @@ export function HeroSection() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6"
         >
-          <span className="text-text-primary text-glow hero-title-main">Serverless Functions</span>
+          <span className="text-text-primary text-glow hero-title-main">The Trust Layer for</span>
           <br />
-          <span className="gradient-text text-glow-success shine-effect-on-hover">& AI Agent Infrastructure</span>
+          <span className="gradient-text text-glow-success shine-effect-on-hover">AI Agents</span>
         </motion.h1>
 
         <motion.p
@@ -50,7 +53,8 @@ export function HeroSection() {
           transition={{ duration: 0.3, delay: 0.1 }}
           className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto mb-10 text-balance hero-subtitle"
         >
-          {APP_TAGLINE}. Deploy to edge infrastructure, build AI agents with cost controls, and scale effortlessly.
+          {APP_TAGLINE}. Verified, signed, auditable tools with trust scores and a zero-knowledge
+          vault for safe agent execution.
         </motion.p>
 
         <motion.div
@@ -65,7 +69,11 @@ export function HeroSection() {
               <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
-          <Button size="lg" variant="outline" className="hover-glow-border shine-effect hero-outline-button">
+          <Button
+            size="lg"
+            variant="outline"
+            className="hover-glow-border shine-effect hero-outline-button"
+          >
             View Documentation
           </Button>
         </motion.div>

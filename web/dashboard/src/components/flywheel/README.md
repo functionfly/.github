@@ -35,7 +35,6 @@ flywheel/
 │   ├── ChallengeLeaderboard.tsx
 │   └── DailyChallengeCard.tsx
 ├── ai/               # AI assistant components
-│   ├── FlywheelChatAssistant.tsx
 │   ├── ThreadSuggestionDropdown.tsx
 │   └── AutoFixRecommendationCard.tsx
 └── types.ts          # Shared TypeScript types

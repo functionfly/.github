@@ -1,8 +1,8 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
-import { ZodSchema } from "zod";
-import { getApiBaseUrl } from "@/lib/constants";
-import { useApiReachableStore } from "@/stores/apiReachableStore";
-import { safeParse, ValidationResult } from "@/lib/validation-utils";
+import { getApiBaseUrl } from '@/lib/constants';
+import { safeParse, ValidationResult } from '@/lib/validation-utils';
+import { useApiReachableStore } from '@/stores/apiReachableStore';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { ZodSchema } from 'zod';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -13,7 +13,7 @@ class ApiClient {
     this.client = axios.create({
       baseURL: baseURL || window.location.origin,
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
     });
 
@@ -21,7 +21,7 @@ class ApiClient {
     this.client.interceptors.request.use(
       (config) => {
         // Always get the latest token from localStorage
-        const storedToken = localStorage.getItem("ff-access-token");
+        const storedToken = localStorage.getItem('ff-access-token');
 
         if (storedToken) {
           this.token = storedToken;
@@ -41,16 +41,17 @@ class ApiClient {
         return response;
       },
       async (error) => {
+        const originalRequest = error.config;
         const status = error.response?.status;
         if (status !== 401) {
           useApiReachableStore.getState().setApiReachable(false);
         }
-        if (status === 401) {
-          // Token is invalid or expired - try to refresh first
-          const refreshToken = localStorage.getItem("ff-refresh-token");
+        // Only attempt refresh once per request — _retry flag prevents infinite loops
+        // when the retried request itself returns 401 (e.g. wrong tenant, revoked token).
+        if (status === 401 && !originalRequest._retry) {
+          const refreshToken = localStorage.getItem('ff-refresh-token');
           if (refreshToken) {
             try {
-              console.log('Attempting token refresh...');
               const apiUrl = getApiBaseUrl();
               const refreshResponse = await fetch(`${apiUrl}/v1/auth/refresh`, {
                 method: 'POST',
@@ -63,29 +64,27 @@ class ApiClient {
               if (refreshResponse.ok) {
                 const refreshData = await refreshResponse.json();
 
-                // Store new tokens
                 localStorage.setItem('ff-access-token', refreshData.token);
                 localStorage.setItem('ff-refresh-token', refreshData.refresh_token);
 
-                // Update the request with new token and retry
                 const newToken = refreshData.token;
                 this.token = newToken;
-                error.config.headers.Authorization = `Bearer ${newToken}`;
 
-                // Retry the original request
-                return this.client.request(error.config);
+                // Mark so the interceptor does not retry again if this also 401s
+                originalRequest._retry = true;
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+
+                return this.client.request(originalRequest);
               }
             } catch (refreshError) {
               console.warn('Token refresh failed:', refreshError);
             }
           }
 
-          // If refresh failed or no refresh token, clear auth state
-          console.log('Token refresh failed or no refresh token, logging out user');
-          localStorage.removeItem("ff-access-token");
-          localStorage.removeItem("ff-refresh-token");
+          // Refresh failed or no refresh token — clear session and log out
+          localStorage.removeItem('ff-access-token');
+          localStorage.removeItem('ff-refresh-token');
 
-          // Import auth store dynamically to avoid circular dependencies
           import('@/stores/authStore').then(({ useAuthStore }) => {
             useAuthStore.getState().logout();
           });
@@ -100,12 +99,12 @@ class ApiClient {
 
   clearToken() {
     this.token = null;
-    localStorage.removeItem("ff-access-token");
-    localStorage.removeItem("ff-refresh-token");
+    localStorage.removeItem('ff-access-token');
+    localStorage.removeItem('ff-refresh-token');
   }
 
   loadToken() {
-    const token = localStorage.getItem("ff-access-token");
+    const token = localStorage.getItem('ff-access-token');
     if (token) {
       this.token = token;
     }
@@ -120,7 +119,7 @@ class ApiClient {
   }
 
   checkTokenInStorage() {
-    return localStorage.getItem("ff-access-token");
+    return localStorage.getItem('ff-access-token');
   }
 
   async get<T>(url: string, config?: AxiosRequestConfig) {

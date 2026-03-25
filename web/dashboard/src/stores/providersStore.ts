@@ -1,7 +1,7 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { providersApi } from "@/api";
-import type { ConnectedProvider, ConnectProviderRequest } from "@/types";
+import { dedupeConnectedProvidersBySlug, providersApi } from '@/api';
+import type { ConnectedProvider, ConnectProviderRequest } from '@/types';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface ProvidersState {
   providers: ConnectedProvider[];
@@ -30,7 +30,7 @@ export const useProvidersStore = create<ProvidersState>()(
           set({ providers, isLoading: false });
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : "Failed to fetch providers",
+            error: error instanceof Error ? error.message : 'Failed to fetch providers',
             isLoading: false,
           });
         }
@@ -41,13 +41,15 @@ export const useProvidersStore = create<ProvidersState>()(
         try {
           const response = await providersApi.connectProvider(request);
           const { providers } = get();
+          // Avoid duplicates if already connected (e.g. re-enabling)
+          const filtered = providers.filter((p) => p.id !== response.provider.id);
           set({
-            providers: [...providers, response.provider],
+            providers: dedupeConnectedProvidersBySlug([...filtered, response.provider]),
             isLoading: false,
           });
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : "Failed to connect provider",
+            error: error instanceof Error ? error.message : 'Failed to connect provider',
             isLoading: false,
           });
           throw error;
@@ -65,7 +67,7 @@ export const useProvidersStore = create<ProvidersState>()(
           });
         } catch (error) {
           set({
-            error: error instanceof Error ? error.message : "Failed to disconnect provider",
+            error: error instanceof Error ? error.message : 'Failed to disconnect provider',
             isLoading: false,
           });
           throw error;
@@ -84,7 +86,7 @@ export const useProvidersStore = create<ProvidersState>()(
       clearError: () => set({ error: null }),
     }),
     {
-      name: "providers-storage",
+      name: 'providers-storage',
       partialize: (state) => ({ providers: state.providers }),
     }
   )

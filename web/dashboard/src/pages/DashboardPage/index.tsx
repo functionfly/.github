@@ -1,45 +1,45 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { FunctionSquare, Activity, Globe, Zap, Play, X, Loader2, Building2 } from "lucide-react";
-import { ProviderStatus } from "@/components/common/ProviderStatus";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useOnboardingStore } from "@/stores/onboardingStore";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { functionsApi } from "@/api/functions";
-import { providersApi } from "@/api/providers";
-import { appsApi } from "@/api/apps";
-import { dashboardApi } from "@/api/dashboard";
+import { providersApi } from '@/api';
+import { appsApi } from '@/api/apps';
+import { dashboardApi } from '@/api/dashboard';
+import { functionsApi } from '@/api/functions';
+import { ProviderStatus } from '@/components/common/ProviderStatus';
+import type { AgentActivityItem } from '@/components/dashboard';
 import {
-  MetricCard,
-  UsageGraph,
+  AgentActivityFeed,
   ExecutionRateChart,
   MemoryUsageGauge,
-  TrustScoreBadge,
-  AgentActivityFeed,
-  SystemHealthIndicator,
+  MetricCard,
   QuickCreateAgentCard,
-} from "@/components/dashboard";
-import { EnterpriseStatusCard } from "@/components/enterprise";
-import type { AgentActivityItem } from "@/components/dashboard";
+  SystemHealthIndicator,
+  TrustScoreBadge,
+  UsageGraph,
+} from '@/components/dashboard';
+import { EnterpriseStatusCard } from '@/components/enterprise';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useOnboardingStore } from '@/stores/onboardingStore';
+import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
+import { Activity, Building2, FunctionSquare, Globe, Loader2, Play, X, Zap } from 'lucide-react';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export function DashboardPage() {
   const { canResume, completedSteps } = useOnboardingStore();
   const navigate = useNavigate();
 
   const { data: functionsData, isLoading: functionsLoading } = useQuery({
-    queryKey: ["functions"],
+    queryKey: ['functions'],
     queryFn: () => functionsApi.list(),
   });
 
   const { data: providers, isLoading: providersLoading } = useQuery({
-    queryKey: ["providers"],
+    queryKey: ['providers'],
     queryFn: () => providersApi.getConnectedProviders(),
   });
 
   const { data: appsData, isLoading: appsLoading } = useQuery({
-    queryKey: ["apps"],
+    queryKey: ['apps'],
     queryFn: async () => {
       const res = await appsApi.list();
       return res.apps;
@@ -48,42 +48,42 @@ export function DashboardPage() {
 
   const functions = functionsData?.functions ?? [];
   const apps = appsData ?? [];
-  const activeFunctions = functions.filter((f) => f.status === "deployed").length;
+  const activeFunctions = functions.filter((f) => f.status === 'deployed').length;
 
   const handleResumeOnboarding = () => {
-    navigate("/onboarding");
+    navigate('/onboarding');
   };
 
   const { data: usageData, isLoading: usageLoading } = useQuery({
-    queryKey: ["dashboard", "usage"],
+    queryKey: ['dashboard', 'usage'],
     queryFn: () => dashboardApi.getUsage(14),
   });
 
   const { data: executionRateDataRes, isLoading: executionRateLoading } = useQuery({
-    queryKey: ["dashboard", "execution-rate"],
+    queryKey: ['dashboard', 'execution-rate'],
     queryFn: () => dashboardApi.getExecutionRate(24),
   });
 
   const { data: activityData, isLoading: activityLoading } = useQuery({
-    queryKey: ["dashboard", "activity"],
+    queryKey: ['dashboard', 'activity'],
     queryFn: () => dashboardApi.getActivity(20),
   });
 
   const { data: memoryData, isLoading: memoryLoading } = useQuery({
-    queryKey: ["dashboard", "memory"],
+    queryKey: ['dashboard', 'memory'],
     queryFn: () => dashboardApi.getMemoryUsage(),
     retry: 1,
     staleTime: 30_000,
   });
 
   const { data: metricsData, isLoading: metricsLoading } = useQuery({
-    queryKey: ["dashboard", "metrics"],
+    queryKey: ['dashboard', 'metrics'],
     queryFn: () => dashboardApi.getMetrics(),
     staleTime: 60_000,
   });
 
-  const { data: healthStatus = "unknown" } = useQuery({
-    queryKey: ["dashboard", "health"],
+  const { data: healthStatus = 'unknown' } = useQuery({
+    queryKey: ['dashboard', 'health'],
     queryFn: () => dashboardApi.getHealthStatus(),
     staleTime: 30_000,
   });
@@ -91,7 +91,7 @@ export function DashboardPage() {
   const usageGraphData = useMemo(() => {
     const raw = usageData?.data ?? [];
     return raw.map((d) => ({
-      time: new Date(d.time + "Z").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      time: new Date(d.time + 'Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       value: Number(d.value),
     }));
   }, [usageData]);
@@ -108,7 +108,7 @@ export function DashboardPage() {
     const raw = activityData?.activities ?? [];
     return raw.map((a) => ({
       id: a.id,
-      type: (a.type as AgentActivityItem["type"]) || "info",
+      type: (a.type as AgentActivityItem['type']) || 'info',
       title: a.title,
       description: a.description,
       timestamp: new Date(a.timestamp),
@@ -120,14 +120,15 @@ export function DashboardPage() {
   const providerStatusList = useMemo(() => {
     if (!providers?.length) return [];
     const statusMap = {
-      online: "connected" as const,
-      offline: "disconnected" as const,
-      degraded: "error" as const,
-      pending: "connecting" as const,
+      online: 'connected' as const,
+      offline: 'disconnected' as const,
+      degraded: 'error' as const,
+      pending: 'connecting' as const,
     };
     return providers.map((p) => ({
-      provider: p.id,
-      status: statusMap[p.status] ?? "disconnected",
+      id: p.id,
+      provider: p.name,
+      status: statusMap[p.status] ?? 'disconnected',
       lastChecked: p.connectedAt,
     }));
   }, [providers]);
@@ -147,8 +148,7 @@ export function DashboardPage() {
     requestsPrevMonth > 0
       ? Math.round(((requestsThisMonth - requestsPrevMonth) / requestsPrevMonth) * 1000) / 10
       : undefined;
-  const formatRequests = (n: number) =>
-    n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+  const formatRequests = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
 
   const uptimePct = metricsData?.uptime_pct;
   const uptimePrevPct = metricsData?.uptime_prev_pct ?? 100;
@@ -158,10 +158,8 @@ export function DashboardPage() {
       : undefined;
 
   const avgLatencyMs = metricsData?.avg_latency_ms;
-  const avgLatencyDisplay =
-    avgLatencyMs != null ? `${Math.round(avgLatencyMs)}ms` : "—";
-  const avgLatencyLabel =
-    avgLatencyMs != null ? "last 7 days" : "no data yet";
+  const avgLatencyDisplay = avgLatencyMs != null ? `${Math.round(avgLatencyMs)}ms` : '—';
+  const avgLatencyLabel = avgLatencyMs != null ? 'last 7 days' : 'no data yet';
 
   return (
     <div className="relative space-y-6">
@@ -178,21 +176,15 @@ export function DashboardPage() {
                 <Play className="w-5 h-5 text-[#6366f1]" />
               </div>
               <div>
-                <h3 className="font-semibold text-text-primary">
-                  Complete Your Setup
-                </h3>
+                <h3 className="font-semibold text-text-primary">Complete Your Setup</h3>
                 <p className="text-sm text-text-secondary">
-                  You've completed {completedSteps.length} of 4 onboarding steps.
-                  Continue where you left off to unlock all features.
+                  You've completed {completedSteps.length} of 4 onboarding steps. Continue where you
+                  left off to unlock all features.
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                onClick={handleResumeOnboarding}
-                className="btn-primary"
-                size="sm"
-              >
+              <Button onClick={handleResumeOnboarding} className="btn-primary" size="sm">
                 <Play className="w-4 h-4 mr-2" />
                 Resume Setup
               </Button>
@@ -228,7 +220,7 @@ export function DashboardPage() {
         </div>
         <div className="flex justify-center sm:justify-end">
           <SystemHealthIndicator
-            status={healthStatus as "healthy" | "degraded" | "down" | "unknown"}
+            status={healthStatus as 'healthy' | 'degraded' | 'down' | 'unknown'}
             showLabel
             size="md"
           />
@@ -247,25 +239,19 @@ export function DashboardPage() {
 
         <MetricCard
           title="Active Functions"
-          value={functionsLoading ? "—" : activeFunctions}
+          value={functionsLoading ? '—' : activeFunctions}
           changeLabel="total deployed"
           icon={<FunctionSquare className="h-5 w-5" />}
         />
         <MetricCard
           title="Avg Latency"
-          value={metricsLoading ? "—" : avgLatencyDisplay}
+          value={metricsLoading ? '—' : avgLatencyDisplay}
           changeLabel={avgLatencyLabel}
           icon={<Zap className="h-5 w-5" />}
         />
         <MetricCard
           title="Uptime"
-          value={
-            metricsLoading
-              ? "—"
-              : uptimePct != null
-                ? `${uptimePct.toFixed(1)}%`
-                : "—"
-          }
+          value={metricsLoading ? '—' : uptimePct != null ? `${uptimePct.toFixed(1)}%` : '—'}
           changePercent={uptimeChangePercent}
           changeLabel="vs last 7d"
           sparklineData={uptimeSparkline}
@@ -273,7 +259,7 @@ export function DashboardPage() {
         />
         <MetricCard
           title="Requests This Month"
-          value={metricsLoading ? "—" : formatRequests(requestsThisMonth)}
+          value={metricsLoading ? '—' : formatRequests(requestsThisMonth)}
           changePercent={requestsChangePercent}
           changeLabel="vs last month"
           sparklineData={requestsSparkline}
@@ -291,7 +277,7 @@ export function DashboardPage() {
           title="Deploy a function"
           description="Create and deploy a new function in minutes."
           actionLabel="New function"
-          onCreateClick={() => navigate("/functions/new")}
+          onCreateClick={() => navigate('/functions/new')}
         />
       </motion.div>
 
@@ -307,11 +293,7 @@ export function DashboardPage() {
             <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
           </Card>
         ) : (
-          <UsageGraph
-            data={usageGraphData}
-            title="Usage (last 14 days)"
-            valueLabel="Requests"
-          />
+          <UsageGraph data={usageGraphData} title="Usage (last 14 days)" valueLabel="Requests" />
         )}
         {executionRateLoading ? (
           <Card className="border-theme bg-card h-[280px] flex items-center justify-center">
@@ -338,17 +320,11 @@ export function DashboardPage() {
             <Loader2 className="h-8 w-8 animate-spin text-text-muted mx-auto" />
           </Card>
         ) : (
-          <MemoryUsageGauge
-            percent={memoryData?.percent ?? 0}
-            label="Memory"
-            size="md"
-          />
+          <MemoryUsageGauge percent={memoryData?.percent ?? 0} label="Memory" size="md" />
         )}
         <Card className="border-theme bg-card flex flex-col justify-center p-6">
           <CardHeader className="p-0 pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Trust score
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-text-secondary">Trust score</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <TrustScoreBadge trustScore={85} showScore size="lg" />
@@ -382,7 +358,7 @@ export function DashboardPage() {
                   variant="outline"
                   size="sm"
                   className="mt-3"
-                  onClick={() => navigate("/providers")}
+                  onClick={() => navigate('/providers')}
                 >
                   Connect a Provider
                 </Button>
@@ -416,7 +392,7 @@ export function DashboardPage() {
                     variant="outline"
                     size="sm"
                     className="mt-3"
-                    onClick={() => navigate("/apps")}
+                    onClick={() => navigate('/apps')}
                   >
                     Create an App
                   </Button>
@@ -430,7 +406,7 @@ export function DashboardPage() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
                       className="flex gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors duration-200 cursor-pointer"
-                      onClick={() => navigate(`/apps/${app.id}`)}
+                      onClick={() => navigate(`/apps/${encodeURIComponent(app.slug)}`)}
                     >
                       <div className="w-10 h-10 shrink-0 rounded-lg bg-bg-tertiary flex items-center justify-center">
                         <Building2 className="w-5 h-5 text-text-muted" />
@@ -462,7 +438,7 @@ export function DashboardPage() {
                     variant="outline"
                     size="sm"
                     className="mt-3"
-                    onClick={() => navigate("/functions/new")}
+                    onClick={() => navigate('/functions/new')}
                   >
                     Deploy a Function
                   </Button>
@@ -481,7 +457,9 @@ export function DashboardPage() {
                       <div className="w-2 h-2 mt-2 rounded-full bg-linear-to-r from-[#6366f1] to-[#8b5cf6]" />
                       <div>
                         <p className="text-sm text-text-primary font-medium">{fn.name}</p>
-                        <p className="text-xs text-text-muted capitalize">{fn.status || "unknown"}</p>
+                        <p className="text-xs text-text-muted capitalize">
+                          {fn.status || 'unknown'}
+                        </p>
                       </div>
                     </motion.div>
                   ))}
@@ -503,11 +481,7 @@ export function DashboardPage() {
             <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
           </Card>
         ) : (
-          <AgentActivityFeed
-            activities={agentActivities}
-            title="Recent activity"
-            maxItems={5}
-          />
+          <AgentActivityFeed activities={agentActivities} title="Recent activity" maxItems={5} />
         )}
       </motion.div>
     </div>

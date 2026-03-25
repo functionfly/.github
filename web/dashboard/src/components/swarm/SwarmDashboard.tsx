@@ -234,7 +234,7 @@ export function SwarmDashboard({ agentId }: SwarmDashboardProps) {
           title="Function Marketplace"
           description="Discover AI-generated functions"
           icon={<Brain className="h-5 w-5" />}
-          href="/marketplace/functions"
+          href="/dashboard"
         />
         <ActionCard
           title="Evolution Center"

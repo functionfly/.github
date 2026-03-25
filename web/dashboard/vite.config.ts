@@ -145,38 +145,46 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // React and React DOM
-          if (id.includes('react') || id.includes('react-dom')) {
+          // Only the React core runtime — must not include packages that merely
+          // have "react" in their name (react-router-dom, react-hook-form, etc.)
+          // to avoid circular chunk dependencies.
+          if (
+            /node_modules\/react\//.test(id) ||
+            /node_modules\/react-dom\//.test(id) ||
+            /node_modules\/scheduler\//.test(id)
+          ) {
             return 'react-vendor';
           }
           // UI library components
-          if (id.includes('@radix-ui/')) {
+          if (id.includes('node_modules/@radix-ui/')) {
             return 'radix-ui';
           }
           // Data fetching and state management
           if (
             id.includes('@tanstack/react-query') ||
-            id.includes('axios') ||
-            id.includes('zustand')
+            id.includes('node_modules/axios/') ||
+            id.includes('node_modules/zustand/')
           ) {
             return 'data-vendor';
           }
           // Charts and tables
-          if (id.includes('@tanstack/react-table') || id.includes('recharts')) {
+          if (id.includes('@tanstack/react-table') || id.includes('node_modules/recharts/')) {
             return 'charts-vendor';
           }
-          // Utilities
+          // Utilities (includes react-router-dom, react-hook-form — kept here,
+          // NOT in react-vendor, to break the circular chunk dependency)
           if (
-            id.includes('clsx') ||
-            id.includes('tailwind-merge') ||
-            id.includes('class-variance-authority') ||
-            id.includes('date-fns') ||
-            id.includes('framer-motion') ||
-            id.includes('lucide-react') ||
-            id.includes('react-hook-form') ||
-            id.includes('react-router-dom') ||
-            id.includes('sonner') ||
-            id.includes('zod')
+            id.includes('node_modules/clsx/') ||
+            id.includes('node_modules/tailwind-merge/') ||
+            id.includes('node_modules/class-variance-authority/') ||
+            id.includes('node_modules/date-fns/') ||
+            id.includes('node_modules/framer-motion/') ||
+            id.includes('node_modules/lucide-react/') ||
+            id.includes('node_modules/react-hook-form/') ||
+            id.includes('node_modules/react-router') ||
+            id.includes('node_modules/@remix-run/') ||
+            id.includes('node_modules/sonner/') ||
+            id.includes('node_modules/zod/')
           ) {
             return 'utils-vendor';
           }

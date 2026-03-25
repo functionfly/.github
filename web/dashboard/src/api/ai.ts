@@ -1,6 +1,6 @@
 /**
  * AI service client (FlyMind / ai-service).
- * Uses VITE_AI_SERVICE_URL when set; used by FlywheelChatAssistant and other AI features.
+ * Uses VITE_AI_SERVICE_URL when set; used by direct AI completion features in the dashboard.
  */
 
 import { getAiServiceBaseUrl } from '@/lib/constants';

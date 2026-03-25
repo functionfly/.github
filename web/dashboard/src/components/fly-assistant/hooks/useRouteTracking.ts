@@ -65,8 +65,8 @@ function extendRouteContext(
 
   const path = route.path;
   const isFunctionPage = /\/functions\/[^\/]+/.test(path);
-  const isMarketplacePage = path.startsWith("/marketplace");
-  const isDashboard = path === "/" || path === "/dashboard";
+  const isMarketplacePage = path.startsWith("/marketplace") || path === "/dashboard";
+  const isDashboard = path === "/" || path === "/dashboard" || path === "/overview";
 
   return {
     ...route,

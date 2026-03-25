@@ -1,13 +1,14 @@
-import { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { getApiBaseUrl } from '@/lib/constants';
 import { MetaTags } from '@/components/seo/MetaTags';
+import { getApiBaseUrl, getMarketingPageUrl } from '@/lib/constants';
+import { SpeedInsights } from '@vercel/speed-insights/react';
+import { useCallback, useState } from 'react';
 import './LaunchPage.css';
 
 const INTERESTS = [
-  { id: 'serverless', label: 'Serverless functions' },
-  { id: 'ai-agents', label: 'AI agents & tooling' },
-  { id: 'edge', label: 'Edge deployment' },
+  { id: 'verification', label: 'Verification & audit trails' },
+  { id: 'ai-agents', label: 'AI agents & tool calling' },
+  { id: 'vault', label: 'Zero-knowledge vault' },
+  { id: 'edge', label: 'Edge execution (verified)' },
   { id: 'early-access', label: 'Early access / beta' },
   { id: 'curious', label: 'Just curious' },
 ] as const;
@@ -49,7 +50,10 @@ export function LaunchPage() {
       const formData = new FormData();
       formData.append('feedbackType', 'launch_waitlist');
       formData.append('subject', 'Launch signup');
-      formData.append('message', selected.size ? Array.from(selected).join(', ') : 'No interests selected');
+      formData.append(
+        'message',
+        selected.size ? Array.from(selected).join(', ') : 'No interests selected'
+      );
       formData.append('email', trimmed);
 
       try {
@@ -72,10 +76,19 @@ export function LaunchPage() {
 
   return (
     <div className="launch-page">
+      {import.meta.env.VITE_VERCEL_ANALYTICS === 'true' && <SpeedInsights />}
       <MetaTags
-        title="FunctionFly — Coming Soon | Serverless & AI Agent Infrastructure"
-        description="FunctionFly is coming. Join the waitlist for serverless functions and AI agent infrastructure at the edge."
-        keywords={['functionfly', 'coming soon', 'serverless', 'AI agents', 'waitlist']}
+        title="FunctionFly — Coming Soon | The Trust Layer for AI Agents"
+        description="FunctionFly is coming: verified, signed, auditable tools for AI agent execution—backed by trust scores and a zero-knowledge vault."
+        keywords={[
+          'functionfly',
+          'coming soon',
+          'trust',
+          'verification',
+          'AI agents',
+          'vault',
+          'waitlist',
+        ]}
       />
       <div className="launch-bg" aria-hidden />
       <div className="launch-noise" aria-hidden />
@@ -86,7 +99,13 @@ export function LaunchPage() {
             <>
               <div className="launch-reveal mb-6">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[var(--launch-accent-dim)] text-[var(--launch-accent)]">
-                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg
+                    className="w-8 h-8"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
@@ -109,15 +128,19 @@ export function LaunchPage() {
                 FunctionFly
               </h1>
               <p className="launch-reveal mt-4 text-xl sm:text-2xl text-[var(--launch-muted)]">
-                Serverless functions & AI agent infrastructure
+                Trusted functions for AI agents—verified, signed, auditable
               </p>
               <p className="launch-reveal mt-6 text-[var(--launch-muted)] max-w-md mx-auto">
-                We're putting the finishing touches on the platform. Drop your email and we'll tell you the moment you can ship.
+                We're finalizing verification workflows, trust scoring, and a zero-knowledge vault
+                so agents can select safe tools with confidence.
               </p>
 
               <form onSubmit={handleSubmit} className="launch-reveal mt-10 text-left">
                 <div className="rounded-2xl border border-[var(--launch-border)] bg-[var(--launch-surface)] p-6 sm:p-8 backdrop-blur-sm">
-                  <label htmlFor="launch-email" className="block text-sm font-medium text-[var(--launch-text)] mb-2">
+                  <label
+                    htmlFor="launch-email"
+                    className="block text-sm font-medium text-[var(--launch-text)] mb-2"
+                  >
                     Email
                   </label>
                   <input
@@ -132,7 +155,8 @@ export function LaunchPage() {
                   />
 
                   <p className="mt-4 text-sm font-medium text-[var(--launch-text)] mb-3">
-                    What are you here for? <span className="text-[var(--launch-muted)]">(optional)</span>
+                    What are you here for?{' '}
+                    <span className="text-[var(--launch-muted)]">(optional)</span>
                   </p>
                   <div className="space-y-2">
                     {INTERESTS.map(({ id, label }) => (
@@ -147,7 +171,9 @@ export function LaunchPage() {
                           disabled={status === 'submitting'}
                           className="h-4 w-4 rounded border-[var(--launch-border)] bg-transparent text-[var(--launch-accent)] focus:ring-[var(--launch-accent)]"
                         />
-                        <span className="launch-checkbox-label text-sm text-[var(--launch-text)]">{label}</span>
+                        <span className="launch-checkbox-label text-sm text-[var(--launch-text)]">
+                          {label}
+                        </span>
                       </label>
                     ))}
                   </div>
@@ -180,7 +206,9 @@ export function LaunchPage() {
                     className="launch-reveal rounded-xl border border-[var(--launch-border)] bg-[var(--launch-surface)] p-4 text-left backdrop-blur-sm"
                     style={{ animationDelay: `${1.4 + i * 0.15}s` }}
                   >
-                    <p className="launch-display-font font-semibold text-[var(--launch-text)]">{item.title}</p>
+                    <p className="launch-display-font font-semibold text-[var(--launch-text)]">
+                      {item.title}
+                    </p>
                     <p className="mt-1 text-sm text-[var(--launch-muted)]">{item.desc}</p>
                   </div>
                 ))}
@@ -191,9 +219,19 @@ export function LaunchPage() {
 
         <footer className="absolute bottom-6 left-0 right-0 text-center">
           <p className="text-sm text-[var(--launch-muted)]">
-            © {new Date().getFullYear()} FunctionFly
-            <Link to="/privacy" className="ml-4 hover:text-[var(--launch-text)] transition-colors">Privacy</Link>
-            <Link to="/terms" className="ml-3 hover:text-[var(--launch-text)] transition-colors">Terms</Link>
+            © {new Date().getFullYear()} FunctionFly LLC
+            <a
+              href={getMarketingPageUrl('/privacy')}
+              className="ml-4 hover:text-[var(--launch-text)] transition-colors"
+            >
+              Privacy
+            </a>
+            <a
+              href={getMarketingPageUrl('/terms')}
+              className="ml-3 hover:text-[var(--launch-text)] transition-colors"
+            >
+              Terms
+            </a>
           </p>
         </footer>
       </div>

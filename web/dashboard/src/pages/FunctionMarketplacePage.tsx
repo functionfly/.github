@@ -18,7 +18,7 @@ export function FunctionMarketplacePage() {
         title="Function Marketplace - Serverless Functions Library | FunctionFly"
         description="Browse and deploy pre-built serverless functions from our extensive marketplace. From API integrations to data processing, find the perfect function for your project."
         keywords={["function marketplace", "serverless functions", "function library", "API integrations", "data processing", "cloud functions"]}
-        url={`${window.location.origin}/functions`}
+        url={`${window.location.origin}/dashboard`}
         type="website"
       />
 

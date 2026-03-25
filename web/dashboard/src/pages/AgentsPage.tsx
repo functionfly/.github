@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ import { agentApi, type AgentIdentity } from "@/api/agent";
 import {
   Bot,
   Plus,
+  Puzzle,
   Search,
   Settings,
   Trash2,
@@ -25,9 +27,14 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import { ROUTES } from "@/lib/constants";
+import { canCreateAgent, getAgentsLimit, hasFeature } from "@/lib/plan-utils";
+import { usePlan } from "@/hooks/usePlan";
 import { toast } from "sonner";
 
 export function AgentsPage() {
+  const navigate = useNavigate();
+  const { plan } = usePlan();
   const [agents, setAgents] = useState<AgentIdentity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +44,11 @@ export function AgentsPage() {
   const [createForm, setCreateForm] = useState({ agentId: "", name: "", description: "" });
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
+
+  const agentCount = agents.length;
+  const canCreate = canCreateAgent(plan, agentCount);
+  const agentsUnlocked = hasFeature(plan, "AGENTS");
+  const agentsLimit = getAgentsLimit(plan);
 
   const slugFrom = (s: string) =>
     (s ?? "")
@@ -180,11 +192,46 @@ export function AgentsPage() {
             Manage your AI agents and their configurations
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Agent
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate(ROUTES.SDK_INTEGRATIONS)}>
+            <Puzzle className="h-4 w-4 mr-2" />
+            SDK Setup
+          </Button>
+          <Button
+            onClick={() => setCreateOpen(true)}
+            disabled={!canCreate}
+            title={
+              !agentsUnlocked
+                ? "Agents are available on Starter and higher plans"
+                : !canCreate
+                  ? `Plan limit reached (${agentCount} of ${agentsLimit >= 10000 ? "∞" : agentsLimit})`
+                  : undefined
+            }
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Agent
+          </Button>
+        </div>
       </div>
+      {!canCreate && (
+        <p className="text-sm text-muted-foreground text-right md:text-left">
+          {!agentsUnlocked ? (
+            <>
+              Upgrade to register agents.{" "}
+              <Link to={ROUTES.PRICING} className="text-brand-500 hover:underline">
+                View plans
+              </Link>
+            </>
+          ) : (
+            <>
+              Agent limit reached for your plan.{" "}
+              <Link to={ROUTES.PRICING} className="text-brand-500 hover:underline">
+                Upgrade
+              </Link>
+            </>
+          )}
+        </p>
+      )}
 
       {/* Create Agent modal */}
       <Dialog open={createOpen} onOpenChange={handleCreateClose}>

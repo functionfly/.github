@@ -1,16 +1,28 @@
-import { agentApi } from '@/api/agent';
+import { agentApi, type AgentFinancialTransaction } from '@/api/agent';
+import { notificationsApi } from '@/api/notifications';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNotificationStore } from '@/stores/notificationStore';
 import {
   ArrowDownRight,
   ArrowUpRight,
   CreditCard,
   DollarSign,
   Download,
-  Filter,
+  Loader2,
   Plus,
   Shield,
   TrendingDown,
@@ -18,6 +30,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 // Types for Wallet Dashboard
 interface WalletData {
@@ -31,7 +44,16 @@ interface WalletData {
 
 interface Transaction {
   id: string;
-  type: 'credit' | 'debit' | 'transfer';
+  type:
+    | 'credit'
+    | 'debit'
+    | 'transfer'
+    | 'credit_purchase'
+    | 'execution_debit'
+    | 'transfer_in'
+    | 'transfer_out'
+    | 'adjustment'
+    | 'refund';
   amount: number;
   description: string;
   counterparty?: string;
@@ -52,12 +74,62 @@ interface SpendingBreakdown {
 }
 
 export function WalletDashboard({ agentId }: { agentId: string }) {
+  const updateUnreadCounts = useNotificationStore((s) => s.updateUnreadCounts);
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [revenueBreakdown, setRevenueBreakdown] = useState<RevenueBreakdown[]>([]);
   const [spendingBreakdown, setSpendingBreakdown] = useState<SpendingBreakdown[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Add Funds dialog state
+  const [showAddFunds, setShowAddFunds] = useState(false);
+  const [addFundsAmount, setAddFundsAmount] = useState('10.00');
+  const [addFundsLoading, setAddFundsLoading] = useState(false);
+  const [addFundsError, setAddFundsError] = useState<string | null>(null);
+
+  // Transactions pagination
+  const [txLimit, setTxLimit] = useState(20);
+  const [txOffset, setTxOffset] = useState(0);
+  const [txTotal, setTxTotal] = useState(0);
+
+  const mapTxKind = (kind: string): Transaction['type'] => {
+    switch (kind) {
+      case 'credit_purchase':
+        return 'credit_purchase';
+      case 'execution_debit':
+        return 'execution_debit';
+      case 'transfer_in':
+        return 'transfer_in';
+      case 'transfer_out':
+        return 'transfer_out';
+      case 'adjustment':
+        return 'adjustment';
+      case 'refund':
+        return 'refund';
+      default:
+        return 'credit';
+    }
+  };
+
+  const formatTxDescription = (tx: AgentFinancialTransaction): string => {
+    switch (tx.kind) {
+      case 'credit_purchase':
+        return 'Credits purchased';
+      case 'execution_debit':
+        return 'Execution cost';
+      case 'transfer_in':
+        return 'Transfer received';
+      case 'transfer_out':
+        return 'Transfer sent';
+      case 'adjustment':
+        return 'Balance adjustment';
+      case 'refund':
+        return 'Refund';
+      default:
+        return 'Transaction';
+    }
+  };
 
   const fetchData = useCallback(async () => {
     if (!agentId) {
@@ -67,9 +139,10 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const [walletRes, costRes] = await Promise.allSettled([
+      const [walletRes, costRes, txRes] = await Promise.allSettled([
         agentApi.getWallet(agentId),
         agentApi.getCostBreakdown(agentId),
+        agentApi.listWalletTransactions(agentId, { limit: txLimit, offset: txOffset }),
       ]);
 
       const w = walletRes.status === 'fulfilled' ? walletRes.value?.wallet : null;
@@ -79,13 +152,17 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
         const escrow = Number(walletObj.escrow_balance_usd ?? walletObj.escrowBalanceUSD ?? 0);
         const earned = Number(walletObj.total_earned_usd ?? walletObj.totalEarnedUSD ?? 0);
         const spent = Number(walletObj.total_spent_usd ?? walletObj.totalSpentUSD ?? 0);
+        const lastEarning = (walletObj.last_earning_at ?? walletObj.lastEarningAt ?? '') as string;
+        const lastSpending = (walletObj.last_spending_at ??
+          walletObj.lastSpendingAt ??
+          '') as string;
         setWallet({
           balance,
           escrowBalance: escrow,
           totalEarned: earned,
           totalSpent: spent,
-          lastEarning: '',
-          lastSpending: '',
+          lastEarning,
+          lastSpending,
         });
         if (earned > 0) {
           setRevenueBreakdown([{ category: 'Earnings', amount: earned, percentage: 100 }]);
@@ -119,7 +196,22 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
         setSpendingBreakdown([]);
       }
 
-      setTransactions([]);
+      if (txRes.status === 'fulfilled' && txRes.value?.transactions) {
+        const mapped: Transaction[] = txRes.value.transactions.map((t) => ({
+          id: t.id,
+          type: mapTxKind(t.kind),
+          amount: t.amount_usd,
+          description: formatTxDescription(t),
+          timestamp: t.created_at,
+          status: t.status,
+          counterparty: t.provider,
+        }));
+        setTransactions(mapped);
+        setTxTotal(txRes.value.total ?? 0);
+      } else {
+        setTransactions([]);
+        setTxTotal(0);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load wallet data');
       setWallet(null);
@@ -129,11 +221,107 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [agentId]);
+  }, [agentId, txLimit, txOffset]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const refreshNotificationBell = useCallback(async () => {
+    try {
+      const counts = await notificationsApi.fetchUnreadCounts();
+      const byCategory = counts?.byCategory || {};
+      updateUnreadCounts({
+        all: counts?.total || 0,
+        trust: byCategory.trust || 0,
+        revenue: byCategory.revenue || 0,
+        issues: byCategory.issues || 0,
+        messages: byCategory.messages || 0,
+        security: byCategory.security || 0,
+      });
+    } catch {
+      /* silent – badge catches up on next poll */
+    }
+  }, [updateUnreadCounts]);
+
+  const handleAddFunds = async () => {
+    setAddFundsError(null);
+    const amount = parseFloat(addFundsAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setAddFundsError('Please enter a valid amount');
+      return;
+    }
+    if (amount < 0.5) {
+      setAddFundsError('Minimum amount is $0.50');
+      return;
+    }
+
+    setAddFundsLoading(true);
+    try {
+      const successUrl = `${window.location.origin}/wallet/${encodeURIComponent(agentId)}?credits=success`;
+      const cancelUrl = `${window.location.origin}/wallet/${encodeURIComponent(agentId)}?credits=cancel`;
+      const res = await agentApi.createCreditsCheckout(agentId, amount, successUrl, cancelUrl);
+      if (res?.url) {
+        // Redirect to Stripe – notification bell refresh happens in WalletPage on return
+        window.location.href = res.url;
+      } else {
+        setAddFundsError('Failed to create checkout session');
+      }
+    } catch (e: unknown) {
+      const ax = e as {
+        response?: { data?: { error?: { code?: string; message?: string } } };
+        message?: string;
+      };
+      const errObj = ax.response?.data?.error;
+
+      // If Stripe is not configured the backend falls back to a simulated credit purchase
+      if (errObj?.code === 'PAYMENTS_NOT_CONFIGURED') {
+        try {
+          await agentApi.purchaseCredits(agentId, amount);
+          setShowAddFunds(false);
+          toast.success('Funds added successfully', {
+            description: `$${amount.toFixed(2)} has been added to your wallet.`,
+          });
+          fetchData();
+          refreshNotificationBell();
+          return;
+        } catch (innerErr: unknown) {
+          const msg = innerErr instanceof Error ? innerErr.message : 'Failed to add funds';
+          setAddFundsError(msg);
+          return;
+        }
+      }
+
+      const apiMsg =
+        errObj?.message && (errObj.code ? `${errObj.code}: ${errObj.message}` : errObj.message);
+      setAddFundsError(apiMsg ?? (e instanceof Error ? e.message : 'Failed to initiate checkout'));
+    } finally {
+      setAddFundsLoading(false);
+    }
+  };
+
+  const handleExport = () => {
+    if (!transactions.length) return;
+
+    const headers = ['Date', 'Type', 'Description', 'Amount', 'Status'];
+    const rows = transactions.map((t) => [
+      new Date(t.timestamp).toISOString(),
+      t.type,
+      t.description,
+      t.amount.toString(),
+      t.status,
+    ]);
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wallet-transactions-${agentId}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -145,11 +333,51 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'credit':
+      case 'credit_purchase':
+      case 'transfer_in':
+      case 'refund':
         return <ArrowDownRight className="h-4 w-4 text-green-500" />;
       case 'debit':
+      case 'execution_debit':
+      case 'transfer_out':
         return <ArrowUpRight className="h-4 w-4 text-red-500" />;
       case 'transfer':
+      case 'adjustment':
         return <TrendingUp className="h-4 w-4 text-blue-500" />;
+      default:
+        return <DollarSign className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getAmountPrefix = (type: string) => {
+    switch (type) {
+      case 'credit':
+      case 'credit_purchase':
+      case 'transfer_in':
+      case 'refund':
+        return '+';
+      case 'debit':
+      case 'execution_debit':
+      case 'transfer_out':
+        return '-';
+      default:
+        return '';
+    }
+  };
+
+  const getAmountColor = (type: string) => {
+    switch (type) {
+      case 'credit':
+      case 'credit_purchase':
+      case 'transfer_in':
+      case 'refund':
+        return 'text-green-500';
+      case 'debit':
+      case 'execution_debit':
+      case 'transfer_out':
+        return 'text-red-500';
+      default:
+        return 'text-blue-500';
     }
   };
 
@@ -200,11 +428,11 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setShowAddFunds(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Funds
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport} disabled={transactions.length === 0}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
@@ -275,6 +503,54 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
         </Card>
       </div>
 
+      {/* Add Funds Dialog */}
+      <Dialog open={showAddFunds} onOpenChange={setShowAddFunds}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add Funds</DialogTitle>
+            <DialogDescription>
+              Purchase execution credits for your agent. You'll be redirected to Stripe to complete
+              the payment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="amount">Amount (USD)</Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0.50"
+                placeholder="10.00"
+                value={addFundsAmount}
+                onChange={(e) => setAddFundsAmount(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Minimum amount: $0.50 USD</p>
+            </div>
+            {addFundsError && <p className="text-sm text-destructive">{addFundsError}</p>}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAddFunds(false)}
+              disabled={addFundsLoading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleAddFunds} disabled={addFundsLoading}>
+              {addFundsLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Continue to Checkout'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Tabs */}
       <Tabs defaultValue="transactions" className="space-y-4">
         <TabsList>
@@ -290,16 +566,34 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
                 <CardTitle>Recent Transactions</CardTitle>
                 <CardDescription>Your agent's financial activity</CardDescription>
               </div>
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {txTotal > 0
+                    ? `Showing ${Math.min(txOffset + 1, txTotal)}-${Math.min(txOffset + transactions.length, txTotal)} of ${txTotal}`
+                    : 'No transactions'}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTxOffset(Math.max(0, txOffset - txLimit))}
+                  disabled={txOffset === 0}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTxOffset(txOffset + txLimit)}
+                  disabled={txOffset + txLimit >= txTotal}
+                >
+                  Next
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {transactions.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">
-                  No transaction history available. Transactions will appear here when the API
-                  supports listing them.
+                  No transaction history available. Add funds to get started.
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -326,16 +620,8 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
-                        <span
-                          className={`font-bold ${
-                            tx.type === 'credit'
-                              ? 'text-green-500'
-                              : tx.type === 'debit'
-                                ? 'text-red-500'
-                                : 'text-blue-500'
-                          }`}
-                        >
-                          {tx.type === 'credit' ? '+' : tx.type === 'debit' ? '-' : ''}
+                        <span className={`font-bold ${getAmountColor(tx.type)}`}>
+                          {getAmountPrefix(tx.type)}
                           {formatCurrency(tx.amount)}
                         </span>
                         {getStatusBadge(tx.status)}

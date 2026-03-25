@@ -1,21 +1,37 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Shield, Check, X, User, Mail, Key, AtSign, Building2, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { FormError } from "@/components/ui/form-error";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useSignupForm } from "@/hooks/useAuthForms";
-import { useAuthStore } from "@/stores/authStore";
-import { useUsernameValidation } from "@/hooks/useUsernameValidation";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { FormError } from '@/components/ui/form-error';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { useSignupForm } from '@/hooks/useAuthForms';
+import { useUsernameValidation } from '@/hooks/useUsernameValidation';
+import { getMarketingPageUrl } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/stores/authStore';
+import {
+  AtSign,
+  Building2,
+  Calendar,
+  Check,
+  Eye,
+  EyeOff,
+  Key,
+  Loader2,
+  Mail,
+  Shield,
+  User,
+  X,
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+
+const todayISODate = () => new Date().toISOString().slice(0, 10);
 
 // New authentication libraries
-import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
-import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { useAutoAnimate } from '@formkit/auto-animate/react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
 // Enhanced password strength bar
 import PasswordStrengthBar from 'react-password-strength-bar';
@@ -35,10 +51,13 @@ function PasswordRequirements({ password }: { password: string }) {
       {requirements.map((req) => {
         const passed = req.test(password);
         return (
-          <div key={req.key} className={cn(
-            "flex items-center gap-2 text-xs transition-colors",
-            passed ? "text-green-500" : "text-text-muted"
-          )}>
+          <div
+            key={req.key}
+            className={cn(
+              'flex items-center gap-2 text-xs transition-colors',
+              passed ? 'text-green-500' : 'text-text-muted'
+            )}
+          >
             {passed ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
             <span>{req.label}</span>
           </div>
@@ -97,7 +116,6 @@ export function SignupForm(): React.JSX.Element {
     executeCaptcha();
   }, [executeRecaptcha, isValid, watchedErrors]);
 
-
   const onSubmit = async (data: any) => {
     clearError();
     clearErrors();
@@ -120,12 +138,12 @@ export function SignupForm(): React.JSX.Element {
 
       // Show success message and navigate to verification page
       if (response.requiresVerification) {
-        navigate("/auth/verify-email", {
+        navigate('/auth/verify-email', {
           state: {
             message: response.message,
             email: data.email,
-            emailSent: response.emailSent
-          }
+            emailSent: response.emailSent,
+          },
         });
       }
     } catch {
@@ -148,11 +166,14 @@ export function SignupForm(): React.JSX.Element {
 
         {/* Name Field */}
         <div className="space-y-2">
-          <Label htmlFor="name" className={cn(
-            'flex items-center gap-2',
-            errors.name && 'text-error',
-            !errors.name && watch('name') && 'text-success'
-          )}>
+          <Label
+            htmlFor="name"
+            className={cn(
+              'flex items-center gap-2',
+              errors.name && 'text-error',
+              !errors.name && watch('name') && 'text-success'
+            )}
+          >
             <User className="w-4 h-4" />
             Full Name <span className="text-error">*</span>
           </Label>
@@ -162,7 +183,9 @@ export function SignupForm(): React.JSX.Element {
             placeholder="John Doe"
             className={cn(
               errors.name && 'border-error focus:border-error focus:ring-error',
-              !errors.name && watch('name') && 'border-success focus:border-success focus:ring-success'
+              !errors.name &&
+                watch('name') &&
+                'border-success focus:border-success focus:ring-success'
             )}
             {...register('name')}
           />
@@ -173,21 +196,60 @@ export function SignupForm(): React.JSX.Element {
           )}
         </div>
 
+        <div className="space-y-2">
+          <Label
+            htmlFor="dateOfBirth"
+            className={cn(
+              'flex items-center gap-2',
+              errors.dateOfBirth && 'text-error',
+              !errors.dateOfBirth && watch('dateOfBirth') && 'text-success'
+            )}
+          >
+            <Calendar className="w-4 h-4" />
+            Date of birth <span className="text-error">*</span>
+          </Label>
+          <Input
+            id="dateOfBirth"
+            type="date"
+            autoComplete="bday"
+            max={todayISODate()}
+            className={cn(
+              errors.dateOfBirth && 'border-error focus:border-error focus:ring-error',
+              !errors.dateOfBirth &&
+                watch('dateOfBirth') &&
+                'border-success focus:border-success focus:ring-success'
+            )}
+            {...register('dateOfBirth')}
+          />
+          {errors.dateOfBirth && (
+            <div className="text-xs text-error">
+              {typeof errors.dateOfBirth.message === 'string'
+                ? errors.dateOfBirth.message
+                : 'Invalid date of birth'}
+            </div>
+          )}
+          <p className="text-xs text-text-muted">You must be at least 13 years old.</p>
+        </div>
+
         {/* Username Field (required) */}
         <div className="space-y-2">
-          <Label htmlFor="username" className={cn(
-            'flex items-center gap-2',
-            errors.username && 'text-error',
-            !errors.username && usernameValidation.isValid && usernameValidation.isAvailable && 'text-success'
-          )}>
+          <Label
+            htmlFor="username"
+            className={cn(
+              'flex items-center gap-2',
+              errors.username && 'text-error',
+              !errors.username &&
+                usernameValidation.isValid &&
+                usernameValidation.isAvailable &&
+                'text-success'
+            )}
+          >
             <AtSign className="w-4 h-4" />
             Username <span className="text-error">*</span>
-            {usernameValidation.isLoading && (
-              <Loader2 className="w-3 h-3 animate-spin ml-1" />
-            )}
-            {usernameValidation.isValid && usernameValidation.isAvailable && !usernameValidation.isLoading && (
-              <Check className="w-3 h-3 ml-1" />
-            )}
+            {usernameValidation.isLoading && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
+            {usernameValidation.isValid &&
+              usernameValidation.isAvailable &&
+              !usernameValidation.isLoading && <Check className="w-3 h-3 ml-1" />}
             {!usernameValidation.isValid && username && !usernameValidation.isLoading && (
               <X className="w-3 h-3 ml-1" />
             )}
@@ -199,53 +261,65 @@ export function SignupForm(): React.JSX.Element {
             autoComplete="username"
             className={cn(
               errors.username && 'border-error focus:border-error focus:ring-error',
-              !errors.username && usernameValidation.isValid && usernameValidation.isAvailable && 'border-success focus:border-success focus:ring-success',
-              !errors.username && !usernameValidation.isValid && username && !usernameValidation.isLoading && 'border-error focus:border-error focus:ring-error'
+              !errors.username &&
+                usernameValidation.isValid &&
+                usernameValidation.isAvailable &&
+                'border-success focus:border-success focus:ring-success',
+              !errors.username &&
+                !usernameValidation.isValid &&
+                username &&
+                !usernameValidation.isLoading &&
+                'border-error focus:border-error focus:ring-error'
             )}
             {...register('username')}
           />
           {errors.username && (
             <div className="text-xs text-error">
-              {typeof errors.username.message === 'string' ? errors.username.message : 'Invalid username'}
+              {typeof errors.username.message === 'string'
+                ? errors.username.message
+                : 'Invalid username'}
             </div>
           )}
           {usernameValidation.error && (
-            <div className="text-xs text-error">
-              {usernameValidation.error}
-            </div>
+            <div className="text-xs text-error">{usernameValidation.error}</div>
           )}
-          {!usernameValidation.error && usernameValidation.isValid && usernameValidation.isAvailable && (
-            <div className="text-xs text-success">
-              ✓ Username is available
+          {!usernameValidation.error &&
+            usernameValidation.isValid &&
+            usernameValidation.isAvailable && (
+              <div className="text-xs text-success">✓ Username is available</div>
+            )}
+        </div>
+
+        <div className="space-y-2">
+          <Label
+            htmlFor="email"
+            className={cn(
+              'flex items-center gap-2',
+              errors.email && 'text-error',
+              !errors.email && watch('email') && 'text-success'
+            )}
+          >
+            <Mail className="w-4 h-4" />
+            Email <span className="text-error">*</span>
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@example.com"
+            className={cn(
+              errors.email && 'border-error focus:border-error focus:ring-error',
+              !errors.email &&
+                watch('email') &&
+                'border-success focus:border-success focus:ring-success'
+            )}
+            {...register('email')}
+          />
+          {errors.email && (
+            <div className="text-xs text-error">
+              {typeof errors.email.message === 'string' ? errors.email.message : 'Invalid email'}
             </div>
           )}
         </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="email" className={cn(
-          'flex items-center gap-2',
-          errors.email && 'text-error',
-          !errors.email && watch('email') && 'text-success'
-        )}>
-          <Mail className="w-4 h-4" />
-          Email <span className="text-error">*</span>
-        </Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="you@example.com"
-          className={cn(
-            errors.email && 'border-error focus:border-error focus:ring-error',
-            !errors.email && watch('email') && 'border-success focus:border-success focus:ring-success'
-          )}
-          {...register('email')}
-        />
-        {errors.email && (
-          <div className="text-xs text-error">
-            {typeof errors.email.message === 'string' ? errors.email.message : 'Invalid email'}
-          </div>
-        )}
-      </div>
 
         {/* Company Name Field (optional) */}
         <div className="space-y-2">
@@ -260,160 +334,189 @@ export function SignupForm(): React.JSX.Element {
             autoComplete="organization"
             className={cn(
               errors.companyName && 'border-error focus:border-error focus:ring-error',
-              !errors.companyName && watch('companyName') && 'border-success focus:border-success focus:ring-success'
+              !errors.companyName &&
+                watch('companyName') &&
+                'border-success focus:border-success focus:ring-success'
             )}
             {...register('companyName')}
           />
           {errors.companyName && (
             <div className="text-xs text-error">
-              {typeof errors.companyName.message === 'string' ? errors.companyName.message : 'Invalid company name'}
+              {typeof errors.companyName.message === 'string'
+                ? errors.companyName.message
+                : 'Invalid company name'}
             </div>
           )}
         </div>
 
-      {/* Invite Code Field */}
-      <div className="space-y-2">
-        <Label htmlFor="inviteCode" className="flex items-center gap-2 text-text-secondary">
-          <Key className="w-4 h-4" />
-          Invite Code <span className="text-text-muted text-xs">(optional)</span>
-        </Label>
-        <Input
-          id="inviteCode"
-          type="text"
-          placeholder="Enter your invite code"
-          className={cn(
-            errors.inviteCode && 'border-error focus:border-error focus:ring-error'
-          )}
-          {...register('inviteCode')}
-        />
-        {errors.inviteCode && (
-          <div className="text-xs text-error">
-            {typeof errors.inviteCode.message === 'string' ? errors.inviteCode.message : 'Invalid invite code'}
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="password" className={cn(
-          'flex items-center gap-2',
-          errors.password && 'text-error',
-          !errors.password && password && 'text-success'
-        )}>
-          Password <span className="text-error">*</span>
-        </Label>
-        <div className="relative">
+        {/* Invite Code Field */}
+        <div className="space-y-2">
+          <Label htmlFor="inviteCode" className="flex items-center gap-2 text-text-secondary">
+            <Key className="w-4 h-4" />
+            Invite Code <span className="text-text-muted text-xs">(optional)</span>
+          </Label>
           <Input
-            id="password"
-            type={showPassword ? "text" : "password"}
-            placeholder="••••••••"
-            className={cn(
-              'pr-10',
-              errors.password && 'border-error focus:border-error focus:ring-error',
-              !errors.password && password && 'border-success focus:border-success focus:ring-success'
-            )}
-            {...register('password')}
+            id="inviteCode"
+            type="text"
+            placeholder="Enter your invite code"
+            className={cn(errors.inviteCode && 'border-error focus:border-error focus:ring-error')}
+            {...register('inviteCode')}
           />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
-          >
-            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
-        {errors.password && (
-          <div className="text-xs text-error">
-            {typeof errors.password.message === 'string' ? errors.password.message : 'Invalid password'}
-          </div>
-        )}
-      </div>
-
-      {/* Inline Password Requirements */}
-      {password && (
-        <div className="mt-2">
-          <PasswordRequirements password={password} />
-          <div className="mt-3">
-            <PasswordStrengthBar
-              password={password}
-              scoreWords={['Very Weak', 'Weak', 'Fair', 'Good', 'Strong']}
-              shortScoreWord="Too short"
-              minLength={8}
-            />
-          </div>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <Label htmlFor="confirmPassword" className={cn(
-          'flex items-center gap-2',
-          errors.confirmPassword && 'text-error',
-          !errors.confirmPassword && watch('confirmPassword') && 'text-success'
-        )}>
-          Confirm Password <span className="text-error">*</span>
-        </Label>
-        <div className="relative">
-          <Input
-            id="confirmPassword"
-            type={showConfirmPassword ? "text" : "password"}
-            placeholder="••••••••"
-            className={cn(
-              'pr-10',
-              errors.confirmPassword && 'border-error focus:border-error focus:ring-error',
-              !errors.confirmPassword && watch('confirmPassword') && 'border-success focus:border-success focus:ring-success'
-            )}
-            {...register('confirmPassword')}
-          />
-          <button
-            type="button"
-            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
-          >
-            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
-        {errors.confirmPassword && (
-          <div className="text-xs text-error">
-            {typeof errors.confirmPassword?.message === 'string' ? errors.confirmPassword.message : 'Invalid confirm password'}
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-start gap-3">
-        <Checkbox
-          id="terms"
-          {...register('termsAccepted')}
-          className="mt-1"
-        />
-        <div className="space-y-1">
-          <label htmlFor="terms" className="text-sm text-text-secondary leading-tight cursor-pointer">
-            I agree to the{" "}
-            <a href="/terms" className="text-brand-500 hover:underline">
-              Terms of Service
-            </a>{" "}
-            and{" "}
-            <a href="/privacy" className="text-brand-500 hover:underline">
-              Privacy Policy
-            </a>
-          </label>
-          {errors.termsAccepted && (
+          {errors.inviteCode && (
             <div className="text-xs text-error">
-              {typeof errors.termsAccepted?.message === 'string' ? errors.termsAccepted.message : 'You must accept the terms'}
+              {typeof errors.inviteCode.message === 'string'
+                ? errors.inviteCode.message
+                : 'Invalid invite code'}
             </div>
           )}
         </div>
-      </div>
 
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={isLoading || isSubmitting || !isValid || watchedErrors}
-      >
-        {isLoading || isSubmitting ? (
-          <LoadingSpinner text="Creating account..." />
-        ) : (
-          "Create Account"
+        <div className="space-y-2">
+          <Label
+            htmlFor="password"
+            className={cn(
+              'flex items-center gap-2',
+              errors.password && 'text-error',
+              !errors.password && password && 'text-success'
+            )}
+          >
+            Password <span className="text-error">*</span>
+          </Label>
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••"
+              className={cn(
+                'pr-10',
+                errors.password && 'border-error focus:border-error focus:ring-error',
+                !errors.password &&
+                  password &&
+                  'border-success focus:border-success focus:ring-success'
+              )}
+              {...register('password')}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {errors.password && (
+            <div className="text-xs text-error">
+              {typeof errors.password.message === 'string'
+                ? errors.password.message
+                : 'Invalid password'}
+            </div>
+          )}
+        </div>
+
+        {/* Inline Password Requirements */}
+        {password && (
+          <div className="mt-2">
+            <PasswordRequirements password={password} />
+            <div className="mt-3">
+              <PasswordStrengthBar
+                password={password}
+                scoreWords={['Very Weak', 'Weak', 'Fair', 'Good', 'Strong']}
+                shortScoreWord="Too short"
+                minLength={8}
+              />
+            </div>
+          </div>
         )}
-      </Button>
+
+        <div className="space-y-2">
+          <Label
+            htmlFor="confirmPassword"
+            className={cn(
+              'flex items-center gap-2',
+              errors.confirmPassword && 'text-error',
+              !errors.confirmPassword && watch('confirmPassword') && 'text-success'
+            )}
+          >
+            Confirm Password <span className="text-error">*</span>
+          </Label>
+          <div className="relative">
+            <Input
+              id="confirmPassword"
+              type={showConfirmPassword ? 'text' : 'password'}
+              placeholder="••••••••"
+              className={cn(
+                'pr-10',
+                errors.confirmPassword && 'border-error focus:border-error focus:ring-error',
+                !errors.confirmPassword &&
+                  watch('confirmPassword') &&
+                  'border-success focus:border-success focus:ring-success'
+              )}
+              {...register('confirmPassword')}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
+            >
+              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {errors.confirmPassword && (
+            <div className="text-xs text-error">
+              {typeof errors.confirmPassword?.message === 'string'
+                ? errors.confirmPassword.message
+                : 'Invalid confirm password'}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-start gap-3">
+          <Checkbox id="terms" {...register('termsAccepted')} className="mt-1" />
+          <div className="space-y-1">
+            <label
+              htmlFor="terms"
+              className="text-sm text-text-secondary leading-tight cursor-pointer"
+            >
+              I agree to the{' '}
+              <a
+                href={getMarketingPageUrl('/terms')}
+                className="text-brand-500 hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Terms of Service
+              </a>{' '}
+              and{' '}
+              <a
+                href={getMarketingPageUrl('/privacy')}
+                className="text-brand-500 hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Privacy Policy
+              </a>
+            </label>
+            {errors.termsAccepted && (
+              <div className="text-xs text-error">
+                {typeof errors.termsAccepted?.message === 'string'
+                  ? errors.termsAccepted.message
+                  : 'You must accept the terms'}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isLoading || isSubmitting || !isValid || watchedErrors}
+        >
+          {isLoading || isSubmitting ? (
+            <LoadingSpinner text="Creating account..." />
+          ) : (
+            'Create Account'
+          )}
+        </Button>
       </form>
     </div>
   );

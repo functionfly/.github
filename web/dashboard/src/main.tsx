@@ -1,23 +1,18 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import "./i18n";
-import { initSentry } from "./sentry";
-import App from "./App.tsx";
+import '@/styles/index.css';
+import { loader } from '@monaco-editor/react';
+import * as monaco from 'monaco-editor';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App.tsx';
+import './i18n';
+import { initSentry } from './sentry';
+
+// Use bundled monaco-editor (same origin) instead of CDN loader.js — matches CSP script-src 'self'.
+loader.config({ monaco });
 
 initSentry();
 
-// Load full stylesheets asynchronously after initial render
-const loadFullStyles = () => {
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = '/src/styles/index.css';
-  document.head.appendChild(link);
-};
-
-// Load styles after initial render to avoid blocking LCP
-setTimeout(loadFullStyles, 100);
-
-createRoot(document.getElementById("root")!).render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
   </StrictMode>

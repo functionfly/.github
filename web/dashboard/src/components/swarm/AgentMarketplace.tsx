@@ -1,43 +1,117 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { agentApi, type MarketplaceAgent } from '@/api/agent';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { agentApi, type MarketplaceAgent } from '@/api/agent';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ROUTES } from '@/lib/constants';
+import {
+  AlertCircle,
+  Award,
+  Check,
+  CheckCircle,
+  ChevronDown,
+  Copy,
+  ExternalLink,
+  RefreshCw,
   Search,
-  Filter,
+  Shield,
   Star,
+  TrendingUp,
   Users,
   Zap,
-  Shield,
-  DollarSign,
-  TrendingUp,
-  CheckCircle,
-  ExternalLink,
-  Loader2,
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
-// Types for Marketplace - using API type
 export type { MarketplaceAgent };
 
-interface MarketplaceFilters {
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const OFFICIAL_AGENT_IDS = new Set([
+  'proofsmith',
+  'policymint',
+  'marginpilot',
+  'schemasheriff',
+  'patchpulse',
+  'runbookweaver',
+]);
+
+const CAPABILITY_LABELS: Record<string, string> = {
+  determinism_audit: 'Determinism Audit',
+  replay_runs: 'Replay Runs',
+  variance_report: 'Variance Reports',
+  trust_badging: 'Trust Badging',
+  trust_policy_design: 'Policy Design',
+  capability_deny: 'Capability Deny',
+  policy_hashing: 'Policy Hashing',
+  compliance_mode: 'Compliance Mode',
+  budget_aware_planning: 'Budget Planning',
+  function_substitution: 'Function Substitution',
+  spend_cap_enforcement: 'Spend Cap',
+  roi_reporting: 'ROI Reporting',
+  schema_inference: 'Schema Inference',
+  validator_generation: 'Validator Gen',
+  idempotency_guard: 'Idempotency Guard',
+  publish_functions: 'Publish Functions',
+  canary_checks: 'Canary Checks',
+  diff_detection: 'Diff Detection',
+  adapter_patch: 'Adapter Patch',
+  version_bump: 'Version Bump',
+  incident_triage: 'Incident Triage',
+  runbook_generation: 'Runbook Gen',
+  verification_checks: 'Verification',
+  postmortem_pack: 'Postmortem Pack',
+};
+
+type SortOption = 'featured' | 'top_rated' | 'most_used' | 'roi';
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+interface Filters {
   search: string;
   listingType: string;
   pricingModel: string;
-  minRating: number;
+  sort: SortOption;
 }
 
+const PAGE_SIZE = 9;
+
 export function AgentMarketplace() {
+  const navigate = useNavigate();
   const [listings, setListings] = useState<MarketplaceAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<MarketplaceFilters>({
+  const [selectedAgent, setSelectedAgent] = useState<MarketplaceAgent | null>(null);
+  const [page, setPage] = useState(1);
+  const [filters, setFilters] = useState<Filters>({
     search: '',
     listingType: '',
     pricingModel: '',
-    minRating: 0
+    sort: 'featured',
   });
 
   useEffect(() => {
@@ -45,88 +119,63 @@ export function AgentMarketplace() {
   }, []);
 
   const loadAgents = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      const response = await agentApi.searchMarketplaceAgents({
-        limit: 50,
-      });
+      const response = await agentApi.searchMarketplaceAgents({ limit: 100 });
       setListings(response.agents);
     } catch (err) {
       console.error('Failed to load marketplace agents:', err);
-      setError('Failed to load agents. Using demo data.');
-      // Fallback to demo data on error
-      setListings([
-        {
-          id: '1',
-          agentId: 'ai-researcher',
-          name: 'AI Research Specialist',
-          description: 'Advanced research agent capable of gathering and analyzing data from multiple sources.',
-          listingType: 'worker',
-          pricingModel: 'per_call',
-          pricePerCall: 0.05,
-          ratingScore: 4.8,
-          totalCalls: 15420,
-          roiScore: 92,
-        },
-        {
-          id: '2',
-          agentId: 'data-processor',
-          name: 'Data Processing Agent',
-          description: 'Efficiently processes and transforms data with built-in validation.',
-          listingType: 'worker',
-          pricingModel: 'subscription',
-          subscriptionMonthlyUsd: 49.99,
-          ratingScore: 4.6,
-          totalCalls: 8930,
-          roiScore: 88,
-        },
-        {
-          id: '3',
-          agentId: 'swarm-manager',
-          name: 'Swarm Orchestrator',
-          description: 'Manages and coordinates multiple agents for complex workflows.',
-          listingType: 'manager',
-          pricingModel: 'revenue_share',
-          revenueSharePercent: 15,
-          ratingScore: 4.9,
-          totalCalls: 3210,
-          roiScore: 95,
-        },
-        {
-          id: '4',
-          agentId: 'monitor-agent',
-          name: 'System Monitor',
-          description: '24/7 monitoring agent with alerting and reporting capabilities.',
-          listingType: 'infrastructure',
-          pricingModel: 'subscription',
-          subscriptionMonthlyUsd: 99.99,
-          ratingScore: 4.7,
-          totalCalls: 12450,
-          roiScore: 90,
-        },
-      ]);
+      setError('Could not load agents. Check your connection or try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredListings = listings.filter(listing => {
-    if (filters.search && !listing.name.toLowerCase().includes(filters.search.toLowerCase())) {
-      return false;
-    }
-    if (filters.listingType && listing.listingType !== filters.listingType) {
-      return false;
-    }
-    if (filters.pricingModel && listing.pricingModel !== filters.pricingModel) {
-      return false;
-    }
-    if (filters.minRating > 0 && listing.ratingScore < filters.minRating) {
-      return false;
-    }
-    return true;
-  });
+  // ── Filtering ───────────────────────────────────────────────────────────────
 
-  const getPriceDisplay = (listing: MarketplaceAgent) => {
+  const filtered = useMemo(() => {
+    let result = listings.filter((l) => {
+      if (
+        filters.search &&
+        !l.name.toLowerCase().includes(filters.search.toLowerCase()) &&
+        !l.description.toLowerCase().includes(filters.search.toLowerCase())
+      )
+        return false;
+      if (filters.listingType && l.listingType !== filters.listingType) return false;
+      if (filters.pricingModel && l.pricingModel !== filters.pricingModel) return false;
+      return true;
+    });
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      switch (filters.sort) {
+        case 'featured':
+          // Official agents first, then by rating
+          const aOff = OFFICIAL_AGENT_IDS.has(a.agentId) ? 1 : 0;
+          const bOff = OFFICIAL_AGENT_IDS.has(b.agentId) ? 1 : 0;
+          if (bOff !== aOff) return bOff - aOff;
+          return b.ratingScore - a.ratingScore;
+        case 'top_rated':
+          return b.ratingScore - a.ratingScore;
+        case 'most_used':
+          return b.totalCalls - a.totalCalls;
+        case 'roi':
+          return b.roiScore - a.roiScore;
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [listings, filters]);
+
+  const paged = filtered.slice(0, page * PAGE_SIZE);
+  const hasMore = paged.length < filtered.length;
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  const getPriceDisplay = (listing: MarketplaceAgent): string => {
     switch (listing.pricingModel) {
       case 'free':
         return 'Free';
@@ -135,23 +184,23 @@ export function AgentMarketplace() {
       case 'subscription':
         return `$${listing.subscriptionMonthlyUsd}/mo`;
       case 'revenue_share':
-        return `${listing.revenueSharePercent}% revenue share`;
+        return `${listing.revenueSharePercent}% rev share`;
+      default:
+        return '';
     }
   };
 
-  const getRoleBadge = (type: string) => {
-    const colors = {
-      worker: 'bg-blue-500',
-      manager: 'bg-purple-500',
-      infrastructure: 'bg-orange-500'
-    };
-    return colors[type as keyof typeof colors] || 'bg-gray-500';
-  };
+  const getRoleColor = (type: string) =>
+    ({ worker: 'bg-blue-500', manager: 'bg-purple-500', infrastructure: 'bg-orange-500' })[type] ??
+    'bg-gray-500';
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex flex-col items-center justify-center p-16 gap-3">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <p className="text-sm text-muted-foreground">Loading agents…</p>
       </div>
     );
   }
@@ -162,167 +211,542 @@ export function AgentMarketplace() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Agent Marketplace</h1>
-          <p className="text-muted-foreground mt-1">
-            Discover and hire autonomous AI agents
-          </p>
+          <p className="text-muted-foreground mt-1">Discover and hire autonomous AI agents</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-green-500/10 text-green-500">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            {listings.length} Verified Agents
+          {listings.length > 0 && (
+            <Badge variant="outline" className="bg-green-500/10 text-green-500">
+              <CheckCircle className="h-3 w-3 mr-1" />
+              {listings.length} Active Agents
+            </Badge>
+          )}
+          <Badge variant="outline" className="bg-brand-500/10 text-brand-500">
+            <Award className="h-3 w-3 mr-1" />
+            {OFFICIAL_AGENT_IDS.size} Official
           </Badge>
         </div>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          <div className="flex-1">{error}</div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 shrink-0 text-destructive hover:text-destructive"
+            onClick={loadAgents}
+          >
+            <RefreshCw className="h-3 w-3 mr-1" />
+            Retry
+          </Button>
+        </div>
+      )}
+
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col md:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search agents..."
+                placeholder="Search agents…"
                 className="pl-10"
                 value={filters.search}
-                onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
+                onChange={(e) => {
+                  setPage(1);
+                  setFilters((f) => ({ ...f, search: e.target.value }));
+                }}
               />
             </div>
-            <select
-              className="px-3 py-2 border rounded-md"
-              value={filters.listingType}
-              onChange={(e) => setFilters(f => ({ ...f, listingType: e.target.value }))}
+
+            <Select
+              value={filters.listingType || 'all'}
+              onValueChange={(v) => {
+                setPage(1);
+                setFilters((f) => ({ ...f, listingType: v === 'all' ? '' : v }));
+              }}
             >
-              <option value="">All Types</option>
-              <option value="worker">Worker</option>
-              <option value="manager">Manager</option>
-              <option value="infrastructure">Infrastructure</option>
-            </select>
-            <select
-              className="px-3 py-2 border rounded-md"
-              value={filters.pricingModel}
-              onChange={(e) => setFilters(f => ({ ...f, pricingModel: e.target.value }))}
+              <SelectTrigger className="w-full md:w-[160px]">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="worker">Worker</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="infrastructure">Infrastructure</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={filters.pricingModel || 'all'}
+              onValueChange={(v) => {
+                setPage(1);
+                setFilters((f) => ({ ...f, pricingModel: v === 'all' ? '' : v }));
+              }}
             >
-              <option value="">All Pricing</option>
-              <option value="free">Free</option>
-              <option value="per_call">Per Call</option>
-              <option value="subscription">Subscription</option>
-              <option value="revenue_share">Revenue Share</option>
-            </select>
+              <SelectTrigger className="w-full md:w-[160px]">
+                <SelectValue placeholder="All Pricing" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Pricing</SelectItem>
+                <SelectItem value="free">Free</SelectItem>
+                <SelectItem value="per_call">Per Call</SelectItem>
+                <SelectItem value="subscription">Subscription</SelectItem>
+                <SelectItem value="revenue_share">Revenue Share</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={filters.sort}
+              onValueChange={(v) => {
+                setPage(1);
+                setFilters((f) => ({ ...f, sort: v as SortOption }));
+              }}
+            >
+              <SelectTrigger className="w-full md:w-[160px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="featured">Featured</SelectItem>
+                <SelectItem value="top_rated">Top Rated</SelectItem>
+                <SelectItem value="most_used">Most Used</SelectItem>
+                <SelectItem value="roi">Best ROI</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Listings Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredListings.map((listing) => (
-          <ListingCard
-            key={listing.id}
-            listing={listing}
-            priceDisplay={getPriceDisplay(listing)}
-            roleBadge={getRoleBadge(listing.listingType)}
-          />
-        ))}
-      </div>
+      {/* Grid */}
+      {paged.length > 0 ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {paged.map((listing) => (
+              <ListingCard
+                key={listing.id}
+                listing={listing}
+                priceDisplay={getPriceDisplay(listing)}
+                roleColor={getRoleColor(listing.listingType)}
+                onHire={() => setSelectedAgent(listing)}
+              />
+            ))}
+          </div>
 
-      {filteredListings.length === 0 && (
-        <div className="text-center py-12">
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <Button variant="outline" onClick={() => setPage((p) => p + 1)}>
+                <ChevronDown className="h-4 w-4 mr-2" />
+                Load more ({filtered.length - paged.length} remaining)
+              </Button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-center py-16">
           <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium">No agents found</h3>
-          <p className="text-muted-foreground">Try adjusting your filters</p>
+          <p className="text-muted-foreground mt-1">
+            {filters.search || filters.listingType || filters.pricingModel
+              ? 'Try adjusting your filters'
+              : 'Run the seed script to populate the marketplace'}
+          </p>
+          {(filters.search || filters.listingType || filters.pricingModel) && (
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() =>
+                setFilters({ search: '', listingType: '', pricingModel: '', sort: 'featured' })
+              }
+            >
+              Clear filters
+            </Button>
+          )}
         </div>
       )}
+
+      {/* Hire dialog */}
+      <HireAgentDialog
+        agent={selectedAgent}
+        priceDisplay={selectedAgent ? getPriceDisplay(selectedAgent) : ''}
+        onClose={() => setSelectedAgent(null)}
+        onGoToAgents={() => {
+          setSelectedAgent(null);
+          navigate(ROUTES.AGENTS);
+        }}
+        onGoToSDK={() => {
+          setSelectedAgent(null);
+          navigate(ROUTES.SDK_INTEGRATIONS);
+        }}
+      />
     </div>
+  );
+}
+
+// ─── ListingCard ──────────────────────────────────────────────────────────────
+
+function StarRating({ score }: { score: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <Star
+          key={s}
+          className={`h-3 w-3 ${s <= Math.round(score) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'}`}
+        />
+      ))}
+      <span className="text-xs font-medium ml-1">{score.toFixed(1)}</span>
+    </div>
+  );
+}
+
+function StatusDot({ status }: { status?: string }) {
+  const isActive = !status || status === 'active';
+  return (
+    <span
+      className={`inline-block h-2 w-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-red-400'}`}
+      title={isActive ? 'Active' : status}
+    />
   );
 }
 
 function ListingCard({
   listing,
   priceDisplay,
-  roleBadge
+  roleColor,
+  onHire,
 }: {
   listing: MarketplaceAgent;
   priceDisplay: string;
-  roleBadge: string;
+  roleColor: string;
+  onHire: () => void;
 }) {
+  const isOfficial = OFFICIAL_AGENT_IDS.has(listing.agentId);
+  const caps = listing.capabilities ?? [];
+
   return (
-    <Card className="hover:shadow-lg transition-shadow">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-lg">{listing.name}</CardTitle>
-            <CardDescription className="line-clamp-2">
+    <Card className="hover:shadow-lg transition-shadow flex flex-col relative overflow-hidden">
+      {/* Official banner strip */}
+      {isOfficial && (
+        <div className="absolute top-0 right-0 bg-brand-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-md flex items-center gap-1">
+          <Award className="h-2.5 w-2.5" />
+          Official
+        </div>
+      )}
+
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-1 flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <StatusDot status={(listing as MarketplaceAgent & { status?: string }).status} />
+              <CardTitle className="text-base leading-tight truncate">{listing.name}</CardTitle>
+              {listing.deterministicVerified && (
+                <span title="Deterministic Verified">
+                  <Shield className="h-4 w-4 text-green-500 shrink-0" />
+                </span>
+              )}
+            </div>
+            <CardDescription className="line-clamp-2 text-xs">
               {listing.description}
             </CardDescription>
           </div>
-          {listing.deterministicVerified && (
-            <Shield className="h-5 w-5 text-green-500" />
-          )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Badge className={roleBadge}>
+
+      <CardContent className="space-y-3 flex-1">
+        {/* Badges row */}
+        <div className="flex items-center flex-wrap gap-1.5">
+          <Badge className={`${roleColor} text-white text-xs capitalize`}>
             {listing.listingType}
           </Badge>
-          <Badge variant="outline">
+          <Badge variant="outline" className="text-xs">
             {priceDisplay}
           </Badge>
         </div>
 
+        {/* Star rating */}
+        <StarRating score={listing.ratingScore} />
+
+        {/* Metrics */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
             <div className="flex items-center justify-center gap-1">
-              <Star className="h-3 w-3 text-yellow-500" />
-              <span className="text-sm font-medium">{listing.ratingScore}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Rating</p>
-          </div>
-          <div>
-            <div className="flex items-center justify-center gap-1">
               <Zap className="h-3 w-3 text-blue-500" />
-              <span className="text-sm font-medium">{listing.totalCalls.toLocaleString()}</span>
+              <span className="text-xs font-semibold">{listing.totalCalls.toLocaleString()}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Calls</p>
+            <p className="text-[10px] text-muted-foreground">Calls</p>
           </div>
           <div>
             <div className="flex items-center justify-center gap-1">
               <TrendingUp className="h-3 w-3 text-green-500" />
-              <span className="text-sm font-medium">{listing.roiScore}%</span>
+              <span className="text-xs font-semibold">{listing.roiScore}%</span>
             </div>
-            <p className="text-xs text-muted-foreground">ROI</p>
+            <p className="text-[10px] text-muted-foreground">ROI</p>
+          </div>
+          <div>
+            <div className="flex items-center justify-center gap-1">
+              <Shield className="h-3 w-3 text-purple-500" />
+              <span className="text-xs font-semibold">
+                {listing.trustScore ?? '—'}
+                {listing.trustScore ? '%' : ''}
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Trust</p>
           </div>
         </div>
 
+        {/* Trust score bar */}
         {listing.trustScore !== undefined && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span>Trust Score</span>
-              <span className="font-medium">{listing.trustScore}%</span>
-            </div>
-            <Progress value={listing.trustScore} className="h-2" />
-          </div>
+          <Progress
+            value={listing.trustScore}
+            className="h-1.5"
+            indicatorClassName="bg-emerald-500"
+          />
         )}
 
-        <div className="flex flex-wrap gap-1">
-          {listing.capabilities?.slice(0, 3).map((cap) => (
-            <Badge key={cap} variant="secondary" className="text-xs">
-              {cap}
-            </Badge>
-          ))}
-          {listing.capabilities && listing.capabilities.length > 3 && (
-            <Badge variant="secondary" className="text-xs">
-              +{listing.capabilities.length - 3}
-            </Badge>
-          )}
-        </div>
+        {/* Capabilities */}
+        {caps.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {caps.slice(0, 3).map((cap) => (
+              <Badge key={cap} variant="secondary" className="text-[10px] px-1.5 py-0">
+                {CAPABILITY_LABELS[cap] ?? cap.replace(/_/g, ' ')}
+              </Badge>
+            ))}
+            {caps.length > 3 && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                +{caps.length - 3}
+              </Badge>
+            )}
+          </div>
+        )}
       </CardContent>
-      <CardFooter>
-        <Button className="w-full">
+
+      <CardFooter className="pt-3">
+        <Button className="w-full" size="sm" onClick={onHire}>
           Hire Agent
-          <ExternalLink className="h-4 w-4 ml-2" />
+          <ExternalLink className="h-3.5 w-3.5 ml-2" />
         </Button>
       </CardFooter>
     </Card>
+  );
+}
+
+// ─── HireAgentDialog ──────────────────────────────────────────────────────────
+
+function HireAgentDialog({
+  agent,
+  priceDisplay,
+  onClose,
+  onGoToAgents,
+  onGoToSDK,
+}: {
+  agent: MarketplaceAgent | null;
+  priceDisplay: string;
+  onClose: () => void;
+  onGoToAgents: () => void;
+  onGoToSDK: () => void;
+}) {
+  const [copiedSnippet, setCopiedSnippet] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
+
+  if (!agent) return null;
+
+  const isOfficial = OFFICIAL_AGENT_IDS.has(agent.agentId);
+  const caps = agent.capabilities ?? [];
+
+  const snippet = `from flypy import AgentClient
+
+client = AgentClient(
+    api_base="https://api.functionfly.com",
+    api_key="YOUR_API_KEY",
+)
+
+result = client.execute(
+    agent_id="${agent.agentId}",
+    input={"task": "describe your task here"},
+)
+print(result)`;
+
+  const copy = async (text: string, which: 'snippet' | 'id') => {
+    await navigator.clipboard.writeText(text);
+    if (which === 'snippet') {
+      setCopiedSnippet(true);
+      toast.success('Code copied!');
+      setTimeout(() => setCopiedSnippet(false), 2000);
+    } else {
+      setCopiedId(true);
+      toast.success('Agent ID copied!');
+      setTimeout(() => setCopiedId(false), 2000);
+    }
+  };
+
+  const roleColor =
+    agent.listingType === 'worker'
+      ? 'bg-blue-500'
+      : agent.listingType === 'manager'
+        ? 'bg-purple-500'
+        : 'bg-orange-500';
+
+  return (
+    <Dialog
+      open={!!agent}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {isOfficial && <Award className="h-4 w-4 text-brand-500" />}
+            {agent.name}
+            {agent.deterministicVerified && <Shield className="h-4 w-4 text-green-500" />}
+          </DialogTitle>
+          <DialogDescription>{agent.description}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Badges */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className={`${roleColor} text-white capitalize`}>{agent.listingType}</Badge>
+            <Badge variant="outline">{priceDisplay}</Badge>
+            {isOfficial && (
+              <Badge
+                variant="outline"
+                className="bg-brand-500/10 text-brand-500 border-brand-500/30"
+              >
+                <Award className="h-3 w-3 mr-1" />
+                Official by FunctionFly
+              </Badge>
+            )}
+            {agent.deterministicVerified && (
+              <Badge
+                variant="outline"
+                className="bg-green-500/10 text-green-600 border-green-500/30"
+              >
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Deterministic
+              </Badge>
+            )}
+          </div>
+
+          {/* Rating */}
+          <div className="flex items-center gap-3">
+            <StarRating score={agent.ratingScore} />
+            <span className="text-xs text-muted-foreground">·</span>
+            <span className="text-xs text-muted-foreground">
+              {agent.totalCalls.toLocaleString()} calls
+            </span>
+            <span className="text-xs text-muted-foreground">·</span>
+            <span className="text-xs text-muted-foreground">{agent.roiScore}% ROI</span>
+          </div>
+
+          {/* Trust bar */}
+          {agent.trustScore !== undefined && (
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Trust Score</span>
+                <span className="font-medium">{agent.trustScore}%</span>
+              </div>
+              <Progress
+                value={agent.trustScore}
+                className="h-2"
+                indicatorClassName="bg-emerald-500"
+              />
+            </div>
+          )}
+
+          {/* Capabilities */}
+          {caps.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Capabilities
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {caps.map((cap) => (
+                  <Badge key={cap} variant="secondary" className="text-xs">
+                    {CAPABILITY_LABELS[cap] ?? cap.replace(/_/g, ' ')}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Agent ID */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Agent ID
+            </p>
+            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
+              <code className="flex-1 text-sm font-mono">{agent.agentId}</code>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 shrink-0"
+                onClick={() => copy(agent.agentId, 'id')}
+              >
+                {copiedId ? (
+                  <Check className="h-3 w-3 text-green-500" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Code snippet */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Quick Start (Python)
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 gap-1 text-xs"
+                onClick={() => copy(snippet, 'snippet')}
+              >
+                {copiedSnippet ? (
+                  <Check className="h-3 w-3 text-green-500" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )}
+                {copiedSnippet ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+            <pre className="rounded-md border bg-muted/50 p-3 text-xs font-mono overflow-x-auto leading-relaxed">
+              {snippet}
+            </pre>
+          </div>
+
+          {/* Next steps */}
+          <div className="rounded-md border bg-muted/30 px-4 py-3 space-y-1">
+            <p className="text-xs font-semibold">Next steps</p>
+            <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+              <li>
+                Go to <strong>My Agents</strong> and create an agent to get your API key
+              </li>
+              <li>
+                Install the SDK: <code className="bg-muted px-1 rounded">pip install flypy</code>
+              </li>
+              <li>Use the Quick Start snippet above to call this agent</li>
+            </ol>
+          </div>
+        </div>
+
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={onClose} className="sm:flex-none">
+            Close
+          </Button>
+          <Button variant="outline" onClick={onGoToSDK} className="sm:flex-none">
+            SDK Docs
+          </Button>
+          <Button onClick={onGoToAgents} className="flex-1 sm:flex-none">
+            Go to My Agents
+            <ExternalLink className="h-4 w-4 ml-2" />
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

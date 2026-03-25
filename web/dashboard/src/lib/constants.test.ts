@@ -4,6 +4,8 @@ import { getCanonicalNavPath, ROUTE_BUILDERS, ROUTES } from './constants';
 describe('getCanonicalNavPath', () => {
   it('returns exact path when pathname is a main nav path', () => {
     expect(getCanonicalNavPath('/dashboard')).toBe('/dashboard');
+    expect(getCanonicalNavPath(ROUTES.OVERVIEW)).toBe(ROUTES.OVERVIEW);
+    expect(getCanonicalNavPath(ROUTES.MARKETPLACE_FUNCTIONS)).toBe(ROUTES.DASHBOARD);
     expect(getCanonicalNavPath(ROUTES.FUNCTIONS)).toBe(ROUTES.FUNCTIONS);
     expect(getCanonicalNavPath(ROUTES.SETTINGS)).toBe(ROUTES.SETTINGS);
   });

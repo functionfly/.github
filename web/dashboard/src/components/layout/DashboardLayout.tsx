@@ -1,15 +1,18 @@
-import { useState } from "react";
-import { Outlet } from "react-router-dom";
-import { Sidebar } from "./Sidebar";
-import { Navbar } from "@/components/common/Navbar";
-import { Footer } from "@/pages/LandingPage/components";
-import { FlywheelChatAssistant } from "@/components/flywheel/ai/FlywheelChatAssistant";
+import { Navbar } from '@/components/common/Navbar';
+import { SupportBubble, SupportChatProvider, UnifiedChatWindow } from '@/components/support';
+import { Footer } from '@/pages/LandingPage/components';
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import { Sidebar } from './Sidebar';
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-bg-primary flex flex-row mesh-gradient-bg dashboard-enhanced" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div
+      className="min-h-screen bg-bg-primary flex flex-row mesh-gradient-bg dashboard-enhanced"
+      style={{ backgroundColor: 'var(--bg-primary)' }}
+    >
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-500/10 rounded-full blur-[128px] animate-float" />
@@ -34,8 +37,11 @@ export function DashboardLayout() {
 
         <Footer showScrollToTop={false} />
 
-        {/* Fly guide bot - bottom right */}
-        <FlywheelChatAssistant />
+        {/* Unified AI + support chat - bottom right */}
+        <SupportChatProvider>
+          <SupportBubble />
+          <UnifiedChatWindow />
+        </SupportChatProvider>
       </div>
     </div>
   );

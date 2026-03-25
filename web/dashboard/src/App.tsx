@@ -5,27 +5,30 @@ import { ThemeProvider } from '@/components/common/ThemeProvider';
 import { CookieConsentProvider } from '@/components/cookie-consent';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
-import { COMING_SOON_ONLY, DOCS_SITE_URL } from '@/lib/constants';
+import {
+  COMING_SOON_ONLY,
+  getMarketingPageUrl,
+  getMarketingRedirectOrigin,
+  getPublicDocsSiteOrigin,
+} from '@/lib/constants';
 import AgentMarketplacePage from '@/pages/AgentMarketplacePage';
 import { AgentMemoryPage } from '@/pages/AgentMemoryPage';
 import { AgentMemoryDetailPage } from '@/pages/AgentMemoryPage/AgentMemoryDetailPage';
+import AgentSDKIntegrationsPage from '@/pages/AgentSDKIntegrationsPage';
 import AgentsPage from '@/pages/AgentsPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { APIKeyDetailPage, APIKeysPage } from '@/pages/api-keys';
 import { AppDetailPage } from '@/pages/AppDetailPage';
-import { AppsPage } from '@/pages/AppsPage';
+import { AppsPage, CreateAppPage } from '@/pages/AppsPage';
 import { AuthPage } from '@/pages/AuthPage';
 import { OAuthCallback } from '@/pages/AuthPage/OAuthCallback';
 import { PasswordResetPage } from '@/pages/AuthPage/PasswordResetPage';
 import { VerifyEmailPage } from '@/pages/AuthPage/VerifyEmailPage';
-import BlogPage from '@/pages/BlogPage';
-import BlogPostPage from '@/pages/BlogPostPage';
 import { BrowseFunctionsPage } from '@/pages/BrowseFunctionsPage';
 import ChangelogPage from '@/pages/ChangelogPage';
 import { ContactPage } from '@/pages/ContactPage';
 import ConversationsPage from '@/pages/ConversationsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
-import { DocsPage } from '@/pages/DocsPage';
 import EnterpriseSLAPage from '@/pages/EnterpriseSLAPage';
 import EvolutionPage from '@/pages/EvolutionPage';
 import ExecutionExplorerPage from '@/pages/ExecutionExplorerPage';
@@ -41,14 +44,12 @@ import { FunctionEditorPage } from '@/pages/FunctionsPage/FunctionEditorPage';
 import { FunctionLogsPage } from '@/pages/FunctionsPage/FunctionLogsPage';
 import { FunctionSettingsPage } from '@/pages/FunctionsPage/FunctionSettingsPage';
 import { IntegrationsPage } from '@/pages/IntegrationsPage';
-import { LandingPage } from '@/pages/LandingPage';
 import { LaunchPage } from '@/pages/LaunchPage';
 import { MyProfilePage } from '@/pages/MyProfilePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { OnboardingPage } from '@/pages/OnboardingPage';
 import { PlaygroundPage } from '@/pages/PlaygroundPage';
 import { PricingPage } from '@/pages/PricingPage';
-import { PrivacyPage } from '@/pages/PrivacyPage';
 import { ProfilePage } from '@/pages/ProfilePage/ProfilePage';
 import { ProfileSettingsPage } from '@/pages/ProfileSettingsPage';
 import { ProvidersPage } from '@/pages/ProvidersPage';
@@ -66,7 +67,6 @@ import { StatePage } from '@/pages/StatePage';
 import { StateDetailPage } from '@/pages/StatePage/StateDetailPage';
 import { TeamPage } from '@/pages/TeamPage';
 import { TeamsPage } from '@/pages/TeamsPage';
-import { TermsPage } from '@/pages/TermsPage';
 import { UserDashboardFunctionsPage } from '@/pages/UserDashboardFunctionsPage';
 import { UserDashboardSettingsPage } from '@/pages/UserDashboardSettingsPage';
 import WalletPage from '@/pages/WalletPage';
@@ -98,34 +98,52 @@ function RegistryFunctionRedirect() {
   return <Navigate to={`/fx/${author}/${name}`} replace />;
 }
 
-/** Docs landing: link to main docs site (no redirect to avoid loops). */
-function DocsRedirectPage() {
-  const { slug } = useParams<{ slug?: string }>();
-  const target = slug ? `${DOCS_SITE_URL}/${slug}` : DOCS_SITE_URL;
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-bg-primary p-6 text-center">
-      <h1 className="text-xl font-semibold text-text-primary">Documentation</h1>
-      <p className="text-text-secondary max-w-sm">
-        Our full documentation, API reference, and guides live on our docs site.
-      </p>
-      <a
-        href={target}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition-colors"
-      >
-        Open docs site
-        <span aria-hidden>→</span>
-      </a>
-      <a href="/" className="text-sm text-text-muted hover:text-text-primary transition-colors">
-        ← Back to home
-      </a>
-    </div>
-  );
+/** Handles "/": logged-out users go to the Astro marketing site (web/site); authenticated → dashboard. */
+function HomeRedirect() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const marketingOrigin = getMarketingRedirectOrigin();
+
+  useEffect(() => {
+    if (isAuthenticated) return;
+    window.location.replace(marketingOrigin);
+  }, [isAuthenticated, marketingOrigin]);
+
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  return null;
 }
 
-// Alias for any remaining references (e.g. hot reload cache)
-const RedirectToDocs = DocsRedirectPage;
+/** Sends /docs and /docs/:slug to the standalone Astro docs site (web/docs). */
+function DocsOutboundRedirect() {
+  const { slug } = useParams<{ slug?: string }>();
+  const origin = getPublicDocsSiteOrigin();
+
+  useEffect(() => {
+    const path = slug ? `/docs/${slug}` : '/';
+    window.location.replace(`${origin}${path}`);
+  }, [slug, origin]);
+
+  return null;
+}
+
+/** Privacy / terms live on the Astro marketing site (web/site). */
+function MarketingLegalRedirect({ page }: { page: 'privacy' | 'terms' }) {
+  const url = getMarketingPageUrl(`/${page}`);
+  useEffect(() => {
+    window.location.replace(url);
+  }, [url]);
+  return null;
+}
+
+/** Public blog lives on the Astro marketing site (web/site); redirect app /blog bookmarks. */
+function MarketingBlogRedirect() {
+  const { slug } = useParams<{ slug?: string }>();
+  const path = slug ? `/blog/${slug}` : '/blog';
+  const url = getMarketingPageUrl(path);
+  useEffect(() => {
+    window.location.replace(url);
+  }, [url]);
+  return null;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -334,7 +352,7 @@ function AppContent() {
     <NotificationsProvider>
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<HomeRedirect />} />
         <Route path="/launch" element={<LaunchPage />} />
         <Route path="/coming-soon" element={<LaunchPage />} />
         <Route path="/status" element={<StatusPage />} />
@@ -342,17 +360,17 @@ function AppContent() {
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
         <Route path="/team" element={<TeamPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/privacy" element={<MarketingLegalRedirect page="privacy" />} />
         <Route path="/security" element={<SecurityPage />} />
-        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/terms" element={<MarketingLegalRedirect page="terms" />} />
         <Route path="/changelog" element={<ChangelogPage />} />
         <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/faq" element={<FAQPage />} />
         <Route path="/contact" element={<ContactPage />} />
-        <Route path="/docs" element={<DocsPage />} />
-        <Route path="/docs/:slug" element={<DocsPage />} />
-        <Route path="/blog" element={<BlogPage />} />
-        <Route path="/blog/:slug" element={<BlogPostPage />} />
+        <Route path="/docs" element={<DocsOutboundRedirect />} />
+        <Route path="/docs/:slug" element={<DocsOutboundRedirect />} />
+        <Route path="/blog" element={<MarketingBlogRedirect />} />
+        <Route path="/blog/:slug" element={<MarketingBlogRedirect />} />
         <Route path="/products/state-fabric" element={<StateFabricMarketingPage />} />
         <Route path="/registry" element={<BrowseFunctionsPage />} />
         <Route path="/registry/:author/:name" element={<RegistryFunctionRedirect />} />
@@ -451,9 +469,11 @@ function AppContent() {
             </ProtectedRoute>
           }
         >
-          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="dashboard" element={<FunctionMarketplacePage />} />
+          <Route path="overview" element={<DashboardPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="apps" element={<AppsPage />} />
+          <Route path="apps/new" element={<CreateAppPage />} />
           <Route path="apps/:appId" element={<AppDetailPage />} />
           <Route path="functions" element={<FunctionsPage />} />
           <Route path="functions/new" element={<FunctionEditorPage />} />
@@ -499,8 +519,9 @@ function AppContent() {
           {/* Agent Routes */}
           <Route path="agents" element={<AgentsPage />} />
           <Route path="agents/:agentId" element={<AgentsPage />} />
+          <Route path="sdk-integrations" element={<AgentSDKIntegrationsPage />} />
           <Route path="marketplace/agents" element={<AgentMarketplacePage />} />
-          <Route path="marketplace/functions" element={<FunctionMarketplacePage />} />
+          <Route path="marketplace/functions" element={<Navigate to="/dashboard" replace />} />
           <Route path="evolution" element={<EvolutionPage />} />
           <Route path="evolution/:agentId" element={<EvolutionPage />} />
           <Route path="wallet" element={<WalletPage />} />
@@ -529,8 +550,8 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <CookieConsentProvider>
-            <Analytics />
             <BrowserRouter>
+              <Analytics />
               <GlobalKeyboardShortcuts />
               <AppContent />
             </BrowserRouter>

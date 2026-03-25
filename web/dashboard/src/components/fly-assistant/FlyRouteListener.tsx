@@ -97,10 +97,18 @@ const defaultRoutePatterns: RoutePattern[] = [
       category: match[1] || "all",
     }),
   },
-  // Dashboard home
+  // Function marketplace home (logged-in default at /dashboard)
+  {
+    pattern: /^\/dashboard\/?$/,
+    name: "Function Marketplace",
+    extract: () => ({
+      category: "all",
+    }),
+  },
+  // Marketing / public home
   {
     pattern: /^\/$/,
-    name: "Dashboard",
+    name: "Home",
     extract: () => ({}),
   },
   // Functions list

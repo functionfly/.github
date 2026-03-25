@@ -1,6 +1,6 @@
-import { useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
 import { ROUTES } from '@/lib/constants';
+import { useCallback, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 interface KeyboardShortcut {
   key: string;
@@ -39,70 +39,83 @@ export function useKeyboardNavigation(config: KeyboardNavigationConfig = {}) {
 
   const location = useLocation();
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (!enabled) return;
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!enabled) return;
 
-    // Handle custom shortcuts first
-    for (const shortcut of shortcuts) {
-      if (
-        e.key === shortcut.key &&
-        !!e.ctrlKey === !!shortcut.ctrlKey &&
-        !!e.metaKey === !!shortcut.metaKey &&
-        !!e.shiftKey === !!shortcut.shiftKey &&
-        !!e.altKey === !!shortcut.altKey
-      ) {
-        e.preventDefault();
-        shortcut.action();
-        return;
+      // Handle custom shortcuts first
+      for (const shortcut of shortcuts) {
+        if (
+          e.key === shortcut.key &&
+          !!e.ctrlKey === !!shortcut.ctrlKey &&
+          !!e.metaKey === !!shortcut.metaKey &&
+          !!e.shiftKey === !!shortcut.shiftKey &&
+          !!e.altKey === !!shortcut.altKey
+        ) {
+          e.preventDefault();
+          shortcut.action();
+          return;
+        }
       }
-    }
 
-    // Handle arrow keys and special keys
-    switch (e.key) {
-      case 'ArrowUp':
-        if (onArrowUp) {
-          e.preventDefault();
-          onArrowUp();
-        }
-        break;
-      case 'ArrowDown':
-        if (onArrowDown) {
-          e.preventDefault();
-          onArrowDown();
-        }
-        break;
-      case 'ArrowLeft':
-        if (onArrowLeft) {
-          e.preventDefault();
-          onArrowLeft();
-        }
-        break;
-      case 'ArrowRight':
-        if (onArrowRight) {
-          e.preventDefault();
-          onArrowRight();
-        }
-        break;
-      case 'Enter':
-        if (onEnter) {
-          e.preventDefault();
-          onEnter();
-        }
-        break;
-      case 'Escape':
-        if (onEscape) {
-          e.preventDefault();
-          onEscape();
-        }
-        break;
-      case 'Tab':
-        if (onTab) {
-          e.preventDefault();
-          onTab();
-        }
-        break;
-    }
-  }, [shortcuts, onArrowUp, onArrowDown, onArrowLeft, onArrowRight, onEnter, onEscape, onTab, enabled]);
+      // Handle arrow keys and special keys
+      switch (e.key) {
+        case 'ArrowUp':
+          if (onArrowUp) {
+            e.preventDefault();
+            onArrowUp();
+          }
+          break;
+        case 'ArrowDown':
+          if (onArrowDown) {
+            e.preventDefault();
+            onArrowDown();
+          }
+          break;
+        case 'ArrowLeft':
+          if (onArrowLeft) {
+            e.preventDefault();
+            onArrowLeft();
+          }
+          break;
+        case 'ArrowRight':
+          if (onArrowRight) {
+            e.preventDefault();
+            onArrowRight();
+          }
+          break;
+        case 'Enter':
+          if (onEnter) {
+            e.preventDefault();
+            onEnter();
+          }
+          break;
+        case 'Escape':
+          if (onEscape) {
+            e.preventDefault();
+            onEscape();
+          }
+          break;
+        case 'Tab':
+          if (onTab) {
+            e.preventDefault();
+            onTab();
+          }
+          break;
+      }
+    },
+    [
+      shortcuts,
+      onArrowUp,
+      onArrowDown,
+      onArrowLeft,
+      onArrowRight,
+      onEnter,
+      onEscape,
+      onTab,
+      enabled,
+    ]
+  );
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
@@ -117,7 +130,7 @@ export function useKeyboardNavigation(config: KeyboardNavigationConfig = {}) {
         action: () => {
           // Go to dashboard - implement in component
         },
-        description: 'Go to Dashboard',
+        description: 'Go to Function Marketplace',
       },
       {
         key: 'f',
@@ -147,7 +160,7 @@ export function useKeyboardNavigation(config: KeyboardNavigationConfig = {}) {
         },
         description: 'Go to Settings',
       },
-    ].filter(shortcut => {
+    ].filter((shortcut) => {
       // Only include shortcuts that make sense for current page
       switch (shortcut.key) {
         case 'g':

@@ -1,16 +1,33 @@
-import { useEffect, useState } from 'react';
-import { Analytics as VercelAnalytics } from '@vercel/analytics/react';
-import { loadGoogleAnalytics } from '@/components/cookie-consent/ConditionalScriptLoader';
 import { getAnalyticsSettings } from '@/api';
-import type { AnalyticsSettings } from '@/types';
+import { loadGoogleAnalytics } from '@/components/cookie-consent/ConditionalScriptLoader';
+import { COMING_SOON_ONLY } from '@/lib/constants';
 import { useAuthStore } from '@/stores/authStore';
+import type { AnalyticsSettings } from '@/types';
+import { Analytics as VercelAnalytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
+import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 const ADMIN_ROLES = ['admin', 'super_admin'];
+
+/**
+ * Only load Vercel Analytics and Speed Insights when deployed on Vercel (avoids 404/MIME errors on Cloudflare Pages).
+ * Speed Insights on the coming-soon/launch page is rendered by LaunchPage to avoid duplicate scripts.
+ */
+const useVercelInsights = () => import.meta.env.VITE_VERCEL_ANALYTICS === 'true';
+
+/** When true, only LaunchPage is shown so it owns Speed Insights; we skip it here. */
+const LAUNCH_PAGE_PATHS = ['/coming-soon', '/launch'];
 
 export function Analytics() {
   const [settings, setSettings] = useState<AnalyticsSettings | null>(null);
   const [loaded, setLoaded] = useState(false);
   const user = useAuthStore((s) => s.user);
+  const enableVercelInsights = useVercelInsights();
+  const location = useLocation();
+  const isLaunchPage =
+    COMING_SOON_ONLY ||
+    LAUNCH_PAGE_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'));
 
   useEffect(() => {
     const loadAnalyticsSettings = async () => {
@@ -42,22 +59,29 @@ export function Analytics() {
     loadAnalyticsSettings();
   }, [user?.role]);
 
+  const vercelNode = enableVercelInsights ? (
+    <>
+      <VercelAnalytics />
+      {!isLaunchPage && <SpeedInsights />}
+    </>
+  ) : null;
+
   if (!loaded) {
-    return <VercelAnalytics />;
+    return <>{vercelNode}</>;
   }
 
   // Only load additional analytics for authenticated users with custom settings
   if (!settings) {
-    return <VercelAnalytics />;
+    return <>{vercelNode}</>;
   }
 
   return (
     <>
-      <VercelAnalytics />
+      {vercelNode}
       {settings.googleAnalytics?.enabled &&
-       settings.googleAnalytics.measurementId &&
-       settings.googleAnalytics.measurementId !== 'G-XXXXXXXXXX' &&
-       loadGoogleAnalytics(settings.googleAnalytics.measurementId)}
+        settings.googleAnalytics.measurementId &&
+        settings.googleAnalytics.measurementId !== 'G-XXXXXXXXXX' &&
+        loadGoogleAnalytics(settings.googleAnalytics.measurementId)}
       {/* Note: Hotjar is handled by PublicAnalytics for public pages */}
     </>
   );

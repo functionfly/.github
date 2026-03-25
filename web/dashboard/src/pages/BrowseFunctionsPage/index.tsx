@@ -1,120 +1,139 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  Search,
-  Star,
-  Download,
-  Code,
-  SortAsc,
-  SortDesc,
-  Grid,
-  List,
-  Play,
-  LogIn,
-  Zap,
-  Database,
-  Shield,
-  Mail,
-  FileText,
-  Image,
-  Brain,
-  CreditCard,
-  Wrench,
-  Globe,
-  GitBranch,
-  Layers,
-  Activity,
-  TrendingUp,
-  Filter,
-  X,
-  ChevronRight,
-  Boxes,
-  Sparkles,
-  FileJson,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { registryApi, type RegistryFunction } from '@/api/registry';
+import { Navbar } from '@/components/common/Navbar';
+import { MetaTags } from '@/components/seo/MetaTags';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Navbar } from "@/components/common/Navbar";
-import { Footer } from "@/pages/LandingPage/components";
-import { useAuthStore } from "@/stores/authStore";
-import { registryApi, type RegistryFunction } from "@/api/registry";
-import { useRealtime } from "@/hooks/useRealtime";
-import { MetaTags } from "@/components/seo/MetaTags";
+} from '@/components/ui/select';
+import { useRealtime } from '@/hooks/useRealtime';
+import { Footer } from '@/pages/LandingPage/components';
+import { useAuthStore } from '@/stores/authStore';
+import {
+  Activity,
+  Boxes,
+  Brain,
+  ChevronRight,
+  Code,
+  CreditCard,
+  Database,
+  Download,
+  FileJson,
+  FileText,
+  Filter,
+  GitBranch,
+  Globe,
+  Grid,
+  Image,
+  Layers,
+  List,
+  LogIn,
+  Mail,
+  Play,
+  Search,
+  Shield,
+  SortAsc,
+  SortDesc,
+  Sparkles,
+  Star,
+  TrendingUp,
+  Wrench,
+  X,
+  Zap,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 /* ────────────────────────────────────────────────────────────── */
 /*  Constants                                                      */
 /* ────────────────────────────────────────────────────────────── */
 
 const CATEGORIES = [
-  "All Categories",
-  "API Tools",
-  "arrays",
-  "Authentication",
-  "Data Format",
-  "Database",
-  "datetime",
-  "Email",
-  "File Processing",
-  "http",
-  "Image Processing",
-  "Machine Learning",
-  "math",
-  "media",
-  "Payment",
-  "security",
-  "text-processing",
-  "Utility",
-  "Web Scraping",
-  "Workflow",
+  'All Categories',
+  'API Tools',
+  'arrays',
+  'Authentication',
+  'Data Format',
+  'Database',
+  'datetime',
+  'Email',
+  'File Processing',
+  'http',
+  'Image Processing',
+  'Machine Learning',
+  'math',
+  'media',
+  'Payment',
+  'security',
+  'text-processing',
+  'Utility',
+  'Web Scraping',
+  'Workflow',
 ];
 
 const SORT_OPTIONS = [
-  { value: "popularity", label: "Popularity" },
-  { value: "rating", label: "Rating" },
-  { value: "reliability", label: "Reliability" },
-  { value: "newest", label: "Newest" },
-  { value: "name", label: "Name" },
+  { value: 'popularity', label: 'Popularity' },
+  { value: 'rating', label: 'Rating' },
+  { value: 'reliability', label: 'Reliability' },
+  { value: 'trust_score', label: 'Trust Score' },
+  { value: 'newest', label: 'Newest' },
+  { value: 'name', label: 'Name' },
+];
+
+/** Trust tier filter options */
+const TRUST_TIER_OPTIONS = [
+  { value: 'all', label: 'All Trust Levels' },
+  { value: 'highly_trusted', label: 'Highly Trusted' },
+  { value: 'verified', label: 'Verified' },
+  { value: 'basic', label: 'Basic' },
+  { value: 'unverified', label: 'Unverified' },
+];
+
+/** Minimum trust score filter options */
+const MIN_TRUST_SCORE_OPTIONS = [
+  { value: 0, label: 'Any Score' },
+  { value: 50, label: '50%+' },
+  { value: 70, label: '70%+' },
+  { value: 80, label: '80%+' },
+  { value: 90, label: '90%+' },
 ];
 
 /** Map each category to a lucide icon + a CSS color class */
 const CATEGORY_META: Record<string, { icon: React.ElementType; colorClass: string }> = {
-  "All Categories":   { icon: Boxes,      colorClass: "registry-cat-color-indigo"  },
-  "api":              { icon: Zap,        colorClass: "registry-cat-color-indigo"  },
-  "API Tools":        { icon: Zap,        colorClass: "registry-cat-color-indigo"  },
-  "arrays":           { icon: Layers,     colorClass: "registry-cat-color-slate"   },
-  "automation":       { icon: GitBranch,  colorClass: "registry-cat-color-orange"  },
-  "Authentication":   { icon: Shield,     colorClass: "registry-cat-color-violet"  },
-  "crypto":           { icon: Shield,     colorClass: "registry-cat-color-red"     },
-  "Data Format":      { icon: FileJson,   colorClass: "registry-cat-color-teal"    },
-  "data-formatting":  { icon: FileJson,   colorClass: "registry-cat-color-teal"    },
-  "Database":         { icon: Database,   colorClass: "registry-cat-color-sky"     },
-  "datetime":         { icon: Activity,   colorClass: "registry-cat-color-amber"   },
-  "Email":            { icon: Mail,       colorClass: "registry-cat-color-amber"   },
-  "encoding":         { icon: Code,       colorClass: "registry-cat-color-gray"    },
-  "File Processing":  { icon: FileText,   colorClass: "registry-cat-color-teal"    },
-  "formatting":       { icon: FileText,   colorClass: "registry-cat-color-blue"    },
-  "getting-started":  { icon: Sparkles,   colorClass: "registry-cat-color-yellow"  },
-  "http":             { icon: Globe,      colorClass: "registry-cat-color-green"    },
-  "Image Processing": { icon: Image,      colorClass: "registry-cat-color-fuchsia" },
-  "integrations":     { icon: Boxes,      colorClass: "registry-cat-color-purple"  },
-  "Machine Learning": { icon: Brain,      colorClass: "registry-cat-color-violet"  },
-  "math":             { icon: TrendingUp, colorClass: "registry-cat-color-cyan"   },
-  "media":            { icon: Image,      colorClass: "registry-cat-color-fuchsia" },
-  "Payment":          { icon: CreditCard, colorClass: "registry-cat-color-emerald" },
-  "security":         { icon: Shield,     colorClass: "registry-cat-color-violet"  },
-  "text":             { icon: FileText,   colorClass: "registry-cat-color-teal"    },
-  "text-processing":  { icon: FileText,   colorClass: "registry-cat-color-teal"    },
-  "utilities":        { icon: Wrench,     colorClass: "registry-cat-color-cyan"    },
-  "Utility":          { icon: Wrench,     colorClass: "registry-cat-color-cyan"    },
-  "Web Scraping":     { icon: Globe,      colorClass: "registry-cat-color-rose"    },
-  "Workflow":         { icon: GitBranch,  colorClass: "registry-cat-color-orange"  },
+  'All Categories': { icon: Boxes, colorClass: 'registry-cat-color-indigo' },
+  api: { icon: Zap, colorClass: 'registry-cat-color-indigo' },
+  'API Tools': { icon: Zap, colorClass: 'registry-cat-color-indigo' },
+  arrays: { icon: Layers, colorClass: 'registry-cat-color-slate' },
+  automation: { icon: GitBranch, colorClass: 'registry-cat-color-orange' },
+  Authentication: { icon: Shield, colorClass: 'registry-cat-color-violet' },
+  crypto: { icon: Shield, colorClass: 'registry-cat-color-red' },
+  'Data Format': { icon: FileJson, colorClass: 'registry-cat-color-teal' },
+  'data-formatting': { icon: FileJson, colorClass: 'registry-cat-color-teal' },
+  Database: { icon: Database, colorClass: 'registry-cat-color-sky' },
+  datetime: { icon: Activity, colorClass: 'registry-cat-color-amber' },
+  Email: { icon: Mail, colorClass: 'registry-cat-color-amber' },
+  encoding: { icon: Code, colorClass: 'registry-cat-color-gray' },
+  'File Processing': { icon: FileText, colorClass: 'registry-cat-color-teal' },
+  formatting: { icon: FileText, colorClass: 'registry-cat-color-blue' },
+  'getting-started': { icon: Sparkles, colorClass: 'registry-cat-color-yellow' },
+  http: { icon: Globe, colorClass: 'registry-cat-color-green' },
+  'Image Processing': { icon: Image, colorClass: 'registry-cat-color-fuchsia' },
+  integrations: { icon: Boxes, colorClass: 'registry-cat-color-purple' },
+  'Machine Learning': { icon: Brain, colorClass: 'registry-cat-color-violet' },
+  math: { icon: TrendingUp, colorClass: 'registry-cat-color-cyan' },
+  media: { icon: Image, colorClass: 'registry-cat-color-fuchsia' },
+  Payment: { icon: CreditCard, colorClass: 'registry-cat-color-emerald' },
+  security: { icon: Shield, colorClass: 'registry-cat-color-violet' },
+  text: { icon: FileText, colorClass: 'registry-cat-color-teal' },
+  'text-processing': { icon: FileText, colorClass: 'registry-cat-color-teal' },
+  utilities: { icon: Wrench, colorClass: 'registry-cat-color-cyan' },
+  Utility: { icon: Wrench, colorClass: 'registry-cat-color-cyan' },
+  'Web Scraping': { icon: Globe, colorClass: 'registry-cat-color-rose' },
+  Workflow: { icon: GitBranch, colorClass: 'registry-cat-color-orange' },
 };
 
 /* ────────────────────────────────────────────────────────────── */
@@ -122,19 +141,17 @@ const CATEGORY_META: Record<string, { icon: React.ElementType; colorClass: strin
 /* ────────────────────────────────────────────────────────────── */
 
 function formatScore(score: number | undefined | null): string {
-  return typeof score === "number" && !Number.isNaN(score)
-    ? score.toFixed(1)
-    : "0.0";
+  return typeof score === 'number' && !Number.isNaN(score) ? score.toFixed(1) : '0.0';
 }
 
 function reliabilityLabel(score: number): { label: string; cls: string } {
-  if (score >= 0.9) return { label: "High", cls: "registry-reliability-high" };
-  if (score >= 0.6) return { label: "Med",  cls: "registry-reliability-mid"  };
-  return { label: "Low", cls: "registry-reliability-low" };
+  if (score >= 0.9) return { label: 'High', cls: 'registry-reliability-high' };
+  if (score >= 0.6) return { label: 'Med', cls: 'registry-reliability-mid' };
+  return { label: 'Low', cls: 'registry-reliability-low' };
 }
 
 function getColorClass(category: string | undefined): string {
-  return CATEGORY_META[category ?? ""]?.colorClass ?? "registry-cat-color-indigo";
+  return CATEGORY_META[category ?? '']?.colorClass ?? 'registry-cat-color-indigo';
 }
 
 /* ────────────────────────────────────────────────────────────── */
@@ -174,12 +191,12 @@ function CategoryItem({
   active: boolean;
   onClick: () => void;
 }) {
-  const meta = CATEGORY_META[category] ?? { icon: Code, colorClass: "registry-cat-color-indigo" };
+  const meta = CATEGORY_META[category] ?? { icon: Code, colorClass: 'registry-cat-color-indigo' };
   const Icon = meta.icon;
   return (
     <button
       type="button"
-      className={`registry-cat-item ${meta.colorClass} ${active ? "active" : ""}`}
+      className={`registry-cat-item ${meta.colorClass} ${active ? 'active' : ''}`}
       onClick={onClick}
     >
       <span className="registry-cat-icon">
@@ -201,16 +218,16 @@ function MobileChip({
   active: boolean;
   onClick: () => void;
 }) {
-  const meta = CATEGORY_META[category] ?? { icon: Code, colorClass: "registry-cat-color-indigo" };
+  const meta = CATEGORY_META[category] ?? { icon: Code, colorClass: 'registry-cat-color-indigo' };
   const Icon = meta.icon;
   return (
     <button
       type="button"
-      className={`registry-mobile-chip ${active ? "active" : ""}`}
+      className={`registry-mobile-chip ${active ? 'active' : ''}`}
       onClick={onClick}
     >
       <Icon className="h-3 w-3 shrink-0" />
-      {category === "All Categories" ? "All" : category}
+      {category === 'All Categories' ? 'All' : category}
     </button>
   );
 }
@@ -239,23 +256,22 @@ function GridCard({
   const isFlashing = flashId === fn.id;
 
   return (
-    <div className={`registry-card ${isFlashing ? "registry-card-flash" : ""}`}>
+    <div className={`registry-card ${isFlashing ? 'registry-card-flash' : ''}`}>
       <div className="registry-card-accent" />
 
       {/* Card body */}
       <div className="p-4 flex flex-col h-full gap-3">
-
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div
               className={`registry-card-icon ${colorClass}`}
               style={{
-                background: "var(--cat-bg)",
-                border: "1px solid color-mix(in srgb, var(--cat-color) 25%, transparent)",
+                background: 'var(--cat-bg)',
+                border: '1px solid color-mix(in srgb, var(--cat-color) 25%, transparent)',
               }}
             >
-              <Code className="h-5 w-5" style={{ color: "var(--cat-color)" }} />
+              <Code className="h-5 w-5" style={{ color: 'var(--cat-color)' }} />
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-bold text-text-primary truncate leading-tight">
@@ -275,7 +291,7 @@ function GridCard({
 
         {/* Description */}
         <p className="text-xs text-text-secondary line-clamp-2 leading-relaxed flex-grow">
-          {fn.description || fn.title || "No description available."}
+          {fn.description || fn.title || 'No description available.'}
         </p>
 
         {/* Tags */}
@@ -305,7 +321,9 @@ function GridCard({
         <div className="flex items-center justify-between pt-1 border-t border-white/[0.05]">
           <div className="flex items-center gap-1.5">
             <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
-            <span className="text-xs font-bold text-text-primary">{formatScore(fn.overall_score)}</span>
+            <span className="text-xs font-bold text-text-primary">
+              {formatScore(fn.overall_score)}
+            </span>
             <div className="registry-rating-bar">
               <div className="registry-rating-fill" style={{ width: `${ratingPct}%` }} />
             </div>
@@ -359,11 +377,7 @@ function GridCard({
                        bg-brand-500/10 text-brand-400 hover:bg-brand-500/[0.18] hover:border-brand-500/40
                        transition-all duration-150 flex items-center justify-center gap-1"
           >
-            {isAuthenticated ? (
-              <Play className="h-3 w-3" />
-            ) : (
-              <LogIn className="h-3 w-3" />
-            )}
+            {isAuthenticated ? <Play className="h-3 w-3" /> : <LogIn className="h-3 w-3" />}
             Try
           </button>
         </div>
@@ -392,16 +406,16 @@ function ListCard({
   const isFlashing = flashId === fn.id;
 
   return (
-    <div className={`registry-list-card ${colorClass} ${isFlashing ? "registry-card-flash" : ""}`}>
+    <div className={`registry-list-card ${colorClass} ${isFlashing ? 'registry-card-flash' : ''}`}>
       {/* Icon */}
       <div
         className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
         style={{
-          background: "var(--cat-bg)",
-          border: "1px solid color-mix(in srgb, var(--cat-color) 25%, transparent)",
+          background: 'var(--cat-bg)',
+          border: '1px solid color-mix(in srgb, var(--cat-color) 25%, transparent)',
         }}
       >
-        <Code className="h-4 w-4" style={{ color: "var(--cat-color)" }} />
+        <Code className="h-4 w-4" style={{ color: 'var(--cat-color)' }} />
       </div>
 
       {/* Main info */}
@@ -418,7 +432,7 @@ function ListCard({
           )}
         </div>
         <p className="text-xs text-text-secondary line-clamp-1 mt-0.5">
-          {fn.title || fn.description || "No description"}
+          {fn.title || fn.description || 'No description'}
         </p>
       </div>
 
@@ -475,8 +489,8 @@ function ListCard({
 }
 
 /** Loading skeleton grid */
-function SkeletonGrid({ count = 6, mode }: { count?: number; mode: "grid" | "list" }) {
-  if (mode === "list") {
+function SkeletonGrid({ count = 6, mode }: { count?: number; mode: 'grid' | 'list' }) {
+  if (mode === 'list') {
     return (
       <div className="space-y-2">
         {Array.from({ length: count }).map((_, i) => (
@@ -529,13 +543,16 @@ export function BrowseFunctionsPage() {
   const [functions, setFunctions] = useState<RegistryFunction[]>([]);
   const [filteredFunctions, setFilteredFunctions] = useState<RegistryFunction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All Categories");
-  const [sortBy, setSortBy] = useState("popularity");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All Categories');
+  const [sortBy, setSortBy] = useState('popularity');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [flashId, setFlashId] = useState<string | null>(null);
+  // Trust-based filters
+  const [trustTierFilter, setTrustTierFilter] = useState('all');
+  const [minTrustScore, setMinTrustScore] = useState(0);
 
   /* Realtime flash on rating update */
   useEffect(() => {
@@ -546,7 +563,7 @@ export function BrowseFunctionsPage() {
       overall_score?: number;
       total_ratings?: number;
     }) => {
-      if (data.event === "registry_update" && data.update_type === "rating") {
+      if (data.event === 'registry_update' && data.update_type === 'rating') {
         setFunctions((prev) =>
           prev.map((fn) =>
             fn.id === data.function_id
@@ -564,8 +581,8 @@ export function BrowseFunctionsPage() {
         }
       }
     };
-    subscribe("registry_updates", handleRegistryUpdate);
-    return () => unsubscribe("registry_updates", handleRegistryUpdate);
+    subscribe('registry_updates', handleRegistryUpdate);
+    return () => unsubscribe('registry_updates', handleRegistryUpdate);
   }, [subscribe, unsubscribe]);
 
   useEffect(() => {
@@ -577,34 +594,66 @@ export function BrowseFunctionsPage() {
     const q = searchQuery.toLowerCase();
     let filtered = functions.filter((fn) => {
       const matchesSearch =
-        q === "" ||
+        q === '' ||
         fn.name.toLowerCase().includes(q) ||
         fn.author.toLowerCase().includes(q) ||
         (fn.description?.toLowerCase().includes(q) ?? false);
       const matchesCategory =
-        selectedCategory === "All Categories" || fn.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+        selectedCategory === 'All Categories' || fn.category === selectedCategory;
+
+      // Trust tier filter
+      const trustScore = fn.trust_score ?? fn.overall_score;
+      const trustTier = fn.trust_tier ?? fn.verification_status ?? 'unverified';
+      const matchesTrustTier =
+        trustTierFilter === 'all' ||
+        (trustTierFilter === 'highly_trusted' && trustTier === 'critical') ||
+        (trustTierFilter === 'verified' && (trustTier === 'high' || trustTier === 'verified')) ||
+        (trustTierFilter === 'basic' && (trustTier === 'medium' || trustTier === 'low')) ||
+        (trustTierFilter === 'unverified' &&
+          (trustTier === 'untrusted' || trustTier === 'unverified'));
+
+      // Minimum trust score filter
+      const matchesMinTrust = trustScore >= minTrustScore;
+
+      return matchesSearch && matchesCategory && matchesTrustTier && matchesMinTrust;
     });
 
     filtered.sort((a, b) => {
       let aVal: number | string, bVal: number | string;
       switch (sortBy) {
-        case "popularity":  aVal = a.popularity_score; bVal = b.popularity_score; break;
-        case "rating":      aVal = a.overall_score;    bVal = b.overall_score;    break;
-        case "reliability": aVal = a.reliability_score; bVal = b.reliability_score; break;
-        case "newest":
+        case 'popularity':
+          aVal = a.popularity_score;
+          bVal = b.popularity_score;
+          break;
+        case 'rating':
+          aVal = a.overall_score;
+          bVal = b.overall_score;
+          break;
+        case 'reliability':
+          aVal = a.reliability_score;
+          bVal = b.reliability_score;
+          break;
+        case 'trust_score':
+          aVal = a.trust_score ?? a.overall_score;
+          bVal = b.trust_score ?? b.overall_score;
+          break;
+        case 'newest':
           aVal = new Date(a.created_at).getTime();
           bVal = new Date(b.created_at).getTime();
           break;
-        case "name": aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); break;
-        default: return 0;
+        case 'name':
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        default:
+          return 0;
       }
-      if (sortOrder === "asc") return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      if (sortOrder === 'asc') return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
     });
 
     setFilteredFunctions(filtered);
-  }, [functions, searchQuery, selectedCategory, sortBy, sortOrder]);
+  }, [functions, searchQuery, selectedCategory, sortBy, sortOrder, trustTierFilter, minTrustScore]);
 
   const loadFunctions = async () => {
     try {
@@ -612,7 +661,7 @@ export function BrowseFunctionsPage() {
       const res = await registryApi.getFunctions({ limit: 500 });
       setFunctions(res.functions ?? []);
     } catch (e) {
-      console.error("Failed to load registry functions:", e);
+      console.error('Failed to load registry functions:', e);
     } finally {
       setLoading(false);
     }
@@ -620,7 +669,7 @@ export function BrowseFunctionsPage() {
 
   /* Category counts */
   const categoryCounts = useCallback((): Record<string, number> => {
-    const counts: Record<string, number> = { "All Categories": functions.length };
+    const counts: Record<string, number> = { 'All Categories': functions.length };
     for (const fn of functions) {
       if (fn.category) counts[fn.category] = (counts[fn.category] ?? 0) + 1;
     }
@@ -629,30 +678,37 @@ export function BrowseFunctionsPage() {
   const counts = categoryCounts();
 
   /* Nav helpers */
-  const getLoginRedirect = (path: string) =>
-    `/login?redirect=${encodeURIComponent(path)}`;
+  const getLoginRedirect = (path: string) => `/login?redirect=${encodeURIComponent(path)}`;
 
   const handleDeploy = (fn: RegistryFunction) => {
     const path = `/functions/deploy?registry=${fn.author}/${fn.name}`;
-    if (!isAuthenticated) { navigate(getLoginRedirect(path)); return; }
+    if (!isAuthenticated) {
+      navigate(getLoginRedirect(path));
+      return;
+    }
     navigate(path);
   };
 
   const handleTry = (fn: RegistryFunction) => {
     const path = `/run/${fn.author}/${fn.name}`;
-    if (!isAuthenticated) { navigate(getLoginRedirect(path)); return; }
+    if (!isAuthenticated) {
+      navigate(getLoginRedirect(path));
+      return;
+    }
     navigate(path);
   };
 
-  const handleView = (fn: RegistryFunction) =>
-    navigate(`/fx/${fn.author}/${fn.name}`);
+  const handleView = (fn: RegistryFunction) => navigate(`/fx/${fn.author}/${fn.name}`);
 
   /* Derived values */
   const totalFunctions = functions.length;
   /* Number of category options shown in the sidebar (excluding "All Categories") */
   const categoryCount = CATEGORIES.length - 1;
   const hasActiveFilters =
-    searchQuery !== "" || selectedCategory !== "All Categories";
+    searchQuery !== '' ||
+    selectedCategory !== 'All Categories' ||
+    trustTierFilter !== 'all' ||
+    minTrustScore > 0;
 
   /* ─── Render ─── */
   return (
@@ -660,12 +716,11 @@ export function BrowseFunctionsPage() {
       <MetaTags
         title="Browse Functions | Registry"
         description="Discover and explore premium serverless functions. Browse the registry, deploy instantly, or try live in the playground."
-        keywords={["function registry", "serverless", "browse functions", "deploy functions"]}
+        keywords={['function registry', 'serverless', 'browse functions', 'deploy functions']}
       />
       <Navbar variant="landing" />
 
       <main className="flex-1 pt-16">
-
         {/* ══════════════════════════════════════════════════════
             HERO
         ══════════════════════════════════════════════════════ */}
@@ -677,7 +732,6 @@ export function BrowseFunctionsPage() {
 
           <div className="container-wide px-4 lg:px-6">
             <div className="max-w-3xl animate-stagger">
-
               {/* Label pill + live badge */}
               <div className="flex items-center gap-3 mb-5">
                 <span className="registry-label-pill">
@@ -692,14 +746,15 @@ export function BrowseFunctionsPage() {
 
               {/* Title */}
               <h1 className="registry-hero-title mb-4">
-                Discover<br />
+                Discover
+                <br />
                 <span style={{ opacity: 0.7 }}>Functions</span>
               </h1>
 
               {/* Subtitle */}
               <p className="text-base md:text-lg text-text-secondary mb-7 max-w-xl leading-relaxed">
-                Browse community-built serverless functions. View docs and
-                examples freely — sign in to deploy or run them live.
+                Browse community-built serverless functions. View docs and examples freely — sign in
+                to deploy or run them live.
               </p>
 
               {/* Auth banner */}
@@ -714,14 +769,14 @@ export function BrowseFunctionsPage() {
                       size="sm"
                       variant="outline"
                       className="h-7 text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
-                      onClick={() => navigate("/login")}
+                      onClick={() => navigate('/login')}
                     >
                       Sign in
                     </Button>
                     <Button
                       size="sm"
                       className="h-7 text-xs bg-amber-500 hover:bg-amber-400 text-black font-semibold"
-                      onClick={() => navigate("/signup")}
+                      onClick={() => navigate('/signup')}
                     >
                       Sign up free
                     </Button>
@@ -732,17 +787,13 @@ export function BrowseFunctionsPage() {
               {/* Stats bar */}
               <div className="registry-stats-bar max-w-md">
                 <StatItem
-                  value={loading ? "—" : totalFunctions.toLocaleString()}
+                  value={loading ? '—' : totalFunctions.toLocaleString()}
                   label="Functions"
                   icon={Code}
                 />
+                <StatItem value={loading ? '—' : categoryCount} label="Categories" icon={Layers} />
                 <StatItem
-                  value={loading ? "—" : categoryCount}
-                  label="Categories"
-                  icon={Layers}
-                />
-                <StatItem
-                  value={loading ? "—" : filteredFunctions.length.toLocaleString()}
+                  value={loading ? '—' : filteredFunctions.length.toLocaleString()}
                   label="Visible"
                   icon={TrendingUp}
                 />
@@ -757,7 +808,6 @@ export function BrowseFunctionsPage() {
         <section className="py-8">
           <div className="container-wide px-4 lg:px-6">
             <div className="registry-layout">
-
               {/* ─── Sidebar (desktop) ──────────────────────────── */}
               <aside className="hidden lg:block">
                 <div className="registry-sidebar">
@@ -781,7 +831,6 @@ export function BrowseFunctionsPage() {
 
               {/* ─── Main content ───────────────────────────────── */}
               <div className="min-w-0 space-y-4">
-
                 {/* Mobile category chips */}
                 <div className="lg:hidden registry-mobile-cats">
                   {CATEGORIES.map((cat) => (
@@ -829,16 +878,16 @@ export function BrowseFunctionsPage() {
                     <div className="registry-view-toggle">
                       <button
                         type="button"
-                        className={`registry-view-btn ${viewMode === "grid" ? "active" : ""}`}
-                        onClick={() => setViewMode("grid")}
+                        className={`registry-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                        onClick={() => setViewMode('grid')}
                         aria-label="Grid view"
                       >
                         <Grid className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
-                        className={`registry-view-btn ${viewMode === "list" ? "active" : ""}`}
-                        onClick={() => setViewMode("list")}
+                        className={`registry-view-btn ${viewMode === 'list' ? 'active' : ''}`}
+                        onClick={() => setViewMode('list')}
                         aria-label="List view"
                       >
                         <List className="h-4 w-4" />
@@ -847,7 +896,7 @@ export function BrowseFunctionsPage() {
                   </div>
 
                   {/* Sort controls */}
-                  <div className={`${showMobileFilters ? "block" : "hidden"} lg:block`}>
+                  <div className={`${showMobileFilters ? 'block' : 'hidden'} lg:block`}>
                     <div className="registry-controls">
                       <span className="text-xs font-semibold text-text-muted whitespace-nowrap">
                         Sort by
@@ -866,65 +915,151 @@ export function BrowseFunctionsPage() {
                       </Select>
                       <button
                         type="button"
-                        onClick={() =>
-                          setSortOrder(sortOrder === "asc" ? "desc" : "asc")
-                        }
+                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                         className="h-8 w-8 flex items-center justify-center rounded-lg border border-white/[0.07]
                                    bg-white/[0.03] text-text-muted hover:text-text-primary hover:bg-white/[0.06]
                                    transition-all"
-                        aria-label={sortOrder === "asc" ? "Ascending" : "Descending"}
+                        aria-label={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
                       >
-                        {sortOrder === "asc" ? (
+                        {sortOrder === 'asc' ? (
                           <SortAsc className="h-3.5 w-3.5" />
                         ) : (
                           <SortDesc className="h-3.5 w-3.5" />
                         )}
                       </button>
                       <div className="flex-1" />
+                      {/* Trust filters - Desktop */}
+                      <div className="hidden xl:flex items-center gap-2">
+                        <Shield className="h-3.5 w-3.5 text-text-muted" aria-hidden="true" />
+                        <Select value={trustTierFilter} onValueChange={setTrustTierFilter}>
+                          <SelectTrigger className="h-8 text-xs bg-transparent border-white/[0.07] min-w-[120px] max-w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TRUST_TIER_OPTIONS.map((o) => (
+                              <SelectItem key={o.value} value={o.value} className="text-xs">
+                                {o.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={String(minTrustScore)}
+                          onValueChange={(v) => setMinTrustScore(Number(v))}
+                        >
+                          <SelectTrigger className="h-8 text-xs bg-transparent border-white/[0.07] min-w-[80px] max-w-[100px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MIN_TRUST_SCORE_OPTIONS.map((o) => (
+                              <SelectItem key={o.value} value={String(o.value)} className="text-xs">
+                                {o.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       {/* Results count */}
                       <div className="registry-results-count">
-                        <strong>
-                          {loading ? "…" : filteredFunctions.length}
-                        </strong>
+                        <strong>{loading ? '…' : filteredFunctions.length}</strong>
                         &nbsp;
-                        {filteredFunctions.length === 1 ? "function" : "functions"}
+                        {filteredFunctions.length === 1 ? 'function' : 'functions'}
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Trust filters - Mobile */}
+                  <div className={`xl:hidden ${showMobileFilters ? 'block' : 'hidden'}`}>
+                    <div className="registry-controls">
+                      <Shield className="h-3.5 w-3.5 text-text-muted" aria-hidden="true" />
+                      <span className="text-xs font-semibold text-text-muted whitespace-nowrap">
+                        Trust
+                      </span>
+                      <Select value={trustTierFilter} onValueChange={setTrustTierFilter}>
+                        <SelectTrigger className="flex-1 h-8 text-xs bg-transparent border-white/[0.07] min-w-[100px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TRUST_TIER_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value} className="text-xs">
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={String(minTrustScore)}
+                        onValueChange={(v) => setMinTrustScore(Number(v))}
+                      >
+                        <SelectTrigger className="flex-1 h-8 text-xs bg-transparent border-white/[0.07] min-w-[80px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MIN_TRUST_SCORE_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={String(o.value)} className="text-xs">
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
                   {/* Active filter chips */}
                   {hasActiveFilters && (
                     <div className="flex flex-wrap gap-2 items-center">
-                      <span className="text-xs text-text-muted font-medium">
-                        Filters:
-                      </span>
+                      <span className="text-xs text-text-muted font-medium">Filters:</span>
                       {searchQuery && (
                         <span className="registry-filter-chip">
-                          <Search className="h-2.5 w-2.5" />
-                          "
-                          {searchQuery.length > 16
-                            ? searchQuery.slice(0, 16) + "…"
-                            : searchQuery}
-                          "
+                          <Search className="h-2.5 w-2.5" />"
+                          {searchQuery.length > 16 ? searchQuery.slice(0, 16) + '…' : searchQuery}"
                           <button
                             type="button"
                             className="registry-filter-chip-close"
-                            onClick={() => setSearchQuery("")}
+                            onClick={() => setSearchQuery('')}
                             aria-label="Clear search"
                           >
                             <X className="h-2 w-2" />
                           </button>
                         </span>
                       )}
-                      {selectedCategory !== "All Categories" && (
+                      {selectedCategory !== 'All Categories' && (
                         <span className="registry-filter-chip">
                           <Layers className="h-2.5 w-2.5" />
                           {selectedCategory}
                           <button
                             type="button"
                             className="registry-filter-chip-close"
-                            onClick={() => setSelectedCategory("All Categories")}
+                            onClick={() => setSelectedCategory('All Categories')}
                             aria-label="Clear category"
+                          >
+                            <X className="h-2 w-2" />
+                          </button>
+                        </span>
+                      )}
+                      {trustTierFilter !== 'all' && (
+                        <span className="registry-filter-chip">
+                          <Shield className="h-2.5 w-2.5" />
+                          {TRUST_TIER_OPTIONS.find((o) => o.value === trustTierFilter)?.label}
+                          <button
+                            type="button"
+                            className="registry-filter-chip-close"
+                            onClick={() => setTrustTierFilter('all')}
+                            aria-label="Clear trust tier"
+                          >
+                            <X className="h-2 w-2" />
+                          </button>
+                        </span>
+                      )}
+                      {minTrustScore > 0 && (
+                        <span className="registry-filter-chip">
+                          <Shield className="h-2.5 w-2.5" />
+                          {minTrustScore}%+
+                          <button
+                            type="button"
+                            className="registry-filter-chip-close"
+                            onClick={() => setMinTrustScore(0)}
+                            aria-label="Clear minimum trust score"
                           >
                             <X className="h-2 w-2" />
                           </button>
@@ -933,8 +1068,10 @@ export function BrowseFunctionsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setSearchQuery("");
-                          setSelectedCategory("All Categories");
+                          setSearchQuery('');
+                          setSelectedCategory('All Categories');
+                          setTrustTierFilter('all');
+                          setMinTrustScore(0);
                         }}
                         className="text-xs text-text-muted hover:text-text-secondary transition-colors
                                    underline underline-offset-2"
@@ -953,19 +1090,19 @@ export function BrowseFunctionsPage() {
                     <div className="registry-empty-icon">
                       <Code className="h-8 w-8 text-brand-500" />
                     </div>
-                    <h3 className="text-xl font-bold text-text-primary mb-2">
-                      No functions found
-                    </h3>
+                    <h3 className="text-xl font-bold text-text-primary mb-2">No functions found</h3>
                     <p className="text-sm text-text-secondary max-w-sm mb-6">
-                      Try adjusting your search query or category filter to find
-                      what you're looking for.
+                      Try adjusting your search query or category filter to find what you're looking
+                      for.
                     </p>
                     {hasActiveFilters && (
                       <button
                         type="button"
                         onClick={() => {
-                          setSearchQuery("");
-                          setSelectedCategory("All Categories");
+                          setSearchQuery('');
+                          setSelectedCategory('All Categories');
+                          setTrustTierFilter('all');
+                          setMinTrustScore(0);
                         }}
                         className="h-9 px-5 rounded-xl text-sm font-semibold
                                    bg-gradient-to-r from-brand-500 to-purple-500 text-white
@@ -975,7 +1112,7 @@ export function BrowseFunctionsPage() {
                       </button>
                     )}
                   </div>
-                ) : viewMode === "grid" ? (
+                ) : viewMode === 'grid' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-stagger">
                     {filteredFunctions.map((fn) => (
                       <GridCard

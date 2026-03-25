@@ -1,5 +1,5 @@
+import { loginSchema, signupSchema } from '@/lib/validation';
 import { useFormWithValidation } from './useFormWithValidation';
-import { loginSchema, signupSchema, LoginFormData, SignupFormData } from '@/lib/validation';
 
 export function useLoginForm() {
   return useFormWithValidation({
@@ -23,6 +23,7 @@ export function useSignupForm() {
     enableRealtimeValidation: true,
     defaultValues: {
       name: '',
+      dateOfBirth: '',
       email: '',
       username: '',
       companyName: '',

@@ -6,6 +6,7 @@ import { useCookieConsentStore, CookieCategories } from '@/stores/cookieConsentS
 import { CookieCategoryToggle } from './CookieCategoryToggle.tsx';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { getMarketingPageUrl } from '@/lib/constants';
 import { Shield, Settings, Cookie } from 'lucide-react';
 
 interface CookiePreferencesModalProps {
@@ -155,7 +156,9 @@ export function CookiePreferencesModal({ isOpen, onClose }: CookiePreferencesMod
                         <p className="text-text-secondary text-xs leading-relaxed">
                           For any queries about our cookie policy or privacy practices, please{' '}
                           <a
-                            href="/privacy"
+                            href={getMarketingPageUrl('/privacy')}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="text-[#6366f1] hover:text-[#8b5cf6] transition-colors underline decoration-[#6366f1]/50 hover:decoration-[#8b5cf6]/50"
                           >
                             contact us

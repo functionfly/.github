@@ -1,9 +1,14 @@
-import { motion } from "framer-motion";
-import { MessageCircle, Mail, ArrowUp, Heart } from "lucide-react";
-import { Logo } from "@/components/common/Logo";
-import { GitHubIcon, XIcon, InstagramIcon, LinkedInIcon } from "@/pages/LandingPage/components/icons";
-import { DOCS_SITE_URL } from "@/lib/constants";
-import { useAuthStore } from "@/stores/authStore";
+import { Logo } from '@/components/common/Logo';
+import { DOCS_SITE_URL, getMarketingPageUrl } from '@/lib/constants';
+import {
+  GitHubIcon,
+  InstagramIcon,
+  LinkedInIcon,
+  XIcon,
+} from '@/pages/LandingPage/components/icons';
+import { useAuthStore } from '@/stores/authStore';
+import { motion } from 'framer-motion';
+import { ArrowUp, Heart, Mail, MessageCircle } from 'lucide-react';
 
 interface FooterProps {
   /** Set to false when another fixed bottom-right element (e.g. fly guide) is shown to avoid overlap. Default true. */
@@ -14,7 +19,12 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   return (
-    <footer className="relative overflow-hidden footer-enhanced" style={{ backgroundColor: 'var(--bg-primary)' }} role="contentinfo" aria-label="Site footer">
+    <footer
+      className="relative overflow-hidden footer-enhanced"
+      style={{ backgroundColor: 'var(--bg-primary)' }}
+      role="contentinfo"
+      aria-label="Site footer"
+    >
       {/* Background Effects */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-500/5 rounded-full blur-[128px] light-mode-enhanced" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-[128px] light-mode-enhanced" />
@@ -29,8 +39,8 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                 <Logo size="md" />
               </div>
               <p className="text-text-secondary mb-6 max-w-sm">
-                Serverless functions & AI agent infrastructure. Deploy to edge,
-                build AI agents with built-in cost controls, and scale with confidence.
+                Serverless functions & AI agent infrastructure. Deploy to edge, build AI agents with
+                built-in cost controls, and scale with confidence.
               </p>
               <div className="flex items-center gap-4" role="group" aria-label="Social links">
                 <motion.a
@@ -109,7 +119,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                 </li>
                 <li>
                   <a
-                    href={isAuthenticated ? "/state-fabric" : "/products/state-fabric"}
+                    href={isAuthenticated ? '/state-fabric' : '/products/state-fabric'}
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
                     State Fabric
@@ -190,7 +200,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                 </li>
                 <li>
                   <a
-                    href="/blog"
+                    href={getMarketingPageUrl('/blog')}
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
                     Blog
@@ -288,26 +298,29 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
           <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-sm text-text-muted">
-                <span>© 2026 FunctionFly. Made with</span>
+                <span>© {new Date().getFullYear()} FunctionFly LLC. Made with</span>
                 <Heart className="w-4 h-4 text-error fill-current" />
                 <span>for indie developers.</span>
               </div>
               <div className="flex items-center gap-6 text-sm">
                 <a
-                  href="#"
+                  href={getMarketingPageUrl('/terms')}
                   className="text-text-secondary hover:text-text-primary transition-colors underline-animation"
+                  rel="noopener noreferrer"
                 >
                   Terms of Service
                 </a>
                 <a
-                  href="/privacy"
+                  href={getMarketingPageUrl('/privacy')}
                   className="text-text-secondary hover:text-text-primary transition-colors underline-animation"
+                  rel="noopener noreferrer"
                 >
                   Privacy Policy
                 </a>
                 <a
-                  href="#"
+                  href={getMarketingPageUrl('/privacy#cookies')}
                   className="text-text-secondary hover:text-text-primary transition-colors underline-animation"
+                  rel="noopener noreferrer"
                 >
                   Cookie Policy
                 </a>
@@ -319,7 +332,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
         {/* Back to Top Button - hidden in dashboard layout so fly guide bot is visible */}
         {showScrollToTop && (
           <motion.button
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="fixed bottom-8 right-8 w-12 h-12 bg-gradient-to-r from-brand-500 to-purple-500 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl hover:shadow-brand-500/25 transition-all duration-200 z-50 glow hover-lift"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

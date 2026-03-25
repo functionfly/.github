@@ -12,8 +12,7 @@ export const PLAN_HIERARCHY: Record<PlanTier, number> = {
 /**
  * Check if user is on enterprise plan
  */
-export const isEnterprise = (plan?: string): boolean =>
-  plan?.toLowerCase() === 'enterprise';
+export const isEnterprise = (plan?: string): boolean => plan?.toLowerCase() === 'enterprise';
 
 /**
  * Check if user has at least the specified plan tier
@@ -79,10 +78,7 @@ export const getCustomDomainsLimit = (plan?: string): number => {
 /**
  * Check if the user can add more custom domains (has feature and under limit)
  */
-export const canAddCustomDomain = (
-  plan: string | undefined,
-  currentCount: number
-): boolean => {
+export const canAddCustomDomain = (plan: string | undefined, currentCount: number): boolean => {
   if (!hasFeature(plan, 'CUSTOM_DOMAINS')) return false;
   const limit = getCustomDomainsLimit(plan);
   if (limit === 0) return false;
@@ -92,14 +88,56 @@ export const canAddCustomDomain = (
 /**
  * Format custom domains usage for display (e.g. "2 of 5" or "Unlimited")
  */
-export const formatCustomDomainsRemaining = (
-  currentCount: number,
-  plan?: string
-): string => {
+export const formatCustomDomainsRemaining = (currentCount: number, plan?: string): string => {
   const limit = getCustomDomainsLimit(plan);
   if (limit === 0) return 'Not available on your plan';
   if (limit >= 10000) return `${currentCount} (unlimited)`;
   return `${currentCount} of ${limit}`;
+};
+
+/**
+ * Max state fabrics for the tier (from PLANS.limits.stateFabrics).
+ * Enterprise unlimited is represented as a large cap for display comparisons.
+ */
+export const getStateFabricsLimit = (plan?: string): number => {
+  const limits = getPlanLimits(plan);
+  if (!limits) return 0;
+  const raw = (limits as { stateFabrics?: number }).stateFabrics;
+  if (raw === undefined) return 0;
+  return raw === Infinity ? 10000 : raw;
+};
+
+/**
+ * Max agents for the tier (from PLANS.limits.agents).
+ */
+export const getAgentsLimit = (plan?: string): number => {
+  const limits = getPlanLimits(plan);
+  if (!limits) return 0;
+  const raw = (limits as { agents?: number }).agents;
+  if (raw === undefined) return 0;
+  return raw === Infinity ? 10000 : raw;
+};
+
+/**
+ * Whether the user may create another state fabric (plan feature + under limit).
+ */
+export const canCreateStateFabric = (plan: string | undefined, currentCount: number): boolean => {
+  if (!hasFeature(plan, 'STATE_FABRIC')) return false;
+  const limit = getStateFabricsLimit(plan);
+  if (limit === 0) return false;
+  if (limit >= 10000) return true;
+  return currentCount < limit;
+};
+
+/**
+ * Whether the user may register another agent (plan feature + under limit).
+ */
+export const canCreateAgent = (plan: string | undefined, currentCount: number): boolean => {
+  if (!hasFeature(plan, 'AGENTS')) return false;
+  const limit = getAgentsLimit(plan);
+  if (limit === 0) return false;
+  if (limit >= 10000) return true;
+  return currentCount < limit;
 };
 
 /**
@@ -122,10 +160,7 @@ export const canCreateTokens = (plan?: string): boolean => {
  * Format secrets remaining for display
  * Shows "X of Y used" or "X remaining" or "Unlimited"
  */
-export const formatSecretsRemaining = (
-  currentCount: number,
-  plan?: string
-): string => {
+export const formatSecretsRemaining = (currentCount: number, plan?: string): string => {
   const limit = getSecretsLimit(plan);
 
   if (limit === Infinity || limit >= 10000) {
@@ -133,7 +168,7 @@ export const formatSecretsRemaining = (
   }
 
   if (limit === 0) {
-    return "Secrets not available on your plan";
+    return 'Secrets not available on your plan';
   }
 
   const remaining = limit - currentCount;
@@ -154,6 +189,10 @@ export const FEATURES: Record<string, readonly PlanTier[]> = {
   API_ACCESS: ['starter', 'professional', 'enterprise'],
   WEBHOOKS: ['professional', 'enterprise'],
   CUSTOM_DOMAINS: ['starter', 'professional', 'enterprise'],
+  /** Stateful fabrics: Free has 0 quota; paid tiers per PLANS.limits.stateFabrics */
+  STATE_FABRIC: ['starter', 'professional', 'enterprise'],
+  /** AI agents: Free has 0 quota; paid tiers per PLANS.limits.agents */
+  AGENTS: ['starter', 'professional', 'enterprise'],
   UNLIMITED_FUNCTIONS: ['enterprise'],
   UNLIMITED_PROVIDERS: ['enterprise'],
   PRIORITY_SUPPORT: ['professional', 'enterprise'],
@@ -175,16 +214,13 @@ export const hasFeature = (plan: string | undefined, feature: FeatureKey): boole
  */
 export const getAvailableFeatures = (plan?: string): FeatureKey[] => {
   if (!plan) return [];
-  return (Object.keys(FEATURES) as FeatureKey[]).filter((feature) =>
-    hasFeature(plan, feature)
-  );
+  return (Object.keys(FEATURES) as FeatureKey[]).filter((feature) => hasFeature(plan, feature));
 };
 
 /**
  * Check if plan has unlimited resources
  */
-export const hasUnlimitedResources = (plan?: string): boolean =>
-  isEnterprise(plan);
+export const hasUnlimitedResources = (plan?: string): boolean => isEnterprise(plan);
 
 /**
  * Get plan color for UI theming

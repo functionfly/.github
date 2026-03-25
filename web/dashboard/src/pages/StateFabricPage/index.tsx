@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Plus,
   Database,
@@ -45,6 +45,13 @@ import {
   useStateFabrics,
   useDeleteStateFabric,
 } from "@/hooks/useStateFabric";
+import { usePlan } from "@/hooks/usePlan";
+import {
+  canCreateStateFabric,
+  getStateFabricsLimit,
+  hasFeature,
+} from "@/lib/plan-utils";
+import { ROUTES } from "@/lib/constants";
 import type { StateFabric } from "@/types";
 
 const getTypeIcon = (type: string) => {
@@ -94,6 +101,7 @@ const getTypeLabel = (type: string) => {
 
 export function StateFabricPage() {
   const navigate = useNavigate();
+  const { plan } = usePlan();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -102,6 +110,11 @@ export function StateFabricPage() {
 
   const { data: fabrics, isLoading, error, refetch } = useStateFabrics();
   const deleteFabric = useDeleteStateFabric();
+
+  const fabricCount = fabrics?.length ?? 0;
+  const canCreate = canCreateStateFabric(plan, fabricCount);
+  const stateFabricUnlocked = hasFeature(plan, "STATE_FABRIC");
+  const fabricLimit = getStateFabricsLimit(plan);
 
   const filteredFabrics = fabrics?.filter((fabric) => {
     const matchesSearch =
@@ -193,10 +206,42 @@ export function StateFabricPage() {
             Manage state and data orchestration across your applications
           </p>
         </div>
-        <Button className="gap-2" onClick={handleCreateFabric}>
-          <Plus className="w-4 h-4" />
-          Create State Fabric
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            className="gap-2"
+            onClick={handleCreateFabric}
+            disabled={!canCreate}
+            title={
+              !stateFabricUnlocked
+                ? "State Fabric is available on Starter and higher plans"
+                : !canCreate
+                  ? `Plan limit reached (${fabricCount} of ${fabricLimit >= 10000 ? "∞" : fabricLimit})`
+                  : undefined
+            }
+          >
+            <Plus className="w-4 h-4" />
+            Create State Fabric
+          </Button>
+          {!canCreate && (
+            <p className="text-xs text-text-muted text-right max-w-xs">
+              {!stateFabricUnlocked ? (
+                <>
+                  Upgrade to use State Fabric.{" "}
+                  <Link to={ROUTES.PRICING} className="text-brand-500 hover:underline">
+                    View plans
+                  </Link>
+                </>
+              ) : (
+                <>
+                  Limit reached for your plan.{" "}
+                  <Link to={ROUTES.PRICING} className="text-brand-500 hover:underline">
+                    Upgrade
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Stats Grid */}

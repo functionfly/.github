@@ -17,10 +17,10 @@ export function OfficeInformation() {
             Headquarters
           </h4>
           <div className="text-sm text-text-secondary space-y-1 leading-relaxed">
-            <p className="font-medium text-text-primary">FunctionFly Inc.</p>
-            <p>123 Tech Street, Suite 100</p>
-            <p>San Francisco, CA 94105</p>
-            <p>United States</p>
+            <p className="font-medium text-text-primary">FunctionFly LLC (d/b/a FunctionFly)</p>
+            <p className="text-text-muted text-xs">Wyoming limited liability company</p>
+            <p className="pt-2 text-text-primary">Fort Worth, Texas, United States</p>
+            <p className="text-text-muted text-xs">Principal operations</p>
           </div>
         </div>
 
@@ -32,7 +32,7 @@ export function OfficeInformation() {
           <div className="text-sm text-text-secondary space-y-2">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-brand-500 rounded-full"></div>
-              <p>Monday - Friday: 9:00 AM - 6:00 PM PST</p>
+              <p>Monday - Friday: 9:00 AM - 6:00 PM CT</p>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-text-muted rounded-full"></div>

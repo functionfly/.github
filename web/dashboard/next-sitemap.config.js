@@ -41,7 +41,7 @@ export default {
       };
     }
 
-    if (path.startsWith('/team') || path.startsWith('/blog')) {
+    if (path.startsWith('/team')) {
       return {
         ...defaultTransform,
         priority: 0.6,
@@ -51,70 +51,6 @@ export default {
 
     return defaultTransform;
   },
-  additionalPaths: async (config) => {
-    const result = [];
-
-    // Add dynamic blog posts
-    try {
-      // Try to fetch from API first
-      const apiUrl =
-        process.env.API_URL || `${process.env.SITE_URL || 'https://functionfly.dev'}/api`;
-      const response = await fetch(`${apiUrl}/v1/content/blog?limit=100`, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // Add timeout for build-time execution
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const posts = data.posts || [];
-
-        posts.forEach((post) => {
-          if (post.slug && post.is_published) {
-            result.push({
-              loc: `/blog/${post.slug}`,
-              changefreq: 'monthly',
-              priority: 0.6,
-              lastmod: post.updated_at || post.created_at || new Date().toISOString(),
-            });
-          }
-        });
-
-        console.log(`Added ${result.length} blog posts to sitemap from API`);
-      } else {
-        throw new Error(`API returned ${response.status}: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.warn(
-        'Failed to fetch blog posts from API, falling back to known posts:',
-        error.message
-      );
-
-      // Fallback to known blog post slugs if API fails
-      const blogPosts = [
-        'welcome-functionfly',
-        'getting-started-tutorial',
-        'compute-capsules-protocol',
-        'flywheel-network',
-        'secrets-vault',
-        'ai-agent-integration',
-        'builder-success-story',
-      ];
-
-      blogPosts.forEach((slug) => {
-        result.push({
-          loc: `/blog/${slug}`,
-          changefreq: 'monthly',
-          priority: 0.6,
-          lastmod: new Date().toISOString(),
-        });
-      });
-
-      console.log(`Added ${result.length} blog posts to sitemap using fallback`);
-    }
-
-    return result;
-  },
+  // Blog URLs are indexed on the marketing site (web/site) sitemap, not the app.
+  additionalPaths: async () => [],
 };

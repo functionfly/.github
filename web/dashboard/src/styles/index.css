@@ -3,7 +3,7 @@
    Premium Dark & Light Mode UI System
    ========================================================================== */
 
-@import "tailwindcss";
+@import 'tailwindcss';
 @plugin "@tailwindcss/typography";
 
 /* Import all style modules (use @/ so Vite resolves from src/ and Tailwind plugin can resolve) */
@@ -17,8 +17,11 @@
 @import '@/styles/registry.css';
 @import '@/styles/dre.css';
 @import '@/styles/notifications-light-mode.css';
+@import '@/styles/function-marketplace-light-mode.css';
+@import '@/styles/agent-sdk-integrations-light-mode.css';
 @import '@/styles/enterprise-sla.css';
 @import '@/styles/flywheel.css';
+@import '@/styles/aviation-theme.css';
 
 /* ==========================================================================
    Additional Utility Classes

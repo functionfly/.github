@@ -1,67 +1,64 @@
-export { apiClient } from "./client";
-export { authApi } from "./auth";
-export { usersApi } from "./users";
-export { createBillingPortalSession } from "./billing";
-export { appsApi } from "./apps";
-export { functionsApi } from "./functions";
-export { deploymentsApi } from "./deployments";
-export { providersApi } from "./providers";
-export { securityApi } from "./security";
-export { contentApi, contentAdminApi } from "./content";
-export { getAnalyticsSettings, updateAnalyticsSettings } from "./analytics";
-export { stateFabricApi, adminStateFabricApi } from "./stateFabric";
-export { agentApi } from "./agent";
 export {
-  tenantApi,
-  auditApi,
-  healthApi,
-  billingApi,
   analyticsApi,
-  type Tenant,
+  auditApi,
+  billingApi,
+  healthApi,
+  tenantApi,
   type AuditEvent,
-  type SystemHealth,
+  type Coupon,
+  type Invoice,
   type PricingTier,
   type Subscription,
-  type Invoice,
-  type Coupon
-} from "./admin.js";
-export { notificationsApi } from "./notifications";
+  type SystemHealth,
+  type Tenant,
+} from './admin.js';
+export { agentApi } from './agent';
+export { getAnalyticsSettings, updateAnalyticsSettings } from './analytics';
+export { apiKeysApi } from './apikeys';
+export { appsApi } from './apps';
+export { authApi } from './auth';
+export { createBillingPortalSession } from './billing';
+export { apiClient } from './client';
+export { contentAdminApi, contentApi } from './content';
+export { deploymentsApi } from './deployments';
+export { enterpriseSlaApi } from './enterprise';
 export type {
-  FetchNotificationsParams,
-  NotificationCount,
-} from "./notifications";
-export { enterpriseSlaApi } from "./enterprise";
-export type {
+  SLAIncidentItem,
+  SLAIncidentsResponse,
   SLAOverviewResponse,
   SLAUptimeHistoryResponse,
-  SLAIncidentsResponse,
-  SLAIncidentItem,
   UptimeHistoryPoint,
-} from "./enterprise";
-export { statusApi } from "./status";
+} from './enterprise';
+export { factoryApi } from './factory';
 export type {
-  PlatformStatus,
+  FactoryConfig,
+  FactoryRun,
+  FactoryStatus,
+  FactoryTotals,
+  FactoryVersion,
+  Opportunity,
+  PendingReview,
+  PublishedFunction,
+} from './factory';
+export { functionsApi } from './functions';
+export { notificationsApi } from './notifications';
+export type { FetchNotificationsParams, NotificationCount } from './notifications';
+export { dedupeConnectedProvidersBySlug, providersApi } from './providers';
+export { securityApi } from './security';
+export { adminStateFabricApi, stateFabricApi } from './stateFabric';
+export { statusApi } from './status';
+export type {
   ComponentHealth,
-  ProviderStatus,
+  CreateIncidentRequest,
+  GetIncidentsParams,
   Incident,
   IncidentSeverity,
   IncidentStatus,
-  MaintenanceWindow,
-  UptimeMetrics,
   LatencyMetrics,
-  CreateIncidentRequest,
+  MaintenanceWindow,
+  PlatformStatus,
+  ProviderStatus,
   UpdateIncidentRequest,
-  GetIncidentsParams,
-} from "./status";
-export { factoryApi } from "./factory";
-export type {
-  FactoryConfig,
-  FactoryTotals,
-  FactoryRun,
-  FactoryStatus,
-  Opportunity,
-  PendingReview,
-  FactoryVersion,
-  PublishedFunction,
-} from "./factory";
-export { apiKeysApi } from "./apikeys";
+  UptimeMetrics,
+} from './status';
+export { usersApi } from './users';

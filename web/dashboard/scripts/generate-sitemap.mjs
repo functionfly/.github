@@ -29,7 +29,6 @@ const STATIC_PATHS = [
   '/faq',
   '/contact',
   '/docs',
-  '/blog',
   '/products/state-fabric',
   '/registry',
 ];

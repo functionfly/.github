@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient } from './client';
 
 // ============================================================================
 // Types
@@ -39,6 +39,55 @@ export interface AgentListResponse {
   total: number;
   limit: number;
   offset: number;
+}
+
+/**
+ * Go handlers encode agents with snake_case JSON (`agent_id`, `tenant_id`, …).
+ * The dashboard uses camelCase AgentIdentity; normalize after every fetch.
+ */
+export function normalizeAgentIdentity(raw: unknown): AgentIdentity {
+  const r = raw as Record<string, unknown>;
+  return {
+    id: String(r.id ?? ''),
+    agentId: String(r.agentId ?? r.agent_id ?? ''),
+    name: String(r.name ?? ''),
+    description: r.description != null ? String(r.description) : undefined,
+    tenantId: String(r.tenantId ?? r.tenant_id ?? ''),
+    status: String(r.status ?? ''),
+    createdAt: String(r.createdAt ?? r.created_at ?? ''),
+    updatedAt: String(r.updatedAt ?? r.updated_at ?? ''),
+    parentAgentId:
+      r.parentAgentId != null
+        ? String(r.parentAgentId)
+        : r.parent_agent_id != null
+          ? String(r.parent_agent_id)
+          : undefined,
+    swarmRole:
+      r.swarmRole != null
+        ? String(r.swarmRole)
+        : r.swarm_role != null
+          ? String(r.swarm_role)
+          : undefined,
+    maxChildAgents:
+      typeof r.maxChildAgents === 'number'
+        ? r.maxChildAgents
+        : typeof r.max_child_agents === 'number'
+          ? r.max_child_agents
+          : undefined,
+    capabilities: r.capabilities as Record<string, unknown> | undefined,
+    autonomousEnabled:
+      typeof r.autonomousEnabled === 'boolean'
+        ? r.autonomousEnabled
+        : typeof r.autonomous_enabled === 'boolean'
+          ? r.autonomous_enabled
+          : undefined,
+    evolutionEnabled:
+      typeof r.evolutionEnabled === 'boolean'
+        ? r.evolutionEnabled
+        : typeof r.evolution_enabled === 'boolean'
+          ? r.evolution_enabled
+          : undefined,
+  };
 }
 
 export interface AgentQuota {
@@ -144,8 +193,8 @@ export interface ConcurrencyStats {
 export interface ChildAgent {
   id: string;
   name: string;
-  status: "active" | "suspended" | "pending";
-  swarmRole: "worker" | "manager" | "infrastructure";
+  status: 'active' | 'suspended' | 'pending';
+  swarmRole: 'worker' | 'manager' | 'infrastructure';
   trustScore: number;
   economicScore: number;
   parentAgentId?: string;
@@ -168,6 +217,25 @@ export interface AgentWallet {
   totalSpentUSD: number;
 }
 
+export interface AgentFinancialTransaction {
+  id: string;
+  tenant_id: string;
+  agent_id: string;
+  kind:
+    | 'credit_purchase'
+    | 'execution_debit'
+    | 'transfer_in'
+    | 'transfer_out'
+    | 'adjustment'
+    | 'refund';
+  amount_usd: number;
+  status: 'pending' | 'completed' | 'failed';
+  provider?: string;
+  provider_ref?: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface AgentMessage {
   id: string;
   fromAgentId: string;
@@ -184,8 +252,8 @@ export interface MarketplaceAgent {
   agentId: string;
   name: string;
   description: string;
-  listingType: "worker" | "manager" | "infrastructure";
-  pricingModel: "free" | "per_call" | "subscription" | "revenue_share";
+  listingType: 'worker' | 'manager' | 'infrastructure';
+  pricingModel: 'free' | 'per_call' | 'subscription' | 'revenue_share';
   pricePerCall?: number;
   subscriptionMonthlyUsd?: number;
   revenueSharePercent?: number;
@@ -211,7 +279,7 @@ export interface EvolutionProposal {
   id: string;
   agentId: string;
   proposalType: string;
-  status: "pending" | "approved" | "rejected" | "implemented";
+  status: 'pending' | 'approved' | 'rejected' | 'implemented';
   proposalData?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -242,26 +310,35 @@ export const agentApi = {
    * POST /v1/agent/register
    * Sends snake_case (agent_id) for API compatibility.
    */
-  registerAgent: (data: RegisterAgentRequest) =>
-    apiClient.post<RegisterAgentResponse>("/v1/agent/register", {
+  registerAgent: async (data: RegisterAgentRequest) => {
+    const res = await apiClient.post<RegisterAgentResponse>('/v1/agent/register', {
       agent_id: data.agentId,
       name: data.name,
-      ...(data.description != null && data.description !== "" && { description: data.description }),
-    }),
+      ...(data.description != null && data.description !== '' && { description: data.description }),
+    });
+    return { ...res, agent: normalizeAgentIdentity(res.agent) };
+  },
 
   /**
    * List all agents for the authenticated tenant.
    * GET /v1/agent
    */
-  listAgents: (params?: { limit?: number; offset?: number }) =>
-    apiClient.get<AgentListResponse>("/v1/agent", { params }),
+  listAgents: async (params?: { limit?: number; offset?: number }) => {
+    const res = await apiClient.get<AgentListResponse>('/v1/agent', { params });
+    return {
+      ...res,
+      agents: (res.agents ?? []).map((a) => normalizeAgentIdentity(a)),
+    };
+  },
 
   /**
    * Get an agent by ID.
    * GET /v1/agent/{agent_id}
    */
-  getAgent: (agentId: string) =>
-    apiClient.get<{ ok: boolean; agent: AgentIdentity }>(`/v1/agent/${agentId}`),
+  getAgent: async (agentId: string) => {
+    const res = await apiClient.get<{ ok: boolean; agent: unknown }>(`/v1/agent/${agentId}`);
+    return { ...res, agent: normalizeAgentIdentity(res.agent) };
+  },
 
   /**
    * Delete an agent.
@@ -279,19 +356,14 @@ export const agentApi = {
    * PUT /v1/agent/{agent_id}/quota
    */
   updateQuota: (agentId: string, quota: AgentQuota) =>
-    apiClient.put<{ ok: boolean; quota: AgentQuota }>(
-      `/v1/agent/${agentId}/quota`,
-      quota
-    ),
+    apiClient.put<{ ok: boolean; quota: AgentQuota }>(`/v1/agent/${agentId}/quota`, quota),
 
   /**
    * Get current agent usage.
    * GET /v1/agent/{agent_id}/usage
    */
   getUsage: (agentId: string) =>
-    apiClient.get<{ ok: boolean; usage: AgentUsage }>(
-      `/v1/agent/${agentId}/usage`
-    ),
+    apiClient.get<{ ok: boolean; usage: AgentUsage }>(`/v1/agent/${agentId}/usage`),
 
   // ---------------------------------------------------------------------------
   // Policy Management
@@ -302,19 +374,14 @@ export const agentApi = {
    * GET /v1/agent/{agent_id}/policy
    */
   getPolicy: (agentId: string) =>
-    apiClient.get<{ ok: boolean; policy: BehavioralPolicy }>(
-      `/v1/agent/${agentId}/policy`
-    ),
+    apiClient.get<{ ok: boolean; policy: BehavioralPolicy }>(`/v1/agent/${agentId}/policy`),
 
   /**
    * Update agent behavioral policy.
    * PUT /v1/agent/{agent_id}/policy
    */
   updatePolicy: (agentId: string, policy: Partial<BehavioralPolicy>) =>
-    apiClient.put<{ ok: boolean; policy: BehavioralPolicy }>(
-      `/v1/agent/${agentId}/policy`,
-      policy
-    ),
+    apiClient.put<{ ok: boolean; policy: BehavioralPolicy }>(`/v1/agent/${agentId}/policy`, policy),
 
   // ---------------------------------------------------------------------------
   // Execution History
@@ -325,10 +392,7 @@ export const agentApi = {
    * GET /v1/agent/{agent_id}/executions
    */
   listExecutions: (agentId: string, params?: { limit?: number; offset?: number }) =>
-    apiClient.get<ExecutionListResponse>(
-      `/v1/agent/${agentId}/executions`,
-      { params }
-    ),
+    apiClient.get<ExecutionListResponse>(`/v1/agent/${agentId}/executions`, { params }),
 
   /**
    * Get a specific execution record.
@@ -348,10 +412,9 @@ export const agentApi = {
    * GET /v1/agent/{agent_id}/analytics
    */
   getAnalytics: (agentId: string, params?: { since?: string }) =>
-    apiClient.get<{ ok: boolean; analytics: AgentAnalytics }>(
-      `/v1/agent/${agentId}/analytics`,
-      { params }
-    ),
+    apiClient.get<{ ok: boolean; analytics: AgentAnalytics }>(`/v1/agent/${agentId}/analytics`, {
+      params,
+    }),
 
   // ---------------------------------------------------------------------------
   // Session Management
@@ -394,47 +457,89 @@ export const agentApi = {
    * GET /v1/agent/{agent_id}/billing/summary
    */
   getBillingSummary: (agentId: string) =>
-    apiClient.get<{ ok: boolean; summary: BillingSummary }>(
-      `/v1/agent/${agentId}/billing/summary`
-    ),
+    apiClient.get<{ ok: boolean; summary: BillingSummary }>(`/v1/agent/${agentId}/billing/summary`),
 
   /**
    * Update spend cap.
    * PUT /v1/agent/{agent_id}/billing/spend-cap
    */
   updateSpendCap: (agentId: string, spendCap: number) =>
-    apiClient.put<{ ok: boolean }>(
-      `/v1/agent/${agentId}/billing/spend-cap`,
-      { spend_cap: spendCap }
-    ),
+    apiClient.put<{ ok: boolean }>(`/v1/agent/${agentId}/billing/spend-cap`, {
+      spend_cap: spendCap,
+    }),
 
   /**
    * Get cost breakdown.
    * GET /v1/agent/{agent_id}/cost-breakdown
    */
   getCostBreakdown: (agentId: string) =>
-    apiClient.get<{ ok: boolean; breakdown: CostBreakdown }>(
-      `/v1/agent/${agentId}/cost-breakdown`
-    ),
+    apiClient.get<{ ok: boolean; breakdown: CostBreakdown }>(`/v1/agent/${agentId}/cost-breakdown`),
 
   /**
    * Get credit balance.
    * GET /v1/agent/{agent_id}/credits/balance
    */
   getCreditBalance: (agentId: string) =>
-    apiClient.get<{ ok: boolean; balance: CreditBalance }>(
-      `/v1/agent/${agentId}/credits/balance`
-    ),
+    apiClient.get<{ ok: boolean; balance: CreditBalance }>(`/v1/agent/${agentId}/credits/balance`),
 
   /**
-   * Purchase credits.
+   * Purchase credits (direct charge - requires payment_method_id).
    * POST /v1/agent/{agent_id}/credits/purchase
    */
-  purchaseCredits: (agentId: string, amount: number) =>
-    apiClient.post<{ ok: boolean; balance: CreditBalance }>(
-      `/v1/agent/${agentId}/credits/purchase`,
-      { amount }
-    ),
+  purchaseCredits: (agentId: string, amountUsd: number, paymentMethodId?: string) =>
+    apiClient.post<{
+      ok: boolean;
+      agent_id: string;
+      credits_added_usd: number;
+      new_balance_usd: number;
+    }>(`/v1/agent/${agentId}/credits/purchase`, {
+      amount_usd: amountUsd,
+      payment_method_id: paymentMethodId,
+    }),
+
+  /**
+   * Create Stripe Checkout session for purchasing credits.
+   * POST /v1/agent/{agent_id}/credits/checkout
+   */
+  createCreditsCheckout: (
+    agentId: string,
+    amountUsd: number,
+    successUrl?: string,
+    cancelUrl?: string
+  ) =>
+    apiClient.post<{
+      ok: boolean;
+      session_id: string;
+      url: string;
+    }>(`/v1/agent/${agentId}/credits/checkout`, {
+      amount_usd: amountUsd,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+    }),
+
+  /**
+   * List wallet transactions (financial ledger).
+   * GET /v1/agent/{agent_id}/transactions
+   */
+  listWalletTransactions: (agentId: string, params?: { limit?: number; offset?: number }) =>
+    apiClient.get<{
+      ok: boolean;
+      agent_id: string;
+      transactions: AgentFinancialTransaction[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/agent/${agentId}/transactions`, { params }),
+
+  /**
+   * Export wallet transactions as CSV.
+   * GET /v1/agent/{agent_id}/transactions?format=csv (handled via blob response)
+   */
+  exportWalletTransactions: (agentId: string) =>
+    apiClient.get<string>(`/v1/agent/${agentId}/transactions`, {
+      params: { format: 'csv', limit: 1000 },
+      responseType: 'text',
+    }),
 
   // ---------------------------------------------------------------------------
   // Concurrency
@@ -445,9 +550,7 @@ export const agentApi = {
    * GET /v1/agent/concurrency/stats
    */
   getConcurrencyStats: () =>
-    apiClient.get<{ ok: boolean; stats: ConcurrencyStats }>(
-      "/v1/agent/concurrency/stats"
-    ),
+    apiClient.get<{ ok: boolean; stats: ConcurrencyStats }>('/v1/agent/concurrency/stats'),
 
   // ---------------------------------------------------------------------------
   // Discovery & Execution
@@ -458,7 +561,7 @@ export const agentApi = {
    * GET /v1/agent/discover
    */
   discover: (params?: { query?: string; limit?: number }) =>
-    apiClient.get<{ ok: boolean; functions: unknown[] }>("/v1/agent/discover", {
+    apiClient.get<{ ok: boolean; functions: unknown[] }>('/v1/agent/discover', {
       params,
     }),
 
@@ -467,9 +570,7 @@ export const agentApi = {
    * GET /v1/agent/discover/{author}/{name}
    */
   discoverFunction: (author: string, name: string) =>
-    apiClient.get<{ ok: boolean; function: unknown }>(
-      `/v1/agent/discover/${author}/${name}`
-    ),
+    apiClient.get<{ ok: boolean; function: unknown }>(`/v1/agent/discover/${author}/${name}`),
 
   /**
    * Execute a function using an agent.
@@ -515,18 +616,14 @@ export const agentApi = {
    * GET /v1/agent/{id}/children
    */
   getChildren: (agentId: string) =>
-    apiClient.get<{ ok: boolean; children: ChildAgent[] }>(
-      `/v1/agent/${agentId}/children`
-    ),
+    apiClient.get<{ ok: boolean; children: ChildAgent[] }>(`/v1/agent/${agentId}/children`),
 
   /**
    * Get parent agent.
    * GET /v1/agent/{id}/parent
    */
   getParent: (agentId: string) =>
-    apiClient.get<{ ok: boolean; parent: AgentIdentity }>(
-      `/v1/agent/${agentId}/parent`
-    ),
+    apiClient.get<{ ok: boolean; parent: AgentIdentity }>(`/v1/agent/${agentId}/parent`),
 
   // ---------------------------------------------------------------------------
   // Messaging
@@ -554,9 +651,7 @@ export const agentApi = {
    * GET /v1/agent/{id}/inbox
    */
   getInbox: (agentId: string) =>
-    apiClient.get<{ ok: boolean; messages: AgentMessage[] }>(
-      `/v1/agent/${agentId}/inbox`
-    ),
+    apiClient.get<{ ok: boolean; messages: AgentMessage[] }>(`/v1/agent/${agentId}/inbox`),
 
   // ---------------------------------------------------------------------------
   // Wallet
@@ -567,9 +662,7 @@ export const agentApi = {
    * GET /v1/agent/{id}/wallet
    */
   getWallet: (agentId: string) =>
-    apiClient.get<{ ok: boolean; wallet: AgentWallet }>(
-      `/v1/agent/${agentId}/wallet`
-    ),
+    apiClient.get<{ ok: boolean; wallet: AgentWallet }>(`/v1/agent/${agentId}/wallet`),
 
   // ---------------------------------------------------------------------------
   // Marketplace
@@ -581,7 +674,7 @@ export const agentApi = {
    */
   searchMarketplaceAgents: (params?: MarketplaceAgentSearchParams) =>
     apiClient.get<{ ok: boolean; agents: MarketplaceAgent[]; total: number }>(
-      "/v1/marketplace/agents",
+      '/v1/marketplace/agents',
       { params }
     ),
 
@@ -597,10 +690,7 @@ export const agentApi = {
     subscription_monthly_usd?: number;
     is_active: boolean;
   }) =>
-    apiClient.post<{ ok: boolean; listing: MarketplaceAgent }>(
-      "/v1/marketplace/agent/list",
-      data
-    ),
+    apiClient.post<{ ok: boolean; listing: MarketplaceAgent }>('/v1/marketplace/agent/list', data),
 
   // ---------------------------------------------------------------------------
   // Evolution
@@ -645,7 +735,5 @@ export const agentApi = {
    * GET /v1/agent/{id}/schedules
    */
   getSchedules: (agentId: string) =>
-    apiClient.get<{ ok: boolean; schedules: AutonomySchedule[] }>(
-      `/v1/agent/${agentId}/schedules`
-    ),
+    apiClient.get<{ ok: boolean; schedules: AutonomySchedule[] }>(`/v1/agent/${agentId}/schedules`),
 };

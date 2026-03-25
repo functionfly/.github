@@ -117,7 +117,7 @@ export const STATE_FABRIC_PLANS: StateFabricPlan[] = [
     id: "enterprise",
     name: "Enterprise",
     tagline: "StateFabric Enterprise",
-    price: "$1,999",
+    price: "Custom",
     priceValue: 1999,
     period: "month+",
     description: "Large enterprises & regulated industries.",
@@ -150,10 +150,46 @@ export const STATE_FABRIC_COMPARISON_ROWS = [
   { feature: "Support", sandbox: "Community", starter: "Email", pro: "Priority", business: "SLA", enterprise: "Dedicated" },
 ];
 
-/** Optional add-ons (available across tiers) */
-export const STATE_FABRIC_ADDONS = [
-  { name: "Hot Cache Booster", price: "$49", period: "/mo per 5GB", description: "Reduces replay and read costs" },
-  { name: "Advanced Security Pack", price: "$99", period: "/mo", description: "SOC2-friendly logs, key rotation, audit streams" },
-  { name: "AI Memory Pack", price: "$149", period: "/mo", description: "Vector index, embeddings storage, fast read engine" },
-  { name: "Advanced Insights", price: "$79", period: "/mo", description: "Cost forecasting, anomaly detection, hot path alerts" },
+export interface StateFabricAddOnCatalogItem {
+  id: string;
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  stripe_price_id?: string;
+}
+
+/** Fallback when GET /v1/billing/state-fabric/add-ons is unavailable (offline / API down). */
+export const FALLBACK_STATE_FABRIC_ADDONS: StateFabricAddOnCatalogItem[] = [
+  {
+    id: "hot_cache_booster",
+    name: "Hot Cache Booster",
+    price: "$49",
+    period: "/mo per 5GB",
+    description: "Reduces replay and read costs",
+  },
+  {
+    id: "advanced_security_pack",
+    name: "Advanced Security Pack",
+    price: "$99",
+    period: "/mo",
+    description: "SOC2-friendly logs, key rotation, audit streams",
+  },
+  {
+    id: "ai_memory_pack",
+    name: "AI Memory Pack",
+    price: "$149",
+    period: "/mo",
+    description: "Vector index, embeddings storage, fast read engine",
+  },
+  {
+    id: "advanced_insights",
+    name: "Advanced Insights",
+    price: "$79",
+    period: "/mo",
+    description: "Cost forecasting, anomaly detection, hot path alerts",
+  },
 ];
+
+/** @deprecated Use API catalog or FALLBACK_STATE_FABRIC_ADDONS */
+export const STATE_FABRIC_ADDONS = FALLBACK_STATE_FABRIC_ADDONS;

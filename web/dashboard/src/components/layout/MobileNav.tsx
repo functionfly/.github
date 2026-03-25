@@ -5,6 +5,7 @@ import {
   X,
   Menu,
   Home,
+  LayoutDashboard,
   FunctionSquare,
   Cloud,
   BarChart3,
@@ -28,7 +29,8 @@ interface MobileNavProps {
 }
 
 const mainNavItems: NavItem[] = [
-  { path: ROUTES.DASHBOARD, label: "Dashboard", icon: Home },
+  { path: ROUTES.DASHBOARD, label: "Marketplace", icon: Home },
+  { path: ROUTES.OVERVIEW, label: "Overview", icon: LayoutDashboard },
   { path: ROUTES.FUNCTIONS, label: "Functions", icon: FunctionSquare },
   { path: ROUTES.PROVIDERS, label: "Providers", icon: Cloud },
   { path: ROUTES.ANALYTICS, label: "Analytics", icon: BarChart3 },
@@ -158,7 +160,9 @@ export function MobileNav({ className }: MobileNavProps) {
                   const isActive =
                     !isExternal &&
                     (location.pathname === item.path ||
-                      (item.path !== ROUTES.DASHBOARD && location.pathname.startsWith(item.path)));
+                      (item.path !== ROUTES.DASHBOARD &&
+                        item.path !== ROUTES.OVERVIEW &&
+                        location.pathname.startsWith(item.path)));
                   const isFocused = focusedIndex === index;
                   const Icon = item.icon;
 

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { FlywheelSidebar } from './FlywheelSidebar';
 import { FlywheelTopBar } from './FlywheelTopBar';
 import { FlywheelMobileNav } from './FlywheelMobileNav';
-import { FlywheelChatAssistant } from '../ai/FlywheelChatAssistant';
+import { SupportBubble, SupportChatProvider, UnifiedChatWindow } from '@/components/support';
 
 interface FlywheelLayoutProps {
   className?: string;
@@ -45,8 +45,11 @@ export function FlywheelLayout({ className }: FlywheelLayoutProps) {
         </div>
       </main>
 
-      {/* AI Chat Assistant */}
-      <FlywheelChatAssistant />
+      {/* Unified AI + support chat (same as dashboard) */}
+      <SupportChatProvider>
+        <SupportBubble />
+        <UnifiedChatWindow />
+      </SupportChatProvider>
     </div>
   );
 }

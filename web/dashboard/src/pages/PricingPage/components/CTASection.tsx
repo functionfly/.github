@@ -1,9 +1,10 @@
-import { motion } from "framer-motion";
-import { HeadphonesIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Link } from "react-router-dom";
-import { useScrollAnimation } from "../hooks";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { DOCS_SITE_URL } from '@/lib/constants';
+import { motion } from 'framer-motion';
+import { HeadphonesIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useScrollAnimation } from '../hooks';
 
 interface CTASectionProps {
   onPlanSelect?: (planId: string, priceId?: string) => void;
@@ -20,7 +21,7 @@ export function CTASection({ onPlanSelect }: CTASectionProps) {
       animate={inView ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 50, scale: 0.9 }}
       transition={{
         duration: 0.8,
-        ease: [0.25, 0.46, 0.45, 0.94]
+        ease: [0.25, 0.46, 0.45, 0.94],
       }}
       className="text-center pb-20 relative"
     >
@@ -36,7 +37,7 @@ export function CTASection({ onPlanSelect }: CTASectionProps) {
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
               animate={inView ? { scale: 1, rotate: 0 } : { scale: 0, rotate: -180 }}
-              transition={{ duration: 0.8, delay: 0.3, type: "spring", stiffness: 200 }}
+              transition={{ duration: 0.8, delay: 0.3, type: 'spring', stiffness: 200 }}
               className="relative mb-8"
             >
               <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-[#6366f1]/30 to-[#8b5cf6]/20 border border-[#6366f1]/30 flex items-center justify-center backdrop-blur-sm">
@@ -68,8 +69,8 @@ export function CTASection({ onPlanSelect }: CTASectionProps) {
               animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
               transition={{ duration: 0.6, delay: 0.6 }}
             >
-              Our team is here to help you find the perfect plan for your needs.
-              Schedule a call or chat with us to discuss your requirements.
+              Our team is here to help you find the perfect plan for your needs. Schedule a call or
+              chat with us to discuss your requirements.
             </motion.p>
 
             <motion.div
@@ -78,7 +79,7 @@ export function CTASection({ onPlanSelect }: CTASectionProps) {
               animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
               transition={{ duration: 0.6, delay: 0.7 }}
             >
-              <Link to="/contact" onClick={() => onPlanSelect?.("enterprise")}>
+              <Link to="/contact" onClick={() => onPlanSelect?.('enterprise')}>
                 <Button
                   size="lg"
                   className="bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:from-[#6366f1]/90 hover:to-[#8b5cf6]/90 text-white font-semibold px-8 py-4 shadow-lg shadow-[#6366f1]/25 hover:shadow-[#6366f1]/40 transition-all duration-300 transform hover:scale-105"
@@ -86,7 +87,7 @@ export function CTASection({ onPlanSelect }: CTASectionProps) {
                   Contact Sales
                 </Button>
               </Link>
-              <Link to="/docs">
+              <a href={DOCS_SITE_URL} target="_blank" rel="noopener noreferrer">
                 <Button
                   size="lg"
                   variant="outline"
@@ -94,7 +95,7 @@ export function CTASection({ onPlanSelect }: CTASectionProps) {
                 >
                   View Documentation
                 </Button>
-              </Link>
+              </a>
             </motion.div>
           </CardContent>
         </Card>

@@ -132,12 +132,15 @@ export interface LoginRequest {
 
 export interface SignupRequest {
   name?: string;
+  /** ISO date YYYY-MM-DD */
+  dateOfBirth: string;
   email: string;
   password: string;
   confirmPassword: string;
   termsAccepted: boolean;
   username: string;
   companyName?: string;
+  inviteCode?: string;
   recaptchaToken?: string;
 }
 
@@ -203,7 +206,9 @@ export interface ProviderMetrics {
 }
 
 export interface ConnectedProvider {
+  /** Database row id (DELETE /v1/providers/:id uses this). */
   id: string;
+  /** Provider slug from the API (e.g. workers, vercel, functionfly-edge) — not the display name. */
   name: string;
   status: 'online' | 'offline' | 'degraded' | 'pending';
   connectedAt: string;

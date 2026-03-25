@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ROUTES } from "@/lib/constants";
 import { useThemeStore } from "@/stores/themeStore";
 import {
   DropdownMenu,
@@ -20,13 +21,14 @@ export function MarketplaceDropdown({ className }: MarketplaceDropdownProps) {
   const theme = useThemeStore((state) => state.theme);
   const location = useLocation();
 
-  const isActive = location.pathname.startsWith("/marketplace");
+  const isActive =
+    location.pathname.startsWith("/marketplace") || location.pathname === ROUTES.DASHBOARD;
 
   const marketplaceItems = [
     {
       label: "Function Marketplace",
       description: "Discover and deploy serverless functions",
-      path: "/marketplace/functions",
+      path: ROUTES.DASHBOARD,
       icon: "⚡",
     },
     {

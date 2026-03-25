@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   Database,
@@ -41,6 +41,7 @@ import {
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import {
+  useStateFabrics,
   useStateFabric,
   useStateFabricMetrics,
   useStateFabricStores,
@@ -51,6 +52,13 @@ import {
   useCreateStateFabric,
   useUpdateStateFabric,
 } from "@/hooks/useStateFabric";
+import { usePlan } from "@/hooks/usePlan";
+import {
+  canCreateStateFabric,
+  getStateFabricsLimit,
+  hasFeature,
+} from "@/lib/plan-utils";
+import { ROUTES } from "@/lib/constants";
 import { EventLogViewer } from "./components/EventLogViewer";
 import { PipelineVisualization } from "./components/PipelineVisualization";
 import { StoreConfiguration } from "./components/StoreConfiguration";
@@ -77,10 +85,17 @@ export function StateFabricDetailPage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { plan } = usePlan();
+  const { data: fabricsList } = useStateFabrics();
   const [activeTab, setActiveTab] = useState("overview");
   // /state-fabric/new has no :id param (route is literal "new"), so id can be undefined
   const isNew = !id || id === "new";
   const isEditPage = location.pathname.endsWith("/edit");
+
+  const fabricCount = fabricsList?.length ?? 0;
+  const allowCreateFabric = canCreateStateFabric(plan, fabricCount);
+  const stateFabricUnlocked = hasFeature(plan, "STATE_FABRIC");
+  const fabricLimit = getStateFabricsLimit(plan);
 
   const { data: fabric, isLoading: fabricLoading, error } = useStateFabric(isNew ? "" : id!);
   const { data: metrics } = useStateFabricMetrics(id || "");
@@ -93,6 +108,41 @@ export function StateFabricDetailPage() {
   const updateFabric = useUpdateStateFabric(id || "");
 
   // Create new state fabric form (id === "new" — no API fetches run)
+  if (isNew && !allowCreateFabric) {
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" onClick={() => navigate("/state-fabric")}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to State Fabrics
+        </Button>
+        <Card className="border-dashed border-white/20 bg-bg-secondary/50">
+          <CardHeader>
+            <CardTitle className="text-text-primary">
+              {!stateFabricUnlocked
+                ? "State Fabric is not on your plan"
+                : "State fabric limit reached"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-text-secondary text-sm">
+            {!stateFabricUnlocked ? (
+              <p>
+                State Fabric is available on Starter, Professional, and Enterprise plans.
+              </p>
+            ) : (
+              <p>
+                Your plan allows {fabricLimit >= 10000 ? "unlimited" : fabricLimit} state fabric
+                {fabricLimit === 1 ? "" : "s"} (you have {fabricCount}).
+              </p>
+            )}
+            <Button asChild variant="default">
+              <Link to={ROUTES.PRICING}>View plans</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (isNew) {
     return (
       <StateFabricCreateForm

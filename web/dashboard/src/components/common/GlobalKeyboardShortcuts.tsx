@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '@/stores/authStore';
 import { ROUTES } from '@/lib/constants';
+import { useAuthStore } from '@/stores/authStore';
+import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export function GlobalKeyboardShortcuts() {
   const navigate = useNavigate();
@@ -31,6 +31,11 @@ export function GlobalKeyboardShortcuts() {
             case 'd':
               if (location.pathname !== ROUTES.DASHBOARD) {
                 navigate(ROUTES.DASHBOARD);
+              }
+              break;
+            case 'o':
+              if (location.pathname !== ROUTES.OVERVIEW) {
+                navigate(ROUTES.OVERVIEW);
               }
               break;
             case 'f':

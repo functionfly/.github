@@ -53,17 +53,18 @@ FunctionFly abstracts away the complexity of deploying to different serverless p
 Get up and running in under 5 minutes:
 
 \`\`\`bash
-# Install the CLI
-npm install -g @functionfly/cli
+# Install the fly CLI (Go 1.25+)
+go install github.com/functionfly/functionfly/cmd/fly@latest
+# Ensure $(go env GOPATH)/bin is on your PATH
 
 # Login to your account
-flypy login
+fly login
 
 # Create a new function
-flypy init my-function
+fly init my-function
 
-# Deploy to all providers
-flypy deploy
+# Deploy
+fly deploy
 \`\`\`
 
 ## Supported Providers
@@ -97,19 +98,19 @@ Get your first function deployed to multiple edge providers in minutes.
 
 ## Prerequisites
 
-- Node.js 18+ installed
+- Go 1.25+ (for \`go install\`) or a \`fly\` binary from [GitHub Releases](https://github.com/functionfly/functionfly/releases)
 - A FunctionFly account (sign up at [functionfly.com](https://functionfly.com))
 
 ## Step 1: Install the CLI
 
 \`\`\`bash
-npm install -g @functionfly/cli
+go install github.com/functionfly/functionfly/cmd/fly@latest
 \`\`\`
 
 ## Step 2: Authenticate
 
 \`\`\`bash
-flypy login
+fly login
 \`\`\`
 
 This will open a browser window for authentication.
@@ -117,7 +118,7 @@ This will open a browser window for authentication.
 ## Step 3: Create a Function
 
 \`\`\`bash
-flypy init hello-world
+fly init hello-world
 \`\`\`
 
 This creates a new function with the following structure:
@@ -133,7 +134,7 @@ hello-world/
 
 \`\`\`bash
 cd hello-world
-flypy deploy
+fly deploy
 \`\`\`
 
 Your function will be deployed to all configured providers.
@@ -236,25 +237,25 @@ The FunctionFly CLI (\`fly\`) is the official tool to create, run, and publish f
 
 ## Installation
 
-### macOS / Linux (Homebrew)
+### Go install (recommended)
+
+\`\`\`bash
+go install github.com/functionfly/functionfly/cmd/fly@latest
+\`\`\`
+
+Ensure \`$(go env GOPATH)/bin\` is on your \`PATH\`.
+
+### GitHub Releases
+
+Download a prebuilt binary for your OS/arch from the [releases page](https://github.com/functionfly/functionfly/releases) and add it to your \`PATH\`.
+
+### Homebrew (when a tap is published)
 
 \`\`\`bash
 brew install functionfly/tap/fly
 \`\`\`
 
-### npm (Node.js)
-
-\`\`\`bash
-npm install -g @functionfly/cli
-# or
-pnpm add -g @functionfly/cli
-\`\`\`
-
-After install, the binary may be available as \`fly\` or \`flypy\` depending on the package.
-
-### Direct download
-
-Download the latest binary for your platform from the [releases page](https://github.com/functionfly/functionfly/releases) and add it to your \`PATH\`.
+If the tap is not available yet, use Go install or Releases above.
 
 ### Verify
 
@@ -648,10 +649,10 @@ For advanced users and complex scenarios:
 
 \`\`\`bash
 # Start an interactive session
-flypy agent
+fly agent
 
 # Run a specific command
-flypy agent "deploy my API function to production"
+fly agent "deploy my API function to production"
 \`\`\`
 
 ### Via Dashboard
@@ -684,7 +685,7 @@ Simple Mode is designed for quick, straightforward tasks.
 
 ### Example
 \`\`\`bash
-$ flypy agent "deploy my function"
+$ fly agent "deploy my function"
 ✓ Building function... done
 ✓ Deploying to Cloudflare... done
 ✓ Deploying to Vercel... done
@@ -703,7 +704,7 @@ Complex Mode is designed for multi-step tasks that require planning.
 
 ### Example
 \`\`\`bash
-$ flypy agent --complex "set up a new API with authentication"
+$ fly agent --complex "set up a new API with authentication"
 
 The agent will:
 1. Create authentication middleware
@@ -719,8 +720,8 @@ Proceed? [Y/n]
 
 ### CLI Flag
 \`\`\`bash
-flypy agent --complex    # Use complex mode
-flypy agent --simple     # Use simple mode (default)
+fly agent --complex    # Use complex mode
+fly agent --simple     # Use simple mode (default)
 \`\`\`
 
 ### Configuration
@@ -945,16 +946,16 @@ Manage configuration and secrets across all providers from a single place.
 
 \`\`\`bash
 # Set a variable (synced to all providers)
-flypy env set API_KEY=sk_live_xxx
+fly env set API_KEY=sk_live_xxx
 
 # Set for a specific provider
-flypy env set DATABASE_URL=postgres://... --provider=vercel
+fly env set DATABASE_URL=postgres://... --provider=vercel
 
 # List all variables
-flypy env list
+fly env list
 
 # Remove a variable
-flypy env rm API_KEY
+fly env rm API_KEY
 \`\`\`
 
 ### Via Dashboard
@@ -1019,18 +1020,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-go@v5
         with:
-          node-version: "20"
+          go-version: "1.24"
 
-      - name: Install FunctionFly CLI
-        run: npm install -g @functionfly/cli
+      - name: Install fly CLI
+        run: go install github.com/functionfly/functionfly/cmd/fly@latest
+
+      - name: Add Go bin to PATH
+        run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
       - name: Deploy
         env:
           FUNCTIONFLY_API_KEY: \${{ secrets.FUNCTIONFLY_API_KEY }}
-        run: flypy deploy --non-interactive
+        run: fly deploy
 \`\`\`
 
 ## GitLab CI
@@ -1038,10 +1041,11 @@ jobs:
 \`\`\`yaml
 deploy:
   stage: deploy
-  image: node:20
+  image: golang:1.24
   script:
-    - npm install -g @functionfly/cli
-    - flypy deploy --non-interactive
+    - go install github.com/functionfly/functionfly/cmd/fly@latest
+    - export PATH="$(go env GOPATH)/bin:$PATH"
+    - fly deploy
   variables:
     FUNCTIONFLY_API_KEY: \$FUNCTIONFLY_API_KEY
   only:
@@ -1053,13 +1057,13 @@ deploy:
 1. In the dashboard: **Settings** → **API keys** → **Create key**
 2. Name it (e.g. \`ci-github\`) and copy the key
 3. Store as a secret in your CI system: \`FUNCTIONFLY_API_KEY\`
-4. The CLI uses this when \`flypy login\` is not possible (e.g. headless CI)
+4. Configure non-interactive credentials for CI (e.g. API key env vars) when \`fly login\` is not possible
 
 ## Options
 
 | Flag | Description |
 |------|-------------|
-| \`--non-interactive\` | Fail if input is required (required in CI) |
+| \`--json\` | Machine-readable deploy output (useful in CI) |
 | \`--skip-tests\` | Skip pre-deploy tests |
 | \`--provider\` | Deploy only to one provider |
 | \`--env\` | Target environment (e.g. staging) |
@@ -1069,7 +1073,7 @@ deploy:
 To rollback from CI, use the same API key and run:
 
 \`\`\`bash
-flypy rollback --version <previous-version>
+fly rollback --version <previous-version>
 \`\`\`
         `,
         lastUpdated: "2026-02-27"
@@ -1093,16 +1097,16 @@ Revert to a previous deployment across all providers when needed.
 
 \`\`\`bash
 # List recent deployments (versions)
-flypy releases list
+fly releases list
 
 # Rollback to the previous deployment
-flypy rollback
+fly rollback
 
 # Rollback to a specific version
-flypy rollback --version 20260226120000
+fly rollback --version 20260226120000
 
 # Rollback only one provider
-flypy rollback --provider=vercel
+fly rollback --provider=vercel
 \`\`\`
 
 ## Via Dashboard
@@ -1374,7 +1378,7 @@ API keys authenticate requests to the FunctionFly API and CLI (e.g. in CI).
 ### CLI
 
 \`\`\`bash
-flypy api-keys create --name "CI key" --scope function:my-app
+fly api-keys create --name "CI key" --scope function:my-app
 \`\`\`
 
 ## Using a Key
@@ -1383,7 +1387,7 @@ flypy api-keys create --name "CI key" --scope function:my-app
 
 \`\`\`bash
 export FUNCTIONFLY_API_KEY=ff_sk_xxx
-flypy deploy --non-interactive
+fly deploy
 \`\`\`
 
 ### Header
@@ -1614,16 +1618,16 @@ Access structured logs for debugging and auditing.
 
 \`\`\`bash
 # Tail logs (live)
-flypy logs --tail
+fly logs --tail
 
 # Last 100 lines
-flypy logs -n 100
+fly logs -n 100
 
 # Filter by level
-flypy logs --level error
+fly logs --level error
 
 # Filter by provider
-flypy logs --provider=cloudflare
+fly logs --provider=cloudflare
 \`\`\`
 
 ## Log Levels
@@ -1811,7 +1815,7 @@ Quick links to the most common issues and where to get help.
 
 - [Enable debug logging](/docs/debugging) – CLI and SDK
 - [Inspect logs and traces](/docs/logs) – Dashboard and CLI
-- [Reproduce locally](/docs/debugging#local-reproduction) – \`flypy dev\` and provider simulators
+- [Reproduce locally](/docs/debugging#local-reproduction) – \`fly dev\` and provider simulators
 
 ## Getting Help
 
@@ -1834,18 +1838,18 @@ Quick links to the most common issues and where to get help.
 ### \`Build failed: module not found\`
 
 - Ensure all dependencies are in \`package.json\` (Node) or \`requirements.txt\` (Python)
-- Run \`flypy build\` locally to reproduce
+- Run \`fly build\` locally to reproduce
 - Check [CLI Commands](/docs/cli-commands) and [Configuration](/docs/cli-config) for supported runtimes
 
 ### \`Provider timeout: Vercel\` (or Cloudflare, Fly, Deno)
 
 - Large bundles or slow builds can hit provider limits
 - Reduce bundle size (tree-shake, split) or increase timeout in \`functionfly.jsonc\`
-- Deploy to one provider first: \`flypy deploy --provider=cloudflare\`
+- Deploy to one provider first: \`fly deploy --provider=cloudflare\`
 
 ### \`Invalid configuration\`
 
-- Validate \`functionfly.jsonc\` with \`flypy config validate\`
+- Validate \`functionfly.jsonc\` with \`fly config validate\`
 - Ensure \`runtime\`, \`name\`, and \`providers\` are set correctly
 
 ## Runtime Errors
@@ -1899,10 +1903,10 @@ Quick links to the most common issues and where to get help.
 ### CLI
 
 \`\`\`bash
-flypy deploy --debug
+fly deploy --debug
 # or
 export FUNCTIONFLY_DEBUG=1
-flypy deploy
+fly deploy
 \`\`\`
 
 ### SDK (in your function)
@@ -1916,7 +1920,7 @@ os.environ["FUNCTIONFLY_LOG_LEVEL"] = "DEBUG"
 
 \`\`\`bash
 # Run function locally (simulates request/response)
-flypy dev
+fly dev
 
 # Invoke with custom body
 curl -X POST http://localhost:3000/ -d '{"key": "value"}'
@@ -1927,7 +1931,7 @@ Match runtime and env vars to production when possible.
 ## Inspect Logs and Traces
 
 1. **Dashboard** → Your function → **Logs**: filter by time, level, request id
-2. **CLI**: \`flypy logs --tail\` for live logs
+2. **CLI**: \`fly logs --tail\` for live logs
 3. Use the **request id** from responses to trace a single request across logs and [tracing](/docs/monitoring-overview#tracing)
 
 ## Provider-Specific Debugging

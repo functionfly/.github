@@ -9,19 +9,29 @@ const passwordSchema = z
   .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
   .regex(/[0-9]/, 'Password must contain at least one number')
   .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character')
-  .refine(password => !/\s/.test(password), 'Password cannot contain spaces');
+  .refine((password) => !/\s/.test(password), 'Password cannot contain spaces');
 
 // Login form schema
 export const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, 'Email is required')
-    .email('Please enter a valid email address'),
-  password: z
-    .string()
-    .min(1, 'Password is required'),
+  email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
+  password: z.string().min(1, 'Password is required'),
   rememberMe: z.boolean().optional(),
 });
+
+/** Age in years from a calendar date (YYYY-MM-DD), local timezone. */
+function ageFromISODate(isoDate: string): number {
+  const parts = isoDate.split('-').map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return -1;
+  const [y, m, d] = parts;
+  const birth = new Date(y, m - 1, d);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const md = today.getMonth() - birth.getMonth();
+  if (md < 0 || (md === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+}
 
 // Signup form schema
 export const signupSchema = z
@@ -31,15 +41,27 @@ export const signupSchema = z
       .min(1, 'Name is required')
       .min(2, 'Name must be at least 2 characters')
       .max(100, 'Name must be less than 100 characters'),
-    email: z
+    dateOfBirth: z
       .string()
-      .min(1, 'Email is required')
-      .email('Please enter a valid email address'),
+      .min(1, 'Date of birth is required')
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date')
+      .refine((s) => !Number.isNaN(Date.parse(`${s}T12:00:00`)), 'Invalid date')
+      .refine((s) => {
+        const t = new Date(`${s}T12:00:00`);
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        return t <= startOfToday;
+      }, 'Date of birth cannot be in the future')
+      .refine((s) => ageFromISODate(s) >= 13, 'You must be at least 13 years old'),
+    email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
     username: z
       .string()
       .min(1, 'Username is required')
       .max(50, 'Username must be less than 50 characters')
-      .regex(/^[a-zA-Z0-9_-]*$/, 'Username can only contain letters, numbers, underscores and hyphens'),
+      .regex(
+        /^[a-zA-Z0-9_-]*$/,
+        'Username can only contain letters, numbers, underscores and hyphens'
+      ),
     companyName: z
       .string()
       .max(255, 'Company name must be less than 255 characters')
@@ -50,9 +72,9 @@ export const signupSchema = z
     confirmPassword: z.string(),
     termsAccepted: z
       .boolean()
-      .refine(val => val === true, 'You must accept the terms and conditions'),
+      .refine((val) => val === true, 'You must accept the terms and conditions'),
   })
-  .refine(data => data.password === data.confirmPassword, {
+  .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ['confirmPassword'],
   });
@@ -64,29 +86,31 @@ export const redirectSchema = z.object({
     .min(1, 'Source path is required')
     .max(2048, 'Source path is too long')
     .regex(/^\/.*$/, 'Source path must start with "/"')
-    .regex(/^[a-zA-Z0-9\-_\/.]+$/, 'Source path can only contain letters, numbers, hyphens, underscores, slashes, and dots')
-    .refine(path => !/\.\./.test(path), 'Source path cannot contain ".."')
-    .refine(path => !path.includes('//'), 'Source path cannot contain consecutive slashes'),
+    .regex(
+      /^[a-zA-Z0-9\-_\/.]+$/,
+      'Source path can only contain letters, numbers, hyphens, underscores, slashes, and dots'
+    )
+    .refine((path) => !/\.\./.test(path), 'Source path cannot contain ".."')
+    .refine((path) => !path.includes('//'), 'Source path cannot contain consecutive slashes'),
   destination: z
     .string()
     .min(1, 'Destination URL is required')
     .max(2048, 'Destination URL is too long')
     .url('Please enter a valid URL')
-    .refine(url => !url.includes(' '), 'URL cannot contain spaces')
-    .refine(url => url.length <= 2048, 'URL is too long'),
+    .refine((url) => !url.includes(' '), 'URL cannot contain spaces')
+    .refine((url) => url.length <= 2048, 'URL is too long'),
   statusCode: z
     .number()
     .int('Status code must be an integer')
-    .refine(code => [301, 302, 307, 308].includes(code), 'Status code must be 301, 302, 307, or 308'),
-  matchType: z
-    .enum(['exact', 'prefix', 'regex'], {
-      errorMap: () => ({ message: 'Match type must be exact, prefix, or regex' }),
-    }),
+    .refine(
+      (code) => [301, 302, 307, 308].includes(code),
+      'Status code must be 301, 302, 307, or 308'
+    ),
+  matchType: z.enum(['exact', 'prefix', 'regex'], {
+    errorMap: () => ({ message: 'Match type must be exact, prefix, or regex' }),
+  }),
   enabled: z.boolean(),
-  notes: z
-    .string()
-    .max(500, 'Notes must be less than 500 characters')
-    .optional(),
+  notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
 });
 
 // Password strength evaluation function
@@ -141,7 +165,10 @@ export const FORM_STORAGE_KEYS = {
   redirect: 'functionfly_redirect_form',
 } as const;
 
-export const saveFormData = (formKey: keyof typeof FORM_STORAGE_KEYS, data: Record<string, any>) => {
+export const saveFormData = (
+  formKey: keyof typeof FORM_STORAGE_KEYS,
+  data: Record<string, any>
+) => {
   try {
     const timestamp = Date.now();
     const formData = { ...data, _timestamp: timestamp };
@@ -151,7 +178,10 @@ export const saveFormData = (formKey: keyof typeof FORM_STORAGE_KEYS, data: Reco
   }
 };
 
-export const loadFormData = (formKey: keyof typeof FORM_STORAGE_KEYS, maxAge = 24 * 60 * 60 * 1000) => {
+export const loadFormData = (
+  formKey: keyof typeof FORM_STORAGE_KEYS,
+  maxAge = 24 * 60 * 60 * 1000
+) => {
   try {
     const stored = localStorage.getItem(FORM_STORAGE_KEYS[formKey]);
     if (!stored) return null;
@@ -189,13 +219,19 @@ export const slugSchema = z
   .min(1, 'Slug is required')
   .max(100, 'Slug is too long')
   .regex(/^[a-z0-9-]+$/, 'Slug can only contain lowercase letters, numbers, and hyphens')
-  .refine(slug => !slug.startsWith('-') && !slug.endsWith('-'), 'Slug cannot start or end with a hyphen');
+  .refine(
+    (slug) => !slug.startsWith('-') && !slug.endsWith('-'),
+    'Slug cannot start or end with a hyphen'
+  );
 
 export const functionNameSchema = z
   .string()
   .min(1, 'Function name is required')
   .max(100, 'Function name is too long')
-  .regex(/^[a-zA-Z_][a-zA-Z0-9_-]*$/, 'Function name must start with a letter or underscore and contain only letters, numbers, underscores, and hyphens');
+  .regex(
+    /^[a-zA-Z_][a-zA-Z0-9_-]*$/,
+    'Function name must start with a letter or underscore and contain only letters, numbers, underscores, and hyphens'
+  );
 
 export const environmentVariableKeySchema = z
   .string()
@@ -208,23 +244,26 @@ export const environmentVariableValueSchema = z
 
 // Enhanced contact form schema with better validation
 export const contactFormSchema = z.object({
-  name: z.string()
+  name: z
+    .string()
     .min(2, 'Name must be at least 2 characters')
     .max(50, 'Name must be less than 50 characters')
     .regex(/^[a-zA-Z\s'-]+$/, 'Name can only contain letters, spaces, hyphens, and apostrophes'),
-  email: z.string()
+  email: z
+    .string()
     .email('Please enter a valid email address')
     .max(254, 'Email address is too long'),
-  category: z.string()
-    .min(1, 'Please select a category'),
-  subject: z.string()
+  category: z.string().min(1, 'Please select a category'),
+  subject: z
+    .string()
     .min(5, 'Subject must be at least 5 characters')
     .max(100, 'Subject must be less than 100 characters')
-    .refine(subject => subject.trim().length > 0, 'Subject cannot be empty or just whitespace'),
-  message: z.string()
+    .refine((subject) => subject.trim().length > 0, 'Subject cannot be empty or just whitespace'),
+  message: z
+    .string()
     .min(10, 'Message must be at least 10 characters')
     .max(2000, 'Message must be less than 2000 characters')
-    .refine(message => message.trim().length > 0, 'Message cannot be empty or just whitespace'),
+    .refine((message) => message.trim().length > 0, 'Message cannot be empty or just whitespace'),
 });
 
 // Types inferred from schemas

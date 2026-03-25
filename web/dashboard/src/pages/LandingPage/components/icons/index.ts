@@ -25,3 +25,6 @@ export { SentryIcon } from './SentryIcon';
 export { NewRelicIcon } from './NewRelicIcon';
 export { CloudflareIcon } from './CloudflareIcon';
 export { FunctionFlyEdgeIcon } from './FunctionFlyEdgeIcon';
+export { LangChainIcon } from './LangChainIcon';
+export { AutoGenIcon } from './AutoGenIcon';
+export { CrewAIIcon } from './CrewAIIcon';

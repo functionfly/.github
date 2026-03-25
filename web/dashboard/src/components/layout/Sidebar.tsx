@@ -5,6 +5,8 @@ import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { useNavigationStatus } from '@/hooks/useNavigationStatus';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { ROUTES } from '@/lib/constants';
+import { hasFeature as planHasFeature } from '@/lib/plan-utils';
+import { usePlan } from '@/hooks/usePlan';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
@@ -27,6 +29,7 @@ import {
   LogOut,
   Package,
   PieChart,
+  Puzzle,
   Search,
   Settings,
   Shield,
@@ -34,7 +37,7 @@ import {
   Wallet,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
 interface SidebarProps {
@@ -55,7 +58,8 @@ const navigationSections: NavSection[] = [
   {
     title: 'Overview',
     items: [
-      { path: ROUTES.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
+      { path: ROUTES.DASHBOARD, label: 'Function Marketplace', icon: Code },
+      { path: ROUTES.OVERVIEW, label: 'Overview', icon: LayoutDashboard },
       { path: '/status', label: 'Status', icon: Activity },
       { path: '/notifications', label: 'Notifications', icon: Bell },
     ],
@@ -64,9 +68,9 @@ const navigationSections: NavSection[] = [
     title: 'Swarm',
     items: [
       { path: ROUTES.AGENTS, label: 'Agents', icon: Bot },
+      { path: ROUTES.SDK_INTEGRATIONS, label: 'SDK Integrations', icon: Puzzle },
       { path: ROUTES.EVOLUTION, label: 'Evolution', icon: Activity },
       { path: ROUTES.MARKETPLACE_AGENTS, label: 'Agent Marketplace', icon: Shield },
-      { path: ROUTES.MARKETPLACE_FUNCTIONS, label: 'Function Marketplace', icon: Code },
       { path: '/wallet', label: 'Wallet', icon: Wallet },
     ],
   },
@@ -127,12 +131,47 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     recordRecent(location.pathname);
   }, [location.pathname, recordRecent]);
 
+  /** Prefer /wallet/:agentId when we know it (current URL or last wallet visit). */
+  const walletNavPath = useMemo(() => {
+    const m = location.pathname.match(/^\/wallet\/([^/]+)/);
+    if (m?.[1]) return `/wallet/${m[1]}`;
+    try {
+      const id = localStorage.getItem('ff-last-wallet-agent-id');
+      if (id) return `/wallet/${encodeURIComponent(id)}`;
+    } catch {
+      /* ignore */
+    }
+    return '/wallet';
+  }, [location.pathname]);
+
+  const resolveNavPath = useCallback(
+    (item: { path: string; label: string }) =>
+      item.label === 'Wallet' ? walletNavPath : item.path,
+    [walletNavPath]
+  );
+
   // Swipe gesture for mobile
   const { gestureHandlers } = useSwipeGesture({
     onSwipeLeft: () => onClose(), // Close sidebar on swipe left
   });
 
-  const allSections = navigationSections;
+  const { plan } = usePlan();
+  const allSections = useMemo(() => {
+    return navigationSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => {
+          if (item.path === ROUTES.STATE_FABRIC) {
+            return planHasFeature(plan, 'STATE_FABRIC');
+          }
+          if (item.path === ROUTES.AGENTS) {
+            return planHasFeature(plan, 'AGENTS');
+          }
+          return true;
+        }),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [plan]);
 
   // Build path -> nav item map and derive recent items from stored paths (only show items that exist in current nav)
   const pathToItem = new Map(
@@ -198,9 +237,9 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     const item = allNavigableItems[focusedIndex];
     if (item) {
       onClose();
-      window.location.href = item.path;
+      window.location.href = resolveNavPath(item);
     }
-  }, [isOpen, focusedIndex, allNavigableItems, onClose]);
+  }, [isOpen, focusedIndex, allNavigableItems, onClose, resolveNavPath]);
 
   const handleEscape = useCallback(() => {
     if (isOpen) {
@@ -235,7 +274,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={cn(
           'dashboard-sidebar fixed left-0 top-0 z-50 h-screen w-[260px] min-w-[260px] bg-bg-primary border-r border-border-subtle',
-          'flex flex-col lg:translate-x-0 lg:static lg:shrink-0'
+          'flex flex-col min-h-0 lg:translate-x-0 lg:static lg:shrink-0'
         )}
       >
         {/* Header */}
@@ -264,7 +303,10 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-4" aria-label="Primary navigation">
+        <nav
+          className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4"
+          aria-label="Primary navigation"
+        >
           {/* Recent Items */}
           {recentItems.length > 0 && !mobileSearchQuery && (
             <div className="space-y-2">
@@ -275,7 +317,9 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                 {recentItems.map((item) => {
                   const isActive =
                     location.pathname === item.path ||
-                    (item.path !== ROUTES.DASHBOARD && location.pathname.startsWith(item.path));
+                    (item.path !== ROUTES.DASHBOARD &&
+                      item.path !== ROUTES.OVERVIEW &&
+                      location.pathname.startsWith(item.path));
                   const Icon = item.icon;
                   const itemIndex = allNavigableItems.findIndex(
                     (navItem) => navItem.path === item.path
@@ -285,7 +329,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                   return (
                     <NavLink
                       key={`recent-${item.path}`}
-                      to={item.path}
+                      to={resolveNavPath(item)}
                       onClick={() => onClose()}
                       className={cn(
                         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
@@ -318,7 +362,9 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             const hasActiveItem = section.items.some(
               (item) =>
                 location.pathname === item.path ||
-                (item.path !== ROUTES.DASHBOARD && location.pathname.startsWith(item.path))
+                (item.path !== ROUTES.DASHBOARD &&
+                  item.path !== ROUTES.OVERVIEW &&
+                  location.pathname.startsWith(item.path))
             );
 
             return (
@@ -353,6 +399,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                         const isActive =
                           location.pathname === item.path ||
                           (item.path !== ROUTES.DASHBOARD &&
+                            item.path !== ROUTES.OVERVIEW &&
                             location.pathname.startsWith(item.path));
                         const Icon = item.icon;
 
@@ -423,7 +470,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                         return (
                           <NavLink
                             key={item.path}
-                            to={item.path}
+                            to={resolveNavPath(item)}
                             onClick={() => onClose()}
                             className={cn(
                               'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',

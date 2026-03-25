@@ -7,25 +7,24 @@
  * @module fly-assistant/ui
  */
 
-import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { cn } from '@/lib/utils';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { motion } from 'framer-motion';
 import {
-  Search,
-  X,
-  LayoutDashboard,
-  FunctionSquare,
-  Settings,
-  Rocket,
-  Play,
-  Zap,
   ArrowRight,
-  CornerDownLeft,
+  Code,
   Command,
-  Clock,
-  ChevronRight,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+  CornerDownLeft,
+  FunctionSquare,
+  LayoutDashboard,
+  Play,
+  Rocket,
+  Search,
+  Settings,
+  X,
+  Zap,
+} from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // ============================================================================
 // Types & Interfaces
@@ -50,7 +49,7 @@ export interface FlyCommandPaletteProps {
   className?: string;
 }
 
-type CommandCategory = "pages" | "functions" | "actions" | "recent";
+type CommandCategory = 'pages' | 'functions' | 'actions' | 'recent';
 
 interface CommandItem {
   id: string;
@@ -67,15 +66,16 @@ interface CommandItem {
 // ============================================================================
 
 const PAGES = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, shortcut: "G D" },
-  { id: "functions", label: "Functions", icon: FunctionSquare, shortcut: "G F" },
-  { id: "settings", label: "Settings", icon: Settings, shortcut: "G S" },
+  { id: 'dashboard', label: 'Function Marketplace', icon: Code, shortcut: 'G D' },
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard, shortcut: 'G O' },
+  { id: 'functions', label: 'Functions', icon: FunctionSquare, shortcut: 'G F' },
+  { id: 'settings', label: 'Settings', icon: Settings, shortcut: 'G S' },
 ];
 
 const ACTIONS = [
-  { id: "deploy", label: "Deploy", icon: Rocket, shortcut: "⌘ D" },
-  { id: "test", label: "Test Function", icon: Play, shortcut: "⌘ T" },
-  { id: "optimize", label: "Optimize", icon: Zap, shortcut: "⌘ O" },
+  { id: 'deploy', label: 'Deploy', icon: Rocket, shortcut: '⌘ D' },
+  { id: 'test', label: 'Test Function', icon: Play, shortcut: '⌘ T' },
+  { id: 'optimize', label: 'Optimize', icon: Zap, shortcut: '⌘ O' },
 ];
 
 // ============================================================================
@@ -92,7 +92,7 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
   recentCommands = [],
   className,
 }) => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -109,7 +109,7 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
           items.push({
             id: `recent-${cmdId}`,
             label: action.label,
-            category: "recent",
+            category: 'recent',
             icon: <action.icon className="w-4 h-4" />,
             action: () => onTriggerAction(cmdId),
           });
@@ -117,7 +117,7 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
           items.push({
             id: `recent-${cmdId}`,
             label: page.label,
-            category: "recent",
+            category: 'recent',
             icon: <page.icon className="w-4 h-4" />,
             action: () => onSelectPage(cmdId),
           });
@@ -130,7 +130,7 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
       items.push({
         id: `page-${page.id}`,
         label: page.label,
-        category: "pages",
+        category: 'pages',
         icon: <page.icon className="w-4 h-4" />,
         shortcut: page.shortcut,
         keywords: [page.label.toLowerCase(), page.id],
@@ -143,7 +143,7 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
       items.push({
         id: `func-${func.id}`,
         label: func.name,
-        category: "functions",
+        category: 'functions',
         icon: <FunctionSquare className="w-4 h-4" />,
         keywords: [func.name.toLowerCase(), func.id.toLowerCase()],
         action: () => onSelectFunction(func.id),
@@ -155,7 +155,7 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
       items.push({
         id: `action-${action.id}`,
         label: action.label,
-        category: "actions",
+        category: 'actions',
         icon: <action.icon className="w-4 h-4" />,
         shortcut: action.shortcut,
         keywords: [action.label.toLowerCase(), action.id],
@@ -164,7 +164,14 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
     });
 
     return items;
-  }, [availableFunctions, recentCommands, searchQuery, onSelectFunction, onSelectPage, onTriggerAction]);
+  }, [
+    availableFunctions,
+    recentCommands,
+    searchQuery,
+    onSelectFunction,
+    onSelectPage,
+    onTriggerAction,
+  ]);
 
   // Filter commands by search
   const filteredCommands = useMemo(() => {
@@ -172,8 +179,7 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
     const query = searchQuery.toLowerCase();
     return commands.filter(
       (cmd) =>
-        cmd.label.toLowerCase().includes(query) ||
-        cmd.keywords?.some((k) => k.includes(query))
+        cmd.label.toLowerCase().includes(query) || cmd.keywords?.some((k) => k.includes(query))
     );
   }, [commands, searchQuery]);
 
@@ -187,7 +193,7 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
     } else {
-      setSearchQuery("");
+      setSearchQuery('');
     }
   }, [isOpen]);
 
@@ -195,17 +201,15 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       switch (e.key) {
-        case "ArrowDown":
+        case 'ArrowDown':
           e.preventDefault();
-          setSelectedIndex((prev) =>
-            prev < filteredCommands.length - 1 ? prev + 1 : prev
-          );
+          setSelectedIndex((prev) => (prev < filteredCommands.length - 1 ? prev + 1 : prev));
           break;
-        case "ArrowUp":
+        case 'ArrowUp':
           e.preventDefault();
           setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
           break;
-        case "Enter":
+        case 'Enter':
           e.preventDefault();
           const selected = filteredCommands[selectedIndex];
           if (selected) {
@@ -213,7 +217,7 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
             onClose();
           }
           break;
-        case "Escape":
+        case 'Escape':
           e.preventDefault();
           onClose();
           break;
@@ -239,10 +243,10 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
   }, [filteredCommands]);
 
   const categoryLabels: Record<CommandCategory, string> = {
-    recent: "Recent",
-    pages: "Pages",
-    functions: "Functions",
-    actions: "Actions",
+    recent: 'Recent',
+    pages: 'Pages',
+    functions: 'Functions',
+    actions: 'Actions',
   };
 
   return (
@@ -265,22 +269,19 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             className={cn(
-              "fixed left-1/2 top-[20%] -translate-x-1/2 z-50",
-              "w-full max-w-[640px] mx-auto",
-              "bg-[var(--color-bg-primary)] border border-[var(--color-border)]",
-              "rounded-xl shadow-2xl overflow-hidden",
+              'fixed left-1/2 top-[20%] -translate-x-1/2 z-50',
+              'w-full max-w-[640px] mx-auto',
+              'bg-[var(--color-bg-primary)] border border-[var(--color-border)]',
+              'rounded-xl shadow-2xl overflow-hidden',
               className
             )}
             onKeyDown={handleKeyDown}
           >
             {/* Search input */}
             <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border)]">
-              <Search
-                className="w-5 h-5 text-[var(--color-text-muted)]"
-                aria-hidden="true"
-              />
+              <Search className="w-5 h-5 text-[var(--color-text-muted)]" aria-hidden="true" />
               <input
                 ref={inputRef}
                 type="text"
@@ -288,9 +289,9 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search functions, pages, or actions..."
                 className={cn(
-                  "flex-1 bg-transparent text-[var(--color-text-primary)]",
-                  "placeholder:text-[var(--color-text-muted)]",
-                  "focus:outline-none text-base"
+                  'flex-1 bg-transparent text-[var(--color-text-primary)]',
+                  'placeholder:text-[var(--color-text-muted)]',
+                  'focus:outline-none text-base'
                 )}
                 aria-label="Search commands"
               />
@@ -302,9 +303,9 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
                 <DialogPrimitive.Close asChild>
                   <button
                     className={cn(
-                      "p-1 rounded",
-                      "text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]",
-                      "hover:bg-[var(--color-bg-secondary)] transition-colors"
+                      'p-1 rounded',
+                      'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
+                      'hover:bg-[var(--color-bg-secondary)] transition-colors'
                     )}
                     aria-label="Close"
                   >
@@ -320,92 +321,86 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
                 <div className="flex flex-col items-center justify-center py-12 text-[var(--color-text-muted)]">
                   <Search className="w-10 h-10 mb-3 opacity-30" />
                   <p className="text-sm">No commands found</p>
-                  <p className="text-xs mt-1 opacity-70">
-                    Try a different search term
-                  </p>
+                  <p className="text-xs mt-1 opacity-70">Try a different search term</p>
                 </div>
               ) : (
-                (Object.keys(groupedCommands) as CommandCategory[]).map(
-                  (category) => {
-                    const items = groupedCommands[category];
-                    if (items.length === 0) return null;
+                (Object.keys(groupedCommands) as CommandCategory[]).map((category) => {
+                  const items = groupedCommands[category];
+                  if (items.length === 0) return null;
 
-                    return (
-                      <div key={category}>
-                        {/* Category header */}
-                        <div className="px-4 py-1.5 text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide">
-                          {categoryLabels[category]}
-                        </div>
-
-                        {/* Items */}
-                        {items.map((cmd, index) => {
-                          const globalIndex = filteredCommands.findIndex(
-                            (c) => c.id === cmd.id
-                          );
-                          const isSelected = globalIndex === selectedIndex;
-
-                          return (
-                            <button
-                              key={cmd.id}
-                              onClick={() => {
-                                cmd.action();
-                                onClose();
-                              }}
-                              onMouseEnter={() => setSelectedIndex(globalIndex)}
-                              className={cn(
-                                "w-full flex items-center gap-3 px-4 py-2.5 text-left",
-                                "transition-colors duration-150",
-                                isSelected
-                                  ? "bg-[var(--color-brand-500)]/20 border-l-3 border-[var(--color-brand-500)]"
-                                  : "hover:bg-[var(--color-bg-secondary)] border-l-3 border-transparent"
-                              )}
-                              aria-selected={isSelected}
-                            >
-                              {/* Icon */}
-                              <span
-                                className={cn(
-                                  "text-[var(--color-text-muted)]",
-                                  isSelected && "text-[var(--color-brand-500)]"
-                                )}
-                              >
-                                {cmd.icon}
-                              </span>
-
-                              {/* Label */}
-                              <span
-                                className={cn(
-                                  "flex-1 text-sm",
-                                  isSelected
-                                    ? "text-[var(--color-text-primary)]"
-                                    : "text-[var(--color-text-secondary)]"
-                                )}
-                              >
-                                {cmd.label}
-                              </span>
-
-                              {/* Shortcut */}
-                              {cmd.shortcut && (
-                                <kbd className="hidden sm:flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] rounded">
-                                  {cmd.shortcut.split(" ").map((key, i) => (
-                                    <React.Fragment key={i}>
-                                      {i > 0 && <span className="opacity-50"> </span>}
-                                      <span>{key}</span>
-                                    </React.Fragment>
-                                  ))}
-                                </kbd>
-                              )}
-
-                              {/* Selection indicator */}
-                              {isSelected && (
-                                <CornerDownLeft className="w-4 h-4 text-[var(--color-brand-500)]" />
-                              )}
-                            </button>
-                          );
-                        })}
+                  return (
+                    <div key={category}>
+                      {/* Category header */}
+                      <div className="px-4 py-1.5 text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide">
+                        {categoryLabels[category]}
                       </div>
-                    );
-                  }
-                )
+
+                      {/* Items */}
+                      {items.map((cmd, index) => {
+                        const globalIndex = filteredCommands.findIndex((c) => c.id === cmd.id);
+                        const isSelected = globalIndex === selectedIndex;
+
+                        return (
+                          <button
+                            key={cmd.id}
+                            onClick={() => {
+                              cmd.action();
+                              onClose();
+                            }}
+                            onMouseEnter={() => setSelectedIndex(globalIndex)}
+                            className={cn(
+                              'w-full flex items-center gap-3 px-4 py-2.5 text-left',
+                              'transition-colors duration-150',
+                              isSelected
+                                ? 'bg-[var(--color-brand-500)]/20 border-l-3 border-[var(--color-brand-500)]'
+                                : 'hover:bg-[var(--color-bg-secondary)] border-l-3 border-transparent'
+                            )}
+                            aria-selected={isSelected}
+                          >
+                            {/* Icon */}
+                            <span
+                              className={cn(
+                                'text-[var(--color-text-muted)]',
+                                isSelected && 'text-[var(--color-brand-500)]'
+                              )}
+                            >
+                              {cmd.icon}
+                            </span>
+
+                            {/* Label */}
+                            <span
+                              className={cn(
+                                'flex-1 text-sm',
+                                isSelected
+                                  ? 'text-[var(--color-text-primary)]'
+                                  : 'text-[var(--color-text-secondary)]'
+                              )}
+                            >
+                              {cmd.label}
+                            </span>
+
+                            {/* Shortcut */}
+                            {cmd.shortcut && (
+                              <kbd className="hidden sm:flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] rounded">
+                                {cmd.shortcut.split(' ').map((key, i) => (
+                                  <React.Fragment key={i}>
+                                    {i > 0 && <span className="opacity-50"> </span>}
+                                    <span>{key}</span>
+                                  </React.Fragment>
+                                ))}
+                              </kbd>
+                            )}
+
+                            {/* Selection indicator */}
+                            {isSelected && (
+                              <CornerDownLeft className="w-4 h-4 text-[var(--color-brand-500)]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })
               )}
             </div>
 
@@ -416,7 +411,7 @@ export const FlyCommandPalette: React.FC<FlyCommandPaletteProps> = ({
                   <CornerDownLeft className="w-3 h-3" /> to select
                 </span>
                 <span className="flex items-center gap-1">
-                  <ArrowRight className="w-3 h-3 rotate-[-90deg]" /> {""}
+                  <ArrowRight className="w-3 h-3 rotate-[-90deg]" /> {''}
                   <ArrowRight className="w-3 h-3 rotate-90" /> to navigate
                 </span>
               </div>

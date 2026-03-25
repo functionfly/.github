@@ -10,7 +10,8 @@ export const categoryColors: CategoryColors = {
   "Deployment Platforms": "#8b5cf6",
   "Databases": "#f59e0b",
   "APIs & Services": "#ef4444",
-  "Monitoring & Analytics": "#06b6d4"
+  "Monitoring & Analytics": "#06b6d4",
+  "AI Agent Frameworks": "#a855f7",
 };
 
 export interface IntegrationFilterProps {

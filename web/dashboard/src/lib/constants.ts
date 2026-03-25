@@ -1,8 +1,20 @@
 export const APP_NAME = 'FunctionFly';
-export const APP_TAGLINE = 'Serverless Functions & AI Agent Infrastructure';
+export const APP_TAGLINE = 'The Trust Layer for AI Agents';
 
-/** Base URL for the docs site (web/docs app). */
-export const DOCS_SITE_URL = '/docs';
+/**
+ * Origin of the standalone Astro docs site (web/docs), e.g. https://docs.functionfly.com.
+ * Dashboard /docs/* redirects here. Dev default: http://localhost:4322 (see web/docs astro.config).
+ * Override with VITE_DOCS_SITE_URL.
+ */
+export function getPublicDocsSiteOrigin(): string {
+  const env = (import.meta.env.VITE_DOCS_SITE_URL ?? '').trim().replace(/\/$/, '');
+  if (env) return env;
+  if (import.meta.env.PROD) return 'https://docs.functionfly.com';
+  return 'http://localhost:4322';
+}
+
+/** @deprecated Prefer getPublicDocsSiteOrigin(); kept as alias for href bases (no path). */
+export const DOCS_SITE_URL = getPublicDocsSiteOrigin();
 
 export const ROUTES = {
   HOME: '/',
@@ -12,6 +24,8 @@ export const ROUTES = {
   LOGIN: '/login',
   SIGNUP: '/signup',
   DASHBOARD: '/dashboard',
+  /** Metrics / activity home (sidebar: Overview). */
+  OVERVIEW: '/overview',
   FUNCTIONS: '/functions',
   REGISTRY: '/registry',
   PROVIDERS: '/providers',
@@ -29,6 +43,7 @@ export const ROUTES = {
   // Agent routes
   AGENTS: '/agents',
   AGENT_DETAIL: '/agents/:agentId',
+  SDK_INTEGRATIONS: '/sdk-integrations',
   MARKETPLACE_AGENTS: '/marketplace/agents',
   MARKETPLACE_FUNCTIONS: '/marketplace/functions',
   EVOLUTION: '/evolution',
@@ -47,16 +62,54 @@ export const ADMIN_DASHBOARD_URL =
   (import.meta.env.DEV ? 'http://localhost:3002' : '');
 
 /**
+ * Origin for user-visible app URLs (e.g. https://functionfly.com/apps/my-app).
+ * Override with VITE_PUBLIC_SITE_URL for staging (no trailing slash).
+ */
+export const PUBLIC_SITE_ORIGIN =
+  (import.meta.env.VITE_PUBLIC_SITE_URL ?? '').trim().replace(/\/$/, '') ||
+  'https://functionfly.com';
+
+/**
+ * URL of the marketing site (functionfly.com). The dashboard app redirects "/" here.
+ * Same as PUBLIC_SITE_ORIGIN unless overridden for multi-origin setups.
+ */
+export const MARKETING_SITE_URL = PUBLIC_SITE_ORIGIN;
+
+/**
+ * Logged-out "/" and nav "Home" go to the Astro marketing site: production uses MARKETING_SITE_URL;
+ * local dev defaults to http://localhost:4321 (web/site). Override with VITE_MARKETING_DEV_URL.
+ */
+export function getMarketingRedirectOrigin(): string {
+  if (import.meta.env.PROD) {
+    return MARKETING_SITE_URL;
+  }
+  const raw = (import.meta.env.VITE_MARKETING_DEV_URL ?? '').trim().replace(/\/$/, '');
+  return raw || 'http://localhost:4321';
+}
+
+/** Absolute URL for a path on the Astro marketing site (e.g. `/privacy`, `/terms`). */
+export function getMarketingPageUrl(path: string): string {
+  const origin = getMarketingRedirectOrigin();
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return `${origin}${p}`;
+}
+
+export function publicAppUrl(slug: string): string {
+  return `${PUBLIC_SITE_ORIGIN}/apps/${slug}`;
+}
+
+/**
  * All sidebar main nav paths (for recent-tab tracking).
  * Sorted by path length descending so longer paths match first.
  */
 export const MAIN_NAV_PATHS: string[] = [
   ROUTES.STATE_FABRIC,
+  ROUTES.SDK_INTEGRATIONS,
   ROUTES.MARKETPLACE_AGENTS,
-  ROUTES.MARKETPLACE_FUNCTIONS,
   ROUTES.FUNCTION_DETAIL,
   ROUTES.APP_DETAIL,
   ROUTES.DASHBOARD,
+  ROUTES.OVERVIEW,
   ROUTES.FUNCTIONS,
   ROUTES.APPS,
   ROUTES.REGISTRY,
@@ -72,8 +125,19 @@ export const MAIN_NAV_PATHS: string[] = [
 
 /** Resolve current pathname to a canonical sidebar path, or null if not a main nav route. */
 export function getCanonicalNavPath(pathname: string): string | null {
+  if (
+    pathname === ROUTES.MARKETPLACE_FUNCTIONS ||
+    pathname.startsWith(ROUTES.MARKETPLACE_FUNCTIONS + '/')
+  ) {
+    return ROUTES.DASHBOARD;
+  }
   for (const p of MAIN_NAV_PATHS) {
-    if (pathname === p || (p !== ROUTES.DASHBOARD && pathname.startsWith(p + '/'))) return p;
+    if (
+      pathname === p ||
+      (p !== ROUTES.DASHBOARD && p !== ROUTES.OVERVIEW && pathname.startsWith(p + '/'))
+    ) {
+      return p;
+    }
   }
   return null;
 }
@@ -103,13 +167,14 @@ export const ROUTE_BUILDERS = {
   // User profile
   userProfile: (username: string) => `/u/${username}`,
 
-  // Blog posts
-  blogPost: (slug: string) => `/blog/${slug}`,
+  // Blog posts (public blog on Astro marketing site, not the app)
+  blogPost: (slug: string) => getMarketingPageUrl(`/blog/${slug}`),
 
-  // Documentation (main docs site = web/docs app)
-  docs: (slug?: string) => (slug ? `${DOCS_SITE_URL}/${slug}` : DOCS_SITE_URL),
+  // Documentation (standalone Astro app web/docs)
+  docs: (slug?: string) =>
+    slug ? `${getPublicDocsSiteOrigin()}/docs/${slug}` : `${getPublicDocsSiteOrigin()}/`,
   docsApi: (endpoint?: string) =>
-    endpoint ? `${DOCS_SITE_URL}/api/${endpoint}` : `${DOCS_SITE_URL}/api`,
+    endpoint ? `${getPublicDocsSiteOrigin()}/api/${endpoint}` : `${getPublicDocsSiteOrigin()}/api`,
 
   // Registry search
   registrySearch: (query: string, page = 1) =>
@@ -165,20 +230,19 @@ export const PROVIDERS = {
     name: 'FunctionFly Edge',
     color: '#6366f1',
     icon: 'Zap',
-    regions: [
-      'auto',
-      'us-east-1',
-      'us-west-1',
-      'eu-west-1',
-      'eu-central-1',
-      'ap-southeast-1',
-      'ap-northeast-1',
-      'ap-south-1',
-    ],
+    regions: ['us-east-1', 'us-west-2', 'eu-central-1'],
     description:
       "Host your edge functions on FunctionFly's infrastructure - no deployment required",
     isManaged: true,
   },
+} as const;
+
+/** Vendor cloud dashboards opened from Providers → Configure (connected). */
+export const PROVIDER_EXTERNAL_DASHBOARD_URL = {
+  workers: 'https://dash.cloudflare.com/',
+  vercel: 'https://vercel.com/dashboard',
+  fly: 'https://fly.io/dashboard/',
+  deno: 'https://dash.deno.com/',
 } as const;
 
 export const PLANS = {
@@ -489,10 +553,14 @@ export const STATUS_COLORS = {
 } as const;
 
 /**
- * When true (e.g. VITE_COMING_SOON_ONLY=true at build time), the app shows only the
- * coming-soon / launch page for every route. Set this for functionfly.com until launch.
+ * Launch-only mode: every route shows the coming-soon page.
+ * - Production (`vite build`): true when VITE_COMING_SOON_ONLY=true (pre-launch deploys).
+ * - Dev (`vite`): ignores VITE_COMING_SOON_ONLY unless VITE_COMING_SOON_IN_DEV=true, so a copied
+ *   production .env does not hide /login on localhost. To preview launch mode locally, set both to "true".
  */
-export const COMING_SOON_ONLY = import.meta.env.VITE_COMING_SOON_ONLY === 'true';
+export const COMING_SOON_ONLY =
+  import.meta.env.VITE_COMING_SOON_ONLY === 'true' &&
+  (import.meta.env.PROD || import.meta.env.VITE_COMING_SOON_IN_DEV === 'true');
 
 /**
  * Canonical API base URL (no trailing slash). Use for all API and WebSocket calls.
@@ -523,7 +591,7 @@ export const API_BASE_URL = getApiBaseUrl();
 export const WELL_KNOWN_DISCOVERY_PATH = '/.well-known/functionfly.json';
 
 /**
- * AI service base URL (FlyMind / ai-service). When set, FlywheelChatAssistant and other
+ * AI service base URL (FlyMind / ai-service). When set, dashboard AI features and other
  * AI features call the completion API. Leave unset for simulated responses or when
  * the orchestrator proxies AI requests.
  */

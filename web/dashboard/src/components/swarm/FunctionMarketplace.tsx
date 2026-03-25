@@ -11,9 +11,28 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useQuery } from '@tanstack/react-query';
-import { Bot, Code, ExternalLink, Search, Shield, Star, TrendingUp, Zap } from 'lucide-react';
+import {
+  Bot,
+  Code,
+  DollarSign,
+  ExternalLink,
+  Search,
+  Shield,
+  Star,
+  TrendingUp,
+  Zap,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 // Types for Function Marketplace
@@ -40,6 +59,7 @@ interface MarketplaceFilters {
   category: string;
   deterministicOnly: boolean;
   agentGeneratedOnly: boolean;
+  pricedOnly: boolean;
 }
 
 const categories = [
@@ -52,6 +72,12 @@ const categories = [
   'validations',
   'analytics',
 ];
+
+const formatCategoryLabel = (category: string) =>
+  category
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 
 /** Map registry API response to marketplace FunctionListing */
 function registryToListing(fn: RegistryFunction | Record<string, unknown>): FunctionListing {
@@ -104,6 +130,7 @@ export function FunctionMarketplace() {
     category: '',
     deterministicOnly: false,
     agentGeneratedOnly: false,
+    pricedOnly: false,
   });
 
   const {
@@ -141,9 +168,10 @@ export function FunctionMarketplace() {
       listings.filter((fn) => {
         if (filters.deterministicOnly && !fn.deterministicVerified) return false;
         if (filters.agentGeneratedOnly && !fn.agentGenerated) return false;
+        if (filters.pricedOnly && fn.pricingModel === 'free') return false;
         return true;
       }),
-    [listings, filters.deterministicOnly, filters.agentGeneratedOnly]
+    [listings, filters.deterministicOnly, filters.agentGeneratedOnly, filters.pricedOnly]
   );
 
   const getPriceDisplay = (fn: FunctionListing) => {
@@ -151,9 +179,23 @@ export function FunctionMarketplace() {
       case 'free':
         return <Badge className="bg-green-500">Free</Badge>;
       case 'per_call':
-        return <Badge variant="outline">${fn.pricePerCall?.toFixed(3)}/call</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="border-amber-500/50 text-amber-500 bg-amber-500/10 font-medium"
+          >
+            <DollarSign className="h-3 w-3 mr-1" />${fn.pricePerCall?.toFixed(3)}/call
+          </Badge>
+        );
       case 'subscription':
-        return <Badge variant="outline">${fn.subscriptionMonthlyUsd}/mo</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="border-amber-500/50 text-amber-500 bg-amber-500/10 font-medium"
+          >
+            <DollarSign className="h-3 w-3 mr-1" />${fn.subscriptionMonthlyUsd}/mo
+          </Badge>
+        );
     }
   };
 
@@ -174,7 +216,7 @@ export function FunctionMarketplace() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 function-marketplace-surface">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -196,6 +238,12 @@ export function FunctionMarketplace() {
               AI Generated
             </Badge>
           )}
+          {listings.filter((l) => l.pricingModel !== 'free').length > 0 && (
+            <Badge variant="outline" className="bg-amber-500/10 text-amber-500">
+              <DollarSign className="h-3 w-3 mr-1" />
+              {listings.filter((l) => l.pricingModel !== 'free').length} Priced
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -203,54 +251,66 @@ export function FunctionMarketplace() {
       <AIDiscoveryUrlCard />
 
       {/* Filters */}
-      <Card>
+      <Card className="marketplace-filters-card">
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search functions..."
-                className="pl-10"
+                className="pl-10 marketplace-search-input"
                 value={filters.search}
                 onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
               />
             </div>
-            <select
-              className="px-3 py-2 border rounded-md"
-              value={filters.category}
-              onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
+            <Select
+              value={filters.category || 'all'}
+              onValueChange={(value) =>
+                setFilters((f) => ({ ...f, category: value === 'all' ? '' : value }))
+              }
             >
-              {categories.map((cat) => (
-                <option key={cat} value={cat === 'All' ? '' : cat}>
-                  {cat === 'All' ? 'All Categories' : cat}
-                </option>
-              ))}
-            </select>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={filters.deterministicOnly}
-                  onChange={(e) =>
-                    setFilters((f) => ({ ...f, deterministicOnly: e.target.checked }))
+              <SelectTrigger className="w-full md:w-[220px] marketplace-category-select">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat === 'All' ? 'all' : cat}>
+                    {cat === 'All' ? 'All Categories' : formatCategoryLabel(cat)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-4 flex-wrap">
+              <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={filters.pricedOnly}
+                  onCheckedChange={(checked) =>
+                    setFilters((f) => ({ ...f, pricedOnly: checked === true }))
                   }
-                  className="rounded border-gray-300"
+                />
+                <DollarSign className="h-4 w-4 text-amber-500" />
+                <span className="text-amber-500">Priced</span>
+              </Label>
+              <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={filters.deterministicOnly}
+                  onCheckedChange={(checked) =>
+                    setFilters((f) => ({ ...f, deterministicOnly: checked === true }))
+                  }
                 />
                 <Shield className="h-4 w-4" />
                 Deterministic
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+              </Label>
+              <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox
                   checked={filters.agentGeneratedOnly}
-                  onChange={(e) =>
-                    setFilters((f) => ({ ...f, agentGeneratedOnly: e.target.checked }))
+                  onCheckedChange={(checked) =>
+                    setFilters((f) => ({ ...f, agentGeneratedOnly: checked === true }))
                   }
-                  className="rounded border-gray-300"
                 />
                 <Bot className="h-4 w-4" />
                 AI Generated
-              </label>
+              </Label>
             </div>
           </div>
         </CardContent>
@@ -281,8 +341,10 @@ function FunctionCard({
   fn: FunctionListing;
   priceDisplay: React.ReactNode;
 }) {
+  const isPriced = fn.pricingModel !== 'free';
+
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className="marketplace-function-card hover:shadow-lg transition-shadow">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="space-y-1">
@@ -341,8 +403,21 @@ function FunctionCard({
         </div>
       </CardContent>
       <CardFooter>
-        <Button className="w-full" variant={fn.pricingModel === 'free' ? 'default' : 'outline'}>
-          {fn.pricingModel === 'free' ? 'Use Function' : 'Purchase'}
+        <Button
+          className="w-full marketplace-function-action"
+          variant={isPriced ? 'default' : 'default'}
+          style={
+            isPriced ? { background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' } : {}
+          }
+        >
+          {isPriced ? (
+            <>
+              <DollarSign className="h-4 w-4 mr-2" />
+              Purchase
+            </>
+          ) : (
+            'Use Function'
+          )}
           <ExternalLink className="h-4 w-4 ml-2" />
         </Button>
       </CardFooter>

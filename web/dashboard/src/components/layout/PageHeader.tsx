@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { ChevronRight, Home } from 'lucide-react';
+import { ChevronRight, Home, LayoutDashboard } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 interface BreadcrumbItem {
@@ -142,11 +142,18 @@ export function PageHeader({
 function generateDefaultBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const segments = pathname.split('/').filter(Boolean);
   const breadcrumbs: BreadcrumbItem[] = [
-    { label: 'Dashboard', path: ROUTES.DASHBOARD, icon: Home },
+    { label: 'Home', path: ROUTES.DASHBOARD, icon: Home },
   ];
 
-  if (segments.length === 0 || segments[0] === 'dashboard') {
+  if (segments.length === 0 || (segments[0] === 'dashboard' && segments.length === 1)) {
     return breadcrumbs;
+  }
+
+  if (segments[0] === 'overview' && segments.length === 1) {
+    return [
+      { label: 'Home', path: ROUTES.DASHBOARD, icon: Home },
+      { label: 'Overview', path: ROUTES.OVERVIEW, icon: LayoutDashboard },
+    ];
   }
 
   // Add section breadcrumb

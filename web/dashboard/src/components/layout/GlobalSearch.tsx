@@ -1,23 +1,19 @@
-import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { ROUTES } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Search,
-  FunctionSquare,
-  Cloud,
   BarChart3,
+  Cloud,
+  Code,
+  Command,
+  FunctionSquare,
+  LayoutDashboard,
+  Search,
   Settings,
-  Command
-} from "lucide-react";
-import { ROUTES } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface SearchResult {
   id: string;
@@ -39,10 +35,18 @@ const SEARCH_ITEMS: SearchResult[] = [
   {
     id: 'dashboard',
     type: 'page',
-    title: 'Dashboard',
-    description: 'Overview of your applications and metrics',
+    title: 'Function Marketplace',
+    description: 'Browse and deploy serverless functions from the registry',
     path: ROUTES.DASHBOARD,
-    icon: BarChart3,
+    icon: Code,
+  },
+  {
+    id: 'overview',
+    type: 'page',
+    title: 'Overview',
+    description: 'Usage, activity, and health for your workspace',
+    path: ROUTES.OVERVIEW,
+    icon: LayoutDashboard,
   },
   {
     id: 'functions',
@@ -146,9 +150,10 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const filteredResults = useMemo(() => {
     if (!query.trim()) return SEARCH_ITEMS.slice(0, 8); // Show recent/popular items when no query
 
-    return SEARCH_ITEMS.filter(item =>
-      item.title.toLowerCase().includes(query.toLowerCase()) ||
-      (item.description && item.description.toLowerCase().includes(query.toLowerCase()))
+    return SEARCH_ITEMS.filter(
+      (item) =>
+        item.title.toLowerCase().includes(query.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(query.toLowerCase()))
     );
   }, [query]);
 
@@ -168,10 +173,10 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIndex(prev => Math.min(prev + 1, filteredResults.length - 1));
+      setSelectedIndex((prev) => Math.min(prev + 1, filteredResults.length - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setSelectedIndex(prev => Math.max(prev - 1, 0));
+      setSelectedIndex((prev) => Math.max(prev - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (filteredResults[selectedIndex]) {
@@ -205,8 +210,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
               <kbd className="px-2 py-1 text-xs bg-white/10 rounded border border-white/20">
-                <Command className="w-3 h-3 inline mr-1" />
-                K
+                <Command className="w-3 h-3 inline mr-1" />K
               </kbd>
             </div>
           </div>
@@ -229,8 +233,8 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                     key={result.id}
                     onClick={() => handleResultClick(result)}
                     className={cn(
-                      "w-full px-6 py-3 flex items-center gap-4 hover:bg-white/5 transition-colors text-left",
-                      isSelected && "bg-white/5"
+                      'w-full px-6 py-3 flex items-center gap-4 hover:bg-white/5 transition-colors text-left',
+                      isSelected && 'bg-white/5'
                     )}
                   >
                     <div className="flex-shrink-0">
@@ -239,15 +243,10 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-medium text-white truncate">
-                          {result.title}
-                        </h3>
+                        <h3 className="text-sm font-medium text-white truncate">{result.title}</h3>
                         <Badge
                           variant="secondary"
-                          className={cn(
-                            "text-xs px-2 py-0.5",
-                            TYPE_COLORS[result.type]
-                          )}
+                          className={cn('text-xs px-2 py-0.5', TYPE_COLORS[result.type])}
                         >
                           {TYPE_LABELS[result.type]}
                         </Badge>
@@ -255,10 +254,10 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                           <Badge
                             variant="outline"
                             className={cn(
-                              "text-xs px-2 py-0.5 border-white/20",
-                              result.badge === 'Active' && "text-green-400",
-                              result.badge === 'Failed' && "text-red-400",
-                              result.badge === 'Connected' && "text-blue-400"
+                              'text-xs px-2 py-0.5 border-white/20',
+                              result.badge === 'Active' && 'text-green-400',
+                              result.badge === 'Failed' && 'text-red-400',
+                              result.badge === 'Connected' && 'text-blue-400'
                             )}
                           >
                             {result.badge}
@@ -266,9 +265,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                         )}
                       </div>
                       {result.description && (
-                        <p className="text-xs text-text-muted truncate">
-                          {result.description}
-                        </p>
+                        <p className="text-xs text-text-muted truncate">{result.description}</p>
                       )}
                     </div>
                   </button>

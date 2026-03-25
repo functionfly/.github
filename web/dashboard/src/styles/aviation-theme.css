@@ -1,0 +1,849 @@
+/* ==========================================================================
+   FunctionFly Aviation Theme - Theme-Aware Industrial Instrumentation
+   Aircraft cockpit aesthetic with full light/dark mode support
+   ========================================================================== */
+
+@theme {
+  /* --------------------------------------------------------------------------
+     Aviation Dark Mode - Cockpit Aesthetic
+     -------------------------------------------------------------------------- */
+  --color-aviation-bg-primary: #08080c;
+  --color-aviation-bg-secondary: #0d0d14;
+  --color-aviation-bg-tertiary: #14141f;
+  --color-aviation-bg-panel: #1a1a28;
+  --color-aviation-bg-instrument: #222232;
+
+  /* Aviation Accents - Aircraft Instrument Colors (Dark) */
+  --color-aviation-amber: #f59e0b;
+  --color-aviation-amber-glow: rgba(245, 158, 11, 0.5);
+  --color-aviation-amber-dim: rgba(245, 158, 11, 0.2);
+  --color-aviation-amber-subtle: rgba(245, 158, 11, 0.1);
+  --color-aviation-cyan: #06b6d4;
+  --color-aviation-cyan-glow: rgba(6, 182, 212, 0.5);
+  --color-aviation-cyan-dim: rgba(6, 182, 212, 0.2);
+  --color-aviation-cyan-subtle: rgba(6, 182, 212, 0.1);
+  --color-aviation-green: #10b981;
+  --color-aviation-green-glow: rgba(16, 185, 129, 0.5);
+  --color-aviation-red: #ef4444;
+  --color-aviation-red-glow: rgba(239, 68, 68, 0.5);
+
+  /* Aviation Text (Dark) */
+  --color-aviation-text-primary: #e8e8f0;
+  --color-aviation-text-secondary: #9ca3af;
+  --color-aviation-text-muted: #6b7280;
+  --color-aviation-text-dim: #4b5563;
+
+  /* Aviation Borders (Dark) */
+  --color-aviation-border-panel: rgba(255, 255, 255, 0.08);
+  --color-aviation-border-instrument: rgba(255, 255, 255, 0.12);
+  --color-aviation-border-glow: rgba(245, 158, 11, 0.3);
+  --color-aviation-border-cyan: rgba(6, 182, 212, 0.3);
+
+  /* --------------------------------------------------------------------------
+     Aviation Light Mode - Flight Deck Day Mode
+     -------------------------------------------------------------------------- */
+  --color-aviation-bg-primary-light: #f8f9fa;
+  --color-aviation-bg-secondary-light: #ffffff;
+  --color-aviation-bg-tertiary-light: #f1f3f5;
+  --color-aviation-bg-panel-light: #e9ecef;
+  --color-aviation-bg-instrument-light: #dee2e6;
+
+  /* Aviation Accents - Aircraft Instrument Colors (Light) - Enhanced visibility */
+  --color-aviation-amber-light: #b45309;
+  --color-aviation-amber-glow-light: rgba(180, 83, 9, 0.5);
+  --color-aviation-amber-dim-light: rgba(180, 83, 9, 0.3);
+  --color-aviation-amber-subtle-light: rgba(180, 83, 9, 0.2);
+  --color-aviation-cyan-light: #0e7490;
+  --color-aviation-cyan-glow-light: rgba(14, 116, 144, 0.5);
+  --color-aviation-cyan-dim-light: rgba(14, 116, 144, 0.25);
+  --color-aviation-cyan-subtle-light: rgba(14, 116, 144, 0.12);
+  --color-aviation-green-light: #059669;
+  --color-aviation-green-glow-light: rgba(5, 150, 105, 0.4);
+  --color-aviation-red-light: #dc2626;
+  --color-aviation-red-glow-light: rgba(220, 38, 38, 0.4);
+
+  /* Aviation Text (Light) */
+  --color-aviation-text-primary-light: #1a1a2e;
+  --color-aviation-text-secondary-light: #4a5568;
+  --color-aviation-text-muted-light: #718096;
+  --color-aviation-text-dim-light: #a0aec0;
+
+  /* Aviation Borders (Light) */
+  --color-aviation-border-panel-light: rgba(0, 0, 0, 0.08);
+  --color-aviation-border-instrument-light: rgba(0, 0, 0, 0.12);
+  --color-aviation-border-glow-light: rgba(217, 119, 6, 0.25);
+  --color-aviation-border-cyan-light: rgba(8, 145, 178, 0.25);
+}
+
+/* ==========================================================================
+   Aviation Background Patterns - Theme Aware
+   ========================================================================== */
+
+.aviation-grid-bg {
+  background-color: var(--color-aviation-bg-primary);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.aviation-radar-bg {
+  background-color: var(--color-aviation-bg-primary);
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.02) 0%, transparent 70%);
+}
+
+/* Light mode backgrounds */
+[data-theme='light'] .aviation-grid-bg {
+  background-color: var(--color-aviation-bg-primary-light);
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+}
+
+[data-theme='light'] .aviation-radar-bg {
+  background-color: var(--color-aviation-bg-primary-light);
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(8, 145, 178, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(217, 119, 6, 0.03) 0%, transparent 70%);
+}
+
+/* ==========================================================================
+   Aviation Panel Components - Theme Aware
+   ========================================================================== */
+
+.aviation-panel {
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.aviation-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 20%,
+    rgba(255, 255, 255, 0.1) 80%,
+    transparent 100%
+  );
+}
+
+.aviation-panel-glow {
+  box-shadow:
+    0 0 0 1px rgba(245, 158, 11, 0.1),
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.aviation-panel-cyan {
+  border-color: var(--color-aviation-border-cyan);
+  box-shadow:
+    0 0 0 1px rgba(6, 182, 212, 0.1),
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Light mode panels */
+[data-theme='light'] .aviation-panel {
+  background: var(--color-aviation-bg-panel-light);
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .aviation-panel::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.06) 20%,
+    rgba(0, 0, 0, 0.06) 80%,
+    transparent 100%
+  );
+}
+
+[data-theme='light'] .aviation-panel-glow {
+  box-shadow:
+    0 0 0 1px rgba(217, 119, 6, 0.15),
+    0 4px 24px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+[data-theme='light'] .aviation-panel-cyan {
+  border-color: var(--color-aviation-border-cyan-light);
+  box-shadow:
+    0 0 0 1px rgba(8, 145, 178, 0.15),
+    0 4px 24px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* ==========================================================================
+   Aviation Instrument Cards - Theme Aware
+   ========================================================================== */
+
+.aviation-instrument {
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-instrument) 0%,
+    var(--color-aviation-bg-panel) 100%
+  );
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.aviation-instrument::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 30%,
+    rgba(255, 255, 255, 0.15) 70%,
+    transparent 100%
+  );
+}
+
+.aviation-instrument:hover {
+  border-color: var(--color-aviation-amber);
+  box-shadow:
+    0 0 20px var(--color-aviation-amber-dim),
+    0 8px 32px rgba(0, 0, 0, 0.5);
+  transform: translateY(-2px);
+}
+
+.aviation-instrument.active {
+  border-color: var(--color-aviation-green);
+  box-shadow:
+    0 0 20px var(--color-aviation-green-glow),
+    inset 0 0 20px rgba(16, 185, 129, 0.05);
+}
+
+/* Light mode instruments */
+[data-theme='light'] .aviation-instrument {
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-instrument-light) 0%,
+    var(--color-aviation-bg-panel-light) 100%
+  );
+  border-color: var(--color-aviation-border-instrument-light);
+}
+
+[data-theme='light'] .aviation-instrument::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.8) 30%,
+    rgba(255, 255, 255, 0.8) 70%,
+    transparent 100%
+  );
+}
+
+[data-theme='light'] .aviation-instrument:hover {
+  border-color: var(--color-aviation-amber-light);
+  box-shadow:
+    0 0 20px var(--color-aviation-amber-glow-light),
+    0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .aviation-instrument.active {
+  border-color: var(--color-aviation-green-light);
+  box-shadow:
+    0 0 20px var(--color-aviation-green-glow-light),
+    inset 0 0 20px rgba(5, 150, 105, 0.05);
+}
+
+/* Corner accents */
+.aviation-instrument-corner {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--color-aviation-amber);
+  transition: all 0.3s ease;
+}
+
+[data-theme='light'] .aviation-instrument-corner {
+  border-color: var(--color-aviation-amber-light);
+}
+
+.aviation-instrument-corner-tl {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 12px 0 0 0;
+}
+
+.aviation-instrument-corner-tr {
+  top: -1px;
+  right: -1px;
+  border-left: none;
+  border-bottom: none;
+  border-radius: 0 12px 0 0;
+}
+
+.aviation-instrument-corner-bl {
+  bottom: -1px;
+  left: -1px;
+  border-right: none;
+  border-top: none;
+  border-radius: 0 0 0 12px;
+}
+
+.aviation-instrument-corner-br {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+  border-radius: 0 0 12px 0;
+}
+
+.aviation-instrument:hover .aviation-instrument-corner {
+  width: 12px;
+  height: 12px;
+  border-color: var(--color-aviation-amber);
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow);
+}
+
+[data-theme='light'] .aviation-instrument:hover .aviation-instrument-corner {
+  border-color: var(--color-aviation-amber-light);
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow-light);
+}
+
+/* ==========================================================================
+   Aviation Status Indicators - Theme Aware
+   ========================================================================== */
+
+.aviation-status-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.aviation-status-led::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 50%;
+  animation: aviation-pulse 2s ease-in-out infinite;
+}
+
+.aviation-status-led.active {
+  background: var(--color-aviation-green);
+  box-shadow:
+    0 0 8px var(--color-aviation-green-glow),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='light'] .aviation-status-led.active {
+  background: var(--color-aviation-green-light);
+  box-shadow:
+    0 0 8px var(--color-aviation-green-glow-light),
+    inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.aviation-status-led.active::after {
+  border: 1px solid var(--color-aviation-green);
+}
+
+[data-theme='light'] .aviation-status-led.active::after {
+  border: 1px solid var(--color-aviation-green-light);
+}
+
+.aviation-status-led.warning {
+  background: var(--color-aviation-amber);
+  box-shadow:
+    0 0 8px var(--color-aviation-amber-glow),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='light'] .aviation-status-led.warning {
+  background: var(--color-aviation-amber-light);
+  box-shadow:
+    0 0 8px var(--color-aviation-amber-glow-light),
+    inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.aviation-status-led.warning::after {
+  border: 1px solid var(--color-aviation-amber);
+}
+
+[data-theme='light'] .aviation-status-led.warning::after {
+  border: 1px solid var(--color-aviation-amber-light);
+}
+
+.aviation-status-led.error {
+  background: var(--color-aviation-red);
+  box-shadow:
+    0 0 8px var(--color-aviation-red-glow),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='light'] .aviation-status-led.error {
+  background: var(--color-aviation-red-light);
+  box-shadow:
+    0 0 8px var(--color-aviation-red-glow-light),
+    inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.aviation-status-led.error::after {
+  border: 1px solid var(--color-aviation-red);
+}
+
+[data-theme='light'] .aviation-status-led.error::after {
+  border: 1px solid var(--color-aviation-red-light);
+}
+
+@keyframes aviation-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.2);
+  }
+}
+
+/* ==========================================================================
+   Aviation Buttons - Theme Aware
+   ========================================================================== */
+
+.aviation-button {
+  position: relative;
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-instrument) 0%,
+    var(--color-aviation-bg-panel) 100%
+  );
+  border: 1px solid var(--color-aviation-amber-dim);
+  color: var(--color-aviation-amber);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.aviation-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--color-aviation-amber-subtle), transparent);
+  transition: left 0.5s ease;
+}
+
+.aviation-button:hover {
+  border-color: var(--color-aviation-amber);
+  box-shadow:
+    0 0 20px var(--color-aviation-amber-dim),
+    inset 0 0 20px var(--color-aviation-amber-subtle);
+  transform: translateY(-1px);
+}
+
+.aviation-button:hover::before {
+  left: 100%;
+}
+
+.aviation-button:active {
+  transform: translateY(0);
+}
+
+.aviation-button-primary {
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-amber-subtle) 0%,
+    rgba(245, 158, 11, 0.05) 100%
+  );
+  border-color: var(--color-aviation-amber);
+  box-shadow:
+    0 0 15px var(--color-aviation-amber-dim),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.aviation-button-primary:hover {
+  background: linear-gradient(145deg, rgba(245, 158, 11, 0.25) 0%, rgba(245, 158, 11, 0.1) 100%);
+  box-shadow:
+    0 0 30px var(--color-aviation-amber-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.aviation-button-cyan {
+  color: var(--color-aviation-cyan);
+  border-color: var(--color-aviation-cyan-dim);
+}
+
+.aviation-button-cyan:hover {
+  border-color: var(--color-aviation-cyan);
+  box-shadow:
+    0 0 20px var(--color-aviation-cyan-dim),
+    inset 0 0 20px var(--color-aviation-cyan-subtle);
+}
+
+/* Light mode buttons */
+[data-theme='light'] .aviation-button {
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-instrument-light) 0%,
+    var(--color-aviation-bg-panel-light) 100%
+  );
+  border-color: var(--color-aviation-amber-dim-light);
+  color: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .aviation-button::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-aviation-amber-subtle-light),
+    transparent
+  );
+}
+
+[data-theme='light'] .aviation-button:hover {
+  border-color: var(--color-aviation-amber-light);
+  box-shadow:
+    0 0 20px var(--color-aviation-amber-glow-light),
+    inset 0 0 20px var(--color-aviation-amber-subtle-light);
+}
+
+[data-theme='light'] .aviation-button-primary {
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-amber-subtle-light) 0%,
+    rgba(217, 119, 6, 0.05) 100%
+  );
+  border-color: var(--color-aviation-amber-light);
+  box-shadow:
+    0 0 15px var(--color-aviation-amber-glow-light),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+[data-theme='light'] .aviation-button-primary:hover {
+  background: linear-gradient(145deg, rgba(217, 119, 6, 0.2) 0%, rgba(217, 119, 6, 0.08) 100%);
+  box-shadow:
+    0 0 30px var(--color-aviation-amber-glow-light),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+[data-theme='light'] .aviation-button-cyan {
+  color: var(--color-aviation-cyan-light);
+  border-color: var(--color-aviation-cyan-dim-light);
+}
+
+[data-theme='light'] .aviation-button-cyan:hover {
+  border-color: var(--color-aviation-cyan-light);
+  box-shadow:
+    0 0 20px var(--color-aviation-cyan-glow-light),
+    inset 0 0 20px var(--color-aviation-cyan-subtle-light);
+}
+
+/* ==========================================================================
+   Aviation Typography - Theme Aware
+   ========================================================================== */
+
+.aviation-heading {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-aviation-text-primary);
+}
+
+.aviation-label {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-muted);
+}
+
+.aviation-value {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-weight: 600;
+  color: var(--color-aviation-amber);
+}
+
+.aviation-value-cyan {
+  color: var(--color-aviation-cyan);
+}
+
+/* Light mode typography */
+[data-theme='light'] .aviation-heading {
+  color: var(--color-aviation-text-primary-light);
+}
+
+[data-theme='light'] .aviation-label {
+  color: var(--color-aviation-text-muted-light);
+}
+
+[data-theme='light'] .aviation-value {
+  color: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .aviation-value-cyan {
+  color: var(--color-aviation-cyan-light);
+}
+
+/* ==========================================================================
+   Aviation Input - Theme Aware
+   ========================================================================== */
+
+.aviation-input {
+  background: var(--color-aviation-bg-instrument);
+  border: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 6px;
+  padding: 0.625rem 0.875rem;
+  color: var(--color-aviation-text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.aviation-input:focus {
+  outline: none;
+  border-color: var(--color-aviation-amber);
+  box-shadow:
+    0 0 0 3px var(--color-aviation-amber-dim),
+    inset 0 0 10px var(--color-aviation-amber-subtle);
+}
+
+.aviation-input::placeholder {
+  color: var(--color-aviation-text-dim);
+}
+
+/* Light mode input */
+[data-theme='light'] .aviation-input {
+  background: var(--color-aviation-bg-instrument-light);
+  border-color: var(--color-aviation-border-instrument-light);
+  color: var(--color-aviation-text-primary-light);
+}
+
+[data-theme='light'] .aviation-input:focus {
+  border-color: var(--color-aviation-amber-light);
+  box-shadow:
+    0 0 0 3px var(--color-aviation-amber-dim-light),
+    inset 0 0 10px var(--color-aviation-amber-subtle-light);
+}
+
+[data-theme='light'] .aviation-input::placeholder {
+  color: var(--color-aviation-text-dim-light);
+}
+
+/* ==========================================================================
+   Aviation Animations
+   ========================================================================== */
+
+@keyframes aviation-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes aviation-blip {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes aviation-radar-sweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes aviation-fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes aviation-glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 20px var(--color-aviation-amber-dim);
+  }
+  50% {
+    box-shadow: 0 0 40px var(--color-aviation-amber-glow);
+  }
+}
+
+.aviation-animate-fade-in-up {
+  animation: aviation-fade-in-up 0.6s ease-out forwards;
+}
+
+.aviation-animate-glow-pulse {
+  animation: aviation-glow-pulse 2s ease-in-out infinite;
+}
+
+/* Light mode glow pulse */
+[data-theme='light'] .aviation-animate-glow-pulse {
+  animation: aviation-glow-pulse-light 2s ease-in-out infinite;
+}
+
+@keyframes aviation-glow-pulse-light {
+  0%,
+  100% {
+    box-shadow: 0 0 20px var(--color-aviation-amber-dim-light);
+  }
+  50% {
+    box-shadow: 0 0 40px var(--color-aviation-amber-glow-light);
+  }
+}
+
+/* Stagger delays */
+.aviation-stagger-1 {
+  animation-delay: 0.1s;
+}
+.aviation-stagger-2 {
+  animation-delay: 0.2s;
+}
+.aviation-stagger-3 {
+  animation-delay: 0.3s;
+}
+.aviation-stagger-4 {
+  animation-delay: 0.4s;
+}
+.aviation-stagger-5 {
+  animation-delay: 0.5s;
+}
+
+/* ==========================================================================
+   Aviation Data Display - Theme Aware
+   ========================================================================== */
+
+.aviation-data-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-aviation-border-panel);
+}
+
+.aviation-data-row:last-child {
+  border-bottom: none;
+}
+
+.aviation-data-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-muted);
+}
+
+.aviation-data-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+}
+
+/* Light mode data display */
+[data-theme='light'] .aviation-data-row {
+  border-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .aviation-data-label {
+  color: var(--color-aviation-text-muted-light);
+}
+
+[data-theme='light'] .aviation-data-value {
+  color: var(--color-aviation-text-primary-light);
+}
+
+/* ==========================================================================
+   Aviation Scrollbar - Theme Aware
+   ========================================================================== */
+
+.aviation-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.aviation-scroll::-webkit-scrollbar-track {
+  background: var(--color-aviation-bg-secondary);
+}
+
+.aviation-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-aviation-border-instrument);
+  border-radius: 3px;
+}
+
+.aviation-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-aviation-amber-dim);
+}
+
+/* Light mode scrollbar */
+[data-theme='light'] .aviation-scroll::-webkit-scrollbar-track {
+  background: var(--color-aviation-bg-secondary-light);
+}
+
+[data-theme='light'] .aviation-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-aviation-border-instrument-light);
+}
+
+[data-theme='light'] .aviation-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-aviation-amber-dim-light);
+}
+
+/* ==========================================================================
+   Aviation Dialog/Modal - Theme Aware
+   ========================================================================== */
+
+.aviation-dialog {
+  background: var(--color-aviation-bg-secondary);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 12px;
+}
+
+[data-theme='light'] .aviation-dialog {
+  background: var(--color-aviation-bg-secondary-light);
+  border-color: var(--color-aviation-border-panel-light);
+}

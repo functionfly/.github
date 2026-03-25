@@ -1,3 +1,4 @@
+import { getWalletInfo } from '@/api/billing';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,7 +11,17 @@ import {
 import { ADMIN_DASHBOARD_URL, PLANS, ROUTES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
-import { ChevronDown, CreditCard, LogOut, Settings, Shield, User } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  ChevronDown,
+  CreditCard,
+  DollarSign,
+  LogOut,
+  Settings,
+  Shield,
+  User,
+  Wallet,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -21,6 +32,14 @@ interface UserMenuProps {
 export function UserMenu({ className }: UserMenuProps) {
   const { user, logout } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
+
+  const { data: walletInfo } = useQuery({
+    queryKey: ['wallet-info'],
+    queryFn: getWalletInfo,
+    enabled: !!user,
+    staleTime: 60 * 1000, // 1 minute
+    retry: false,
+  });
 
   if (!user) return null;
 
@@ -46,6 +65,14 @@ export function UserMenu({ className }: UserMenuProps) {
     );
   };
 
+  const formatBalance = (balance: number | undefined) => {
+    if (balance === undefined || balance === null) return null;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(balance);
+  };
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
@@ -60,9 +87,17 @@ export function UserMenu({ className }: UserMenuProps) {
             <p className="text-sm font-medium text-white truncate max-w-24">
               {user.username ? `@${user.username}` : user.name || user.email}
             </p>
-            <p className="text-xs text-text-muted capitalize">
-              {user.name && user.username ? user.name : `${planInfo.name} Plan`}
-            </p>
+            {walletInfo && (
+              <p className="text-xs text-amber-400 flex items-center justify-end gap-1">
+                <Wallet className="h-3 w-3" />
+                {formatBalance(walletInfo.balance_usd)} balance
+              </p>
+            )}
+            {!walletInfo && (
+              <p className="text-xs text-text-muted capitalize">
+                {user.name && user.username ? user.name : `${planInfo.name} Plan`}
+              </p>
+            )}
           </div>
           <div className="w-9 h-9 rounded-full bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-medium text-sm">
             {user.avatar ? (
@@ -96,6 +131,33 @@ export function UserMenu({ className }: UserMenuProps) {
             <p className="text-xs text-text-muted truncate">{user.email}</p>
           </div>
         </DropdownMenuLabel>
+
+        {/* Wallet Balance Section */}
+        {walletInfo && (
+          <>
+            <div className="px-3 py-2 mx-2 my-1 rounded-md bg-amber-500/10 border border-amber-500/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-amber-500" />
+                  <span className="text-xs text-text-secondary">Wallet Balance</span>
+                </div>
+                <span className="text-sm font-semibold text-amber-500">
+                  {formatBalance(walletInfo.balance_usd)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-1 text-xs text-text-muted">
+                <span>Earned</span>
+                <span className="text-green-400">
+                  {formatBalance(walletInfo.lifetime_earnings_usd)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-text-muted">
+                <span>Fees Paid</span>
+                <span className="text-red-400">{formatBalance(walletInfo.lifetime_fees_usd)}</span>
+              </div>
+            </div>
+          </>
+        )}
 
         <DropdownMenuSeparator className="bg-white/8" />
 

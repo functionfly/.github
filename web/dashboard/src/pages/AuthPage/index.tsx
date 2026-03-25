@@ -1,6 +1,6 @@
 import { Navbar } from '@/components/common/Navbar';
 import { Button } from '@/components/ui/button';
-import { getApiBaseUrl } from '@/lib/constants';
+import { getApiBaseUrl, getMarketingPageUrl } from '@/lib/constants';
 import { motion } from 'framer-motion';
 import { Github, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -244,21 +244,23 @@ export function AuthPage() {
       <footer className="auth-footer">
         <div className="auth-footer-content">
           <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <span>© 2026 FunctionFly</span>
+            <span>© {new Date().getFullYear()} FunctionFly LLC</span>
           </div>
           <div className="flex items-center gap-6 text-sm">
-            <Link
-              to="/privacy"
+            <a
+              href={getMarketingPageUrl('/privacy')}
               className="auth-footer-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 rounded-sm"
+              rel="noopener noreferrer"
             >
               Privacy Policy
-            </Link>
-            <Link
-              to="#"
+            </a>
+            <a
+              href={getMarketingPageUrl('/terms')}
               className="auth-footer-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 rounded-sm"
+              rel="noopener noreferrer"
             >
               Terms of Service
-            </Link>
+            </a>
           </div>
         </div>
       </footer>

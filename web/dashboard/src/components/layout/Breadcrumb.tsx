@@ -42,15 +42,22 @@ export function Breadcrumb() {
     const pathSegments = location.pathname.split('/').filter(Boolean);
     const breadcrumbs: BreadcrumbItem[] = [];
 
-    // Always start with Dashboard
+    // Home → function marketplace (logged-in default)
     breadcrumbs.push({
-      label: 'Dashboard',
+      label: 'Home',
       path: ROUTES.DASHBOARD,
       isActive: location.pathname === ROUTES.DASHBOARD,
     });
 
     // Handle different routes
-    if (location.pathname.startsWith('/functions')) {
+    if (location.pathname === ROUTES.OVERVIEW || location.pathname.startsWith(`${ROUTES.OVERVIEW}/`)) {
+      breadcrumbs[0].isActive = false;
+      breadcrumbs.push({
+        label: 'Overview',
+        path: ROUTES.OVERVIEW,
+        isActive: true,
+      });
+    } else if (location.pathname.startsWith('/functions')) {
       breadcrumbs.push({
         label: 'Functions',
         path: ROUTES.FUNCTIONS,

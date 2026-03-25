@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient } from './client';
 
 export interface RegistryFunction {
   id: string;
@@ -17,6 +17,12 @@ export interface RegistryFunction {
   total_ratings: number;
   overall_score: number;
   created_at: string;
+  /** Trust score (0-100) - represents overall trust level */
+  trust_score?: number;
+  /** Trust tier classification */
+  trust_tier?: 'critical' | 'high' | 'medium' | 'low' | 'untrusted';
+  /** Verification status */
+  verification_status?: 'verified' | 'pending' | 'unverified';
 }
 
 export interface RegistryFunctionVersion {
@@ -66,15 +72,15 @@ class RegistryApi {
   // Get list of functions
   async getFunctions(params?: RegistrySearchParams) {
     const queryParams = new URLSearchParams();
-    if (params?.query) queryParams.append("q", params.query);
-    if (params?.category) queryParams.append("category", params.category);
-    if (params?.author) queryParams.append("author", params.author);
-    if (params?.visibility) queryParams.append("visibility", params.visibility);
-    if (params?.tags) params.tags.forEach(tag => queryParams.append("tags", tag));
-    if (params?.limit) queryParams.append("limit", params.limit.toString());
-    if (params?.offset) queryParams.append("offset", params.offset.toString());
+    if (params?.query) queryParams.append('q', params.query);
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.author) queryParams.append('author', params.author);
+    if (params?.visibility) queryParams.append('visibility', params.visibility);
+    if (params?.tags) params.tags.forEach((tag) => queryParams.append('tags', tag));
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
 
-    const url = `/v1/registry/functions${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+    const url = `/v1/registry/functions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return apiClient.get<{ functions: RegistryFunction[] }>(url);
   }
 
@@ -95,7 +101,7 @@ class RegistryApi {
   // Search functions
   async searchFunctions(query: string, category?: string, limit = 50) {
     const params = new URLSearchParams({ q: query, limit: limit.toString() });
-    if (category) params.append("category", category);
+    if (category) params.append('category', category);
 
     return apiClient.get<{ functions: RegistryFunction[] }>(
       `/v1/registry/search?${params.toString()}`
@@ -104,14 +110,16 @@ class RegistryApi {
 
   // Execute function
   async executeFunction(author: string, name: string, request: RegistryExecutionRequest) {
-    return apiClient.post<RegistryExecutionResponse>(
-      `/v1/fx/${author}/${name}`,
-      request
-    );
+    return apiClient.post<RegistryExecutionResponse>(`/v1/fx/${author}/${name}`, request);
   }
 
   // Execute function with specific version
-  async executeFunctionVersion(author: string, name: string, version: string, request: RegistryExecutionRequest) {
+  async executeFunctionVersion(
+    author: string,
+    name: string,
+    version: string,
+    request: RegistryExecutionRequest
+  ) {
     return apiClient.post<RegistryExecutionResponse>(
       `/v1/fx/${author}/${name}@${version}`,
       request
@@ -162,7 +170,7 @@ class RegistryApi {
     readme?: string;
   }) {
     return apiClient.post<{ ok: boolean; function_id: string; version_id: string }>(
-      "/v1/registry/publish",
+      '/v1/registry/publish',
       publishRequest
     );
   }
@@ -185,12 +193,11 @@ class RegistryApi {
   }
 
   /** PATCH /v1/functions/{author}/{name}/settings — requires auth, updates settings (e.g. customDomains). */
-  async patchFunctionSettings(
-    author: string,
-    name: string,
-    data: { customDomains?: string[] }
-  ) {
-    return apiClient.patch<FunctionSettingsResponse>(`/v1/functions/${author}/${name}/settings`, data);
+  async patchFunctionSettings(author: string, name: string, data: { customDomains?: string[] }) {
+    return apiClient.patch<FunctionSettingsResponse>(
+      `/v1/functions/${author}/${name}/settings`,
+      data
+    );
   }
 }
 
