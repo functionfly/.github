@@ -5,6 +5,7 @@
 
 pub mod executor;
 pub mod firecracker;
+mod firecracker_spawn;
 pub mod orchestrator;
 pub mod vsock;
 

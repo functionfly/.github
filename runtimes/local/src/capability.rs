@@ -106,6 +106,21 @@ impl Capabilities {
         self.has("external_api")
     }
 
+    /// Check if secret capability is granted
+    pub fn can_secret(&self) -> bool {
+        self.has("secret")
+    }
+
+    /// Check if queue capability is granted
+    pub fn can_queue(&self) -> bool {
+        self.has("queue")
+    }
+
+    /// Check if metric capability is granted
+    pub fn can_metric(&self) -> bool {
+        self.has("metric")
+    }
+
     /// Get all granted capabilities
     pub fn all(&self) -> &HashSet<String> {
         &self.capabilities
@@ -121,15 +136,18 @@ impl Capabilities {
 pub const ALLOWED_CAPABILITIES: &[&str] = &[
     "fetch:read",   // HTTP GET requests
     "fetch:write",  // HTTP POST/PUT/PATCH/DELETE
-    "crypto",       // Cryptographic operations
+    "crypto",       // Cryptographic operations (HMAC, hash, random)
     "cache:read",   // Read from cache
     "cache:write",  // Write to cache
-    "kv",          // Key-value store
-    "webhook",     // Webhook triggers
-    "email",       // Email sending
-    "storage",     // File storage
-    "ai",          // AI/ML inference
+    "kv",           // Key-value store
+    "webhook",      // Webhook triggers
+    "email",        // Email sending
+    "storage",      // File storage
+    "ai",           // AI/ML inference
     "external_api", // External API access
+    "secret",       // Read scoped secrets
+    "queue",        // Async in-memory queue (push/pop)
+    "metric",       // Emit custom observability metrics
 ];
 
 /// Validate that all capabilities are in the allowed list
@@ -159,6 +177,9 @@ pub fn describe_capability(cap: &str) -> &'static str {
         "storage" => "Access file storage",
         "ai" => "Use AI/ML inference",
         "external_api" => "Access external APIs",
+        "secret" => "Read scoped runtime secrets",
+        "queue" => "Push and pop from in-process async queues",
+        "metric" => "Emit custom observability metrics",
         _ => "Unknown capability",
     }
 }

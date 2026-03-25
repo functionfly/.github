@@ -419,15 +419,34 @@ impl WasmEngine {
                         } else {
                             // Execute using MicroVM orchestrator with tier-based resource allocation
                             let (memory_mb, vcpus) = Self::get_tier_resources(&config);
+                            // Deduplicate packages and whitelist entries before forwarding.
+                            let packages: Vec<String> = {
+                                let mut seen = std::collections::HashSet::new();
+                                config.python_packages.iter()
+                                    .filter(|p| !p.trim().is_empty() && seen.insert(p.trim().to_lowercase()))
+                                    .map(|p| p.trim().to_string())
+                                    .collect()
+                            };
+                            let network_whitelist: Vec<String> = {
+                                let mut seen = std::collections::HashSet::new();
+                                config.network_whitelist.iter()
+                                    .filter(|h| !h.trim().is_empty() && seen.insert(h.trim().to_lowercase()))
+                                    .map(|h| h.trim().to_string())
+                                    .collect()
+                            };
                             let request = MicroVMExecutionRequest {
                                 code: String::from_utf8_lossy(&wasm_bytes).to_string(),
                                 input: input.to_string(),
-                                handler: "handler".to_string(), // Default handler name
-                                packages: config.python_packages.clone(),
+                                handler: "handler".to_string(),
+                                packages,
                                 memory_mb,
                                 vcpus,
                                 timeout_ms: config.timeout_ms,
-                                tenant_id: config.function.clone(), // Use function name as tenant ID
+                                // tenant_id comes from the CLI flag; Go sets it to the real UUID
+                                tenant_id: config.tenant_id.clone().unwrap_or_else(|| config.function.clone()),
+                                network_whitelist,
+                                strict_network_whitelist: config.strict_network_whitelist,
+                                package_caching_enabled: config.package_caching_enabled,
                             };
 
                             match client.execute_function(request).await {
@@ -491,6 +510,10 @@ impl WasmEngine {
     pub fn detect_runtime_type(&self, wasm_bytes: &[u8]) -> RuntimeType {
         // Check if it's a Python WASM module
         if PythonRuntime::is_python_code(wasm_bytes) {
+            // Explicit manifest/runtime selection (Enterprise MicroVM)
+            if self.config.runtime == "python-microvm" && self.orchestrator_client.is_some() {
+                return RuntimeType::PythonMicroVM;
+            }
             // For Python code, check if we should use MicroVM based on tier
             if self.config.supports_microvm() && self.orchestrator_client.is_some() {
                 RuntimeType::PythonMicroVM

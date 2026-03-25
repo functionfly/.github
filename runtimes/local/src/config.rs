@@ -147,9 +147,14 @@ pub struct Config {
     #[arg(long, default_value = "30")]
     pub external_api_timeout_secs: u64,
 
-    /// MicroVM orchestrator URL (for Enterprise tier)
-    #[arg(long, default_value = "http://localhost:8080")]
+    /// MicroVM orchestrator URL (for Enterprise tier; default port 9091)
+    #[arg(long, default_value = "http://localhost:9091")]
     pub orchestrator_url: String,
+
+    /// Tenant UUID forwarded to the MicroVM orchestrator for isolation and billing.
+    /// Go sets this via --tenant-id when starting the local runtime for an enterprise tenant.
+    #[arg(long)]
+    pub tenant_id: Option<String>,
 
     /// MicroVM orchestrator timeout in seconds
     #[arg(long, default_value = "60")]
@@ -273,6 +278,19 @@ pub struct Config {
     /// Maximum number of idle Python runtimes to keep warm in the pool.
     #[arg(long, default_value = "4")]
     pub python_pool_max_idle: usize,
+
+    /// Path to a JSON file containing secrets (key-value pairs).
+    /// Environment variables prefixed with SECRET_ take precedence over file entries.
+    #[arg(long)]
+    pub secrets_file: Option<String>,
+
+    /// Maximum number of messages per named queue (queue capability).
+    #[arg(long, default_value = "1000")]
+    pub queue_max_len: usize,
+
+    /// Maximum number of distinct named queues allowed per function instance.
+    #[arg(long, default_value = "16")]
+    pub queue_max_queues: usize,
 }
 
 impl Config {
@@ -378,9 +396,10 @@ impl Default for Config {
             ai_models_dir: "./models".to_string(),
             external_api_rate_limit: 60,
             external_api_timeout_secs: 30,
-            orchestrator_url: "http://localhost:8080".to_string(),
+            orchestrator_url: "http://localhost:9091".to_string(),
             orchestrator_timeout_secs: 60,
             enterprise_enabled: false,
+            tenant_id: None,
             tier: "ultra-low".to_string(),
             network_whitelist: Vec::new(),
             strict_network_whitelist: false,
@@ -406,6 +425,9 @@ impl Default for Config {
             yara_fail_open: true,
             python_pool_max_concurrent: 8,
             python_pool_max_idle: 4,
+            secrets_file: None,
+            queue_max_len: 1000,
+            queue_max_queues: 16,
         }
     }
 }

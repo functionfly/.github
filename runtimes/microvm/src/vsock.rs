@@ -114,13 +114,28 @@ impl VsockClient {
         }
     }
 
-    /// Load function code into the VM
-    pub async fn load_function(&self, code: &str, handler: &str, packages: &[String]) -> Result<()> {
+    /// Load function code into the VM.
+    ///
+    /// `network_whitelist` and `strict_network_whitelist` are forwarded to the guest agent,
+    /// which configures iptables rules before importing user code.
+    /// `package_caching_enabled` tells the agent to use the tenant's package cache volume.
+    pub async fn load_function(
+        &self,
+        code: &str,
+        handler: &str,
+        packages: &[String],
+        network_whitelist: &[String],
+        strict_network_whitelist: bool,
+        package_caching_enabled: bool,
+    ) -> Result<()> {
         let command = serde_json::json!({
             "command": "load",
             "code": code,
             "handler": handler,
-            "packages": packages
+            "packages": packages,
+            "network_whitelist": network_whitelist,
+            "strict_network_whitelist": strict_network_whitelist,
+            "package_caching_enabled": package_caching_enabled,
         });
 
         let response = self.send_json_command(command).await?;
@@ -174,7 +189,7 @@ impl VsockServer {
     pub async fn accept(&mut self) -> Result<VsockStream> {
         // Note: VsockListener doesn't have async accept, so we use blocking
         // Clone the listener to avoid lifetime issues
-        let mut listener = self.listener.try_clone()
+        let listener = self.listener.try_clone()
             .context("Failed to clone vsock listener")?;
 
         tokio::task::spawn_blocking(move || {

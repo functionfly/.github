@@ -1,26 +1,78 @@
-//! External API host function implementation
+//! External API host function implementation.
+//!
+//! Provides `functionfly.external_api` for WASM guests to call external HTTP
+//! endpoints.  The following hardening improvements are applied over the original:
+//!
+//! - **Network policy**: the same whitelist / private-range checks that
+//!   `functionfly.fetch` enforces are applied here.  Private/loopback addresses
+//!   and unrecognised URL schemes are always blocked.  If a non-empty
+//!   `strict_network_whitelist` is configured, the destination host must match.
+//!
+//! - **Per-function rate limiting**: the rate limiter is created *per linker
+//!   registration* (i.e. per function instance) instead of globally.  This
+//!   means separate functions each get their own quota, and one noisy function
+//!   cannot starve another.
 
-use governor::Quota;
-use once_cell::sync::Lazy;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::num::NonZeroU32;
-use std::sync::Mutex;
+use std::sync::Arc;
 use std::time::Duration;
 use wasmtime_wasi::p1::WasiP1Ctx;
 
+use governor::Quota;
+
 use crate::config::Config;
 
+use super::fetch::is_network_request_allowed;
 use super::memory_utils;
 
-/// Add the functionfly.external_api function for external API calls
+/// Add `functionfly.external_api` to the linker.
+///
+/// Signature:
+/// ```text
+/// external_api(
+///   method_ptr, method_len,       // HTTP verb
+///   url_ptr,    url_len,          // target URL
+///   headers_ptr, headers_len,     // JSON object of extra headers (pass 0,0 to omit)
+///   body_ptr,    body_len,        // request body (pass 0,0 to omit)
+///   response_ptr, response_len_ptr // output: response body
+/// ) -> i32
+/// ```
+/// Returns:
+///   `0`  — success
+///   `-1` — method memory read error
+///   `-2` — URL memory read error
+///   `-3` — headers memory read error
+///   `-4` — body memory read error
+///   `-5` — invalid headers JSON
+///   `-6` — response write error
+///   `-7` — HTTP request error
+///   `-8` — network blocked by policy
+///   `-9` — rate limit exceeded
 pub fn add_external_api_function(
     config: Config,
     linker: &mut wasmtime::Linker<WasiP1Ctx>,
 ) -> anyhow::Result<()> {
-    // functionfly.external_api(method_ptr: i32, method_len: i32, url_ptr: i32, url_len: i32,
-    //                          headers_ptr: i32, headers_len: i32, body_ptr: i32, body_len: i32,
-    //                          response_ptr: i32, response_len_ptr: i32) -> i32
-    // Returns 0 on success, negative values on error
+    // Per-function rate limiter — created once at registration, so quota is
+    // isolated per function rather than shared globally.
+    let rpm = NonZeroU32::new(config.external_api_rate_limit.max(1)).unwrap();
+    let rate_limiter = Arc::new(governor::RateLimiter::direct(Quota::per_minute(rpm)));
+
+    // Build whitelist once at registration time.
+    let whitelist: HashSet<String> = config.network_whitelist.iter().cloned().collect();
+    let strict_whitelist = config.strict_network_whitelist;
+
+    // Create a persistent HTTP client for connection pooling.
+    let http_client = Arc::new(
+        reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(config.external_api_timeout_secs))
+            .build()
+            .unwrap_or_else(|_| reqwest::blocking::Client::new()),
+    );
+
+    let function_key = config.function_key();
+
     linker.func_wrap(
         "functionfly",
         "external_api",
@@ -35,60 +87,87 @@ pub fn add_external_api_function(
               body_len: i32,
               response_ptr: i32,
               response_len_ptr: i32| -> i32 {
-            // Get HTTP method from WASM memory
-            let method = match memory_utils::read_string_from_memory(&mut caller, method_ptr, method_len) {
-                Ok(m) => m,
-                Err(_) => return -1, // Invalid method
-            };
+            // Rate limit check (per-function quota)
+            if rate_limiter
+                .check_n(NonZeroU32::new(1).unwrap())
+                .is_err()
+            {
+                tracing::warn!(
+                    function = %function_key,
+                    "external_api: rate limit exceeded ({} rpm)",
+                    rpm
+                );
+                return -9;
+            }
 
-            // Get URL from WASM memory
-            let url = match memory_utils::read_string_from_memory(&mut caller, url_ptr, url_len) {
-                Ok(u) => u,
-                Err(_) => return -2, // Invalid URL
-            };
+            let method =
+                match memory_utils::read_string_from_memory(&mut caller, method_ptr, method_len) {
+                    Ok(m) => m,
+                    Err(_) => return -1,
+                };
 
-            // Get headers (JSON string, optional)
+            let url =
+                match memory_utils::read_string_from_memory(&mut caller, url_ptr, url_len) {
+                    Ok(u) => u,
+                    Err(_) => return -2,
+                };
+
+            // Network policy — same rules as functionfly.fetch
+            if !is_network_request_allowed(&url, &whitelist, strict_whitelist) {
+                tracing::warn!(
+                    function = %function_key,
+                    url = %url,
+                    "external_api: network request blocked by policy"
+                );
+                return -8;
+            }
+
             let headers_json = if headers_len > 0 {
-                match memory_utils::read_string_from_memory(&mut caller, headers_ptr, headers_len) {
+                match memory_utils::read_string_from_memory(
+                    &mut caller,
+                    headers_ptr,
+                    headers_len,
+                ) {
                     Ok(h) => Some(h),
-                    Err(_) => return -3, // Invalid headers
+                    Err(_) => return -3,
                 }
             } else {
                 None
             };
 
-            // Get request body (optional)
             let body = if body_len > 0 {
                 match memory_utils::read_string_from_memory(&mut caller, body_ptr, body_len) {
                     Ok(b) => Some(b),
-                    Err(_) => return -4, // Invalid body
+                    Err(_) => return -4,
                 }
             } else {
                 None
             };
 
-            // Parse headers if provided
-            let headers: HashMap<String, String> = if let Some(json) = headers_json {
-                match serde_json::from_str(&json) {
+            let headers: HashMap<String, String> = match headers_json {
+                Some(json) => match serde_json::from_str(&json) {
                     Ok(h) => h,
-                    Err(_) => return -5, // Invalid headers JSON
-                }
-            } else {
-                HashMap::new()
+                    Err(_) => return -5,
+                },
+                None => HashMap::new(),
             };
 
-            // Make external API request
-            let result = make_external_api_request(&method, &url, &headers, body.as_deref(), &config);
+            let result =
+                make_external_api_request(&http_client, &method, &url, &headers, body.as_deref());
 
             match result {
                 Ok(response_body) => {
-                    // Write response back to WASM memory
-                    match memory_utils::write_string_to_memory(&mut caller, &response_body, response_ptr, response_len_ptr) {
-                        Ok(_) => 0, // Success
-                        Err(_) => -6, // Memory write error
+                    match memory_utils::write_string_to_memory(
+                        &mut caller,
+                        &response_body,
+                        response_ptr,
+                        response_len_ptr,
+                    ) {
+                        Ok(_) => 0,
+                        Err(_) => -6,
                     }
                 }
-                Err(_) => -7, // External API request error
+                Err(_) => -7,
             }
         },
     )?;
@@ -97,32 +176,14 @@ pub fn add_external_api_function(
     Ok(())
 }
 
-/// Global rate limiter for external API calls
-static EXTERNAL_API_RATE_LIMITER: Lazy<Mutex<governor::RateLimiter<governor::state::direct::NotKeyed, governor::state::InMemoryState, governor::clock::DefaultClock>>> = Lazy::new(|| {
-    // Initialize with default rate limit, will be updated when first used
-    Mutex::new(governor::RateLimiter::direct(Quota::per_minute(NonZeroU32::new(60).unwrap())))
-});
-
-/// Make an external API request with rate limiting
+/// Execute the external API HTTP request.
 pub fn make_external_api_request(
+    client: &reqwest::blocking::Client,
     method: &str,
     url: &str,
     headers: &HashMap<String, String>,
     body: Option<&str>,
-    config: &Config,
 ) -> anyhow::Result<String> {
-    // Apply rate limiting
-    {
-        let limiter = EXTERNAL_API_RATE_LIMITER.lock().unwrap();
-        limiter.check_n(NonZeroU32::new(1).unwrap())?;
-    }
-
-    // Create blocking HTTP client with timeout
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(config.external_api_timeout_secs))
-        .build()?;
-
-    // Build the request
     let mut request_builder = match method.to_uppercase().as_str() {
         "GET" => client.get(url),
         "POST" => client.post(url),
@@ -131,28 +192,22 @@ pub fn make_external_api_request(
         "PATCH" => client.patch(url),
         "HEAD" => client.head(url),
         "OPTIONS" => client.request(reqwest::Method::OPTIONS, url),
-        _ => return Err(anyhow::anyhow!("Unsupported HTTP method: {}", method)),
+        other => return Err(anyhow::anyhow!("Unsupported HTTP method: {}", other)),
     };
 
-    // Add headers
     for (key, value) in headers {
         request_builder = request_builder.header(key, value);
     }
 
-    // Add body if provided
     if let Some(body_content) = body {
         request_builder = request_builder.body(body_content.to_string());
     }
 
-    // Send the request
     let response = request_builder.send()?;
     let status = response.status();
     let response_text = response.text()?;
 
-    tracing::info!(
-        "External API call completed: {} {} -> {}",
-        method, url, status
-    );
+    tracing::info!("external_api: {} {} -> {}", method, url, status);
 
     Ok(response_text)
 }

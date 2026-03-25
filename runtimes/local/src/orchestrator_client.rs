@@ -28,6 +28,15 @@ pub struct MicroVMExecutionRequest {
     pub timeout_ms: u64,
     /// Tenant ID for isolation
     pub tenant_id: String,
+    /// Allowed outbound hostnames (empty = no network). Enforced by guest agent.
+    #[serde(default)]
+    pub network_whitelist: Vec<String>,
+    /// Reject any host not on the whitelist (as opposed to a soft warning).
+    #[serde(default)]
+    pub strict_network_whitelist: bool,
+    /// Enable per-tenant package caching in the VM.
+    #[serde(default)]
+    pub package_caching_enabled: bool,
 }
 
 /// Execution result from MicroVM orchestrator
@@ -63,11 +72,20 @@ pub struct OrchestratorClient {
     orchestrator_url: String,
     /// Request timeout
     timeout: Duration,
+    /// Optional Bearer token for the orchestrator's /execute endpoint.
+    api_token: Option<String>,
 }
 
 impl OrchestratorClient {
-    /// Create a new orchestrator client
+    /// Create a new orchestrator client.
+    ///
+    /// `api_token` is read from `FUNCTIONFLY_MICROVM_API_TOKEN` in the environment;
+    /// if the env-var is absent, requests are unauthenticated (dev mode only).
     pub fn new(orchestrator_url: String, timeout_seconds: u64) -> Self {
+        let api_token = std::env::var("FUNCTIONFLY_MICROVM_API_TOKEN")
+            .ok()
+            .filter(|t| !t.is_empty());
+
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(timeout_seconds))
             .build()
@@ -77,6 +95,7 @@ impl OrchestratorClient {
             client,
             orchestrator_url: orchestrator_url.trim_end_matches('/').to_string(),
             timeout: Duration::from_secs(timeout_seconds),
+            api_token,
         }
     }
 
@@ -87,13 +106,18 @@ impl OrchestratorClient {
         let request_json = serde_json::to_string(&request)
             .context("Failed to serialize request")?;
 
+        let mut builder = self.client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .body(request_json);
+
+        if let Some(token) = &self.api_token {
+            builder = builder.header("Authorization", format!("Bearer {token}"));
+        }
+
         let response = timeout(
             self.timeout,
-            self.client
-                .post(&url)
-                .header("Content-Type", "application/json")
-                .body(request_json)
-                .send()
+            builder.send()
         ).await??;
 
         if !response.status().is_success() {
@@ -163,7 +187,7 @@ impl OrchestratorClient {
 
 impl Default for OrchestratorClient {
     fn default() -> Self {
-        Self::new("http://localhost:8080".to_string(), 30)
+        Self::new("http://localhost:9091".to_string(), 30)
     }
 }
 

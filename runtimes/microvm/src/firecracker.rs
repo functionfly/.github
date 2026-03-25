@@ -3,6 +3,8 @@
 use anyhow::{Context, Result};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+#[cfg(unix)]
+use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
 use tracing::{debug, info};
@@ -23,6 +25,10 @@ pub struct VMConfig {
     pub root_drive: PathBuf,
     /// Network interface
     pub network_interface: NetworkInterface,
+    /// Skip the network-interface PUT to Firecracker (no-network VMs or tap not available).
+    /// Controlled by `FIRECRACKER_SKIP_NETWORK=1`.
+    #[serde(default)]
+    pub skip_network: bool,
 }
 
 /// Network interface configuration
@@ -119,23 +125,35 @@ pub struct FirecrackerClient {
 }
 
 impl FirecrackerClient {
-    /// Create a new Firecracker API client
+    /// Create a new Firecracker API client (HTTP over the given Unix domain socket).
     pub fn new(socket_path: impl Into<String>) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(30))
-            .build()
-            .context("Failed to build HTTP client")?;
+        let socket_path: String = socket_path.into();
 
-        Ok(Self {
-            client,
-            socket_path: socket_path.into(),
-            next_cid: std::sync::atomic::AtomicU32::new(3), // Firecracker starts CIDs from 3
-        })
+        #[cfg(not(unix))]
+        {
+            anyhow::bail!("Firecracker API client requires Unix domain sockets");
+        }
+
+        #[cfg(unix)]
+        {
+            let client = Client::builder()
+                .timeout(Duration::from_secs(30))
+                .unix_socket(Path::new(&socket_path))
+                .build()
+                .context("Failed to build HTTP client")?;
+
+            Ok(Self {
+                client,
+                socket_path,
+                next_cid: std::sync::atomic::AtomicU32::new(3), // Firecracker starts CIDs from 3
+            })
+        }
     }
 
-    /// Build the API URL for a given endpoint
+    /// Build the request URL for a Firecracker API resource (host is ignored; connection uses `unix_socket`).
     fn api_url(&self, endpoint: &str) -> String {
-        format!("http://unix:{}/{}", self.socket_path, endpoint)
+        let ep = endpoint.trim_start_matches('/');
+        format!("http://localhost/{ep}")
     }
 
     /// Create a new MicroVM instance
@@ -148,6 +166,7 @@ impl FirecrackerClient {
         let cid = self.next_cid.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         info!("Creating VM instance: {} with CID {}", vm_id, cid);
+        debug!("Firecracker API socket: {}", self.socket_path);
 
         // Configure boot source
         self.client
@@ -187,17 +206,22 @@ impl FirecrackerClient {
             .await
             .context("Failed to configure drive")?;
 
-        // Configure network
-        self.client
-            .put(&self.api_url("network-interfaces/eth0"))
-            .json(&NetworkInterfaceConfig {
-                iface_id: "eth0".to_string(),
-                guest_mac: config.network_interface.guest_mac.clone(),
-                host_dev_name: config.network_interface.host_dev_name.clone(),
-            })
-            .send()
-            .await
-            .context("Failed to configure network")?;
+        // Configure network (skip if tap is not available or explicitly disabled)
+        if !config.skip_network {
+            self.client
+                .put(&self.api_url("network-interfaces/eth0"))
+                .json(&NetworkInterfaceConfig {
+                    iface_id: "eth0".to_string(),
+                    guest_mac: config.network_interface.guest_mac.clone(),
+                    host_dev_name: config.network_interface.host_dev_name.clone(),
+                })
+                .send()
+                .await
+                .context("Failed to configure network")?;
+            debug!("Network interface configured for VM {}", vm_id);
+        } else {
+            debug!("Skipping network configuration for VM {} (FIRECRACKER_SKIP_NETWORK)", vm_id);
+        }
 
         debug!("VM instance {} configured successfully", vm_id);
 
