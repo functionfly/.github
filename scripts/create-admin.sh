@@ -2,6 +2,9 @@
 
 # FunctionFly Admin User Creation Script
 # This script generates SQL to create an admin user in your database
+#
+# Production: prefer `go run ./cmd/create-admin -production` with ADMIN_CREATE_PASSWORD
+# so passwords are strong and not echoed. Defaults below (e.g. admin123) are dev-only.
 
 set -e
 
