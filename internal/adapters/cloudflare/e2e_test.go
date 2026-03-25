@@ -76,7 +76,7 @@ func TestE2EDeployStatusAndCleanup(t *testing.T) {
 	})
 
 	// 1. Deploy
-	result, err := client.Deploy(ctx, e2eMinimalScript, scriptName)
+	result, err := client.Deploy(ctx, e2eMinimalScript, scriptName, common.RuntimeJavaScript)
 	if err != nil {
 		t.Fatalf("Deploy: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestE2ESetEnvAndRollback(t *testing.T) {
 	})
 
 	// Deploy
-	_, err := client.Deploy(ctx, e2eMinimalScript, scriptName)
+	_, err := client.Deploy(ctx, e2eMinimalScript, scriptName, common.RuntimeJavaScript)
 	if err != nil {
 		t.Fatalf("Deploy: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestE2ESetEnvAndRollback(t *testing.T) {
 	t.Log("SetEnvironmentVariables OK")
 
 	// Rollback (redeploy same script)
-	rollbackResult, err := client.Rollback(ctx, e2eMinimalScript, scriptName)
+	rollbackResult, err := client.Rollback(ctx, e2eMinimalScript, scriptName, common.RuntimeJavaScript)
 	if err != nil {
 		t.Fatalf("Rollback: %v", err)
 	}
