@@ -1,0 +1,17 @@
+{
+  // Enterprise tier: CPython in Firecracker MicroVM
+  // Requires Enterprise plan. Supports NumPy, Pandas, SciPy, and C extensions.
+  "function": {
+    "name": "my-numpy-function",
+    "runtime": "python-microvm",
+    "python": {
+      "version": "3.11",
+      "packages": ["numpy", "pandas", "scipy"]
+    },
+    "resources": {
+      "memory_mb": 512,
+      "vcpu": 2,
+      "timeout_ms": 30000
+    }
+  }
+}

@@ -1,17 +1,15 @@
 {
   "name": "webhook-notifier",
   "version": "1.0.0",
-  "runtime": "rust",
+  "runtime": "python3.12",
   "description": "Example function demonstrating webhook capability",
-  "entry": "main.rs",
+  "entry": "main.py",
   "handler": "handler",
   "memory": "128MB",
   "timeout": "30s",
-  "capabilities": [
-    "webhook"
-  ],
+  "capabilities": ["webhook"],
   "environment": {
     "WEBHOOK_URL": "https://httpbin.org/post",
-    "NOTIFICATION_TYPE": "alert"
-  }
+    "NOTIFICATION_TYPE": "alert",
+  },
 }

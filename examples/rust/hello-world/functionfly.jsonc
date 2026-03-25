@@ -1,0 +1,10 @@
+{
+  "name": "hello-world",
+  "version": "1.0.0",
+  "runtime": "rust",
+  "description": "Hello World example in Rust",
+  "entry": "src/lib.rs",
+  "handler": "handler",
+  "memory": "128MB",
+  "timeout": "10s",
+}
