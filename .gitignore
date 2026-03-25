@@ -184,6 +184,11 @@ venv.bak/
 # SECURITY.md
 # SUPABASE_MIGRATION_GUIDE.md
 
+# Paperclip / local agent control plane secrets (never commit key material)
+deploy/paperclip/**/secrets/master.key
+deploy/paperclip/**/secrets/*.key
+deploy/paperclip/**/secrets/*.pem
+
 # Edge TLS certs (never commit)
 deploy/edge/certs-in/
 deploy/edge/certs-out/
@@ -195,3 +200,6 @@ security-audit-simple.go.disabled
 # setup-test-db.sh
 # test-api.sh
 # test-function.js
+
+# Nx monorepo cache (local machine state)
+.nx/

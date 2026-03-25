@@ -1,13 +1,0 @@
-> vite
-
-[Vite] API proxy target: http://127.0.0.1:8080
-Port 3000 is in use, trying another one...
-
-  [32m[1mVITE[22m v7.3.1[39m  [2mready in [0m[1m35343[22m[2m[0m ms[22m
-
-  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m3001[22m/[39m
-  [32m➜[39m  [1mNetwork[22m: [36mhttp://10.255.255.254:[1m3001[22m/[39m
-  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.213.29:[1m3001[22m/[39m
-  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.18.0.1:[1m3001[22m/[39m
-  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.19.0.1:[1m3001[22m/[39m
-[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
