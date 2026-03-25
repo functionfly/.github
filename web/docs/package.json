@@ -3,14 +3,15 @@
   "type": "module",
   "version": "1.0.0",
   "scripts": {
-    "dev": "bun run astro dev",
-    "start": "bun run astro dev",
-    "build": "bun run astro build",
+    "sync-docs": "node scripts/sync-docs.mjs",
+    "dev": "node scripts/sync-docs.mjs && bun run astro dev",
+    "start": "node scripts/sync-docs.mjs && bun run astro dev",
+    "build": "node scripts/sync-docs.mjs && bun run astro build",
     "preview": "bun run astro preview",
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^4.16.0",
+    "astro": "^5.15.9",
     "@astrojs/react": "^3.6.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

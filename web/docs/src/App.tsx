@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/layout/Layout'
-import Index from './pages/Index.tsx'
-import Function from './pages/Function.tsx'
+import Index from './legacy-vite/Index.tsx'
+import Function from './legacy-vite/Function.tsx'
 
 function App() {
   return (

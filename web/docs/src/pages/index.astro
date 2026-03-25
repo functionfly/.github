@@ -16,8 +16,10 @@ import Layout from '../layouts/Layout.astro';
       <p>Get up and running in less than 2 minutes:</p>
 
       <div class="code-block">
-        <pre><code><span class="code-comment"># Install the CLI</span>
-<span class="code-prompt">$</span> npm install -g @functionfly/cli
+        <pre><code><span class="code-comment"># Install the fly CLI (Go 1.25+)</span>
+<span class="code-prompt">$</span> go install github.com/functionfly/functionfly/cmd/fly@latest
+
+<span class="code-comment"># Or download from https://github.com/functionfly/functionfly/releases</span>
 
 <span class="code-comment"># Login to FunctionFly</span>
 <span class="code-prompt">$</span> fly login

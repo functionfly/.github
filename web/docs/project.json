@@ -6,28 +6,24 @@
   "tags": ["type:app", "platform:web"],
   "targets": {
     "build": {
-      "executor": "@nx/vite:build",
-      "outputs": ["{projectRoot}/dist"],
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/web/docs/dist"],
       "options": {
-        "outputPath": "web/docs/dist"
-      },
-      "configurations": {
-        "production": {
-          "mode": "production"
-        }
+        "command": "bun run build",
+        "cwd": "web/docs"
       }
     },
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "vite",
+        "command": "bun run dev",
         "cwd": "web/docs"
       }
     },
     "preview": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "vite preview",
+        "command": "bun run preview",
         "cwd": "web/docs"
       }
     },
@@ -35,7 +31,7 @@
       "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": ["web/docs/**/*.{ts,tsx,js,jsx}"]
+        "lintFilePatterns": ["web/docs/**/*.{ts,tsx,js,jsx,astro}"]
       }
     }
   }

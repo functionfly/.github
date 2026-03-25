@@ -1,0 +1,80 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+
+function slugFromEntryId(id: string): string {
+  return id.replace(/\.md$/i, '');
+}
+
+const allDocs = (await getCollection('docs')).sort((a, b) =>
+  (a.data.title || a.id).localeCompare(b.data.title || b.id),
+);
+---
+
+<Layout title="All documentation" description="Browse all FunctionFly guides and reference pages synced from the open-source docs tree.">
+  <article class="doc-index">
+    <h1>Documentation</h1>
+    <p class="lead">Guides below include pages maintained in this site and Markdown synced from the repository <code>docs/</code> folder at build time.</p>
+    <ul class="doc-list">
+      {allDocs.map((d) => (
+        <li>
+          <a href={`/docs/${slugFromEntryId(d.id)}`}>{d.data.title || slugFromEntryId(d.id)}</a>
+          {d.data.description && <span class="desc"> — {d.data.description}</span>}
+        </li>
+      ))}
+    </ul>
+  </article>
+</Layout>
+
+<style>
+  .doc-index {
+    max-width: 52rem;
+  }
+
+  .doc-index h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+
+  .lead {
+    color: var(--color-text-muted);
+    line-height: 1.65;
+    margin-bottom: 2rem;
+  }
+
+  .lead code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    padding: 0.1rem 0.35rem;
+    background: var(--color-bg-light);
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+  }
+
+  .doc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .doc-list li {
+    margin-bottom: 0.65rem;
+    font-size: 0.9375rem;
+  }
+
+  .doc-list a {
+    color: var(--color-secondary);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .doc-list a:hover {
+    text-decoration: underline;
+  }
+
+  .desc {
+    color: var(--color-text-muted);
+    font-weight: 400;
+  }
+</style>

@@ -1,17 +1,23 @@
-import { defineConfig } from 'astro/config';
-import react from '@astrojs/react';
+import react from "@astrojs/react";
+import { defineConfig } from "astro/config";
 
 // https://astro.build/config
 export default defineConfig({
+  site: "https://docs.functionfly.com",
   integrations: [react()],
-  output: 'static',
+  output: "static",
+  server: {
+    host: true,
+    port: 4322,
+    strictPort: false,
+  },
   build: {
-    format: 'file'
+    format: "directory",
   },
   vite: {
     build: {
       cssMinify: true,
-      minify: 'esbuild'
-    }
-  }
+      minify: "esbuild",
+    },
+  },
 });
