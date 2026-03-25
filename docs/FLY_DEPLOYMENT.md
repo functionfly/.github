@@ -73,6 +73,7 @@ gh secret set FLY_API_TOKEN --body "$(flyctl auth token)"
 ## Deployment Triggers
 
 ### Production Deployment
+
 - **Trigger**: Push to `main` or `master` branch
 - **Paths that trigger deployment**:
   - `cmd/orchestrator-api/**`
@@ -84,11 +85,14 @@ gh secret set FLY_API_TOKEN --body "$(flyctl auth token)"
   - `go.sum`
 
 ### Staging Deployment
+
 - **Trigger**: Push to `develop` branch
 - **Same path filters as production**
 
 ### Manual Deployment
+
 You can also trigger deployments manually from the GitHub Actions UI:
+
 1. Go to **Actions** → **Deploy to Fly.io**
 2. Click **Run workflow**
 3. Select the branch and click **Run workflow**
@@ -122,7 +126,7 @@ Set in **Fly Dashboard → functionfly-control → Secrets** (or via `flyctl sec
 | `REDIS_ADDR` | `host:6379` | Yes (or use Upstash) |
 | `JWT_SECRET` | Random string | Yes |
 | `API_SHARED_SECRET` | Random string | Yes |
-| `CORS_ALLOWED_ORIGINS` | `https://functionfly.com,https://www.functionfly.com` | Yes |
+| `CORS_ALLOWED_ORIGINS` | `https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com` | Yes |
 | `BASE_URL` | `https://api.functionfly.com` | Yes |
 | `FRONTEND_URL` | `https://functionfly.com` | Yes |
 
@@ -140,7 +144,7 @@ flyctl secrets set DB_SSLMODE=require --app functionfly-control
 flyctl secrets set REDIS_ADDR=xxx.upstash.io:6379 --app functionfly-control
 flyctl secrets set JWT_SECRET=xxx --app functionfly-control
 flyctl secrets set API_SHARED_SECRET=xxx --app functionfly-control
-flyctl secrets set CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com --app functionfly-control
+flyctl secrets set CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com --app functionfly-control
 flyctl secrets set BASE_URL=https://api.functionfly.com --app functionfly-control
 flyctl secrets set FRONTEND_URL=https://functionfly.com --app functionfly-control
 ```
@@ -197,6 +201,7 @@ The deployment uses these in `fly.toml` and/or Fly secrets:
 ## Auto-scaling
 
 The Fly.io app is configured with auto-scaling:
+
 - **Minimum**: 1 instance
 - **Maximum**: 3 instances
 - **Balance regions**: false (all traffic goes to primary region)
@@ -204,21 +209,25 @@ The Fly.io app is configured with auto-scaling:
 ## Monitoring
 
 ### Check Deployment Status
+
 ```bash
 flyctl status --app functionfly-control
 ```
 
 ### View Logs
+
 ```bash
 flyctl logs --app functionfly-control
 ```
 
 ### View Metrics
+
 ```bash
 flyctl metrics --app functionfly-control
 ```
 
 ### SSH into Container
+
 ```bash
 flyctl ssh console --app functionfly-control
 ```

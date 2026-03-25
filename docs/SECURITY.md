@@ -123,7 +123,7 @@ All requests undergo comprehensive input validation and sanitization.
 
 Configure CORS via environment variables:
 
-- `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed origins (default: `*`)
+- `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed origins (default: `*` in development; production must list real HTTPS origins, e.g. `https://admin.functionfly.com` for the admin SPA)
 - `CORS_ALLOWED_METHODS`: Allowed HTTP methods (default: `GET, POST, PUT, PATCH, DELETE, OPTIONS`)
 - `CORS_ALLOWED_HEADERS`: Allowed headers
 
@@ -193,6 +193,10 @@ Security events are logged with structured logging:
 - Invalid headers/paths
 
 Monitor these logs to detect and respond to security threats.
+
+## Access Control & Seat Management
+
+Account sharing and seat enforcement are governed by per-plan user limits. See [`docs/ACCOUNT_SHARING.md`](ACCOUNT_SHARING.md) for the full operational reference and [`plans/ACCOUNT_SHARING.md`](../plans/ACCOUNT_SHARING.md) for the design spec.
 
 ## Before Making the Repo Public
 

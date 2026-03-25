@@ -29,7 +29,8 @@ Use the automated bash script to create an admin user:
 ```
 
 **Parameters:**
-- `--email`: Admin user email address (default: admin@example.com)
+
+- `--email`: Admin user email address (default: <admin@example.com>)
 - `--password`: Admin user password (default: admin123)
 - `--role`: Admin role - `super_admin`, `support`, `billing_admin`, `developer_admin` (default: super_admin)
 - `--tenant-id`: Specific tenant ID (optional - uses first available tenant if not specified)
@@ -164,4 +165,26 @@ go run cmd/server/main.go
 - **Environment variables**: Set database connection via environment variables
 - **Separate admin subdomain**: Consider hosting admin panel on `admin.yourdomain.com`
 - **Zero-trust access**: Implement Cloudflare Access or similar for admin panel protection
+- **Auth integration (OAuth, MFA policy, SAML, IP allowlist):** See [ADMIN_AUTH_PRODUCTION_SETUP.md](ADMIN_AUTH_PRODUCTION_SETUP.md)
 - **Regular rotation**: Rotate admin credentials regularly
+
+### Creating the first admin in production (safe)
+
+Use the Go tool with **`-production`** so passwords are **strong** (16+ chars, mixed case, digit, symbol) and **not printed** to stdout/logs:
+
+```bash
+# Load DATABASE_URL for your production DB (Neon, RDS, etc.)
+export DATABASE_URL='postgresql://...'
+
+# Prefer env for the password so it does not appear in shell history
+export ADMIN_CREATE_PASSWORD='your-long-random-passphrase-here'
+
+go run ./cmd/create-admin \
+  -email admin@yourcompany.com \
+  -production \
+  -role super_admin
+```
+
+Or pass `-password '...'` once; avoid committing it. **Do not** use default `admin123` outside local dev.
+
+Without `-production`, the tool warns on weak passwords and may echo the password (dev convenience only).
