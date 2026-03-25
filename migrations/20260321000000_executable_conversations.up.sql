@@ -1,15 +1,22 @@
 -- Executable Conversations: DM/conversation layer with function-aware messages
 -- Conversation types: dm, function_thread, issue_thread, fix_mode, bounty_thread, org_thread, security_disclosure
+-- Idempotent: type may already exist if migration was re-run after state repair.
 
-CREATE TYPE conversation_type_enum AS ENUM (
-    'dm',
-    'function_thread',
-    'issue_thread',
-    'fix_mode',
-    'bounty_thread',
-    'org_thread',
-    'security_disclosure'
-);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'conversation_type_enum') THEN
+    CREATE TYPE conversation_type_enum AS ENUM (
+      'dm',
+      'function_thread',
+      'issue_thread',
+      'fix_mode',
+      'bounty_thread',
+      'org_thread',
+      'security_disclosure'
+    );
+  END IF;
+END
+$$;
 
 CREATE TABLE IF NOT EXISTS conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
