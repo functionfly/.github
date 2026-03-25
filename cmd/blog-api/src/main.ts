@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { mergeCorsOrigins } from './cors-origins';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -21,9 +22,9 @@ async function bootstrap() {
     }),
   );
 
-  // CORS
+  // CORS (marketing site :4321, dashboard :3000, Vite :5173 + CORS_ORIGIN)
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173', 'http://localhost:3000'],
+    origin: mergeCorsOrigins(process.env.CORS_ORIGIN),
     credentials: true,
   });
 

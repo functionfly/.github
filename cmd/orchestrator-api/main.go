@@ -1,13 +1,10 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api"
@@ -68,34 +65,17 @@ func main() {
 	// Create the API server
 	server := api.NewServer(db)
 
-	// Start server in a goroutine (0.0.0.0 so Fly proxy and health checks can reach us)
+	// ListenAndServe registers SIGINT/SIGTERM and runs graceful shutdown internally.
+	// Do not also handle signals in main — duplicate Shutdown caused panic (close of closed channel).
 	done := make(chan error, 1)
 	go func() {
 		addr := fmt.Sprintf("0.0.0.0:%d", *port)
 		logrus.WithField("addr", addr).Info("Starting HTTP server")
-		if err := server.ListenAndServe(addr); err != nil {
-			done <- err
-		}
+		done <- server.ListenAndServe(addr)
 	}()
 
-	// Wait for interrupt signal or server error
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
-	select {
-	case err := <-done:
-		if err != nil {
-			log.Fatalf("Server error: %v", err)
-		}
-	case <-quit:
-		logrus.Info("Shutting down server...")
-		// Graceful shutdown
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		if err := server.Shutdown(ctx); err != nil {
-			logrus.WithError(err).Error("Server forced to shutdown")
-		}
+	if err := <-done; err != nil {
+		log.Fatalf("Server error: %v", err)
 	}
-
 	logrus.Info("Server stopped")
 }
