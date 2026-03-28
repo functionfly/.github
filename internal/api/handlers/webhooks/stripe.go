@@ -1,11 +1,15 @@
 package webhooks
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/agent/billing"
 	"github.com/functionfly/functionfly/internal/notification"
@@ -290,6 +294,7 @@ func (h *StripeWebhookHandler) handleAgentExecutionCreditsCheckout(w http.Respon
 
 	if !created {
 		logrus.WithField("session_id", session.ID).Info("duplicate webhook received, transaction already recorded")
+		h.persistCheckoutInvoice(r.Context(), tenantID, session, amountUSD)
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "already processed"})
 		return
@@ -334,6 +339,8 @@ func (h *StripeWebhookHandler) handleAgentExecutionCreditsCheckout(w http.Respon
 		"amount_usd": amountUSD,
 		"session_id": session.ID,
 	}).Info("credits purchased via checkout")
+
+	h.persistCheckoutInvoice(r.Context(), tenantID, session, amountUSD)
 
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "success"})
@@ -400,6 +407,7 @@ func (h *StripeWebhookHandler) handleRegistryWalletCreditCheckout(w http.Respons
 	}
 	if already {
 		logrus.WithField("session_id", session.ID).Info("duplicate registry wallet webhook, credit already applied")
+		h.persistCheckoutInvoice(r.Context(), tenantID, session, amountUSD)
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "already processed"})
 		return
@@ -421,6 +429,175 @@ func (h *StripeWebhookHandler) handleRegistryWalletCreditCheckout(w http.Respons
 		"session_id": session.ID,
 	}).Info("registry wallet topped up via Stripe checkout")
 
+	h.persistCheckoutInvoice(r.Context(), tenantID, session, amountUSD)
+
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+}
+
+func checkoutReceiptURL(session *stripe.CheckoutSession) string {
+	if session == nil || session.PaymentIntent == nil {
+		return ""
+	}
+	pi := session.PaymentIntent
+	if pi.LatestCharge != nil && pi.LatestCharge.ReceiptURL != "" {
+		return pi.LatestCharge.ReceiptURL
+	}
+	return ""
+}
+
+func (h *StripeWebhookHandler) persistCheckoutInvoice(ctx context.Context, tenantID uuid.UUID, session *stripe.CheckoutSession, amountUSD float64) {
+	if h.userRepo == nil || session == nil {
+		return
+	}
+	amountCents := int(session.AmountTotal)
+	if amountCents <= 0 {
+		amountCents = int(math.Round(amountUSD * 100))
+	}
+	if amountCents <= 0 {
+		return
+	}
+	curr := string(session.Currency)
+	if curr == "" {
+		curr = "usd"
+	}
+	rec := checkoutReceiptURL(session)
+	if err := h.userRepo.CreatePaidInvoiceForStripeCheckoutSession(ctx, tenantID, amountCents, curr, session.ID, rec); err != nil {
+		logrus.WithError(err).WithField("session_id", session.ID).Warn("stripe: persist checkout invoice failed")
+	}
+}
+
+// processMembershipUpgrade creates activity feed items and awards achievements
+// when a tenant's plan is upgraded via Stripe subscription.
+func (h *StripeWebhookHandler) processMembershipUpgrade(ctx context.Context, tenantID uuid.UUID, oldPlan, newPlan string) {
+	// Get all active users in the tenant
+	users, err := h.userRepo.ListActiveUsersByTenant(ctx, tenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("stripe webhook: failed to list users for plan upgrade")
+		return
+	}
+
+	// Determine upgrade description based on plan
+	description := getUpgradeDescription(newPlan)
+	isEnterprise := isEnterprisePlan(newPlan)
+	wasEnterprise := isEnterprisePlan(oldPlan)
+
+	for _, user := range users {
+		// Create activity feed item
+		activity := &storage.UserActivity{
+			UserID:       user.ID,
+			ActivityType: "membership_upgraded",
+			Title:        fmt.Sprintf("Upgraded to %s", formatPlanName(newPlan)),
+			Description:  description,
+			Metadata: map[string]interface{}{
+				"plan":         newPlan,
+				"previousPlan": oldPlan,
+				"upgradedAt":   time.Now().Format(time.RFC3339),
+			},
+			IsPublic: true,
+		}
+
+		if err := h.userRepo.CreateUserActivity(activity); err != nil {
+			logrus.WithError(err).WithFields(logrus.Fields{
+				"user_id":   user.ID,
+				"tenant_id": tenantID,
+			}).Warn("stripe webhook: failed to create membership upgrade activity")
+		}
+
+		// Award enterprise achievement if upgrading to enterprise
+		if isEnterprise && !wasEnterprise {
+			if err := h.awardEnterpriseAchievement(ctx, user.ID); err != nil {
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"user_id":   user.ID,
+					"tenant_id": tenantID,
+				}).Warn("stripe webhook: failed to award enterprise achievement")
+			}
+		}
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"tenant_id":  tenantID,
+		"old_plan":   oldPlan,
+		"new_plan":   newPlan,
+		"user_count": len(users),
+	}).Info("stripe webhook: processed membership upgrade")
+}
+
+// awardEnterpriseAchievement awards the "Enterprise Pioneer" achievement to a user.
+func (h *StripeWebhookHandler) awardEnterpriseAchievement(ctx context.Context, userID uuid.UUID) error {
+	achievement, err := h.userRepo.GetAchievementBySlug("enterprise_pioneer")
+	if err != nil {
+		return fmt.Errorf("failed to get enterprise pioneer achievement: %w", err)
+	}
+
+	if achievement == nil {
+		logrus.Debug("Enterprise Pioneer achievement not found - skipping award")
+		return nil
+	}
+
+	// Check if user already has this achievement
+	existingAchievements, err := h.userRepo.GetUserAchievements(userID)
+	if err != nil {
+		return fmt.Errorf("failed to check existing achievements: %w", err)
+	}
+
+	for _, ea := range existingAchievements {
+		if ea.AchievementID == achievement.ID {
+			return nil // User already has this achievement
+		}
+	}
+
+	metadata := map[string]interface{}{
+		"awarded_at": time.Now().Format(time.RFC3339),
+		"reason":     "Upgraded to Enterprise plan",
+	}
+
+	if err := h.userRepo.AwardAchievement(userID, achievement.ID, metadata); err != nil {
+		return fmt.Errorf("failed to award achievement: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"user_id":        userID,
+		"achievement_id": achievement.ID,
+	}).Info("stripe webhook: awarded Enterprise Pioneer achievement")
+
+	return nil
+}
+
+// isEnterprisePlan checks if a plan name represents an enterprise tier.
+func isEnterprisePlan(plan string) bool {
+	return plan == "enterprise" || plan == "Enterprise"
+}
+
+// formatPlanName formats a plan name for display.
+func formatPlanName(plan string) string {
+	switch plan {
+	case "enterprise", "Enterprise":
+		return "Enterprise"
+	case "professional", "pro", "Pro":
+		return "Professional"
+	case "starter", "Starter":
+		return "Starter"
+	case "free", "Free":
+		return "Free"
+	default:
+		if len(plan) > 0 {
+			return string(plan[0]-32) + plan[1:]
+		}
+		return plan
+	}
+}
+
+// getUpgradeDescription returns a description based on the plan tier.
+func getUpgradeDescription(plan string) string {
+	switch plan {
+	case "enterprise":
+		return "Unlimited functions, dedicated support, and premium enterprise features"
+	case "professional", "pro":
+		return "Advanced features, priority support, and increased limits"
+	case "starter":
+		return "Expanded features and higher execution limits"
+	default:
+		return "Membership upgraded with new features and benefits"
+	}
 }

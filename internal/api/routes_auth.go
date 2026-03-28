@@ -38,6 +38,8 @@ func registerAuthRoutes(
 	api.HandleFunc("/auth/refresh", authHandler.HandleRefreshToken).Methods("POST", "OPTIONS")
 	router.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/signup", authRateLimiter.Limit(authHandler.HandleSignup)).Methods("POST", "OPTIONS")
+	router.HandleFunc("/auth/signup-config", authHandler.HandleSignupConfig).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/signup-config", authHandler.HandleSignupConfig).Methods("GET", "OPTIONS")
 	router.HandleFunc("/auth/check-username", authHandler.HandleCheckUsernameAvailability).Methods("GET", "OPTIONS")
 	router.HandleFunc("/auth/verify-email", authHandler.HandleVerifyEmail).Methods("GET", "OPTIONS")
 	router.HandleFunc("/auth/resend-verification", authRateLimiter.Limit(authHandler.HandleResendVerification)).Methods("POST", "OPTIONS")
@@ -47,10 +49,11 @@ func registerAuthRoutes(
 
 	// OAuth (public)
 	router.HandleFunc("/auth/oauth/providers", authHandler.HandleGetOAuthProviders).Methods("GET", "OPTIONS")
-	router.HandleFunc("/auth/oauth/url", authHandler.HandleGetOAuthURL).Methods("GET", "OPTIONS")
+	router.HandleFunc("/auth/oauth/url", authRateLimiter.Limit(authHandler.HandleGetOAuthURL)).Methods("GET", "OPTIONS")
 	router.HandleFunc("/auth/oauth/{provider}/callback", authHandler.HandleOAuthCallback).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/oauth/providers", authHandler.HandleGetOAuthProviders).Methods("GET", "OPTIONS")
-	api.HandleFunc("/auth/oauth/url", authHandler.HandleGetOAuthURL).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/oauth/url", authRateLimiter.Limit(authHandler.HandleGetOAuthURL)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/oauth/{provider}/callback", authHandler.HandleOAuthCallback).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/validate", authMiddleware.RequireAuth(authHandler.HandleValidateToken)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/logout", authMiddleware.RequireAuth(authHandler.HandleLogout)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/verify-password", authMiddleware.RequireAuth(authHandler.HandleVerifyPassword)).Methods("POST", "OPTIONS")
@@ -85,6 +88,8 @@ func registerAuthRoutes(
 	api.HandleFunc("/users/me/skills/{id}", authMiddleware.RequireAuth(usersHandler.HandleRemoveUserSkill)).Methods("DELETE", "OPTIONS")
 	api.HandleFunc("/users/me/notification-preferences", authMiddleware.RequireAuth(notificationHandler.HandleGetPreferences)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/me/notification-preferences", authMiddleware.RequireAuth(notificationHandler.HandleUpdatePreferences)).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/users/lookup-by-ids", authMiddleware.RequireAuth(usersHandler.HandleLookupUsersByIDs)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/users/search", authMiddleware.RequireAuth(usersHandler.HandleSearchUsers)).Methods("GET", "OPTIONS")
 
 	// Public user profile (by username)
 	api.HandleFunc("/users/{username}", usersHandler.HandleGetPublicProfile).Methods("GET", "OPTIONS")
@@ -96,7 +101,9 @@ func registerAuthRoutes(
 	api.HandleFunc("/users/{username}/analytics", usersHandler.HandleGetUserAnalytics).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/achievements", usersHandler.HandleGetUserAchievements).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/activity", usersHandler.HandleGetUserActivity).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/{username}/contributions", usersHandler.HandleGetUserContributions).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/skills", usersHandler.HandleGetUserSkills).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/{username}/report", authMiddleware.RequireAuth(usersHandler.HandleReportProfile)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/@/{username}", usersHandler.HandleGetPublicProfileByAt).Methods("GET", "OPTIONS")
 
 	// ── Follow ─────────────────────────────────────────────────────────────
@@ -150,6 +157,9 @@ func registerAuthRoutes(
 	api.HandleFunc("/billing/agent-usage", authMiddleware.RequireAuth(billingHandler.HandleGetAgentUsage)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/state-fabric/add-ons/entitlements", authMiddleware.RequireAuth(billingHandler.HandleGetStateFabricAddOnEntitlements)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/state-fabric/add-ons/checkout", authMiddleware.RequireAuth(billingHandler.HandleCreateStateFabricAddOnCheckout)).Methods("POST", "OPTIONS")
+	// Internal webhook endpoint for subscription updates (called by Stripe webhook handler or admin)
+	// Requires X-Internal-Webhook-Secret header matching INTERNAL_WEBHOOK_SECRET env var
+	api.HandleFunc("/billing/subscription/webhook", billingHandler.HandleSubscriptionWebhook).Methods("POST", "OPTIONS")
 
 	// ── Notifications (protected) ───────────────────────────────────────────
 	api.HandleFunc("/notifications", authMiddleware.RequireAuth(notificationHandler.HandleListNotifications)).Methods("GET", "OPTIONS")

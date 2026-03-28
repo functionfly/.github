@@ -86,11 +86,29 @@ func (r *PostgresRepository) CreateConversation(ctx context.Context, c *SupportC
 // GetConversation retrieves a support conversation by ID
 func (r *PostgresRepository) GetConversation(ctx context.Context, id uuid.UUID) (*SupportConversation, error) {
 	query := `
-		SELECT id, user_id, type, status, priority, title, function_ref,
-			deployment_id, deployment_logs, deployment_error,
-			ai_handled, ai_attempts, staff_id, staff_joined_at,
-			resolved_at, resolved_by_id, resolution_note,
-			is_emergency, emergency_code, metadata, created_at, updated_at
+		SELECT
+			id,
+			user_id,
+			type::text,
+			status::text,
+			priority::text,
+			title,
+			function_ref::text,
+			deployment_id::text,
+			deployment_logs,
+			deployment_error,
+			ai_handled,
+			ai_attempts,
+			staff_id::text,
+			staff_joined_at,
+			resolved_at,
+			resolved_by_id::text,
+			resolution_note,
+			is_emergency,
+			emergency_code,
+			metadata,
+			created_at,
+			updated_at
 		FROM support_conversations
 		WHERE id = $1
 	`
@@ -98,13 +116,16 @@ func (r *PostgresRepository) GetConversation(ctx context.Context, id uuid.UUID) 
 	var functionRefJSON sql.NullString
 	var staffID, resolvedByID, deploymentID sql.NullString
 	var staffJoinedAt, resolvedAt sql.NullTime
+	var resolutionNote sql.NullString
+	var emergencyCode sql.NullString
+	var deploymentLogs, deploymentError sql.NullString
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&c.ID, &c.UserID, &c.Type, &c.Status, &c.Priority, &c.Title, &functionRefJSON,
-		&deploymentID, &c.DeploymentLogs, &c.DeploymentError,
+		&deploymentID, &deploymentLogs, &deploymentError,
 		&c.AIHandled, &c.AIAttempts, &staffID, &staffJoinedAt,
-		&resolvedAt, &resolvedByID, &c.ResolutionNote,
-		&c.IsEmergency, &c.EmergencyCode, &c.Metadata, &c.CreatedAt, &c.UpdatedAt,
+		&resolvedAt, &resolvedByID, &resolutionNote,
+		&c.IsEmergency, &emergencyCode, &c.Metadata, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -138,6 +159,18 @@ func (r *PostgresRepository) GetConversation(ctx context.Context, id uuid.UUID) 
 	if resolvedAt.Valid {
 		c.ResolvedAt = &resolvedAt.Time
 	}
+	if resolutionNote.Valid {
+		c.ResolutionNote = resolutionNote.String
+	}
+	if emergencyCode.Valid {
+		c.EmergencyCode = emergencyCode.String
+	}
+	if deploymentLogs.Valid {
+		c.DeploymentLogs = deploymentLogs.String
+	}
+	if deploymentError.Valid {
+		c.DeploymentError = deploymentError.String
+	}
 
 	return c, nil
 }
@@ -152,11 +185,29 @@ func (r *PostgresRepository) ListConversations(ctx context.Context, userID uuid.
 	}
 
 	query := `
-		SELECT id, user_id, type, status, priority, title, function_ref,
-			deployment_id, deployment_logs, deployment_error,
-			ai_handled, ai_attempts, staff_id, staff_joined_at,
-			resolved_at, resolved_by_id, resolution_note,
-			is_emergency, emergency_code, metadata, created_at, updated_at
+		SELECT
+			id,
+			user_id,
+			type::text,
+			status::text,
+			priority::text,
+			title,
+			function_ref::text,
+			deployment_id::text,
+			deployment_logs,
+			deployment_error,
+			ai_handled,
+			ai_attempts,
+			staff_id::text,
+			staff_joined_at,
+			resolved_at,
+			resolved_by_id::text,
+			resolution_note,
+			is_emergency,
+			emergency_code,
+			metadata,
+			created_at,
+			updated_at
 		FROM support_conversations
 		WHERE user_id = $1
 		ORDER BY created_at DESC
@@ -179,11 +230,29 @@ func (r *PostgresRepository) ListActiveConversations(ctx context.Context, limit,
 	}
 
 	query := `
-		SELECT id, user_id, type, status, priority, title, function_ref,
-			deployment_id, deployment_logs, deployment_error,
-			ai_handled, ai_attempts, staff_id, staff_joined_at,
-			resolved_at, resolved_by_id, resolution_note,
-			is_emergency, emergency_code, metadata, created_at, updated_at
+		SELECT
+			id,
+			user_id,
+			type::text,
+			status::text,
+			priority::text,
+			title,
+			function_ref::text,
+			deployment_id::text,
+			deployment_logs,
+			deployment_error,
+			ai_handled,
+			ai_attempts,
+			staff_id::text,
+			staff_joined_at,
+			resolved_at,
+			resolved_by_id::text,
+			resolution_note,
+			is_emergency,
+			emergency_code,
+			metadata,
+			created_at,
+			updated_at
 		FROM support_conversations
 		WHERE status IN ('active', 'pending', 'escalated')
 		ORDER BY
@@ -208,13 +277,16 @@ func (r *PostgresRepository) scanConversations(rows *sql.Rows) ([]*SupportConver
 		var functionRefJSON sql.NullString
 		var staffID, resolvedByID, deploymentID sql.NullString
 		var staffJoinedAt, resolvedAt sql.NullTime
+		var resolutionNote sql.NullString
+		var emergencyCode sql.NullString
+		var deploymentLogs, deploymentError sql.NullString
 
 		err := rows.Scan(
 			&c.ID, &c.UserID, &c.Type, &c.Status, &c.Priority, &c.Title, &functionRefJSON,
-			&deploymentID, &c.DeploymentLogs, &c.DeploymentError,
+			&deploymentID, &deploymentLogs, &deploymentError,
 			&c.AIHandled, &c.AIAttempts, &staffID, &staffJoinedAt,
-			&resolvedAt, &resolvedByID, &c.ResolutionNote,
-			&c.IsEmergency, &c.EmergencyCode, &c.Metadata, &c.CreatedAt, &c.UpdatedAt,
+			&resolvedAt, &resolvedByID, &resolutionNote,
+			&c.IsEmergency, &emergencyCode, &c.Metadata, &c.CreatedAt, &c.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -244,6 +316,18 @@ func (r *PostgresRepository) scanConversations(rows *sql.Rows) ([]*SupportConver
 		}
 		if resolvedAt.Valid {
 			c.ResolvedAt = &resolvedAt.Time
+		}
+		if resolutionNote.Valid {
+			c.ResolutionNote = resolutionNote.String
+		}
+		if emergencyCode.Valid {
+			c.EmergencyCode = emergencyCode.String
+		}
+		if deploymentLogs.Valid {
+			c.DeploymentLogs = deploymentLogs.String
+		}
+		if deploymentError.Valid {
+			c.DeploymentError = deploymentError.String
 		}
 
 		conversations = append(conversations, c)
@@ -324,10 +408,11 @@ func (r *PostgresRepository) ListMessages(ctx context.Context, conversationID uu
 		m := &SupportMessage{}
 		var aiConfidence sql.NullFloat64
 		var aiModel sql.NullString
+		var embeddings, attachments []byte
 
 		err := rows.Scan(
 			&m.ID, &m.ConversationID, &m.AuthorID, &m.AuthorType, &m.MessageType, &m.Content,
-			&aiConfidence, &aiModel, &m.Embeddings, &m.Attachments, &m.CreatedAt,
+			&aiConfidence, &aiModel, &embeddings, &attachments, &m.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -338,6 +423,12 @@ func (r *PostgresRepository) ListMessages(ctx context.Context, conversationID uu
 		}
 		if aiModel.Valid {
 			m.AIModel = aiModel.String
+		}
+		if len(embeddings) > 0 {
+			m.Embeddings = json.RawMessage(embeddings)
+		}
+		if len(attachments) > 0 {
+			m.Attachments = json.RawMessage(attachments)
 		}
 
 		messages = append(messages, m)
@@ -356,10 +447,11 @@ func (r *PostgresRepository) GetMessage(ctx context.Context, id uuid.UUID) (*Sup
 	m := &SupportMessage{}
 	var aiConfidence sql.NullFloat64
 	var aiModel sql.NullString
+	var embeddings, attachments []byte
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&m.ID, &m.ConversationID, &m.AuthorID, &m.AuthorType, &m.MessageType, &m.Content,
-		&aiConfidence, &aiModel, &m.Embeddings, &m.Attachments, &m.CreatedAt,
+		&aiConfidence, &aiModel, &embeddings, &attachments, &m.CreatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -373,6 +465,12 @@ func (r *PostgresRepository) GetMessage(ctx context.Context, id uuid.UUID) (*Sup
 	}
 	if aiModel.Valid {
 		m.AIModel = aiModel.String
+	}
+	if len(embeddings) > 0 {
+		m.Embeddings = json.RawMessage(embeddings)
+	}
+	if len(attachments) > 0 {
+		m.Attachments = json.RawMessage(attachments)
 	}
 
 	return m, nil

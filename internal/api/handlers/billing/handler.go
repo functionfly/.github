@@ -2,6 +2,7 @@ package billing
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -23,6 +24,21 @@ type PaymentMethodInfo struct {
 	Last4    string `json:"last4"`
 	ExpMonth int    `json:"exp_month"`
 	ExpYear  int    `json:"exp_year"`
+}
+
+// TenantInvoiceJSON is the dashboard-facing shape for GET /v1/billing/invoices (amounts in cents).
+type TenantInvoiceJSON struct {
+	ID               string     `json:"id"`
+	TenantID         string     `json:"tenant_id"`
+	StripeInvoiceID  *string    `json:"stripe_invoice_id"`
+	Amount           int        `json:"amount"`
+	Currency         string     `json:"currency"`
+	Status           string     `json:"status"`
+	InvoiceDate      *time.Time `json:"invoice_date"`
+	DueDate          *time.Time `json:"due_date"`
+	InvoicePDF       *string    `json:"invoice_pdf"`
+	HostedInvoiceURL *string    `json:"hosted_invoice_url"`
+	CreatedAt        time.Time  `json:"created_at"`
 }
 
 // SubscriptionResponse is the response for subscription details
@@ -329,20 +345,66 @@ func (h *Handler) HandleListInvoices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert []*storage.Invoice to []storage.Invoice
-	invoiceList := make([]storage.Invoice, len(invoices))
-	for i, invoice := range invoices {
-		invoiceList[i] = *invoice
+	total, err := h.repo.CountInvoicesByTenant(claims.TenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to count invoices")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve invoices")
+		return
+	}
+
+	out := make([]TenantInvoiceJSON, 0, len(invoices))
+	for _, inv := range invoices {
+		if inv == nil {
+			continue
+		}
+		amt := inv.AmountPaidCents
+		if amt <= 0 {
+			amt = inv.AmountDueCents
+		}
+		var invDate *time.Time
+		if inv.PaidAt != nil {
+			invDate = inv.PaidAt
+		} else {
+			invDate = &inv.CreatedAt
+		}
+		var pdfPtr, hostedPtr *string
+		if inv.InvoicePdfURL != "" {
+			s := inv.InvoicePdfURL
+			pdfPtr = &s
+		}
+		if inv.HostedInvoiceURL != "" {
+			s := inv.HostedInvoiceURL
+			hostedPtr = &s
+		}
+		curr := strings.ToLower(strings.TrimSpace(inv.Currency))
+		if curr == "" {
+			curr = "usd"
+		}
+		out = append(out, TenantInvoiceJSON{
+			ID:               inv.ID.String(),
+			TenantID:         inv.TenantID.String(),
+			StripeInvoiceID:  inv.StripeInvoiceID,
+			Amount:           amt,
+			Currency:         curr,
+			Status:           inv.Status,
+			InvoiceDate:      invDate,
+			DueDate:          inv.DueDate,
+			InvoicePDF:       pdfPtr,
+			HostedInvoiceURL: hostedPtr,
+			CreatedAt:        inv.CreatedAt,
+		})
 	}
 
 	response := struct {
-		Invoices []storage.Invoice `json:"invoices"`
-		Limit    int               `json:"limit"`
-		Offset   int               `json:"offset"`
+		Invoices []TenantInvoiceJSON `json:"invoices"`
+		Limit    int                 `json:"limit"`
+		Offset   int                 `json:"offset"`
+		Total    int                 `json:"total"`
 	}{
-		Invoices: invoiceList,
+		Invoices: out,
 		Limit:    limit,
 		Offset:   offset,
+		Total:    total,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -440,4 +502,197 @@ func (h *Handler) HandleCancelSubscription(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Subscription cancelled successfully",
 	})
+}
+
+// HandleSubscriptionWebhook processes subscription updates from webhooks (e.g., Stripe).
+// This is called by webhook handlers when a subscription is created or updated.
+// POST /v1/billing/subscription/webhook (internal use)
+// Requires INTERNAL_WEBHOOK_SECRET header for authentication.
+func (h *Handler) HandleSubscriptionWebhook(w http.ResponseWriter, r *http.Request) {
+	// Verify internal webhook authentication
+	internalSecret := os.Getenv("INTERNAL_WEBHOOK_SECRET")
+	if internalSecret != "" {
+		authHeader := r.Header.Get("X-Internal-Webhook-Secret")
+		if authHeader != internalSecret {
+			logrus.Warn("billing webhook: invalid or missing internal webhook secret")
+			writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+	} else {
+		// In development mode without secret configured, allow localhost requests only
+		host := r.Host
+		remoteAddr := r.RemoteAddr
+		if !strings.Contains(host, "localhost") && !strings.Contains(remoteAddr, "127.0.0.1") && !strings.Contains(remoteAddr, "[::1]") {
+			logrus.Warn("billing webhook: rejected non-localhost request without INTERNAL_WEBHOOK_SECRET")
+			writeJSONError(w, http.StatusUnauthorized, "Unauthorized - INTERNAL_WEBHOOK_SECRET not configured")
+			return
+		}
+	}
+
+	var req struct {
+		TenantID     uuid.UUID `json:"tenant_id"`
+		OldPlan      string    `json:"old_plan"`
+		NewPlan      string    `json:"new_plan"`
+		UserID       uuid.UUID `json:"user_id"`
+		UpgradedBy   uuid.UUID `json:"upgraded_by"`
+		UpgradedAt   time.Time `json:"upgraded_at"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	if req.TenantID == uuid.Nil || req.NewPlan == "" {
+		writeJSONError(w, http.StatusBadRequest, "tenant_id and new_plan are required")
+		return
+	}
+
+	// Get tenant users to process upgrade for all users in the tenant
+	users, err := h.repo.ListActiveUsersByTenant(r.Context(), req.TenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", req.TenantID).Warn("billing webhook: failed to list users for plan upgrade")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to process subscription update")
+		return
+	}
+
+	// Determine who performed the upgrade
+	adminUserID := req.UpgradedBy
+	if adminUserID == uuid.Nil && req.UserID != uuid.Nil {
+		adminUserID = req.UserID
+	}
+	if adminUserID == uuid.Nil && len(users) > 0 {
+		adminUserID = users[0].ID
+	}
+
+	upgradedAt := req.UpgradedAt
+	if upgradedAt.IsZero() {
+		upgradedAt = time.Now()
+	}
+
+	// Process upgrade for each user in the tenant
+	for _, user := range users {
+		activity := &storage.UserActivity{
+			UserID:       user.ID,
+			ActivityType: "membership_upgraded",
+			Title:        fmt.Sprintf("Upgraded to %s", formatPlanName(req.NewPlan)),
+			Description:  getUpgradeDescription(req.NewPlan),
+			Metadata: map[string]interface{}{
+				"plan":         req.NewPlan,
+				"previousPlan": req.OldPlan,
+				"upgradedAt":   upgradedAt.Format(time.RFC3339),
+			},
+			IsPublic: true,
+		}
+
+		if err := h.repo.CreateUserActivity(activity); err != nil {
+			logrus.WithError(err).WithFields(logrus.Fields{
+				"user_id":   user.ID,
+				"tenant_id": req.TenantID,
+			}).Warn("billing webhook: failed to create membership upgrade activity")
+		}
+
+		// Award enterprise achievement if upgrading to enterprise
+		if isEnterprisePlan(req.NewPlan) && !isEnterprisePlan(req.OldPlan) {
+			if err := awardEnterpriseAchievement(h.repo, user.ID); err != nil {
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"user_id":   user.ID,
+					"tenant_id": req.TenantID,
+				}).Warn("billing webhook: failed to award enterprise achievement")
+			}
+		}
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"tenant_id":  req.TenantID,
+		"old_plan":   req.OldPlan,
+		"new_plan":   req.NewPlan,
+		"user_count": len(users),
+	}).Info("billing webhook: processed subscription plan upgrade")
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":     "success",
+		"user_count": fmt.Sprintf("%d", len(users)),
+	})
+}
+
+// formatPlanName formats a plan name for display.
+func formatPlanName(plan string) string {
+	switch plan {
+	case "enterprise", "Enterprise":
+		return "Enterprise"
+	case "professional", "pro", "Pro":
+		return "Professional"
+	case "starter", "Starter":
+		return "Starter"
+	case "free", "Free":
+		return "Free"
+	default:
+		if len(plan) > 0 {
+			return string(plan[0]-32) + plan[1:]
+		}
+		return plan
+	}
+}
+
+// getUpgradeDescription returns a description based on the plan tier.
+func getUpgradeDescription(plan string) string {
+	switch plan {
+	case "enterprise":
+		return "Unlimited functions, dedicated support, and premium enterprise features"
+	case "professional", "pro":
+		return "Advanced features, priority support, and increased limits"
+	case "starter":
+		return "Expanded features and higher execution limits"
+	default:
+		return "Membership upgraded with new features and benefits"
+	}
+}
+
+// isEnterprisePlan checks if a plan name represents an enterprise tier.
+func isEnterprisePlan(plan string) bool {
+	return plan == "enterprise" || plan == "Enterprise"
+}
+
+// awardEnterpriseAchievement awards the "Enterprise Pioneer" achievement to a user.
+func awardEnterpriseAchievement(repo storage.Repository, userID uuid.UUID) error {
+	achievement, err := repo.GetAchievementBySlug("enterprise_pioneer")
+	if err != nil {
+		return fmt.Errorf("failed to get enterprise pioneer achievement: %w", err)
+	}
+
+	if achievement == nil {
+		logrus.Warn("Enterprise Pioneer achievement not found in database - skipping award")
+		return nil
+	}
+
+	// Check if user already has this achievement
+	existingAchievements, err := repo.GetUserAchievements(userID)
+	if err != nil {
+		return fmt.Errorf("failed to check existing achievements: %w", err)
+	}
+
+	for _, ea := range existingAchievements {
+		if ea.AchievementID == achievement.ID {
+			return nil // User already has this achievement
+		}
+	}
+
+	metadata := map[string]interface{}{
+		"awarded_at": time.Now().Format(time.RFC3339),
+		"reason":     "Upgraded to Enterprise plan",
+	}
+
+	if err := repo.AwardAchievement(userID, achievement.ID, metadata); err != nil {
+		return fmt.Errorf("failed to award achievement: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"user_id":        userID,
+		"achievement_id": achievement.ID,
+	}).Info("Awarded Enterprise Pioneer achievement via billing")
+
+	return nil
 }

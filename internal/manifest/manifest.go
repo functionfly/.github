@@ -303,15 +303,16 @@ func (m *Manifest) Validate() error {
 
 	// Runtime validation
 	validRuntimes := map[string]bool{
-		"node18":     true,
-		"node20":     true,
-		"python3.11": true,
-		"deno":       true,
-		"bun":        true,
-		"rust":       true,
+		"node18":       true,
+		"node20":       true,
+		"python3.11":   true,
+		"deno":         true,
+		"bun":          true,
+		"rust":         true,
+		"browser-wasm": true, // Browser Native WebAssembly (0ms cold start)
 	}
 	if !validRuntimes[m.Runtime] {
-		return fmt.Errorf("runtime must be one of: node18, node20, python3.11, deno, bun, rust")
+		return fmt.Errorf("runtime must be one of: node18, node20, python3.11, deno, bun, rust, browser-wasm")
 	}
 
 	// Entry file validation (if provided)
@@ -325,12 +326,13 @@ func (m *Manifest) Validate() error {
 		}
 		// Validate extension matches runtime
 		validExtensions := map[string][]string{
-			"node18":     {".js", ".ts"},
-			"node20":     {".js", ".ts"},
-			"python3.11": {".py"},
-			"deno":       {".js", ".ts"},
-			"bun":        {".js", ".ts"},
-			"rust":       {".rs"},
+			"node18":       {".js", ".ts"},
+			"node20":       {".js", ".ts"},
+			"python3.11":   {".py"},
+			"deno":         {".js", ".ts"},
+			"bun":          {".js", ".ts"},
+			"rust":         {".rs"},
+			"browser-wasm": {".wasm", ".wat"},
 		}
 		ext := filepath.Ext(m.Entry)
 		if validExts, ok := validExtensions[m.Runtime]; ok {

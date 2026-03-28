@@ -53,6 +53,7 @@ type APIVersion struct {
 	Version        string          `json:"version"`
 	PathPrefix     string          `json:"path_prefix"`
 	Status         string          `json:"status"`
+	IsDefault      bool            `json:"is_default"`
 	ReleasedAt     time.Time       `json:"released_at"`
 	DeprecatedAt   *time.Time      `json:"deprecated_at,omitempty"`
 	SunsetAt       *time.Time      `json:"sunset_at,omitempty"`

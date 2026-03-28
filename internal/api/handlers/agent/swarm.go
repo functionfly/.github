@@ -14,6 +14,7 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/marketplace"
 	"github.com/functionfly/functionfly/internal/agent/swarm"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -23,6 +24,7 @@ type SwarmHandler struct {
 	swarmService       *swarm.Service
 	messageService     *swarm.MessageService
 	walletService      *economy.Service
+	financialTxRepo    *storage.FinancialTransactionRepository
 	marketplaceService *marketplace.Service
 	evolutionService   *evolution.Service
 	autonomyService    *autonomy.Service
@@ -34,6 +36,7 @@ func NewSwarmHandler(
 	swarmService *swarm.Service,
 	messageService *swarm.MessageService,
 	walletService *economy.Service,
+	financialTxRepo *storage.FinancialTransactionRepository,
 	marketplaceService *marketplace.Service,
 	evolutionService *evolution.Service,
 	autonomyService *autonomy.Service,
@@ -43,6 +46,7 @@ func NewSwarmHandler(
 		swarmService:       swarmService,
 		messageService:     messageService,
 		walletService:      walletService,
+		financialTxRepo:    financialTxRepo,
 		marketplaceService: marketplaceService,
 		evolutionService:   evolutionService,
 		autonomyService:    autonomyService,
@@ -218,11 +222,30 @@ func (h *SwarmHandler) GetWallet(w http.ResponseWriter, r *http.Request) {
 	if !h.requireAgentTenant(w, r, agentID) {
 		return
 	}
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+		return
+	}
 
 	wallet, err := h.walletService.GetOrCreateWallet(r.Context(), agentID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
+	}
+	if h.financialTxRepo != nil {
+		summary, err := h.financialTxRepo.GetAgentWalletSummary(r.Context(), claims.TenantID, agentID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to compute wallet summary")
+			return
+		}
+		if summary != nil {
+			wallet.BalanceUSD = summary.BalanceUSD
+			wallet.TotalEarnedUSD = summary.TotalEarnedUSD
+			wallet.TotalSpentUSD = summary.TotalSpentUSD
+			wallet.LastEarningAt = summary.LastEarningAt
+			wallet.LastSpendingAt = summary.LastSpendingAt
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -260,23 +283,23 @@ func (h *SwarmHandler) CreateListing(w http.ResponseWriter, r *http.Request) {
 
 // marketplaceAgentResponse is the API shape for one marketplace agent (camelCase for frontend).
 type marketplaceAgentResponse struct {
-	ID                     string            `json:"id"`
-	AgentID                string            `json:"agentId"`
-	Name                   string            `json:"name"`
-	Description            string            `json:"description"`
-	ListingType            string            `json:"listingType"`
-	PricingModel           string            `json:"pricingModel"`
-	PricePerCall           *float64          `json:"pricePerCall,omitempty"`
-	SubscriptionMonthlyUsd *float64          `json:"subscriptionMonthlyUsd,omitempty"`
-	RevenueSharePercent    *float64          `json:"revenueSharePercent,omitempty"`
-	RatingScore            float64           `json:"ratingScore"`
-	TotalCalls             int               `json:"totalCalls"`
-	ROIScore               float64           `json:"roiScore"`
-	TrustScore             *float64          `json:"trustScore,omitempty"`
-	DeterministicVerified  bool              `json:"deterministicVerified"`
-	Capabilities           []string          `json:"capabilities,omitempty"`
-	Status                 string            `json:"status"`
-	IsOfficial             bool              `json:"isOfficial"`
+	ID                     string   `json:"id"`
+	AgentID                string   `json:"agentId"`
+	Name                   string   `json:"name"`
+	Description            string   `json:"description"`
+	ListingType            string   `json:"listingType"`
+	PricingModel           string   `json:"pricingModel"`
+	PricePerCall           *float64 `json:"pricePerCall,omitempty"`
+	SubscriptionMonthlyUsd *float64 `json:"subscriptionMonthlyUsd,omitempty"`
+	RevenueSharePercent    *float64 `json:"revenueSharePercent,omitempty"`
+	RatingScore            float64  `json:"ratingScore"`
+	TotalCalls             int      `json:"totalCalls"`
+	ROIScore               float64  `json:"roiScore"`
+	TrustScore             *float64 `json:"trustScore,omitempty"`
+	DeterministicVerified  bool     `json:"deterministicVerified"`
+	Capabilities           []string `json:"capabilities,omitempty"`
+	Status                 string   `json:"status"`
+	IsOfficial             bool     `json:"isOfficial"`
 }
 
 // officialAgentIDs are the FunctionFly-built default agents seeded at launch.

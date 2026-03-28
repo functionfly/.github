@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -26,6 +27,19 @@ func NewHandler(svc *support.Service, logger *logrus.Logger) *Handler {
 		logger = logrus.New()
 	}
 	return &Handler{service: svc, logger: logger}
+}
+
+// isStaff checks if the user has a staff role (super_admin, admin, or support)
+func (h *Handler) isStaff(claims *auth.Claims) bool {
+	if claims == nil {
+		return false
+	}
+	// Check for staff roles
+	switch claims.Role {
+	case "super_admin", "admin", "support":
+		return true
+	}
+	return false
 }
 
 // CreateConversationRequest is the request body for creating a support conversation
@@ -139,8 +153,11 @@ func (h *Handler) ListActiveConversations(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// TODO: Check if user is staff
-	_ = user
+	// SECURITY: Require staff role
+	if !h.isStaff(user) {
+		http.Error(w, `{"error":"Staff access required"}`, http.StatusForbidden)
+		return
+	}
 
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
@@ -183,8 +200,9 @@ func (h *Handler) GetConversation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify user has access
-	if conversation.UserID != user.UserID {
-		// TODO: Check if user is staff
+	if conversation.UserID != user.UserID && !h.isStaff(user) {
+		http.Error(w, `{"error":"Access denied"}`, http.StatusForbidden)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -379,7 +397,11 @@ func (h *Handler) ListEmergencies(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Check if user is staff
+	// SECURITY: Require staff role
+	if !h.isStaff(user) {
+		http.Error(w, `{"error":"Staff access required"}`, http.StatusForbidden)
+		return
+	}
 
 	emergencies, err := h.service.ListPendingEmergencies(r.Context())
 	if err != nil {

@@ -18,13 +18,19 @@ func (a *AuthService) HashPassword(password string) (string, error) {
 		return "", fmt.Errorf("failed to generate salt: %w", err)
 	}
 
+	// Use configurable time and memory costs with secure defaults
+	// OWASP recommends timeCost >= 3 for sensitive applications (previously was 1)
+	timeCost := uint32(getTimeCost())
+	memoryCost := uint32(getMemoryCost())
+
 	hash := argon2.IDKey([]byte(password), salt, timeCost, memoryCost, threads, keyLength)
 
 	// Encode salt and hash as base64
 	saltB64 := base64.RawStdEncoding.EncodeToString(salt)
 	hashB64 := base64.RawStdEncoding.EncodeToString(hash)
 
-	// Format: $argon2id$v=19$m=65536,t=1,p=4$<salt>$<hash>
+	// Format: $argon2id$v=19$m=65536,t=3,p=4$<salt>$<hash>
+	// Note: timeCost now defaults to 3 (OWASP recommendation) instead of 1
 	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s",
 		memoryCost, timeCost, threads, saltB64, hashB64), nil
 }

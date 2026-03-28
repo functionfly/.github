@@ -1,15 +1,18 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/metrics"
+	"github.com/functionfly/functionfly/internal/email"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
@@ -19,6 +22,7 @@ type SecurityAlertMiddleware struct {
 	db           *sql.DB
 	redisClient  *redis.Client
 	alertHandler SecurityAlerter
+	emailSvc     email.Service
 }
 
 // SecurityAlerter interface for triggering alerts
@@ -54,11 +58,12 @@ type AlertEvent struct {
 }
 
 // NewSecurityAlertMiddleware creates a new security alert middleware
-func NewSecurityAlertMiddleware(db *sql.DB, redisClient *redis.Client, alertHandler SecurityAlerter) *SecurityAlertMiddleware {
+func NewSecurityAlertMiddleware(db *sql.DB, redisClient *redis.Client, alertHandler SecurityAlerter, emailSvc email.Service) *SecurityAlertMiddleware {
 	return &SecurityAlertMiddleware{
 		db:           db,
 		redisClient:  redisClient,
 		alertHandler: alertHandler,
+		emailSvc:     emailSvc,
 	}
 }
 
@@ -411,38 +416,298 @@ func (m *SecurityAlertMiddleware) sendNotification(ctx context.Context, channel 
 
 // sendEmailNotification sends an email notification
 func (m *SecurityAlertMiddleware) sendEmailNotification(ctx context.Context, rule SecurityAlertRule, ipAddress, userID, email string, details map[string]interface{}) error {
-	// TODO: Implement email notification using existing email service
+	if m.emailSvc == nil {
+		logrus.WithFields(logrus.Fields{
+			"channel":    "email",
+			"alert_type": rule.AlertType,
+			"severity":   rule.Severity,
+			"ip_address": ipAddress,
+		}).Warn("Email service not configured, skipping security alert notification")
+		return nil
+	}
+
+	// Build email subject and body
+	subject := fmt.Sprintf("[%s] Security Alert: %s", rule.Severity, rule.Name)
+
+	bodyText := fmt.Sprintf(`Security Alert Notification
+
+Alert Name: %s
+Alert Type: %s
+Severity: %s
+IP Address: %s
+User ID: %s
+
+Details:
+%s
+
+---
+This is an automated security alert from FunctionFly.
+`, rule.Name, rule.AlertType, rule.Severity, ipAddress, userID, formatAlertDetails(details))
+
+	bodyHTML := fmt.Sprintf(`<html>
+<body style="font-family: Arial, sans-serif;">
+<h2 style="color: %s;">Security Alert Notification</h2>
+<table style="border-collapse: collapse;">
+<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Alert Name</strong></td><td style="padding: 8px; border: 1px solid #ddd;">%s</td></tr>
+<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Alert Type</strong></td><td style="padding: 8px; border: 1px solid #ddd;">%s</td></tr>
+<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Severity</strong></td><td style="padding: 8px; border: 1px solid #ddd;">%s</td></tr>
+<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>IP Address</strong></td><td style="padding: 8px; border: 1px solid #ddd;">%s</td></tr>
+<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>User ID</strong></td><td style="padding: 8px; border: 1px solid #ddd;">%s</td></tr>
+</table>
+<h3>Details</h3>
+<pre>%s</pre>
+<hr>
+<p style="color: #666; font-size: 12px;">This is an automated security alert from FunctionFly.</p>
+</body>
+</html>`,
+		getSeverityColor(rule.Severity),
+		rule.Name, rule.AlertType, rule.Severity, ipAddress, userID, formatAlertDetails(details))
+
+	err := m.emailSvc.SendEmail(email, subject, bodyText, bodyHTML)
+	if err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"channel":    "email",
+			"alert_type": rule.AlertType,
+			"severity":   rule.Severity,
+			"ip_address": ipAddress,
+			"to":         email,
+		}).Error("Failed to send security alert email")
+		return fmt.Errorf("failed to send email notification: %w", err)
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"channel":    "email",
 		"alert_type": rule.AlertType,
 		"severity":   rule.Severity,
 		"ip_address": ipAddress,
-	}).Info("Would send email notification for security alert")
+		"to":         email,
+	}).Info("Security alert email sent successfully")
 	return nil
+}
+
+func formatAlertDetails(details map[string]interface{}) string {
+	if details == nil {
+		return "No additional details"
+	}
+	out := ""
+	for k, v := range details {
+		out += fmt.Sprintf("  %s: %v\n", k, v)
+	}
+	return out
+}
+
+func getSeverityColor(severity string) string {
+	switch strings.ToLower(severity) {
+	case "critical", "high":
+		return "#d32f2f"
+	case "medium", "moderate":
+		return "#f57c00"
+	case "low":
+		return "#fbc02d"
+	default:
+		return "#333"
+	}
 }
 
 // sendSlackNotification sends a Slack notification
 func (m *SecurityAlertMiddleware) sendSlackNotification(ctx context.Context, rule SecurityAlertRule, ipAddress, userID, email string, details map[string]interface{}) error {
-	// TODO: Implement Slack notification using webhook
+	enabled := strings.ToLower(strings.TrimSpace(os.Getenv("ALERT_SLACK_ENABLED"))) == "true"
+	webhookURL := strings.TrimSpace(os.Getenv("ALERT_SLACK_WEBHOOK_URL"))
+	if !enabled || webhookURL == "" {
+		logrus.WithFields(logrus.Fields{
+			"channel":    "slack",
+			"alert_type": rule.AlertType,
+			"severity":   rule.Severity,
+			"ip_address": ipAddress,
+		}).Warn("Slack not configured/enabled (ALERT_SLACK_ENABLED/ALERT_SLACK_WEBHOOK_URL), skipping security alert notification")
+		return nil
+	}
+
+	detailsText := formatAlertDetails(details)
+	if detailsText == "" {
+		detailsText = "No additional details"
+	}
+
+	title := fmt.Sprintf("[%s] Security Alert: %s", strings.ToUpper(rule.Severity), rule.Name)
+	facts := fmt.Sprintf("*Alert Type:* %s\n*IP Address:* %s\n*User ID:* %s\n*Email:* %s",
+		rule.AlertType,
+		valueOrFallback(ipAddress, "n/a"),
+		valueOrFallback(userID, "n/a"),
+		valueOrFallback(email, "n/a"),
+	)
+
+	payload := map[string]interface{}{
+		"blocks": []map[string]interface{}{
+			{
+				"type": "header",
+				"text": map[string]interface{}{
+					"type": "plain_text",
+					"text": title,
+				},
+			},
+			{
+				"type": "section",
+				"text": map[string]interface{}{
+					"type": "mrkdwn",
+					"text": facts,
+				},
+			},
+			{
+				"type": "section",
+				"text": map[string]interface{}{
+					"type": "mrkdwn",
+					"text": "*Details:*\n```" + sanitizeSlackCodeBlock(detailsText) + "```",
+				},
+			},
+			{
+				"type": "context",
+				"elements": []map[string]interface{}{
+					{
+						"type": "mrkdwn",
+						"text": fmt.Sprintf("FunctionFly • %s", time.Now().UTC().Format(time.RFC3339)),
+					},
+				},
+			},
+		},
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal slack payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create slack webhook request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send slack webhook: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("slack webhook returned non-2xx status: %s", resp.Status)
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"channel":    "slack",
 		"alert_type": rule.AlertType,
 		"severity":   rule.Severity,
 		"ip_address": ipAddress,
-	}).Info("Would send Slack notification for security alert")
+		"status":     resp.Status,
+	}).Info("Security alert Slack notification sent successfully")
 	return nil
+}
+
+func valueOrFallback(v string, fallback string) string {
+	if strings.TrimSpace(v) == "" {
+		return fallback
+	}
+	return v
+}
+
+func sanitizeSlackCodeBlock(s string) string {
+	// Slack uses triple-backticks for code blocks; avoid accidental termination.
+	return strings.ReplaceAll(s, "```", "'''" )
 }
 
 // sendPagerDutyNotification sends a PagerDuty notification
 func (m *SecurityAlertMiddleware) sendPagerDutyNotification(ctx context.Context, rule SecurityAlertRule, ipAddress, userID, email string, details map[string]interface{}) error {
-	// TODO: Implement PagerDuty notification
+	enabled := strings.ToLower(strings.TrimSpace(os.Getenv("ALERT_PAGERDUTY_ENABLED"))) == "true"
+	routingKey := strings.TrimSpace(os.Getenv("ALERT_PAGERDUTY_SERVICE_KEY"))
+	if !enabled || routingKey == "" {
+		logrus.WithFields(logrus.Fields{
+			"channel":    "pagerduty",
+			"alert_type": rule.AlertType,
+			"severity":   rule.Severity,
+			"ip_address": ipAddress,
+		}).Warn("PagerDuty not configured/enabled (ALERT_PAGERDUTY_ENABLED/ALERT_PAGERDUTY_SERVICE_KEY), skipping security alert notification")
+		return nil
+	}
+
+	eventSeverity := pagerDutySeverity(rule.Severity)
+	summary := fmt.Sprintf("[%s] %s", strings.ToUpper(rule.Severity), rule.Name)
+
+	customDetails := map[string]interface{}{
+		"alert_rule_id": rule.ID,
+		"alert_name":    rule.Name,
+		"alert_type":    rule.AlertType,
+		"severity":      rule.Severity,
+		"ip_address":    ipAddress,
+		"user_id":       userID,
+		"email":         email,
+		"details":       details,
+	}
+
+	payload := map[string]interface{}{
+		"routing_key":  routingKey,
+		"event_action": "trigger",
+		"dedup_key":    fmt.Sprintf("functionfly-security:%s:%s", rule.AlertType, ipAddress),
+		"payload": map[string]interface{}{
+			"summary":   summary,
+			"severity":  eventSeverity,
+			"source":    "functionfly-orchestrator-api",
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+			"component": "security-alerts",
+			"group":     "security",
+			"class":     rule.AlertType,
+			"custom_details": customDetails,
+		},
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal pagerduty payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://events.pagerduty.com/v2/enqueue", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create pagerduty request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send pagerduty event: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("pagerduty returned non-2xx status: %s", resp.Status)
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"channel":    "pagerduty",
 		"alert_type": rule.AlertType,
 		"severity":   rule.Severity,
 		"ip_address": ipAddress,
-	}).Info("Would send PagerDuty notification for security alert")
+		"status":     resp.Status,
+	}).Info("Security alert PagerDuty event sent successfully")
 	return nil
+}
+
+func pagerDutySeverity(severity string) string {
+	switch strings.ToLower(strings.TrimSpace(severity)) {
+	case "critical":
+		return "critical"
+	case "high":
+		return "error"
+	case "medium", "moderate":
+		return "warning"
+	case "low":
+		return "info"
+	default:
+		return "info"
+	}
+}
+
+func parseBoolEnvTrue(key string) bool {
+	return strings.ToLower(strings.TrimSpace(os.Getenv(key))) == "true"
 }
 
 // RecordFailedLogin records a failed login attempt for alerting
@@ -535,6 +800,133 @@ func (h *SecurityAlertHandler) TriggerAlert(ctx context.Context, alertType, seve
 		"details":    details,
 	}).Warn("Security alert triggered")
 
-	// TODO: Implement actual notification sending
+	// Best-effort notifications: this handler is used in places that don't have DB-backed rules/channels.
+	// It uses env-driven config, and is safe as a no-op when not configured.
+	if parseBoolEnvTrue("ALERT_SLACK_ENABLED") {
+		_ = sendSlackWebhook(ctx, alertType, severity, ipAddress, details)
+	}
+	if parseBoolEnvTrue("ALERT_PAGERDUTY_ENABLED") {
+		_ = sendPagerDutyEvent(ctx, alertType, severity, ipAddress, details)
+	}
+	return nil
+}
+
+func sendSlackWebhook(ctx context.Context, alertType, severity, ipAddress string, details map[string]interface{}) error {
+	webhookURL := strings.TrimSpace(os.Getenv("ALERT_SLACK_WEBHOOK_URL"))
+	if webhookURL == "" {
+		return nil
+	}
+
+	title := fmt.Sprintf("[%s] Security Alert: %s", strings.ToUpper(strings.TrimSpace(severity)), alertType)
+	facts := fmt.Sprintf("*Alert Type:* %s\n*Severity:* %s\n*IP Address:* %s",
+		alertType,
+		valueOrFallback(severity, "n/a"),
+		valueOrFallback(ipAddress, "n/a"),
+	)
+
+	detailsText := formatAlertDetails(details)
+	if detailsText == "" {
+		detailsText = "No additional details"
+	}
+
+	payload := map[string]interface{}{
+		"blocks": []map[string]interface{}{
+			{
+				"type": "header",
+				"text": map[string]interface{}{
+					"type": "plain_text",
+					"text": title,
+				},
+			},
+			{
+				"type": "section",
+				"text": map[string]interface{}{
+					"type": "mrkdwn",
+					"text": facts,
+				},
+			},
+			{
+				"type": "section",
+				"text": map[string]interface{}{
+					"type": "mrkdwn",
+					"text": "*Details:*\n```" + sanitizeSlackCodeBlock(detailsText) + "```",
+				},
+			},
+		},
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal slack payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create slack webhook request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send slack webhook: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("slack webhook returned non-2xx status: %s", resp.Status)
+	}
+	return nil
+}
+
+func sendPagerDutyEvent(ctx context.Context, alertType, severity, ipAddress string, details map[string]interface{}) error {
+	routingKey := strings.TrimSpace(os.Getenv("ALERT_PAGERDUTY_SERVICE_KEY"))
+	if routingKey == "" {
+		return nil
+	}
+
+	eventSeverity := pagerDutySeverity(severity)
+	summary := fmt.Sprintf("[%s] %s", strings.ToUpper(strings.TrimSpace(severity)), alertType)
+
+	payload := map[string]interface{}{
+		"routing_key":  routingKey,
+		"event_action": "trigger",
+		"dedup_key":    fmt.Sprintf("functionfly-security:%s:%s", alertType, ipAddress),
+		"payload": map[string]interface{}{
+			"summary":   summary,
+			"severity":  eventSeverity,
+			"source":    "functionfly-orchestrator-api",
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+			"component": "security-alerts",
+			"group":     "security",
+			"class":     alertType,
+			"custom_details": map[string]interface{}{
+				"alert_type": alertType,
+				"severity":   severity,
+				"ip_address": ipAddress,
+				"details":    details,
+			},
+		},
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal pagerduty payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://events.pagerduty.com/v2/enqueue", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create pagerduty request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send pagerduty event: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("pagerduty returned non-2xx status: %s", resp.Status)
+	}
 	return nil
 }

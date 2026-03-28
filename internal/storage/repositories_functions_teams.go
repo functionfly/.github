@@ -1,0 +1,159 @@
+package storage
+
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// PostgresDB methods: function registry, deployments, logs, dashboard aggregates, teams.
+
+// Function operations
+func (db *PostgresDB) CreateFunction(ctx context.Context, function *FunctionConfig) (*FunctionConfig, error) {
+	return db.functionRepository.CreateFunction(ctx, function)
+}
+
+func (db *PostgresDB) GetFunctionByID(ctx context.Context, functionID uuid.UUID) (*FunctionConfig, error) {
+	return db.functionRepository.GetFunctionByID(ctx, functionID)
+}
+
+func (db *PostgresDB) ListFunctionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*FunctionConfig, error) {
+	return db.functionRepository.ListFunctionsByTenant(ctx, tenantID)
+}
+
+func (db *PostgresDB) ListAllFunctions(ctx context.Context, limit, offset int, tenantID *uuid.UUID, status *string) ([]*FunctionConfig, int, error) {
+	return db.functionRepository.ListAllFunctions(ctx, limit, offset, tenantID, status)
+}
+
+func (db *PostgresDB) UpdateFunction(ctx context.Context, functionID uuid.UUID, updates map[string]interface{}) (*FunctionConfig, error) {
+	return db.functionRepository.UpdateFunction(ctx, functionID, updates)
+}
+
+func (db *PostgresDB) DeleteFunction(ctx context.Context, functionID uuid.UUID) error {
+	return db.functionRepository.DeleteFunction(ctx, functionID)
+}
+
+func (db *PostgresDB) GetFunctionByAppIDAndName(ctx context.Context, appID uuid.UUID, name string) (*FunctionConfig, error) {
+	return db.functionRepository.GetFunctionByAppIDAndName(ctx, appID, name)
+}
+
+func (db *PostgresDB) GetActiveDeploymentForFunction(ctx context.Context, functionID uuid.UUID) (*FunctionDeployment, error) {
+	return db.functionRepository.GetActiveDeploymentForFunction(ctx, functionID)
+}
+
+// Function deployment operations
+func (db *PostgresDB) CreateFunctionDeployment(ctx context.Context, deployment *FunctionDeployment) (*FunctionDeployment, error) {
+	return db.functionRepository.CreateFunctionDeployment(ctx, deployment)
+}
+
+func (db *PostgresDB) GetFunctionDeploymentByID(ctx context.Context, deploymentID uuid.UUID) (*FunctionDeployment, error) {
+	return db.functionRepository.GetFunctionDeploymentByID(ctx, deploymentID)
+}
+
+func (db *PostgresDB) ListFunctionDeployments(ctx context.Context, functionID uuid.UUID, limit int) ([]*FunctionDeployment, error) {
+	return db.functionRepository.ListFunctionDeployments(ctx, functionID, limit)
+}
+
+func (db *PostgresDB) UpdateFunctionDeploymentStatus(ctx context.Context, deploymentID uuid.UUID, status string, deployedURL, errorMessage *string) error {
+	return db.functionRepository.UpdateFunctionDeploymentStatus(ctx, deploymentID, status, deployedURL, errorMessage)
+}
+
+// Function log operations
+func (db *PostgresDB) CreateFunctionLog(ctx context.Context, log *FunctionLog) error {
+	return db.functionRepository.CreateFunctionLog(ctx, log)
+}
+
+func (db *PostgresDB) GetFunctionLogs(ctx context.Context, functionID *uuid.UUID, deploymentID *uuid.UUID, limit int, since *time.Time, level *string) ([]*FunctionLog, error) {
+	return db.functionRepository.GetFunctionLogs(ctx, functionID, deploymentID, limit, since, level)
+}
+
+// Dashboard aggregations
+func (db *PostgresDB) GetUsageByDay(ctx context.Context, tenantID uuid.UUID, days int) ([]UsageByDay, error) {
+	return db.functionRepository.GetUsageByDay(ctx, tenantID, days)
+}
+
+func (db *PostgresDB) GetExecutionRateByHour(ctx context.Context, tenantID uuid.UUID, hours int) ([]ExecutionRateByHour, error) {
+	return db.functionRepository.GetExecutionRateByHour(ctx, tenantID, hours)
+}
+
+func (db *PostgresDB) GetRecentActivityForTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]DashboardActivityItem, error) {
+	return db.functionRepository.GetRecentActivityForTenant(ctx, tenantID, limit)
+}
+
+func (db *PostgresDB) GetDashboardMetrics(ctx context.Context, tenantID uuid.UUID) (*DashboardMetrics, error) {
+	return db.functionRepository.GetDashboardMetrics(ctx, tenantID)
+}
+
+// Team operations
+func (db *PostgresDB) CreateTeam(team *Team) error {
+	return db.teamRepository.CreateTeam(team)
+}
+
+func (db *PostgresDB) GetTeamByID(teamID uuid.UUID) (*Team, error) {
+	return db.teamRepository.GetTeamByID(teamID)
+}
+
+func (db *PostgresDB) GetTeamsByTenantID(tenantID uuid.UUID) ([]*Team, error) {
+	return db.teamRepository.GetTeamsByTenantID(tenantID)
+}
+
+func (db *PostgresDB) UpdateTeam(team *Team) error {
+	return db.teamRepository.UpdateTeam(team)
+}
+
+func (db *PostgresDB) DeleteTeam(teamID uuid.UUID) error {
+	return db.teamRepository.DeleteTeam(teamID)
+}
+
+func (db *PostgresDB) AddTeamMember(membership *TeamMembership) error {
+	return db.teamRepository.AddTeamMember(membership)
+}
+
+func (db *PostgresDB) UpdateTeamMember(teamID, userID uuid.UUID, role string) error {
+	return db.teamRepository.UpdateTeamMember(teamID, userID, role)
+}
+
+func (db *PostgresDB) RemoveTeamMember(teamID, userID uuid.UUID) error {
+	return db.teamRepository.RemoveTeamMember(teamID, userID)
+}
+
+func (db *PostgresDB) GetTeamMembership(teamID, userID uuid.UUID) (*TeamMembership, error) {
+	return db.teamRepository.GetTeamMembership(teamID, userID)
+}
+
+func (db *PostgresDB) GetUserTeams(userID uuid.UUID) ([]*Team, error) {
+	return db.teamRepository.GetUserTeams(userID)
+}
+
+func (db *PostgresDB) GrantTeamPermission(permission *TeamPermission) error {
+	return db.teamRepository.GrantTeamPermission(permission)
+}
+
+func (db *PostgresDB) RevokeTeamPermission(teamID uuid.UUID, resourceType string, resourceID uuid.UUID) error {
+	return db.teamRepository.RevokeTeamPermission(teamID, resourceType, resourceID)
+}
+
+func (db *PostgresDB) GetTeamPermissions(teamID uuid.UUID) ([]*TeamPermission, error) {
+	return db.teamRepository.GetTeamPermissions(teamID)
+}
+
+func (db *PostgresDB) GetResourcePermissions(resourceType string, resourceID uuid.UUID) ([]*TeamPermission, error) {
+	return db.teamRepository.GetResourcePermissions(resourceType, resourceID)
+}
+
+func (db *PostgresDB) CheckUserResourcePermission(userID uuid.UUID, resourceType string, resourceID uuid.UUID, requiredPerm string) (bool, error) {
+	return db.teamRepository.CheckUserResourcePermission(userID, resourceType, resourceID, requiredPerm)
+}
+
+func (db *PostgresDB) GetUserPermissions(userID uuid.UUID, resourceType string) ([]string, error) {
+	return db.teamRepository.GetUserPermissions(userID, resourceType)
+}
+
+func (db *PostgresDB) IsUserTeamOwner(userID, teamID uuid.UUID) (bool, error) {
+	return db.teamRepository.IsUserTeamOwner(userID, teamID)
+}
+
+func (db *PostgresDB) IsUserTeamAdmin(userID, teamID uuid.UUID) (bool, error) {
+	return db.teamRepository.IsUserTeamAdmin(userID, teamID)
+}

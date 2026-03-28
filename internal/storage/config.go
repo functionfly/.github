@@ -79,13 +79,54 @@ func loadDatabaseConfig() (*DatabaseConfig, error) {
 	retryDelay := getEnvDuration("DB_RETRY_DELAY", 1*time.Second)
 	circuitBreakerTimeout := getEnvDuration("DB_CIRCUIT_BREAKER_TIMEOUT", 60*time.Second)
 
+	// Determine if we're in development mode (allows insecure defaults)
+	isDevelopment := os.Getenv("DEVELOPMENT") == "true"
+
+	// In production, require explicit database configuration - no insecure defaults
+	var dbHost, dbUser, dbPassword, dbName, dbSSLMode string
+	if isDevelopment {
+		// Development: use safe defaults
+		dbHost = getEnvOrDefault("DB_HOST", "localhost")
+		dbUser = getEnvOrDefault("DB_USER", "postgres")
+		dbPassword = getEnvOrDefault("DB_PASSWORD", "postgres")
+		dbName = getEnvOrDefault("DB_NAME", "functionfly")
+		dbSSLMode = getEnvOrDefault("DB_SSLMODE", "require")
+	} else {
+		// Production: fail if required env vars are not set
+		dbHost = os.Getenv("DB_HOST")
+		dbUser = os.Getenv("DB_USER")
+		dbPassword = os.Getenv("DB_PASSWORD")
+		dbName = os.Getenv("DB_NAME")
+		dbSSLMode = os.Getenv("DB_SSLMODE")
+		if dbSSLMode == "" {
+			dbSSLMode = "require" // Default to require for security
+		}
+
+		missingVars := []string{}
+		if dbHost == "" {
+			missingVars = append(missingVars, "DB_HOST")
+		}
+		if dbUser == "" {
+			missingVars = append(missingVars, "DB_USER")
+		}
+		if dbPassword == "" {
+			missingVars = append(missingVars, "DB_PASSWORD")
+		}
+		if dbName == "" {
+			missingVars = append(missingVars, "DB_NAME")
+		}
+		if len(missingVars) > 0 {
+			return nil, fmt.Errorf("production database configuration missing required environment variables: %s", strings.Join(missingVars, ", "))
+		}
+	}
+
 	cfg := &DatabaseConfig{
-		Host:            getEnvOrDefault("DB_HOST", "localhost"),
+		Host:            dbHost,
 		Port:            port,
-		User:            getEnvOrDefault("DB_USER", "postgres"),
-		Password:        getEnvOrDefault("DB_PASSWORD", "postgres"),
-		Database:        getEnvOrDefault("DB_NAME", "functionfly"),
-		SSLMode:         getEnvOrDefault("DB_SSLMODE", "disable"),
+		User:            dbUser,
+		Password:        dbPassword,
+		Database:        dbName,
+		SSLMode:         dbSSLMode,
 		MaxConns:        maxConns,
 		MaxIdle:         maxIdle,
 		ConnMaxLifetime: connMaxLifetime,

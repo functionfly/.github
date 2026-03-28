@@ -21,6 +21,12 @@ const (
 	TypeSecurityDisclosure  ConversationType = "security_disclosure"
 )
 
+// ConversationListEntry is one row for GET /conversations (includes unread for the current user).
+type ConversationListEntry struct {
+	Conversation
+	UnreadCount int `json:"unread_count"`
+}
+
 // Conversation represents a conversation (DM or typed thread).
 type Conversation struct {
 	ID                   uuid.UUID        `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
@@ -90,4 +96,16 @@ type ConversationMessage struct {
 // TableName returns the table name.
 func (ConversationMessage) TableName() string {
 	return "conversation_messages"
+}
+
+// ConversationParticipantRead stores when a user last viewed a conversation (for unread counts).
+type ConversationParticipantRead struct {
+	ConversationID uuid.UUID `json:"conversation_id" gorm:"type:uuid;primaryKey"`
+	UserID         uuid.UUID `json:"user_id" gorm:"type:uuid;primaryKey"`
+	LastReadAt     time.Time `json:"last_read_at" gorm:"type:timestamptz;not null"`
+}
+
+// TableName returns the table name.
+func (ConversationParticipantRead) TableName() string {
+	return "conversation_participant_reads"
 }

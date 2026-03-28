@@ -145,13 +145,21 @@ func registerAgentRoutes(
 
 	// ── Executable Conversations ──────────────────────────────────────────────
 	conversationRepo := storage.NewConversationRepository(s.postgresDB.GORM)
-	convHandler := conversationshandler.NewHandler(conversationRepo, flywheelService, registryRepo, logrus.New())
+	convHandler := conversationshandler.NewHandler(
+		conversationRepo,
+		flywheelService,
+		registryRepo,
+		s.notificationSvc,
+		s.repo,
+		logrus.New(),
+	)
 	api.HandleFunc("/conversations/context", authMiddleware.RequireAuth(convHandler.GetConversationContext)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/conversations/from-thread", authMiddleware.RequireAuth(convHandler.CreateFromThread)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/conversations/collaboration-profile/{user_id}", authMiddleware.RequireAuth(convHandler.GetCollaborationProfile)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/conversations", authMiddleware.RequireAuth(convHandler.ListConversations)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/conversations", authMiddleware.RequireAuth(convHandler.CreateConversation)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/conversations/{id}", authMiddleware.RequireAuth(convHandler.GetConversation)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/conversations/{id}/read", authMiddleware.RequireAuth(convHandler.MarkConversationRead)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/conversations/{id}/messages", authMiddleware.RequireAuth(convHandler.ListMessages)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/conversations/{id}/messages/validate", authMiddleware.RequireAuth(convHandler.ValidateMessage)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/conversations/{id}/messages", authMiddleware.RequireAuth(convHandler.CreateMessage)).Methods("POST", "OPTIONS")

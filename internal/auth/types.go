@@ -43,12 +43,13 @@ type OAuthCallbackResponse struct {
 
 // Claims represents JWT claims
 type Claims struct {
-	UserID      uuid.UUID `json:"user_id"`
-	Email       string    `json:"email"`
-	Username    string    `json:"username,omitempty"`
-	TenantID    uuid.UUID `json:"tenant_id"`
-	Role        string    `json:"role,omitempty"`        // Platform role (for admin users)
-	Permissions []string  `json:"permissions,omitempty"` // Explicit permissions
+	UserID        uuid.UUID `json:"user_id"`
+	Email         string    `json:"email"`
+	Username      string    `json:"username,omitempty"`
+	TenantID      uuid.UUID `json:"tenant_id"`
+	Role          string    `json:"role,omitempty"`            // Platform role (for admin users)
+	Permissions   []string  `json:"permissions,omitempty"`     // Explicit permissions
+	TokenVersion  int       `json:"token_version,omitempty"` // For token revocation - incremented on password change/logout all
 	jwt.RegisteredClaims
 }
 
@@ -69,6 +70,12 @@ type SignupRequest struct {
 	CompanyName     string `json:"companyName,omitempty"`
 	DateOfBirth     string `json:"dateOfBirth"` // YYYY-MM-DD
 	RecaptchaToken  string `json:"recaptchaToken,omitempty"`
+	InviteCode      string `json:"inviteCode,omitempty"`
+}
+
+// SignupConfigResponse is returned by the public signup-config endpoint.
+type SignupConfigResponse struct {
+	InviteRequired bool `json:"inviteRequired"`
 }
 
 // SignupResponse represents a signup response (no token until verified)

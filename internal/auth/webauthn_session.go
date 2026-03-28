@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -45,8 +47,12 @@ func NewWebAuthnSessionStore(client *redis.Client) *WebAuthnSessionStore {
 
 // Create stores a new WebAuthn session and returns the session ID
 func (s *WebAuthnSessionStore) Create(ctx context.Context, session *WebAuthnSession) (string, error) {
-	// Generate a unique session ID
-	sessionID := fmt.Sprintf("%d-%d", time.Now().UnixNano(), generateRandomInt())
+	// Generate a cryptographically secure session ID using crypto/rand
+	sessionID, err := generateSecureSessionID()
+	if err != nil {
+		s.logger.WithError(err).Error("Failed to generate secure session ID")
+		return "", fmt.Errorf("failed to generate session ID: %w", err)
+	}
 
 	// Set expiration
 	session.ExpiresAt = time.Now().Add(WebAuthnSessionTTL)
@@ -163,8 +169,14 @@ func (s *WebAuthnSessionStore) DeleteByUserID(ctx context.Context, userID string
 	return nil
 }
 
-// generateRandomInt generates a random integer for session ID uniqueness
-func generateRandomInt() int64 {
-	// Use current time plus some random component
-	return time.Now().UnixNano() % 1000000
+// generateSecureSessionID generates a cryptographically secure session ID using crypto/rand
+func generateSecureSessionID() (string, error) {
+	// Generate 16 bytes (128 bits) of cryptographically secure random data
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+	// Format: hex encoded random bytes (32 hex characters)
+	// Additional uniqueness from timestamp not needed when using crypto/rand
+	return hex.EncodeToString(b), nil
 }

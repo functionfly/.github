@@ -7,13 +7,14 @@ import (
 
 // Supported runtimes
 const (
-	RuntimeNode18        = "node18"
-	RuntimeNode20        = "node20"
-	RuntimePython311     = "python3.11"
-	RuntimePython312     = "python3.12"
-	RuntimeGo121         = "go1.21"
-	RuntimeRust175       = "rust1.75"
+	RuntimeNode18         = "node18"
+	RuntimeNode20         = "node20"
+	RuntimePython311      = "python3.11"
+	RuntimePython312      = "python3.12"
+	RuntimeGo121          = "go1.21"
+	RuntimeRust175        = "rust1.75"
 	RuntimeTypeScriptWASM = "typescript-wasm"
+	RuntimeBrowserNativeWASM = "browser-wasm" // Browser Native WebAssembly (0ms cold start)
 )
 
 // FunctionVisibility types
@@ -54,7 +55,8 @@ var AllowedCapabilities = []string{
 	"webhook",      // Webhook triggers
 	"email",        // Email sending
 	"storage",      // File storage access
-	"ai",           // AI/ML inference
+	"ai",           // AI/ML inference (general)
+	"ai:inference", // AI inference via AI Gateway (CUDA-WASM bridge)
 	"external_api", // External API access
 }
 

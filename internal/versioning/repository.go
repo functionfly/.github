@@ -47,12 +47,12 @@ func (r *Repository) CreateAPIVersion(ctx context.Context, v *APIVersion) error 
 // GetAPIVersionByID retrieves an API version by ID
 func (r *Repository) GetAPIVersionByID(ctx context.Context, id uuid.UUID) (*APIVersion, error) {
 	query := `
-		SELECT id, version, path_prefix, status, released_at, deprecated_at, sunset_at, sunset_message, metadata, openapi_spec_url, changelog_url, created_at, updated_at
+		SELECT id, version, path_prefix, status, is_default, released_at, deprecated_at, sunset_at, sunset_message, metadata, openapi_spec_url, changelog_url, created_at, updated_at
 		FROM api_versions WHERE id = $1
 	`
 	var v APIVersion
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&v.ID, &v.Version, &v.PathPrefix, &v.Status, &v.ReleasedAt, &v.DeprecatedAt, &v.SunsetAt, &v.SunsetMessage, &v.Metadata, &v.OpenAPISpecURL, &v.ChangelogURL, &v.CreatedAt, &v.UpdatedAt,
+		&v.ID, &v.Version, &v.PathPrefix, &v.Status, &v.IsDefault, &v.ReleasedAt, &v.DeprecatedAt, &v.SunsetAt, &v.SunsetMessage, &v.Metadata, &v.OpenAPISpecURL, &v.ChangelogURL, &v.CreatedAt, &v.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -66,12 +66,12 @@ func (r *Repository) GetAPIVersionByID(ctx context.Context, id uuid.UUID) (*APIV
 // GetAPIVersionByVersion retrieves an API version by version string
 func (r *Repository) GetAPIVersionByVersion(ctx context.Context, version string) (*APIVersion, error) {
 	query := `
-		SELECT id, version, path_prefix, status, released_at, deprecated_at, sunset_at, sunset_message, metadata, openapi_spec_url, changelog_url, created_at, updated_at
+		SELECT id, version, path_prefix, status, is_default, released_at, deprecated_at, sunset_at, sunset_message, metadata, openapi_spec_url, changelog_url, created_at, updated_at
 		FROM api_versions WHERE version = $1
 	`
 	var v APIVersion
 	err := r.db.QueryRowContext(ctx, query, version).Scan(
-		&v.ID, &v.Version, &v.PathPrefix, &v.Status, &v.ReleasedAt, &v.DeprecatedAt, &v.SunsetAt, &v.SunsetMessage, &v.Metadata, &v.OpenAPISpecURL, &v.ChangelogURL, &v.CreatedAt, &v.UpdatedAt,
+		&v.ID, &v.Version, &v.PathPrefix, &v.Status, &v.IsDefault, &v.ReleasedAt, &v.DeprecatedAt, &v.SunsetAt, &v.SunsetMessage, &v.Metadata, &v.OpenAPISpecURL, &v.ChangelogURL, &v.CreatedAt, &v.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -85,7 +85,7 @@ func (r *Repository) GetAPIVersionByVersion(ctx context.Context, version string)
 // ListAPIVersions retrieves API versions with optional filtering
 func (r *Repository) ListAPIVersions(ctx context.Context, params ListAPIVersionsParams) ([]APIVersion, error) {
 	query := `
-		SELECT id, version, path_prefix, status, released_at, deprecated_at, sunset_at, sunset_message, metadata, openapi_spec_url, changelog_url, created_at, updated_at
+		SELECT id, version, path_prefix, status, is_default, released_at, deprecated_at, sunset_at, sunset_message, metadata, openapi_spec_url, changelog_url, created_at, updated_at
 		FROM api_versions
 		WHERE ($1::text IS NULL OR status = $1)
 		ORDER BY released_at DESC
@@ -106,7 +106,7 @@ func (r *Repository) ListAPIVersions(ctx context.Context, params ListAPIVersions
 	for rows.Next() {
 		var v APIVersion
 		err := rows.Scan(
-			&v.ID, &v.Version, &v.PathPrefix, &v.Status, &v.ReleasedAt, &v.DeprecatedAt, &v.SunsetAt, &v.SunsetMessage, &v.Metadata, &v.OpenAPISpecURL, &v.ChangelogURL, &v.CreatedAt, &v.UpdatedAt,
+			&v.ID, &v.Version, &v.PathPrefix, &v.Status, &v.IsDefault, &v.ReleasedAt, &v.DeprecatedAt, &v.SunsetAt, &v.SunsetMessage, &v.Metadata, &v.OpenAPISpecURL, &v.ChangelogURL, &v.CreatedAt, &v.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan API version: %w", err)
@@ -114,6 +114,36 @@ func (r *Repository) ListAPIVersions(ctx context.Context, params ListAPIVersions
 		versions = append(versions, v)
 	}
 	return versions, nil
+}
+
+// SetDefaultAPIVersion marks the given version as the default (and clears any existing default).
+func (r *Repository) SetDefaultAPIVersion(ctx context.Context, version string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	// Clear any existing default(s)
+	if _, err := tx.ExecContext(ctx, `UPDATE api_versions SET is_default = FALSE WHERE is_default = TRUE`); err != nil {
+		return fmt.Errorf("failed to clear existing default api version: %w", err)
+	}
+
+	res, err := tx.ExecContext(ctx, `UPDATE api_versions SET is_default = TRUE, updated_at = NOW() WHERE version = $1`, version)
+	if err != nil {
+		return fmt.Errorf("failed to set default api version: %w", err)
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit default api version update: %w", err)
+	}
+	return nil
 }
 
 // UpdateAPIVersion updates an existing API version

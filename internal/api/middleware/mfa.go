@@ -249,14 +249,10 @@ func (m *MFARequiredMiddleware) RequireMFAAndVerify(next http.HandlerFunc) http.
 }
 
 // extractMFACode extracts MFA code from various sources
+// SECURITY: Query parameters are NOT accepted because they are logged in proxies and browser history
 func (m *MFARequiredMiddleware) extractMFACode(r *http.Request) string {
 	// Try header first (X-MFA-Code)
 	if code := r.Header.Get("X-MFA-Code"); code != "" {
-		return code
-	}
-
-	// Try query parameter
-	if code := r.URL.Query().Get("mfa_code"); code != "" {
 		return code
 	}
 
@@ -267,14 +263,8 @@ func (m *MFARequiredMiddleware) extractMFACode(r *http.Request) string {
 		}
 	}
 
-	// Try JSON body for POST requests
-	if r.Method == http.MethodPost && strings.Contains(r.Header.Get("Content-Type"), "application/json") {
-		// Don't consume the body here as it might be needed by the handler
-		// This is a simplified implementation
-		if code := r.URL.Query().Get("mfa_code"); code != "" {
-			return code
-		}
-	}
+	// Try JSON body for POST requests (handler will parse)
+	// Note: Query parameters are explicitly NOT accepted for security reasons
 
 	return ""
 }

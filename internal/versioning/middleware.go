@@ -103,7 +103,7 @@ func (vm *VersionMiddleware) Handler() func(http.Handler) http.Handler {
 				}
 
 				if info.DeprecationInfo.SuccessorVersion != "" {
-					w.Header().Set("Link", "</v"+info.DeprecationInfo.SuccessorVersion+"/>; rel=\"successor-version\"")
+					w.Header().Set("Link", "</"+info.DeprecationInfo.SuccessorVersion+"/>; rel=\"successor-version\"")
 				}
 			}
 
@@ -131,8 +131,15 @@ func (vm *VersionMiddleware) extractVersion(r *http.Request) string {
 
 	// Try to get from header
 	if acceptVersion := r.Header.Get("Accept-Version"); acceptVersion != "" {
-		if strings.HasPrefix(acceptVersion, "v") {
-			return acceptVersion
+		normalized := strings.TrimSpace(acceptVersion)
+		if normalized != "" && !strings.HasPrefix(normalized, "v") {
+			// Allow clients to send "1" or "2" instead of "v1"/"v2".
+			if regexp.MustCompile(`^\d+$`).MatchString(normalized) {
+				normalized = "v" + normalized
+			}
+		}
+		if strings.HasPrefix(normalized, "v") {
+			return normalized
 		}
 	}
 
@@ -148,14 +155,20 @@ func (vm *VersionMiddleware) getVersionInfo(ctx context.Context, version string)
 	}
 
 	// Try to get from database
-	apiVersion, err := vm.repo.GetAPIVersionByVersion(ctx, version)
-	if err != nil {
-		logrus.WithError(err).WithField("version", version).Warn("Failed to get version from database, using default")
+	var apiVersion *APIVersion
+	if vm.repo != nil {
+		var err error
+		apiVersion, err = vm.repo.GetAPIVersionByVersion(ctx, version)
+		if err != nil {
+			logrus.WithError(err).WithField("version", version).Warn("Failed to get version from database, using default")
+		}
 	}
 
 	// If not found in database, try default
 	if apiVersion == nil && version != vm.defaultVersion {
-		apiVersion, _ = vm.repo.GetAPIVersionByVersion(ctx, vm.defaultVersion)
+		if vm.repo != nil {
+			apiVersion, _ = vm.repo.GetAPIVersionByVersion(ctx, vm.defaultVersion)
+		}
 	}
 
 	// If still not found, create a basic version info
@@ -190,6 +203,20 @@ func (vm *VersionMiddleware) toVersionInfo(apiVersion *APIVersion) *VersionInfo 
 	if info.IsDeprecated && apiVersion.DeprecatedAt != nil {
 		info.DeprecationInfo = &DeprecationWarning{
 			DeprecatedAt:     *apiVersion.DeprecatedAt,
+			SunsetAt:         apiVersion.SunsetAt,
+			SunsetMessage:    apiVersion.SunsetMessage,
+			SuccessorVersion: vm.getSuccessorVersion(apiVersion),
+		}
+	}
+
+	// Sunset can be driven by status or sunset_at even without deprecated_at; still populate warning info.
+	if info.DeprecationInfo == nil && info.IsSunset && apiVersion.SunsetAt != nil {
+		deprecatedAt := time.Now()
+		if apiVersion.DeprecatedAt != nil {
+			deprecatedAt = *apiVersion.DeprecatedAt
+		}
+		info.DeprecationInfo = &DeprecationWarning{
+			DeprecatedAt:     deprecatedAt,
 			SunsetAt:         apiVersion.SunsetAt,
 			SunsetMessage:    apiVersion.SunsetMessage,
 			SuccessorVersion: vm.getSuccessorVersion(apiVersion),

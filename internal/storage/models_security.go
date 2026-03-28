@@ -64,6 +64,7 @@ type OAuthState struct {
 	State       string    `gorm:"column:state;primaryKey;size:512"`
 	ExpiresAt   time.Time `gorm:"column:expires_at;not null"`
 	RedirectURI string    `gorm:"column:redirect_uri;type:text"`
+	InviteCode  string    `gorm:"column:invite_code;type:text"`
 }
 
 // TableName overrides the default table name for GORM.

@@ -203,16 +203,17 @@ func IsOriginAllowedForRequest(r *http.Request) bool {
 	allowed := getCORSAllowedOrigins()
 	isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
 	if len(allowed) == 0 {
-		// Production with no CORS_ALLOWED_ORIGINS: deny cross-origin except localhost (for local dashboard dev)
-		return strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")
+		// SECURITY: If no CORS_ALLOWED_ORIGINS is set, deny all cross-origin requests in production.
+		// Only allow localhost in development mode.
+		if isDev {
+			return strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")
+		}
+		return false
 	}
 	for _, o := range allowed {
 		if o == "*" || o == origin {
 			return true
 		}
-	}
-	if isDev && (strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")) {
-		return true
 	}
 	return false
 }
@@ -222,13 +223,19 @@ func (sm *SecurityMiddleware) CORSMiddleware(next http.HandlerFunc) http.Handler
 	return func(w http.ResponseWriter, r *http.Request) {
 		allowedOrigins := getCORSAllowedOrigins()
 		origin := r.Header.Get("Origin")
-		// In production, empty allowlist must not result in allowing any origin.
-		// Exception: allow localhost origins so local dashboard (e.g. :3000) can call the API without setting DEVELOPMENT or CORS_ALLOWED_ORIGINS.
+		// SECURITY: In production, empty allowlist must deny all cross-origin requests.
+		// localhost exception only allowed in DEVELOPMENT mode.
 		if len(allowedOrigins) == 0 && origin != "" {
 			isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
 			isLocalhost := strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")
-			if !isDev && !isLocalhost {
+			if !isDev {
 				logrus.Error("CORS_ALLOWED_ORIGINS is empty in production — rejecting cross-origin request")
+				http.Error(w, "CORS not configured", http.StatusForbidden)
+				return
+			}
+			// In dev mode, only allow localhost
+			if !isLocalhost {
+				logrus.Error("CORS_ALLOWED_ORIGINS is empty in development — rejecting non-localhost origin")
 				http.Error(w, "CORS not configured", http.StatusForbidden)
 				return
 			}

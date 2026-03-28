@@ -3,6 +3,8 @@ package runpod
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/agent/generation"
 	"gorm.io/gorm"
@@ -35,6 +37,8 @@ func (f *CodeGeneratorFactory) CreateGenerator() (generation.CodeGenerator, erro
 	switch f.config.Mode {
 	case InferenceModeSelfHosted:
 		return NewSelfHostedGenerator(f.config)
+	case InferenceModeCluster:
+		return NewClusterGenerator(f.config)
 	case InferenceModeAPI:
 		// Return nil to indicate use of OpenRouter (handled elsewhere)
 		return nil, nil
@@ -137,4 +141,96 @@ func (h *HybridGenerator) GetStats() (selfHostedTotal, selfHostedRunning, selfHo
 		return h.selfHosted.GetStats()
 	}
 	return 0, 0, 0, 0
+}
+
+// ClusterGenerator is a code generator that uses cluster mode with multiple regions
+type ClusterGenerator struct {
+	manager *ClusterManager
+	config  *Config
+}
+
+// NewClusterGenerator creates a new cluster-based code generator
+func NewClusterGenerator(config *Config) (*ClusterGenerator, error) {
+	// Initialize regions from config if not set
+	if len(config.Regions) == 0 {
+		config.Regions = DefaultRegions()
+	}
+
+	manager := NewClusterManager(config)
+
+	return &ClusterGenerator{
+		manager: manager,
+		config:  config,
+	}, nil
+}
+
+// GenerateCode routes code generation request to an appropriate cluster
+func (cg *ClusterGenerator) GenerateCode(ctx context.Context, req *generation.GenerationRequest) (string, error) {
+	// Select the best cluster based on preferred region
+	cluster, err := cg.manager.SelectCluster(cg.config.PreferredRegion)
+	if err != nil {
+		return "", fmt.Errorf("failed to select cluster: %w", err)
+	}
+
+	// Get an idle instance from the selected cluster
+	instance, ok := cluster.Pool.GetIdleInstance("")
+	if !ok {
+		// Provision a new instance if none available
+		instance, err = cluster.Pool.Provision(ctx)
+		if err != nil {
+			return "", fmt.Errorf("failed to provision instance: %w", err)
+		}
+	}
+
+	// Update request count
+	instance.mu.Lock()
+	instance.RequestCount++
+	instance.LastUsed = time.Now()
+	instance.mu.Unlock()
+
+	// Generate code using the instance
+	// This would call the actual inference endpoint
+	code, err := cg.generateWithInstance(ctx, instance, req)
+	if err != nil {
+		// Release the instance back to the pool on failure
+		cluster.Pool.Release(instance.ID)
+		return "", err
+	}
+
+	// Release the instance back to the pool
+	cluster.Pool.Release(instance.ID)
+
+	return code, nil
+}
+
+// generateWithInstance generates code using a specific instance
+func (cg *ClusterGenerator) generateWithInstance(ctx context.Context, instance *GPUInstance, req *generation.GenerationRequest) (string, error) {
+	// TODO: Implement actual inference call to the instance endpoint
+	// This is a placeholder that returns an error indicating implementation needed
+	return "", fmt.Errorf("inference call to instance %s not implemented: endpoint %s", instance.ID, instance.Endpoint)
+}
+
+// Terminate terminates all clusters and releases resources
+func (cg *ClusterGenerator) Terminate(ctx context.Context) error {
+	clusters := cg.manager.ListClusters()
+	for _, cluster := range clusters {
+		instances := cluster.Pool.ListInstances()
+		for _, inst := range instances {
+			if err := cluster.Pool.Terminate(ctx, inst.ID); err != nil {
+				log.Printf("Warning: failed to terminate instance %s: %v", inst.ID, err)
+			}
+		}
+	}
+	return nil
+}
+
+// GetStats returns aggregated statistics from all clusters
+func (cg *ClusterGenerator) GetStats() (total, running, idle, failed int) {
+	stats := cg.manager.GetClusterStats()
+	return stats.TotalInstances, stats.RunningInstances, stats.IdleInstances, stats.FailedInstances
+}
+
+// GetClusterManager returns the cluster manager for external use
+func (cg *ClusterGenerator) GetClusterManager() *ClusterManager {
+	return cg.manager
 }

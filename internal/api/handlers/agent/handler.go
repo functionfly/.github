@@ -675,14 +675,39 @@ func (h *Handler) HandleGetWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	summary, err := h.financialTxRepo.GetAgentWalletSummary(r.Context(), claims.TenantID, agentID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "BILLING_FAILED", "failed to compute wallet summary")
+		return
+	}
+
+	balanceUSD := controls.CreditBalanceUSD
+	totalEarnedUSD := 0.0
+	totalSpentUSD := 0.0
+	var lastEarningAt string
+	var lastSpendingAt string
+	if summary != nil {
+		balanceUSD = summary.BalanceUSD
+		totalEarnedUSD = summary.TotalEarnedUSD
+		totalSpentUSD = summary.TotalSpentUSD
+		if summary.LastEarningAt != nil {
+			lastEarningAt = summary.LastEarningAt.UTC().Format(time.RFC3339Nano)
+		}
+		if summary.LastSpendingAt != nil {
+			lastSpendingAt = summary.LastSpendingAt.UTC().Format(time.RFC3339Nano)
+		}
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok": true,
 		"wallet": map[string]interface{}{
 			"agent_id":           agentID,
-			"balance_usd":        controls.CreditBalanceUSD,
+			"balance_usd":        balanceUSD,
 			"escrow_balance_usd": 0,
-			"total_earned_usd":   0,
-			"total_spent_usd":    0,
+			"total_earned_usd":   totalEarnedUSD,
+			"total_spent_usd":    totalSpentUSD,
+			"last_earning_at":    lastEarningAt,
+			"last_spending_at":   lastSpendingAt,
 		},
 	})
 }

@@ -90,6 +90,7 @@ const (
 	TypeTeamMemberAdded   = "team.member_added"
 	TypeTeamMemberRemoved = "team.member_removed"
 	TypeTeamRoleChanged   = "team.role_changed"
+	TypeTeamDirectMessage = "team.direct_message"
 
 	// System notifications
 	TypeSystemMaintenance     = "system.maintenance"

@@ -15,6 +15,7 @@ import (
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -279,6 +280,14 @@ func (h *Handler) HandleSignup(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(response)
 }
 
+// HandleSignupConfig returns public signup UI flags (e.g. invite-only mode).
+func (h *Handler) HandleSignupConfig(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(auth.SignupConfigResponse{
+		InviteRequired: auth.SignupInviteRequired(),
+	})
+}
+
 // HandleVerifyEmail handles email verification
 func (h *Handler) HandleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 	// Get token from query parameter
@@ -343,8 +352,9 @@ func (h *Handler) HandleGetOAuthURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirectURI := r.URL.Query().Get("redirect_uri")
+	inviteCode := r.URL.Query().Get("invite_code")
 
-	url, err := h.authSvc.GetOAuthURL(provider, redirectURI)
+	url, err := h.authSvc.GetOAuthURL(provider, redirectURI, inviteCode)
 	if err != nil {
 		logrus.WithError(err).WithField("provider", provider).Warn("Failed to get OAuth URL")
 		writeJSONError(w, http.StatusBadRequest, err.Error())
@@ -362,6 +372,11 @@ func (h *Handler) HandleGetOAuthURL(w http.ResponseWriter, r *http.Request) {
 // HandleOAuthCallback processes OAuth callback from providers
 func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
+	if provider == "" {
+		if v := mux.Vars(r); v != nil {
+			provider = v["provider"]
+		}
+	}
 	if provider == "" {
 		writeJSONError(w, http.StatusBadRequest, "Provider is required")
 		return

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -304,7 +305,9 @@ func (r *Repository) IncrementKeyUsage(keyID uuid.UUID) error {
 func (r *Repository) CheckIPAllowed(apiKey *TrustAPIKey, ipAddress string) bool {
 	var allowedIPs []string
 	if err := json.Unmarshal(apiKey.AllowedIPs, &allowedIPs); err != nil {
-		return true // If we can't parse, allow (fail open)
+		// SECURITY: Fail closed (deny) on parse error - if we can't verify the IP list, deny the request
+		log.Printf("ERROR: Failed to parse AllowedIPs for TrustAPIKey %s: %v - denying request", apiKey.ID, err)
+		return false
 	}
 
 	// Empty array means all IPs are allowed

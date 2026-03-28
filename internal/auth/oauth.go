@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -82,7 +83,8 @@ func (a *AuthService) getEnvVar(key string) string {
 // GetOAuthURL generates OAuth authorization URL for a provider.
 // redirectURI is optional; when set (e.g. CLI callback URL), the callback will redirect there with the token.
 // Only http://127.0.0.1 and http://localhost (any port) are allowed for redirectURI.
-func (a *AuthService) GetOAuthURL(provider, redirectURI string) (string, error) {
+// inviteCode is optional unless SignupInviteRequired(); then it must be valid (read-only check) and is stored in OAuth state for callback redemption.
+func (a *AuthService) GetOAuthURL(provider, redirectURI, inviteCode string) (string, error) {
 	p, exists := a.oauthProviders[provider]
 	if !exists {
 		return "", fmt.Errorf("OAuth provider '%s' not configured", provider)
@@ -90,6 +92,22 @@ func (a *AuthService) GetOAuthURL(provider, redirectURI string) (string, error) 
 
 	if redirectURI != "" && !isAllowedRedirectURI(redirectURI) {
 		return "", fmt.Errorf("redirect_uri must be http://127.0.0.1 or http://localhost (with optional port)")
+	}
+
+	ic := strings.TrimSpace(inviteCode)
+	if SignupInviteRequired() {
+		if ic == "" {
+			return "", fmt.Errorf("invite code is required to sign up with OAuth")
+		}
+		if err := a.repo.ValidateSignupInviteReadOnly(context.Background(), ic); err != nil {
+			if errors.Is(err, storage.ErrSignupInviteExhausted) {
+				return "", fmt.Errorf("this invite code has no uses remaining")
+			}
+			if errors.Is(err, storage.ErrSignupInviteRevoked) {
+				return "", fmt.Errorf("this invite code is no longer valid")
+			}
+			return "", fmt.Errorf("invalid or expired invite code")
+		}
 	}
 
 	// Generate state for CSRF protection
@@ -100,7 +118,7 @@ func (a *AuthService) GetOAuthURL(provider, redirectURI string) (string, error) 
 
 	// Store state server-side (persisted for multi-instance) so we can validate it on callback
 	expiresAt := time.Now().Add(10 * time.Minute)
-	if err := a.repo.StoreOAuthState(context.Background(), state, expiresAt, redirectURI); err != nil {
+	if err := a.repo.StoreOAuthState(context.Background(), state, expiresAt, redirectURI, ic); err != nil {
 		return "", fmt.Errorf("failed to store OAuth state: %w", err)
 	}
 
@@ -118,7 +136,7 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 			Description: "The OAuth state parameter is invalid or has expired. Please try signing in again.",
 		}
 	}
-	valid, redirectURI, err := a.repo.ValidateAndConsumeOAuthState(context.Background(), state)
+	valid, redirectURI, storedInvite, err := a.repo.ValidateAndConsumeOAuthState(context.Background(), state)
 	if err != nil {
 		return nil, &OAuthError{
 			Type:        "invalid_state",
@@ -234,8 +252,39 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 			}
 		} else {
 			// Create new user
+			var oauthInviteReserved uuid.UUID
+			if SignupInviteRequired() {
+				si := strings.TrimSpace(storedInvite)
+				if si == "" {
+					return nil, &OAuthError{
+						Type:        "invite_required",
+						Message:     "Invite code required",
+						Description: "Sign up requires a valid invite code. Start again from the sign-up page with your code, then use social login.",
+					}
+				}
+				id, err := a.repo.ReserveSignupInvite(context.Background(), si)
+				if err != nil {
+					if errors.Is(err, storage.ErrSignupInviteExhausted) {
+						return nil, &OAuthError{
+							Type:        "invalid_invite",
+							Message:     "Invite code exhausted",
+							Description: "This invite code has no uses remaining.",
+						}
+					}
+					return nil, &OAuthError{
+						Type:        "invalid_invite",
+						Message:     "Invalid invite code",
+						Description: "The invite code is invalid or expired. Check the code and try again.",
+					}
+				}
+				oauthInviteReserved = id
+			}
+
 			tenants, err := a.repo.ListTenants()
 			if err != nil {
+				if oauthInviteReserved != uuid.Nil {
+					_ = a.repo.ReleaseSignupInviteReservation(context.Background(), oauthInviteReserved)
+				}
 				return nil, &OAuthError{
 					Type:        "database_error",
 					Message:     "Database error occurred",
@@ -249,6 +298,9 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 			} else {
 				tenant, err := a.repo.CreateTenant(context.Background(), "Default Tenant")
 				if err != nil {
+					if oauthInviteReserved != uuid.Nil {
+						_ = a.repo.ReleaseSignupInviteReservation(context.Background(), oauthInviteReserved)
+					}
 					return nil, &OAuthError{
 						Type:        "tenant_creation_failed",
 						Message:     "Failed to create tenant",
@@ -266,6 +318,9 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 				"provider":       provider,
 			})
 			if err != nil {
+				if oauthInviteReserved != uuid.Nil {
+					_ = a.repo.ReleaseSignupInviteReservation(context.Background(), oauthInviteReserved)
+				}
 				return nil, &OAuthError{
 					Type:        "user_creation_failed",
 					Message:     "Failed to create account",

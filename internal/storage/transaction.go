@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -303,7 +304,24 @@ func isRetryableError(err error) bool {
 
 // containsString checks if a string contains a substring (case-insensitive)
 func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || containsString(s[1:], substr) || s[:len(substr)] == substr)
+	if len(substr) == 0 {
+		return true
+	}
+	if len(s) < len(substr) {
+		return false
+	}
+
+	// Iterative search to avoid stack overflow on large inputs
+	// Convert to lowercase once for case-insensitive comparison
+	sLower := strings.ToLower(s)
+	substrLower := strings.ToLower(substr)
+
+	for i := 0; i <= len(sLower)-len(substrLower); i++ {
+		if sLower[i:i+len(substrLower)] == substrLower {
+			return true
+		}
+	}
+	return false
 }
 
 // TransactionScope provides a fluent interface for transaction configuration

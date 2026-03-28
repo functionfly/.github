@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -107,14 +108,23 @@ func (m *AdminSessionMiddleware) ValidateSession(token string, clientIP, userAge
 		return nil, fmt.Errorf("session idle timeout exceeded")
 	}
 
-	// Validate IP address (allow some flexibility for proxy scenarios)
+	// SECURITY FIX: Add strict IP validation option for admin sessions
+	// By default (STRICT_IP_VALIDATION not set to false), admin sessions are blocked on IP mismatch
+	// This can be relaxed by setting STRICT_IP_VALIDATION=false for environments with proxy rotation
+	strictIPValidation := os.Getenv("STRICT_IP_VALIDATION") != "false"
 	if !m.validateIP(session.IPAddress, clientIP) {
 		m.logger.WithFields(logrus.Fields{
-			"session_id":    session.ID,
+			"session_id": session.ID,
 			"session_ip":    session.IPAddress,
 			"request_ip":    clientIP,
 		}).Warn("IP address mismatch for admin session")
-		// Log warning but don't block - could be proxy rotation
+		if strictIPValidation {
+			m.logger.WithFields(logrus.Fields{
+				"session_id": session.ID,
+			}).Error("Blocking request due to IP mismatch for admin session (strict mode)")
+			return nil, fmt.Errorf("IP address mismatch for admin session")
+		}
+		// Only log warning if not in strict mode (proxy rotation scenarios)
 	}
 
 	// Validate device fingerprint if provided

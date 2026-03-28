@@ -1,7 +1,9 @@
 package conversations
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,6 +12,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/conversations"
 	"github.com/functionfly/functionfly/internal/flywheel"
+	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/security"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
@@ -20,18 +23,40 @@ import (
 
 // Handler handles conversation (DM) and message API requests.
 type Handler struct {
-	repo        *storage.ConversationRepository
-	flywheelSvc *flywheel.Service
+	repo         *storage.ConversationRepository
+	flywheelSvc  *flywheel.Service
 	registryRepo *registry.RegistryRepository
-	logger      *logrus.Logger
+	notify       *notification.Service
+	users        userByIDGetter
+	logger       *logrus.Logger
+}
+
+// userByIDGetter resolves users for notification copy (minimal surface for tests).
+type userByIDGetter interface {
+	GetUserByID(userID uuid.UUID) (*storage.User, error)
 }
 
 // NewHandler creates a new conversations handler. flywheelSvc and registryRepo may be nil for stub behaviour.
-func NewHandler(repo *storage.ConversationRepository, flywheelSvc *flywheel.Service, registryRepo *registry.RegistryRepository, logger *logrus.Logger) *Handler {
+// notify and users may be nil; when nil, DM recipients do not receive in-app notifications.
+func NewHandler(
+	repo *storage.ConversationRepository,
+	flywheelSvc *flywheel.Service,
+	registryRepo *registry.RegistryRepository,
+	notify *notification.Service,
+	users userByIDGetter,
+	logger *logrus.Logger,
+) *Handler {
 	if logger == nil {
 		logger = logrus.New()
 	}
-	return &Handler{repo: repo, flywheelSvc: flywheelSvc, registryRepo: registryRepo, logger: logger}
+	return &Handler{
+		repo:         repo,
+		flywheelSvc:  flywheelSvc,
+		registryRepo: registryRepo,
+		notify:       notify,
+		users:        users,
+		logger:       logger,
+	}
 }
 
 // GetCollaborationProfile handles GET /api/v1/conversations/collaboration-profile/:user_id
@@ -188,6 +213,9 @@ func (h *Handler) ListConversations(w http.ResponseWriter, r *http.Request) {
 		h.logger.WithError(err).Error("List conversations failed")
 		http.Error(w, `{"error":"Failed to list conversations"}`, http.StatusInternalServerError)
 		return
+	}
+	if list == nil {
+		list = []conversations.ConversationListEntry{}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"conversations": list})
@@ -359,6 +387,34 @@ func (h *Handler) ListMessages(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{"messages": list})
 }
 
+// MarkConversationRead handles POST /api/v1/conversations/:id/read
+// Sets the current user's read cursor to the latest message (clears sidebar unread for this thread).
+func (h *Handler) MarkConversationRead(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	id, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		return
+	}
+	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
+	if err != nil || !ok {
+		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		return
+	}
+	if err := h.repo.MarkConversationRead(r.Context(), id, user.UserID); err != nil {
+		h.logger.WithError(err).Error("Mark conversation read failed")
+		http.Error(w, `{"error":"Failed to update read state"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
 // ValidateMessageRequest is the body for validating a message (security scan).
 type ValidateMessageRequest struct {
 	Content string `json:"content"`
@@ -455,6 +511,13 @@ func (h *Handler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"Failed to send message"}`, http.StatusInternalServerError)
 		return
 	}
+
+	if err := h.repo.MarkConversationRead(r.Context(), id, user.UserID); err != nil {
+		h.logger.WithError(err).Debug("Mark conversation read after send failed")
+	}
+
+	h.notifyConversationMessage(r.Context(), id, user.UserID, m)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(m)
@@ -630,4 +693,84 @@ func (h *Handler) ClaimBounty(w http.ResponseWriter, r *http.Request) {
 	b.ClaimedAt = &now
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(b)
+}
+
+func conversationMessagePreview(content string) string {
+	s := strings.TrimSpace(content)
+	if s == "" {
+		return "(empty message)"
+	}
+	r := []rune(s)
+	const max = 160
+	if len(r) <= max {
+		return s
+	}
+	return string(r[:max]) + "…"
+}
+
+func senderDisplayName(u *storage.User) string {
+	if u == nil {
+		return "Someone"
+	}
+	if strings.TrimSpace(u.Name) != "" {
+		return u.Name
+	}
+	if u.Username != nil && strings.TrimSpace(*u.Username) != "" {
+		return *u.Username
+	}
+	return "Someone"
+}
+
+// notifyConversationMessage creates in-app notifications for other participants (unread bell + counts).
+func (h *Handler) notifyConversationMessage(ctx context.Context, conversationID, authorID uuid.UUID, m *conversations.ConversationMessage) {
+	if h.notify == nil {
+		return
+	}
+	conv, err := h.repo.GetConversationByID(ctx, conversationID)
+	if err != nil || conv == nil {
+		return
+	}
+	var participantStrs []string
+	if err := json.Unmarshal(conv.ParticipantIDs, &participantStrs); err != nil {
+		h.logger.WithError(err).Warn("notifyConversationMessage: parse participant_ids")
+		return
+	}
+
+	var author *storage.User
+	if h.users != nil {
+		var err error
+		author, err = h.users.GetUserByID(authorID)
+		if err != nil {
+			h.logger.WithError(err).Debug("notifyConversationMessage: sender lookup")
+		}
+	}
+	fromName := senderDisplayName(author)
+	title := fmt.Sprintf("New message from %s", fromName)
+	body := conversationMessagePreview(m.Content)
+	actionPath := fmt.Sprintf("/conversations/%s", conversationID.String())
+
+	for _, ps := range participantStrs {
+		pid, err := uuid.Parse(strings.TrimSpace(ps))
+		if err != nil || pid == authorID {
+			continue
+		}
+		_, err = h.notify.Send(ctx, notification.SendRequest{
+			UserID:   pid,
+			Type:     notification.TypeTeamDirectMessage,
+			Category: notification.CategoryTeam,
+			Title:    title,
+			Body:     body,
+			Data: notification.JSONMap{
+				"action_url":       actionPath,
+				"conversation_id": conversationID.String(),
+				"message_id":      m.ID.String(),
+				"from_user_id":    authorID.String(),
+			},
+			Channels: []string{notification.ChannelInApp},
+			Priority: notification.PriorityNormal,
+		})
+		if err != nil {
+			h.logger.WithError(err).WithField("recipient", pid).Warn("notifyConversationMessage: send failed")
+		}
+	}
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -15,7 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	gormlog "gorm.io/gorm/logger"
 )
 
 // ReadReplicaConnection represents a read replica connection
@@ -191,7 +193,16 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 		gormCfg.DriverName = "pgx"
 	}
 	gormDB, err := gorm.Open(postgres.New(gormCfg), &gorm.Config{
-		Logger:      logger.Default.LogMode(logger.Info),
+		// Ignore ErrRecordNotFound so expected misses (e.g. no platform_maintenance row) do not spam logs.
+		Logger: gormlog.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags),
+			gormlog.Config{
+				SlowThreshold:             200 * time.Millisecond,
+				LogLevel:                  gormlog.Info,
+				IgnoreRecordNotFoundError: true,
+				Colorful:                  true,
+			},
+		),
 		PrepareStmt: false,
 	})
 	if err != nil {
@@ -337,12 +348,12 @@ func (db *PostgresDB) initPreparedStatements(ctx context.Context) error {
 		"getUserByEmail": `
 			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
-			       created_at, updated_at, name, bio
+			       created_at, updated_at, name, bio, last_active_at, profile_number
 			FROM users WHERE email = $1`,
 		"getUserByID": `
 			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
-			       created_at, updated_at, name, bio
+			       created_at, updated_at, name, bio, last_active_at, profile_number
 			FROM users WHERE id = $1`,
 		"getTenantByID": `
 			SELECT id, name, plan, status, created_at, updated_at
@@ -501,12 +512,12 @@ func (db *PostgresDB) getStatementQuery(name string) string {
 		"getUserByEmail": `
 			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
-			       created_at, updated_at, name, bio
+			       created_at, updated_at, name, bio, last_active_at, profile_number
 			FROM users WHERE email = $1`,
 		"getUserByID": `
 			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
-			       created_at, updated_at, name, bio
+			       created_at, updated_at, name, bio, last_active_at, profile_number
 			FROM users WHERE id = $1`,
 		"getTenantByID": `
 			SELECT id, name, plan, status, created_at, updated_at
@@ -1032,6 +1043,32 @@ func (db *PostgresDB) CreateUserActivity(activity *UserActivity) error {
 	return nil
 }
 
+// GetUserContributionDailyCounts aggregates contribution events per UTC calendar day:
+// each user_activity row and each registry function created by the user counts as one.
+func (db *PostgresDB) GetUserContributionDailyCounts(userID uuid.UUID, since time.Time) (map[string]int64, error) {
+	var rows []struct {
+		Day   string `gorm:"column:day"`
+		Count int64  `gorm:"column:cnt"`
+	}
+	q := `
+WITH per_day AS (
+	SELECT (timezone('UTC', created_at))::date AS d FROM user_activity
+	WHERE user_id = ? AND created_at >= ?
+	UNION ALL
+	SELECT (timezone('UTC', created_at))::date FROM registry_functions
+	WHERE owner_user_id IS NOT NULL AND owner_user_id = ? AND created_at >= ?
+)
+SELECT d::text AS day, COUNT(*)::bigint AS cnt FROM per_day GROUP BY d ORDER BY d`
+	if err := db.GORM.Raw(q, userID, since, userID, since).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("failed to get contribution daily counts: %w", err)
+	}
+	out := make(map[string]int64, len(rows))
+	for _, r := range rows {
+		out[r.Day] = r.Count
+	}
+	return out, nil
+}
+
 // GetUserExecutionStats retrieves execution statistics for a user
 func (db *PostgresDB) GetUserExecutionStats(userID uuid.UUID) (map[string]interface{}, error) {
 	// Get user's published functions from registry
@@ -1042,9 +1079,13 @@ func (db *PostgresDB) GetUserExecutionStats(userID uuid.UUID) (map[string]interf
 	}
 
 	if err := db.GORM.Raw(`
-		SELECT id, COALESCE(execution_count, 0) as execution_count, COALESCE(unique_users, 0) as unique_users
-		FROM registry_functions
-		WHERE author_id = ?
+		SELECT rf.id,
+			COUNT(re.id)::bigint AS execution_count,
+			COUNT(DISTINCT re.caller_ip)::bigint AS unique_users
+		FROM registry_functions rf
+		LEFT JOIN registry_function_executions re ON re.function_id = rf.id
+		WHERE rf.owner_user_id = ?
+		GROUP BY rf.id
 	`, userID).Scan(&functions).Error; err != nil {
 		return nil, fmt.Errorf("failed to get user functions: %w", err)
 	}
@@ -1062,10 +1103,11 @@ func (db *PostgresDB) GetUserExecutionStats(userID uuid.UUID) (map[string]interf
 	}
 
 	if err := db.GORM.Raw(`
-		SELECT DATE(created_at) as date, COUNT(*) as executions
-		FROM registry_executions
-		WHERE author_id = ? AND created_at >= NOW() - INTERVAL '30 days'
-		GROUP BY DATE(created_at)
+		SELECT DATE(re.timestamp) as date, COUNT(*) as executions
+		FROM registry_function_executions re
+		INNER JOIN registry_functions rf ON rf.id = re.function_id
+		WHERE rf.owner_user_id = ? AND re.timestamp >= NOW() - INTERVAL '30 days'
+		GROUP BY DATE(re.timestamp)
 		ORDER BY date
 	`, userID).Scan(&history).Error; err != nil {
 		// Continue even if no data
@@ -1083,6 +1125,57 @@ func (db *PostgresDB) GetUserExecutionStats(userID uuid.UUID) (map[string]interf
 	}, nil
 }
 
+// GetUserProfileStats returns aggregate stats for public profile cards (functions count, executions, trust, follows).
+func (db *PostgresDB) GetUserProfileStats(userID uuid.UUID) (map[string]interface{}, error) {
+	ctx := context.Background()
+	execStats, err := db.GetUserExecutionStats(userID)
+	if err != nil {
+		return nil, err
+	}
+	fc := 0
+	if v, ok := execStats["functionCount"].(int); ok {
+		fc = v
+	}
+	te, _ := execStats["totalExecutions"].(int64)
+
+	followers, err := db.GetUserFollowerCount(ctx, userID)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", userID).Warn("GetUserFollowerCount failed")
+		followers = 0
+	}
+	following, err := db.GetUserFollowingCount(ctx, userID)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", userID).Warn("GetUserFollowingCount failed")
+		following = 0
+	}
+
+	var avgOverall float64
+	if err := db.GORM.Raw(`
+		SELECT COALESCE(AVG(rat.overall_score), 0)
+		FROM registry_functions rf
+		LEFT JOIN registry_function_ratings rat ON rat.function_id = rf.id
+		WHERE rf.owner_user_id = ?`, userID).Scan(&avgOverall).Error; err != nil {
+		logrus.WithError(err).WithField("userID", userID).Warn("avg overall_score for profile trust failed")
+		avgOverall = 0
+	}
+
+	trustScore := int(avgOverall*100.0 + 0.5)
+	if trustScore < 0 {
+		trustScore = 0
+	}
+	if trustScore > 100 {
+		trustScore = 100
+	}
+
+	return map[string]interface{}{
+		"functionsCount":  fc,
+		"totalExecutions": te,
+		"trustScore":      trustScore,
+		"followersCount":  followers,
+		"followingCount":  following,
+	}, nil
+}
+
 // GetUserPopularFunctions retrieves most popular functions for a user
 func (db *PostgresDB) GetUserPopularFunctions(userID uuid.UUID, limit int) ([]map[string]interface{}, error) {
 	var functions []map[string]interface{}
@@ -1092,12 +1185,18 @@ func (db *PostgresDB) GetUserPopularFunctions(userID uuid.UUID, limit int) ([]ma
 			rf.id,
 			rf.name,
 			rf.description,
-			COALESCE(rf.execution_count, 0) as execution_count,
-			COALESCE(rf.rating, 0) as rating,
-			COALESCE(rf.total_ratings, 0) as total_ratings
+			COALESCE(exec.cnt, 0)::bigint AS execution_count,
+			COALESCE(ratings.overall_score, 0) AS rating,
+			COALESCE(ratings.total_ratings, 0)::bigint AS total_ratings
 		FROM registry_functions rf
-		WHERE rf.author_id = ?
-		ORDER BY rf.execution_count DESC NULLS LAST
+		LEFT JOIN (
+			SELECT function_id, COUNT(*)::bigint AS cnt
+			FROM registry_function_executions
+			GROUP BY function_id
+		) exec ON exec.function_id = rf.id
+		LEFT JOIN registry_function_ratings ratings ON ratings.function_id = rf.id
+		WHERE rf.owner_user_id = ?
+		ORDER BY exec.cnt DESC NULLS LAST
 		LIMIT ?
 	`, userID, limit).Scan(&functions).Error; err != nil {
 		return nil, fmt.Errorf("failed to get popular functions: %w", err)
@@ -1115,11 +1214,12 @@ func (db *PostgresDB) GetUserGeographicStats(userID uuid.UUID) (map[string]inter
 
 	if err := db.GORM.Raw(`
 		SELECT
-			COALESCE(re.region, 'unknown') as region,
+			COALESCE(re.geo_country, 'unknown') as region,
 			COUNT(*) as executions
-		FROM registry_executions re
-		WHERE re.author_id = ? AND re.created_at >= NOW() - INTERVAL '30 days'
-		GROUP BY re.region
+		FROM registry_function_executions re
+		INNER JOIN registry_functions rf ON rf.id = re.function_id
+		WHERE rf.owner_user_id = ? AND re.timestamp >= NOW() - INTERVAL '30 days'
+		GROUP BY re.geo_country
 		ORDER BY executions DESC
 	`, userID).Scan(&regions).Error; err != nil {
 		regions = []struct {
@@ -1144,8 +1244,9 @@ func (db *PostgresDB) GetUserDeviceStats(userID uuid.UUID) (map[string]interface
 		SELECT
 			COALESCE(re.user_agent, 'unknown') as device,
 			COUNT(*) as executions
-		FROM registry_executions re
-		WHERE re.author_id = ? AND re.created_at >= NOW() - INTERVAL '30 days'
+		FROM registry_function_executions re
+		INNER JOIN registry_functions rf ON rf.id = re.function_id
+		WHERE rf.owner_user_id = ? AND re.timestamp >= NOW() - INTERVAL '30 days'
 		GROUP BY re.user_agent
 		ORDER BY executions DESC
 		LIMIT 5

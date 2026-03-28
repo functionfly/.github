@@ -49,6 +49,25 @@ func (m *AuthMiddleware) extractUserFromToken(r *http.Request) (*auth.Claims, er
 	return m.authSvc.ValidateToken(parts[1])
 }
 
+// OptionalAuth parses a valid Bearer JWT when present and sets user context.
+// Missing or invalid tokens are ignored (no 401) so public routes keep working.
+// Use on /v1 (and /v2) so dashboard requests with Authorization update activity / online status.
+func (m *AuthMiddleware) OptionalAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		claims, err := m.extractUserFromToken(r)
+		if err != nil || claims == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		ctx := context.WithValue(r.Context(), contextKeyUser, claims)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 // requireAuth middleware validates JWT token and adds user context
 func (m *AuthMiddleware) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

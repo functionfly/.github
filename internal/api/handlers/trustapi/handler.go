@@ -2,10 +2,12 @@ package trustapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/functionfly/functionfly/internal/storage/trustapi"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -52,9 +54,11 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 
 // getFunctionInfo retrieves function information from the registry
 func (h *Handler) getFunctionInfo(functionID string) (*registry.RegistryFunction, error) {
-	// This is a placeholder - in reality, we'd use the registry repository
-	// to fetch function details
-	return nil, nil
+	id, err := uuid.Parse(functionID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid function ID: %w", err)
+	}
+	return h.registryRepo.GetFunctionByID(id)
 }
 
 // parseFunctionID parses and validates a function ID from URL params

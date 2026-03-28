@@ -476,7 +476,7 @@ func TestHandler_SunsetVersion_Returns410(t *testing.T) {
 
 	// Check response body
 	var response map[string]interface{}
-	err := json.Unmarshal(w.Body.Bytes(), assert.AnError)
+	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, "VERSION_SUNSET", response["error"])
 }
@@ -625,7 +625,7 @@ func TestResponseWithVersionInfo(t *testing.T) {
 	assert.Equal(t, "v1", w.Header().Get("X-API-Version"))
 
 	var response map[string]string
-	err := json.Unmarshal(w.Body.Bytes(), assert.AnError)
+	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, "success", response["message"])
 }
@@ -753,7 +753,7 @@ func TestExtractVersion_EmptyPath(t *testing.T) {
 func TestExtractVersion_RootPath(t *testing.T) {
 	vm := testVersionMiddleware()
 
-	req := httptest.NewRequest("GET", "", nil)
+	req := httptest.NewRequest("GET", "/", nil)
 	result := vm.extractVersion(req)
 	assert.Equal(t, "v1", result)
 }

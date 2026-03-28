@@ -38,21 +38,23 @@ type Subscription struct {
 
 // Invoice represents a billing invoice
 type Invoice struct {
-	ID               uuid.UUID  `json:"id"`
-	TenantID         uuid.UUID  `json:"tenant_id"`
-	SubscriptionID   *uuid.UUID `json:"subscription_id,omitempty"`
-	Status           string     `json:"status"`
-	AmountDueCents   int        `json:"amount_due_cents"`
-	AmountPaidCents  int        `json:"amount_paid_cents"`
-	Currency         string     `json:"currency"`
-	InvoicePdfURL    string     `json:"invoice_pdf_url,omitempty"`
-	HostedInvoiceURL string     `json:"hosted_invoice_url,omitempty"`
-	PeriodStart      *time.Time `json:"period_start,omitempty"`
-	PeriodEnd        *time.Time `json:"period_end,omitempty"`
-	DueDate          *time.Time `json:"due_date,omitempty"`
-	PaidAt           *time.Time `json:"paid_at,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
+	ID                 uuid.UUID  `json:"id"`
+	TenantID           uuid.UUID  `json:"tenant_id"`
+	SubscriptionID     *uuid.UUID `json:"subscription_id,omitempty"`
+	Status             string     `json:"status"`
+	AmountDueCents     int        `json:"amount_due_cents"`
+	AmountPaidCents    int        `json:"amount_paid_cents"`
+	Currency           string     `json:"currency"`
+	StripeInvoiceID    *string    `json:"stripe_invoice_id,omitempty"`
+	ExternalReference  *string    `json:"external_reference,omitempty"`
+	InvoicePdfURL      string     `json:"invoice_pdf_url,omitempty"`
+	HostedInvoiceURL   string     `json:"hosted_invoice_url,omitempty"`
+	PeriodStart        *time.Time `json:"period_start,omitempty"`
+	PeriodEnd          *time.Time `json:"period_end,omitempty"`
+	DueDate            *time.Time `json:"due_date,omitempty"`
+	PaidAt             *time.Time `json:"paid_at,omitempty"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
 }
 
 // UsageEvent represents a usage event for billing

@@ -34,6 +34,12 @@ type HostFunctionHandler interface {
 	KVGet(key string) (string, error)
 	KVSet(key, value string) error
 	GetEnv(name string) (string, error)
+	// AIInference performs AI inference via the AI Gateway
+	// model: the AI model to use
+	// input: the input data for inference
+	// params: JSON string of model parameters
+	// Returns: JSON response string with output, latency, cost
+	AIInference(model string, input []byte, params string) (string, error)
 }
 
 // DefaultHostHandler provides default implementations of host functions
@@ -134,4 +140,10 @@ func (h *DefaultHostHandler) GetEnv(name string) (string, error) {
 		return "", fmt.Errorf("environment variable not set: %s", name)
 	}
 	return value, nil
+}
+
+// AIInference performs AI inference via the AI Gateway
+// DefaultHostHandler returns an error since AI inference is not configured
+func (h *DefaultHostHandler) AIInference(model string, input []byte, params string) (string, error) {
+	return "", fmt.Errorf("ai inference not configured: use a handler with AI inference enabled")
 }

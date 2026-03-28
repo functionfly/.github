@@ -32,6 +32,7 @@ type RedisClient interface {
 // AIRequest represents a request to the AI chat service
 type AIRequest struct {
 	ConversationID uuid.UUID
+	UserID         uuid.UUID
 	UserMessage    string
 	Context        *SupportContext
 	History        []*SupportMessage
@@ -82,6 +83,13 @@ func (s *Service) CreateConversation(ctx context.Context, userID uuid.UUID, req 
 		conversation.IsEmergency = true
 		conversation.Priority = PriorityCritical
 		conversation.Status = StatusPending
+	}
+
+	// AI replies for support_ai (and emergency triage); human-only queue skips the bot
+	if req.Type == TypeSupportHuman {
+		conversation.AIHandled = false
+	} else {
+		conversation.AIHandled = true
 	}
 
 	if err := s.repo.CreateConversation(ctx, conversation); err != nil {
@@ -195,8 +203,11 @@ func (s *Service) SendAIResponse(ctx context.Context, conversationID uuid.UUID, 
 // EscalateToHuman escalates a conversation to human support
 func (s *Service) EscalateToHuman(ctx context.Context, conversationID uuid.UUID) error {
 	conversation, err := s.repo.GetConversation(ctx, conversationID)
-	if err != nil || conversation == nil {
-		return fmt.Errorf("conversation not found")
+	if err != nil {
+		return fmt.Errorf("conversation lookup failed: %w", err)
+	}
+	if conversation == nil {
+		return fmt.Errorf("conversation not found: %s", conversationID.String())
 	}
 
 	// Find available staff
@@ -207,6 +218,9 @@ func (s *Service) EscalateToHuman(ctx context.Context, conversationID uuid.UUID)
 		s.publishEvent(ctx, "conversation.no_staff_available", map[string]interface{}{
 			"conversation_id": conversationID,
 		})
+		// User-facing feedback: without this, the UI may appear to do nothing
+		// when there are no staff currently online/available.
+		_ = s.sendSystemMessage(ctx, conversationID, "No support agent is currently online. We'll queue your request and notify you shortly.")
 		return nil
 	}
 
@@ -245,8 +259,11 @@ func (s *Service) EscalateToHuman(ctx context.Context, conversationID uuid.UUID)
 // ResolveConversation resolves a support conversation
 func (s *Service) ResolveConversation(ctx context.Context, conversationID, resolvedBy uuid.UUID, note string) error {
 	conversation, err := s.repo.GetConversation(ctx, conversationID)
-	if err != nil || conversation == nil {
-		return fmt.Errorf("conversation not found")
+	if err != nil {
+		return fmt.Errorf("conversation lookup failed: %w", err)
+	}
+	if conversation == nil {
+		return fmt.Errorf("conversation not found: %s", conversationID.String())
 	}
 
 	// Decrement staff active chats if staff was assigned
@@ -396,6 +413,7 @@ func (s *Service) handleAIMessage(ctx context.Context, conversation *SupportConv
 	// Call AI
 	req := &AIRequest{
 		ConversationID: conversation.ID,
+		UserID:          conversation.UserID,
 		UserMessage:    userMessage.Content,
 		Context:        context,
 		History:        history,

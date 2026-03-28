@@ -17,6 +17,14 @@ const (
 	DefaultPoolSize         int    = 10                    // Instances per tenant
 	DefaultWASIEnabled       bool   = true
 	DefaultAllowRawPointers        = false
+
+	// AI Inference defaults
+	DefaultAIInferenceEnabled     = false
+	DefaultAIGatewayURL           = "http://localhost:8082"
+	DefaultAIMaxModelSizeMB       = 100
+	DefaultAIDefaultModel         = "gpt-4"
+	DefaultAITimeoutSeconds       = 60
+	DefaultAIEnableCaching        = true
 )
 
 // WASMSecurityConfig defines security limits for WASM execution
@@ -53,6 +61,30 @@ type WASMSecurityConfig struct {
 
 	// MaxOutputSize is the maximum output size in bytes (default: 1MB)
 	MaxOutputSize uint32 `json:"max_output_size"`
+
+	// AIInference configures AI inference capabilities (default: disabled)
+	AIInference AIInferenceConfig `json:"ai_inference"`
+}
+
+// AIInferenceConfig defines configuration for AI inference via the AI Gateway
+type AIInferenceConfig struct {
+	// Enabled enables AI inference capability (default: false)
+	Enabled bool `json:"enabled"`
+
+	// GatewayURL is the AI Gateway endpoint URL (default: "http://localhost:8082")
+	GatewayURL string `json:"gateway_url"`
+
+	// MaxModelSizeMB is the maximum model response size in MB (default: 100)
+	MaxModelSizeMB int `json:"max_model_size_mb"`
+
+	// DefaultModel is the default AI model to use (default: "gpt-4")
+	DefaultModel string `json:"default_model"`
+
+	// TimeoutSeconds is the inference timeout in seconds (default: 60)
+	TimeoutSeconds int `json:"timeout_seconds"`
+
+	// EnableCaching enables response caching for inference calls (default: true)
+	EnableCaching bool `json:"enable_caching"`
 }
 
 // NewDefaultSecurityConfig returns a security config with default values
@@ -68,6 +100,14 @@ func NewDefaultSecurityConfig() *WASMSecurityConfig {
 		EnableDeterministic:    false,
 		MaxInputSize:          1024 * 1024,  // 1MB
 		MaxOutputSize:         1024 * 1024,  // 1MB
+		AIInference: AIInferenceConfig{
+			Enabled:          DefaultAIInferenceEnabled,
+			GatewayURL:       DefaultAIGatewayURL,
+			MaxModelSizeMB:   DefaultAIMaxModelSizeMB,
+			DefaultModel:     DefaultAIDefaultModel,
+			TimeoutSeconds:   DefaultAITimeoutSeconds,
+			EnableCaching:    DefaultAIEnableCaching,
+		},
 	}
 }
 
@@ -168,12 +208,13 @@ func (c *WASMSecurityConfig) Clone() *WASMSecurityConfig {
 		MaxExecutionTime:     c.MaxExecutionTime,
 		MaxInstructions:      c.MaxInstructions,
 		EnableWASI:           c.EnableWASI,
-		AllowRawPointers:     c.AllowRawPointers,
-		AllowedDomains:       domains,
+		AllowRawPointers:      c.AllowRawPointers,
+		AllowedDomains:        domains,
 		InstancePoolPerTenant: c.InstancePoolPerTenant,
-		PoolSize:             c.PoolSize,
-		EnableDeterministic:  c.EnableDeterministic,
-		MaxInputSize:         c.MaxInputSize,
-		MaxOutputSize:        c.MaxOutputSize,
+		PoolSize:              c.PoolSize,
+		EnableDeterministic:   c.EnableDeterministic,
+		MaxInputSize:          c.MaxInputSize,
+		MaxOutputSize:         c.MaxOutputSize,
+		AIInference:          c.AIInference, // Deep copy is safe for struct values
 	}
 }

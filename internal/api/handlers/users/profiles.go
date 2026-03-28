@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
@@ -15,6 +16,23 @@ import (
 )
 
 var errMissingOrInvalidAuth = errors.New("missing or invalid authorization")
+
+// isUserOnline determines if a user is online based on their last activity time
+// A user is considered online if they were active within the last 5 minutes
+func isUserOnline(lastActiveAt *time.Time) bool {
+	if lastActiveAt == nil {
+		return false
+	}
+	return time.Since(*lastActiveAt) < 5*time.Minute
+}
+
+// formatLastActivePointer formats the last active time for display (pointer version)
+func formatLastActivePointer(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return formatLastActive(*t)
+}
 
 // extractClaimsFromRequest parses the Bearer token from r and validates it via authSvc.
 // Returns claims on success, or an error if missing/invalid.
@@ -52,7 +70,7 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user, err := h.repo.GetUserByUsername(username)
+	user, err := h.repo.GetUserForPublicProfile(username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve profile")
@@ -96,8 +114,20 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 		return *s
 	}
 
+	// Helper to get int from pointer
+	getInt := func(i *int) int {
+		if i == nil {
+			return 0
+		}
+		return *i
+	}
+
 	// Fetch published functions from registry
 	publishedFunctions := h.getPublishedFunctions(usernameStr)
+
+	// Determine online status
+	isOnline := isUserOnline(user.LastActiveAt)
+	lastActive := formatLastActivePointer(user.LastActiveAt)
 
 	profile := map[string]interface{}{
 		"id":                 user.ID,
@@ -114,7 +144,12 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 		"linkedinUrl":        getString(user.LinkedInURL),
 		"createdAt":          user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		"publishedFunctions": publishedFunctions,
+		"isOnline":           isOnline,
+		"lastActive":         lastActive,
+		"profileNumber":      getInt(user.ProfileNumber),
+		"role":               user.Role, // Platform admin role for badge display
 	}
+	h.attachProfileStats(profile, user.ID)
 	h.applyProfileVisibility(profile, user.ID)
 
 	writeJSON(w, http.StatusOK, profile)
@@ -135,7 +170,7 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 		username = strings.TrimPrefix(username, "@")
 	}
 
-	user, err := h.repo.GetUserByUsername(username)
+	user, err := h.repo.GetUserForPublicProfile(username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Error("Failed to get user by username")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve profile")
@@ -179,8 +214,20 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 		return *s
 	}
 
+	// Helper to get int from pointer
+	getInt := func(i *int) int {
+		if i == nil {
+			return 0
+		}
+		return *i
+	}
+
 	// Fetch published functions from registry
 	publishedFunctions := h.getPublishedFunctions(usernameStr)
+
+	// Determine online status
+	isOnline := isUserOnline(user.LastActiveAt)
+	lastActive := formatLastActivePointer(user.LastActiveAt)
 
 	// Build SEO-enhanced profile with additional metadata
 	profile := map[string]interface{}{
@@ -198,10 +245,15 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 		"linkedinUrl":        getString(user.LinkedInURL),
 		"createdAt":          user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		"publishedFunctions": publishedFunctions,
+		"isOnline":           isOnline,
+		"lastActive":         lastActive,
+		"profileNumber":      getInt(user.ProfileNumber),
+		"role":               user.Role, // Platform admin role for badge display
 		// SEO enhancement fields
 		"profileUrl":     "/@" + usernameStr,
 		"totalFunctions": len(publishedFunctions),
 	}
+	h.attachProfileStats(profile, user.ID)
 	h.applyProfileVisibility(profile, user.ID)
 
 	// Add verification fields if available
@@ -269,25 +321,50 @@ func (h *Handler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 		return *s
 	}
 
-	resp := map[string]interface{}{
-		"id":          user.ID,
-		"tenantId":    user.TenantID,
-		"email":       user.Email,
-		"name":        name,
-		"username":    usernameStr,
-		"companyName": companyName,
-		"avatar":      avatar,
-		"plan":        plan,
-		"bio":         getString(user.Bio),
-		"location":    getString(user.Location),
-		"website":     getString(user.Website),
-		"jobTitle":    getString(user.JobTitle),
-		"socialLinks": user.SocialLinks,
-		"twitterUrl":  getString(user.TwitterURL),
-		"githubUrl":   getString(user.GithubURL),
-		"linkedinUrl": getString(user.LinkedInURL),
-		"updatedAt":   user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	// Helper to get int from pointer
+	getInt := func(i *int) int {
+		if i == nil {
+			return 0
+		}
+		return *i
 	}
+
+	// Determine online status - for own profile, always show as online
+	// since they're currently making this request
+	isOnline := true
+	lastActive := "Just now"
+
+	resp := map[string]interface{}{
+		"id":            user.ID,
+		"tenantId":      user.TenantID,
+		"email":         user.Email,
+		"name":          name,
+		"username":      usernameStr,
+		"companyName":   companyName,
+		"avatar":        avatar,
+		"plan":          plan,
+		"bio":           getString(user.Bio),
+		"location":      getString(user.Location),
+		"website":       getString(user.Website),
+		"jobTitle":      getString(user.JobTitle),
+		"socialLinks":   user.SocialLinks,
+		"twitterUrl":    getString(user.TwitterURL),
+		"githubUrl":     getString(user.GithubURL),
+		"linkedinUrl":   getString(user.LinkedInURL),
+		"dateOfBirth": func() interface{} {
+			if user.DateOfBirth == nil {
+				return nil
+			}
+			return user.DateOfBirth.Format("2006-01-02")
+		}(),
+		"isOnline":      isOnline,
+		"lastActive":    lastActive,
+		"updatedAt":     user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		"profileNumber": getInt(user.ProfileNumber),
+		"role":          user.Role, // Platform admin role for badge display
+		"createdAt":     user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+	h.attachProfileStats(resp, user.ID)
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -307,6 +384,7 @@ type UpdateMeRequest struct {
 	TwitterURL  *string                `json:"twitterUrl,omitempty"`
 	GithubURL   *string                `json:"githubUrl,omitempty"`
 	LinkedInURL *string                `json:"linkedinUrl,omitempty"`
+	DateOfBirth *string                `json:"dateOfBirth,omitempty"` // YYYY-MM-DD, "" clears
 }
 
 // HandleUpdateMe updates the current authenticated user's profile
@@ -374,6 +452,19 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.LinkedInURL != nil {
 		updates["linkedin_url"] = strings.TrimSpace(*req.LinkedInURL)
+	}
+	if req.DateOfBirth != nil {
+		dobStr := strings.TrimSpace(*req.DateOfBirth)
+		if dobStr == "" {
+			updates["date_of_birth"] = (*time.Time)(nil)
+		} else {
+			dob, err := time.Parse("2006-01-02", dobStr)
+			if err != nil {
+				writeJSONError(w, http.StatusBadRequest, "dateOfBirth must be in YYYY-MM-DD format")
+				return
+			}
+			updates["date_of_birth"] = &dob
+		}
 	}
 	if len(req.SocialLinks) > 0 {
 		updates["social_links"] = req.SocialLinks
@@ -451,7 +542,14 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 				"twitterUrl":  getString(updatedUser.TwitterURL),
 				"githubUrl":   getString(updatedUser.GithubURL),
 				"linkedinUrl": getString(updatedUser.LinkedInURL),
+				"dateOfBirth": func() interface{} {
+					if updatedUser.DateOfBirth == nil {
+						return nil
+					}
+					return updatedUser.DateOfBirth.Format("2006-01-02")
+				}(),
 				"updatedAt":   updatedUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+				"role":        updatedUser.Role, // Platform admin role for badge display
 			},
 		})
 		return
@@ -528,7 +626,14 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 			"twitterUrl":  getString(updatedUser.TwitterURL),
 			"githubUrl":   getString(updatedUser.GithubURL),
 			"linkedinUrl": getString(updatedUser.LinkedInURL),
+			"dateOfBirth": func() interface{} {
+				if updatedUser.DateOfBirth == nil {
+					return nil
+				}
+				return updatedUser.DateOfBirth.Format("2006-01-02")
+			}(),
 			"updatedAt":   updatedUser.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			"role":        updatedUser.Role, // Platform admin role for badge display
 		},
 	})
 }

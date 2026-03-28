@@ -37,6 +37,12 @@ const (
 	// RuntimeRust represents Rust WASM (wasm32-wasi) runtime
 	RuntimeRust RuntimeType = "rust"
 
+	// RuntimeBrowserNativeWASM represents Browser Native WebAssembly (0ms cold start)
+	RuntimeBrowserNativeWASM RuntimeType = "browser-wasm"
+
+	// RuntimeWASM3IoT represents WASM3 IoT runtime (~500ms cold start, lightweight)
+	RuntimeWASM3IoT RuntimeType = "wasm3-iot"
+
 	// RuntimeUnknown represents an unknown runtime
 	RuntimeUnknown RuntimeType = "unknown"
 )
@@ -45,7 +51,8 @@ const (
 func (r RuntimeType) IsValid() bool {
 	switch r {
 	case RuntimePython, RuntimePythonWASM, RuntimeJavaScript, RuntimeTypeScriptWASM,
-		RuntimePythonWasi, RuntimeJavaScriptQuickJS, RuntimeRust:
+		RuntimePythonWasi, RuntimeJavaScriptQuickJS, RuntimeRust, RuntimeBrowserNativeWASM,
+		RuntimeWASM3IoT:
 		return true
 	default:
 		return false
@@ -229,6 +236,10 @@ func RuntimeTypeFromString(s string) RuntimeType {
 		return RuntimeJavaScriptQuickJS
 	case "rust", "rs":
 		return RuntimeRust
+	case "browser-wasm", "browser", "browser-native", "native-wasm":
+		return RuntimeBrowserNativeWASM
+	case "wasm3-iot", "wasm3", "iot":
+		return RuntimeWASM3IoT
 	default:
 		return RuntimeUnknown
 	}

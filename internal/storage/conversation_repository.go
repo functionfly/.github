@@ -9,6 +9,7 @@ import (
 	"github.com/functionfly/functionfly/internal/conversations"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // ConversationRepository handles persistence for conversations and messages.
@@ -41,8 +42,9 @@ func (r *ConversationRepository) GetConversationByID(ctx context.Context, id uui
 	return &c, nil
 }
 
-// ListConversationsForUser returns conversations where the user is a participant, ordered by updated_at desc.
-func (r *ConversationRepository) ListConversationsForUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*conversations.Conversation, error) {
+// ListConversationsForUser returns conversations where the user is a participant, ordered by updated_at desc,
+// with per-row unread counts (messages from others after last_read_at).
+func (r *ConversationRepository) ListConversationsForUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]conversations.ConversationListEntry, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -50,19 +52,89 @@ func (r *ConversationRepository) ListConversationsForUser(ctx context.Context, u
 		limit = 100
 	}
 	userIDStr := userID.String()
-	var list []*conversations.Conversation
-	// participant_ids is JSONB array of UUID strings; check containment
+	var convs []conversations.Conversation
 	payload, _ := json.Marshal([]string{userIDStr})
 	err := r.db.WithContext(ctx).
 		Where("participant_ids @> ?::jsonb", string(payload)).
 		Order("updated_at DESC").
 		Limit(limit).
 		Offset(offset).
-		Find(&list).Error
+		Find(&convs).Error
 	if err != nil {
 		return nil, fmt.Errorf("list conversations: %w", err)
 	}
-	return list, nil
+	if len(convs) == 0 {
+		return nil, nil
+	}
+	ids := make([]uuid.UUID, len(convs))
+	for i := range convs {
+		ids[i] = convs[i].ID
+	}
+	unreadByID, err := r.unreadCountsForConversations(ctx, userID, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]conversations.ConversationListEntry, len(convs))
+	for i := range convs {
+		c := convs[i]
+		out[i] = conversations.ConversationListEntry{
+			Conversation: c,
+			UnreadCount:  unreadByID[c.ID],
+		}
+	}
+	return out, nil
+}
+
+func (r *ConversationRepository) unreadCountsForConversations(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]int, error) {
+	if len(ids) == 0 {
+		return map[uuid.UUID]int{}, nil
+	}
+	type row struct {
+		ConversationID uuid.UUID `gorm:"column:conversation_id"`
+		Cnt            int       `gorm:"column:cnt"`
+	}
+	var rows []row
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT m.conversation_id, COUNT(*)::int AS cnt
+		FROM conversation_messages m
+		LEFT JOIN conversation_participant_reads r
+			ON r.conversation_id = m.conversation_id AND r.user_id = ?
+		WHERE m.conversation_id IN ?
+			AND m.author_id <> ?
+			AND m.created_at > COALESCE(r.last_read_at, '-infinity'::timestamptz)
+		GROUP BY m.conversation_id
+	`, userID, ids, userID).Scan(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("unread counts: %w", err)
+	}
+	m := make(map[uuid.UUID]int, len(rows))
+	for _, rw := range rows {
+		m[rw.ConversationID] = rw.Cnt
+	}
+	return m, nil
+}
+
+// MarkConversationRead sets the user's read cursor to the latest message time in the conversation (or now if empty).
+func (r *ConversationRepository) MarkConversationRead(ctx context.Context, conversationID, userID uuid.UUID) error {
+	var ts time.Time
+	if err := r.db.WithContext(ctx).Raw(
+		`SELECT COALESCE((SELECT MAX(created_at) FROM conversation_messages WHERE conversation_id = ?), NOW())`,
+		conversationID,
+	).Scan(&ts).Error; err != nil {
+		return fmt.Errorf("mark read timestamp: %w", err)
+	}
+	row := conversations.ConversationParticipantRead{
+		ConversationID: conversationID,
+		UserID:         userID,
+		LastReadAt:     ts,
+	}
+	if err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "conversation_id"}, {Name: "user_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"last_read_at"}),
+	}).Create(&row).Error; err != nil {
+		return fmt.Errorf("mark conversation read: %w", err)
+	}
+	return nil
 }
 
 // IsParticipant returns true if userID is in the conversation's participant_ids.

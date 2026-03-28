@@ -146,7 +146,10 @@ func (h *Handler) buildRegistryFunctionInfos(functions []storageregistry.Registr
 // HandleListFunctions handles listing functions
 func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	author := vars["author"]
+	author := r.URL.Query().Get("author")
+	if author == "" {
+		author = vars["author"]
+	}
 
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit == 0 {

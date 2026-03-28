@@ -109,9 +109,12 @@ func (m *CSRFMiddleware) ValidateToken(sessionID, token string) error {
 		return fmt.Errorf("CSRF token is required")
 	}
 
+	// SECURITY FIX: Fail-closed on Redis unavailability
+	// Previously, CSRF validation was skipped when Redis was unavailable, creating a security gap
+	// This rejects the request instead of allowing it through
 	if m.redisClient == nil {
-		m.logger.Warn("Redis not available, skipping CSRF validation")
-		return nil // Skip validation if Redis is not available
+		m.logger.Error("Redis not available, rejecting CSRF validation for security (fail-closed)")
+		return fmt.Errorf("service temporarily unavailable: Redis is required for CSRF validation")
 	}
 
 	key := m.getRedisKey(sessionID)
@@ -242,6 +245,11 @@ func (m *CSRFMiddleware) RequireCSRF(next http.HandlerFunc) http.HandlerFunc {
 				"session_id": sessionID,
 				"error":      err.Error(),
 			}).Warn("CSRF token validation failed")
+			// Check if it's a service unavailable error (Redis down)
+			if strings.Contains(err.Error(), "service temporarily unavailable") {
+				http.Error(w, "Service temporarily unavailable", http.StatusServiceUnavailable)
+				return
+			}
 			writeCSRFError(w, "CSRF token is missing, expired, or invalid", "X-CSRF-Token")
 			return
 		}

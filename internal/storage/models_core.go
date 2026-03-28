@@ -17,9 +17,15 @@ type User struct {
 	PasswordHash  string    `json:"password_hash" gorm:"column:password_hash"`
 	Role          string    `json:"role,omitempty" gorm:"size:50"` // Platform role for admin users
 	EmailVerified bool      `json:"email_verified" gorm:"default:false"`
+	// TokenVersion is used for JWT revocation - incrementing this invalidates all existing tokens
+	// Set via application code on password change/logout all
+	TokenVersion  int        `json:"token_version,omitempty" gorm:"default:0"`
 	CompanyName   *string   `json:"company_name,omitempty" gorm:"size:255"`
 	DateOfBirth   *time.Time `json:"date_of_birth,omitempty" gorm:"column:date_of_birth;type:date"`
 	Bio           *string   `json:"bio,omitempty" gorm:"type:text"`
+	// ProfileNumber is a sequential number assigned to users based on registration order
+	// Used to identify and reward early adopters (e.g., "Member #123")
+	ProfileNumber *int      `json:"profile_number,omitempty" gorm:"column:profile_number;uniqueIndex"`
 	// Extended profile fields
 	Location              *string                `json:"location,omitempty" gorm:"size:255"`
 	Website               *string                `json:"website,omitempty" gorm:"size:500"`
@@ -50,8 +56,17 @@ type User struct {
 	Achievements []UserAchievement      `json:"achievements,omitempty" gorm:"foreignKey:UserID"`
 	Activity     []UserActivity         `json:"activity,omitempty" gorm:"foreignKey:UserID"`
 	Settings     map[string]interface{} `json:"settings,omitempty" gorm:"type:jsonb;default:'{}'"` // Profile settings (visibility, notifications, privacy)
+	// Online status tracking
+	LastActiveAt *time.Time             `json:"last_active_at,omitempty" gorm:"column:last_active_at;index"` // Last time user was active (for online status)
 	CreatedAt    time.Time              `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt    time.Time              `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+// UserSearchHit is a public-safe row for username autocomplete (no email or tenant).
+type UserSearchHit struct {
+	ID       uuid.UUID
+	Username string
+	Name     string
 }
 
 // UserProfileSettings represents the user's profile settings

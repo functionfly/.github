@@ -82,12 +82,23 @@ type Server struct {
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
+	// SECURITY: Block startup if DEVELOPMENT=true is set in production (non-localhost) environment
+	if os.Getenv("DEVELOPMENT") == "true" {
+		hostname, _ := os.Hostname()
+		isLocalhost := strings.HasPrefix(hostname, "localhost") || strings.HasPrefix(hostname, "127.0.0.1") || strings.Contains(hostname, ".local")
+		if !isLocalhost {
+			logrus.Fatal("FATAL: DEVELOPMENT=true is set but hostname is not localhost. " +
+				"This is a production security risk. Remove DEVELOPMENT=true from your environment.")
+		}
+		logrus.Warn("WARNING: DEVELOPMENT mode is enabled. Do not use in production.")
+	}
+
 	// Use PostgreSQL as the database backend
 	repo := db.Repository()
 	logrus.Info("Using PostgreSQL as database backend")
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "functionfly-jwt-secret-key-2026" // must match generate_token.go default for local publish
+		logrus.Fatal("FATAL: JWT_SECRET environment variable is required. Refusing to start with empty secret.")
 	}
 
 	// Initialize adapters

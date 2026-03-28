@@ -3,6 +3,7 @@ package notification
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -21,6 +22,7 @@ type Repository interface {
 	MarkAsRead(ctx context.Context, id uuid.UUID) error
 	MarkAllAsRead(ctx context.Context, userID uuid.UUID) error
 	DeleteNotification(ctx context.Context, id uuid.UUID) error
+	ArchiveNotification(ctx context.Context, id uuid.UUID) error
 	UpdateNotificationStatus(ctx context.Context, id uuid.UUID, status string) error
 
 	// Preferences
@@ -50,15 +52,36 @@ func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 	return &PostgresRepository{db: db}
 }
 
+// notificationDataJSON returns a JSON text for the data column (valid UTF-8 for ::jsonb).
+func notificationDataJSON(data JSONMap) (string, error) {
+	if len(data) == 0 {
+		return "{}", nil
+	}
+	b, err := json.Marshal(map[string]interface{}(data))
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
 // CreateNotification creates a new notification
 func (r *PostgresRepository) CreateNotification(ctx context.Context, n *Notification) error {
+	dataStr, err := notificationDataJSON(n.Data)
+	if err != nil {
+		return fmt.Errorf("notification data: %w", err)
+	}
+	// Explicit ::jsonb and ::text[] so PostgreSQL does not interpret a text[] literal like {"in_app"}
+	// as json (invalid JSON → 22P02) during unknown-literal coercion under pgx simple protocol.
 	query := `
 		INSERT INTO notifications (user_id, type, category, title, body, data, channels, priority, status, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::text[], $8, $9, $10)
 		RETURNING id, created_at, updated_at
 	`
 	return r.db.QueryRowContext(ctx, query,
-		n.UserID, n.Type, n.Category, n.Title, n.Body, n.Data, n.Channels, n.Priority, n.Status, n.ExpiresAt,
+		n.UserID, n.Type, n.Category, n.Title, n.Body,
+		dataStr,
+		[]string(n.Channels),
+		n.Priority, n.Status, n.ExpiresAt,
 	).Scan(&n.ID, &n.CreatedAt, &n.UpdatedAt)
 }
 
@@ -101,7 +124,7 @@ func (r *PostgresRepository) ListNotifications(ctx context.Context, userID uuid.
 		args = append(args, opts.Category)
 	}
 	if opts.UnreadOnly {
-		query += " AND status != 'read'"
+		query += " AND status NOT IN ('read', 'archived')"
 	}
 
 	query += " ORDER BY created_at DESC"
@@ -141,7 +164,7 @@ func (r *PostgresRepository) ListNotifications(ctx context.Context, userID uuid.
 func (r *PostgresRepository) GetUnreadCount(ctx context.Context, userID uuid.UUID) (int, error) {
 	query := `
 		SELECT COUNT(*) FROM notifications
-		WHERE user_id = $1 AND status != 'read'
+		WHERE user_id = $1 AND status NOT IN ('read', 'archived')
 	`
 	var count int
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(&count)
@@ -153,7 +176,7 @@ func (r *PostgresRepository) GetUnreadCountsByCategory(ctx context.Context, user
 	query := `
 		SELECT category, COUNT(*) as count
 		FROM notifications
-		WHERE user_id = $1 AND status != 'read'
+		WHERE user_id = $1 AND status NOT IN ('read', 'archived')
 		GROUP BY category
 	`
 	rows, err := r.db.QueryContext(ctx, query, userID)
@@ -207,7 +230,7 @@ func (r *PostgresRepository) MarkAllAsRead(ctx context.Context, userID uuid.UUID
 	query := `
 		UPDATE notifications
 		SET status = 'read', read_at = $1, updated_at = $1
-		WHERE user_id = $2 AND status != 'read'
+		WHERE user_id = $2 AND status NOT IN ('read', 'archived')
 	`
 	now := time.Now()
 	_, err := r.db.ExecContext(ctx, query, now, userID)
@@ -218,6 +241,18 @@ func (r *PostgresRepository) MarkAllAsRead(ctx context.Context, userID uuid.UUID
 func (r *PostgresRepository) DeleteNotification(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM notifications WHERE id = $1`
 	_, err := r.db.ExecContext(ctx, query, id)
+	return err
+}
+
+// ArchiveNotification sets status to archived and clears from unread counts.
+func (r *PostgresRepository) ArchiveNotification(ctx context.Context, id uuid.UUID) error {
+	now := time.Now()
+	query := `
+		UPDATE notifications
+		SET status = 'archived', read_at = $1, updated_at = $1
+		WHERE id = $2
+	`
+	_, err := r.db.ExecContext(ctx, query, now, id)
 	return err
 }
 
@@ -374,7 +409,7 @@ func (r *PostgresRepository) ListTemplates(ctx context.Context) ([]*Notification
 func (r *PostgresRepository) SaveTemplate(ctx context.Context, t *NotificationTemplate) error {
 	query := `
 		INSERT INTO notification_templates (type, channel, subject, body_html, body_text, variables, is_active)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		VALUES ($1, $2, $3, $4, $5, $6::text[], $7)
 		ON CONFLICT (type, channel) DO UPDATE SET
 			subject = EXCLUDED.subject,
 			body_html = EXCLUDED.body_html,
@@ -385,7 +420,7 @@ func (r *PostgresRepository) SaveTemplate(ctx context.Context, t *NotificationTe
 		RETURNING id, created_at, updated_at
 	`
 	return r.db.QueryRowContext(ctx, query,
-		t.Type, t.Channel, t.Subject, t.BodyHTML, t.BodyText, t.Variables, t.IsActive,
+		t.Type, t.Channel, t.Subject, t.BodyHTML, t.BodyText, []string(t.Variables), t.IsActive,
 	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt)
 }
 

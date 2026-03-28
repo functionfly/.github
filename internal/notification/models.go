@@ -1,16 +1,83 @@
 package notification
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // JSONMap is a helper type for JSONB fields
 type JSONMap map[string]interface{}
 
+// Scan implements sql.Scanner so JSONB can be read into JSONMap (database/sql + pgx).
+func (m *JSONMap) Scan(value interface{}) error {
+	if value == nil {
+		*m = nil
+		return nil
+	}
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return fmt.Errorf("notification.JSONMap: scan expected []byte or string, got %T", value)
+	}
+	if len(bytes) == 0 {
+		*m = JSONMap{}
+		return nil
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal(bytes, &out); err != nil {
+		return err
+	}
+	*m = out
+	return nil
+}
+
+// Value implements driver.Valuer so JSONMap is encoded for JSONB parameters.
+// pgx encodes []byte from Valuer as BYTEA; use string so the server receives JSON text (avoids SQLSTATE 22P02).
+func (m JSONMap) Value() (driver.Value, error) {
+	if m == nil {
+		return "{}", nil
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+	return string(b), nil
+}
+
 // StringArray is a helper type for text[] fields
 type StringArray []string
+
+// Scan implements sql.Scanner for TEXT[] (database/sql + pgx).
+func (a *StringArray) Scan(value interface{}) error {
+	if value == nil {
+		*a = nil
+		return nil
+	}
+	var s []string
+	if err := pq.Array(&s).Scan(value); err != nil {
+		return err
+	}
+	*a = StringArray(s)
+	return nil
+}
+
+// Value implements driver.Valuer for TEXT[] parameters (fixes pgx "cannot find encode plan" on channels).
+func (a StringArray) Value() (driver.Value, error) {
+	if a == nil {
+		return nil, nil
+	}
+	s := []string(a)
+	return pq.Array(s).Value()
+}
 
 // Notification stores individual notifications
 type Notification struct {

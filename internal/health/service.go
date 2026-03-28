@@ -3,23 +3,38 @@ package health
 
 import (
 	"context"
+	"database/sql"
 	"runtime"
+	"sync"
 	"syscall"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
 
 // Service provides health monitoring services
 type Service struct {
-	logger *logrus.Logger
+	logger      *logrus.Logger
+	redisClient *redis.Client
+	db          *sql.DB
+
+	cpuMu          sync.Mutex
+	lastCPUSeconds float64
+	lastCPUCheckAt time.Time
 }
 
 // NewService creates a new health monitoring service
-func NewService(logger *logrus.Logger) *Service {
+func NewService(logger *logrus.Logger, redisClient *redis.Client) *Service {
 	return &Service{
-		logger: logger,
+		logger:     logger,
+		redisClient: redisClient,
 	}
+}
+
+// SetDatabase provides an optional DB handle for health checks.
+func (s *Service) SetDatabase(db *sql.DB) {
+	s.db = db
 }
 
 // HealthStatus represents the health status of a component
@@ -216,45 +231,95 @@ func (s *Service) CheckCPUUsage() HealthCheck {
 	systemTime := float64(rusage.Stime.Sec) + float64(rusage.Stime.Usec)/1000000
 	totalTime := userTime + systemTime
 
+	now := time.Now()
+
+	usagePercent := float64(-1)
+	windowSeconds := float64(0)
+	numCPU := runtime.NumCPU()
+
+	s.cpuMu.Lock()
+	if !s.lastCPUCheckAt.IsZero() {
+		deltaCPU := totalTime - s.lastCPUSeconds
+		deltaWall := now.Sub(s.lastCPUCheckAt).Seconds()
+		if deltaCPU >= 0 && deltaWall > 0 && numCPU > 0 {
+			// deltaCPU/deltaWall is "CPU cores used" on average over the interval.
+			// Divide by NumCPU to get % of total machine capacity.
+			usagePercent = (deltaCPU / deltaWall) / float64(numCPU) * 100
+			if usagePercent < 0 {
+				usagePercent = 0
+			}
+			if usagePercent > 100 {
+				usagePercent = 100
+			}
+			windowSeconds = deltaWall
+		}
+	}
+	s.lastCPUSeconds = totalTime
+	s.lastCPUCheckAt = now
+	s.cpuMu.Unlock()
+
 	status := HealthStatusHealthy
 	description := "CPU usage within acceptable limits"
 
-	// Note: This is cumulative CPU time, not instantaneous usage
-	// For production, you'd want to calculate delta over time
-	if totalTime > 3600 { // More than 1 hour of CPU time
-		status = HealthStatusDegraded
-		description = "High cumulative CPU usage"
+	if usagePercent >= 0 {
+		if usagePercent > 90 {
+			status = HealthStatusUnhealthy
+			description = "High CPU usage detected"
+		} else if usagePercent > 75 {
+			status = HealthStatusDegraded
+			description = "Elevated CPU usage"
+		}
 	}
 
 	return HealthCheck{
 		Name:        "cpu_usage",
 		Status:      status,
 		Description: description,
-		Timestamp:   time.Now(),
+		Timestamp:   now,
 		Details: map[string]interface{}{
 			"user_time_seconds":   userTime,
 			"system_time_seconds": systemTime,
 			"total_time_seconds":  totalTime,
+			"usage_percent":       usagePercent,
+			"sample_window_sec":   windowSeconds,
+			"num_cpu":             numCPU,
 		},
 	}
 }
 
 // CheckFlywheelHealth performs Flywheel-specific health checks
 func (s *Service) CheckFlywheelHealth(ctx context.Context) HealthCheck {
-	// Check if Flywheel service is responsive
-	// This would typically involve checking database connectivity,
-	// WebSocket hub status, etc.
+	// Flywheel depends on shared infrastructure (Redis, DB, websocket hub, etc.).
+	// We do best-effort dependency checks with whatever is wired into this Service.
+	now := time.Now()
 
+	subchecks := map[string]interface{}{}
 	status := HealthStatusHealthy
 	description := "Flywheel service is healthy"
+
+	redisCheck := s.CheckRedisHealth(ctx)
+	subchecks["redis"] = map[string]interface{}{
+		"status":      redisCheck.Status,
+		"description": redisCheck.Description,
+		"error":       redisCheck.Error,
+		"details":     redisCheck.Details,
+	}
+	if redisCheck.Status == HealthStatusUnhealthy {
+		status = HealthStatusUnhealthy
+		description = "Flywheel dependencies unhealthy (redis)"
+	} else if redisCheck.Status == HealthStatusDegraded && status == HealthStatusHealthy {
+		status = HealthStatusDegraded
+		description = "Flywheel dependencies degraded (redis)"
+	}
 
 	return HealthCheck{
 		Name:        "flywheel_service",
 		Status:      status,
 		Description: description,
-		Timestamp:   time.Now(),
+		Timestamp:   now,
 		Details: map[string]interface{}{
 			"component": "flywheel",
+			"dependency_checks": subchecks,
 			"features": []string{
 				"threads",
 				"replies",
@@ -271,12 +336,65 @@ func (s *Service) CheckFlywheelHealth(ctx context.Context) HealthCheck {
 
 // CheckDatabaseHealth performs database health check
 func (s *Service) CheckDatabaseHealth(ctx context.Context) HealthCheck {
-	// This would typically involve pinging the database
-	// For now, we'll return a healthy status
-	// In production, this would check actual database connectivity
+	if s.db == nil {
+		return HealthCheck{
+			Name:        "database",
+			Status:      HealthStatusUnknown,
+			Description: "Database not configured for health service",
+			Timestamp:   time.Now(),
+			Error:       "db is nil",
+			Details: map[string]interface{}{
+				"type": "postgresql",
+			},
+		}
+	}
 
 	status := HealthStatusHealthy
 	description := "Database is healthy"
+
+	start := time.Now()
+	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	if err := s.db.PingContext(pingCtx); err != nil {
+		return HealthCheck{
+			Name:        "database",
+			Status:      HealthStatusUnhealthy,
+			Description: "Database ping failed",
+			Timestamp:   time.Now(),
+			Error:       err.Error(),
+			Details: map[string]interface{}{
+				"type":           "postgresql",
+				"latency_ms":     time.Since(start).Milliseconds(),
+				"check":          "ping",
+				"timeout_ms":     2000,
+				"context_cancel": pingCtx.Err() != nil,
+			},
+		}
+	}
+
+	// Basic query to validate connectivity beyond ping.
+	var one int
+	if err := s.db.QueryRowContext(pingCtx, "SELECT 1").Scan(&one); err != nil || one != 1 {
+		errMsg := ""
+		if err != nil {
+			errMsg = err.Error()
+		} else {
+			errMsg = "unexpected result"
+		}
+		return HealthCheck{
+			Name:        "database",
+			Status:      HealthStatusDegraded,
+			Description: "Database query check failed",
+			Timestamp:   time.Now(),
+			Error:       errMsg,
+			Details: map[string]interface{}{
+				"type":       "postgresql",
+				"latency_ms": time.Since(start).Milliseconds(),
+				"check":      "select_1",
+			},
+		}
+	}
 
 	return HealthCheck{
 		Name:        "database",
@@ -285,26 +403,57 @@ func (s *Service) CheckDatabaseHealth(ctx context.Context) HealthCheck {
 		Timestamp:   time.Now(),
 		Details: map[string]interface{}{
 			"type": "postgresql",
+			"latency_ms": time.Since(start).Milliseconds(),
+			"check":      "ping+select_1",
 		},
 	}
 }
 
 // CheckRedisHealth performs Redis health check
 func (s *Service) CheckRedisHealth(ctx context.Context) HealthCheck {
-	// This would typically involve pinging Redis
-	// For now, we'll return a healthy status
-	// In production, this would check actual Redis connectivity
+	if s.redisClient == nil {
+		return HealthCheck{
+			Name:        "redis",
+			Status:      HealthStatusUnhealthy,
+			Description: "Redis client not configured",
+			Timestamp:   time.Now(),
+			Error:       "redis client is nil",
+			Details: map[string]interface{}{
+				"type": "redis",
+			},
+		}
+	}
 
-	status := HealthStatusHealthy
-	description := "Redis is healthy"
+	// Perform actual Redis PING
+	start := time.Now()
+	result, err := s.redisClient.Ping(ctx).Result()
+	duration := time.Since(start)
+
+	if err != nil {
+		s.logger.WithError(err).Error("Redis health check failed")
+		return HealthCheck{
+			Name:        "redis",
+			Status:      HealthStatusUnhealthy,
+			Description: "Redis ping failed",
+			Timestamp:   time.Now(),
+			Error:       err.Error(),
+			Details: map[string]interface{}{
+				"type":         "redis",
+				"latency_ms":   duration.Milliseconds(),
+				"ping_result":  result,
+			},
+		}
+	}
 
 	return HealthCheck{
 		Name:        "redis",
-		Status:      status,
-		Description: description,
+		Status:      HealthStatusHealthy,
+		Description: "Redis is healthy",
 		Timestamp:   time.Now(),
 		Details: map[string]interface{}{
-			"type": "redis",
+			"type":        "redis",
+			"latency_ms":  duration.Milliseconds(),
+			"ping_result": result,
 		},
 	}
 }

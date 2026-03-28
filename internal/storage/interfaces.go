@@ -24,6 +24,9 @@ type Repository interface {
 	GetUserByEmail(email string) (*User, error)
 	GetUserByID(userID uuid.UUID) (*User, error)
 	GetUserByUsername(username string) (*User, error)
+	// GetUserForPublicProfile resolves by username (case-insensitive) or by unique email local-part (before @).
+	GetUserForPublicProfile(login string) (*User, error)
+	SearchUsersByUsernamePrefix(ctx context.Context, prefix string, limit int) ([]UserSearchHit, error)
 	GetUserByVerificationToken(token string) (*User, error)
 	GetUserBySocialProvider(provider, providerID string) (*User, error)
 	ListUsers() ([]*User, error)
@@ -46,9 +49,18 @@ type Repository interface {
 
 	// OAuth state (CSRF) — persisted for multi-instance OAuth flows
 	// redirectURI is optional; when set, callback redirects there with token (e.g. CLI local server).
-	StoreOAuthState(ctx context.Context, state string, expiresAt time.Time, redirectURI string) error
-	ValidateAndConsumeOAuthState(ctx context.Context, state string) (valid bool, redirectURI string, err error)
+	// inviteCode is optional; stored for invite-only signup validation on callback (short TTL).
+	StoreOAuthState(ctx context.Context, state string, expiresAt time.Time, redirectURI, inviteCode string) error
+	ValidateAndConsumeOAuthState(ctx context.Context, state string) (valid bool, redirectURI, inviteCode string, err error)
 	DeleteExpiredOAuthStates() (int64, error)
+
+	// Signup invite codes (platform invite-only launch)
+	CreateSignupInvite(ctx context.Context, label string, maxUses *int, expiresAt *time.Time, createdBy *uuid.UUID) (id uuid.UUID, plainCode string, err error)
+	ListSignupInvitesAdmin(ctx context.Context) ([]SignupInviteCodeAdminList, error)
+	RevokeSignupInvite(ctx context.Context, id uuid.UUID) error
+	ValidateSignupInviteReadOnly(ctx context.Context, plainCode string) error
+	ReserveSignupInvite(ctx context.Context, plainCode string) (inviteID uuid.UUID, err error)
+	ReleaseSignupInviteReservation(ctx context.Context, inviteID uuid.UUID) error
 
 	// Tenant operations
 	CreateTenant(ctx context.Context, name string) (*Tenant, error)
@@ -97,7 +109,10 @@ type Repository interface {
 	CancelSubscription(ctx context.Context, id uuid.UUID) error
 
 	CreateInvoice(ctx context.Context, invoice *Invoice) (*Invoice, error)
+	// CreatePaidInvoiceForStripeCheckoutSession records a paid one-time Checkout payment (registry wallet, agent credits, etc.). Idempotent on checkoutSessionID (external_reference).
+	CreatePaidInvoiceForStripeCheckoutSession(ctx context.Context, tenantID uuid.UUID, amountCents int, currency, checkoutSessionID, receiptURL string) error
 	ListInvoicesByTenant(tenantID uuid.UUID, limit, offset int) ([]*Invoice, error)
+	CountInvoicesByTenant(tenantID uuid.UUID) (int, error)
 	ListAllInvoices(limit, offset int) ([]*Invoice, error)
 	GetInvoiceByID(id uuid.UUID) (*Invoice, error)
 	UpdateInvoice(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*Invoice, error)
@@ -425,9 +440,14 @@ type Repository interface {
 	// User activity operations
 	GetUserActivity(userID uuid.UUID, limit, offset int) ([]*UserActivity, error)
 	CreateUserActivity(activity *UserActivity) error
+	// GetUserContributionDailyCounts aggregates profile contribution events per UTC day:
+	// user_activity rows plus registry function publishes (owner), since the given instant.
+	GetUserContributionDailyCounts(userID uuid.UUID, since time.Time) (map[string]int64, error)
 
 	// User analytics operations
 	GetUserExecutionStats(userID uuid.UUID) (map[string]interface{}, error)
+	// GetUserProfileStats returns authoritative counts for profile UI (not limited by registry list pagination).
+	GetUserProfileStats(userID uuid.UUID) (map[string]interface{}, error)
 	GetUserPopularFunctions(userID uuid.UUID, limit int) ([]map[string]interface{}, error)
 	GetUserGeographicStats(userID uuid.UUID) (map[string]interface{}, error)
 	GetUserDeviceStats(userID uuid.UUID) (map[string]interface{}, error)

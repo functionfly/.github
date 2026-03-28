@@ -95,7 +95,7 @@ func (r *RegistryRepository) ListLatestVersionsForFunctions(functionIDs []uuid.U
 		FROM registry_function_versions
 		WHERE function_id IN ?
 		ORDER BY function_id, published_at DESC
-	`, functionIDs).Scan(&rows)
+	`, functionIDs).Scan(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to batch-load latest versions: %w", err)
 	}

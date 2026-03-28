@@ -218,6 +218,53 @@ func (h *Handler) HandleMarkAllAsRead(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// patchNotificationRequest is a minimal PATCH body for /v1/notifications/{id}.
+type patchNotificationRequest struct {
+	Status string `json:"status"`
+}
+
+// HandlePatchNotification handles PATCH /v1/notifications/{id} (e.g. archive).
+func (h *Handler) HandlePatchNotification(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	vars := mux.Vars(r)
+	notificationID, err := uuid.Parse(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid notification ID", http.StatusBadRequest)
+		return
+	}
+	n, err := h.service.GetNotification(r.Context(), notificationID)
+	if err != nil {
+		http.Error(w, "Notification not found", http.StatusNotFound)
+		return
+	}
+	if n.UserID != user.UserID {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	var req patchNotificationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	switch req.Status {
+	case "archived":
+		if err := h.service.ArchiveNotification(r.Context(), notificationID); err != nil {
+			logrus.WithError(err).Error("Failed to archive notification")
+			http.Error(w, "Failed to archive notification", http.StatusInternalServerError)
+			return
+		}
+	default:
+		http.Error(w, "Unsupported status", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": req.Status})
+}
+
 // HandleDeleteNotification handles DELETE /v1/notifications/{id}
 func (h *Handler) HandleDeleteNotification(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
@@ -315,6 +362,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/v1/notifications/unread-count", h.HandleGetUnreadCount).Methods("GET")
 	router.HandleFunc("/v1/notifications/read-all", h.HandleMarkAllAsRead).Methods("POST")
 	router.HandleFunc("/v1/notifications/{id}/read", h.HandleMarkAsRead).Methods("PATCH")
+	router.HandleFunc("/v1/notifications/{id}", h.HandlePatchNotification).Methods("PATCH")
 	router.HandleFunc("/v1/notifications/{id}", h.HandleDeleteNotification).Methods("DELETE")
 
 	// Preference routes

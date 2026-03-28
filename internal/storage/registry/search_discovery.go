@@ -84,7 +84,7 @@ func (r *RegistryRepository) ListFunctions(author, category string, tags []strin
 // GetEdgeCacheCandidates retrieves functions eligible for edge caching based on metrics
 func (r *RegistryRepository) GetEdgeCacheCandidates(ctx context.Context, minPopularity, minExecutionCount int, minTrustScore, minSuccessRate float64, maxLatencyMs int, limit int) ([]*cache.EdgeCacheCandidate, error) {
 	// Query functions that meet edge cache criteria
-	query := r.db.Table("registry_functions").
+	query := r.db.Table("registry_functions rf").
 		Select(`
 			rf.id,
 			rf.author,
@@ -156,7 +156,7 @@ func (r *RegistryRepository) GetFunctionEdgeCacheMetrics(ctx context.Context, fu
 	windowStart := time.Now().Add(-timeWindow)
 
 	// Query function metrics within the time window
-	query := r.db.Table("registry_functions").
+	query := r.db.Table("registry_functions rf").
 		Select(`
 			rf.id,
 			rf.author,
@@ -227,7 +227,7 @@ func (r *RegistryRepository) UpdateFunctionPopularityScore(ctx context.Context, 
 // GetPopularFunctionsByCategory gets popular functions in a specific category
 func (r *RegistryRepository) GetPopularFunctionsByCategory(ctx context.Context, category string, limit int) ([]*cache.EdgeCacheCandidate, error) {
 	// Query popular functions in a category
-	query := r.db.Table("registry_functions").
+	query := r.db.Table("registry_functions rf").
 		Select(`
 			rf.id,
 			rf.author,

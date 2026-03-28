@@ -216,6 +216,11 @@ func (s *Service) DeleteNotification(ctx context.Context, id uuid.UUID) error {
 	return s.repo.DeleteNotification(ctx, id)
 }
 
+// ArchiveNotification marks a notification as archived (excluded from unread counts).
+func (s *Service) ArchiveNotification(ctx context.Context, id uuid.UUID) error {
+	return s.repo.ArchiveNotification(ctx, id)
+}
+
 // GetPreferences retrieves all notification preferences for a user
 func (s *Service) GetPreferences(ctx context.Context, userID uuid.UUID) ([]*NotificationPreference, error) {
 	prefs, err := s.repo.GetPreferences(ctx, userID)

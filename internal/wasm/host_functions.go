@@ -311,6 +311,101 @@ func defineHostFunctions(linker *wasmtime.Linker, store *wasmtime.Store, handler
 		return fmt.Errorf("failed to define get_env function: %w", err)
 	}
 
+	// Define ai_infer function for AI inference via AI Gateway
+	// (param $model_ptr i32) (param $model_len i32)
+	// (param $input_ptr i32) (param $input_len i32)
+	// (param $params_ptr i32) (param $params_len i32)
+	// (param $resp_ptr i32) (param $resp_len_ptr i32)
+	// (result i32) - 0 = success, -1 = error
+	if err := linker.DefineFunc(store, "functionfly", "ai_infer",
+		func(caller *wasmtime.Caller, modelPtr, modelLen, inputPtr, inputLen, paramsPtr, paramsLen, respPtr, respLenPtr int32) int32 {
+			memory := caller.GetExport("memory").Memory()
+			if memory == nil {
+				log.Printf("WASM ai_infer: memory not found")
+				return -1
+			}
+
+			memoryData := memory.UnsafeData(store)
+
+			// Security: Check if AI inference is enabled
+			if globalSecurityConfig == nil || !globalSecurityConfig.AIInference.Enabled {
+				log.Printf("WASM ai_infer: ai inference not enabled")
+				return -1
+			}
+
+			// Security: Validate model pointer bounds
+			if err := validateMemoryBounds(memoryData, modelPtr, modelLen); err != nil {
+				log.Printf("WASM ai_infer: invalid model pointer: %v", err)
+				return -1
+			}
+
+			// Security: Validate input pointer bounds
+			if err := validateMemoryBounds(memoryData, inputPtr, inputLen); err != nil {
+				log.Printf("WASM ai_infer: invalid input pointer: %v", err)
+				return -1
+			}
+
+			// Security: Validate params pointer bounds (params can be empty/zero)
+			if paramsLen > 0 {
+				if err := validateMemoryBounds(memoryData, paramsPtr, paramsLen); err != nil {
+					log.Printf("WASM ai_infer: invalid params pointer: %v", err)
+					return -1
+				}
+			}
+
+			// Read model name
+			model := string(memoryData[modelPtr : modelPtr+modelLen])
+
+			// Read input data
+			input := make([]byte, inputLen)
+			copy(input, memoryData[inputPtr:inputPtr+inputLen])
+
+			// Read params (optional)
+			var params string
+			if paramsLen > 0 {
+				params = string(memoryData[paramsPtr : paramsPtr+paramsLen])
+			}
+
+			// Perform AI inference
+			response, err := handler.AIInference(model, input, params)
+			if err != nil {
+				log.Printf("WASM ai_infer: inference failed: %v", err)
+				return -1
+			}
+
+			responseBytes := []byte(response)
+			respLen := len(responseBytes)
+
+			// Security: Check output size limit against AI inference config
+			maxOutputSize := uint32(globalSecurityConfig.AIInference.MaxModelSizeMB) * 1024 * 1024
+			if uint32(respLen) > maxOutputSize {
+				log.Printf("WASM ai_infer: response too large: %d > %d", respLen, maxOutputSize)
+				return -1
+			}
+
+			// Security: Validate response pointer bounds
+			if err := validateMemoryBounds(memoryData, respPtr, int32(respLen)); err != nil {
+				log.Printf("WASM ai_infer: %v", err)
+				return -1
+			}
+
+			// Write response
+			copy(memoryData[respPtr:], responseBytes)
+
+			// Write response length
+			if err := validateMemoryBounds(memoryData, respLenPtr, 4); err != nil {
+				return -1
+			}
+			memoryData[respLenPtr] = byte(respLen)
+			memoryData[respLenPtr+1] = byte(respLen >> 8)
+			memoryData[respLenPtr+2] = byte(respLen >> 16)
+			memoryData[respLenPtr+3] = byte(respLen >> 24)
+
+			return 0 // success
+		}); err != nil {
+		return fmt.Errorf("failed to define ai_infer function: %w", err)
+	}
+
 	return nil
 }
 

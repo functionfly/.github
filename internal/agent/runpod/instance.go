@@ -28,6 +28,9 @@ type GPUInstance struct {
 	PodID        string
 	State        InstanceState
 	Endpoint     string
+	Region       string    // Region identifier (e.g., "us-east-1", "eu-west-1")
+	GPUType      string    // GPU type (e.g., "NVIDIA A100", "NVIDIA RTX A5000")
+	ClusterID    string    // Cluster identifier this instance belongs to
 	LastUsed     time.Time
 	CreatedAt    time.Time
 	RequestCount int
@@ -39,6 +42,8 @@ type InstancePool struct {
 	config    *Config
 	client    *RunPodClient
 	instances map[string]*GPUInstance
+	region    string // Region this pool manages (empty means all regions)
+	clusterID string // Cluster ID this pool belongs to
 	mu        sync.RWMutex
 
 	// Callbacks
@@ -52,6 +57,17 @@ func NewInstancePool(config *Config, client *RunPodClient) *InstancePool {
 		config:    config,
 		client:    client,
 		instances: make(map[string]*GPUInstance),
+	}
+}
+
+// NewRegionalPool creates a new GPU instance pool for a specific region
+func NewRegionalPool(config *Config, client *RunPodClient, region, clusterID string) *InstancePool {
+	return &InstancePool{
+		config:    config,
+		client:    client,
+		instances: make(map[string]*GPUInstance),
+		region:    region,
+		clusterID: clusterID,
 	}
 }
 
@@ -83,6 +99,9 @@ func (p *InstancePool) Provision(ctx context.Context) (*GPUInstance, error) {
 		ID:        fmt.Sprintf("inst-%d", time.Now().UnixNano()),
 		Name:      fmt.Sprintf("fnswarm-gpu-%d", time.Now().UnixNano()),
 		State:     InstanceStatePending,
+		Region:    p.region,
+		ClusterID: p.clusterID,
+		GPUType:   p.config.GPUType,
 		CreatedAt: time.Now(),
 	}
 
@@ -327,6 +346,9 @@ func (p *InstancePool) ListInstances() []*GPUInstance {
 			PodID:        inst.PodID,
 			State:        inst.State,
 			Endpoint:     inst.Endpoint,
+			Region:       inst.Region,
+			GPUType:      inst.GPUType,
+			ClusterID:    inst.ClusterID,
 			LastUsed:     inst.LastUsed,
 			CreatedAt:    inst.CreatedAt,
 			RequestCount: inst.RequestCount,
@@ -334,6 +356,97 @@ func (p *InstancePool) ListInstances() []*GPUInstance {
 		inst.mu.RUnlock()
 	}
 	return instances
+}
+
+// ListInstancesByRegion returns all instances in a specific region
+func (p *InstancePool) ListInstancesByRegion(region string) []*GPUInstance {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	instances := make([]*GPUInstance, 0)
+	for _, inst := range p.instances {
+		inst.mu.RLock()
+		if inst.Region == region {
+			instances = append(instances, &GPUInstance{
+				ID:           inst.ID,
+				Name:         inst.Name,
+				PodID:        inst.PodID,
+				State:        inst.State,
+				Endpoint:     inst.Endpoint,
+				Region:       inst.Region,
+				GPUType:      inst.GPUType,
+				ClusterID:    inst.ClusterID,
+				LastUsed:     inst.LastUsed,
+				CreatedAt:    inst.CreatedAt,
+				RequestCount: inst.RequestCount,
+			})
+		}
+		inst.mu.RUnlock()
+	}
+	return instances
+}
+
+// GetIdleInstance returns an idle instance, optionally filtered by region
+func (p *InstancePool) GetIdleInstance(region string) (*GPUInstance, bool) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	// First pass: find idle instance in specified region (if any)
+	if region != "" {
+		for _, inst := range p.instances {
+			inst.mu.RLock()
+			if inst.State == InstanceStateIdle && inst.Region == region {
+				inst.mu.RUnlock()
+				return inst, true
+			}
+			inst.mu.RUnlock()
+		}
+	}
+
+	// Second pass: find any idle instance
+	for _, inst := range p.instances {
+		inst.mu.RLock()
+		if inst.State == InstanceStateIdle {
+			inst.mu.RUnlock()
+			return inst, true
+		}
+		inst.mu.RUnlock()
+	}
+	return nil, false
+}
+
+// Region returns the region this pool manages (empty means all regions)
+func (p *InstancePool) Region() string {
+	return p.region
+}
+
+// ClusterID returns the cluster ID this pool belongs to
+func (p *InstancePool) ClusterID() string {
+	return p.clusterID
+}
+
+// GetRegionStats returns statistics for a specific region
+func (p *InstancePool) GetRegionStats(region string) (total, running, idle, failed int) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	for _, inst := range p.instances {
+		if region != "" && inst.Region != region {
+			continue
+		}
+		inst.mu.RLock()
+		total++
+		switch inst.State {
+		case InstanceStateRunning:
+			running++
+		case InstanceStateIdle:
+			idle++
+		case InstanceStateFailed:
+			failed++
+		}
+		inst.mu.RUnlock()
+	}
+	return
 }
 
 // GetStats returns pool statistics

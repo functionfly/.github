@@ -4,12 +4,35 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
+
+// aiServiceLikelyDown returns true when the error is a typical "nothing listening" / network issue,
+// as opposed to a 4xx/5xx or JSON error from a running ai-service.
+func aiServiceLikelyDown(err error) bool {
+	if err == nil {
+		return false
+	}
+	var ne net.Error
+	if errors.As(err, &ne) {
+		if ne.Timeout() {
+			return true
+		}
+	}
+	s := err.Error()
+	return strings.Contains(s, "connection refused") ||
+		strings.Contains(s, "no such host") ||
+		strings.Contains(s, "i/o timeout") ||
+		strings.Contains(s, "connection reset by peer")
+}
 
 // AIChatClientConfig holds configuration for the AI chat client
 type AIChatClientConfig struct {
@@ -138,6 +161,9 @@ func (c *AIServiceClient) GenerateSupportResponse(ctx context.Context, req *AIRe
 		Message:   message,
 		Context:   contextMap,
 	}
+	if req.UserID != uuid.Nil {
+		chatReq.UserID = req.UserID.String()
+	}
 
 	// Serialize request
 	reqBody, err := json.Marshal(chatReq)
@@ -167,7 +193,11 @@ func (c *AIServiceClient) GenerateSupportResponse(ctx context.Context, req *AIRe
 	// Execute request
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
-		c.logger.WithError(err).Warn("Failed to call ai-service")
+		// Avoid WARN here: AIGatewayClient logs one clear INFO/WARN when applying fallback.
+		c.logger.WithFields(logrus.Fields{
+			"ai_url": c.config.BaseURL,
+			"error":  err.Error(),
+		}).Debug("ai-service HTTP request failed")
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -274,16 +304,29 @@ func NewAIGatewayClient(config *AIChatClientConfig, logger *logrus.Logger) *AIGa
 	}
 }
 
+// GenerateSupportResponse implements AIChatClient: tries ai-service, then rule-based fallback.
+func (c *AIGatewayClient) GenerateSupportResponse(ctx context.Context, req *AIRequest) (*AIResponse, error) {
+	return c.GenerateWithFallback(ctx, req)
+}
+
 // GenerateWithFallback generates an AI response with fallback to rule-based responses
 func (c *AIGatewayClient) GenerateWithFallback(ctx context.Context, req *AIRequest) (*AIResponse, error) {
 	// Try AI service first
 	resp, err := c.aiClient.GenerateSupportResponse(ctx, req)
 	if err != nil {
-		c.logger.WithError(err).Warn("AI service failed, using fallback")
+		if aiServiceLikelyDown(err) {
+			c.logger.WithFields(logrus.Fields{
+				"ai_url": c.aiClient.config.BaseURL,
+				"error":  err.Error(),
+			}).Info("ai-service not reachable; using built-in rule-based assistant (start FlyMind / ai-service or set AI_SERVICE_URL)")
+		} else {
+			c.logger.WithError(err).Warn("AI service returned an error; using rule-based fallback")
+		}
 
 		// Use rule-based fallback from ai.go
 		fallbackReq := &AIReplyRequest{
 			ConversationID: req.ConversationID,
+			UserID:          req.UserID,
 			UserMessage:    req.UserMessage,
 			Context: &SupportContext{
 				FunctionCode:      req.Context.FunctionCode,

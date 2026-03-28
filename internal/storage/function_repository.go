@@ -35,16 +35,22 @@ func (r *FunctionRepository) CreateFunction(ctx context.Context, function *Funct
 	function.CreatedAt = time.Now()
 	function.UpdatedAt = time.Now()
 
-	envVarsJSON, err := json.Marshal(function.EnvVars)
+	envVars := function.EnvVars
+	if envVars == nil {
+		envVars = []EnvironmentVariable{}
+	}
+	envVarsJSON, err := json.Marshal(envVars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal env vars: %w", err)
 	}
+	// Bind JSONB as string: pgx database/sql encodes []byte as BYTEA, which Postgres rejects for json/jsonb.
+	envVarsText := string(envVarsJSON)
 
 	_, err = r.db.ExecContext(ctx, `
 		INSERT INTO functions (id, tenant_id, name, providers, region, code, env_vars, version, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11)`,
 		function.ID, function.TenantID, function.Name, pq.Array(function.Providers),
-		function.Region, function.Code, envVarsJSON, function.Version, function.Status,
+		function.Region, function.Code, envVarsText, function.Version, function.Status,
 		function.CreatedAt, function.UpdatedAt)
 
 	if err != nil {
@@ -60,9 +66,9 @@ func (r *FunctionRepository) GetFunctionByID(ctx context.Context, functionID uui
 	var envVarsJSON []byte
 
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, tenant_id, name, providers, region, code, env_vars, version, status, created_at, updated_at
+		SELECT id, tenant_id, app_id, name, providers, region, code, env_vars, version, status, created_at, updated_at
 		FROM functions WHERE id = $1`, functionID).Scan(
-		&function.ID, &function.TenantID, &function.Name, pq.Array(&function.Providers),
+		&function.ID, &function.TenantID, &function.AppID, &function.Name, pq.Array(&function.Providers),
 		&function.Region, &function.Code, &envVarsJSON, &function.Version, &function.Status,
 		&function.CreatedAt, &function.UpdatedAt)
 
@@ -83,7 +89,7 @@ func (r *FunctionRepository) GetFunctionByID(ctx context.Context, functionID uui
 // ListFunctionsByTenant retrieves all functions for a tenant
 func (r *FunctionRepository) ListFunctionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*FunctionConfig, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, tenant_id, name, providers, region, code, env_vars, version, status, created_at, updated_at
+		SELECT id, tenant_id, app_id, name, providers, region, code, env_vars, version, status, created_at, updated_at
 		FROM functions WHERE tenant_id = $1 ORDER BY created_at DESC`, tenantID)
 
 	if err != nil {
@@ -97,7 +103,7 @@ func (r *FunctionRepository) ListFunctionsByTenant(ctx context.Context, tenantID
 		var envVarsJSON []byte
 
 		err := rows.Scan(
-			&function.ID, &function.TenantID, &function.Name, pq.Array(&function.Providers),
+			&function.ID, &function.TenantID, &function.AppID, &function.Name, pq.Array(&function.Providers),
 			&function.Region, &function.Code, &envVarsJSON, &function.Version, &function.Status,
 			&function.CreatedAt, &function.UpdatedAt)
 
@@ -137,7 +143,7 @@ func (r *FunctionRepository) ListAllFunctions(ctx context.Context, limit, offset
 	}
 
 	// List with limit/offset
-	query := `SELECT id, tenant_id, name, providers, region, code, env_vars, version, status, created_at, updated_at
+	query := `SELECT id, tenant_id, app_id, name, providers, region, code, env_vars, version, status, created_at, updated_at
 		FROM functions WHERE 1=1`
 	args := []interface{}{}
 	argIdx = 1
@@ -165,7 +171,7 @@ func (r *FunctionRepository) ListAllFunctions(ctx context.Context, limit, offset
 		function := &FunctionConfig{}
 		var envVarsJSON []byte
 		err := rows.Scan(
-			&function.ID, &function.TenantID, &function.Name, pq.Array(&function.Providers),
+			&function.ID, &function.TenantID, &function.AppID, &function.Name, pq.Array(&function.Providers),
 			&function.Region, &function.Code, &envVarsJSON, &function.Version, &function.Status,
 			&function.CreatedAt, &function.UpdatedAt)
 		if err != nil {
@@ -197,12 +203,12 @@ func (r *FunctionRepository) UpdateFunction(ctx context.Context, functionID uuid
 			args = append(args, pq.Array(value))
 			argIndex++
 		case "env_vars":
-			setParts = append(setParts, fmt.Sprintf("%s = $%d", key, argIndex))
+			setParts = append(setParts, fmt.Sprintf("%s = $%d::jsonb", key, argIndex))
 			envVarsJSON, err := json.Marshal(value)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal env vars: %w", err)
 			}
-			args = append(args, envVarsJSON)
+			args = append(args, string(envVarsJSON))
 			argIndex++
 		}
 	}
@@ -399,15 +405,20 @@ func (r *FunctionRepository) CreateFunctionLog(ctx context.Context, log *Functio
 	}
 	log.Timestamp = time.Now()
 
-	metadataJSON, err := json.Marshal(log.Metadata)
+	meta := log.Metadata
+	if meta == nil {
+		meta = map[string]interface{}{}
+	}
+	metadataJSON, err := json.Marshal(meta)
 	if err != nil {
 		return fmt.Errorf("failed to marshal metadata: %w", err)
 	}
+	metadataText := string(metadataJSON)
 
 	_, err = r.db.ExecContext(ctx, `
 		INSERT INTO function_logs (id, function_id, deployment_id, level, message, timestamp, source, metadata)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		log.ID, log.FunctionID, log.DeploymentID, log.Level, log.Message, log.Timestamp, log.Source, metadataJSON)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
+		log.ID, log.FunctionID, log.DeploymentID, log.Level, log.Message, log.Timestamp, log.Source, metadataText)
 
 	if err != nil {
 		return fmt.Errorf("failed to create function log: %w", err)

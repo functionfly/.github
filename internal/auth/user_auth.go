@@ -2,9 +2,12 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -132,6 +135,71 @@ func validatePasswordStrength(password string) error {
 	return nil
 }
 
+// Account lockout configuration functions
+func getMaxLoginAttempts() int {
+	if val := os.Getenv("MAX_LOGIN_ATTEMPTS"); val != "" {
+		if i, err := strconv.Atoi(val); err == nil && i >= 1 {
+			return i
+		}
+	}
+	return 5 // Default to 5 failed attempts before lockout
+}
+
+func getAccountLockoutDuration() time.Duration {
+	if val := os.Getenv("ACCOUNT_LOCKOUT_DURATION_MINUTES"); val != "" {
+		if i, err := strconv.Atoi(val); err == nil && i >= 1 {
+			return time.Duration(i) * time.Minute
+		}
+	}
+	return 15 * time.Minute // Default to 15 minutes lockout
+}
+
+// recordFailedLoginAttempt records a failed login attempt and locks the account if threshold is exceeded
+func (a *AuthService) recordFailedLoginAttempt(userID uuid.UUID, email, ipAddress, userAgent string) {
+	maxAttempts := getMaxLoginAttempts()
+	lockoutDuration := getAccountLockoutDuration()
+
+	// Record the failed attempt
+	_, err := a.repo.CreateLoginAttempt(userID, ipAddress, userAgent, false, nil)
+	if err != nil {
+		logrus.WithError(err).WithField("user_id", userID).Error("Failed to record failed login attempt")
+		return
+	}
+
+	// Count recent failed attempts
+	recentFailures, err := a.repo.GetRecentFailedLoginAttempts(userID, time.Now().Add(-lockoutDuration))
+	if err != nil {
+		logrus.WithError(err).WithField("user_id", userID).Error("Failed to get recent failed login attempts")
+		return
+	}
+
+	// Check if we should lock the account
+	if recentFailures >= maxAttempts {
+		lockoutUntil := time.Now().Add(lockoutDuration)
+		// Create a login attempt with the lockout
+		_, err := a.repo.CreateLoginAttempt(userID, ipAddress, userAgent, false, &lockoutUntil)
+		if err != nil {
+			logrus.WithError(err).WithField("user_id", userID).Error("Failed to record account lockout")
+			return
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"user_id":        userID,
+			"email":          email,
+			"failed_attempts": recentFailures,
+			"lockout_until":  lockoutUntil,
+		}).Warn("Account locked due to too many failed login attempts")
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"user_id":    userID,
+		"email":      email,
+		"reason":     "invalid_credentials",
+		"ip_address": ipAddress,
+		"user_agent": userAgent,
+	}).Info("Failed login attempt recorded")
+}
+
 // Login authenticates a user and returns a JWT token
 func (a *AuthService) Login(email, password, ipAddress, userAgent string) (res *LoginResponse, err error) {
 	defer func() {
@@ -160,14 +228,36 @@ func (a *AuthService) Login(email, password, ipAddress, userAgent string) (res *
 		return nil, fmt.Errorf("email not verified - please check your email and verify your account")
 	}
 
+	// SECURITY FIX: Check if account is locked due to too many failed login attempts
+	// Lockout status is checked via login_attempts table
+	if lockoutUntil, lockoutErr := a.repo.GetUserLockoutStatus(user.ID); lockoutErr == nil && lockoutUntil != nil {
+		if time.Now().Before(*lockoutUntil) {
+			logrus.WithFields(logrus.Fields{
+				"user_id":       user.ID,
+				"lockout_until": lockoutUntil,
+			}).Warn("Login attempt on locked account")
+			return nil, fmt.Errorf("account temporarily locked due to too many failed login attempts. Please try again later")
+		}
+		// Lockout expired, continue with authentication
+	}
+
 	// Verify password (treat any verify error as invalid credentials to avoid 500 on bad hash format)
 	valid, err := a.VerifyPassword(password, user.PasswordHash)
 	if err != nil {
 		logrus.WithError(err).WithField("email", email).Debug("Password verification error")
+		// SECURITY FIX: Record failed login attempt
+		a.recordFailedLoginAttempt(user.ID, email, ipAddress, userAgent)
 		return nil, fmt.Errorf("invalid credentials")
 	}
 	if !valid {
+		// SECURITY FIX: Record failed login attempt
+		a.recordFailedLoginAttempt(user.ID, email, ipAddress, userAgent)
 		return nil, fmt.Errorf("invalid credentials")
+	}
+
+	// SECURITY FIX: Successful login - clear any failed login attempts
+	if err := a.repo.ClearUserLockout(user.ID); err != nil {
+		logrus.WithError(err).WithField("user_id", user.ID).Warn("Failed to clear user lockout on successful login")
 	}
 
 	// Generate JWT token
@@ -349,6 +439,36 @@ func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 		}, nil
 	}
 
+	var reservedInviteID uuid.UUID
+	signupFailed := true
+	defer func() {
+		if reservedInviteID != uuid.Nil && signupFailed {
+			if err := a.repo.ReleaseSignupInviteReservation(context.Background(), reservedInviteID); err != nil {
+				logrus.WithError(err).Warn("failed to release signup invite reservation after error")
+			}
+		}
+	}()
+
+	if SignupInviteRequired() {
+		if strings.TrimSpace(req.InviteCode) == "" {
+			return nil, fmt.Errorf("a valid invite code is required to sign up")
+		}
+		id, err := a.repo.ReserveSignupInvite(context.Background(), req.InviteCode)
+		if err != nil {
+			if errors.Is(err, storage.ErrSignupInviteInvalid) {
+				return nil, fmt.Errorf("invalid or expired invite code")
+			}
+			if errors.Is(err, storage.ErrSignupInviteExhausted) {
+				return nil, fmt.Errorf("this invite code has no uses remaining")
+			}
+			if errors.Is(err, storage.ErrSignupInviteRevoked) {
+				return nil, fmt.Errorf("this invite code is no longer valid")
+			}
+			return nil, fmt.Errorf("invite code could not be validated: %w", err)
+		}
+		reservedInviteID = id
+	}
+
 	// Hash password
 	hashedPassword, err := a.HashPassword(req.Password)
 	if err != nil {
@@ -439,6 +559,8 @@ func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 
 	// Welcome notification (in-app) so the user sees it when they open the platform
 	a.sendWelcomeNotification(context.Background(), user.ID)
+
+	signupFailed = false
 
 	return &SignupResponse{
 		Message:              "Account created successfully. Please check your email to verify your account.",

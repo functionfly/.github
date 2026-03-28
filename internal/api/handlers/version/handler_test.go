@@ -78,9 +78,11 @@ func TestHandleListVersions_Success(t *testing.T) {
 
 	// Mock the database query
 	rows := sqlmock.NewRows([]string{
-		"id", "version", "path_prefix", "status", "released_at",
-	}).AddRow(uuid.New(), "v1", "/v1", "active", now).
-		AddRow(uuid.New(), "v2", "/v2", "deprecated", now)
+		"id", "version", "path_prefix", "status", "is_default", "released_at",
+		"deprecated_at", "sunset_at", "sunset_message", "metadata",
+		"openapi_spec_url", "changelog_url", "created_at", "updated_at",
+	}).AddRow(uuid.New(), "v1", "/v1", "active", true, now, nil, nil, "", []byte(`{}`), "", "", now, now).
+		AddRow(uuid.New(), "v2", "/v2", "deprecated", false, now, nil, nil, "", []byte(`{}`), "", "", now, now)
 
 	s.mock.ExpectQuery("SELECT .* FROM api_versions").
 		WillReturnRows(rows)
@@ -111,7 +113,9 @@ func TestHandleListVersions_Empty(t *testing.T) {
 
 	// Mock empty result
 	rows := sqlmock.NewRows([]string{
-		"id", "version", "path_prefix", "status", "released_at",
+		"id", "version", "path_prefix", "status", "is_default", "released_at",
+		"deprecated_at", "sunset_at", "sunset_message", "metadata",
+		"openapi_spec_url", "changelog_url", "created_at", "updated_at",
 	})
 
 	s.mock.ExpectQuery("SELECT .* FROM api_versions").
@@ -135,12 +139,12 @@ func TestHandleGetVersion_Success(t *testing.T) {
 	now := time.Now()
 
 	rows := sqlmock.NewRows([]string{
-		"id", "version", "path_prefix", "status", "released_at",
+		"id", "version", "path_prefix", "status", "is_default", "released_at",
 		"deprecated_at", "sunset_at", "sunset_message", "metadata",
 		"openapi_spec_url", "changelog_url", "created_at", "updated_at",
 	}).AddRow(
-		versionID, "v1", "/v1", "active", now,
-		nil, nil, "", nil, "", "", now, now,
+		versionID, "v1", "/v1", "active", true, now,
+		nil, nil, "", []byte(`{}`), "", "", now, now,
 	)
 
 	s.mock.ExpectQuery("SELECT .* FROM api_versions WHERE version = \\$1").
@@ -210,8 +214,10 @@ func TestHandleDeprecateVersion_Success(t *testing.T) {
 
 	// First query to get the version
 	rows := sqlmock.NewRows([]string{
-		"id", "version", "path_prefix", "status",
-	}).AddRow(versionID, "v1", "/v1", "active")
+		"id", "version", "path_prefix", "status", "is_default", "released_at",
+		"deprecated_at", "sunset_at", "sunset_message", "metadata",
+		"openapi_spec_url", "changelog_url", "created_at", "updated_at",
+	}).AddRow(versionID, "v1", "/v1", "active", true, time.Now(), nil, nil, "", []byte(`{}`), "", "", time.Now(), time.Now())
 
 	s.mock.ExpectQuery("SELECT .* FROM api_versions WHERE version = \\$1").
 		WithArgs("v1").
@@ -377,8 +383,10 @@ func TestHandler_UsesContext(t *testing.T) {
 
 	now := time.Now()
 	rows := sqlmock.NewRows([]string{
-		"id", "version", "path_prefix", "status", "released_at",
-	}).AddRow(uuid.New(), "v1", "/v1", "active", now)
+		"id", "version", "path_prefix", "status", "is_default", "released_at",
+		"deprecated_at", "sunset_at", "sunset_message", "metadata",
+		"openapi_spec_url", "changelog_url", "created_at", "updated_at",
+	}).AddRow(uuid.New(), "v1", "/v1", "active", true, now, nil, nil, "", []byte(`{}`), "", "", now, now)
 
 	s.mock.ExpectQuery("SELECT .* FROM api_versions").
 		WillReturnRows(rows)

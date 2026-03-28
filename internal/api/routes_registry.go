@@ -208,6 +208,8 @@ func registerRegistryRoutes(
 	api.HandleFunc("/registry/functions/{author}/{name}/stats", registryHandler.HandleGetFunctionStats).Methods("GET")
 	api.HandleFunc("/registry/functions/{author}/{name}/test", registryHandler.HandleTest).Methods("POST")
 	api.HandleFunc("/registry/functions/{author}/{name}/rating", authMiddleware.RequireAuth(registryHandler.HandleSubmitRating)).Methods("POST")
+	api.HandleFunc("/registry/functions/{author}/{name}/reviews", registryHandler.HandleListReviews).Methods("GET")
+	api.HandleFunc("/registry/functions/{author}/{name}/reviews", authMiddleware.RequireAuth(registryHandler.HandleSubmitReview)).Methods("POST")
 	api.HandleFunc("/registry/functions/{author}/{name}/aggregate", authMiddleware.RequireAuth(registryHandler.HandleAggregateStats)).Methods("POST")
 
 	// ── Trust Scoring (public) ──────────────────────────────────────────────

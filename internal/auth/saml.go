@@ -1,14 +1,18 @@
 package auth
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/pem"
 	"encoding/xml"
 	"fmt"
 	"math/big"
+	"regexp"
 	"strings"
 	"time"
 
@@ -172,7 +176,26 @@ func (s *SAMLService) InitiateLogin(tenantID uuid.UUID, relayState string) (stri
 // SAMLResponse represents a parsed SAML response
 type SAMLResponse struct {
 	XMLName   xml.Name       `xml:"samlp:Response"`
+	Signature *SAMLSignature `xml:"ds:Signature,omitempty"`
 	Assertion *SAMLAssertion `xml:"saml:Assertion"`
+}
+
+// SAMLSignature represents a digital signature (XML DSig)
+type SAMLSignature struct {
+	XMLName xml.Name `xml:"ds:Signature"`
+	KeyInfo *DSKeyInfo `xml:"KeyInfo"`
+	SignatureValue string `xml:"SignatureValue"`
+}
+
+// DSKeyInfo contains key information for signature verification
+type DSKeyInfo struct {
+	XMLName       xml.Name `xml:"KeyInfo"`
+	X509Data      *X509Data `xml:"X509Data"`
+}
+
+// X509Data contains X509 certificate data
+type X509Data struct {
+	XMLCertificate string `xml:"X509Certificate"`
 }
 
 // SAMLAssertion represents a SAML assertion
@@ -210,6 +233,97 @@ type SAMLAttributeValue struct {
 	Value string `xml:",chardata"`
 }
 
+// verifySAMLSignature verifies the SAML response signature
+// Returns nil if signature is valid, error if verification fails or signature is missing
+func (s *SAMLService) verifySAMLSignature(decodedResponse []byte, config *storage.SAMLConfig) error {
+	// Check if IdP certificate is configured
+	if config.IDPCertificate == nil || *config.IDPCertificate == "" {
+		return fmt.Errorf("IdP certificate not configured - cannot verify SAML signature")
+	}
+
+	// Parse the XML to extract signature info
+	var result struct {
+		Signature struct {
+			SignatureValue string `xml:"SignatureValue"`
+			KeyInfo        struct {
+				X509Data struct {
+					X509Certificate string `xml:"X509Certificate"`
+				} `xml:"X509Data"`
+			} `xml:"KeyInfo"`
+		} `xml:"Signature"`
+	}
+
+	if err := xml.Unmarshal(decodedResponse, &result); err != nil {
+		return fmt.Errorf("failed to parse SAML signature: %w", err)
+	}
+
+	// Extract the signature value
+	if result.Signature.SignatureValue == "" {
+		return fmt.Errorf("SAML response has no signature - possible forged response")
+	}
+
+	signatureBytes, err := base64.StdEncoding.DecodeString(result.Signature.SignatureValue)
+	if err != nil {
+		return fmt.Errorf("failed to decode signature value: %w", err)
+	}
+
+	// Get the certificate for verification
+	var certPEM string
+	if result.Signature.KeyInfo.X509Data.X509Certificate != "" {
+		// Use embedded certificate from response
+		certPEM = result.Signature.KeyInfo.X509Data.X509Certificate
+	} else {
+		// Fall back to configured IdP certificate
+		certPEM = *config.IDPCertificate
+	}
+
+	// Parse the certificate
+	certBlock, _ := pem.Decode([]byte(certPEM))
+	if certBlock == nil {
+		// Try adding PEM headers if missing
+		certBlock, _ = pem.Decode([]byte("-----BEGIN CERTIFICATE-----\n" + certPEM + "\n-----END CERTIFICATE-----"))
+		if certBlock == nil {
+			return fmt.Errorf("failed to parse IdP certificate")
+		}
+	}
+
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return fmt.Errorf("failed to parse IdP certificate: %w", err)
+	}
+
+	// Extract SignedInfo content for verification
+	// The signature is over the SignedInfo element (XML DSig)
+	signedInfoRegex := regexp.MustCompile(`<ds:SignedInfo[^>]*>.*?</ds:SignedInfo>`)
+	signedInfoMatches := signedInfoRegex.Find(decodedResponse)
+	if len(signedInfoMatches) == 0 {
+		// Try without namespace
+		signedInfoRegex2 := regexp.MustCompile(`<SignedInfo[^>]*>.*?</SignedInfo>`)
+		signedInfoMatches = signedInfoRegex2.Find(decodedResponse)
+		if len(signedInfoMatches) == 0 {
+			return fmt.Errorf("could not find SignedInfo element in SAML response")
+		}
+	}
+
+	// Hash the SignedInfo with SHA-1 (common for SAML signatures)
+	hashed := sha1.Sum(signedInfoMatches)
+
+	// Verify the signature using RSA PKCS1v15
+	pubKey, ok := cert.PublicKey.(*rsa.PublicKey)
+	if !ok {
+		return fmt.Errorf("certificate does not contain RSA public key")
+	}
+
+	err = rsa.VerifyPKCS1v15(pubKey, crypto.SHA1, hashed[:], signatureBytes)
+	if err != nil {
+		logrus.WithError(err).Warn("SAML signature verification failed - response may be forged")
+		return fmt.Errorf("SAML signature verification failed: %w", err)
+	}
+
+	logrus.Debug("SAML signature verified successfully")
+	return nil
+}
+
 // ProcessResponse processes a SAML Response from the IdP
 func (s *SAMLService) ProcessResponse(tenantID uuid.UUID, samlResponse string) (*SAMLLoginResponse, error) {
 	config, err := s.configRepo.GetByTenantID(tenantID)
@@ -225,6 +339,12 @@ func (s *SAMLService) ProcessResponse(tenantID uuid.UUID, samlResponse string) (
 	decodedResponse, err := base64.StdEncoding.DecodeString(samlResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode SAML response: %w", err)
+	}
+
+	// CRITICAL: Verify SAML response signature before trusting any data
+	if err := s.verifySAMLSignature(decodedResponse, config); err != nil {
+		logrus.WithError(err).Error("SAML signature verification failed - rejecting response")
+		return nil, fmt.Errorf("SAML response signature verification failed: %w", err)
 	}
 
 	// Parse the SAML response

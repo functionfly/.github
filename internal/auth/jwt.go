@@ -8,6 +8,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/sirupsen/logrus"
 )
 
 // ValidateToken validates a JWT token and returns the claims
@@ -28,6 +29,23 @@ func (a *AuthService) ValidateToken(tokenString string) (*Claims, error) {
 	}
 
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		// SECURITY FIX: Validate token version for revocation support
+		// If the token has a TokenVersion, verify it matches the user's current version
+		// This allows invalidating tokens when password is changed or logout all is triggered
+		if claims.TokenVersion > 0 && a.repo != nil {
+			user, err := a.repo.GetUserByID(claims.UserID)
+			if err != nil || user == nil {
+				// If we can't verify, be permissive (user might have been deleted)
+				logrus.WithError(err).WithField("user_id", claims.UserID).Warn("Could not verify token version for user")
+			} else if user.TokenVersion > 0 && claims.TokenVersion != user.TokenVersion {
+				logrus.WithFields(logrus.Fields{
+					"user_id":               claims.UserID,
+					"token_token_version":   claims.TokenVersion,
+					"current_token_version": user.TokenVersion,
+				}).Warn("Token version mismatch - token may have been revoked")
+				return nil, fmt.Errorf("token has been revoked")
+			}
+		}
 		return claims, nil
 	}
 
@@ -59,6 +77,13 @@ func (a *AuthService) generateToken(user *storage.User) (string, error) {
 	// Add permissions based on role
 	if user.Role != "" {
 		claims.Permissions = a.getPermissionsForRole(user.Role)
+	}
+
+	// SECURITY FIX: Add token version for revocation support
+	// TokenVersion is stored in the user record and incremented on password change/logout all
+	// This allows invalidating all existing tokens for a user without invalidating all users
+	if user.TokenVersion > 0 {
+		claims.TokenVersion = user.TokenVersion
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

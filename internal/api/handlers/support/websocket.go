@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/google/uuid"
@@ -20,7 +23,34 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return true // TODO: proper origin check
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true // No origin header (e.g., direct WebSocket client)
+		}
+
+		allowedOriginsStr := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS"))
+		isDev := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
+		isLocalhost := strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")
+
+		// In development, allow localhost origins without explicit CORS_ALLOWED_ORIGINS
+		if isDev && isLocalhost && allowedOriginsStr == "" {
+			return true
+		}
+
+		// Check against explicit allowed origins list
+		if allowedOriginsStr != "" {
+			allowedOrigins := strings.Split(allowedOriginsStr, ",")
+			for _, allowed := range allowedOrigins {
+				allowed = strings.TrimSpace(allowed)
+				if allowed == "*" || allowed == origin {
+					return true
+				}
+			}
+		}
+
+		// Reject in production or if origin doesn't match
+		logrus.WithFields(logrus.Fields{"origin": origin}).Warn("WebSocket origin rejected")
+		return false
 	},
 }
 
@@ -62,6 +92,12 @@ type WebSocketHub struct {
 	// Service reference
 	service *support.Service
 
+	// Redis-backed pub/sub for server -> client real-time updates.
+	redis support.RedisClient
+
+	// Auth service for WebSocket connections that pass tokens via query params.
+	authSvc *auth.AuthService
+
 	// Logger
 	logger *logrus.Logger
 
@@ -85,7 +121,7 @@ type WebSocketConn struct {
 }
 
 // NewWebSocketHub creates a new WebSocket hub
-func NewWebSocketHub(service *support.Service, logger *logrus.Logger) *WebSocketHub {
+func NewWebSocketHub(service *support.Service, redis support.RedisClient, authSvc *auth.AuthService, logger *logrus.Logger) *WebSocketHub {
 	if logger == nil {
 		logger = logrus.New()
 	}
@@ -97,12 +133,18 @@ func NewWebSocketHub(service *support.Service, logger *logrus.Logger) *WebSocket
 		unregister:    make(chan *WebSocketConn),
 		broadcast:     make(chan *BroadcastMessage),
 		service:       service,
+		redis:         redis,
+		authSvc:       authSvc,
 		logger:        logger,
 	}
 }
 
 // Run starts the hub
 func (h *WebSocketHub) Run() {
+	if h.redis != nil {
+		go h.subscribeToMessageCreated()
+	}
+
 	for {
 		select {
 		case conn := <-h.register:
@@ -162,6 +204,38 @@ func (h *WebSocketHub) Run() {
 	}
 }
 
+// subscribeToMessageCreated forwards support messages published to Redis
+// to all WebSocket connections joined to the corresponding conversation.
+func (h *WebSocketHub) subscribeToMessageCreated() {
+	ch, err := h.redis.Subscribe(context.Background(), "message.created")
+	if err != nil {
+		h.logger.WithError(err).Warn("support websocket: failed to subscribe to message.created")
+		return
+	}
+
+	for payload := range ch {
+		var msg support.SupportMessage
+		if err := json.Unmarshal([]byte(payload), &msg); err != nil {
+			h.logger.WithError(err).Warn("support websocket: failed to parse message.created payload")
+			continue
+		}
+
+		// Convert service message to a websocket event payload.
+		// Frontend expects the SupportMessage JSON shape.
+		msgBytes, err := json.Marshal(msg)
+		if err != nil {
+			h.logger.WithError(err).Warn("support websocket: failed to marshal message payload")
+			continue
+		}
+
+		wsMsg := &WebSocketMessage{
+			Type:    "new_message",
+			Payload: msgBytes,
+		}
+		h.BroadcastToConversation(msg.ConversationID, wsMsg, nil)
+	}
+}
+
 // JoinConversation adds a connection to a conversation room
 func (h *WebSocketHub) JoinConversation(conn *WebSocketConn, conversationID uuid.UUID) {
 	h.mu.Lock()
@@ -209,14 +283,28 @@ func (h *WebSocketHub) BroadcastToConversation(conversationID uuid.UUID, msg *We
 // HandleWebSocket handles WebSocket upgrade requests
 func (h *WebSocketHub) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
+
+	// For WebSocket connections, auth is often passed via query param because
+	// browsers can't set Authorization headers on the handshake.
+	if user == nil && h.authSvc != nil {
+		if token := r.URL.Query().Get("token"); token != "" {
+			claims, err := h.authSvc.ValidateToken(token)
+			if err == nil {
+				user = claims
+			}
+		}
+	}
+
 	if user == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	// Check if user is staff (simplified - should check user roles)
 	isStaff := false
-	// TODO: Check if user has staff role
+	switch user.Role {
+	case "super_admin", "admin", "support":
+		isStaff = true
+	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -368,19 +456,15 @@ func (h *WebSocketHub) handleMessage(conn *WebSocketConn, msg *WebSocketMessage)
 			return
 		}
 
-		// Broadcast to conversation
-		responsePayload, _ := json.Marshal(ChatMessagePayload{
-			ConversationID: payload.ConversationID,
-			Content:        payload.Content,
-			MessageID:      message.ID.String(),
-			AuthorType:     string(authorType),
-			Timestamp:      time.Now().UnixMilli(),
-		})
-		responseMsg := &WebSocketMessage{
-			Type:    "new_message",
-			Payload: responsePayload,
+		// When Redis is enabled, subscribers will forward the persisted message.
+		// When Redis is disabled, fall back to broadcasting directly.
+		if h.redis == nil {
+			msgBytes, marshalErr := json.Marshal(message)
+			if marshalErr == nil {
+				responseMsg := &WebSocketMessage{Type: "new_message", Payload: msgBytes}
+				h.BroadcastToConversation(convID, responseMsg, nil)
+			}
 		}
-		h.BroadcastToConversation(convID, responseMsg, nil)
 
 	case "typing":
 		var payload struct {

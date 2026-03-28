@@ -94,6 +94,11 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/users/{userId}", authMiddleware.RequirePermission(auth.PermUsersWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleUpdateUser))).Methods("PATCH", "OPTIONS")
 	adminRoutes.HandleFunc("/users/{userId}", authMiddleware.RequirePermission(auth.PermUsersWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleDeleteUser))).Methods("DELETE", "OPTIONS")
 
+	// Signup invite codes (invite-only launch)
+	adminRoutes.HandleFunc("/signup-invites", authMiddleware.RequirePermission(auth.PermUsersRead)(adminHandler.HandleListSignupInvites)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/signup-invites", authMiddleware.RequirePermission(auth.PermUsersWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleCreateSignupInvite))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/signup-invites/{id}/revoke", authMiddleware.RequirePermission(auth.PermUsersWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleRevokeSignupInvite))).Methods("POST", "OPTIONS")
+
 	// Audit log
 	adminRoutes.HandleFunc("/audit-events", authMiddleware.RequirePermission(auth.PermAuditRead)(adminHandler.HandleListAuditEvents)).Methods("GET", "OPTIONS")
 
@@ -247,10 +252,7 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/registry/functions/{functionId}", authMiddleware.RequirePermission(auth.PermTenantsWrite)(adminRegistryHandler.HandleDeleteRegistryFunction)).Methods("DELETE", "OPTIONS")
 	adminRoutes.HandleFunc("/registry/functions/{functionId}/visibility", authMiddleware.RequirePermission(auth.PermTenantsWrite)(adminRegistryHandler.HandleUpdateRegistryVisibility)).Methods("PATCH", "OPTIONS")
 	adminRoutes.HandleFunc("/registry/functions/{functionId}/pricing", authMiddleware.RequirePermission(auth.PermTenantsWrite)(adminRegistryHandler.HandleUpdateRegistryPricing)).Methods("PATCH", "OPTIONS")
-	adminRoutes.HandleFunc("/registry/functions/{functionId}/flag", authMiddleware.RequirePermission(auth.PermTenantsWrite)(adminRegistryHandler.HandleFlagRegistryFunction)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/registry/functions/{functionId}/versions", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminRegistryHandler.HandleListRegistryFunctionVersions)).Methods("GET", "OPTIONS")
-	adminRoutes.HandleFunc("/registry/functions/{functionId}/versions/{versionId}/deactivate", authMiddleware.RequirePermission(auth.PermTenantsWrite)(adminRegistryHandler.HandleDeactivateRegistryVersion)).Methods("POST", "OPTIONS")
-	adminRoutes.HandleFunc("/registry/functions/{functionId}/metrics", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminRegistryHandler.HandleGetRegistryFunctionMetrics)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/registry/generate-description", authMiddleware.RequirePermission(auth.PermTenantsWrite)(adminRegistryHandler.HandleGenerateRegistryDescription)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/registry/dre/regenerate-bootstrap", authMiddleware.RequirePermission(auth.PermTenantsWrite)(registryHandler.HandleRegenerateBootstrap)).Methods("POST", "OPTIONS")
 

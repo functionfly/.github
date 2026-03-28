@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,6 +18,7 @@ import (
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/plans"
+	"github.com/functionfly/functionfly/internal/services/membership"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -30,6 +32,7 @@ type Handler struct {
 	authSvc          *auth.AuthService
 	unifiedAnalytics *unified.Service
 	sfAddons         *statefabricaddons.Repository
+	membershipSvc    *membership.Service
 }
 
 // NewHandler creates a new admin handler. unifiedAnalytics may be nil (tenant metrics will be placeholders).
@@ -44,6 +47,7 @@ func NewHandler(
 		authSvc:          authSvc,
 		unifiedAnalytics: unifiedAnalytics,
 		sfAddons:         sfAddons,
+		membershipSvc:    membership.NewService(repo),
 	}
 }
 
@@ -142,6 +146,8 @@ func (h *Handler) HandleUpdateTenant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	oldPlan := beforeTenant.Plan
+
 	// Check if plan is being changed and if new plan would exceed seat limit
 	if newPlan, ok := updates["plan"].(string); ok && newPlan != "" {
 		newMaxUsers := plans.MaxUsersPerPlan(newPlan)
@@ -161,11 +167,57 @@ func (h *Handler) HandleUpdateTenant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if plan was upgraded and process membership events
+	if newPlan, ok := updates["plan"].(string); ok && newPlan != "" && newPlan != oldPlan {
+		go h.processPlanUpgrade(tenantID, oldPlan, newPlan)
+	}
+
 	// Log successful update
 	utils.LogAuditEvent(r.Context(), h.repo, r, "tenant.update", "tenant", &tenantID, beforeTenant, tenant, true)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tenant)
+}
+
+// processPlanUpgrade handles membership events for plan upgrades asynchronously
+func (h *Handler) processPlanUpgrade(tenantID uuid.UUID, oldPlan, newPlan string) {
+	// Get all active users in the tenant to award achievements and create activities
+	users, err := h.repo.ListActiveUsersByTenant(context.Background(), tenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to list users for plan upgrade processing")
+		return
+	}
+
+	// Get the admin user who likely performed the upgrade (first user as proxy)
+	var adminUserID uuid.UUID
+	if len(users) > 0 {
+		adminUserID = users[0].ID
+	}
+
+	for _, user := range users {
+		upgradeData := membership.PlanUpgradeData{
+			UserID:     user.ID,
+			TenantID:   tenantID,
+			OldPlan:    oldPlan,
+			NewPlan:    newPlan,
+			UpgradedAt: time.Now(),
+			UpgradedBy: adminUserID,
+		}
+
+		if err := h.membershipSvc.HandlePlanUpgrade(context.Background(), upgradeData); err != nil {
+			logrus.WithError(err).WithFields(logrus.Fields{
+				"user_id":   user.ID,
+				"tenant_id": tenantID,
+			}).Warn("Failed to process plan upgrade for user")
+		}
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"tenant_id":  tenantID,
+		"old_plan":   oldPlan,
+		"new_plan":   newPlan,
+		"user_count": len(users),
+	}).Info("Processed plan upgrade for tenant users")
 }
 
 // HandleDeleteTenant deletes a tenant

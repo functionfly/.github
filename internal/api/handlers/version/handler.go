@@ -2,6 +2,7 @@
 package version
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -237,12 +238,63 @@ func (h *Handler) HandleListFunctionVersions(w http.ResponseWriter, r *http.Requ
 // @Failure 500 {object} map[string]string
 // @Router /functions/{functionId}/versions/{version} [get]
 func (h *Handler) HandleGetFunctionVersion(w http.ResponseWriter, r *http.Request) {
-	// This would typically query the registry_function_versions table
-	// For now, return a placeholder response
+	vars := mux.Vars(r)
+	functionIDStr := vars["functionId"]
+	versionStr := vars["version"]
+
+	functionID, err := uuid.Parse(functionIDStr)
+	if err != nil {
+		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		return
+	}
+
+	if versionStr == "" {
+		http.Error(w, "Version is required", http.StatusBadRequest)
+		return
+	}
+
+	version, err := h.repo.GetFunctionVersionByVersion(r.Context(), functionID, versionStr)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "Function version not found", http.StatusNotFound)
+			return
+		}
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"function_id": functionID,
+			"version":     versionStr,
+		}).Error("Failed to get function version")
+		http.Error(w, "Failed to get function version", http.StatusInternalServerError)
+		return
+	}
+
+	// Get latest and stable status for this version
+	latestVersion, _ := h.repo.GetLatestFunctionVersion(r.Context(), functionID)
+	stableVersion, _ := h.repo.GetStableFunctionVersion(r.Context(), functionID)
+
+	isLatest := latestVersion != nil && latestVersion.ID == version.ID
+	isStable := stableVersion != nil && stableVersion.ID == version.ID
+
+	response := versioning.FunctionVersionResponse{
+		ID:          version.ID,
+		FunctionID:  version.FunctionID,
+		Version:     version.Version,
+		Status:      version.VersionState,
+		PublishedAt: version.PublishedAt,
+		IsLatest:    isLatest,
+		IsStable:    isStable,
+	}
+
+	// Add deprecation info if applicable
+	if version.DeprecationReason != "" {
+		response.Deprecation = &versioning.VersionDeprecationInfo{
+			Reason:         version.DeprecationReason,
+			ReplacedBy:     version.ReplacedByVersion,
+			MigrationGuide: version.MigrationGuide,
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message": "Get function version not yet implemented",
-	})
+	json.NewEncoder(w).Encode(response)
 }
 
 // HandleCreateChangelog handles POST /functions/{functionId}/versions/{version}/changelog - create changelog entry
@@ -1137,13 +1189,23 @@ func (h *Handler) HandleSetDefaultAPIVersion(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// In a real implementation, this would update a configuration or database setting
-	// For now, we'll just return success
+	if err := h.repo.SetDefaultAPIVersion(r.Context(), apiVersion.Version); err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "API version not found", http.StatusNotFound)
+			return
+		}
+		logrus.WithError(err).Error("Failed to set default API version")
+		http.Error(w, "Failed to set default API version", http.StatusInternalServerError)
+		return
+	}
+
+	// Re-fetch so response reflects persisted state
+	apiVersion, _ = h.repo.GetAPIVersionByVersion(r.Context(), apiVersion.Version)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"version":   apiVersion.Version,
-		"isDefault": true,
+		"isDefault": apiVersion != nil && apiVersion.IsDefault,
 		"message":   "Version set as default",
 	})
 }

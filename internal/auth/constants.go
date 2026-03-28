@@ -1,15 +1,39 @@
 package auth
 
+import (
+	"os"
+	"strconv"
+)
+
 const (
 	// JWT claims
 	Issuer = "functionfly"
 	// Password hashing parameters
 	saltLength = 32
 	keyLength  = 32
-	timeCost   = 1
-	memoryCost = 64 * 1024
 	threads    = 4
 )
+
+// getTimeCost returns the Argon2 time cost based on environment variable or default
+// OWASP recommends timeCost >= 3 for sensitive applications
+func getTimeCost() int {
+	if val := os.Getenv("ARGON2_TIME_COST"); val != "" {
+		if i, err := strconv.Atoi(val); err == nil && i >= 1 {
+			return i
+		}
+	}
+	return 3 // OWASP recommended minimum for sensitive applications
+}
+
+// getMemoryCost returns the Argon2 memory cost in KB based on environment variable or default
+func getMemoryCost() int {
+	if val := os.Getenv("ARGON2_MEMORY_COST_KB"); val != "" {
+		if i, err := strconv.Atoi(val); err == nil && i >= 8 {
+			return i
+		}
+	}
+	return 64 * 1024 // Default 64MB (expressed in KB for convenience)
+}
 
 // Admin roles - platform level permissions
 const (

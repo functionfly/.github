@@ -334,6 +334,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		agentSwarmService,
 		agentSwarmMessageService,
 		agentEconomyService,
+		storage.NewFinancialTransactionRepository(s.postgresDB.GORM),
 		agentMarketplaceService,
 		agentEvolutionService,
 		agentAutonomyService,
@@ -394,7 +395,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		return http.HandlerFunc(advancedSecurityMiddleware.CORSMiddleware(http.HandlerFunc(next.ServeHTTP)))
 	})
 
-	if os.Getenv("DEVELOPMENT") != "true" {
+	// SECURITY FIX: Require explicit PRODUCTION_ENV=true for security middleware
+	// Previously, security was disabled just by setting DEVELOPMENT=true
+	// Now we require PRODUCTION_ENV=true to enable security features
+	isDev := os.Getenv("DEVELOPMENT") == "true"
+	productionEnv := os.Getenv("PRODUCTION_ENV") == "true"
+
+	if !isDev || productionEnv {
+		// Apply advanced security middleware when not in dev mode OR when explicitly in production mode
 		s.router.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(advancedSecurityMiddleware.SecurityHeaders(http.HandlerFunc(next.ServeHTTP)))
 		})
@@ -414,9 +422,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 			return http.HandlerFunc(advancedSecurityMiddleware.TrafficManagement(http.HandlerFunc(next.ServeHTTP)))
 		})
 	} else {
+		// In development mode without PRODUCTION_ENV, only apply basic security headers
 		s.router.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(advancedSecurityMiddleware.SecurityHeaders(http.HandlerFunc(next.ServeHTTP)))
 		})
+		// Log warning about missing security middleware in development
+		logrus.Warn("SECURITY WARNING: Running in DEVELOPMENT mode without PRODUCTION_ENV=true. Advanced security middleware (DDoS protection, geo-blocking, rate limiting, input validation) is DISABLED. This is NOT safe for production!")
 	}
 
 	s.router.Use(monitoringPkg.HTTPMetricsMiddleware)
@@ -425,6 +436,13 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api := s.router.PathPrefix("/v1").Subrouter()
 	apiV2 := s.router.PathPrefix("/v2").Subrouter()
 	protected := api.PathPrefix("").Subrouter()
+
+	// Online presence: optional JWT on any /v1 and /v2 call sets user context; then we bump last_active_at.
+	userRepoActivity := storage.NewUserRepository(s.postgresDB)
+	api.Use(authMiddleware.OptionalAuth)
+	api.Use(middleware.SimpleActivityTracker(userRepoActivity))
+	apiV2.Use(authMiddleware.OptionalAuth)
+	apiV2.Use(middleware.SimpleActivityTracker(userRepoActivity))
 
 	authRateLimiter := middleware.NewAuthRateLimiter()
 	vaultRateLimiter := middleware.NewVaultRateLimiter()
