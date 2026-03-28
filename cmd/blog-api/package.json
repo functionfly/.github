@@ -21,7 +21,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "seed:blog": "ts-node -r tsconfig-paths/register src/seed/seed-default-blog-posts.ts"
+    "seed:blog": "ts-node -r tsconfig-paths/register src/seed/seed-default-blog-posts.ts",
+    "verify:blog": "ts-node -r tsconfig-paths/register src/seed/verify-blog-api-posts.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.14",
