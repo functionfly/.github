@@ -15,8 +15,11 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Check,
   Clock,
   Code2,
+  Eye,
+  EyeOff,
   Globe,
   Hash,
   Key,
@@ -24,13 +27,11 @@ import {
   Lock,
   Plus,
   Settings2,
+  Shield,
   Timer,
   Webhook,
   X,
   Zap,
-  Shield,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -40,8 +41,8 @@ import {
   RUNTIME_VERSIONS,
   TIMEOUT_OPTIONS,
 } from '../constants';
-import type { FunctionEditorModel } from '../useFunctionEditor';
 import type { HttpMethod, Runtime } from '../types';
+import type { FunctionEditorModel } from '../useFunctionEditor';
 import { formatTimeout } from '../utils';
 import { FieldError, InfoTip, SectionCard } from './editor-ui';
 
@@ -125,14 +126,14 @@ export function FunctionEditorLeftColumn({ editor }: Props) {
               Slug / Identifier
               <InfoTip content="URL-safe identifier used in API calls. Auto-generated from name." />
             </Label>
-            <div className="relative">
-              <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
+            <div className="input-with-icon">
+              <Hash className="icon h-3.5 w-3.5 shrink-0" aria-hidden />
               <Input
                 id="fn-slug"
                 placeholder="my-awesome-function"
                 value={slug}
                 onChange={(e) => handleSlugChange(e.target.value)}
-                className="input pl-8 font-mono text-sm"
+                className="input w-full font-mono text-sm"
               />
             </div>
             <FieldError message={errors.slug} />
@@ -159,21 +160,38 @@ export function FunctionEditorLeftColumn({ editor }: Props) {
       <SectionCard icon={<Code2 className="w-4 h-4" />} title="Runtime Configuration" step={2}>
         <div>
           <Label className="text-xs font-medium text-text-secondary mb-2 block">Runtime</Label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {(Object.entries(RUNTIME_META) as [Runtime, (typeof RUNTIME_META)[Runtime]][]).map(
               ([key, meta]) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => handleRuntimeChange(key)}
-                  className={`flex flex-col gap-1 p-3 rounded-lg border text-left transition-all ${
+                  className={`relative flex flex-col gap-1.5 rounded-lg border-2 p-3 text-left transition-all duration-200 ${
                     runtime === key
-                      ? 'border-indigo-500/50 bg-indigo-500/10'
-                      : 'border-border-subtle bg-bg-tertiary hover:border-border-default'
+                      ? 'border-indigo-600 bg-indigo-50 shadow-sm dark:border-indigo-400/90 dark:bg-indigo-500/25 dark:shadow-[0_0_0_1px_rgba(129,140,248,0.35)]'
+                      : 'border-transparent bg-bg-tertiary hover:border-border-default hover:bg-bg-hover'
                   }`}
+                  aria-pressed={runtime === key}
                 >
-                  <span className="text-sm font-semibold text-text-primary">{meta.label}</span>
-                  <span className="text-xs text-text-muted leading-tight">{meta.description}</span>
+                  {runtime === key ? (
+                    <span
+                      className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm dark:bg-indigo-500"
+                      aria-hidden
+                    >
+                      <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                    </span>
+                  ) : null}
+                  <div className="flex items-center gap-2 pr-7">
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: meta.color }}
+                    />
+                    <span className="text-sm font-semibold text-text-primary">{meta.label}</span>
+                  </div>
+                  <span className="text-xs text-text-muted leading-relaxed">
+                    {meta.description}
+                  </span>
                 </button>
               )
             )}
@@ -246,7 +264,10 @@ export function FunctionEditorLeftColumn({ editor }: Props) {
         )}
         {selectedProviders.length > 0 && (
           <div className="w-48">
-            <Label htmlFor="region" className="text-xs font-medium text-text-secondary mb-1.5 block">
+            <Label
+              htmlFor="region"
+              className="text-xs font-medium text-text-secondary mb-1.5 block"
+            >
               Region
             </Label>
             <Select

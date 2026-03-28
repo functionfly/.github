@@ -2,7 +2,7 @@ import { getApiBaseUrl } from '@/lib/constants';
 import { safeParse, ValidationResult } from '@/lib/validation-utils';
 import { useApiReachableStore } from '@/stores/apiReachableStore';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { ZodSchema } from 'zod';
+import type { ZodTypeAny } from 'zod';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -149,7 +149,7 @@ class ApiClient {
 
   // Validated methods that parse responses with Zod schemas
   async getValidated<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     url: string,
     config?: AxiosRequestConfig,
     fallback?: T
@@ -168,7 +168,7 @@ class ApiClient {
   }
 
   async postValidated<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig,
@@ -187,7 +187,7 @@ class ApiClient {
   }
 
   async putValidated<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig,
@@ -206,7 +206,7 @@ class ApiClient {
   }
 
   async patchValidated<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig,
@@ -225,7 +225,7 @@ class ApiClient {
   }
 
   async deleteValidated<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     url: string,
     config?: AxiosRequestConfig,
     fallback?: T
@@ -244,7 +244,7 @@ class ApiClient {
 
   // Convenience methods that return validated data directly (throw on validation failure)
   async getValidatedData<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     url: string,
     config?: AxiosRequestConfig
   ): Promise<T> {
@@ -252,11 +252,11 @@ class ApiClient {
     if (!result.success || result.data === undefined) {
       throw new Error(result.error || 'Validation failed');
     }
-    return result.data;
+    return result.data as T;
   }
 
   async postValidatedData<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig
@@ -265,11 +265,11 @@ class ApiClient {
     if (!result.success || result.data === undefined) {
       throw new Error(result.error || 'Validation failed');
     }
-    return result.data;
+    return result.data as T;
   }
 
   async putValidatedData<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig
@@ -278,11 +278,11 @@ class ApiClient {
     if (!result.success || result.data === undefined) {
       throw new Error(result.error || 'Validation failed');
     }
-    return result.data;
+    return result.data as T;
   }
 
   async patchValidatedData<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig
@@ -291,11 +291,11 @@ class ApiClient {
     if (!result.success || result.data === undefined) {
       throw new Error(result.error || 'Validation failed');
     }
-    return result.data;
+    return result.data as T;
   }
 
   async deleteValidatedData<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     url: string,
     config?: AxiosRequestConfig
   ): Promise<T> {
@@ -303,7 +303,7 @@ class ApiClient {
     if (!result.success || result.data === undefined) {
       throw new Error(result.error || 'Validation failed');
     }
-    return result.data;
+    return result.data as T;
   }
 }
 

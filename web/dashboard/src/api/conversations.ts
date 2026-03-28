@@ -1,13 +1,13 @@
-import { apiClient } from "./client";
+import { apiClient } from './client';
 
 export type ConversationType =
-  | "dm"
-  | "function_thread"
-  | "issue_thread"
-  | "fix_mode"
-  | "bounty_thread"
-  | "org_thread"
-  | "security_disclosure";
+  | 'dm'
+  | 'function_thread'
+  | 'issue_thread'
+  | 'fix_mode'
+  | 'bounty_thread'
+  | 'org_thread'
+  | 'security_disclosure';
 
 export interface MessageEmbeddings {
   function_ref?: { author: string; name: string; version?: string };
@@ -31,6 +31,8 @@ export interface Conversation {
   resolved_by_message_id?: string | null;
   created_at: string;
   updated_at: string;
+  /** Present on list responses; messages from others since last read. */
+  unread_count?: number;
 }
 
 export interface ConversationMessage {
@@ -65,22 +67,28 @@ export interface CreateMessageRequest {
 }
 
 class ConversationsApi {
-  async listConversations(params?: ListConversationsParams): Promise<{ conversations: Conversation[] }> {
+  async listConversations(
+    params?: ListConversationsParams
+  ): Promise<{ conversations: Conversation[] }> {
     const q = new URLSearchParams();
-    if (params?.limit != null) q.set("limit", String(params.limit));
-    if (params?.offset != null) q.set("offset", String(params.offset));
+    if (params?.limit != null) q.set('limit', String(params.limit));
+    if (params?.offset != null) q.set('offset', String(params.offset));
     const query = q.toString();
     return apiClient.get<{ conversations: Conversation[] }>(
-      `/v1/conversations${query ? `?${query}` : ""}`
+      `/v1/conversations${query ? `?${query}` : ''}`
     );
   }
 
   async createConversation(body: CreateConversationRequest): Promise<Conversation> {
-    return apiClient.post<Conversation>("/v1/conversations", body);
+    return apiClient.post<Conversation>('/v1/conversations', body);
   }
 
   async getConversation(id: string): Promise<Conversation> {
     return apiClient.get<Conversation>(`/v1/conversations/${id}`);
+  }
+
+  async markConversationRead(conversationId: string): Promise<void> {
+    await apiClient.post(`/v1/conversations/${conversationId}/read`, {});
   }
 
   async listMessages(
@@ -88,21 +96,27 @@ class ConversationsApi {
     params?: ListMessagesParams
   ): Promise<{ messages: ConversationMessage[] }> {
     const q = new URLSearchParams();
-    if (params?.limit != null) q.set("limit", String(params.limit));
-    if (params?.offset != null) q.set("offset", String(params.offset));
+    if (params?.limit != null) q.set('limit', String(params.limit));
+    if (params?.offset != null) q.set('offset', String(params.offset));
     const query = q.toString();
     return apiClient.get<{ messages: ConversationMessage[] }>(
-      `/v1/conversations/${conversationId}/messages${query ? `?${query}` : ""}`
+      `/v1/conversations/${conversationId}/messages${query ? `?${query}` : ''}`
     );
   }
 
-  async createMessage(conversationId: string, body: CreateMessageRequest): Promise<ConversationMessage> {
-    return apiClient.post<ConversationMessage>(`/v1/conversations/${conversationId}/messages`, body);
+  async createMessage(
+    conversationId: string,
+    body: CreateMessageRequest
+  ): Promise<ConversationMessage> {
+    return apiClient.post<ConversationMessage>(
+      `/v1/conversations/${conversationId}/messages`,
+      body
+    );
   }
 
   async resolveConversation(conversationId: string, messageId?: string): Promise<Conversation> {
     return apiClient.post<Conversation>(`/v1/conversations/${conversationId}/resolve`, {
-      message_id: messageId || "",
+      message_id: messageId || '',
     });
   }
 

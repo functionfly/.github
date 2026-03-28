@@ -4,22 +4,22 @@
  * Displays user's published functions with search and filter capabilities.
  */
 
-import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
-import { Search, Filter, Package } from "lucide-react";
-import { formatNumber } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { FunctionCard } from '@/components/functions/FunctionCard';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { FunctionCard } from "@/components/functions/FunctionCard";
-import { tabContentVariants } from "../../animations";
-import type { UserProfile, FunctionFilters } from "@/types";
+} from '@/components/ui/select';
+import { formatNumber } from '@/lib/utils';
+import type { FunctionFilters, UserProfile } from '@/types';
+import { motion } from 'framer-motion';
+import { Filter, Package, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { tabContentVariants } from '../../animations';
 
 export interface FunctionsTabProps {
   profile: UserProfile;
@@ -27,8 +27,8 @@ export interface FunctionsTabProps {
 
 export function FunctionsTab({ profile }: FunctionsTabProps) {
   const [filters, setFilters] = useState<FunctionFilters>({
-    search: "",
-    sortBy: "popular",
+    search: '',
+    sortBy: 'popular',
   });
 
   const filteredFunctions = useMemo(() => {
@@ -37,22 +37,22 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       result = result.filter(
-        f =>
+        (f) =>
           f.name.toLowerCase().includes(searchLower) ||
           f.description.toLowerCase().includes(searchLower) ||
-          f.tags?.some(t => t.toLowerCase().includes(searchLower))
+          f.tags?.some((t) => t.toLowerCase().includes(searchLower))
       );
     }
 
     result.sort((a, b) => {
       switch (filters.sortBy) {
-        case "popular":
+        case 'popular':
           return (b.metrics.executionCount || 0) - (a.metrics.executionCount || 0);
-        case "recent":
+        case 'recent':
           return new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime();
-        case "name":
+        case 'name':
           return a.name.localeCompare(b.name);
-        case "rating":
+        case 'rating':
           return (b.rating?.average || 0) - (a.rating?.average || 0);
         default:
           return 0;
@@ -79,13 +79,15 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
               <Input
                 placeholder="Search functions..."
                 value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
                 className="pl-9"
               />
             </div>
             <Select
               value={filters.sortBy}
-              onValueChange={(value) => setFilters(prev => ({ ...prev, sortBy: value as FunctionFilters["sortBy"] }))}
+              onValueChange={(value) =>
+                setFilters((prev) => ({ ...prev, sortBy: value as FunctionFilters['sortBy'] }))
+              }
             >
               <SelectTrigger className="w-full sm:w-40">
                 <Filter className="w-4 h-4 mr-2" />
@@ -106,7 +108,9 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="border-border-subtle">
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-text-primary">{profile.publishedFunctions.length}</p>
+            <p className="text-2xl font-bold text-text-primary">
+              {profile.publishedFunctions.length}
+            </p>
             <p className="text-sm text-text-muted">Total Functions</p>
           </CardContent>
         </Card>
@@ -129,7 +133,10 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
         <Card className="border-border-subtle">
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-text-primary">
-              {(profile.publishedFunctions.reduce((sum, f) => sum + (f.rating?.average || 0), 0) / profile.publishedFunctions.length || 0).toFixed(1)}
+              {(
+                profile.publishedFunctions.reduce((sum, f) => sum + (f.rating?.average || 0), 0) /
+                  profile.publishedFunctions.length || 0
+              ).toFixed(1)}
             </p>
             <p className="text-sm text-text-muted">Avg Rating</p>
           </CardContent>
@@ -140,14 +147,7 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
       {filteredFunctions.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredFunctions.map((fn) => (
-            <FunctionCard
-              key={fn.id}
-              data={fn}
-              variant="compact"
-              onView={(id) => console.log("View", id)}
-              onExecute={(id) => console.log("Execute", id)}
-              onShare={(id) => console.log("Share", id)}
-            />
+            <FunctionCard key={fn.id} data={fn} variant="compact" />
           ))}
         </div>
       ) : (

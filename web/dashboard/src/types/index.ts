@@ -11,6 +11,7 @@ export interface User {
   role?: string; // Admin role for admin users
   createdAt: string;
   updatedAt?: string;
+  profileNumber?: number; // Sequential number assigned based on registration order (e.g., Member #123)
 }
 
 export interface Session {
@@ -30,6 +31,15 @@ export interface Session {
   };
 }
 
+/** Aggregates from the API (registry + follows), not limited by registry list pagination. */
+export interface PublicProfileStats {
+  functionsCount: number;
+  totalExecutions: number;
+  trustScore: number;
+  followersCount: number;
+  followingCount: number;
+}
+
 export interface PublicUserProfile {
   id: string;
   username: string;
@@ -45,7 +55,16 @@ export interface PublicUserProfile {
   linkedinUrl?: string;
   socialLinks?: Record<string, string>;
   createdAt: string;
+  /** When present, use for stat cards; functions list may still be paginated separately. */
+  stats?: PublicProfileStats;
   publishedFunctions: PublicRegistryFunction[];
+  // Online status fields from API
+  isOnline?: boolean;
+  lastActive?: string;
+  // Profile number for early adopter tracking (e.g., Member #123)
+  profileNumber?: number;
+  // Platform admin role (super_admin, admin, support) for badge display
+  role?: string;
 }
 
 export interface PublicRegistryFunction {
@@ -69,6 +88,8 @@ export interface App {
 
 export interface Backend {
   id: string;
+  /** Present on API responses (Go json: app_id) */
+  app_id?: string;
   provider: string;
   region: string;
   url: string;
@@ -399,6 +420,8 @@ export interface FunctionConfig {
   code: string;
   envVars: EnvironmentVariable[];
   tenantId: string;
+  /** When set, deploy must use a backend from this app (API enforced) */
+  appId?: string;
   createdAt: string;
   updatedAt: string;
   version: string;
@@ -447,8 +470,9 @@ export interface FunctionLog {
 
 export interface DeployFunctionRequest {
   functionId: string;
-  providers?: string[];
-  region?: string;
+  backendId: string;
+  version?: string;
+  environment?: 'dev' | 'staging' | 'prod';
 }
 
 export interface DeployFunctionResponse {
@@ -875,7 +899,8 @@ export type ActivityType =
   | 'followed'
   | 'follower_gained'
   | 'contribution'
-  | 'deployment';
+  | 'deployment'
+  | 'membership_upgraded';
 
 /** Activity feed item */
 export interface UserActivity {
@@ -962,6 +987,10 @@ export interface UserProfile {
   updatedAt?: string;
   isOnline: boolean;
   lastActive?: string;
+  // Profile number for early adopter tracking (e.g., Member #123)
+  profileNumber?: number;
+  // Platform admin role (super_admin, admin, support, etc.)
+  role?: string;
 
   // Extended info for About tab
   experience?: {

@@ -175,28 +175,57 @@ export const routingDecisionSchema = z.object({
   requestId: z.string().min(1),
 });
 
-// Function schemas
-export const environmentVariableSchema = z.object({
-  key: z
-    .string()
-    .regex(/^[A-Z_][A-Z0-9_]*$/, 'Environment variable key must be uppercase with underscores'),
-  value: z.string(),
-  isSecret: z.boolean(),
-});
+// Function schemas (API returns Go json tags: snake_case; dashboard requests use camelCase)
+const envKeyRegex = /^[A-Z_][A-Z0-9_]*$/;
+export const environmentVariableSchema = z
+  .object({
+    key: z
+      .string()
+      .regex(envKeyRegex, 'Environment variable key must be uppercase with underscores'),
+    value: z.string(),
+    isSecret: z.boolean().optional(),
+    is_secret: z.boolean().optional(),
+  })
+  .transform((e) => ({
+    key: e.key,
+    value: e.value,
+    isSecret: e.isSecret ?? e.is_secret ?? false,
+  }));
 
-export const functionConfigSchema = z.object({
-  id: idSchema,
-  name: z.string().min(1).max(100),
-  providers: z.array(z.string().min(1)),
-  region: z.string().min(1),
-  code: z.string().min(1),
-  envVars: z.array(environmentVariableSchema),
-  tenantId: idSchema,
-  createdAt: timestampSchema,
-  updatedAt: timestampSchema,
-  version: z.string().min(1),
-  status: z.enum(['draft', 'deploying', 'deployed', 'failed']),
-});
+export const functionConfigSchema = z
+  .object({
+    id: idSchema,
+    name: z.string().min(1).max(100),
+    providers: z.array(z.string().min(1)),
+    region: z.string().min(1),
+    code: z.string().min(1),
+    env_vars: z.array(environmentVariableSchema).optional(),
+    envVars: z.array(environmentVariableSchema).optional(),
+    tenant_id: idSchema.optional(),
+    tenantId: idSchema.optional(),
+    app_id: idSchema.optional(),
+    appId: idSchema.optional(),
+    created_at: timestampSchema.optional(),
+    createdAt: timestampSchema.optional(),
+    updated_at: timestampSchema.optional(),
+    updatedAt: timestampSchema.optional(),
+    version: z.string().min(1),
+    status: z.enum(['draft', 'deploying', 'deployed', 'failed']),
+  })
+  .transform((o) => ({
+    id: o.id,
+    name: o.name,
+    providers: o.providers,
+    region: o.region,
+    code: o.code,
+    envVars: o.env_vars ?? o.envVars ?? [],
+    tenantId: (o.tenant_id ?? o.tenantId)!,
+    appId: o.app_id ?? o.appId,
+    createdAt: (o.created_at ?? o.createdAt)!,
+    updatedAt: (o.updated_at ?? o.updatedAt)!,
+    version: o.version,
+    status: o.status,
+  }));
 
 export const createFunctionRequestSchema = z.object({
   name: z.string().min(1).max(100),
@@ -214,41 +243,82 @@ export const updateFunctionRequestSchema = z.object({
   envVars: z.array(environmentVariableSchema).optional(),
 });
 
-export const functionDeploymentSchema = z.object({
-  id: idSchema,
-  functionId: idSchema,
-  version: z.string().min(1),
-  status: z.enum(['pending', 'deploying', 'success', 'failed']),
-  provider: z.string().min(1),
-  region: z.string().min(1),
-  deployedUrl: urlSchema.optional(),
-  errorMessage: z.string().optional(),
-  createdAt: timestampSchema,
-  updatedAt: timestampSchema,
-});
+const optionalUrlOrNull = z.union([urlSchema, z.null()]).optional();
 
-export const functionLogSchema = z.object({
-  id: idSchema,
-  functionId: idSchema,
-  deploymentId: idSchema.optional(),
-  level: z.enum(['info', 'warn', 'error', 'debug']),
-  message: z.string(),
-  timestamp: timestampSchema,
-  source: z.string().min(1),
-  metadata: z.record(z.any()).optional(),
-});
+export const functionDeploymentSchema = z
+  .object({
+    id: idSchema,
+    function_id: idSchema.optional(),
+    functionId: idSchema.optional(),
+    version: z.string().min(1),
+    status: z.enum(['pending', 'deploying', 'success', 'failed']),
+    provider: z.string().min(1),
+    region: z.string().min(1),
+    deployed_url: optionalUrlOrNull,
+    deployedUrl: optionalUrlOrNull,
+    error_message: z.union([z.string(), z.null()]).optional(),
+    errorMessage: z.union([z.string(), z.null()]).optional(),
+    created_at: timestampSchema.optional(),
+    createdAt: timestampSchema.optional(),
+    updated_at: timestampSchema.optional(),
+    updatedAt: timestampSchema.optional(),
+  })
+  .transform((d) => ({
+    id: d.id,
+    functionId: (d.function_id ?? d.functionId)!,
+    version: d.version,
+    status: d.status,
+    provider: d.provider,
+    region: d.region,
+    deployedUrl: d.deployed_url ?? d.deployedUrl ?? undefined,
+    errorMessage: d.error_message ?? d.errorMessage ?? undefined,
+    createdAt: (d.created_at ?? d.createdAt)!,
+    updatedAt: (d.updated_at ?? d.updatedAt)!,
+  }));
+
+export const functionLogSchema = z
+  .object({
+    id: idSchema,
+    function_id: idSchema.optional(),
+    functionId: idSchema.optional(),
+    deployment_id: idSchema.optional(),
+    deploymentId: idSchema.optional(),
+    level: z.enum(['info', 'warn', 'error', 'debug']),
+    message: z.string(),
+    timestamp: timestampSchema,
+    source: z.string().min(1),
+    metadata: z.record(z.any()).nullable().optional(),
+  })
+  .transform((l) => ({
+    id: l.id,
+    functionId: (l.function_id ?? l.functionId)!,
+    deploymentId: l.deployment_id ?? l.deploymentId,
+    level: l.level,
+    message: l.message,
+    timestamp: l.timestamp,
+    source: l.source,
+    metadata: l.metadata ?? undefined,
+  }));
 
 export const deployFunctionRequestSchema = z.object({
   functionId: idSchema,
-  providers: z.array(z.string().min(1)).optional(),
-  region: z.string().min(1).optional(),
+  backendId: idSchema,
+  version: z.string().optional(),
+  environment: z.enum(['dev', 'staging', 'prod']).optional(),
 });
 
-export const deployFunctionResponseSchema = z.object({
-  deploymentId: idSchema,
-  status: z.string().min(1),
-  deployments: z.array(functionDeploymentSchema),
-});
+export const deployFunctionResponseSchema = z
+  .object({
+    deployment_id: idSchema.optional(),
+    deploymentId: idSchema.optional(),
+    status: z.string().min(1),
+    deployments: z.array(functionDeploymentSchema),
+  })
+  .transform((r) => ({
+    deploymentId: (r.deploymentId ?? r.deployment_id)!,
+    status: r.status,
+    deployments: r.deployments,
+  }));
 
 export const testFunctionRequestSchema = z.object({
   functionId: idSchema.optional(),
@@ -257,13 +327,22 @@ export const testFunctionRequestSchema = z.object({
   testInput: z.any().optional(),
 });
 
-export const testFunctionResponseSchema = z.object({
-  success: z.boolean(),
-  output: z.any().optional(),
-  error: z.string().optional(),
-  executionTimeMs: z.number().min(0),
-  logs: z.array(functionLogSchema),
-});
+export const testFunctionResponseSchema = z
+  .object({
+    success: z.boolean(),
+    output: z.any().optional(),
+    error: z.string().optional(),
+    executionTimeMs: z.number().min(0).optional(),
+    execution_time_ms: z.number().min(0).optional(),
+    logs: z.array(functionLogSchema),
+  })
+  .transform((r) => ({
+    success: r.success,
+    output: r.output,
+    error: r.error,
+    executionTimeMs: r.executionTimeMs ?? r.execution_time_ms ?? 0,
+    logs: r.logs,
+  }));
 
 // Admin schemas
 export const tenantSchema = z.object({

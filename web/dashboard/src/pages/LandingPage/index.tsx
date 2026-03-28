@@ -45,7 +45,7 @@ export function LandingPage() {
       if (!isOnboardingComplete && !hasSkippedOnboarding) {
         navigate('/onboarding', { replace: true });
       } else {
-        navigate('/dashboard', { replace: true });
+        navigate('/overview', { replace: true });
       }
     }
   }, [isAuthenticated, isOnboardingComplete, hasSkippedOnboarding, navigate]);

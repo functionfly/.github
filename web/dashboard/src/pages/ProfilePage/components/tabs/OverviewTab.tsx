@@ -4,18 +4,18 @@
  * Displays summary stats, featured functions, and key profile information.
  */
 
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Star, Activity } from "lucide-react";
-import { FunctionCard } from "@/components/functions/FunctionCard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { tabContentVariants } from "../../animations";
-import { ContributionGraph } from "../ContributionGraph";
-import { AchievementsSection } from "../AchievementsSection";
-import { TrustMetricsSection } from "../TrustMetricsSection";
-import { SkillsSection } from "../SkillsSection";
-import { ActivityTimeline } from "../ActivityTimeline";
-import type { UserProfile } from "@/types";
+import { FunctionCard } from '@/components/functions/FunctionCard';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { UserProfile } from '@/types';
+import { motion } from 'framer-motion';
+import { Activity, Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { tabContentVariants } from '../../animations';
+import { AchievementsSection } from '../AchievementsSection';
+import { ActivityTimeline } from '../ActivityTimeline';
+import { ContributionGraph } from '../ContributionGraph';
+import { SkillsSection } from '../SkillsSection';
+import { TrustMetricsSection } from '../TrustMetricsSection';
 
 export interface OverviewTabProps {
   profile: UserProfile;
@@ -23,7 +23,7 @@ export interface OverviewTabProps {
 
 export function OverviewTab({ profile }: OverviewTabProps) {
   const featuredFunctions = profile.publishedFunctions
-    .filter(f => f.isFeatured || f.metrics.executionCount > 1000)
+    .filter((f) => f.isFeatured || f.metrics.executionCount > 1000)
     .slice(0, 4);
 
   return (
@@ -48,12 +48,7 @@ export function OverviewTab({ profile }: OverviewTabProps) {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {featuredFunctions.map((fn) => (
-              <FunctionCard
-                key={fn.id}
-                data={fn}
-                variant="compact"
-                onView={(id) => console.log("View", id)}
-              />
+              <FunctionCard key={fn.id} data={fn} variant="compact" />
             ))}
           </div>
         </section>

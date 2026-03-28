@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { onCLS, onINP, onFCP, onLCP, onTTFB, Metric } from 'web-vitals';
+import { Metric, onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals';
 
 interface WebVitalsMetrics {
   CLS?: number;
@@ -16,7 +16,9 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
     // Cumulative Layout Shift (CLS)
     onCLS((metric: Metric) => {
       metrics.CLS = metric.value;
-      console.log('CLS:', metric);
+      if (import.meta.env.DEV) {
+        console.log('CLS:', metric);
+      }
       onMetrics?.(metrics);
 
       // Send to Google Analytics 4
@@ -25,7 +27,7 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
           event_category: 'Web Vitals',
           event_label: 'CLS',
           value: Math.round(metric.value * 1000),
-          custom_map: { metric_value: metric.value }
+          custom_map: { metric_value: metric.value },
         });
       }
     });
@@ -33,7 +35,9 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
     // Interaction to Next Paint (INP) - replaced FID
     onINP((metric: Metric) => {
       metrics.INP = metric.value;
-      console.log('INP:', metric);
+      if (import.meta.env.DEV) {
+        console.log('INP:', metric);
+      }
       onMetrics?.(metrics);
 
       // Send to Google Analytics 4
@@ -42,7 +46,7 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
           event_category: 'Web Vitals',
           event_label: 'INP',
           value: Math.round(metric.value),
-          custom_map: { metric_value: metric.value }
+          custom_map: { metric_value: metric.value },
         });
       }
     });
@@ -50,7 +54,9 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
     // First Contentful Paint (FCP)
     onFCP((metric: Metric) => {
       metrics.FCP = metric.value;
-      console.log('FCP:', metric);
+      if (import.meta.env.DEV) {
+        console.log('FCP:', metric);
+      }
       onMetrics?.(metrics);
 
       // Send to Google Analytics 4
@@ -59,7 +65,7 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
           event_category: 'Web Vitals',
           event_label: 'FCP',
           value: Math.round(metric.value),
-          custom_map: { metric_value: metric.value }
+          custom_map: { metric_value: metric.value },
         });
       }
     });
@@ -67,7 +73,9 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
     // Largest Contentful Paint (LCP)
     onLCP((metric: Metric) => {
       metrics.LCP = metric.value;
-      console.log('LCP:', metric);
+      if (import.meta.env.DEV) {
+        console.log('LCP:', metric);
+      }
       onMetrics?.(metrics);
 
       // Send to Google Analytics 4
@@ -76,7 +84,7 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
           event_category: 'Web Vitals',
           event_label: 'LCP',
           value: Math.round(metric.value),
-          custom_map: { metric_value: metric.value }
+          custom_map: { metric_value: metric.value },
         });
       }
     });
@@ -84,7 +92,9 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
     // Time to First Byte (TTFB)
     onTTFB((metric: Metric) => {
       metrics.TTFB = metric.value;
-      console.log('TTFB:', metric);
+      if (import.meta.env.DEV) {
+        console.log('TTFB:', metric);
+      }
       onMetrics?.(metrics);
 
       // Send to Google Analytics 4
@@ -93,7 +103,7 @@ export function useWebVitals(onMetrics?: (metrics: WebVitalsMetrics) => void) {
           event_category: 'Web Vitals',
           event_label: 'TTFB',
           value: Math.round(metric.value),
-          custom_map: { metric_value: metric.value }
+          custom_map: { metric_value: metric.value },
         });
       }
     });
@@ -106,22 +116,19 @@ export function reportWebVitalsToCustomAnalytics(metric: any) {
   fetch('/api/analytics/web-vitals', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(metric)
-  }).catch(error => {
+    body: JSON.stringify(metric),
+  }).catch((error) => {
     console.error('Failed to send web vitals to custom analytics:', error);
   });
 }
 
 /** Send aggregated Web Vitals to your analytics endpoint (e.g. in production). */
-export function reportWebVitalsBatch(
-  metrics: WebVitalsMetrics,
-  context?: { page?: string }
-) {
+export function reportWebVitalsBatch(metrics: WebVitalsMetrics, context?: { page?: string }) {
   const payload = { ...metrics, ...(context?.page && { page: context.page }) };
   fetch('/api/analytics/web-vitals', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   }).catch(() => {
     // Silently ignore (endpoint may not be implemented yet)
   });

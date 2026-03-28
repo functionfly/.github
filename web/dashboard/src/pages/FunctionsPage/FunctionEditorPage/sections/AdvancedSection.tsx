@@ -1,7 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { ChevronDown, ChevronUp, Settings2, Zap } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Settings2, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { InfoTip, SectionCard } from '../components/editor-ui';
 import type { BackoffStrategy } from '../types';
@@ -85,27 +85,40 @@ export function AdvancedSection({ editor }: Props) {
                 <InfoTip content="How the delay between retries grows." />
               </Label>
               <div className="grid grid-cols-3 gap-2">
-                {BACKOFF_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => {
-                      setRetryPolicy((r) => ({ ...r, backoffStrategy: opt.value }));
-                      markDirty();
-                    }}
-                    className={`flex flex-col gap-0.5 p-2.5 rounded-lg border text-left transition-all ${
-                      retryPolicy.backoffStrategy === opt.value
-                        ? 'border-indigo-500/50 bg-indigo-500/10'
-                        : 'border-border-subtle bg-bg-tertiary hover:border-border-default'
-                    }`}
-                    aria-pressed={retryPolicy.backoffStrategy === opt.value}
-                  >
-                    <span className="text-xs font-semibold text-text-primary">{opt.label}</span>
-                    <span className="text-[10px] text-text-muted leading-tight">
-                      {opt.description}
-                    </span>
-                  </button>
-                ))}
+                {BACKOFF_OPTIONS.map((opt) => {
+                  const selected = retryPolicy.backoffStrategy === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setRetryPolicy((r) => ({ ...r, backoffStrategy: opt.value }));
+                        markDirty();
+                      }}
+                      className={`relative flex flex-col gap-0.5 rounded-lg border-2 p-2.5 text-left transition-all duration-200 ${
+                        selected
+                          ? 'border-indigo-600 bg-indigo-50 shadow-sm dark:border-indigo-400/90 dark:bg-indigo-500/25 dark:shadow-[0_0_0_1px_rgba(129,140,248,0.35)]'
+                          : 'border-transparent bg-bg-tertiary hover:border-border-default hover:bg-bg-hover'
+                      }`}
+                      aria-pressed={selected}
+                    >
+                      {selected ? (
+                        <span
+                          className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm dark:bg-indigo-500"
+                          aria-hidden
+                        >
+                          <Check className="h-3 w-3" strokeWidth={2.5} />
+                        </span>
+                      ) : null}
+                      <span className="pr-6 text-xs font-semibold text-text-primary">
+                        {opt.label}
+                      </span>
+                      <span className="pr-6 text-[10px] leading-tight text-text-muted">
+                        {opt.description}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

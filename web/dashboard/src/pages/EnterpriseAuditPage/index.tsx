@@ -1,10 +1,9 @@
-import { FileText, Search, Filter, Download } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { PageLayout } from '@/components/layout/PageLayout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { usePlan } from '@/hooks/usePlan';
+import { Download, FileText, Filter, Mail, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 /**
@@ -24,12 +23,10 @@ export function EnterpriseAuditPage() {
             <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
               <FileText className="w-8 h-8 text-amber-400" />
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">
-              Enterprise Feature
-            </h2>
+            <h2 className="text-xl font-semibold text-white mb-2">Enterprise Feature</h2>
             <p className="text-text-secondary mb-6 max-w-md">
-              Audit logs are available exclusively for Enterprise plan customers.
-              Upgrade to access detailed audit trails and compliance reporting.
+              Audit logs are available exclusively for Enterprise plan customers. Upgrade to access
+              detailed audit trails and compliance reporting.
             </p>
             <Button
               onClick={() => navigate('/pricing')}
@@ -56,10 +53,7 @@ export function EnterpriseAuditPage() {
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                <Input
-                  placeholder="Search audit logs..."
-                  className="pl-10"
-                />
+                <Input placeholder="Search audit logs..." className="pl-10" />
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="gap-2">
@@ -103,51 +97,52 @@ export function EnterpriseAuditPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-white/5">
-                    <td className="py-3 px-4 text-sm text-text-secondary">
-                      2024-03-01 14:32:00
-                    </td>
-                    <td className="py-3 px-4 text-sm text-white">
-                      admin@example.com
-                    </td>
-                    <td className="py-3 px-4 text-sm text-white">
-                      function.deploy
-                    </td>
-                    <td className="py-3 px-4 text-sm text-text-secondary">
-                      my-function
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400">
-                        Success
-                      </span>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-white/5">
-                    <td className="py-3 px-4 text-sm text-text-secondary">
-                      2024-03-01 14:30:00
-                    </td>
-                    <td className="py-3 px-4 text-sm text-white">
-                      user@example.com
-                    </td>
-                    <td className="py-3 px-4 text-sm text-white">
-                      api_key.create
-                    </td>
-                    <td className="py-3 px-4 text-sm text-text-secondary">
-                      production-key
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400">
-                        Success
-                      </span>
-                    </td>
-                  </tr>
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-text-secondary">
-                      <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p>Audit log integration coming soon</p>
-                      <p className="text-sm text-text-muted">
-                        Connect your audit log provider to view detailed activity
-                      </p>
+                    <td colSpan={5} className="py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
+                          <FileText className="w-8 h-8 text-amber-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-white mb-2">
+                          Audit Logs Coming Soon
+                        </h3>
+                        <p className="text-text-secondary max-w-md mb-4">
+                          Comprehensive audit logging for compliance and security monitoring is
+                          currently under development. This feature will provide:
+                        </p>
+                        <ul className="text-left text-sm text-text-muted space-y-2 mb-6 max-w-md">
+                          <li className="flex items-start gap-2">
+                            <span className="text-green-400 mt-0.5">✓</span>
+                            <span>Complete activity trail for all workspace actions</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-green-400 mt-0.5">✓</span>
+                            <span>Exportable logs for compliance reporting</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-green-400 mt-0.5">✓</span>
+                            <span>Integration with SIEM tools</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-green-400 mt-0.5">✓</span>
+                            <span>Real-time alerts for security events</span>
+                          </li>
+                        </ul>
+                        <p className="text-sm text-text-muted mb-4">
+                          For immediate security needs, please contact our support team.
+                        </p>
+                        <Button
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() =>
+                            (window.location.href =
+                              'mailto:support@functionfly.com?subject=Enterprise%20Audit%20Log%20Inquiry')
+                          }
+                        >
+                          <Mail className="w-4 h-4" />
+                          Contact Support
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>

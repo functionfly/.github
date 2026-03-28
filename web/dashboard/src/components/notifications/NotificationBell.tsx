@@ -5,27 +5,31 @@
  * and opens a Sheet/drawer with the NotificationCenter on click.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Bell } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import CountUp from 'react-countup';
+import { notificationsApi } from '@/api/notifications';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SheetClose,
 } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { NotificationCenter } from './NotificationCenter';
-import { useNotificationStore } from '@/stores/notificationStore';
 import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
+import {
+  unreadPartialFromServerCount,
+  unreadStoreKeyFromEventCategory,
+} from '@/lib/notification-unread-sync';
 import { useAuthStore } from '@/stores/authStore';
-import { notificationsApi } from '@/api/notifications';
+import { useNotificationStore } from '@/stores/notificationStore';
 import type { Notification } from '@/types/notifications';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Bell } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import CountUp from 'react-countup';
+import { useNavigate } from 'react-router-dom';
+import { NotificationCenter } from './NotificationCenter';
 
 // ============================================================================
 // Types & Interfaces
@@ -110,7 +114,9 @@ export function NotificationBell({
   const unreadCount = useNotificationStore((state) => state.unreadCounts.all);
   const updateUnreadCount = useNotificationStore((state) => state.updateUnreadCount);
   const updateUnreadCounts = useNotificationStore((state) => state.updateUnreadCounts);
-  const setNotificationCenterOpen = useNotificationStore((state) => state.setNotificationCenterOpen);
+  const setNotificationCenterOpen = useNotificationStore(
+    (state) => state.setNotificationCenterOpen
+  );
 
   // Uncontrolled Sheet: no open/onOpenChange so Radix manages state and we avoid update loops
   const sheetCloseRef = useRef<HTMLButtonElement>(null);
@@ -124,40 +130,45 @@ export function NotificationBell({
     setNotificationCenterOpen(false);
   }, [setNotificationCenterOpen]);
 
-  // Fetch initial unread count (only when authenticated and we have a token)
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (!user?.id) return;
-      const token = typeof localStorage !== 'undefined' ? localStorage.getItem('ff-access-token') : null;
-      if (!token) return;
+  const refreshUnreadCounts = useCallback(async () => {
+    if (!user?.id) return;
+    const token =
+      typeof localStorage !== 'undefined' ? localStorage.getItem('ff-access-token') : null;
+    if (!token) return;
 
-      try {
-        const counts = await notificationsApi.fetchUnreadCounts();
-        const byCategory = counts?.byCategory || {};
-        updateUnreadCounts({
-          all: counts?.total || 0,
-          trust: byCategory.trust || 0,
-          revenue: byCategory.revenue || 0,
-          issues: byCategory.issues || 0,
-          messages: byCategory.messages || 0,
-          security: byCategory.security || 0,
-        });
-      } catch (error) {
-        console.error('Failed to fetch unread count:', error);
-      }
-    };
-
-    fetchUnreadCount();
+    try {
+      const counts = await notificationsApi.fetchUnreadCounts();
+      updateUnreadCounts(unreadPartialFromServerCount(counts));
+    } catch (error) {
+      console.error('Failed to fetch unread count:', error);
+    }
   }, [user?.id, updateUnreadCounts]);
+
+  useEffect(() => {
+    void refreshUnreadCounts();
+  }, [refreshUnreadCounts]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshUnreadCounts();
+    };
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [refreshUnreadCounts]);
 
   // Real-time notification handling (stable callback to avoid hook dependency churn)
   const onNewNotification = useCallback(
     (notification: Notification) => {
-      const currentCount = useNotificationStore.getState().unreadCounts.all;
-      updateUnreadCount('all', currentCount + 1);
-      if (notification.category !== 'all') {
-        const categoryCount = useNotificationStore.getState().unreadCounts[notification.category];
-        updateUnreadCount(notification.category, categoryCount + 1);
+      const state = useNotificationStore.getState();
+      updateUnreadCount('all', state.unreadCounts.all + 1);
+      const slice = unreadStoreKeyFromEventCategory(notification.category);
+      if (slice) {
+        const prev = state.unreadCounts[slice] ?? 0;
+        updateUnreadCount(slice, prev + 1);
       }
       setHasNewNotification(true);
       setTimeout(() => setHasNewNotification(false), 3000);
@@ -203,10 +214,14 @@ export function NotificationBell({
           aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
         >
           <motion.div
-            animate={hasNewNotification ? {
-              rotate: [0, -15, 15, -15, 15, 0],
-              scale: [1, 1.1, 1],
-            } : {}}
+            animate={
+              hasNewNotification
+                ? {
+                    rotate: [0, -15, 15, -15, 15, 0],
+                    scale: [1, 1.1, 1],
+                  }
+                : {}
+            }
             transition={{ duration: 0.5 }}
           >
             <Bell className={iconSize} />

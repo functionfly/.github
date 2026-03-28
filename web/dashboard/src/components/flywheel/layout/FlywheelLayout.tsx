@@ -18,39 +18,39 @@ export function FlywheelLayout({ className }: FlywheelLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className={cn('flywheel-layout min-h-screen bg-bg-primary', className)}>
-      {/* Top Bar */}
-      <FlywheelTopBar
-        onMenuClick={() => setIsMobileMenuOpen(true)}
-        isMobileMenuOpen={isMobileMenuOpen}
-      />
-
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
-        <FlywheelSidebar />
-      </div>
-
-      {/* Mobile Navigation */}
-      <div className="lg:hidden">
-        <FlywheelMobileNav
-          isOpen={isMobileMenuOpen}
-          onOpenChange={setIsMobileMenuOpen}
+    <SupportChatProvider>
+      <div className={cn('flywheel-layout min-h-screen bg-bg-primary', className)}>
+        {/* Top Bar */}
+        <FlywheelTopBar
+          onMenuClick={() => setIsMobileMenuOpen(true)}
+          isMobileMenuOpen={isMobileMenuOpen}
         />
-      </div>
 
-      {/* Main Content */}
-      <main className="pt-16 lg:pl-64">
-        <div className="min-h-[calc(100vh-4rem)]">
-          <Outlet />
+        {/* Desktop Sidebar */}
+        <div className="hidden lg:block">
+          <FlywheelSidebar />
         </div>
-      </main>
 
-      {/* Unified AI + support chat (same as dashboard) */}
-      <SupportChatProvider>
+        {/* Mobile Navigation */}
+        <div className="lg:hidden">
+          <FlywheelMobileNav
+            isOpen={isMobileMenuOpen}
+            onOpenChange={setIsMobileMenuOpen}
+          />
+        </div>
+
+        {/* Main Content */}
+        <main className="pt-16 lg:pl-64">
+          <div className="min-h-[calc(100vh-4rem)]">
+            <Outlet />
+          </div>
+        </main>
+
+        {/* Unified AI + support chat (same as dashboard) */}
         <SupportBubble />
         <UnifiedChatWindow />
-      </SupportChatProvider>
-    </div>
+      </div>
+    </SupportChatProvider>
   );
 }
 

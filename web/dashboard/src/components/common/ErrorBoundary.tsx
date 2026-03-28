@@ -19,6 +19,23 @@ interface State {
   errorInfo: React.ErrorInfo | null;
 }
 
+/** Capture error to Sentry if available */
+async function captureErrorToSentry(error: Error, errorInfo: React.ErrorInfo) {
+  if (typeof window === 'undefined') return;
+  try {
+    const Sentry = await import('@sentry/react');
+    Sentry.captureException(error, {
+      contexts: {
+        react: {
+          componentStack: errorInfo.componentStack,
+        },
+      },
+    });
+  } catch {
+    // Sentry not available or failed to load
+  }
+}
+
 export class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -30,17 +47,23 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log error to an error reporting service
-    console.error('Error caught by boundary:', error);
-    console.error('Component stack:', errorInfo.componentStack);
+    // Log error to console in development
+    if (import.meta.env.DEV) {
+      console.error('Error caught by boundary:', error);
+      console.error('Component stack:', errorInfo.componentStack);
+    }
 
     this.setState({
       error,
       errorInfo,
     });
 
-    if (import.meta.env.PROD && this.props.onError) {
-      this.props.onError(error, errorInfo);
+    // Capture to Sentry in production
+    if (import.meta.env.PROD) {
+      captureErrorToSentry(error, errorInfo);
+      if (this.props.onError) {
+        this.props.onError(error, errorInfo);
+      }
     }
   }
 

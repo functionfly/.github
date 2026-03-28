@@ -18,17 +18,16 @@ export function SectionCard({
 }) {
   return (
     <Card
-      className="card overflow-hidden"
+      className="card overflow-hidden border-border-subtle/50"
       style={{
         background: 'var(--bg-secondary, #12121a)',
-        border: '1px solid rgba(255,255,255,0.08)',
       }}
     >
       <CardHeader className="pb-3 pt-4 px-5">
         <div className="flex items-center gap-3">
           {step !== undefined && (
             <div
-              className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+              className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm"
               style={{
                 background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
                 color: '#fff',
@@ -40,7 +39,9 @@ export function SectionCard({
           <span className="text-indigo-400 flex-shrink-0">{icon}</span>
           <div className="min-w-0">
             <CardTitle className="text-sm font-semibold text-text-primary">{title}</CardTitle>
-            {description && <p className="text-xs text-text-muted mt-0.5">{description}</p>}
+            {description && (
+              <p className="text-xs text-text-muted mt-0.5 leading-relaxed">{description}</p>
+            )}
           </div>
         </div>
       </CardHeader>

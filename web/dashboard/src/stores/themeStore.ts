@@ -79,10 +79,12 @@ export const useThemeStore = create<ThemeState>()(
       resolvedTheme: getResolvedTheme(getInitialTheme()),
       setTheme: (theme: Theme) => {
         const resolved = getResolvedTheme(theme);
-        console.log('Setting theme:', theme, 'resolved:', resolved);
+        if (import.meta.env.DEV) {
+          console.log('Setting theme:', theme, 'resolved:', resolved);
+        }
         set({
           theme,
-          resolvedTheme: resolved
+          resolvedTheme: resolved,
         });
         // Update the data-theme attribute
         if (typeof window !== 'undefined') {
@@ -103,7 +105,7 @@ export const useThemeStore = create<ThemeState>()(
         const nextTheme = current === 'dark' ? 'light' : 'dark';
         set({
           theme: nextTheme,
-          resolvedTheme: nextTheme
+          resolvedTheme: nextTheme,
         });
         // Update the data-theme attribute and apply styles
         if (typeof window !== 'undefined') {
@@ -129,7 +131,7 @@ export const useThemeStore = create<ThemeState>()(
             const currentState = useThemeStore.getState();
             if (currentState.theme === 'system') {
               useThemeStore.setState({
-                resolvedTheme: getSystemTheme()
+                resolvedTheme: getSystemTheme(),
               });
               // Update the data-theme attribute
               document.documentElement.setAttribute('data-theme', getSystemTheme());

@@ -3,7 +3,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useSignupForm } from '@/hooks/useAuthForms';
+import { useSignupConfig } from '@/hooks/useSignupConfig';
 import { getMarketingPageUrl } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
@@ -233,19 +235,23 @@ function Step2Profile({
   );
 }
 
-// Step 3: Company & Invite (Optional)
+// Step 3: Company & Invite
 function Step3Optional({
   errors,
   register,
+  inviteRequired,
 }: {
   errors: Record<string, { message?: string }>;
   register: (name: string) => Record<string, unknown>;
+  inviteRequired: boolean;
 }) {
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-center">Almost done!</h3>
       <p className="text-sm text-text-muted text-center mb-4">
-        Add optional details or skip this step
+        {inviteRequired
+          ? 'Add your invite code and optional company name'
+          : 'Add optional details or skip this step'}
       </p>
 
       <div className="space-y-2">
@@ -260,14 +266,31 @@ function Step3Optional({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="inviteCode" className="flex items-center gap-2 text-text-secondary">
+        <Label
+          htmlFor="inviteCode"
+          className={cn(
+            'flex items-center gap-2',
+            inviteRequired ? 'text-text-primary' : 'text-text-secondary'
+          )}
+        >
           <Key className="w-4 h-4" />
-          Invite Code <span className="text-text-muted text-xs">(optional)</span>
+          Invite code
+          {inviteRequired ? (
+            <span className="text-error">*</span>
+          ) : (
+            <span className="text-text-muted text-xs">(optional)</span>
+          )}
         </Label>
+        {inviteRequired && (
+          <p className="text-xs text-text-muted">
+            Private beta — enter the code you received from the team.
+          </p>
+        )}
         <Input
           id="inviteCode"
           type="text"
           placeholder="Enter your invite code"
+          autoComplete="off"
           {...register('inviteCode')}
         />
         {errors.inviteCode && <div className="text-xs text-error">{errors.inviteCode.message}</div>}
@@ -310,6 +333,21 @@ function Step3Optional({
 
 // Main SignupWizard component
 export function SignupWizard() {
+  const { data, isLoading: configLoading, isError } = useSignupConfig();
+  const inviteRequired = !isError && data?.inviteRequired === true;
+
+  if (configLoading) {
+    return (
+      <div className="min-h-screen bg-bg-primary flex flex-col items-center justify-center">
+        <LoadingSpinner text="Loading…" />
+      </div>
+    );
+  }
+
+  return <SignupWizardInner inviteRequired={inviteRequired} />;
+}
+
+function SignupWizardInner({ inviteRequired }: { inviteRequired: boolean }) {
   const navigate = useNavigate();
   const { signup, isLoading, error, clearError } = useAuthStore();
   const [currentStep, setCurrentStep] = useState(1);
@@ -322,7 +360,7 @@ export function SignupWizard() {
     watch,
     formState: { errors, isValid },
     trigger,
-  } = useSignupForm();
+  } = useSignupForm(inviteRequired);
 
   const handleNext = async () => {
     let fieldsToValidate: string[] = [];
@@ -413,7 +451,13 @@ export function SignupWizard() {
                   />
                 )}
                 {currentStep === 2 && <Step2Profile errors={errors} register={register} />}
-                {currentStep === 3 && <Step3Optional errors={errors} register={register} />}
+                {currentStep === 3 && (
+                  <Step3Optional
+                    errors={errors}
+                    register={register}
+                    inviteRequired={inviteRequired}
+                  />
+                )}
               </motion.div>
             </AnimatePresence>
 

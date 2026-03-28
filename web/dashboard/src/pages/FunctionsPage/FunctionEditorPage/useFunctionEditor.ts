@@ -1,4 +1,5 @@
 import { functionsApi } from '@/api';
+import { fetchDeployBackendOptions } from '@/api/apps';
 import { apiClient } from '@/api/client';
 import { providersApi } from '@/api/providers';
 import { vaultApi } from '@/api/vault';
@@ -6,7 +7,7 @@ import { useVaultSecrets } from '@/hooks/useVault';
 import type { DeployFunctionRequest, TestFunctionRequest } from '@/types';
 import type { SecretMetadata } from '@/types/vault';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { CODE_TEMPLATES, DRAFT_KEY, RUNTIME_VERSIONS } from './constants';
@@ -39,6 +40,12 @@ export function useFunctionEditor() {
 
   const { data: vaultSecrets } = useVaultSecrets();
 
+  const { data: deployBackendOptions = [], isLoading: deployBackendsLoading } = useQuery({
+    queryKey: ['deploy-backend-options'],
+    queryFn: fetchDeployBackendOptions,
+    staleTime: 60_000,
+  });
+
   const [functionName, setFunctionName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
@@ -51,6 +58,15 @@ export function useFunctionEditor() {
 
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   const [selectedRegion, setSelectedRegion] = useState('');
+
+  /** When set, deploy backends are limited to this app (matches API function.app_id) */
+  const [linkedAppId, setLinkedAppId] = useState<string | null>(null);
+  const [selectedDeployBackendId, setSelectedDeployBackendId] = useState('');
+
+  const filteredDeployBackends = useMemo(() => {
+    if (!linkedAppId) return deployBackendOptions;
+    return deployBackendOptions.filter((b) => b.appId === linkedAppId);
+  }, [deployBackendOptions, linkedAppId]);
 
   const [envVars, setEnvVars] = useState<EnvironmentVariable[]>([]);
   const [newEnvKey, setNewEnvKey] = useState('');
@@ -252,6 +268,17 @@ export function useFunctionEditor() {
   }, [selectedProviders, providers, selectedRegion]);
 
   useEffect(() => {
+    if (filteredDeployBackends.length === 0) {
+      setSelectedDeployBackendId('');
+      return;
+    }
+    const ok = filteredDeployBackends.some((b) => b.id === selectedDeployBackendId);
+    if (!selectedDeployBackendId || !ok) {
+      setSelectedDeployBackendId(filteredDeployBackends[0].id);
+    }
+  }, [filteredDeployBackends, selectedDeployBackendId]);
+
+  useEffect(() => {
     if (!isEditing || !id) return;
     const load = async () => {
       try {
@@ -259,6 +286,7 @@ export function useFunctionEditor() {
         const fn = await functionsApi.get(id);
         setFunctionName(fn.name);
         setSlug(slugify(fn.name));
+        setLinkedAppId(fn.appId ?? null);
         setSelectedProviders(fn.providers);
         setSelectedRegion(fn.region);
         setCode(fn.code);
@@ -429,6 +457,15 @@ export function useFunctionEditor() {
     setRevealEnvVarId(null);
   }, []);
 
+  const setDeployBackendId = useCallback((v: string) => {
+    setSelectedDeployBackendId(v);
+    setErrors((e) => {
+      const next = { ...e };
+      delete next.deployBackend;
+      return next;
+    });
+  }, []);
+
   const validate = useCallback((): boolean => {
     const errs: Record<string, string> = {};
     if (!functionName.trim()) errs.name = 'Function name is required';
@@ -438,9 +475,25 @@ export function useFunctionEditor() {
     if (!code.trim()) errs.code = 'Code is required';
     if (httpTrigger.enabled && !httpTrigger.path.startsWith('/'))
       errs.httpPath = 'Path must start with /';
+    if (isEditing) {
+      if (!deployBackendsLoading && filteredDeployBackends.length === 0) {
+        errs.deployBackend = 'Add a backend under Apps before deploying.';
+      } else if (filteredDeployBackends.length > 0 && !selectedDeployBackendId) {
+        errs.deployBackend = 'Select a deploy backend.';
+      }
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
-  }, [functionName, slug, code, httpTrigger]);
+  }, [
+    functionName,
+    slug,
+    code,
+    httpTrigger,
+    isEditing,
+    deployBackendsLoading,
+    filteredDeployBackends,
+    selectedDeployBackendId,
+  ]);
 
   const handleSaveDraft = useCallback(async () => {
     if (!functionName.trim()) {
@@ -515,8 +568,7 @@ export function useFunctionEditor() {
       }
       const deployPayload: DeployFunctionRequest = {
         functionId: functionId!,
-        providers: selectedProviders,
-        region: selectedRegion,
+        backendId: selectedDeployBackendId,
       };
       const result = await functionsApi.deploy(deployPayload);
       setCurrentDeploymentId(result.deploymentId);
@@ -539,6 +591,7 @@ export function useFunctionEditor() {
     selectedRegion,
     code,
     envVars,
+    selectedDeployBackendId,
     navigate,
     addLog,
   ]);
@@ -666,6 +719,11 @@ export function useFunctionEditor() {
     handleSaveDraft,
     handleDeploy,
     handleTest,
+    linkedAppId,
+    deployBackendsLoading,
+    filteredDeployBackends,
+    selectedDeployBackendId,
+    setDeployBackendId,
   };
 }
 

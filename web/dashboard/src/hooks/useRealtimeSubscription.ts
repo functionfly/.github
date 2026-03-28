@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import axios from 'axios';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { API_BASE_URL } from '../lib/constants';
 import { useAuthStore } from '../stores/authStore';
 import { RealtimeEvent } from './types';
-import { API_BASE_URL } from '../lib/constants';
-import axios from 'axios';
 
 // WebSocket connection state
 interface WebSocketConnection {
@@ -109,17 +109,21 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
       const channel = channelNameRef.current;
 
       ws.onopen = () => {
-        console.log('WebSocket connected to', wsUrl);
+        if (import.meta.env.DEV) {
+          console.log('WebSocket connected to', wsUrl);
+        }
         connectionRef.current.isConnected = true;
         connectionRef.current.reconnectAttempts = 0;
 
         // Start ping interval to keep connection alive
         startPingInterval();
 
-        ws.send(JSON.stringify({
-          type: 'subscribe',
-          channel,
-        }));
+        ws.send(
+          JSON.stringify({
+            type: 'subscribe',
+            channel,
+          })
+        );
 
         setIsConnected(true);
         setError(null);
@@ -128,23 +132,38 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
       ws.onmessage = handleMessage;
 
       ws.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
+        if (import.meta.env.DEV) {
+          console.log('WebSocket disconnected:', event.code, event.reason);
+        }
         connectionRef.current.isConnected = false;
         connectionRef.current.ws = null;
         setIsConnected(false);
 
         // Don't retry on authentication failures (close codes that indicate auth issues)
-        const isAuthFailure = event.code === 1008 || event.code === 1011 || event.reason?.includes('Authentication');
-        const shouldRetry = !isAuthFailure && !event.wasClean && connectionRef.current.reconnectAttempts < connectionRef.current.maxReconnectAttempts;
+        const isAuthFailure =
+          event.code === 1008 || event.code === 1011 || event.reason?.includes('Authentication');
+        const shouldRetry =
+          !isAuthFailure &&
+          !event.wasClean &&
+          connectionRef.current.reconnectAttempts < connectionRef.current.maxReconnectAttempts;
 
         if (shouldRetry) {
           connectionRef.current.reconnectAttempts++;
-          const delay = connectionRef.current.reconnectDelay * Math.pow(2, connectionRef.current.reconnectAttempts - 1);
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${connectionRef.current.reconnectAttempts}/${connectionRef.current.maxReconnectAttempts})`);
+          const delay =
+            connectionRef.current.reconnectDelay *
+            Math.pow(2, connectionRef.current.reconnectAttempts - 1);
+          if (import.meta.env.DEV) {
+            console.log(
+              `Attempting to reconnect in ${delay}ms (attempt ${connectionRef.current.reconnectAttempts}/${connectionRef.current.maxReconnectAttempts})`
+            );
+          }
           reconnectTimeoutRef.current = setTimeout(() => {
             connect();
           }, delay);
-        } else if (connectionRef.current.reconnectAttempts >= connectionRef.current.maxReconnectAttempts && !errorSetForAttemptRef.current) {
+        } else if (
+          connectionRef.current.reconnectAttempts >= connectionRef.current.maxReconnectAttempts &&
+          !errorSetForAttemptRef.current
+        ) {
           errorSetForAttemptRef.current = true;
           setError('Failed to reconnect after maximum attempts');
         } else if (isAuthFailure) {
@@ -223,30 +242,45 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
   }, [stopPingInterval]);
 
   // Send message to channel
-  const sendMessage = useCallback((event: string, payload: any) => {
-    if (connectionRef.current.ws?.readyState === WebSocket.OPEN) {
-      connectionRef.current.ws.send(JSON.stringify({
-        type: 'broadcast',
-        event,
-        payload,
-        channel: channelName,
-      }));
-    } else {
-      console.warn('WebSocket not connected, cannot send message');
-    }
-  }, [channelName]);
+  const sendMessage = useCallback(
+    (event: string, payload: any) => {
+      if (connectionRef.current.ws?.readyState === WebSocket.OPEN) {
+        connectionRef.current.ws.send(
+          JSON.stringify({
+            type: 'broadcast',
+            event,
+            payload,
+            channel: channelName,
+          })
+        );
+      } else {
+        console.warn('WebSocket not connected, cannot send message');
+      }
+    },
+    [channelName]
+  );
 
   // Effect to manage WebSocket connection
   useEffect(() => {
     const checkAuthAndConnect = async () => {
       const token = localStorage.getItem('ff-access-token');
-      console.log('WebSocket auth check:', { userId: user?.id, userEmail: user?.email, hasToken: !!token });
+      if (import.meta.env.DEV) {
+        console.log('WebSocket auth check:', {
+          userId: user?.id,
+          userEmail: user?.email,
+          hasToken: !!token,
+        });
+      }
 
       // First check basic auth state
       if (!user?.id || !user?.email || !token) {
-        console.log('Skipping WebSocket connection - missing auth data');
+        if (import.meta.env.DEV) {
+          console.log('Skipping WebSocket connection - missing auth data');
+        }
         if (token) {
-          console.log('Clearing invalid token');
+          if (import.meta.env.DEV) {
+            console.log('Clearing invalid token');
+          }
           localStorage.removeItem('ff-access-token');
         }
         disconnect();
@@ -256,16 +290,20 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
       // Validate session with server
       try {
         const response = await axios.get('/api/v1/auth/validate', {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (response.status === 200) {
-          console.log('Session valid, attempting WebSocket connection');
+          if (import.meta.env.DEV) {
+            console.log('Session valid, attempting WebSocket connection');
+          }
           connect();
         } else {
           throw new Error('Session invalid');
         }
       } catch (error) {
-        console.log('Session validation failed, clearing auth state');
+        if (import.meta.env.DEV) {
+          console.log('Session validation failed, clearing auth state');
+        }
         localStorage.removeItem('ff-access-token');
         disconnect();
       }
@@ -282,15 +320,19 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
   useEffect(() => {
     if (connectionRef.current.ws?.readyState === WebSocket.OPEN) {
       // Unsubscribe from old channel and subscribe to new one
-      connectionRef.current.ws.send(JSON.stringify({
-        type: 'unsubscribe',
-        channel: channelName,
-      }));
+      connectionRef.current.ws.send(
+        JSON.stringify({
+          type: 'unsubscribe',
+          channel: channelName,
+        })
+      );
 
-      connectionRef.current.ws.send(JSON.stringify({
-        type: 'subscribe',
-        channel: channelName,
-      }));
+      connectionRef.current.ws.send(
+        JSON.stringify({
+          type: 'subscribe',
+          channel: channelName,
+        })
+      );
     }
   }, [channelName]);
 

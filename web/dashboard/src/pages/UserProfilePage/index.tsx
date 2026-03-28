@@ -1,7 +1,9 @@
 import { usersApi } from '@/api/users';
 import { Navbar } from '@/components/common/Navbar';
 import { FollowStats, FollowUserButton } from '@/components/follow';
+import { ReportProfileDialog } from '@/components/profile/ReportProfileDialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserNotFoundView } from '@/components/ui/UserNotFoundView';
 import { useUserFollowStatus } from '@/hooks/useFollow';
@@ -9,7 +11,8 @@ import { useAuthStore } from '@/stores/authStore';
 import type { PublicUserProfile } from '@/types';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Calendar, ExternalLink, Package, User } from 'lucide-react';
+import { Calendar, ExternalLink, Flag, Package, User } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 function ProfileSkeleton() {
@@ -80,6 +83,7 @@ function FunctionCard({ fn }: { fn: PublicUserProfile['publishedFunctions'][0] }
 export function UserProfilePage() {
   const { username } = useParams<{ username: string }>();
   const currentUser = useAuthStore((state) => state.user);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const {
     data: profile,
@@ -155,8 +159,23 @@ export function UserProfilePage() {
                     </h1>
                     <p className="text-brand-400 font-medium">@{profile.username}</p>
                   </div>
-                  {/* Follow Button - only show if not viewing own profile */}
-                  {!isOwnProfile && currentUser && <FollowUserButton username={profile.username} />}
+                  <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+                    {!isOwnProfile && currentUser && (
+                      <>
+                        <FollowUserButton username={profile.username} />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-500/30 hover:bg-red-500/10"
+                          onClick={() => setReportOpen(true)}
+                        >
+                          <Flag className="w-4 h-4 mr-1.5" />
+                          Report
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 {profile.bio && <p className="text-text-secondary mt-2 text-sm">{profile.bio}</p>}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-text-muted">
@@ -201,6 +220,15 @@ export function UserProfilePage() {
                 </div>
               )}
             </section>
+
+            {!isOwnProfile && currentUser && (
+              <ReportProfileDialog
+                open={reportOpen}
+                onOpenChange={setReportOpen}
+                username={profile.username}
+                displayName={profile.name || profile.username}
+              />
+            )}
           </motion.div>
         )}
       </main>

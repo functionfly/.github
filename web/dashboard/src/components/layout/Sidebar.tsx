@@ -3,10 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { useNavigationStatus } from '@/hooks/useNavigationStatus';
+import { usePlan } from '@/hooks/usePlan';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { ROUTES } from '@/lib/constants';
 import { hasFeature as planHasFeature } from '@/lib/plan-utils';
-import { usePlan } from '@/hooks/usePlan';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
@@ -27,7 +27,6 @@ import {
   KeyRound,
   LayoutDashboard,
   LogOut,
-  Package,
   PieChart,
   Puzzle,
   Search,
@@ -58,7 +57,7 @@ const navigationSections: NavSection[] = [
   {
     title: 'Overview',
     items: [
-      { path: ROUTES.DASHBOARD, label: 'Function Marketplace', icon: Code },
+      { path: ROUTES.DASHBOARD, label: 'Discover', icon: Code },
       { path: ROUTES.OVERVIEW, label: 'Overview', icon: LayoutDashboard },
       { path: '/status', label: 'Status', icon: Activity },
       { path: '/notifications', label: 'Notifications', icon: Bell },
@@ -79,7 +78,6 @@ const navigationSections: NavSection[] = [
     items: [
       { path: ROUTES.FUNCTIONS, label: 'Functions', icon: FunctionSquare },
       { path: ROUTES.APPS, label: 'Apps', icon: Building2 },
-      { path: ROUTES.REGISTRY, label: 'Registry', icon: Package },
       { path: ROUTES.PROVIDERS, label: 'Providers', icon: Cloud },
       { path: ROUTES.TEAMS, label: 'Teams', icon: Users },
       { path: ROUTES.STATE_FABRIC, label: 'State Fabric', icon: Database },
@@ -273,8 +271,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={cn(
-          'dashboard-sidebar fixed left-0 top-0 z-50 h-screen w-[260px] min-w-[260px] bg-bg-primary border-r border-border-subtle',
-          'flex flex-col min-h-0 lg:translate-x-0 lg:static lg:shrink-0'
+          'dashboard-sidebar fixed left-0 top-0 z-50 min-h-screen w-[260px] min-w-[260px] bg-bg-primary border-r border-border-subtle',
+          'flex flex-col lg:self-stretch lg:translate-x-0 lg:static lg:shrink-0'
         )}
       >
         {/* Header */}
@@ -406,8 +404,6 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                         // Determine if this item has status indicators
                         const hasStatusIndicator = (() => {
                           switch (item.path) {
-                            case ROUTES.REGISTRY:
-                              return false;
                             case ROUTES.PROVIDERS:
                               return status.providers.hasOffline;
                             case ROUTES.ANALYTICS:
@@ -423,8 +419,6 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
                         const getStatusBadge = () => {
                           switch (item.path) {
-                            case ROUTES.REGISTRY:
-                              return null;
                             case ROUTES.PROVIDERS:
                               if (status.providers.hasOffline) {
                                 return {

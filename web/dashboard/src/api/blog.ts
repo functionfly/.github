@@ -1,5 +1,5 @@
-import axios, { AxiosInstance } from "axios";
-import { apiClient } from "./client";
+import axios, { AxiosInstance } from 'axios';
+import { apiClient } from './client';
 
 // Types based on NestJS DTOs
 export enum ContentStatus {
@@ -97,7 +97,7 @@ export interface PaginatedResponse<T> {
   };
 }
 
-const CONTENT_ADMIN = "/v1/admin/content";
+const CONTENT_ADMIN = '/v1/admin/content';
 
 class BlogApiClient {
   private client: AxiosInstance;
@@ -105,18 +105,24 @@ class BlogApiClient {
   private useMainApi: boolean;
 
   constructor() {
-    this.useMainApi = !import.meta.env.VITE_BLOG_API_URL;
+    const blogApiUrl = import.meta.env.VITE_BLOG_API_URL;
+    if (!blogApiUrl) {
+      throw new Error(
+        'VITE_BLOG_API_URL is required. Set it to your blog API endpoint (e.g., https://blog-api.functionfly.com)'
+      );
+    }
+    this.useMainApi = false;
     this.client = axios.create({
-      baseURL: import.meta.env.VITE_BLOG_API_URL || "http://localhost:3000",
+      baseURL: blogApiUrl,
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
     });
 
     // Add JWT token from localStorage
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem("ff-access-token");
+        const token = localStorage.getItem('ff-access-token');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -177,7 +183,9 @@ class BlogApiClient {
     return response.data;
   }
 
-  async createCategory(category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>): Promise<Category> {
+  async createCategory(
+    category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<Category> {
     if (this.useMainApi) {
       return apiClient.post<Category>(`${CONTENT_ADMIN}/categories`, category);
     }

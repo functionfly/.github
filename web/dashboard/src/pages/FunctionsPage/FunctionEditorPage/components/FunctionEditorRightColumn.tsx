@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Editor from '@monaco-editor/react';
+import { useTheme } from '@/components/common/ThemeProvider';
 import { CODE_TEMPLATES, RUNTIME_META } from '../constants';
 import type { FunctionEditorModel } from '../useFunctionEditor';
 import { formatTimeout } from '../utils';
@@ -23,6 +24,8 @@ import { toast } from 'sonner';
 type Props = { editor: FunctionEditorModel };
 
 export function FunctionEditorRightColumn({ editor }: Props) {
+  const { theme } = useTheme();
+  const monacoTheme = theme === 'light' ? 'vs' : 'vs-dark';
   const {
     runtime,
     code,
@@ -49,8 +52,8 @@ export function FunctionEditorRightColumn({ editor }: Props) {
       <Card
         className="card overflow-hidden"
         style={{
-          background: 'var(--bg-secondary, #12121a)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-subtle)',
           height: '560px',
           display: 'flex',
           flexDirection: 'column',
@@ -133,10 +136,15 @@ export function FunctionEditorRightColumn({ editor }: Props) {
                       setCode(v || '');
                       markDirty();
                     }}
-                    theme="vs-dark"
+                    theme={monacoTheme}
                     loading={
-                      <div className="flex items-center justify-center w-full h-full bg-[#1e1e1e] text-text-secondary">
-                        <Loader2 className="w-6 h-6 animate-spin" />
+                      <div
+                        className="flex h-full w-full items-center justify-center text-text-secondary"
+                        style={{
+                          backgroundColor: theme === 'light' ? 'var(--bg-tertiary)' : '#1e1e1e',
+                        }}
+                      >
+                        <Loader2 className="h-6 w-6 animate-spin" />
                       </div>
                     }
                     options={{
@@ -203,8 +211,8 @@ export function FunctionEditorRightColumn({ editor }: Props) {
       <Card
         className="card"
         style={{
-          background: 'var(--bg-secondary, #12121a)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-subtle)',
         }}
       >
         <CardHeader className="pb-3 pt-4 px-5">

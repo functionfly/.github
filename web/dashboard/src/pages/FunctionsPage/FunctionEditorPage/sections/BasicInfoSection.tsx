@@ -44,14 +44,14 @@ export function BasicInfoSection({ editor }: Props) {
             Slug / Identifier
             <InfoTip content="URL-safe identifier used in API calls. Auto-generated from name." />
           </Label>
-          <div className="relative">
-            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
+          <div className="input-with-icon">
+            <Hash className="icon h-3.5 w-3.5 shrink-0" aria-hidden />
             <Input
               id="fn-slug"
               placeholder="my-awesome-function"
               value={slug}
               onChange={(e) => handleSlugChange(e.target.value)}
-              className="input pl-8 font-mono text-sm"
+              className="input w-full font-mono text-sm"
               autoComplete="off"
             />
           </div>

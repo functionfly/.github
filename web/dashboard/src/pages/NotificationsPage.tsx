@@ -20,6 +20,7 @@ import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useAuthStore } from '@/stores/authStore';
 import { notificationsApi } from '@/api/notifications';
+import { unreadPartialFromServerCount } from '@/lib/notification-unread-sync';
 import type { TrustAlert, Notification } from '@/types/notifications';
 
 // ============================================================================
@@ -80,15 +81,7 @@ export function NotificationsPage() {
 
         // Fetch unread counts
         const counts = await notificationsApi.fetchUnreadCounts();
-        const byCategory = counts?.byCategory || {};
-        updateUnreadCounts({
-          all: counts?.total || 0,
-          trust: byCategory.trust || 0,
-          revenue: byCategory.revenue || 0,
-          issues: byCategory.issues || 0,
-          messages: byCategory.messages || 0,
-          security: byCategory.security || 0,
-        });
+        updateUnreadCounts(unreadPartialFromServerCount(counts));
 
         // Fetch notifications to check for critical trust alerts in metadata
         const notifications = await notificationsApi.fetchNotifications({

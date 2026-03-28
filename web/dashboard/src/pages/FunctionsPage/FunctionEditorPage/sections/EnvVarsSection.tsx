@@ -110,7 +110,7 @@ export function EnvVarsSection({ editor }: Props) {
           {envVars.map((envVar) => (
             <div
               key={envVar.id}
-              className="flex items-center gap-3 p-3 rounded-lg"
+              className="flex items-center gap-3 p-3 rounded-lg border border-border-subtle/30"
               style={{ background: 'var(--bg-tertiary, #1a1a25)' }}
             >
               <div className="flex-1 min-w-0">

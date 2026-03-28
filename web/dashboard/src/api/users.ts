@@ -1,5 +1,17 @@
-import { apiClient } from "./client";
-import type { PublicUserProfile } from "@/types";
+import type { PublicProfileStats, PublicUserProfile } from '@/types';
+import { apiClient } from './client';
+
+// Helper function to get upgrade description based on plan
+function getUpgradeDescription(plan: string): string {
+  const descriptions: Record<string, string> = {
+    enterprise: 'Unlimited functions, dedicated support, and premium enterprise features',
+    professional: 'Advanced features, priority support, and increased limits',
+    pro: 'Advanced features, priority support, and increased limits',
+    starter: 'Expanded features and higher execution limits',
+    free: 'Basic features and community support',
+  };
+  return descriptions[plan.toLowerCase()] || 'Membership upgraded with new features and benefits';
+}
 
 export interface UpdateProfileRequest {
   name?: string;
@@ -14,6 +26,7 @@ export interface UpdateProfileRequest {
   twitterUrl?: string;
   githubUrl?: string;
   linkedinUrl?: string;
+  dateOfBirth?: string | null; // YYYY-MM-DD, null to clear
 }
 
 export interface MeResponse {
@@ -25,8 +38,19 @@ export interface MeResponse {
   bio?: string;
   email: string;
   avatar?: string;
+  dateOfBirth?: string | null;
   plan?: string;
   updatedAt: string;
+  /** Account creation time (ISO 8601) */
+  createdAt?: string;
+  stats?: PublicProfileStats;
+  // Online status fields from API
+  isOnline?: boolean;
+  lastActive?: string;
+  // Profile number for early adopter tracking (e.g., Member #123)
+  profileNumber?: number;
+  // Platform admin role (super_admin, admin, support, etc.)
+  role?: string;
 }
 
 export interface UpdateProfileResponse {
@@ -38,7 +62,10 @@ export interface UpdateProfileResponse {
     companyName?: string;
     email: string;
     avatar?: string;
+    dateOfBirth?: string | null;
     updatedAt: string;
+    // Platform admin role for badge display
+    role?: string;
   };
 }
 
@@ -147,6 +174,13 @@ export interface UserActivityResponse {
   total: number;
 }
 
+export interface UserContributionsResponse {
+  days: { date: string; count: number; level: 0 | 1 | 2 | 3 | 4 }[];
+  currentStreak: number;
+  longestStreak: number;
+  lastContributionDate: string | null;
+}
+
 export interface CreateActivityRequest {
   activityType: string;
   title: string;
@@ -162,7 +196,7 @@ export interface CreateActivityRequest {
 export interface UserSkill {
   id: string;
   name: string;
-  level: "beginner" | "intermediate" | "advanced" | "expert";
+  level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
   category?: string;
 }
 
@@ -172,8 +206,20 @@ export interface UserSkillsResponse {
 
 export interface AddSkillRequest {
   name: string;
-  level?: "beginner" | "intermediate" | "advanced" | "expert";
+  level?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
   category?: string;
+}
+
+export interface UserLookupEntry {
+  id: string;
+  username: string;
+  name: string;
+}
+
+export interface ReportProfileRequest {
+  reason: string;
+  details: string;
+  acknowledged_accuracy: boolean;
 }
 
 export const usersApi = {
@@ -185,34 +231,42 @@ export const usersApi = {
     apiClient.get<PublicUserProfile>(`/v1/users/${encodeURIComponent(username)}`),
 
   /**
+   * Report a user profile for TOS / community violations (auth required).
+   */
+  reportProfile: (username: string, body: ReportProfileRequest) =>
+    apiClient.post<{ message: string }>(
+      `/v1/users/${encodeURIComponent(username)}/report`,
+      body
+    ),
+
+  /**
    * Get the current authenticated user's full profile (includes plan from tenant).
    */
-  getMe: () =>
-    apiClient.get<MeResponse>("/v1/users/me"),
+  getMe: () => apiClient.get<MeResponse>('/v1/users/me'),
 
   /**
    * Update the current authenticated user's profile.
    */
   updateMe: (data: UpdateProfileRequest) =>
-    apiClient.patch<UpdateProfileResponse>("/v1/users/me", data),
+    apiClient.patch<UpdateProfileResponse>('/v1/users/me', data),
 
   /**
    * Change the current user's password.
    */
   changePassword: (data: PasswordChangeRequest) =>
-    apiClient.post<{ message: string }>("/v1/users/me/change-password", data),
+    apiClient.post<{ message: string }>('/v1/users/me/change-password', data),
 
   /**
    * Request a password reset email.
    */
   requestPasswordReset: (email: string) =>
-    apiClient.post<{ message: string }>("/v1/auth/password-reset", { email }),
+    apiClient.post<{ message: string }>('/v1/auth/password-reset', { email }),
 
   /**
    * Confirm a password reset with token and new password.
    */
   confirmPasswordReset: (token: string, newPassword: string) =>
-    apiClient.post<{ message: string }>("/v1/auth/password-reset/confirm", {
+    apiClient.post<{ message: string }>('/v1/auth/password-reset/confirm', {
       token,
       newPassword,
     }),
@@ -220,8 +274,7 @@ export const usersApi = {
   /**
    * List active sessions for the current user.
    */
-  listSessions: () =>
-    apiClient.get<{ sessions: SessionItem[] }>("/v1/users/me/sessions"),
+  listSessions: () => apiClient.get<{ sessions: SessionItem[] }>('/v1/users/me/sessions'),
 
   /**
    * Revoke a single session by ID.
@@ -233,7 +286,12 @@ export const usersApi = {
    * Revoke all other sessions (keep current).
    */
   revokeOtherSessions: () =>
-    apiClient.post<{ message: string }>("/v1/users/me/sessions/revoke-others"),
+    apiClient.post<{ message: string }>('/v1/users/me/sessions/revoke-others'),
+
+  /**
+   * Delete current authenticated user account.
+   */
+  deleteMe: () => apiClient.delete<{ message: string }>('/v1/users/me'),
 
   // ============================================================================
   // User Profile Settings
@@ -249,7 +307,9 @@ export const usersApi = {
    * Get user profile settings by username.
    */
   getUserSettings: (username: string) =>
-    apiClient.get<{ settings: Record<string, unknown> }>(`/v1/users/${encodeURIComponent(username)}/settings`),
+    apiClient.get<{ settings: Record<string, unknown> }>(
+      `/v1/users/${encodeURIComponent(username)}/settings`
+    ),
 
   /**
    * Update current user notification settings.
@@ -261,7 +321,10 @@ export const usersApi = {
    * Update user notification settings by username.
    */
   updateNotificationSettings: (username: string, data: Record<string, boolean>) =>
-    apiClient.patch<{ message: string }>(`/v1/users/${encodeURIComponent(username)}/settings/notifications`, data),
+    apiClient.patch<{ message: string }>(
+      `/v1/users/${encodeURIComponent(username)}/settings/notifications`,
+      data
+    ),
 
   /**
    * Update current user privacy settings.
@@ -273,7 +336,10 @@ export const usersApi = {
    * Update user privacy settings by username.
    */
   updatePrivacySettings: (username: string, data: Record<string, boolean>) =>
-    apiClient.patch<{ message: string }>(`/v1/users/${encodeURIComponent(username)}/settings/privacy`, data),
+    apiClient.patch<{ message: string }>(
+      `/v1/users/${encodeURIComponent(username)}/settings/privacy`,
+      data
+    ),
 
   /**
    * Update current user visibility settings.
@@ -285,7 +351,10 @@ export const usersApi = {
    * Update user visibility settings by username.
    */
   updateVisibilitySettings: (username: string, data: Record<string, unknown>) =>
-    apiClient.patch<{ message: string }>(`/v1/users/${encodeURIComponent(username)}/settings/visibility`, data),
+    apiClient.patch<{ message: string }>(
+      `/v1/users/${encodeURIComponent(username)}/settings/visibility`,
+      data
+    ),
 
   // ============================================================================
   // User Profile Analytics
@@ -306,7 +375,9 @@ export const usersApi = {
    * Get achievements for a user profile.
    */
   getUserAchievements: (username: string) =>
-    apiClient.get<UserAchievementsResponse>(`/v1/users/${encodeURIComponent(username)}/achievements`),
+    apiClient.get<UserAchievementsResponse>(
+      `/v1/users/${encodeURIComponent(username)}/achievements`
+    ),
 
   // ============================================================================
   // User Activity Feed
@@ -316,13 +387,43 @@ export const usersApi = {
    * Get activity feed for a user profile.
    */
   getUserActivity: (username: string, params?: { limit?: number; offset?: number }) =>
-    apiClient.get<UserActivityResponse>(`/v1/users/${encodeURIComponent(username)}/activity`, { params }),
+    apiClient.get<UserActivityResponse>(`/v1/users/${encodeURIComponent(username)}/activity`, {
+      params,
+    }),
+
+  /**
+   * Contribution heatmap + streaks (user_activity + registry publishes per UTC day).
+   */
+  getUserContributions: (username: string) =>
+    apiClient.get<UserContributionsResponse>(
+      `/v1/users/${encodeURIComponent(username)}/contributions`
+    ),
 
   /**
    * Create a new activity feed item (for authenticated user).
    */
   createActivity: (data: CreateActivityRequest) =>
-    apiClient.post<{ id: string; message: string; createdAt: string }>("/v1/users/me/activity", data),
+    apiClient.post<{ id: string; message: string; createdAt: string }>(
+      '/v1/users/me/activity',
+      data
+    ),
+
+  /**
+   * Create a membership upgrade activity (for authenticated user).
+   * Call this after a successful plan upgrade to show the upgrade in the activity feed.
+   */
+  createMembershipUpgradeActivity: (plan: string, previousPlan?: string) =>
+    apiClient.post<{ id: string; message: string; createdAt: string }>('/v1/users/me/activity', {
+      activityType: 'membership_upgraded',
+      title: `Upgraded to ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
+      description: getUpgradeDescription(plan),
+      metadata: {
+        plan,
+        previousPlan: previousPlan || 'free',
+        upgradedAt: new Date().toISOString(),
+      },
+      isPublic: true,
+    }),
 
   // ============================================================================
   // User Skills
@@ -338,11 +439,28 @@ export const usersApi = {
    * Add a skill for the authenticated user.
    */
   addSkill: (data: AddSkillRequest) =>
-    apiClient.post<{ id: string; name: string; level: string; message: string }>("/v1/users/me/skills", data),
+    apiClient.post<{ id: string; name: string; level: string; message: string }>(
+      '/v1/users/me/skills',
+      data
+    ),
 
   /**
    * Remove a skill for the authenticated user.
    */
   removeSkill: (skillId: string) =>
     apiClient.delete<{ message: string }>(`/v1/users/me/skills/${skillId}`),
+
+  /**
+   * Resolve user UUIDs to id, username, and display name (auth required; for UI labels e.g. conversations).
+   */
+  lookupUsersByIds: (userIds: string[]) =>
+    apiClient.post<{ users: UserLookupEntry[] }>('/v1/users/lookup-by-ids', {
+      user_ids: userIds,
+    }),
+
+  /** Username prefix search for autocomplete (auth required). */
+  searchUsersByUsername: (q: string, limit = 8) =>
+    apiClient.get<{ users: UserLookupEntry[] }>(
+      `/v1/users/search?q=${encodeURIComponent(q)}&limit=${limit}`
+    ),
 };

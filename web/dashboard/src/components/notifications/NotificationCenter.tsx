@@ -7,29 +7,9 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
-import {
-  Bell,
-  CheckCheck,
-  Filter,
-  Settings,
-  Inbox,
-  Shield,
-  DollarSign,
-  AlertTriangle,
-  MessageSquare,
-  Check,
-  Loader2,
-  WifiOff,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
+import { isNotificationUnreadStatus, notificationsApi } from '@/api/notifications';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,21 +18,38 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { NewNotificationEvent } from '@/hooks/types';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
+import { unreadPartialFromServerCount } from '@/lib/notification-unread-sync';
+import { cn } from '@/lib/utils';
+import { useNotificationStore } from '@/stores/notificationStore';
 import {
   type Notification,
   type NotificationCategory,
   type NotificationPriority,
   type NotificationStatus,
 } from '@/types/notifications';
-import { notificationsApi } from '@/api/notifications';
-import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
-import { NewNotificationEvent } from '@/hooks/types';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  AlertTriangle,
+  Bell,
+  Check,
+  CheckCheck,
+  DollarSign,
+  Filter,
+  Inbox,
+  Loader2,
+  MessageSquare,
+  Settings,
+  Shield,
+  WifiOff,
+} from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { NotificationCard } from './NotificationCard';
 
 // ============================================================================
@@ -151,9 +148,7 @@ function EmptyState({ category }: { category: string }) {
       <div className="w-16 h-16 rounded-full bg-bg-tertiary border border-border-subtle flex items-center justify-center mb-4">
         <Inbox className="h-8 w-8 text-text-muted" />
       </div>
-      <h3 className="text-lg font-medium text-text-primary mb-1">
-        No notifications
-      </h3>
+      <h3 className="text-lg font-medium text-text-primary mb-1">No notifications</h3>
       <p className="text-sm text-text-muted max-w-xs">
         {category === 'all'
           ? "You're all caught up! Check back later for new notifications."
@@ -177,9 +172,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
       <div className="w-16 h-16 rounded-full bg-error/10 border border-error/20 flex items-center justify-center mb-4">
         <AlertTriangle className="h-8 w-8 text-error" />
       </div>
-      <h3 className="text-lg font-medium text-text-primary mb-1">
-        Failed to load notifications
-      </h3>
+      <h3 className="text-lg font-medium text-text-primary mb-1">Failed to load notifications</h3>
       <p className="text-sm text-text-muted max-w-xs mb-4">
         Something went wrong while fetching your notifications.
       </p>
@@ -282,7 +275,7 @@ function useNotificationCenter() {
     try {
       const data = await notificationsApi.fetchNotifications({ limit: 50 });
       setNotifications(data);
-      const unread = data.filter((n) => n.status === 'unread').length;
+      const unread = data.filter((n) => isNotificationUnreadStatus(n.status)).length;
       setUnreadCount(unread);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load notifications');
@@ -337,22 +330,35 @@ function useNotificationCenter() {
     }
   );
 
-  const markAsRead = useCallback(async (id: string) => {
+  const syncBellUnreadFromServer = useCallback(async () => {
     try {
-      await notificationsApi.markNotificationAsRead(id);
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === id
-            ? { ...n, status: 'read' as NotificationStatus, readAt: new Date().toISOString() }
-            : n
-        )
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (err) {
-      console.error('Error marking notification as read:', err);
-      toast.error('Failed to mark notification as read');
+      const counts = await notificationsApi.fetchUnreadCounts();
+      useNotificationStore.getState().updateUnreadCounts(unreadPartialFromServerCount(counts));
+    } catch {
+      /* bell stays stale; avoid toast spam */
     }
   }, []);
+
+  const markAsRead = useCallback(
+    async (id: string) => {
+      try {
+        await notificationsApi.markNotificationAsRead(id);
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === id
+              ? { ...n, status: 'read' as NotificationStatus, readAt: new Date().toISOString() }
+              : n
+          )
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+        void syncBellUnreadFromServer();
+      } catch (err) {
+        console.error('Error marking notification as read:', err);
+        toast.error('Failed to mark notification as read');
+      }
+    },
+    [syncBellUnreadFromServer]
+  );
 
   const markAllAsRead = useCallback(async () => {
     if (unreadCount === 0) return;
@@ -362,12 +368,13 @@ function useNotificationCenter() {
       const count = await notificationsApi.markAllNotificationsAsRead();
       setNotifications((prev) =>
         prev.map((n) =>
-          n.status === 'unread'
+          isNotificationUnreadStatus(n.status)
             ? { ...n, status: 'read' as NotificationStatus, readAt: new Date().toISOString() }
             : n
         )
       );
       setUnreadCount(0);
+      void syncBellUnreadFromServer();
       toast.success(`${count} notification${count !== 1 ? 's' : ''} marked as read`);
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
@@ -376,25 +383,34 @@ function useNotificationCenter() {
     } finally {
       setIsMarkingAllRead(false);
     }
-  }, [unreadCount]);
+  }, [unreadCount, syncBellUnreadFromServer]);
 
-  const archiveNotification = useCallback(async (id: string) => {
-    try {
-      await notificationsApi.archiveNotification(id);
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === id
-            ? { ...n, status: 'archived' as NotificationStatus, readAt: new Date().toISOString() }
-            : n
-        )
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-      toast.success('Notification archived');
-    } catch (err) {
-      console.error('Error archiving notification:', err);
-      toast.error('Failed to archive notification');
-    }
-  }, []);
+  const archiveNotification = useCallback(
+    async (id: string) => {
+      try {
+        await notificationsApi.archiveNotification(id);
+        let wasUnread = false;
+        setNotifications((prev) => {
+          const cur = prev.find((n) => n.id === id);
+          wasUnread = !!(cur && isNotificationUnreadStatus(cur.status));
+          return prev.map((n) =>
+            n.id === id
+              ? { ...n, status: 'archived' as NotificationStatus, readAt: new Date().toISOString() }
+              : n
+          );
+        });
+        if (wasUnread) {
+          setUnreadCount((prev) => Math.max(0, prev - 1));
+        }
+        void syncBellUnreadFromServer();
+        toast.success('Notification archived');
+      } catch (err) {
+        console.error('Error archiving notification:', err);
+        toast.error('Failed to archive notification');
+      }
+    },
+    [syncBellUnreadFromServer]
+  );
 
   return {
     notifications,
@@ -439,10 +455,8 @@ export function NotificationCenter({
   // Filter notifications based on active tab and priority
   const filteredNotifications = useMemo(() => {
     return notifications.filter((notification) => {
-      const categoryMatch =
-        activeTab === 'all' || notification.category === activeTab;
-      const priorityMatch =
-        priorityFilter === 'all' || notification.priority === priorityFilter;
+      const categoryMatch = activeTab === 'all' || notification.category === activeTab;
+      const priorityMatch = priorityFilter === 'all' || notification.priority === priorityFilter;
       return categoryMatch && priorityMatch;
     });
   }, [notifications, activeTab, priorityFilter]);
@@ -457,12 +471,10 @@ export function NotificationCenter({
     const counts: Record<string, number> = { all: 0 };
     TABS.forEach((tab) => {
       counts[tab.id] = notifications.filter(
-        (n) =>
-          n.status === 'unread' &&
-          (tab.id === 'all' || n.category === tab.id)
+        (n) => isNotificationUnreadStatus(n.status) && (tab.id === 'all' || n.category === tab.id)
       ).length;
     });
-    counts.all = notifications.filter((n) => n.status === 'unread').length;
+    counts.all = notifications.filter((n) => isNotificationUnreadStatus(n.status)).length;
     return counts;
   }, [notifications]);
 
@@ -494,9 +506,7 @@ export function NotificationCenter({
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-brand-500 rounded-full animate-pulse" />
                 )}
               </div>
-              <h2 className="text-lg font-semibold text-text-primary">
-                Notifications
-              </h2>
+              <h2 className="text-lg font-semibold text-text-primary">Notifications</h2>
               {unreadCount > 0 && (
                 <Badge variant="secondary" className="text-xs">
                   {unreadCount} unread
@@ -530,9 +540,7 @@ export function NotificationCenter({
                       )}
                     >
                       {option.label}
-                      {priorityFilter === option.value && (
-                        <Check className="h-4 w-4" />
-                      )}
+                      {priorityFilter === option.value && <Check className="h-4 w-4" />}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>

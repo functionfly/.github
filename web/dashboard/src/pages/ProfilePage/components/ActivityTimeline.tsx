@@ -20,9 +20,35 @@ import {
   Zap,
   Code2,
   UserPlus,
+  Crown,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UserActivity, ActivityType } from "@/types";
+
+// Plan badge component for membership upgrades
+function PlanBadge({ plan }: { plan?: string }) {
+  if (!plan) return null;
+
+  const planStyles: Record<string, string> = {
+    free: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+    starter: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    professional: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+    enterprise: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  };
+
+  const style = planStyles[plan.toLowerCase()] || planStyles.free;
+
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border",
+      style
+    )}>
+      <Sparkles className="w-3 h-3" />
+      {plan.charAt(0).toUpperCase() + plan.slice(1)}
+    </span>
+  );
+}
 
 export interface ActivityTimelineProps {
   activities: UserActivity[];
@@ -46,6 +72,7 @@ export function ActivityTimeline({ activities, filter = "all" }: ActivityTimelin
     follower_gained: <Heart className="w-4 h-4" />,
     contribution: <GitBranch className="w-4 h-4" />,
     deployment: <Zap className="w-4 h-4" />,
+    membership_upgraded: <Crown className="w-4 h-4" />,
   };
 
   const typeColors: Record<ActivityType, string> = {
@@ -60,6 +87,7 @@ export function ActivityTimeline({ activities, filter = "all" }: ActivityTimelin
     follower_gained: "bg-pink-500/20 text-pink-400",
     contribution: "bg-brand-500/20 text-brand-400",
     deployment: "bg-green-500/20 text-green-400",
+    membership_upgraded: "bg-amber-500/30 text-amber-300",
   };
 
   return (
@@ -95,6 +123,16 @@ export function ActivityTimeline({ activities, filter = "all" }: ActivityTimelin
                     <Code2 className="w-3.5 h-3.5" />
                     {activity.relatedFunction.name}
                   </Link>
+                )}
+                {activity.type === 'membership_upgraded' && activity.metadata?.plan && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <PlanBadge plan={activity.metadata.plan as string} />
+                    {activity.metadata.previousPlan && (
+                      <span className="text-xs text-text-muted">
+                        from {String(activity.metadata.previousPlan).charAt(0).toUpperCase() + String(activity.metadata.previousPlan).slice(1)}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
               <span className="text-xs text-text-muted shrink-0">

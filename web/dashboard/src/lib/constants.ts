@@ -56,10 +56,13 @@ export const ROUTES = {
   ENTERPRISE_COMPLIANCE: '/enterprise/compliance',
 } as const;
 
-/** URL of the separate admin dashboard app (web/admin-dashboard). Set VITE_ADMIN_DASHBOARD_URL in production. */
+/**
+ * Standalone admin app (web/admin-dashboard): local dev :3002, production admin.functionfly.com.
+ * Override per environment with VITE_ADMIN_DASHBOARD_URL (e.g. staging).
+ */
 export const ADMIN_DASHBOARD_URL =
   (import.meta.env.VITE_ADMIN_DASHBOARD_URL ?? '').trim() ||
-  (import.meta.env.DEV ? 'http://localhost:3002' : '');
+  (import.meta.env.DEV ? 'http://localhost:3002' : 'https://admin.functionfly.com');
 
 /**
  * Origin for user-visible app URLs (e.g. https://functionfly.com/apps/my-app).
@@ -602,3 +605,51 @@ export function getAiServiceBaseUrl(): string {
 }
 
 export const AI_SERVICE_BASE_URL = getAiServiceBaseUrl();
+
+/**
+ * Validate that Stripe price IDs are set in production.
+ * Throws an error if any price ID is a placeholder value.
+ */
+const STRIPE_PRICE_ID_PATTERN = /^(price_[\w]+_placeholder|)$/;
+
+function validateStripePriceIds() {
+  if (!import.meta.env.PROD) return;
+
+  const priceIds = {
+    VITE_STRIPE_PRICE_STARTER: import.meta.env.VITE_STRIPE_PRICE_STARTER,
+    VITE_STRIPE_PRICE_PROFESSIONAL: import.meta.env.VITE_STRIPE_PRICE_PROFESSIONAL,
+    VITE_STRIPE_PRICE_AGENT_STARTER: import.meta.env.VITE_STRIPE_PRICE_AGENT_STARTER,
+    VITE_STRIPE_PRICE_AGENT_SCALE: import.meta.env.VITE_STRIPE_PRICE_AGENT_SCALE,
+    VITE_STRIPE_PRICE_AGENT_PRO: import.meta.env.VITE_STRIPE_PRICE_AGENT_PRO,
+    VITE_STRIPE_PRICE_SF_STARTER: import.meta.env.VITE_STRIPE_PRICE_SF_STARTER,
+    VITE_STRIPE_PRICE_SF_PRO: import.meta.env.VITE_STRIPE_PRICE_SF_PRO,
+    VITE_STRIPE_PRICE_SF_BUSINESS: import.meta.env.VITE_STRIPE_PRICE_SF_BUSINESS,
+  };
+
+  const missing: string[] = [];
+  const placeholders: string[] = [];
+
+  for (const [envVar, value] of Object.entries(priceIds)) {
+    if (!value) {
+      missing.push(envVar);
+    } else if (STRIPE_PRICE_ID_PATTERN.test(value)) {
+      placeholders.push(envVar);
+    }
+  }
+
+  if (missing.length > 0 || placeholders.length > 0) {
+    const errors: string[] = [];
+    if (missing.length > 0) {
+      errors.push(`Missing Stripe price IDs: ${missing.join(', ')}`);
+    }
+    if (placeholders.length > 0) {
+      errors.push(`Placeholder Stripe price IDs detected: ${placeholders.join(', ')}`);
+    }
+    throw new Error(
+      `Production build failed: ${errors.join('. ')}. Set actual Stripe price IDs in your production environment.`
+    );
+  }
+}
+
+// Run validation at module load time
+validateStripePriceIds();

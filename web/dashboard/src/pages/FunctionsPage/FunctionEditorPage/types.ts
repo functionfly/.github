@@ -1,4 +1,13 @@
-export type Runtime = 'typescript' | 'python' | 'rust-wasm';
+export type Runtime =
+  | 'typescript'
+  | 'javascript'
+  | 'python'
+  | 'python-wasm'
+  | 'rust-wasm'
+  | 'go'
+  | 'deno'
+  | 'bun'
+  | 'browser-wasm';
 export type HttpMethod = 'ANY' | 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export type Visibility = 'public' | 'private';
 export type BackoffStrategy = 'linear' | 'exponential' | 'fixed';

@@ -11,54 +11,55 @@
  * <ProfilePage username="currentuser" isOwnProfile={true} />
  */
 
-import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { User, Package, Activity, BarChart3, BookOpen, Settings } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Navbar } from "@/components/common/Navbar";
-import { UserNotFoundView } from "@/components/ui/UserNotFoundView";
-import { EditProfileModal } from "@/components/profile/EditProfileModal";
-import { AvatarPicker } from "@/components/profile/AvatarPicker";
-import type {
-  UserProfile,
-  ProfileTab,
-  UserActivity,
-  Achievement as AchievementType,
-  Skill,
-  ProfileAnalytics,
-  ActivityType,
-} from "@/types";
 import {
   usersApi,
-  type UserAnalyticsResponse,
+  type MeResponse,
   type UserAchievementsResponse,
   type UserActivityResponse,
+  type UserAnalyticsResponse,
+  type UserContributionsResponse,
   type UserSkillsResponse,
-  type MeResponse,
-} from "@/api/users";
-import { useAuthStore } from "@/stores/authStore";
-import { toast } from "sonner";
-import { Footer } from "@/pages/LandingPage/components";
-import { format } from "date-fns";
+} from '@/api/users';
+import { Navbar } from '@/components/common/Navbar';
+import { AvatarPicker } from '@/components/profile/AvatarPicker';
+import { EditProfileModal } from '@/components/profile/EditProfileModal';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { UserNotFoundView } from '@/components/ui/UserNotFoundView';
+import { Footer } from '@/pages/LandingPage/components';
+import { useAuthStore } from '@/stores/authStore';
+import type {
+  Achievement as AchievementType,
+  ActivityType,
+  ProfileAnalytics,
+  ProfileTab,
+  Skill,
+  UserActivity,
+  UserProfile,
+} from '@/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { motion } from 'framer-motion';
+import { Activity, BarChart3, BookOpen, Package, Settings, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
-import { transformToUserProfile } from "./transformers";
+import { registryApi } from '@/api/registry';
+import { usePlan } from '@/hooks/usePlan';
+import { SettingsContent } from '@/pages/SettingsPage/SettingsContent';
+import { ProfileHeader } from './components/ProfileHeader';
 import {
   ProfileHeaderSkeleton,
   StatsOverviewSkeleton,
   TabContentSkeleton,
-} from "./components/Skeletons";
-import { ProfileHeader } from "./components/ProfileHeader";
-import { StatsOverview } from "./components/StatsOverview";
-import { OverviewTab } from "./components/tabs/OverviewTab";
-import { FunctionsTab } from "./components/tabs/FunctionsTab";
-import { ActivityTab } from "./components/tabs/ActivityTab";
-import { AnalyticsTab } from "./components/tabs/AnalyticsTab";
-import { AboutTab } from "./components/tabs/AboutTab";
-import { SettingsContent } from "@/pages/SettingsPage/SettingsContent";
-import { registryApi } from "@/api/registry";
+} from './components/Skeletons';
+import { StatsOverview } from './components/StatsOverview';
+import { AboutTab } from './components/tabs/AboutTab';
+import { ActivityTab } from './components/tabs/ActivityTab';
+import { AnalyticsTab } from './components/tabs/AnalyticsTab';
+import { FunctionsTab } from './components/tabs/FunctionsTab';
+import { OverviewTab } from './components/tabs/OverviewTab';
+import { transformToUserProfile } from './transformers';
 
 // ============================================================================
 // Main Profile Page Component
@@ -75,10 +76,11 @@ export function ProfilePage({
 }: ProfilePageProps = {}) {
   const { username: paramUsername } = useParams<{ username: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlTab = searchParams.get("tab") as ProfileTab | null;
+  const urlTab = searchParams.get('tab') as ProfileTab | null;
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
   const authChecked = useAuthStore((state) => state.authChecked);
+  const { isEnterprise: isCurrentUserEnterprise } = usePlan();
 
   const username = propUsername || paramUsername;
 
@@ -86,9 +88,10 @@ export function ProfilePage({
     propIsOwnProfile ??
     (!!currentUser &&
       !!username &&
-      (currentUser.username === username || username === "me"));
+      (username === 'me' ||
+        currentUser.username.toLowerCase() === String(username).toLowerCase()));
 
-  const [activeTab, setActiveTab] = useState<ProfileTab>(urlTab || "overview");
+  const [activeTab, setActiveTab] = useState<ProfileTab>(urlTab || 'overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
 
@@ -110,14 +113,12 @@ export function ProfilePage({
     isError,
     error,
   } = useQuery<UserProfile>({
-    queryKey: ["enhanced-profile", username],
+    queryKey: ['enhanced-profile', username, isOwnProfile],
     queryFn: async () => {
-      if (!username) throw new Error("Username is required");
+      if (!username) throw new Error('Username is required');
 
       // Use authenticated endpoint for own profile, public endpoint for others
-      const profileApiCall = isOwnProfile
-        ? usersApi.getMe()
-        : usersApi.getPublicProfile(username);
+      const profileApiCall = isOwnProfile ? usersApi.getMe() : usersApi.getPublicProfile(username);
 
       const [profileResponse, functionsResponse] = await Promise.all([
         profileApiCall,
@@ -142,17 +143,19 @@ export function ProfilePage({
           githubUrl: undefined,
           linkedinUrl: undefined,
           socialLinks: undefined,
-          createdAt: meResponse.updatedAt, // Use updatedAt as fallback for createdAt
+          createdAt: meResponse.createdAt ?? meResponse.updatedAt,
+          stats: meResponse.stats,
           publishedFunctions: [],
+          profileNumber: meResponse.profileNumber,
+          isOnline: meResponse.isOnline ?? true, // Own profile defaults to online
+          lastActive: meResponse.lastActive,
+          role: meResponse.role, // Pass admin role for badge display
         };
       } else {
         profileData = profileResponse;
       }
 
-      return transformToUserProfile(
-        profileData,
-        functionsResponse.functions || []
-      );
+      return transformToUserProfile(profileData, functionsResponse.functions || []);
     },
     enabled: !!username && !!authChecked,
     staleTime: 5 * 60 * 1000,
@@ -160,14 +163,13 @@ export function ProfilePage({
   });
 
   const { data: analyticsResponse } = useQuery<UserAnalyticsResponse>({
-    queryKey: ["profile-analytics", username],
+    queryKey: ['profile-analytics', username],
     queryFn: async () => {
-      if (!username) throw new Error("Username is required");
+      if (!username) throw new Error('Username is required');
       try {
         return await usersApi.getUserAnalytics(username);
       } catch (err: unknown) {
-        const status = (err as { response?: { status?: number } })?.response
-          ?.status;
+        const status = (err as { response?: { status?: number } })?.response?.status;
         if (status === 404) {
           return {
             executionStats: {
@@ -184,9 +186,7 @@ export function ProfilePage({
         throw err;
       }
     },
-    enabled:
-      !!username &&
-      (activeTab === "analytics" || activeTab === "overview"),
+    enabled: !!username && (activeTab === 'analytics' || activeTab === 'overview'),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -221,14 +221,13 @@ export function ProfilePage({
     : undefined;
 
   const { data: achievementsResponse } = useQuery<UserAchievementsResponse>({
-    queryKey: ["profile-achievements", username],
+    queryKey: ['profile-achievements', username],
     queryFn: async () => {
-      if (!username) throw new Error("Username is required");
+      if (!username) throw new Error('Username is required');
       try {
         return await usersApi.getUserAchievements(username);
       } catch (err: unknown) {
-        const status = (err as { response?: { status?: number } })?.response
-          ?.status;
+        const status = (err as { response?: { status?: number } })?.response?.status;
         if (status === 404) {
           return { achievements: [], totalPoints: 0, available: 0 };
         }
@@ -240,35 +239,49 @@ export function ProfilePage({
   });
 
   const { data: activityResponse } = useQuery<UserActivityResponse>({
-    queryKey: ["profile-activity", username],
+    queryKey: ['profile-activity', username],
     queryFn: async () => {
-      if (!username) throw new Error("Username is required");
+      if (!username) throw new Error('Username is required');
       try {
         return await usersApi.getUserActivity(username, { limit: 20 });
       } catch (err: unknown) {
-        const status = (err as { response?: { status?: number } })?.response
-          ?.status;
+        const status = (err as { response?: { status?: number } })?.response?.status;
         if (status === 404) {
           return { activities: [], limit: 20, offset: 0, total: 0 };
         }
         throw err;
       }
     },
-    enabled:
-      !!username &&
-      (activeTab === "activity" || activeTab === "overview"),
+    enabled: !!username && (activeTab === 'activity' || activeTab === 'overview'),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: contributionResponse } = useQuery<UserContributionsResponse>({
+    queryKey: ['profile-contributions', username],
+    queryFn: async () => {
+      if (!username) throw new Error('Username is required');
+      try {
+        return await usersApi.getUserContributions(username);
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 404) {
+          return undefined;
+        }
+        throw err;
+      }
+    },
+    enabled: !!username,
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: skillsResponse } = useQuery<UserSkillsResponse>({
-    queryKey: ["profile-skills", username],
+    queryKey: ['profile-skills', username],
     queryFn: async () => {
-      if (!username) throw new Error("Username is required");
+      if (!username) throw new Error('Username is required');
       try {
         return await usersApi.getUserSkills(username);
       } catch (err: unknown) {
-        const status = (err as { response?: { status?: number } })?.response
-          ?.status;
+        const status = (err as { response?: { status?: number } })?.response?.status;
         if (status === 404) {
           return { skills: [] };
         }
@@ -284,18 +297,18 @@ export function ProfilePage({
       id: a.id,
       name: a.name,
       description: a.description,
-      icon: a.icon || "Award",
-      color: a.color || "blue",
+      icon: a.icon || 'Award',
+      color: a.color || 'blue',
       unlockedAt: a.earnedAt,
       tier: a.isCompleted
         ? a.points >= 500
-          ? "platinum"
+          ? 'platinum'
           : a.points >= 200
-            ? "gold"
+            ? 'gold'
             : a.points >= 100
-              ? "silver"
-              : "bronze"
-        : "bronze",
+              ? 'silver'
+              : 'bronze'
+        : 'bronze',
       progress: {
         current: a.progress,
         target: 100,
@@ -303,37 +316,35 @@ export function ProfilePage({
     })) || [];
 
   const typeMap: Record<string, ActivityType> = {
-    function_published: "function_published",
-    function_updated: "function_updated",
-    badge_earned: "achievement_earned",
-    profile_updated: "deployment",
-    review_submitted: "review_received",
-    comment_posted: "contribution",
+    function_published: 'function_published',
+    function_updated: 'function_updated',
+    badge_earned: 'achievement_earned',
+    profile_updated: 'deployment',
+    review_submitted: 'review_received',
+    comment_posted: 'contribution',
+    membership_upgraded: 'membership_upgraded',
   };
 
   const rawActivity: UserActivity[] =
     activityResponse?.activities?.map((a) => ({
       id: a.id,
-      type: typeMap[a.type] || "contribution",
+      type: typeMap[a.type] || 'contribution',
       title: a.title,
-      description: a.description || "",
+      description: a.description || '',
       timestamp: a.createdAt,
       metadata: a.metadata,
     })) || [];
 
   // Prepend "Joined FunctionFly" activity with join date (synthetic, from profile)
-  const joinedActivity: UserActivity | null =
-    profile
-      ? {
-          id: `joined-${profile.id}`,
-          type: "joined",
-          title: "Joined FunctionFly",
-          description: profile.createdAt
-            ? format(new Date(profile.createdAt), "MMMM d, yyyy")
-            : "",
-          timestamp: profile.createdAt ?? new Date().toISOString(),
-        }
-      : null;
+  const joinedActivity: UserActivity | null = profile
+    ? {
+        id: `joined-${profile.id}`,
+        type: 'joined',
+        title: 'Joined FunctionFly',
+        description: profile.createdAt ? format(new Date(profile.createdAt), 'MMMM d, yyyy') : '',
+        timestamp: profile.createdAt ?? new Date().toISOString(),
+      }
+    : null;
   const activityData: UserActivity[] = joinedActivity
     ? [joinedActivity, ...rawActivity]
     : rawActivity;
@@ -343,60 +354,77 @@ export function ProfilePage({
       id: s.id,
       name: s.name,
       level: s.level,
-      category: (s.category as Skill["category"]) || "concept",
+      category: (s.category as Skill['category']) || 'concept',
     })) || [];
 
   const mergedProfile: UserProfile | undefined = profile
     ? {
         ...profile,
-        achievements:
-          achievementsData.length > 0 ? achievementsData : profile.achievements,
-        recentActivity:
-          activityData.length > 0 ? activityData : profile.recentActivity,
+        achievements: achievementsData.length > 0 ? achievementsData : profile.achievements,
+        recentActivity: activityData.length > 0 ? activityData : profile.recentActivity,
         skills: skillsData.length > 0 ? skillsData : profile.skills,
+        stats: {
+          ...profile.stats,
+          ...(contributionResponse?.days?.length
+            ? {
+                contributionGraph: contributionResponse.days.map((d) => ({
+                  date: d.date,
+                  count: Number(d.count) || 0,
+                  level: (Math.min(4, Math.max(0, Number(d.level))) || 0) as 0 | 1 | 2 | 3 | 4,
+                })),
+                contributionStreak: {
+                  current: contributionResponse.currentStreak ?? 0,
+                  longest: contributionResponse.longestStreak ?? 0,
+                  lastContribution:
+                    contributionResponse.lastContributionDate ??
+                    profile.stats.contributionStreak.lastContribution,
+                },
+              }
+            : {}),
+        },
       }
     : undefined;
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: import("@/api/users").UpdateProfileRequest) => {
+    mutationFn: async (data: import('@/api/users').UpdateProfileRequest) => {
       await usersApi.updateMe(data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["enhanced-profile", username] });
-      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
-      queryClient.invalidateQueries({ queryKey: ["my-settings"] });
+      queryClient.invalidateQueries({ queryKey: ['enhanced-profile', username] });
+      queryClient.invalidateQueries({ queryKey: ['my-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['my-settings'] });
       useAuthStore.getState().initialize();
     },
   });
 
   const tabs: { value: ProfileTab; label: string; icon: React.ReactNode }[] = [
-    { value: "overview", label: "Overview", icon: <User className="w-4 h-4" /> },
+    { value: 'overview', label: 'Overview', icon: <User className="w-4 h-4" /> },
     {
-      value: "functions",
-      label: "Functions",
+      value: 'functions',
+      label: 'Functions',
       icon: <Package className="w-4 h-4" />,
     },
     {
-      value: "activity",
-      label: "Activity",
+      value: 'activity',
+      label: 'Activity',
       icon: <Activity className="w-4 h-4" />,
     },
     {
-      value: "analytics",
-      label: "Analytics",
+      value: 'analytics',
+      label: 'Analytics',
       icon: <BarChart3 className="w-4 h-4" />,
     },
     {
-      value: "about",
-      label: "About",
+      value: 'about',
+      label: 'About',
       icon: <BookOpen className="w-4 h-4" />,
     },
   ];
 
   if (isOwnProfile) {
     tabs.push({
-      value: "settings",
-      label: "Settings",
+      value: 'settings',
+      label: 'Settings',
       icon: <Settings className="w-4 h-4" />,
     });
   }
@@ -423,7 +451,7 @@ export function ProfilePage({
             <div className="flex flex-col items-center justify-center py-24 px-4">
               <UserNotFoundView
                 username={username}
-                is404={(error as Error)?.message?.includes("404")}
+                is404={(error as Error)?.message?.includes('404')}
                 compact
               />
             </div>
@@ -441,12 +469,15 @@ export function ProfilePage({
                 isOwnProfile={isOwnProfile}
                 isViewerSignedIn={!!currentUser}
                 onEditProfile={() => setIsEditModalOpen(true)}
-                onAvatarClick={
-                  isOwnProfile ? () => setIsAvatarPickerOpen(true) : undefined
+                onAvatarClick={isOwnProfile ? () => setIsAvatarPickerOpen(true) : undefined}
+                isEnterprise={
+                  isOwnProfile
+                    ? isCurrentUserEnterprise
+                    : profile.username.toLowerCase().includes('enterprise')
                 }
               />
 
-              <StatsOverview stats={profile.stats} />
+              <StatsOverview stats={mergedProfile!.stats} />
 
               <div className="border-t border-border-subtle mt-4">
                 <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -490,17 +521,15 @@ export function ProfilePage({
                       isOwnProfile={isOwnProfile}
                       userSkills={skillsResponse?.skills}
                       onAddSkill={async (skill) => {
-                        await usersApi.addSkill(
-                          skill as import("@/api/users").AddSkillRequest
-                        );
+                        await usersApi.addSkill(skill as import('@/api/users').AddSkillRequest);
                         queryClient.invalidateQueries({
-                          queryKey: ["profile-skills", username],
+                          queryKey: ['profile-skills', username],
                         });
                       }}
                       onRemoveSkill={async (skillId) => {
                         await usersApi.removeSkill(skillId);
                         queryClient.invalidateQueries({
-                          queryKey: ["profile-skills", username],
+                          queryKey: ['profile-skills', username],
                         });
                       }}
                       isSkillsLoading={skillsResponse === undefined}
@@ -537,9 +566,9 @@ export function ProfilePage({
             try {
               await updateProfileMutation.mutateAsync({ avatar: avatarUrl });
               setIsAvatarPickerOpen(false);
-              toast.success("Profile picture updated");
+              toast.success('Profile picture updated');
             } catch {
-              toast.error("Failed to update profile picture");
+              toast.error('Failed to update profile picture');
             }
           }}
           isLoading={updateProfileMutation.isPending}

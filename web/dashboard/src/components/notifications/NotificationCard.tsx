@@ -7,23 +7,9 @@
 
 'use client';
 
-import React, { useCallback, useState } from 'react';
-import { motion } from 'framer-motion';
-import {
-  TrendingUp,
-  AlertTriangle,
-  Shield,
-  GitBranch,
-  BadgeCheck,
-  Coins,
-  Bell,
-  Check,
-  Archive,
-  MailOpen,
-  MoreVertical,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { isNotificationUnreadStatus } from '@/api/notifications';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,13 +17,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 import {
   type Notification,
-  type NotificationType,
   type NotificationPriority,
+  type NotificationType,
 } from '@/types/notifications';
+import { formatDistanceToNow } from 'date-fns';
+import { motion } from 'framer-motion';
+import {
+  AlertTriangle,
+  Archive,
+  BadgeCheck,
+  Bell,
+  Check,
+  Coins,
+  GitBranch,
+  MailOpen,
+  MoreVertical,
+  Shield,
+  TrendingUp,
+} from 'lucide-react';
+import React, { useCallback, useState } from 'react';
 
 // ============================================================================
 // Props Interface
@@ -115,14 +116,18 @@ function getPriorityBorderColor(priority: NotificationPriority): string {
 /**
  * Get notification type configuration
  */
-function getNotificationTypeConfig(type: NotificationType, notification: Notification): NotificationTypeConfig {
+function getNotificationTypeConfig(
+  type: NotificationType,
+  notification: Notification
+): NotificationTypeConfig {
   switch (type) {
     case 'reputation_gained': {
       const amount = notification.metadata.reputation?.amount ?? 0;
       return {
         icon: <TrendingUp className="h-5 w-5 text-emerald-500" />,
         accentColor: 'text-emerald-500',
-        bgGradient: 'group-hover:bg-gradient-to-r group-hover:from-emerald-500/5 group-hover:to-transparent',
+        bgGradient:
+          'group-hover:bg-gradient-to-r group-hover:from-emerald-500/5 group-hover:to-transparent',
         label: `+${amount} reputation`,
       };
     }
@@ -131,7 +136,8 @@ function getNotificationTypeConfig(type: NotificationType, notification: Notific
       return {
         icon: <AlertTriangle className="h-5 w-5 text-red-500" />,
         accentColor: 'text-red-500',
-        bgGradient: 'group-hover:bg-gradient-to-r group-hover:from-red-500/5 group-hover:to-transparent',
+        bgGradient:
+          'group-hover:bg-gradient-to-r group-hover:from-red-500/5 group-hover:to-transparent',
         label: 'Error Spike',
       };
     }
@@ -153,7 +159,8 @@ function getNotificationTypeConfig(type: NotificationType, notification: Notific
       return {
         icon: <GitBranch className="h-5 w-5 text-violet-500" />,
         accentColor: 'text-violet-500',
-        bgGradient: 'group-hover:bg-gradient-to-r group-hover:from-violet-500/5 group-hover:to-transparent',
+        bgGradient:
+          'group-hover:bg-gradient-to-r group-hover:from-violet-500/5 group-hover:to-transparent',
         label: 'Issue Assigned',
       };
     }
@@ -162,7 +169,8 @@ function getNotificationTypeConfig(type: NotificationType, notification: Notific
       return {
         icon: <BadgeCheck className="h-5 w-5 text-indigo-500" />,
         accentColor: 'text-indigo-500',
-        bgGradient: 'group-hover:bg-gradient-to-r group-hover:from-indigo-500/5 group-hover:to-transparent',
+        bgGradient:
+          'group-hover:bg-gradient-to-r group-hover:from-indigo-500/5 group-hover:to-transparent',
         label: 'Certification Verified',
       };
     }
@@ -171,7 +179,8 @@ function getNotificationTypeConfig(type: NotificationType, notification: Notific
       return {
         icon: <Coins className="h-5 w-5 text-yellow-500" />,
         accentColor: 'text-yellow-500',
-        bgGradient: 'group-hover:bg-gradient-to-r group-hover:from-yellow-500/5 group-hover:to-transparent',
+        bgGradient:
+          'group-hover:bg-gradient-to-r group-hover:from-yellow-500/5 group-hover:to-transparent',
         label: 'Bounty Claimed',
       };
     }
@@ -180,7 +189,8 @@ function getNotificationTypeConfig(type: NotificationType, notification: Notific
       return {
         icon: <Bell className="h-5 w-5 text-gray-500" />,
         accentColor: 'text-gray-500',
-        bgGradient: 'group-hover:bg-gradient-to-r group-hover:from-gray-500/5 group-hover:to-transparent',
+        bgGradient:
+          'group-hover:bg-gradient-to-r group-hover:from-gray-500/5 group-hover:to-transparent',
         label: 'Notification',
       };
   }
@@ -189,7 +199,9 @@ function getNotificationTypeConfig(type: NotificationType, notification: Notific
 /**
  * Get type-specific content details
  */
-function getTypeDetails(notification: Notification): { primary: string; secondary?: string } | null {
+function getTypeDetails(
+  notification: Notification
+): { primary: string; secondary?: string } | null {
   switch (notification.type) {
     case 'reputation_gained': {
       const meta = notification.metadata.reputation;
@@ -264,7 +276,7 @@ export const NotificationCard = React.memo(function NotificationCard({
   compact = false,
 }: NotificationCardProps) {
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
-  const isUnread = notification.status === 'unread';
+  const isUnread = isNotificationUnreadStatus(notification.status);
   const typeConfig = getNotificationTypeConfig(notification.type, notification);
   const typeDetails = getTypeDetails(notification);
 
@@ -275,15 +287,21 @@ export const NotificationCard = React.memo(function NotificationCard({
     onClick?.(notification);
   }, [notification, isUnread, onClick, onMarkAsRead]);
 
-  const handleMarkAsRead = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onMarkAsRead?.(notification.id);
-  }, [notification.id, onMarkAsRead]);
+  const handleMarkAsRead = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onMarkAsRead?.(notification.id);
+    },
+    [notification.id, onMarkAsRead]
+  );
 
-  const handleArchive = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onArchive?.(notification.id);
-  }, [notification.id, onArchive]);
+  const handleArchive = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onArchive?.(notification.id);
+    },
+    [notification.id, onArchive]
+  );
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -406,9 +424,7 @@ export const NotificationCard = React.memo(function NotificationCard({
         </div>
 
         {/* Message */}
-        <p className="text-sm text-text-secondary line-clamp-2 mt-1">
-          {notification.message}
-        </p>
+        <p className="text-sm text-text-secondary line-clamp-2 mt-1">{notification.message}</p>
 
         {/* Type-specific Details */}
         {typeDetails && !compact && (

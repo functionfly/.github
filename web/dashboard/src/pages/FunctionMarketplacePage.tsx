@@ -1,5 +1,4 @@
-import { FunctionMarketplace } from "@/components/swarm/FunctionMarketplace";
-import { Footer } from "@/pages/LandingPage/components/Footer";
+import { BrowseFunctionsView } from '@/components/registry/BrowseFunctionsView';
 import { MetaTags } from '@/components/seo/MetaTags';
 import { useWebVitals } from '@/hooks/useWebVitals';
 import { PublicAnalytics } from '@/components/common/PublicAnalytics';
@@ -15,9 +14,9 @@ export function FunctionMarketplacePage() {
     <div className="min-h-screen flex flex-col">
       {/* SEO Meta Tags */}
       <MetaTags
-        title="Function Marketplace - Serverless Functions Library | FunctionFly"
-        description="Browse and deploy pre-built serverless functions from our extensive marketplace. From API integrations to data processing, find the perfect function for your project."
-        keywords={["function marketplace", "serverless functions", "function library", "API integrations", "data processing", "cloud functions"]}
+        title="Discover Functions | FunctionFly"
+        description="Discover and deploy serverless functions. Browse the registry, deploy instantly, or try live in the playground."
+        keywords={["function registry", "serverless functions", "discover functions", "deploy functions"]}
         url={`${window.location.origin}/dashboard`}
         type="website"
       />
@@ -25,10 +24,7 @@ export function FunctionMarketplacePage() {
       {/* Public Analytics (Hotjar for user behavior) */}
       <PublicAnalytics />
 
-      <div className="flex-1">
-        <FunctionMarketplace />
-      </div>
-      <Footer />
+      <BrowseFunctionsView variant="dashboard" />
     </div>
   );
 }

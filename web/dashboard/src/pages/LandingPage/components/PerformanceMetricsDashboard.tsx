@@ -1,8 +1,19 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Activity, Globe, Zap, Shield, TrendingUp, MapPin } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { motion } from 'framer-motion';
+import { Activity, Globe, MapPin, Shield, TrendingUp, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 // Real API client for monitoring services
 class MetricsAPI {
@@ -12,7 +23,8 @@ class MetricsAPI {
 
   constructor() {
     // Use environment variable or fallback to demo API
-    this.apiEndpoint = import.meta.env.VITE_METRICS_API_URL || 'https://api.functionfly.com/v1/metrics';
+    this.apiEndpoint =
+      import.meta.env.VITE_METRICS_API_URL || 'https://api.functionfly.com/v1/metrics';
   }
 
   static getInstance(): MetricsAPI {
@@ -31,15 +43,19 @@ class MetricsAPI {
     status: 'operational' | 'degraded' | 'outage';
   }> {
     try {
+      const metricsApiKey = import.meta.env.VITE_METRICS_API_KEY;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      // Only add Authorization header if API key is provided
+      if (metricsApiKey) {
+        headers['Authorization'] = `Bearer ${metricsApiKey}`;
+      }
       const response = await fetch(`${this.apiEndpoint}/global`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add API key if needed
-          'Authorization': `Bearer ${import.meta.env.VITE_METRICS_API_KEY || 'demo'}`,
-        },
+        headers,
         // Add timeout
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(5000),
       });
 
       if (!response.ok) {
@@ -54,7 +70,7 @@ class MetricsAPI {
         latency: Math.max(0, data.latency || 47),
         failoverRate: Math.max(95.0, Math.min(100.0, data.failoverRate || 99.95)),
         timestamp: data.timestamp || new Date().toISOString(),
-        status: data.status || 'operational'
+        status: data.status || 'operational',
       };
     } catch (error) {
       console.warn('Failed to fetch real metrics, falling back to demo data:', error);
@@ -72,9 +88,12 @@ class MetricsAPI {
     return {
       uptime: Math.max(99.95, Math.min(99.99, baseUptime + (Math.random() - 0.5) * 0.04)),
       latency: Math.max(35, Math.min(85, baseLatency + (Math.random() - 0.5) * 10)),
-      failoverRate: Math.max(99.85, Math.min(99.99, baseFailoverRate + (Math.random() - 0.5) * 0.1)),
+      failoverRate: Math.max(
+        99.85,
+        Math.min(99.99, baseFailoverRate + (Math.random() - 0.5) * 0.1)
+      ),
       timestamp: new Date().toISOString(),
-      status: 'operational' as const
+      status: 'operational' as const,
     };
   }
 
@@ -82,7 +101,7 @@ class MetricsAPI {
   subscribeToMetrics(callback: (data: any) => void) {
     this.listeners.push(callback);
     return () => {
-      this.listeners = this.listeners.filter(listener => listener !== callback);
+      this.listeners = this.listeners.filter((listener) => listener !== callback);
     };
   }
 
@@ -94,7 +113,7 @@ class MetricsAPI {
     const updateMetrics = async () => {
       try {
         const metrics = await this.fetchGlobalMetrics();
-        this.listeners.forEach(callback => callback(metrics));
+        this.listeners.forEach((callback) => callback(metrics));
       } catch (error) {
         console.error('Failed to fetch metrics:', error);
       }
@@ -107,7 +126,7 @@ class MetricsAPI {
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          this.listeners.forEach(callback => callback(data));
+          this.listeners.forEach((callback) => callback(data));
         } catch (error) {
           console.error('Failed to parse SSE data:', error);
         }
@@ -122,7 +141,6 @@ class MetricsAPI {
         updateMetrics(); // Initial update
         pollingInterval = setInterval(updateMetrics, 12000 + Math.random() * 6000);
       };
-
     } catch (error) {
       console.warn('SSE not supported, using polling');
       // Fallback to polling for older browsers or if SSE fails
@@ -146,7 +164,7 @@ class MetricsAPI {
       status: data.status.indicator, // 'none', 'minor', 'major', 'critical'
       uptime: 99.98, // StatusPage doesn't provide uptime %, use fallback
       latency: 47,
-      failoverRate: 99.95
+      failoverRate: 99.95,
     };
   }
 
@@ -155,8 +173,8 @@ class MetricsAPI {
     const response = await fetch('https://api.datadoghq.com/api/v1/query', {
       headers: {
         'DD-API-KEY': apiKey,
-        'DD-APPLICATION-KEY': appKey
-      }
+        'DD-APPLICATION-KEY': appKey,
+      },
     });
     const data = await response.json();
     // Parse DataDog metrics and return normalized data
@@ -169,7 +187,7 @@ class MetricsAPI {
       uptime: data.uptime || 99.98,
       latency: data.latency || 47,
       failoverRate: data.availability || 99.95,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 }
@@ -177,41 +195,57 @@ class MetricsAPI {
 // Real geographic data based on actual AWS, Google Cloud, and Azure regions
 const geoLocations = [
   {
-    name: "North America",
-    regions: ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "ca-central-1", "us-gov-east-1", "us-gov-west-1"],
+    name: 'North America',
+    regions: [
+      'us-east-1',
+      'us-east-2',
+      'us-west-1',
+      'us-west-2',
+      'ca-central-1',
+      'us-gov-east-1',
+      'us-gov-west-1',
+    ],
     uptime: 99.98,
-    latency: 23
+    latency: 23,
   },
   {
-    name: "Europe",
-    regions: ["eu-west-1", "eu-west-2", "eu-west-3", "eu-central-1", "eu-north-1", "eu-south-1"],
+    name: 'Europe',
+    regions: ['eu-west-1', 'eu-west-2', 'eu-west-3', 'eu-central-1', 'eu-north-1', 'eu-south-1'],
     uptime: 99.97,
-    latency: 45
+    latency: 45,
   },
   {
-    name: "Asia Pacific",
-    regions: ["ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2", "ap-northeast-3", "ap-south-1", "ap-east-1"],
+    name: 'Asia Pacific',
+    regions: [
+      'ap-southeast-1',
+      'ap-southeast-2',
+      'ap-northeast-1',
+      'ap-northeast-2',
+      'ap-northeast-3',
+      'ap-south-1',
+      'ap-east-1',
+    ],
     uptime: 99.95,
-    latency: 67
+    latency: 67,
   },
   {
-    name: "South America",
-    regions: ["sa-east-1"],
+    name: 'South America',
+    regions: ['sa-east-1'],
     uptime: 99.92,
-    latency: 89
+    latency: 89,
   },
   {
-    name: "Africa",
-    regions: ["af-south-1"],
-    uptime: 99.90,
-    latency: 112
+    name: 'Africa',
+    regions: ['af-south-1'],
+    uptime: 99.9,
+    latency: 112,
   },
   {
-    name: "Middle East",
-    regions: ["me-south-1", "me-central-1"],
+    name: 'Middle East',
+    regions: ['me-south-1', 'me-central-1'],
     uptime: 99.94,
-    latency: 78
-  }
+    latency: 78,
+  },
 ];
 
 // Performance data over time based on real serverless patterns
@@ -233,15 +267,22 @@ const generatePerformanceData = () => {
 
     data.push({
       hour: `${hourOfDay.toString().padStart(2, '0')}:00`,
-      uptime: Math.max(99.90, Math.min(99.99, baseUptime + uptimeVariation)),
+      uptime: Math.max(99.9, Math.min(99.99, baseUptime + uptimeVariation)),
       latency: Math.max(35, Math.min(120, baseLatency * timeMultiplier + latencyVariation)),
-      requests: Math.floor((isPeakHour ? 800000 : 300000) + Math.random() * 400000)
+      requests: Math.floor((isPeakHour ? 800000 : 300000) + Math.random() * 400000),
     });
   }
   return data;
 };
 
-const COLORS = ['var(--brand-500)', 'var(--brand-600)', 'var(--success)', 'var(--warning)', 'var(--error)', 'var(--info)'];
+const COLORS = [
+  'var(--brand-500)',
+  'var(--brand-600)',
+  'var(--success)',
+  'var(--warning)',
+  'var(--error)',
+  'var(--info)',
+];
 
 // Real-time metrics hook with error handling
 function useRealTimeMetrics() {
@@ -252,7 +293,7 @@ function useRealTimeMetrics() {
     status: 'operational' as const,
     lastUpdated: new Date(),
     isLoading: true,
-    error: null as string | null
+    error: null as string | null,
   });
 
   useEffect(() => {
@@ -260,12 +301,12 @@ function useRealTimeMetrics() {
 
     // Subscribe to real-time updates
     const unsubscribe = metricsAPI.subscribeToMetrics((newMetrics) => {
-      setMetrics(prev => ({
+      setMetrics((prev) => ({
         ...prev,
         ...newMetrics,
         lastUpdated: new Date(),
         isLoading: false,
-        error: null
+        error: null,
       }));
     });
 
@@ -274,7 +315,7 @@ function useRealTimeMetrics() {
 
     // Set loading timeout
     const loadingTimeout = setTimeout(() => {
-      setMetrics(prev => ({ ...prev, isLoading: false }));
+      setMetrics((prev) => ({ ...prev, isLoading: false }));
     }, 3000);
 
     return () => {
@@ -337,7 +378,7 @@ export function PerformanceMetricsDashboard() {
   const pieData = geoLocations.map((location, index) => ({
     name: location.name.split(' ')[0], // Shorten names for pie chart
     value: location.regions.length,
-    color: COLORS[index % COLORS.length]
+    color: COLORS[index % COLORS.length],
   }));
 
   return (
@@ -346,13 +387,21 @@ export function PerformanceMetricsDashboard() {
         {/* Connection Status Indicator */}
         <div className="mb-8 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card shine-effect glow-sm border border-border-default">
-            <div className={`w-3 h-3 rounded-full ${
-              realTimeMetrics.isLoading ? 'bg-warning animate-pulse glow-warning' :
-              realTimeMetrics.error ? 'bg-error glow-error' : 'bg-success glow-success'
-            }`} />
+            <div
+              className={`w-3 h-3 rounded-full ${
+                realTimeMetrics.isLoading
+                  ? 'bg-warning animate-pulse glow-warning'
+                  : realTimeMetrics.error
+                    ? 'bg-error glow-error'
+                    : 'bg-success glow-success'
+              }`}
+            />
             <span className="text-sm font-medium text-text-primary">
-              {realTimeMetrics.isLoading ? 'Connecting to metrics API...' :
-               realTimeMetrics.error ? 'Using cached data' : 'Live data connected'}
+              {realTimeMetrics.isLoading
+                ? 'Connecting to metrics API...'
+                : realTimeMetrics.error
+                  ? 'Using cached data'
+                  : 'Live data connected'}
             </span>
             {!realTimeMetrics.isLoading && !realTimeMetrics.error && (
               <span className="text-xs text-text-muted ml-2 font-mono">
@@ -376,8 +425,8 @@ export function PerformanceMetricsDashboard() {
               Live Performance Metrics
             </h2>
             <p className="text-lg text-text-secondary max-w-3xl mx-auto text-balance leading-relaxed">
-              Real-time insights into FunctionFly's global infrastructure performance.
-              Connected to our monitoring APIs for live data across all regions.
+              Real-time insights into FunctionFly's global infrastructure performance. Connected to
+              our monitoring APIs for live data across all regions.
             </p>
           </motion.div>
         </div>
@@ -434,9 +483,7 @@ export function PerformanceMetricsDashboard() {
                     <div className="text-xs text-text-secondary">Avg Response Time</div>
                   </div>
                 </div>
-                <div className="text-sm text-text-secondary">
-                  Global average across all regions
-                </div>
+                <div className="text-sm text-text-secondary">Global average across all regions</div>
                 <div className="mt-2 text-xs text-text-secondary">
                   P95: {Math.round(realTimeMetrics.latency * 1.5)}ms
                 </div>
@@ -461,9 +508,7 @@ export function PerformanceMetricsDashboard() {
                     <div className="text-xs text-text-secondary">Failover Success</div>
                   </div>
                 </div>
-                <div className="text-sm text-text-secondary">
-                  Automatic recovery rate
-                </div>
+                <div className="text-sm text-text-secondary">Automatic recovery rate</div>
               </CardContent>
             </Card>
           </motion.div>
@@ -483,11 +528,10 @@ export function PerformanceMetricsDashboard() {
                     <div className="text-xs text-text-secondary">Global Regions</div>
                   </div>
                 </div>
-                <div className="text-sm text-text-secondary">
-                  Across 6 continents
-                </div>
+                <div className="text-sm text-text-secondary">Across 6 continents</div>
                 <div className="mt-2 text-xs text-text-secondary">
-                  {geoLocations.reduce((sum, loc) => sum + loc.regions.length, 0)} total regions monitored
+                  {geoLocations.reduce((sum, loc) => sum + loc.regions.length, 0)} total regions
+                  monitored
                 </div>
               </CardContent>
             </Card>
@@ -519,12 +563,17 @@ export function PerformanceMetricsDashboard() {
                       interval="preserveStartEnd"
                     />
                     <YAxis yAxisId="left" stroke="var(--text-muted)" fontSize={12} />
-                    <YAxis yAxisId="right" orientation="right" stroke="var(--text-muted)" fontSize={12} />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      stroke="var(--text-muted)"
+                      fontSize={12}
+                    />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'var(--bg-elevated)',
                         border: '1px solid var(--border-default)',
-                        borderRadius: '6px'
+                        borderRadius: '6px',
                       }}
                     />
                     <Line
@@ -612,7 +661,9 @@ export function PerformanceMetricsDashboard() {
                 </div>
 
                 <div className="text-center">
-                  <div className="text-text-primary font-medium mb-2">Global Infrastructure Status</div>
+                  <div className="text-text-primary font-medium mb-2">
+                    Global Infrastructure Status
+                  </div>
                   <div className="flex items-center justify-center gap-2 text-success">
                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                     All regions operational
@@ -647,7 +698,10 @@ export function PerformanceMetricsDashboard() {
                     className="p-4 rounded-lg bg-bg-tertiary border border-border-subtle regional-card regional-text"
                   >
                     <h4 className="text-text-primary font-medium mb-2 flex items-center gap-2">
-                      <MapPin className="w-4 h-4" style={{ color: COLORS[index % COLORS.length] }} />
+                      <MapPin
+                        className="w-4 h-4"
+                        style={{ color: COLORS[index % COLORS.length] }}
+                      />
                       {location.name}
                     </h4>
                     <div className="space-y-2 text-sm">

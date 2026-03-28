@@ -12,6 +12,51 @@ import type {
   NotificationStatus,
 } from '@/types/notifications';
 
+/** API uses delivery statuses (pending, sent, …); UI uses inbox semantics (unread | read | archived). */
+export function normalizeNotificationStatus(apiStatus: string): NotificationStatus {
+  if (apiStatus === 'read') return 'read';
+  if (apiStatus === 'archived') return 'archived';
+  return 'unread';
+}
+
+/** Map orchestrator categories to dashboard tab ids (matches unread-count handler). */
+export function normalizeNotificationCategory(apiCategory: string): NotificationCategory {
+  switch (apiCategory) {
+    case 'team':
+      return 'messages';
+    case 'billing':
+      return 'revenue';
+    case 'deployment':
+      return 'issues';
+    case 'system':
+      return 'trust';
+    case 'function':
+    case 'registry':
+      return 'trust';
+    case 'trust':
+    case 'revenue':
+    case 'issues':
+    case 'messages':
+    case 'security':
+    case 'all':
+      return apiCategory;
+    default:
+      return 'all';
+  }
+}
+
+export function isNotificationUnreadStatus(status: NotificationStatus): boolean {
+  return status !== 'read' && status !== 'archived';
+}
+
+function normalizePriority(p: string): NotificationPriority {
+  if (p === 'normal') return 'medium';
+  if (p === 'low' || p === 'medium' || p === 'high' || p === 'critical') {
+    return p;
+  }
+  return 'medium';
+}
+
 export interface FetchNotificationsParams {
   category?: NotificationCategory;
   status?: NotificationStatus;
@@ -43,22 +88,22 @@ export async function fetchNotifications(
     // Note: priority filtering might not be supported by backend yet
 
     const url = `/v1/notifications${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    const response = await apiClient.get(url) as { notifications: any[] };
+    const response = (await apiClient.get(url)) as { notifications: any[] };
 
     // Transform the response into Notification objects
     return (response.notifications || []).map((item: any) => ({
       id: item.id,
       type: item.type,
-      category: item.category,
+      category: normalizeNotificationCategory(String(item.category ?? 'all')),
       title: item.title,
-      message: item.message,
+      message: item.body ?? item.message ?? '',
       timestamp: item.created_at,
-      priority: item.priority,
-      status: item.status as NotificationStatus,
-      metadata: item.metadata || {},
+      priority: normalizePriority(String(item.priority ?? 'medium')),
+      status: normalizeNotificationStatus(String(item.status ?? 'pending')),
+      metadata: item.metadata || item.data || {},
       userId: item.user_id,
       tenantId: item.tenant_id,
-      actionUrl: item.action_url,
+      actionUrl: item.action_url ?? item.data?.action_url,
       icon: item.icon,
       readAt: item.read_at,
       archivedAt: item.archived_at,
@@ -87,7 +132,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
  * Mark all notifications as read for the current user
  */
 export async function markAllNotificationsAsRead(): Promise<number> {
-  const response = await apiClient.post('/v1/notifications/read-all') as { count?: number };
+  const response = (await apiClient.post('/v1/notifications/read-all')) as { count?: number };
   return response.count || 0;
 }
 
@@ -117,7 +162,9 @@ export async function getNotificationPreferences(): Promise<{
   pushEnabled: boolean;
   categories: Record<string, boolean>;
 }> {
-  const response = await apiClient.get('/v1/users/me/notification-preferences') as { preferences?: any };
+  const response = (await apiClient.get('/v1/users/me/notification-preferences')) as {
+    preferences?: any;
+  };
 
   return {
     emailEnabled: response.preferences?.email_enabled ?? true,
@@ -135,11 +182,13 @@ export async function updateNotificationPreferences(preferences: {
   categories?: Record<string, boolean>;
 }): Promise<void> {
   await apiClient.patch('/v1/users/me/notification-preferences', {
-    preferences: [{
-      email_enabled: preferences.emailEnabled,
-      push_enabled: preferences.pushEnabled,
-      category_settings: preferences.categories,
-    }]
+    preferences: [
+      {
+        email_enabled: preferences.emailEnabled,
+        push_enabled: preferences.pushEnabled,
+        category_settings: preferences.categories,
+      },
+    ],
   });
 }
 

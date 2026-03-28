@@ -1,51 +1,58 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { registryApi, type RegistryFunctionReview } from '@/api/registry';
+import { CodeBlock } from '@/components/common/CodeBlock';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { Navbar } from '@/components/common/Navbar';
+import { FollowFunctionButton } from '@/components/follow';
+import { FunctionCard, FunctionHeader, TrustScoreBadge } from '@/components/functions';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  ArrowLeft,
-  Play,
-  Github,
-  Terminal,
-  FileJson,
-  Zap,
-  Users,
-  Star,
-  Package,
-  ChevronRight,
-  Share2,
-  TrendingUp,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Footer } from '@/pages/LandingPage/components';
+import { useAuthStore } from '@/stores/authStore';
+import type {
+  FraudRiskLevel,
+  FunctionCardData,
+  FunctionHeaderData,
+  TrustMetrics,
+  TrustTier,
+} from '@/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
+import { motion } from 'framer-motion';
+import {
   Activity,
-  Calendar,
-  Hash,
-  Sparkles,
-  Loader2,
-  Code2,
+  ArrowLeft,
   BookOpen,
-  BarChart3,
+  ChevronRight,
   ExternalLink,
+  FileJson,
+  Github,
+  Loader2,
+  Package,
+  Play,
+  Share2,
   Shield,
-} from "lucide-react";
-import { Navbar } from "@/components/common/Navbar";
-import { Footer } from "@/pages/LandingPage/components";
-import { CodeBlock } from "@/components/common/CodeBlock";
-import { LoadingSpinner } from "@/components/common/LoadingSpinner";
-import { ErrorMessage } from "@/components/common/ErrorMessage";
-import { DeterministicReliabilityBadge } from "@/components/dre";
-import { FunctionHeader, FunctionCard, TrustScoreBadge } from "@/components/functions";
-import type { FunctionHeaderData, TrustTier, FunctionCardData, TrustMetrics, FraudRiskLevel } from "@/types";
-import { FollowFunctionButton } from "@/components/follow";
-import { useState } from "react";
-import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
-import ReactMarkdown from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+  Star,
+  Terminal,
+  Zap,
+} from 'lucide-react';
+import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { toast } from 'sonner';
 
 interface FunctionInfo {
   id: string;
@@ -89,14 +96,14 @@ interface FunctionInfo {
  */
 function mapToFunctionHeaderData(
   data: FunctionInfo,
-  trustTier: TrustTier = "medium"
+  trustTier: TrustTier = 'medium'
 ): FunctionHeaderData {
   // Use source_hash if available, otherwise generate a placeholder
   const executionRootHash = data.source_hash
-    ? data.source_hash.startsWith("0x")
+    ? data.source_hash.startsWith('0x')
       ? data.source_hash
       : `0x${data.source_hash}`
-    : `0x${data.author}${data.name}`.slice(0, 66).padEnd(66, "0");
+    : `0x${data.author}${data.name}`.slice(0, 66).padEnd(66, '0');
 
   // Generate resource signature from author/name
   const resourceSignature = `res_sig_${data.author.slice(0, 8)}${data.name.slice(0, 8)}`;
@@ -105,12 +112,12 @@ function mapToFunctionHeaderData(
   const mappedTrustTier: TrustTier =
     (data.trust_level?.toLowerCase() as TrustTier) ||
     (data.trust_score != null && data.trust_score >= 80
-      ? "high"
+      ? 'high'
       : data.trust_score != null && data.trust_score >= 50
-      ? "medium"
-      : data.trust_score != null && data.trust_score >= 20
-      ? "low"
-      : trustTier);
+        ? 'medium'
+        : data.trust_score != null && data.trust_score >= 20
+          ? 'low'
+          : trustTier);
 
   // Calculate economic score from reliability and other factors
   const economicScore = Math.round((data.reliability || 0.5) * 100);
@@ -126,9 +133,9 @@ function mapToFunctionHeaderData(
     fxcert: {
       verified: data.verified === true || (data.verified !== false && data.deterministic) || false,
       issuedAt: data.created_at,
-      issuer: "FunctionFly Registry",
+      issuer: 'FunctionFly Registry',
     },
-    status: "online",
+    status: 'online',
     version: `v${data.version}`,
     description: data.description,
   };
@@ -141,7 +148,7 @@ function mapToFunctionCardData(data: FunctionInfo): FunctionCardData {
   return {
     id: `${data.author}/${data.name}`,
     name: data.title || data.name,
-    description: data.description || "No description available",
+    description: data.description || 'No description available',
     author: {
       id: data.author,
       username: data.author,
@@ -153,9 +160,9 @@ function mapToFunctionCardData(data: FunctionInfo): FunctionCardData {
       executionTrend: data.popularity_score ? [data.popularity_score] : undefined,
     },
     pricing: {
-      model: data.price_per_call === 0 ? "free" : "per_call",
+      model: data.price_per_call === 0 ? 'free' : 'per_call',
       pricePerCall: data.price_per_call,
-      currency: "USD",
+      currency: 'USD',
     },
     isVerified: data.deterministic || false,
     isDeterministic: data.deterministic || false,
@@ -196,7 +203,7 @@ function mapToTrustMetrics(data: FunctionInfo): TrustMetrics {
   const communityReputation = data.stars ? Math.min(data.stars, 100) : 50;
 
   // Fraud risk - default to low
-  const fraudRisk: FraudRiskLevel = "low";
+  const fraudRisk: FraudRiskLevel = 'low';
 
   return {
     overallScore,
@@ -215,22 +222,85 @@ function mapToTrustMetrics(data: FunctionInfo): TrustMetrics {
 export default function FunctionPage() {
   const { author, name } = useParams<{ author: string; name: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  const { data: functionInfo, isLoading, error } = useQuery<FunctionInfo>({
-    queryKey: ["function", author, name],
+  const {
+    data: functionInfo,
+    isLoading,
+    error,
+  } = useQuery<FunctionInfo>({
+    queryKey: ['function', author, name],
     queryFn: async () => {
-      const response = await fetch(
-        `/v1/registry/functions/${author}/${name}?expand=manifest`
-      );
+      const response = await fetch(`/v1/registry/functions/${author}/${name}?expand=manifest`);
       if (response.status === 404) {
-        throw new Error("Function not found");
+        throw new Error('Function not found');
       }
       if (!response.ok) {
-        throw new Error("Failed to fetch function");
+        throw new Error('Failed to fetch function');
       }
       return response.json();
     },
     enabled: !!author && !!name,
+  });
+
+  // Reviews (public list + authenticated submit)
+  // NOTE: hooks must stay above early returns to avoid hook-order errors during loading.
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewStars, setReviewStars] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewBody, setReviewBody] = useState('');
+
+  const { data: reviewsResp, isLoading: isLoadingReviews } = useQuery({
+    queryKey: ['function-reviews', author, name],
+    queryFn: async () => {
+      if (!author || !name) return null;
+      return registryApi.listReviews(author, name, { limit: 20, offset: 0 });
+    },
+    enabled: !!author && !!name,
+  });
+
+  const reviews: RegistryFunctionReview[] = reviewsResp?.reviews ?? [];
+  const reviewsTotal = reviewsResp?.total ?? reviews.length;
+
+  const submitReviewMutation = useMutation({
+    mutationFn: async () => {
+      if (!author || !name) throw new Error('Missing function');
+      return registryApi.submitReview(author, name, {
+        stars: reviewStars,
+        title: reviewTitle,
+        body: reviewBody,
+      });
+    },
+    onSuccess: () => {
+      toast.success('Review submitted');
+      setReviewDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['function-reviews', author, name] });
+      // Optional: also submit aggregate rating signal so overall_score updates quickly
+      registryApi
+        .submitRating(author!, name!, {
+          overall_score: reviewStars,
+          reliability_score: 0,
+          latency_score: 0,
+          documentation_score: 0,
+        })
+        .catch(() => {
+          /* ignore */
+        });
+    },
+    onError: (e) => {
+      const msg = (e as Error)?.message || 'Failed to submit review';
+      if (msg.toLowerCase().includes('execute this function')) {
+        toast.info('Run it once to unlock reviews', {
+          action: {
+            label: 'Try it now',
+            onClick: () => navigate(`/run/${author}/${name}`),
+          },
+        });
+        return;
+      }
+      toast.error(msg);
+    },
   });
 
   // Enhanced Loading Skeleton
@@ -266,7 +336,7 @@ export default function FunctionPage() {
   }
 
   if (error) {
-    const isNotFound = (error as Error).message === "Function not found";
+    const isNotFound = (error as Error).message === 'Function not found';
     if (isNotFound) {
       return (
         <div className="min-h-screen flex flex-col bg-bg-primary">
@@ -366,14 +436,14 @@ print(result)`,
       try {
         if (navigator.share) {
           await navigator.share(shareData);
-          toast.success("Shared successfully");
+          toast.success('Shared successfully');
         } else {
           await navigator.clipboard.writeText(shareUrl);
-          toast.success("Link copied to clipboard");
+          toast.success('Link copied to clipboard');
         }
       } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          toast.error("Failed to share");
+        if ((err as Error).name !== 'AbortError') {
+          toast.error('Failed to share');
         }
       } finally {
         setIsSharing(false);
@@ -388,11 +458,7 @@ print(result)`,
         onClick={handleShare}
         disabled={isSharing}
       >
-        {isSharing ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Share2 className="w-4 h-4" />
-        )}
+        {isSharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
         Share
       </Button>
     );
@@ -402,19 +468,14 @@ print(result)`,
 
   // Markdown renderer component (theme-aware: light mode = dark text, dark mode = inverted)
   const MarkdownRenderer = ({ content }: { content: string }) => (
-    <div className="function-page-prose prose prose-sm max-w-none prose-invert">
+    <div className="function-page-prose prose prose-sm max-w-none text-foreground dark:prose-invert">
       <ReactMarkdown
         components={{
           code({ node, inline, className, children, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || "");
+            const match = /language-(\w+)/.exec(className || '');
             return !inline && match ? (
-              <SyntaxHighlighter
-                style={vscDarkPlus}
-                language={match[1]}
-                PreTag="div"
-                {...props}
-              >
-                {String(children).replace(/\n$/, "")}
+              <SyntaxHighlighter style={vscDarkPlus} language={match[1]} PreTag="div" {...props}>
+                {String(children).replace(/\n$/, '')}
               </SyntaxHighlighter>
             ) : (
               <code className={className} {...props}>
@@ -438,16 +499,16 @@ print(result)`,
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
             className="mb-8"
           >
             <FunctionHeader
               data={mapToFunctionHeaderData(functionInfo)}
-              onBack={() => navigate("/registry")}
+              onBack={() => navigate('/registry')}
               onShare={() => {
                 const shareUrl = window.location.href;
                 navigator.clipboard.writeText(shareUrl).then(() => {
-                  toast.success("Link copied to clipboard");
+                  toast.success('Link copied to clipboard');
                 });
               }}
             />
@@ -471,7 +532,9 @@ print(result)`,
                   Executions
                 </Button>
               </Link>
-              <Link to={`/registry/${functionInfo.author}/${functionInfo.name}/executions?tab=certificates`}>
+              <Link
+                to={`/registry/${functionInfo.author}/${functionInfo.name}/executions?tab=certificates`}
+              >
                 <Button variant="outline" size="lg" className="gap-2">
                   <Shield className="w-4 h-4" />
                   Certificates
@@ -500,16 +563,21 @@ print(result)`,
             <FunctionCard
               data={mapToFunctionCardData(functionInfo)}
               variant="expanded"
-              onView={() => navigate(`/fx/${functionInfo.author}/${functionInfo.name}`)}
+              onView={() => {
+                document.getElementById('function-api-reference')?.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start',
+                });
+              }}
               onExecute={() => navigate(`/run/${functionInfo.author}/${functionInfo.name}`)}
               onShare={() => {
                 const shareUrl = window.location.href;
                 navigator.clipboard.writeText(shareUrl).then(() => {
-                  toast.success("Link copied to clipboard");
+                  toast.success('Link copied to clipboard');
                 });
               }}
               onFavorite={(id, isFav) => {
-                toast.info(isFav ? "Added to favorites" : "Removed from favorites");
+                toast.info(isFav ? 'Added to favorites' : 'Removed from favorites');
               }}
             />
           </motion.div>
@@ -534,228 +602,481 @@ print(result)`,
                     <h3 className="font-semibold text-foreground">Trust & Verification</h3>
                   </div>
                   <p className="text-sm text-muted-foreground max-w-sm">
-                    This function has been verified by the FunctionFly registry.
-                    Trust scores are calculated based on execution reliability,
-                    community ratings, and deterministic behavior.
+                    This function has been verified by the FunctionFly registry. Trust scores are
+                    calculated based on execution reliability, community ratings, and deterministic
+                    behavior.
                   </p>
                 </div>
               </div>
             </div>
           </motion.div>
 
-              {/* Auto-generated Documentation — directly under Try it Now */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
-                className="function-page-api-reference mb-8 mt-8 overflow-hidden rounded-2xl border border-border-subtle bg-gradient-to-b from-bg-primary via-bg-primary/95 to-bg-secondary/30 shadow-sm"
+          {/* Reviews */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+            className="mb-10"
+          >
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Community reviews</h2>
+                <p className="text-sm text-muted-foreground">
+                  {reviewsTotal} {reviewsTotal === 1 ? 'review' : 'reviews'}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    toast.info('Sign in to leave a review');
+                    navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+                    return;
+                  }
+                  setReviewDialogOpen(true);
+                }}
+                className="gap-2"
               >
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border-subtle bg-bg-tertiary/50 px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
-                      <BookOpen className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                        API Reference
-                      </h2>
-                      <p className="text-xs text-muted-foreground">
-                        Auto-generated from the function manifest
-                      </p>
+                <Star className="h-4 w-4" />
+                Write a review
+              </Button>
+            </div>
+
+            <div className="grid gap-3">
+              {isLoadingReviews ? (
+                <div className="rounded-xl border border-border-subtle bg-bg-secondary/30 p-4 text-sm text-muted-foreground">
+                  Loading reviews…
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className="rounded-xl border border-border-subtle bg-bg-secondary/30 p-6 text-center">
+                  <p className="text-sm text-muted-foreground">No reviews yet. Be the first.</p>
+                </div>
+              ) : (
+                reviews.map((r) => (
+                  <div
+                    key={r.id}
+                    className="rounded-xl border border-border-subtle bg-bg-secondary/30 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-0.5">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${
+                                  i < (r.stars ?? 0)
+                                    ? 'fill-amber-400 text-amber-400'
+                                    : 'text-muted-foreground/40'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}
+                          </span>
+                        </div>
+                        {r.title && (
+                          <div className="mt-2 font-medium text-foreground truncate">{r.title}</div>
+                        )}
+                        {r.body && (
+                          <div className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">
+                            {r.body}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="gap-2" asChild>
-                      <a
-                        href={`/v1/docs/${functionInfo.author}/${functionInfo.name}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        Full docs
-                      </a>
-                    </Button>
+                ))
+              )}
+            </div>
+          </motion.div>
+
+          <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Write a review</DialogTitle>
+                <DialogDescription>
+                  Share your experience. Your star rating will also contribute to the function’s
+                  community score.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm font-medium text-foreground mb-2">Rating</div>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => {
+                      const val = i + 1;
+                      const active = val <= reviewStars;
+                      return (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setReviewStars(val)}
+                          className="p-1 rounded-md hover:bg-bg-tertiary transition-colors"
+                          aria-label={`${val} star${val === 1 ? '' : 's'}`}
+                        >
+                          <Star
+                            className={`h-5 w-5 ${
+                              active ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/50'
+                            }`}
+                          />
+                        </button>
+                      );
+                    })}
+                    <span className="ml-2 text-sm text-muted-foreground">{reviewStars}/5</span>
                   </div>
                 </div>
 
-                <div className="grid gap-0 lg:grid-cols-[minmax(0,200px)_1fr]">
-                  <div className="border-b border-border-subtle bg-bg-primary/50 px-4 py-4 lg:border-b-0 lg:border-r lg:py-6">
-                    <nav className="flex flex-wrap gap-1 lg:flex-col" aria-label="Documentation sections">
-                      <a href="#doc-overview" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-bg-tertiary hover:text-foreground">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-foreground">Title (optional)</div>
+                  <Input
+                    value={reviewTitle}
+                    onChange={(e) => setReviewTitle(e.target.value)}
+                    placeholder="Short summary"
+                    maxLength={120}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-foreground">Review (optional)</div>
+                  <Textarea
+                    value={reviewBody}
+                    onChange={(e) => setReviewBody(e.target.value)}
+                    placeholder="What worked well? Anything to watch out for?"
+                    maxLength={5000}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setReviewDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => submitReviewMutation.mutate()}
+                  disabled={submitReviewMutation.isPending}
+                >
+                  {submitReviewMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Submitting…
+                    </>
+                  ) : (
+                    'Submit'
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Auto-generated Documentation — directly under Try it Now */}
+          <motion.div
+            id="function-api-reference"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+            className="function-page-api-reference scroll-mt-24 mb-8 mt-8 overflow-hidden rounded-2xl border border-border-subtle bg-linear-to-b from-bg-primary via-bg-primary/95 to-bg-secondary/30 shadow-sm"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border-subtle bg-bg-tertiary/50 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                    API Reference
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Auto-generated from the function manifest
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="gap-2" asChild>
+                  <a
+                    href={`/v1/docs/${functionInfo.author}/${functionInfo.name}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Full docs
+                  </a>
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-0 lg:grid-cols-[minmax(0,200px)_1fr]">
+              <div className="border-b border-border-subtle bg-bg-primary/20 px-4 py-4 lg:border-b-0 lg:border-r lg:py-6">
+                <nav
+                  className="flex flex-wrap gap-1 lg:flex-col"
+                  aria-label="Documentation sections"
+                >
+                  <a
+                    href="#doc-overview"
+                    className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-bg-tertiary hover:text-foreground"
+                  >
+                    Overview
+                  </a>
+                  {(functionInfo.manifest?.input || functionInfo.input_example != null) && (
+                    <a
+                      href="#doc-input"
+                      className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-bg-tertiary hover:text-foreground"
+                    >
+                      Input
+                    </a>
+                  )}
+                  {(functionInfo.manifest?.output || functionInfo.output_example != null) && (
+                    <a
+                      href="#doc-output"
+                      className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-bg-tertiary hover:text-foreground"
+                    >
+                      Output
+                    </a>
+                  )}
+                </nav>
+              </div>
+
+              <ScrollArea className="max-h-[70vh] lg:max-h-none">
+                <div className="space-y-0 p-6">
+                  <section id="doc-overview" className="scroll-mt-6">
+                    <div className="rounded-xl border border-border-subtle bg-bg-primary/80 p-5 shadow-sm">
+                      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground">
+                        <span className="flex h-6 w-6 items-center justify-center rounded bg-brand-500/15 text-brand-500 text-xs">
+                          1
+                        </span>
                         Overview
-                      </a>
-                      {(functionInfo.manifest?.input || functionInfo.input_example != null) && (
-                        <a href="#doc-input" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-bg-tertiary hover:text-foreground">
-                          Input
-                        </a>
-                      )}
-                      {(functionInfo.manifest?.output || functionInfo.output_example != null) && (
-                        <a href="#doc-output" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-bg-tertiary hover:text-foreground">
-                          Output
-                        </a>
-                      )}
-                    </nav>
-                  </div>
-
-                  <ScrollArea className="max-h-[70vh] lg:max-h-none">
-                    <div className="space-y-0 p-6">
-                      <section id="doc-overview" className="scroll-mt-6">
-                        <div className="rounded-xl border border-border-subtle bg-bg-primary/80 p-5 shadow-sm">
-                          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground">
-                            <span className="flex h-6 w-6 items-center justify-center rounded bg-brand-500/15 text-brand-500 text-xs">1</span>
-                            Overview
-                          </h3>
-                          <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                            {functionInfo.description || "No description provided."}
+                      </h3>
+                      <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+                        {functionInfo.description || 'No description provided.'}
+                      </p>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <div className="rounded-lg border border-border-subtle bg-bg-tertiary/50 px-3 py-2.5">
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                            Runtime
                           </p>
-                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                            <div className="rounded-lg border border-border-subtle bg-bg-tertiary/50 px-3 py-2.5">
-                              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Runtime</p>
-                              <p className="mt-0.5 font-mono text-sm text-foreground">{functionInfo.runtime}</p>
-                            </div>
-                            {functionInfo.manifest?.deterministic != null && (
-                              <div className="rounded-lg border border-border-subtle bg-bg-tertiary/50 px-3 py-2.5">
-                                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Determinism</p>
-                                <p className="mt-0.5 text-sm text-foreground">
-                                  {functionInfo.manifest.deterministic ? "Deterministic" : "Non-deterministic"}
-                                </p>
-                              </div>
-                            )}
-                            {functionInfo.cache_ttl != null && functionInfo.cache_ttl > 0 && (
-                              <div className="rounded-lg border border-border-subtle bg-bg-tertiary/50 px-3 py-2.5">
-                                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Cache TTL</p>
-                                <p className="mt-0.5 text-sm text-foreground">{functionInfo.cache_ttl}s</p>
-                              </div>
-                            )}
-                          </div>
+                          <p className="mt-0.5 font-mono text-sm text-foreground">
+                            {functionInfo.runtime}
+                          </p>
                         </div>
-                      </section>
+                        {functionInfo.manifest?.deterministic != null && (
+                          <div className="rounded-lg border border-border-subtle bg-bg-tertiary/50 px-3 py-2.5">
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                              Determinism
+                            </p>
+                            <p className="mt-0.5 text-sm text-foreground">
+                              {functionInfo.manifest.deterministic
+                                ? 'Deterministic'
+                                : 'Non-deterministic'}
+                            </p>
+                          </div>
+                        )}
+                        {functionInfo.cache_ttl != null && functionInfo.cache_ttl > 0 && (
+                          <div className="rounded-lg border border-border-subtle bg-bg-tertiary/50 px-3 py-2.5">
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                              Cache TTL
+                            </p>
+                            <p className="mt-0.5 text-sm text-foreground">
+                              {functionInfo.cache_ttl}s
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </section>
 
-                      {(functionInfo.manifest?.input || functionInfo.input_example != null) && (
-                        <section id="doc-input" className="scroll-mt-6 pt-6">
-                          <div className="rounded-xl border border-border-subtle bg-bg-primary/80 p-5 shadow-sm">
-                            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground">
-                              <span className="flex h-6 w-6 items-center justify-center rounded bg-emerald-500/15 text-emerald-600 text-xs dark:text-emerald-400">2</span>
-                              Input
-                            </h3>
-                            {functionInfo.manifest?.input?.properties && typeof functionInfo.manifest.input.properties === "object" && (
-                              <div className="mb-4 overflow-hidden rounded-lg border border-border-subtle">
-                                <table className="w-full text-left text-sm">
-                                  <thead>
-                                    <tr className="border-b border-border-subtle bg-bg-tertiary/70">
-                                      <th className="px-4 py-2.5 font-medium text-foreground">Property</th>
-                                      <th className="px-4 py-2.5 font-medium text-foreground">Type</th>
-                                      <th className="px-4 py-2.5 font-medium text-foreground">Description</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {Object.entries(functionInfo.manifest.input.properties).map(([key, val]: [string, unknown]) => {
-                                      const v = val as { type?: string; description?: string; default?: unknown };
+                  {(functionInfo.manifest?.input || functionInfo.input_example != null) && (
+                    <section id="doc-input" className="scroll-mt-6 pt-6">
+                      <div className="rounded-xl border border-border-subtle bg-bg-primary/80 p-5 shadow-sm">
+                        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground">
+                          <span className="flex h-6 w-6 items-center justify-center rounded bg-emerald-500/15 text-emerald-600 text-xs dark:text-emerald-400">
+                            2
+                          </span>
+                          Input
+                        </h3>
+                        {functionInfo.manifest?.input?.properties &&
+                          typeof functionInfo.manifest.input.properties === 'object' && (
+                            <div className="mb-4 overflow-hidden rounded-lg border border-border-subtle">
+                              <table className="w-full text-left text-sm">
+                                <thead>
+                                  <tr className="border-b border-border-subtle bg-bg-tertiary/70">
+                                    <th className="px-4 py-2.5 font-medium text-foreground">
+                                      Property
+                                    </th>
+                                    <th className="px-4 py-2.5 font-medium text-foreground">
+                                      Type
+                                    </th>
+                                    <th className="px-4 py-2.5 font-medium text-foreground">
+                                      Description
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Object.entries(functionInfo.manifest.input.properties).map(
+                                    ([key, val]: [string, unknown]) => {
+                                      const v = val as {
+                                        type?: string;
+                                        description?: string;
+                                        default?: unknown;
+                                      };
                                       return (
-                                        <tr key={key} className="border-b border-border-subtle/50 last:border-0">
-                                          <td className="px-4 py-2 font-mono text-xs text-foreground">{key}</td>
-                                          <td className="px-4 py-2 text-muted-foreground">{v?.type ?? "—"}</td>
-                                          <td className="px-4 py-2 text-muted-foreground">{v?.description ?? "—"}</td>
+                                        <tr
+                                          key={key}
+                                          className="border-b border-border-subtle/50 last:border-0"
+                                        >
+                                          <td className="px-4 py-2 font-mono text-xs text-foreground">
+                                            {key}
+                                          </td>
+                                          <td className="px-4 py-2 text-muted-foreground">
+                                            {v?.type ?? '—'}
+                                          </td>
+                                          <td className="px-4 py-2 text-muted-foreground">
+                                            {v?.description ?? '—'}
+                                          </td>
                                         </tr>
                                       );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
+                                    }
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        <Tabs defaultValue="schema" className="w-full">
+                          <TabsList className="mb-2 h-9">
+                            <TabsTrigger value="schema" className="text-xs">
+                              Schema
+                            </TabsTrigger>
+                            {functionInfo.input_example != null && (
+                              <TabsTrigger value="example" className="text-xs">
+                                Example
+                              </TabsTrigger>
                             )}
-                            <Tabs defaultValue="schema" className="w-full">
-                              <TabsList className="mb-2 h-9">
-                                <TabsTrigger value="schema" className="text-xs">Schema</TabsTrigger>
-                                {functionInfo.input_example != null && (
-                                  <TabsTrigger value="example" className="text-xs">Example</TabsTrigger>
-                                )}
-                              </TabsList>
-                              <TabsContent value="schema" className="mt-0">
-                                {functionInfo.manifest?.input ? (
-                                  <CodeBlock code={JSON.stringify(functionInfo.manifest.input, null, 2)} language="json" />
-                                ) : (
-                                  <p className="rounded-lg border border-border-subtle bg-bg-tertiary/50 px-4 py-3 text-sm text-muted-foreground">No schema defined.</p>
-                                )}
-                              </TabsContent>
-                              {functionInfo.input_example != null && (
-                                <TabsContent value="example" className="mt-0">
-                                  <CodeBlock
-                                    code={typeof functionInfo.input_example === "string"
-                                      ? functionInfo.input_example
-                                      : JSON.stringify(functionInfo.input_example, null, 2)}
-                                    language="json"
-                                  />
-                                </TabsContent>
-                              )}
-                            </Tabs>
-                          </div>
-                        </section>
-                      )}
+                          </TabsList>
+                          <TabsContent value="schema" className="mt-0">
+                            {functionInfo.manifest?.input ? (
+                              <CodeBlock
+                                code={JSON.stringify(functionInfo.manifest.input, null, 2)}
+                                language="json"
+                              />
+                            ) : (
+                              <p className="rounded-lg border border-border-subtle bg-bg-tertiary/50 px-4 py-3 text-sm text-muted-foreground">
+                                No schema defined.
+                              </p>
+                            )}
+                          </TabsContent>
+                          {functionInfo.input_example != null && (
+                            <TabsContent value="example" className="mt-0">
+                              <CodeBlock
+                                code={
+                                  typeof functionInfo.input_example === 'string'
+                                    ? functionInfo.input_example
+                                    : JSON.stringify(functionInfo.input_example, null, 2)
+                                }
+                                language="json"
+                              />
+                            </TabsContent>
+                          )}
+                        </Tabs>
+                      </div>
+                    </section>
+                  )}
 
-                      {(functionInfo.manifest?.output || functionInfo.output_example != null) && (
-                        <section id="doc-output" className="scroll-mt-6 pt-6">
-                          <div className="rounded-xl border border-border-subtle bg-bg-primary/80 p-5 shadow-sm">
-                            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground">
-                              <span className="flex h-6 w-6 items-center justify-center rounded bg-violet-500/15 text-violet-600 text-xs dark:text-violet-400">3</span>
-                              Output
-                            </h3>
-                            {functionInfo.manifest?.output?.properties && typeof functionInfo.manifest.output.properties === "object" && (
-                              <div className="mb-4 overflow-hidden rounded-lg border border-border-subtle">
-                                <table className="w-full text-left text-sm">
-                                  <thead>
-                                    <tr className="border-b border-border-subtle bg-bg-tertiary/70">
-                                      <th className="px-4 py-2.5 font-medium text-foreground">Property</th>
-                                      <th className="px-4 py-2.5 font-medium text-foreground">Type</th>
-                                      <th className="px-4 py-2.5 font-medium text-foreground">Description</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {Object.entries(functionInfo.manifest.output.properties).map(([key, val]: [string, unknown]) => {
+                  {(functionInfo.manifest?.output || functionInfo.output_example != null) && (
+                    <section id="doc-output" className="scroll-mt-6 pt-6">
+                      <div className="rounded-xl border border-border-subtle bg-bg-primary/80 p-5 shadow-sm">
+                        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground">
+                          <span className="flex h-6 w-6 items-center justify-center rounded bg-violet-500/15 text-violet-600 text-xs dark:text-violet-400">
+                            3
+                          </span>
+                          Output
+                        </h3>
+                        {functionInfo.manifest?.output?.properties &&
+                          typeof functionInfo.manifest.output.properties === 'object' && (
+                            <div className="mb-4 overflow-hidden rounded-lg border border-border-subtle">
+                              <table className="w-full text-left text-sm">
+                                <thead>
+                                  <tr className="border-b border-border-subtle bg-bg-tertiary/70">
+                                    <th className="px-4 py-2.5 font-medium text-foreground">
+                                      Property
+                                    </th>
+                                    <th className="px-4 py-2.5 font-medium text-foreground">
+                                      Type
+                                    </th>
+                                    <th className="px-4 py-2.5 font-medium text-foreground">
+                                      Description
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Object.entries(functionInfo.manifest.output.properties).map(
+                                    ([key, val]: [string, unknown]) => {
                                       const v = val as { type?: string; description?: string };
                                       return (
-                                        <tr key={key} className="border-b border-border-subtle/50 last:border-0">
-                                          <td className="px-4 py-2 font-mono text-xs text-foreground">{key}</td>
-                                          <td className="px-4 py-2 text-muted-foreground">{v?.type ?? "—"}</td>
-                                          <td className="px-4 py-2 text-muted-foreground">{v?.description ?? "—"}</td>
+                                        <tr
+                                          key={key}
+                                          className="border-b border-border-subtle/50 last:border-0"
+                                        >
+                                          <td className="px-4 py-2 font-mono text-xs text-foreground">
+                                            {key}
+                                          </td>
+                                          <td className="px-4 py-2 text-muted-foreground">
+                                            {v?.type ?? '—'}
+                                          </td>
+                                          <td className="px-4 py-2 text-muted-foreground">
+                                            {v?.description ?? '—'}
+                                          </td>
                                         </tr>
                                       );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
+                                    }
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        <Tabs defaultValue="schema" className="w-full">
+                          <TabsList className="mb-2 h-9">
+                            <TabsTrigger value="schema" className="text-xs">
+                              Schema
+                            </TabsTrigger>
+                            {functionInfo.output_example != null && (
+                              <TabsTrigger value="example" className="text-xs">
+                                Example
+                              </TabsTrigger>
                             )}
-                            <Tabs defaultValue="schema" className="w-full">
-                              <TabsList className="mb-2 h-9">
-                                <TabsTrigger value="schema" className="text-xs">Schema</TabsTrigger>
-                                {functionInfo.output_example != null && (
-                                  <TabsTrigger value="example" className="text-xs">Example</TabsTrigger>
-                                )}
-                              </TabsList>
-                              <TabsContent value="schema" className="mt-0">
-                                {functionInfo.manifest?.output ? (
-                                  <CodeBlock code={JSON.stringify(functionInfo.manifest.output, null, 2)} language="json" />
-                                ) : (
-                                  <p className="rounded-lg border border-border-subtle bg-bg-tertiary/50 px-4 py-3 text-sm text-muted-foreground">No schema defined.</p>
-                                )}
-                              </TabsContent>
-                              {functionInfo.output_example != null && (
-                                <TabsContent value="example" className="mt-0">
-                                  <CodeBlock
-                                    code={typeof functionInfo.output_example === "string"
-                                      ? functionInfo.output_example
-                                      : JSON.stringify(functionInfo.output_example, null, 2)}
-                                    language="json"
-                                  />
-                                </TabsContent>
-                              )}
-                            </Tabs>
-                          </div>
-                        </section>
-                      )}
-                    </div>
-                  </ScrollArea>
+                          </TabsList>
+                          <TabsContent value="schema" className="mt-0">
+                            {functionInfo.manifest?.output ? (
+                              <CodeBlock
+                                code={JSON.stringify(functionInfo.manifest.output, null, 2)}
+                                language="json"
+                              />
+                            ) : (
+                              <p className="rounded-lg border border-border-subtle bg-bg-tertiary/50 px-4 py-3 text-sm text-muted-foreground">
+                                No schema defined.
+                              </p>
+                            )}
+                          </TabsContent>
+                          {functionInfo.output_example != null && (
+                            <TabsContent value="example" className="mt-0">
+                              <CodeBlock
+                                code={
+                                  typeof functionInfo.output_example === 'string'
+                                    ? functionInfo.output_example
+                                    : JSON.stringify(functionInfo.output_example, null, 2)
+                                }
+                                language="json"
+                              />
+                            </TabsContent>
+                          )}
+                        </Tabs>
+                      </div>
+                    </section>
+                  )}
                 </div>
-              </motion.div>
+              </ScrollArea>
+            </div>
+          </motion.div>
 
           {/* Code Examples with Tabs */}
           <motion.div
@@ -763,44 +1084,44 @@ print(result)`,
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.7 }}
           >
-          <Card className="mb-8 code-examples-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Terminal className="w-5 h-5 text-brand-500" />
-                Code Examples
-              </CardTitle>
-              <CardDescription className="text-text-secondary code-examples-description">
-                Use these examples to integrate this function into your application
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="curl" className="w-full code-examples-tabs">
-                <TabsList className="grid w-full grid-cols-3 mb-4 code-examples-tabs-list">
-                  <TabsTrigger value="curl" className="gap-2">
-                    <Terminal className="w-4 h-4" />
-                    cURL
-                  </TabsTrigger>
-                  <TabsTrigger value="javascript" className="gap-2">
-                    <FileJson className="w-4 h-4" />
-                    JavaScript
-                  </TabsTrigger>
-                  <TabsTrigger value="python" className="gap-2">
-                    <Zap className="w-4 h-4" />
-                    Python
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="curl">
-                  <CodeBlock code={codeExamples.curl} language="bash" />
-                </TabsContent>
-                <TabsContent value="javascript">
-                  <CodeBlock code={codeExamples.javascript} language="javascript" />
-                </TabsContent>
-                <TabsContent value="python">
-                  <CodeBlock code={codeExamples.python} language="python" />
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
+            <Card className="mb-8 code-examples-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Terminal className="w-5 h-5 text-brand-500" />
+                  Code Examples
+                </CardTitle>
+                <CardDescription className="text-text-secondary code-examples-description">
+                  Use these examples to integrate this function into your application
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="curl" className="w-full code-examples-tabs">
+                  <TabsList className="grid w-full grid-cols-3 mb-4 code-examples-tabs-list">
+                    <TabsTrigger value="curl" className="gap-2">
+                      <Terminal className="w-4 h-4" />
+                      cURL
+                    </TabsTrigger>
+                    <TabsTrigger value="javascript" className="gap-2">
+                      <FileJson className="w-4 h-4" />
+                      JavaScript
+                    </TabsTrigger>
+                    <TabsTrigger value="python" className="gap-2">
+                      <Zap className="w-4 h-4" />
+                      Python
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="curl">
+                    <CodeBlock code={codeExamples.curl} language="bash" />
+                  </TabsContent>
+                  <TabsContent value="javascript">
+                    <CodeBlock code={codeExamples.javascript} language="javascript" />
+                  </TabsContent>
+                  <TabsContent value="python">
+                    <CodeBlock code={codeExamples.python} language="python" />
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </motion.div>
 
           {/* Schema Section */}
@@ -816,9 +1137,7 @@ print(result)`,
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg">Input</CardTitle>
-                      <CardDescription>
-                        Expected input structure
-                      </CardDescription>
+                      <CardDescription>Expected input structure</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <CodeBlock
@@ -833,9 +1152,7 @@ print(result)`,
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg">Output</CardTitle>
-                      <CardDescription>
-                        Expected output structure
-                      </CardDescription>
+                      <CardDescription>Expected output structure</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <CodeBlock
@@ -850,7 +1167,7 @@ print(result)`,
           )}
 
           {/* Related Functions Placeholder */}
-          <Card className="bg-gradient-to-br from-brand-500/5 to-transparent border-dashed">
+          <Card className="bg-linear-to-br from-brand-500/5 to-transparent border-dashed">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center">
@@ -877,4 +1194,3 @@ print(result)`,
     </div>
   );
 }
-

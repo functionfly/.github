@@ -5,12 +5,15 @@ import { ThemeProvider } from '@/components/common/ThemeProvider';
 import { CookieConsentProvider } from '@/components/cookie-consent';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
+import { useNotificationUnreadPolling } from '@/hooks/useNotificationUnreadPolling';
 import {
   COMING_SOON_ONLY,
   getMarketingPageUrl,
   getMarketingRedirectOrigin,
   getPublicDocsSiteOrigin,
 } from '@/lib/constants';
+import { unreadStoreKeyFromEventCategory } from '@/lib/notification-unread-sync';
+import { isPlatformAdminRole } from '@/lib/platform-admin';
 import AgentMarketplacePage from '@/pages/AgentMarketplacePage';
 import { AgentMemoryPage } from '@/pages/AgentMemoryPage';
 import { AgentMemoryDetailPage } from '@/pages/AgentMemoryPage/AgentMemoryDetailPage';
@@ -49,7 +52,6 @@ import { MyProfilePage } from '@/pages/MyProfilePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { OnboardingPage } from '@/pages/OnboardingPage';
 import { PlaygroundPage } from '@/pages/PlaygroundPage';
-import { PricingPage } from '@/pages/PricingPage';
 import { ProfilePage } from '@/pages/ProfilePage/ProfilePage';
 import { ProfileSettingsPage } from '@/pages/ProfileSettingsPage';
 import { ProvidersPage } from '@/pages/ProvidersPage';
@@ -75,7 +77,7 @@ import { useNotificationStore } from '@/stores/notificationStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import type { Notification, NotificationCategory } from '@/types/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AlertTriangle, Bell, DollarSign, MessageSquare, Shield } from 'lucide-react';
+import { AlertTriangle, Bell, DollarSign, Loader2, MessageSquare, Shield } from 'lucide-react';
 import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
@@ -98,17 +100,33 @@ function RegistryFunctionRedirect() {
   return <Navigate to={`/fx/${author}/${name}`} replace />;
 }
 
+/** Shown while `initialize()` has not finished — avoids protected pages firing API calls without a token. */
+function AuthSessionLoading() {
+  return (
+    <div
+      className="flex min-h-[40vh] items-center justify-center"
+      aria-busy="true"
+      aria-label="Checking session"
+    >
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+
 /** Handles "/": logged-out users go to the Astro marketing site (web/site); authenticated → dashboard. */
 function HomeRedirect() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authChecked = useAuthStore((s) => s.authChecked);
   const marketingOrigin = getMarketingRedirectOrigin();
 
   useEffect(() => {
+    if (!authChecked) return;
     if (isAuthenticated) return;
     window.location.replace(marketingOrigin);
-  }, [isAuthenticated, marketingOrigin]);
+  }, [authChecked, isAuthenticated, marketingOrigin]);
 
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  if (!authChecked) return <AuthSessionLoading />;
+  if (isAuthenticated) return <Navigate to="/overview" replace />;
   return null;
 }
 
@@ -145,6 +163,15 @@ function MarketingBlogRedirect() {
   return null;
 }
 
+/** Pricing lives on the Astro marketing site (web/site). */
+function MarketingPricingRedirect() {
+  const url = getMarketingPageUrl('/pricing');
+  useEffect(() => {
+    window.location.replace(url);
+  }, [url]);
+  return null;
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -156,19 +183,21 @@ const queryClient = new QueryClient({
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const authChecked = useAuthStore((state) => state.authChecked);
   const user = useAuthStore((state) => state.user);
   const isOnboardingComplete = useOnboardingStore((state) => state.isOnboardingComplete);
   const hasSkippedOnboarding = useOnboardingStore((state) => state.hasSkippedOnboarding);
+
+  if (!authChecked) {
+    return <AuthSessionLoading />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Check if user is an admin (skip onboarding for admins)
-  const isAdmin =
-    user?.role &&
-    ['super_admin', 'support', 'billing_admin', 'developer_admin'].includes(user.role);
-  if (isAdmin) {
+  // Platform admins skip onboarding (matches backend IsAdminRole)
+  if (isPlatformAdminRole(user?.role)) {
     return <>{children}</>;
   }
 
@@ -184,25 +213,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function OnboardingRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const authChecked = useAuthStore((state) => state.authChecked);
   const user = useAuthStore((state) => state.user);
   const isOnboardingComplete = useOnboardingStore((state) => state.isOnboardingComplete);
   const hasSkippedOnboarding = useOnboardingStore((state) => state.hasSkippedOnboarding);
+
+  if (!authChecked) {
+    return <AuthSessionLoading />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Check if user is an admin (admins skip onboarding entirely)
-  const isAdmin =
-    user?.role &&
-    ['super_admin', 'support', 'billing_admin', 'developer_admin'].includes(user.role);
-  if (isAdmin) {
-    return <Navigate to="/dashboard" replace />;
+  if (isPlatformAdminRole(user?.role)) {
+    return <Navigate to="/overview" replace />;
   }
 
   // If onboarding is complete or skipped, redirect to dashboard
   if (isOnboardingComplete || hasSkippedOnboarding) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/overview" replace />;
   }
 
   return <>{children}</>;
@@ -210,7 +240,7 @@ function OnboardingRoute({ children }: { children: React.ReactNode }) {
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />;
+  return !isAuthenticated ? <>{children}</> : <Navigate to="/overview" replace />;
 }
 
 /**
@@ -242,7 +272,9 @@ function NotificationsProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
-  const { updateUnreadCount, updateUnreadCounts } = useNotificationStore();
+  const { updateUnreadCount } = useNotificationStore();
+
+  useNotificationUnreadPolling();
 
   useNotificationRealtime({
     enabled: isAuthenticated && !!user?.id,
@@ -250,15 +282,17 @@ function NotificationsProvider({ children }: { children: React.ReactNode }) {
       // Update unread counts
       const currentState = useNotificationStore.getState();
       updateUnreadCount('all', currentState.unreadCounts.all + 1);
-      if (notification.category !== 'all') {
-        updateUnreadCount(
-          notification.category,
-          currentState.unreadCounts[notification.category] + 1
-        );
+      const slice = unreadStoreKeyFromEventCategory(notification.category);
+      if (slice) {
+        const prev = currentState.unreadCounts[slice] ?? 0;
+        updateUnreadCount(slice, prev + 1);
       }
 
-      // Show toast notification
-      const icon = CATEGORY_ICONS[notification.category] || CATEGORY_ICONS.all;
+      // Show toast notification (API may use `team`; UI buckets use `messages`)
+      const rawCat = notification.category as string;
+      const toastCategory: NotificationCategory =
+        rawCat === 'team' ? 'messages' : notification.category;
+      const icon = CATEGORY_ICONS[toastCategory] || CATEGORY_ICONS.all;
       const borderColor = PRIORITY_COLORS[notification.priority] || 'var(--brand-500)';
 
       toast.info(
@@ -356,7 +390,7 @@ function AppContent() {
         <Route path="/launch" element={<LaunchPage />} />
         <Route path="/coming-soon" element={<LaunchPage />} />
         <Route path="/status" element={<StatusPage />} />
-        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/pricing" element={<MarketingPricingRedirect />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
         <Route path="/team" element={<TeamPage />} />

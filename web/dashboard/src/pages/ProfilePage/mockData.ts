@@ -337,6 +337,15 @@ const mockAchievements: Achievement[] = [
     unlockedAt: "2023-08-01T08:00:00Z",
     tier: "silver",
   },
+  {
+    id: "ach-007",
+    name: "Enterprise Pioneer",
+    description: "Upgraded to Enterprise tier - elite member with unlimited access, dedicated support, and premium features. Less than 1% of users achieve this status.",
+    icon: "Crown",
+    color: "#8b5cf6",
+    unlockedAt: "2024-03-20T10:30:00Z",
+    tier: "platinum",
+  },
 ];
 
 // ============================================================================
@@ -369,6 +378,17 @@ const mockActivities: UserActivity[] = [
     title: "Earned Community Champion",
     description: "Received 500+ positive ratings on your functions",
     timestamp: "2024-02-14T11:20:00Z",
+  },
+  {
+    id: "act-003b",
+    type: "membership_upgraded",
+    title: "Upgraded to Enterprise",
+    description: "Unlimited functions, dedicated support, and premium features",
+    timestamp: "2024-03-20T10:30:00Z",
+    metadata: {
+      plan: "enterprise",
+      previousPlan: "professional",
+    },
   },
   {
     id: "act-004",

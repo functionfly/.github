@@ -1,4 +1,5 @@
-export { AccountSettingsTab } from "./AccountSettingsTab";
-export { BillingSettingsTab } from "./BillingSettingsTab";
-export { ApiKeysSettingsTab } from "./ApiKeysSettingsTab";
-export { NotificationsSettingsTab } from "./NotificationsSettingsTab";
+export { AccountSettingsTab } from './AccountSettingsTab';
+export { ApiKeysSettingsTab } from './ApiKeysSettingsTab';
+export { BillingSettingsTab } from './BillingSettingsTab';
+export { NotificationsSettingsTab } from './NotificationsSettingsTab';
+export { SecuritySettingsTab } from './SecuritySettingsTab';

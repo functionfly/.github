@@ -5,6 +5,14 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import {
   AlertTriangle,
@@ -25,11 +33,12 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { SupportMessage, useSupportChat } from './SupportChat';
+import { toast } from 'sonner';
 
 const WELCOME_SUGGESTIONS = [
   { icon: Rocket, text: 'How do I deploy a function?' },
-  { icon: AlertTriangle, text: 'My function is failing' },
-  { icon: HelpCircle, text: 'Explain how billing works' },
+  { icon: HelpCircle, text: 'What can you help me with on FunctionFly?' },
+  { icon: AlertTriangle, text: 'My function is failing — how do I debug it?' },
 ];
 
 const QUICK_ACTIONS = [
@@ -67,12 +76,21 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
     sendMessage,
     escalateToHuman,
     requestEmergencyFix,
+    wsError,
+    isConnecting,
+    isConnected,
+    reconnectAttempt,
   } = useSupportChat();
 
   const [inputValue, setInputValue] = useState('');
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isEmergencyDialogOpen, setIsEmergencyDialogOpen] = useState(false);
+  const [emergencyFunctionId, setEmergencyFunctionId] = useState('');
+  const [emergencyReason, setEmergencyReason] = useState('');
+  const [isRequestingEmergency, setIsRequestingEmergency] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -86,6 +104,46 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen, isMinimized]);
+
+  useEffect(() => {
+    if (!isOpen || isMinimized || isEmergencyDialogOpen) return;
+
+    const selector =
+      'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeChat();
+        return;
+      }
+
+      if (e.key !== 'Tab') return;
+      const root = rootRef.current;
+      if (!root) return;
+
+      const focusable = Array.from(root.querySelectorAll<HTMLElement>(selector)).filter(
+        (el) => !el.hasAttribute('disabled') && el.tabIndex !== -1
+      );
+
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+
+      if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, isMinimized, isEmergencyDialogOpen, closeChat]);
 
   const handleSend = async () => {
     if (!inputValue.trim() || isSending || !conversation) return;
@@ -101,12 +159,28 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
     }
   };
 
-  const handleEmergencyFix = () => {
-    const functionId = prompt('Enter the function ID that is failing:');
+  const openEmergencyFix = () => {
+    setIsEmergencyDialogOpen(true);
+  };
+
+  const submitEmergencyFix = async () => {
+    const functionId = emergencyFunctionId.trim();
+    const reason = emergencyReason.trim();
     if (!functionId) return;
-    const reason = prompt('Describe the issue (what happened, expected behavior):');
     if (!reason) return;
-    requestEmergencyFix(functionId, reason);
+
+    setIsRequestingEmergency(true);
+    try {
+      await requestEmergencyFix(functionId, reason);
+      toast.success('Emergency fix request sent');
+      setIsEmergencyDialogOpen(false);
+      setEmergencyFunctionId('');
+      setEmergencyReason('');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to request emergency fix');
+    } finally {
+      setIsRequestingEmergency(false);
+    }
   };
 
   const insertPrompt = (text: string) => {
@@ -116,15 +190,34 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
 
   if (!isOpen) return null;
 
-  const title = conversation?.title ?? 'FunctionFly Support';
-  const subtitle = staffOnline 
-    ? '🟢 Staff available now' 
-    : '✨ AI powered support';
+  const title = conversation?.title ?? 'FunctionFly Assistant';
+  const subtitle = staffOnline
+    ? '🟢 Staff available now'
+    : '✨ FlyMind — your AI copilot (functions, billing, debugging, and more)';
   const canSend = !!conversation && inputValue.trim().length > 0 && !isSending;
   const setupFailed = !isLoading && !conversation;
 
+  const connectionDotClassName = wsError
+    ? 'bg-red-500'
+    : isConnecting
+      ? 'bg-amber-500'
+      : isConnected
+        ? 'bg-emerald-500'
+        : 'bg-amber-500';
+
+  const connectionLabel = wsError
+    ? 'Offline'
+    : isConnecting
+      ? `Connecting${reconnectAttempt > 0 ? ` (${reconnectAttempt})` : ''}`
+      : conversation
+        ? 'Connected'
+        : isLoading
+          ? 'Starting conversation...'
+          : 'Not connected';
+
   return (
     <div
+      ref={rootRef}
       className={cn(
         'fixed bottom-6 right-6 z-[9999] flex flex-col overflow-hidden rounded-2xl border shadow-2xl transition-all duration-300 ease-out',
         'bg-[var(--bg-secondary)] border-[var(--border-default)]',
@@ -135,12 +228,14 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
       )}
       role="dialog"
       aria-label="FunctionFly support chat"
+      aria-modal="true"
+      tabIndex={-1}
     >
       {/* Header - Enhanced with glass effect */}
       <div className="relative flex h-14 shrink-0 items-center justify-between overflow-hidden px-4">
         {/* Animated gradient background */}
         <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600" />
-        <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/10" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(255,255,255,0.1),transparent,rgba(0,0,0,0.1))]" />
         
         {/* Animated shine effect */}
         <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" />
@@ -215,16 +310,17 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                 <div className="space-y-6">
                   {/* Welcome Message */}
                   <div className="flex gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 shadow-lg shadow-indigo-500/20">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(to_bottom_right,#6366f1,#8b5cf6,#9333ea)] shadow-lg shadow-indigo-500/20">
                       <Bot className="h-5 w-5 text-white" />
                     </div>
                     <div className="space-y-3 flex-1">
                       <div className="rounded-2xl rounded-tl-sm bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] px-4 py-3.5 shadow-sm">
                         <p className="font-semibold text-[var(--text-primary)]">Hi there! 👋</p>
                         <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
-                          I&apos;m your AI support assistant. I can help with deployment, functions,
-                          errors, and general questions. If needed, you can talk to a human or
-                          request an emergency fix.
+                          I&apos;m FlyMind — your AI copilot for everything on FunctionFly: deploying
+                          functions, debugging runs, billing, the registry, agents, and how the platform
+                          works. Ask me anything. You can also talk to a human or request an emergency
+                          fix when something is on fire.
                         </p>
                       </div>
                       
@@ -254,7 +350,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                         onClick={() => insertPrompt(prompt)}
                         className="group flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)]/50 p-3 text-left transition-all duration-200 hover:border-indigo-500/30 hover:bg-indigo-500/5"
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/20 to-violet-500/20 transition-colors group-hover:from-indigo-500/30 group-hover:to-violet-500/30">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[linear-gradient(to_bottom_right,rgba(99,102,241,0.2),rgba(139,92,246,0.2))] transition-colors group-hover:bg-[linear-gradient(to_bottom_right,rgba(99,102,241,0.3),rgba(139,92,246,0.3))]">
                           <Icon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <span className="text-xs font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
@@ -298,8 +394,8 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                         isUser
                           ? 'bg-[var(--bg-hover)]'
                           : isStaff
-                            ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20'
-                            : 'bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 shadow-lg shadow-indigo-500/20'
+                            ? 'bg-[linear-gradient(to_bottom_right,#10b981,#0d9488)] shadow-lg shadow-emerald-500/20'
+                            : 'bg-[linear-gradient(to_bottom_right,#6366f1,#8b5cf6,#9333ea)] shadow-lg shadow-indigo-500/20'
                       )}>
                         {isUser ? (
                           <User className="h-4 w-4 text-[var(--text-secondary)]" />
@@ -324,9 +420,9 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                           className={cn(
                             'inline-block rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm transition-all',
                             isUser
-                              ? 'rounded-tr-sm bg-gradient-to-br from-indigo-600 to-violet-600 text-white'
+                              ? 'rounded-tr-sm bg-[linear-gradient(to_bottom_right,#4f46e5,#7c3aed)] text-white'
                               : isStaff
-                                ? 'rounded-tl-sm bg-gradient-to-br from-emerald-500 to-teal-600 text-white'
+                                ? 'rounded-tl-sm bg-[linear-gradient(to_bottom_right,#059669,#0d9488)] text-white'
                                 : 'rounded-tl-sm bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] text-[var(--text-primary)]'
                           )}
                         >
@@ -355,7 +451,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
               {/* Typing Indicator */}
               {isSending && (
                 <div className="flex gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 shadow-lg shadow-indigo-500/20">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[linear-gradient(to_bottom_right,#6366f1,#8b5cf6,#9333ea)] shadow-lg shadow-indigo-500/20">
                     <Bot className="h-4 w-4 text-white" />
                   </div>
                   <div className="flex items-center gap-1 rounded-2xl rounded-tl-sm bg-[var(--bg-tertiary)] border border-[var(--border-subtle)] px-4 py-3 shadow-sm">
@@ -397,7 +493,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                   variant="destructive"
                   size="sm"
                   className="h-9 flex-1 gap-2 text-xs font-medium bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 border-0"
-                  onClick={handleEmergencyFix}
+                  onClick={openEmergencyFix}
                   title="Request immediate help for production issues"
                 >
                   <AlertTriangle className="h-3.5 w-3.5" />
@@ -431,7 +527,7 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
                 onClick={handleSend}
                 disabled={!canSend}
                 size="icon"
-                className="h-11 w-11 shrink-0 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 transition-all duration-200 hover:scale-105 active:scale-95"
+                className="h-11 w-11 shrink-0 rounded-xl bg-[linear-gradient(to_bottom_right,#4f46e5,#7c3aed)] hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 <Send className="h-4 w-4 text-white" />
               </Button>
@@ -440,17 +536,8 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
             {/* Status Bar */}
             <div className="mt-2 flex items-center justify-between text-[10px] text-[var(--text-muted)]">
               <div className="flex items-center gap-1.5">
-                <div className={cn(
-                  'h-1.5 w-1.5 rounded-full',
-                  conversation ? 'bg-emerald-500' : 'bg-amber-500'
-                )} />
-                <span>
-                  {isLoading 
-                    ? 'Connecting...' 
-                    : conversation 
-                      ? 'Connected' 
-                      : 'Starting conversation...'}
-                </span>
+                <div className={cn('h-1.5 w-1.5 rounded-full', connectionDotClassName)} />
+                <span>{connectionLabel}</span>
               </div>
               {conversation && (
                 <span className="flex items-center gap-1">
@@ -462,6 +549,66 @@ export function UnifiedChatWindow({ className }: UnifiedChatWindowProps) {
           </div>
         </>
       )}
+
+      {/* Emergency Fix Modal */}
+      <Dialog open={isEmergencyDialogOpen} onOpenChange={setIsEmergencyDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-bg-secondary border border-border-default">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+              Emergency Fix Request
+            </DialogTitle>
+            <DialogDescription>
+              Provide the function ID and what’s happening so support can prioritize quickly.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-sm text-text-secondary" htmlFor="emergency-function-id">
+                Function ID
+              </label>
+              <Input
+                id="emergency-function-id"
+                value={emergencyFunctionId}
+                onChange={(e) => setEmergencyFunctionId(e.target.value)}
+                placeholder="e.g. fn_123..."
+                disabled={isRequestingEmergency}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-text-secondary" htmlFor="emergency-reason">
+                What’s the issue?
+              </label>
+              <textarea
+                id="emergency-reason"
+                value={emergencyReason}
+                onChange={(e) => setEmergencyReason(e.target.value)}
+                placeholder="What happened, expected behavior, and any relevant logs..."
+                disabled={isRequestingEmergency}
+                className="w-full min-h-[96px] resize-y rounded-xl border border-border-default bg-[var(--bg-secondary)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:border-indigo-500/50"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsEmergencyDialogOpen(false)}
+              disabled={isRequestingEmergency}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void submitEmergencyFix()}
+              disabled={isRequestingEmergency || !emergencyFunctionId.trim() || !emergencyReason.trim()}
+            >
+              {isRequestingEmergency ? 'Requesting...' : 'Request Emergency Fix'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

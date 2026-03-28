@@ -1,54 +1,83 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Zap, Shield, ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { OTPInput } from "@/components/auth/OTPInput";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useAuthStore } from "@/stores/authStore";
+import { OTPInput } from '@/components/auth/OTPInput';
+import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { ADMIN_DASHBOARD_URL } from '@/lib/constants';
+import {
+  decodeJwtRole,
+  isPlatformAdminRole,
+  notifyAdminPanelAfterLogin,
+} from '@/lib/platform-admin';
+import { useAuthStore } from '@/stores/authStore';
+import { ArrowLeft, Shield, Zap } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 interface MFAChallengePageProps {
   onVerify?: (code: string) => Promise<void>;
+}
+
+function getSafeRedirect(redirect: string | null): string | null {
+  if (!redirect || typeof redirect !== 'string') return null;
+  const decoded = decodeURIComponent(redirect.trim());
+  if (decoded.startsWith('/') && !decoded.startsWith('//')) return decoded;
+  return null;
 }
 
 export function MFAChallengePage({ onVerify }: MFAChallengePageProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { verifyMFA, isLoading, error, clearError, user } = useAuthStore();
-  
-  const [mfaCode, setMfaCode] = useState("");
+
+  const [mfaCode, setMfaCode] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [maxAttempts] = useState(5);
   const [isVerifying, setIsVerifying] = useState(false);
-  
-  const email = searchParams.get("email") || user?.email || "";
+  const [resendNotice, setResendNotice] = useState<string | null>(null);
+
+  const email = searchParams.get('email') || user?.email || '';
+  const redirectTo = getSafeRedirect(searchParams.get('redirect'));
+  const openAdminAfterLogin = searchParams.get('admin') === '1';
   const isRateLimited = attempts >= maxAttempts;
 
   const handleVerify = async (code: string) => {
     if (isRateLimited || isVerifying) return;
-    
+
     setIsVerifying(true);
+    setResendNotice(null);
     clearError();
-    
+
     try {
       if (onVerify) {
         await onVerify(code);
       } else {
         await verifyMFA(code);
       }
-      // MFA verified successfully - navigate to dashboard
-      navigate("/dashboard", { replace: true });
+      const role = decodeJwtRole(localStorage.getItem('ff-access-token'));
+      if (
+        openAdminAfterLogin &&
+        isPlatformAdminRole(role) &&
+        ADMIN_DASHBOARD_URL
+      ) {
+        window.location.assign(ADMIN_DASHBOARD_URL);
+        return;
+      }
+      notifyAdminPanelAfterLogin(role);
+      navigate(redirectTo ?? '/overview', { replace: true });
     } catch (err) {
       setAttempts((prev) => prev + 1);
-      setMfaCode("");
+      setMfaCode('');
     } finally {
       setIsVerifying(false);
     }
   };
 
   const handleResend = async () => {
-    // Would call API to resend MFA code
-    console.log("Resending MFA code...");
+    // TOTP doesn't have a "resend" concept. Codes rotate periodically, so the best UX
+    // is to tell the user to enter a fresh code from their authenticator app.
+    if (isRateLimited) return;
+    setResendNotice(
+      'Authenticator codes rotate every ~30 seconds. Please enter the current code from your app.'
+    );
   };
 
   return (
@@ -112,6 +141,12 @@ export function MFAChallengePage({ onVerify }: MFAChallengePageProps) {
             />
           )}
 
+          {resendNotice && !isRateLimited && (
+            <div className="mt-4 rounded-lg border border-border-default bg-bg-secondary p-3 text-sm text-text-secondary">
+              {resendNotice}
+            </div>
+          )}
+
           {/* Attempts Counter */}
           {!isRateLimited && attempts > 0 && (
             <p className="text-center text-sm text-text-muted mt-4">
@@ -129,7 +164,7 @@ export function MFAChallengePage({ onVerify }: MFAChallengePageProps) {
           {/* Help Text */}
           <div className="mt-8 text-center text-sm text-text-muted">
             <p>
-              Having trouble?{" "}
+              Having trouble?{' '}
               <a href="mailto:support@functionfly.com" className="text-brand-500 hover:underline">
                 Contact Support
               </a>

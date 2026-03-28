@@ -1,26 +1,27 @@
 /**
- * Shared settings content: Account, Billing, API Keys, Notifications, Privacy.
+ * Shared settings content: Account, Billing, API Keys, Notifications, Security, Privacy.
  * Used on the standalone /settings page and on /u/{username} (profile Settings tab).
  */
 
-import { useState, useEffect } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
-import { User, CreditCard, Key, Bell, Shield } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
-import { usersApi } from "@/api/users";
-import { useAuthStore } from "@/stores/authStore";
-import { useApiReachableStore } from "@/stores/apiReachableStore";
-import { SettingsTab } from "@/pages/ProfilePage/components/tabs/SettingsTab";
-import type { UserProfile } from "@/types";
-import { VALID_TABS, type SettingsTabValue } from "./settings-utils";
+import { usersApi } from '@/api/users';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SettingsTab } from '@/pages/ProfilePage/components/tabs/SettingsTab';
+import { useApiReachableStore } from '@/stores/apiReachableStore';
+import { useAuthStore } from '@/stores/authStore';
+import type { UserProfile } from '@/types';
+import { useQuery } from '@tanstack/react-query';
+import { Bell, CreditCard, Key, Shield, ShieldCheck, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   AccountSettingsTab,
-  BillingSettingsTab,
   ApiKeysSettingsTab,
+  BillingSettingsTab,
   NotificationsSettingsTab,
-} from "./components";
+  SecuritySettingsTab,
+} from './components';
+import { VALID_TABS, type SettingsTabValue } from './settings-utils';
 
 export interface SettingsContentProps {
   /** When false, omit the "Settings" page title (e.g. when embedded in profile). */
@@ -31,21 +32,27 @@ export interface SettingsContentProps {
   initialTab?: string;
 }
 
-export function SettingsContent({ showHeader = true, profile, initialTab: initialTabProp }: SettingsContentProps) {
+export function SettingsContent({
+  showHeader = true,
+  profile,
+  initialTab: initialTabProp,
+}: SettingsContentProps) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const subtabFromUrl = searchParams.get("subtab");
+  const subtabFromUrl = searchParams.get('subtab');
   const [activeTab, setActiveTab] = useState<SettingsTabValue>(() => {
-    if (initialTabProp && VALID_TABS.includes(initialTabProp as SettingsTabValue)) return initialTabProp as SettingsTabValue;
-    if (subtabFromUrl && VALID_TABS.includes(subtabFromUrl as SettingsTabValue)) return subtabFromUrl as SettingsTabValue;
-    return "account";
+    if (initialTabProp && VALID_TABS.includes(initialTabProp as SettingsTabValue))
+      return initialTabProp as SettingsTabValue;
+    if (subtabFromUrl && VALID_TABS.includes(subtabFromUrl as SettingsTabValue))
+      return subtabFromUrl as SettingsTabValue;
+    return 'account';
   });
 
   const apiReachable = useApiReachableStore((s) => s.apiReachable);
   const user = useAuthStore((s) => s.user);
   const setUserPlan = useAuthStore((s) => s.setUserPlan);
   const { data: meData } = useQuery({
-    queryKey: ["users", "me"],
+    queryKey: ['users', 'me'],
     queryFn: async () => {
       try {
         return await usersApi.getMe();
@@ -63,7 +70,7 @@ export function SettingsContent({ showHeader = true, profile, initialTab: initia
       setUserPlan(meData.plan);
     }
   }, [meData?.plan, setUserPlan]);
-  const displayPlan = meData?.plan ?? user?.plan ?? "Starter";
+  const displayPlan = meData?.plan ?? user?.plan ?? 'Starter';
 
   // Sync active tab from URL or initialTab prop (e.g. /u/username/settings/billing)
   useEffect(() => {
@@ -75,17 +82,17 @@ export function SettingsContent({ showHeader = true, profile, initialTab: initia
 
   // Billing portal return: show success toast and clean URL
   useEffect(() => {
-    const success = searchParams.get("success");
-    if (success === "true") {
-      toast.success("Subscription updated successfully!");
+    const success = searchParams.get('success');
+    if (success === 'true') {
+      toast.success('Subscription updated successfully!');
       const next = new URLSearchParams(location.search);
-      next.delete("success");
+      next.delete('success');
       const q = next.toString();
-      window.history.replaceState({}, document.title, location.pathname + (q ? `?${q}` : ""));
+      window.history.replaceState({}, document.title, location.pathname + (q ? `?${q}` : ''));
     }
   }, [searchParams, location.pathname, location.search]);
 
-  const returnUrl = `${window.location.origin}${location.pathname}${location.search ? location.search : ""}`;
+  const returnUrl = `${window.location.origin}${location.pathname}${location.search ? location.search : ''}`;
 
   return (
     <div className="space-y-6">
@@ -96,7 +103,11 @@ export function SettingsContent({ showHeader = true, profile, initialTab: initia
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SettingsTabValue)} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as SettingsTabValue)}
+        className="space-y-6"
+      >
         <TabsList className="settings-page-tabs inline-flex h-auto flex-wrap gap-1 rounded-xl border border-border-default bg-bg-secondary/80 p-1.5 text-text-secondary backdrop-blur-sm">
           <TabsTrigger
             value="account"
@@ -127,6 +138,13 @@ export function SettingsContent({ showHeader = true, profile, initialTab: initia
             Notifications
           </TabsTrigger>
           <TabsTrigger
+            value="security"
+            className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200"
+          >
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            Security
+          </TabsTrigger>
+          <TabsTrigger
             value="privacy"
             className="settings-page-tab gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200"
           >
@@ -149,6 +167,10 @@ export function SettingsContent({ showHeader = true, profile, initialTab: initia
 
         <TabsContent value="notifications" className="space-y-6">
           <NotificationsSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-6">
+          <SecuritySettingsTab />
         </TabsContent>
 
         <TabsContent value="privacy" className="space-y-6">

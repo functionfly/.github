@@ -38,6 +38,7 @@ export interface Invoice {
   id: string;
   tenant_id: string;
   stripe_invoice_id: string | null;
+  /** Amount in smallest currency unit (cents for USD); matches server and formatCurrency in settings. */
   amount: number;
   currency: string;
   status: string;
@@ -52,6 +53,7 @@ export interface InvoicesResponse {
   invoices: Invoice[];
   limit: number;
   offset: number;
+  total: number;
 }
 
 export interface CreateCheckoutRequest {

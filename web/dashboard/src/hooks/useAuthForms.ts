@@ -1,4 +1,5 @@
-import { loginSchema, signupSchema } from '@/lib/validation';
+import { createSignupSchema, loginSchema } from '@/lib/validation';
+import { useMemo } from 'react';
 import { useFormWithValidation } from './useFormWithValidation';
 
 export function useLoginForm() {
@@ -15,9 +16,10 @@ export function useLoginForm() {
   });
 }
 
-export function useSignupForm() {
+export function useSignupForm(inviteRequired = false) {
+  const schema = useMemo(() => createSignupSchema(inviteRequired), [inviteRequired]);
   return useFormWithValidation({
-    schema: signupSchema,
+    schema,
     formKey: 'signup',
     enablePersistence: true,
     enableRealtimeValidation: true,

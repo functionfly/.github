@@ -68,6 +68,17 @@ export interface RegistryRatingRequest {
   documentation_score: number;
 }
 
+export interface RegistryFunctionReview {
+  id: string;
+  function_id: string;
+  user_id: string;
+  stars: number; // 1-5
+  title: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
 class RegistryApi {
   // Get list of functions
   async getFunctions(params?: RegistrySearchParams) {
@@ -149,6 +160,37 @@ class RegistryApi {
     return apiClient.post<{ ok: boolean; message: string }>(
       `/v1/registry/functions/${author}/${name}/rating`,
       rating
+    );
+  }
+
+  // List reviews (public)
+  async listReviews(author: string, name: string, params?: { limit?: number; offset?: number }) {
+    const qp = new URLSearchParams();
+    if (params?.limit != null) qp.append('limit', String(params.limit));
+    if (params?.offset != null) qp.append('offset', String(params.offset));
+    const suffix = qp.toString() ? `?${qp.toString()}` : '';
+    return apiClient.get<{
+      ok: boolean;
+      reviews: RegistryFunctionReview[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/registry/functions/${author}/${name}/reviews${suffix}`);
+  }
+
+  // Submit review (requires auth)
+  async submitReview(
+    author: string,
+    name: string,
+    data: { stars: number; title?: string; body?: string }
+  ) {
+    return apiClient.post<{ ok: boolean; review: RegistryFunctionReview }>(
+      `/v1/registry/functions/${author}/${name}/reviews`,
+      {
+        stars: data.stars,
+        title: data.title ?? '',
+        body: data.body ?? '',
+      }
     );
   }
 

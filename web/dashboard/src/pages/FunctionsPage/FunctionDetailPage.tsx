@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { apiClient } from "@/api/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { apiClient } from '@/api/client';
+import { BarChart } from '@/components/common/BarChart';
+import { LineChart } from '@/components/common/LineChart';
+import { PieChart } from '@/components/common/PieChart';
+import { ProviderIcon } from '@/components/common/ProviderIcon';
+import { StatCard } from '@/components/common/StatCard';
+import { FunctionHeader } from '@/components/functions';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -14,30 +15,28 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { StatCard } from "@/components/common/StatCard";
-import { StatusBadge } from "@/components/common/StatusBadge";
-import { ProviderIcon } from "@/components/common/ProviderIcon";
-import { LineChart } from "@/components/common/LineChart";
-import { BarChart } from "@/components/common/BarChart";
-import { PieChart } from "@/components/common/PieChart";
-import { FunctionHeader } from "@/components/functions";
-import type { FunctionHeaderData, TrustTier } from "@/types";
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import '@/styles/components.css';
+import type { FunctionHeaderData, TrustTier } from '@/types';
 import {
-  Clock,
-  Globe,
   Activity,
   AlertTriangle,
   CheckCircle2,
+  Clock,
+  Globe,
+  RotateCcw,
   XCircle,
-  RotateCcw
-} from "lucide-react";
-import "@/styles/components.css";
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface FunctionData {
   id: string;
   name: string;
-  status: "online" | "offline" | "degraded";
+  status: 'online' | 'offline' | 'degraded';
   providers: string[];
   region: string;
   lastDeployed: string;
@@ -53,7 +52,7 @@ interface FunctionData {
 interface Deployment {
   id: string;
   version: string;
-  status: "success" | "failed" | "pending";
+  status: 'success' | 'failed' | 'pending';
   timestamp: string;
   duration: number;
   triggeredBy: string;
@@ -63,30 +62,152 @@ interface Deployment {
 interface LogEntry {
   id: string;
   timestamp: string;
-  level: "info" | "warn" | "error";
+  level: 'info' | 'warn' | 'error';
   message: string;
   source: string;
 }
 
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v !== null && typeof v === 'object' && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
+    : null;
+}
+
+function asStr(v: unknown, fallback = ''): string {
+  return typeof v === 'string' ? v : fallback;
+}
+
+function asNum(v: unknown, fallback = 0): number {
+  if (typeof v === 'number' && !Number.isNaN(v)) return v;
+  if (typeof v === 'string') {
+    const n = parseFloat(v);
+    return Number.isNaN(n) ? fallback : n;
+  }
+  return fallback;
+}
+
+function asStrArray(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter((x): x is string => typeof x === 'string');
+}
+
+function formatTs(v: unknown): string {
+  if (v == null) return '—';
+  const d = new Date(v as string | number | Date);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString();
+}
+
+function mapApiStatusToUi(status: string): FunctionData['status'] {
+  const s = status.toLowerCase();
+  if (s === 'deployed') return 'online';
+  if (s === 'deploying') return 'degraded';
+  if (s === 'failed') return 'offline';
+  if (s === 'draft') return 'offline';
+  return 'offline';
+}
+
+/** GET /v1/functions/:id returns storage.FunctionConfig (snake_case); map to UI model with safe defaults. */
+function mapApiFunctionToFunctionData(raw: unknown): FunctionData | null {
+  const api = asRecord(raw);
+  if (!api) return null;
+  const id = asStr(api.id);
+  const name = asStr(api.name);
+  if (!id || !name) return null;
+
+  const providers = asStrArray(api.providers);
+  const region = asStr(api.region, 'global');
+  const version = asStr(api.version, '0.0.0');
+  const statusRaw = asStr(api.status, 'draft');
+  const createdAt = formatTs(api.created_at ?? api.createdAt);
+  const updatedRaw = api.updated_at ?? api.updatedAt;
+
+  return {
+    id,
+    name,
+    status: mapApiStatusToUi(statusRaw),
+    providers: providers.length > 0 ? providers : ['functionfly'],
+    region,
+    lastDeployed: formatTs(updatedRaw),
+    createdAt,
+    version,
+    runtime: asStr(api.runtime, '—'),
+    requests: asNum(api.requests, 0),
+    avgLatency: asNum(api.avg_latency ?? api.avgLatency, 0),
+    errorRate: asNum(api.error_rate ?? api.errorRate, 0),
+    uptime: asNum(api.uptime, 100),
+  };
+}
+
+function mapApiDeploymentsToDeployments(raw: unknown): Deployment[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item) => {
+    const d = asRecord(item) ?? {};
+    const st = asStr(d.status, 'pending');
+    const status: Deployment['status'] =
+      st === 'success' || st === 'failed' || st === 'pending' ? st : 'pending';
+    return {
+      id: asStr(d.id),
+      version: asStr(d.version, '—'),
+      status,
+      timestamp: formatTs(d.created_at ?? d.timestamp),
+      duration: asNum(d.duration, 0),
+      triggeredBy: asStr(d.triggered_by ?? d.triggeredBy, 'dashboard'),
+      commit: typeof d.commit === 'string' ? d.commit : undefined,
+    };
+  });
+}
+
+function mapApiLogsToLogEntries(raw: unknown): LogEntry[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item) => {
+    const l = asRecord(item) ?? {};
+    const lev = asStr(l.level, 'info');
+    const level: LogEntry['level'] =
+      lev === 'warn' || lev === 'error' || lev === 'info' ? lev : 'info';
+    return {
+      id: asStr(l.id),
+      timestamp: formatTs(l.timestamp),
+      level,
+      message: asStr(l.message, ''),
+      source: asStr(l.source, 'runtime'),
+    };
+  });
+}
+
+function formatLogLineTime(ts: string): string {
+  const d = new Date(ts);
+  if (!Number.isNaN(d.getTime())) {
+    return d.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  }
+  const space = ts.indexOf(' ');
+  if (space > 0) return ts.slice(space + 1).trim() || ts;
+  const t = ts.includes('T') ? ts.split('T')[1] : ts;
+  return (t ?? ts).replace(/\.\d+Z?$/, '').replace('Z', '') || '—';
+}
 
 const requestData = [
-  { name: "00:00", requests: 120, errors: 1 },
-  { name: "04:00", requests: 98, errors: 0 },
-  { name: "08:00", requests: 245, errors: 2 },
-  { name: "12:00", requests: 189, errors: 1 },
-  { name: "16:00", requests: 312, errors: 3 },
-  { name: "20:00", requests: 156, errors: 1 },
+  { name: '00:00', requests: 120, errors: 1 },
+  { name: '04:00', requests: 98, errors: 0 },
+  { name: '08:00', requests: 245, errors: 2 },
+  { name: '12:00', requests: 189, errors: 1 },
+  { name: '16:00', requests: 312, errors: 3 },
+  { name: '20:00', requests: 156, errors: 1 },
 ];
 
 const latencyData = [
-  { name: "Workers", latency: 45, color: "#f48120" },
-  { name: "Vercel", latency: 62, color: "#000000" },
+  { name: 'Workers', latency: 45, color: '#f48120' },
+  { name: 'Vercel', latency: 62, color: '#000000' },
 ];
 
 const errorData = [
-  { name: "4xx", value: 65, color: "#f59e0b" },
-  { name: "5xx", value: 25, color: "#ef4444" },
-  { name: "Timeout", value: 10, color: "#8b5cf6" },
+  { name: '4xx', value: 65, color: '#f59e0b' },
+  { name: '5xx', value: 25, color: '#ef4444' },
+  { name: 'Timeout', value: 10, color: '#8b5cf6' },
 ];
 
 /**
@@ -95,11 +216,16 @@ const errorData = [
  */
 function mapToFunctionHeaderData(
   data: FunctionData,
-  trustTier: TrustTier = "high",
+  trustTier: TrustTier = 'high',
   economicScore: number = 87
 ): FunctionHeaderData {
   // Generate a mock execution root hash based on function id
-  const executionRootHash = `0x${data.id.split('').map(c => c.charCodeAt(0).toString(16)).join('').padEnd(64, '0').slice(0, 64)}`;
+  const executionRootHash = `0x${data.id
+    .split('')
+    .map((c) => c.charCodeAt(0).toString(16))
+    .join('')
+    .padEnd(64, '0')
+    .slice(0, 64)}`;
 
   // Generate a mock resource signature
   const resourceSignature = `res_sig_${data.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 16)}`;
@@ -115,18 +241,18 @@ function mapToFunctionHeaderData(
     fxcert: {
       verified: true,
       issuedAt: data.createdAt,
-      issuer: "FunctionFly Registry",
+      issuer: 'FunctionFly Registry',
     },
     status: data.status,
     version: data.version,
-    description: `Function deployed across ${data.providers.join(", ")} in ${data.region.toUpperCase()} region`,
+    description: `Function deployed across ${data.providers.join(', ')} in ${data.region.toUpperCase()} region`,
   };
 }
 
 export function FunctionDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState('overview');
   const [isRedeploying, setIsRedeploying] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -147,22 +273,30 @@ export function FunctionDetailPage() {
         setLoading(true);
         setError(null);
 
-        // Fetch function details
-        const functionResponse = await apiClient.get<FunctionData>(`/v1/functions/${id}`);
-        setFunctionData(functionResponse);
+        // Fetch function details (API returns FunctionConfig JSON, not the legacy mock shape)
+        const functionResponse = await apiClient.get<unknown>(`/v1/functions/${id}`);
+        const mapped = mapApiFunctionToFunctionData(functionResponse);
+        if (!mapped) {
+          setError('Invalid function response');
+          setFunctionData(null);
+          toast.error('Could not load function details');
+          return;
+        }
+        setFunctionData(mapped);
 
         // Fetch deployments
-        const deploymentsResponse = await apiClient.get<{ deployments: Deployment[] }>(`/v1/functions/${id}/deployments`);
-        setDeployments(deploymentsResponse.deployments || []);
+        const deploymentsResponse = await apiClient.get<{ deployments?: unknown }>(
+          `/v1/functions/${id}/deployments`
+        );
+        setDeployments(mapApiDeploymentsToDeployments(deploymentsResponse.deployments));
 
         // Fetch logs
-        const logsResponse = await apiClient.get<{ logs: LogEntry[] }>(`/v1/functions/${id}/logs`);
-        setLogs(logsResponse.logs || []);
-
+        const logsResponse = await apiClient.get<{ logs?: unknown }>(`/v1/functions/${id}/logs`);
+        setLogs(mapApiLogsToLogEntries(logsResponse.logs));
       } catch (err) {
-        console.error("Failed to load function data:", err);
-        setError("Failed to load function data");
-        toast.error("Failed to load function data");
+        console.error('Failed to load function data:', err);
+        setError('Failed to load function data');
+        toast.error('Failed to load function data');
       } finally {
         setLoading(false);
       }
@@ -176,9 +310,9 @@ export function FunctionDetailPage() {
     setIsRedeploying(true);
     try {
       await apiClient.post(`/v1/functions/${id}/redeploy`);
-      toast.success("Function redeployed successfully");
+      toast.success('Function redeployed successfully');
     } catch (error) {
-      toast.error("Failed to redeploy function. Please try again.");
+      toast.error('Failed to redeploy function. Please try again.');
     } finally {
       setIsRedeploying(false);
     }
@@ -195,17 +329,17 @@ export function FunctionDetailPage() {
       setIsDeleting(true);
       await apiClient.delete(`/v1/functions/${id}`);
       toast.success(`Function "${functionData.name}" has been deleted successfully`);
-      navigate("/functions");
+      navigate('/functions');
     } catch (error) {
-      console.error("Failed to delete function:", error);
-      toast.error("Failed to delete function. Please try again.");
+      console.error('Failed to delete function:', error);
+      toast.error('Failed to delete function. Please try again.');
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
     }
   };
 
-  if (loading || !functionData) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
@@ -228,34 +362,55 @@ export function FunctionDetailPage() {
     );
   }
 
+  if (!functionData) {
+    return (
+      <div className="space-y-6">
+        <Card className="card">
+          <CardContent className="card-content p-8 text-center space-y-4">
+            <AlertTriangle className="w-12 h-12 mx-auto text-orange-500" />
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary">Function unavailable</h2>
+              <p className="text-sm text-text-secondary mt-1">
+                {error ?? 'This function could not be loaded.'}
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => navigate('/functions')}>
+              Back to functions
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const stats = [
     {
-      title: "Total Requests",
-      value: functionData.requests.toLocaleString(),
-      change: { value: 12, label: "from last week" },
+      title: 'Total Requests',
+      value: (functionData.requests ?? 0).toLocaleString(),
+      change: { value: 12, label: 'from last week' },
       icon: <Globe className="w-5 h-5" />,
-      trend: "up" as const,
+      trend: 'up' as const,
     },
     {
-      title: "Avg Latency",
-      value: `${functionData.avgLatency}ms`,
-      change: { value: -8, label: "from last week" },
+      title: 'Avg Latency',
+      value: `${functionData.avgLatency ?? 0}ms`,
+      change: { value: -8, label: 'from last week' },
       icon: <Clock className="w-5 h-5" />,
-      trend: "up" as const,
+      trend: 'up' as const,
     },
     {
-      title: "Error Rate",
-      value: `${functionData.errorRate}%`,
-      change: { value: -0.2, label: "from last week" },
+      title: 'Error Rate',
+      value: `${functionData.errorRate ?? 0}%`,
+      change: { value: -0.2, label: 'from last week' },
       icon: <AlertTriangle className="w-5 h-5" />,
-      trend: "up" as const,
+      trend: 'up' as const,
     },
     {
-      title: "Uptime",
-      value: `${functionData.uptime}%`,
-      change: { value: 0.1, label: "from last week" },
+      title: 'Uptime',
+      value: `${functionData.uptime ?? 0}%`,
+      change: { value: 0.1, label: 'from last week' },
       icon: <Activity className="w-5 h-5" />,
-      trend: "up" as const,
+      trend: 'up' as const,
     },
   ];
 
@@ -264,11 +419,11 @@ export function FunctionDetailPage() {
       {/* Function Header */}
       <FunctionHeader
         data={mapToFunctionHeaderData(functionData)}
-        onBack={() => navigate("/functions")}
+        onBack={() => navigate('/functions')}
         onEdit={() => navigate(`/functions/${id}/edit`)}
         onDeploy={handleRedeploy}
-        onTest={() => toast.info("Test functionality coming soon")}
-        onShare={() => toast.info("Share functionality coming soon")}
+        onTest={() => toast.info('Test functionality coming soon')}
+        onShare={() => toast.info('Share functionality coming soon')}
       />
 
       {/* Function Info Card */}
@@ -332,8 +487,8 @@ export function FunctionDetailPage() {
               title="Requests Over Time"
               data={requestData}
               series={[
-                { key: "requests", name: "Requests", color: "#6366f1" },
-                { key: "errors", name: "Errors", color: "#ef4444" },
+                { key: 'requests', name: 'Requests', color: '#6366f1' },
+                { key: 'errors', name: 'Errors', color: '#ef4444' },
               ]}
               height={300}
             />
@@ -341,7 +496,7 @@ export function FunctionDetailPage() {
             <BarChart
               title="Latency by Provider"
               data={latencyData}
-              series={[{ key: "latency", name: "Latency (ms)", color: "#10b981" }]}
+              series={[{ key: 'latency', name: 'Latency (ms)', color: '#10b981' }]}
               height={300}
             />
           </div>
@@ -355,24 +510,36 @@ export function FunctionDetailPage() {
             <CardContent className="card-content">
               <div className="space-y-4">
                 {deployments.map((deployment) => (
-                  <div key={deployment.id} className="flex items-center justify-between p-4 rounded-lg bg-bg-tertiary">
+                  <div
+                    key={deployment.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-bg-tertiary"
+                  >
                     <div className="flex items-center gap-4">
-                      {deployment.status === "success" && <CheckCircle2 className="w-5 h-5 text-green-400" />}
-                      {deployment.status === "failed" && <XCircle className="w-5 h-5 text-red-400" />}
-                      {deployment.status === "pending" && <RotateCcw className="w-5 h-5 text-yellow-400 animate-spin" />}
+                      {deployment.status === 'success' && (
+                        <CheckCircle2 className="w-5 h-5 text-green-400" />
+                      )}
+                      {deployment.status === 'failed' && (
+                        <XCircle className="w-5 h-5 text-red-400" />
+                      )}
+                      {deployment.status === 'pending' && (
+                        <RotateCcw className="w-5 h-5 text-yellow-400 animate-spin" />
+                      )}
 
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-text-primary">v{deployment.version}</span>
+                          <span className="font-medium text-text-primary">
+                            v{deployment.version}
+                          </span>
                           <Badge
-                            variant={deployment.status === "success" ? "default" : "destructive"}
+                            variant={deployment.status === 'success' ? 'default' : 'destructive'}
                             className="text-xs"
                           >
                             {deployment.status}
                           </Badge>
                         </div>
                         <p className="text-sm text-text-secondary">
-                          {deployment.timestamp} • {deployment.duration}s • by {deployment.triggeredBy}
+                          {deployment.timestamp} • {deployment.duration}s • by{' '}
+                          {deployment.triggeredBy}
                         </p>
                         {deployment.commit && (
                           <p className="text-xs text-text-muted font-mono">{deployment.commit}</p>
@@ -395,14 +562,19 @@ export function FunctionDetailPage() {
               <ScrollArea className="h-[520px] p-6">
                 <div className="space-y-3">
                   {logs.map((log) => (
-                    <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg bg-bg-tertiary">
-                      <div className="text-text-muted font-mono text-xs w-24">
-                        {log.timestamp.split(' ')[1]}
+                    <div
+                      key={log.id}
+                      className="flex items-start gap-3 p-3 rounded-lg bg-bg-tertiary"
+                    >
+                      <div className="text-text-muted font-mono text-xs w-28 shrink-0">
+                        {formatLogLineTime(log.timestamp)}
                       </div>
                       <div className="flex items-center gap-2 flex-1">
-                        {log.level === "error" && <XCircle className="w-4 h-4 text-red-400" />}
-                        {log.level === "warn" && <AlertTriangle className="w-4 h-4 text-yellow-400" />}
-                        {log.level === "info" && <Activity className="w-4 h-4 text-blue-400" />}
+                        {log.level === 'error' && <XCircle className="w-4 h-4 text-red-400" />}
+                        {log.level === 'warn' && (
+                          <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                        )}
+                        {log.level === 'info' && <Activity className="w-4 h-4 text-blue-400" />}
                         <div className="flex-1">
                           <span className="text-sm text-text-primary">{log.message}</span>
                           <span className="text-xs text-text-muted ml-2">({log.source})</span>
@@ -421,7 +593,7 @@ export function FunctionDetailPage() {
             <LineChart
               title="Error Rate Over Time"
               data={requestData}
-              series={[{ key: "errors", name: "Errors", color: "#ef4444" }]}
+              series={[{ key: 'errors', name: 'Errors', color: '#ef4444' }]}
               height={300}
             />
 
@@ -431,10 +603,7 @@ export function FunctionDetailPage() {
               </CardHeader>
               <CardContent className="card-content">
                 <div className="h-[300px]">
-                  <PieChart
-                    data={errorData}
-                    height={300}
-                  />
+                  <PieChart data={errorData} height={300} />
                 </div>
                 <div className="flex justify-center gap-6 mt-4">
                   {errorData.map((item) => (
@@ -461,7 +630,8 @@ export function FunctionDetailPage() {
           <DialogHeader>
             <DialogTitle>Delete Function</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the function "{functionData?.name}"? This action cannot be undone.
+              Are you sure you want to delete the function "{functionData?.name}"? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -472,12 +642,8 @@ export function FunctionDetailPage() {
             >
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete Function"}
+            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete Function'}
             </Button>
           </DialogFooter>
         </DialogContent>

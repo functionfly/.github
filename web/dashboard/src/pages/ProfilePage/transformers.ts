@@ -4,9 +4,9 @@
  * Contains functions to transform API responses into component-ready data formats.
  */
 
-import { format, subDays } from "date-fns";
-import type { UserProfile, FunctionCardData } from "@/types";
-import type { RegistryFunction } from "@/api/registry";
+import type { RegistryFunction } from '@/api/registry';
+import type { FunctionCardData, UserProfile } from '@/types';
+import { format, subDays } from 'date-fns';
 
 /**
  * Transform registry function to FunctionCardData format
@@ -18,7 +18,7 @@ export function transformRegistryFunction(
   return {
     id: fn.id,
     name: fn.name,
-    description: fn.description || "",
+    description: fn.description || '',
     author,
     trustScore: Math.round(fn.overall_score * 100),
     metrics: {
@@ -28,9 +28,9 @@ export function transformRegistryFunction(
       errorRate: 0,
     },
     pricing: {
-      model: fn.price_per_call > 0 ? "per_call" : "free",
+      model: fn.price_per_call > 0 ? 'per_call' : 'free',
       pricePerCall: fn.price_per_call,
-      currency: "USD",
+      currency: 'USD',
     },
     isVerified: fn.overall_score >= 0.8,
     isDeterministic: fn.deterministic_score >= 0.9,
@@ -40,10 +40,10 @@ export function transformRegistryFunction(
       distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
     },
     tags: fn.tags || [],
-    category: fn.category || "other",
-    language: fn.latest_version ? "typescript" : "unknown", // Default to typescript
+    category: fn.category || 'other',
+    language: fn.latest_version ? 'typescript' : 'unknown', // Default to typescript
     lastUpdated: fn.created_at,
-    version: fn.latest_version || "1.0.0",
+    version: fn.latest_version || '1.0.0',
     isFavorite: false,
     isFeatured: false,
   };
@@ -52,12 +52,12 @@ export function transformRegistryFunction(
 /**
  * Generate empty contribution graph (365 days)
  */
-export function generateEmptyContributionGraph(): UserProfile["stats"]["contributionGraph"] {
-  const data: UserProfile["stats"]["contributionGraph"] = [];
+export function generateEmptyContributionGraph(): UserProfile['stats']['contributionGraph'] {
+  const data: UserProfile['stats']['contributionGraph'] = [];
   for (let i = 364; i >= 0; i--) {
     const date = subDays(new Date(), i);
     data.push({
-      date: format(date, "yyyy-MM-dd"),
+      date: format(date, 'yyyy-MM-dd'),
       count: 0,
       level: 0,
     });
@@ -69,7 +69,7 @@ export function generateEmptyContributionGraph(): UserProfile["stats"]["contribu
  * Transform API response to UserProfile format
  */
 export function transformToUserProfile(
-  apiProfile: import("@/types").PublicUserProfile,
+  apiProfile: import('@/types').PublicUserProfile,
   registryFunctions: RegistryFunction[]
 ): UserProfile {
   const authorInfo = {
@@ -79,13 +79,17 @@ export function transformToUserProfile(
     avatar: apiProfile.avatar,
   };
 
-  const publishedFunctions = registryFunctions.map(fn =>
+  const publishedFunctions = registryFunctions.map((fn) =>
     transformRegistryFunction(fn, authorInfo)
   );
 
-  // Calculate stats from functions
-  const totalExecutions = publishedFunctions.reduce((sum, f) => sum + (f.metrics?.executionCount || 0), 0);
-  const totalViews = totalExecutions * 2; // Estimate
+  const s = apiProfile.stats;
+  const totalExecutionsFromList = publishedFunctions.reduce(
+    (sum, f) => sum + (f.metrics?.executionCount || 0),
+    0
+  );
+  const totalExecutions = s?.totalExecutions ?? totalExecutionsFromList;
+  const totalViews = totalExecutions * 2; // Estimate when no separate view metric
 
   return {
     id: apiProfile.id,
@@ -108,23 +112,32 @@ export function transformToUserProfile(
     skills: [], // Will be populated from separate API call
     createdAt: apiProfile.createdAt,
     updatedAt: undefined,
-    isOnline: false,
-    lastActive: undefined,
+    isOnline: apiProfile.isOnline ?? false,
+    lastActive: apiProfile.lastActive,
+    profileNumber: apiProfile.profileNumber,
+    role: apiProfile.role, // Platform admin role for badge display (public or own profile)
     experience: [],
     education: [],
     openSourceContributions: [],
     languages: [],
     stats: {
-      functionsPublished: publishedFunctions.length,
+      functionsPublished: s?.functionsCount ?? publishedFunctions.length,
       functionsTrend: 0,
       totalExecutions,
       executionsTrend: 0,
       totalViews,
       viewsTrend: 0,
-      trustScore: 75, // Default trust score for users with functions
-      reputationRank: "Contributor",
-      followersCount: 0,
-      followingCount: 0,
+      trustScore:
+        s?.trustScore ??
+        (publishedFunctions.length > 0
+          ? Math.round(
+              publishedFunctions.reduce((sum, f) => sum + f.trustScore, 0) /
+                publishedFunctions.length
+            )
+          : 0),
+      reputationRank: 'Contributor',
+      followersCount: s?.followersCount ?? 0,
+      followingCount: s?.followingCount ?? 0,
       followersTrend: 0,
       contributionStreak: {
         current: 0,

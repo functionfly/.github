@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useSignupForm } from '@/hooks/useAuthForms';
+import { useSignupConfig } from '@/hooks/useSignupConfig';
 import { useUsernameValidation } from '@/hooks/useUsernameValidation';
 import { getMarketingPageUrl } from '@/lib/constants';
 import { cn } from '@/lib/utils';
@@ -68,6 +69,21 @@ function PasswordRequirements({ password }: { password: string }) {
 }
 
 export function SignupForm(): React.JSX.Element {
+  const { data, isLoading: configLoading, isError } = useSignupConfig();
+  const inviteRequired = !isError && data?.inviteRequired === true;
+
+  if (configLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner text="Loading…" />
+      </div>
+    );
+  }
+
+  return <SignupFormFields inviteRequired={inviteRequired} />;
+}
+
+function SignupFormFields({ inviteRequired }: { inviteRequired: boolean }): React.JSX.Element {
   const navigate = useNavigate();
   const { signup, isLoading, error, clearError } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
@@ -88,7 +104,7 @@ export function SignupForm(): React.JSX.Element {
     watch,
     formState: { errors, isValid, isSubmitting },
     clearErrors,
-  } = useSignupForm();
+  } = useSignupForm(inviteRequired);
 
   const password = watch('password');
   const username = watch('username');
@@ -351,14 +367,31 @@ export function SignupForm(): React.JSX.Element {
 
         {/* Invite Code Field */}
         <div className="space-y-2">
-          <Label htmlFor="inviteCode" className="flex items-center gap-2 text-text-secondary">
+          <Label
+            htmlFor="inviteCode"
+            className={cn(
+              'flex items-center gap-2',
+              inviteRequired ? 'text-text-primary' : 'text-text-secondary'
+            )}
+          >
             <Key className="w-4 h-4" />
-            Invite Code <span className="text-text-muted text-xs">(optional)</span>
+            Invite code
+            {inviteRequired ? (
+              <span className="text-error">*</span>
+            ) : (
+              <span className="text-text-muted text-xs">(optional)</span>
+            )}
           </Label>
+          {inviteRequired && (
+            <p className="text-xs text-text-muted">
+              Private beta — enter the code you received from the team.
+            </p>
+          )}
           <Input
             id="inviteCode"
             type="text"
             placeholder="Enter your invite code"
+            autoComplete="off"
             className={cn(errors.inviteCode && 'border-error focus:border-error focus:ring-error')}
             {...register('inviteCode')}
           />

@@ -4,35 +4,36 @@
  * Displays user's activity feed with filtering options.
  */
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Activity, Filter } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { ActivityTimeline } from "../ActivityTimeline";
-import { tabContentVariants } from "../../animations";
-import type { UserProfile, ActivityType } from "@/types";
+} from '@/components/ui/select';
+import type { ActivityType, UserProfile } from '@/types';
+import { motion } from 'framer-motion';
+import { Activity, Filter } from 'lucide-react';
+import { useState } from 'react';
+import { tabContentVariants } from '../../animations';
+import { ActivityTimeline } from '../ActivityTimeline';
 
 export interface ActivityTabProps {
   profile: UserProfile;
 }
 
 export function ActivityTab({ profile }: ActivityTabProps) {
-  const [activityFilter, setActivityFilter] = useState<ActivityType | "all">("all");
+  const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all');
 
-  const filterOptions: { value: ActivityType | "all"; label: string }[] = [
-    { value: "all", label: "All Activity" },
-    { value: "joined", label: "Joined" },
-    { value: "function_published", label: "Functions" },
-    { value: "achievement_earned", label: "Achievements" },
-    { value: "review_received", label: "Reviews" },
-    { value: "milestone_reached", label: "Milestones" },
+  const filterOptions: { value: ActivityType | 'all'; label: string }[] = [
+    { value: 'all', label: 'All Activity' },
+    { value: 'joined', label: 'Joined' },
+    { value: 'function_published', label: 'Functions' },
+    { value: 'achievement_earned', label: 'Achievements' },
+    { value: 'membership_upgraded', label: 'Upgrades' },
+    { value: 'review_received', label: 'Reviews' },
+    { value: 'milestone_reached', label: 'Milestones' },
   ];
 
   return (
@@ -50,14 +51,19 @@ export function ActivityTab({ profile }: ActivityTabProps) {
               <Activity className="w-5 h-5 text-brand-500" />
               Activity Timeline
             </CardTitle>
-            <Select value={activityFilter} onValueChange={(v) => setActivityFilter(v as ActivityType | "all")}>
+            <Select
+              value={activityFilter}
+              onValueChange={(v) => setActivityFilter(v as ActivityType | 'all')}
+            >
               <SelectTrigger className="w-full sm:w-40">
                 <Filter className="w-4 h-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {filterOptions.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                {filterOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

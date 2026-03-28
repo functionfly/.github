@@ -196,6 +196,10 @@ function useSupportWebSocket({
 }: UseSupportWebSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [wsError, setWsError] = useState<string | null>(null);
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
 
   const connect = useCallback(() => {
     if (!conversationId) return;
@@ -206,12 +210,20 @@ function useSupportWebSocket({
         : `${typeof window !== 'undefined' ? window.location.origin : ''}${API_BASE_URL}`;
     const wsBase = base.replace(/^http/, 'ws');
     const wsUrl = `${wsBase.replace(/\/$/, '')}/v1/support/ws`;
+    const token = getAuthToken();
+    const wsUrlObj = new URL(wsUrl);
+    if (token && token.trim()) wsUrlObj.searchParams.set('token', token);
 
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(wsUrlObj.toString());
     wsRef.current = ws;
+    setIsConnecting(true);
+    setWsError(null);
 
     ws.onopen = () => {
       console.log('Support WebSocket connected');
+      setIsConnected(true);
+      setIsConnecting(false);
+      setReconnectAttempt(0);
       // Join the conversation room
       ws.send(
         JSON.stringify({
@@ -251,6 +263,9 @@ function useSupportWebSocket({
 
     ws.onclose = () => {
       console.log('Support WebSocket disconnected');
+      setIsConnected(false);
+      setIsConnecting(true);
+      setReconnectAttempt((v) => v + 1);
       // Attempt to reconnect
       reconnectTimeoutRef.current = setTimeout(() => {
         connect();
@@ -259,6 +274,9 @@ function useSupportWebSocket({
 
     ws.onerror = (error) => {
       console.error('Support WebSocket error:', error);
+      setWsError('Support connection lost. Reconnecting...');
+      setIsConnected(false);
+      setIsConnecting(true);
     };
   }, [conversationId, onMessage, onTyping, onStaffJoined, onStaffLeft]);
 
@@ -272,6 +290,9 @@ function useSupportWebSocket({
       if (wsRef.current) {
         wsRef.current.close();
       }
+      setIsConnected(false);
+      setIsConnecting(false);
+      setWsError(null);
     };
   }, [connect]);
 
@@ -303,7 +324,11 @@ function useSupportWebSocket({
     [conversationId]
   );
 
-  return { sendTypingIndicator, sendWsMessage };
+  return {
+    sendTypingIndicator,
+    sendWsMessage,
+    connection: { isConnected, isConnecting, wsError, reconnectAttempt },
+  };
 }
 
 // ============================================================================
@@ -318,6 +343,9 @@ interface SupportChatContextValue {
   isLoading: boolean;
   isSending: boolean;
   isConnected: boolean;
+  isConnecting: boolean;
+  reconnectAttempt: number;
+  wsError: string | null;
   staffOnline: boolean;
   openError: string | null;
 
@@ -361,7 +389,22 @@ export function SupportChatProvider({ children }: SupportChatProviderProps) {
   const [openError, setOpenError] = useState<string | null>(null);
 
   const handleNewMessage = useCallback((message: SupportMessage) => {
-    setMessages((prev) => [...prev, message]);
+    // Reconcile optimistic user messages with the server-persisted copy.
+    setMessages((prev) => {
+      if (message.author_type === 'user') {
+        const idx = prev.findIndex((m) => {
+          if (m.author_type !== 'user') return false;
+          if (!m.id.startsWith('temp-')) return false;
+          return m.content === message.content;
+        });
+        if (idx !== -1) {
+          const next = [...prev];
+          next[idx] = message;
+          return next;
+        }
+      }
+      return [...prev, message];
+    });
   }, []);
 
   const handleTyping = useCallback((userId: string, typing: boolean) => {
@@ -369,7 +412,7 @@ export function SupportChatProvider({ children }: SupportChatProviderProps) {
     console.log('User typing:', userId, typing);
   }, []);
 
-  const { sendTypingIndicator, sendWsMessage } = useSupportWebSocket({
+  const { connection } = useSupportWebSocket({
     conversationId: conversation?.id ?? null,
     onMessage: handleNewMessage,
     onTyping: handleTyping,
@@ -388,7 +431,7 @@ export function SupportChatProvider({ children }: SupportChatProviderProps) {
           type: options?.isEmergency ? 'support_emergency' : 'support_ai',
           title: options?.functionRef
             ? `Help with ${options.functionRef.author}/${options.functionRef.name}`
-            : 'General support request',
+            : 'FunctionFly Assistant',
           function_author: options?.functionRef?.author,
           function_name: options?.functionRef?.name,
           function_version: options?.functionRef?.version,
@@ -420,10 +463,11 @@ export function SupportChatProvider({ children }: SupportChatProviderProps) {
       if (!conversation || isSending) return;
 
       setIsSending(true);
+      const tempId = `temp-${Date.now()}`;
       try {
         // Optimistically add user message
         const userMessage: SupportMessage = {
-          id: `temp-${Date.now()}`,
+          id: tempId,
           conversation_id: conversation.id,
           author_id: 'current-user',
           author_type: 'user',
@@ -433,18 +477,40 @@ export function SupportChatProvider({ children }: SupportChatProviderProps) {
         };
         setMessages((prev) => [...prev, userMessage]);
 
-        // Send via WebSocket for real-time
-        sendWsMessage(content);
-
         // Also send via REST for persistence
         await postMessage(conversation.id, content);
+        // AI reply is generated asynchronously; WebSocket delivers via Redis when available.
+        // Poll briefly so replies still appear if Redis/pub-sub is not wired (common in local dev).
+        void (async () => {
+          for (let i = 0; i < 14; i++) {
+            await new Promise((r) => setTimeout(r, 450));
+            try {
+              const next = await fetchMessages(conversation.id);
+              setMessages(next);
+              if (
+                next.some(
+                  (m) =>
+                    m.author_type === 'ai' ||
+                    m.author_type === 'system' ||
+                    m.author_type === 'staff'
+                )
+              ) {
+                break;
+              }
+            } catch {
+              break;
+            }
+          }
+        })();
       } catch (error) {
         console.error('Failed to send message:', error);
+        // Remove optimistic message on failure
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
       } finally {
         setIsSending(false);
       }
     },
-    [conversation, isSending, sendWsMessage]
+    [conversation, isSending]
   );
 
   const escalateToHuman = useCallback(async () => {
@@ -480,6 +546,7 @@ export function SupportChatProvider({ children }: SupportChatProviderProps) {
         // Show confirmation to user
       } catch (error) {
         console.error('Failed to request emergency:', error);
+        throw error instanceof Error ? error : new Error('Failed to request emergency fix');
       }
     },
     [conversation]
@@ -491,7 +558,10 @@ export function SupportChatProvider({ children }: SupportChatProviderProps) {
     messages,
     isLoading,
     isSending,
-    isConnected: true,
+    isConnected: connection.isConnected,
+    isConnecting: connection.isConnecting,
+    reconnectAttempt: connection.reconnectAttempt,
+    wsError: connection.wsError,
     staffOnline,
     openError,
     openChat,

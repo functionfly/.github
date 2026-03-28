@@ -1,3 +1,4 @@
+import { useTheme } from '@/components/common/ThemeProvider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +27,8 @@ type Props = { editor: FunctionEditorModel };
 export function CodeEditorSection({ editor }: Props) {
   const { runtime, code, setCode, activeTab, setActiveTab, logs, errors, markDirty } = editor;
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const { theme } = useTheme();
+  const monacoTheme = theme === 'light' ? 'vs' : 'vs-dark';
 
   const lineCount = code.split('\n').length;
   const charCount = code.length;
@@ -41,7 +44,7 @@ export function CodeEditorSection({ editor }: Props) {
     toast.info('Code reset to template');
   }, [runtime, setCode, markDirty]);
 
-  const editorHeight = isFullscreen ? 'calc(100vh - 200px)' : '420px';
+  const editorHeight = isFullscreen ? 'calc(100vh - 200px)' : '400px';
 
   return (
     <Card
@@ -49,9 +52,9 @@ export function CodeEditorSection({ editor }: Props) {
         isFullscreen ? 'fixed inset-4 z-50 shadow-2xl' : ''
       }`}
       style={{
-        background: 'var(--bg-secondary, #12121a)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        ...(isFullscreen ? {} : { height: '560px' }),
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border-subtle)',
+        ...(isFullscreen ? {} : { maxHeight: '520px' }),
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -118,7 +121,7 @@ export function CodeEditorSection({ editor }: Props) {
           onValueChange={setActiveTab}
           className="flex-1 flex flex-col min-h-0"
         >
-          <TabsList className="grid w-full grid-cols-2 rounded-none border-b border-border-subtle shrink-0 bg-transparent h-9">
+          <TabsList className="grid h-9 w-full grid-cols-2 shrink-0 rounded-none border-b border-border-subtle">
             <TabsTrigger value="editor" className="rounded-none text-xs">
               Editor
             </TabsTrigger>
@@ -131,20 +134,26 @@ export function CodeEditorSection({ editor }: Props) {
           </TabsList>
 
           <TabsContent value="editor" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden">
-            <div className="w-full h-full" style={{ minHeight: editorHeight }}>
+            {/* Explicit height: Monaco with height="100%" collapses here because flex parents use auto height. */}
+            <div className="w-full" style={{ height: editorHeight }}>
               {activeTab === 'editor' && (
                 <Editor
-                  height={isFullscreen ? editorHeight : '100%'}
+                  height={editorHeight}
                   language={RUNTIME_META[runtime].monacoLang}
                   value={code}
                   onChange={(v) => {
                     setCode(v || '');
                     markDirty();
                   }}
-                  theme="vs-dark"
+                  theme={monacoTheme}
                   loading={
-                    <div className="flex items-center justify-center w-full h-full bg-[#1e1e1e] text-text-secondary">
-                      <Loader2 className="w-6 h-6 animate-spin" />
+                    <div
+                      className="flex h-full w-full items-center justify-center text-text-secondary"
+                      style={{
+                        backgroundColor: theme === 'light' ? 'var(--bg-tertiary)' : '#1e1e1e',
+                      }}
+                    >
+                      <Loader2 className="h-6 w-6 animate-spin" />
                     </div>
                   }
                   options={{

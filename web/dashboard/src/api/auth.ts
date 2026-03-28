@@ -7,6 +7,19 @@ export interface WebAuthnAssertionBeginResponse {
   sessionID: string;
 }
 
+export interface MFAStatusResponse {
+  enabled: boolean;
+  required: boolean;
+  last_used?: string;
+  backup_codes_remaining: number;
+}
+
+export interface MFASetupResponse {
+  secret: string;
+  qr_code_url: string;
+  backup_codes: string[];
+}
+
 /** JSON-serializable form of PublicKeyCredentialRequestOptions (challenge is base64url) */
 export interface PublicKeyCredentialRequestOptionsJSON {
   challenge: string;
@@ -103,4 +116,15 @@ export const authApi = {
   /** Verify current user's password (re-auth for sensitive actions). Throws on 401/400. */
   verifyPassword: (password: string) =>
     apiClient.post<{ message: string }>('/v1/auth/verify-password', { password }),
+
+  getMFAStatus: () => apiClient.get<MFAStatusResponse>('/v1/auth/mfa/status'),
+
+  setupMFA: () => apiClient.post<MFASetupResponse>('/v1/auth/mfa/setup', {}),
+
+  verifyMFASetupCode: (code: string) => apiClient.post<{ verified: boolean }>('/v1/auth/mfa/verify', { code }),
+
+  enableMFA: () => apiClient.post<{ status: string }>('/v1/auth/mfa/enable', {}),
+
+  disableMFA: (password: string, code: string) =>
+    apiClient.post<{ status: string }>('/v1/auth/mfa/disable', { password, code }),
 };

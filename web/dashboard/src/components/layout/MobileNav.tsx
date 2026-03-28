@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import { ADMIN_DASHBOARD_URL, ROUTES } from "@/lib/constants";
+import { isPlatformAdminRole } from "@/lib/platform-admin";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation";
 
@@ -41,7 +42,7 @@ export function MobileNav({ className }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = isPlatformAdminRole(user?.role);
 
   const adminNavItems: NavItem[] =
     isAdmin && ADMIN_DASHBOARD_URL

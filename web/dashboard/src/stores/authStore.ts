@@ -184,6 +184,7 @@ const authStore = create<AuthState>()(
           // If we get here, both token validation and refresh failed
           localStorage.removeItem('ff-access-token');
           localStorage.removeItem('ff-refresh-token');
+          localStorage.removeItem('ff-last-wallet-agent-id');
           set({
             user: null,
             session: null,
@@ -195,6 +196,7 @@ const authStore = create<AuthState>()(
           // Network or parse error during validation — clear auth state
           localStorage.removeItem('ff-access-token');
           localStorage.removeItem('ff-refresh-token');
+          localStorage.removeItem('ff-last-wallet-agent-id');
           set({
             user: null,
             session: null,
@@ -230,9 +232,19 @@ const authStore = create<AuthState>()(
             const text = await response.text();
             let msg = 'Login failed';
             let detail: string | undefined;
+            let retryAfterSec: number | undefined;
+            const retryHdr = response.headers.get('Retry-After');
+            if (retryHdr) {
+              const n = parseInt(retryHdr, 10);
+              if (!Number.isNaN(n)) retryAfterSec = n;
+            }
             try {
               const errorData = text ? JSON.parse(text) : {};
               msg = errorData.message || msg;
+              if (errorData.retry_after != null && retryAfterSec === undefined) {
+                const r = Number(errorData.retry_after);
+                if (!Number.isNaN(r)) retryAfterSec = r;
+              }
               // Only expose detail in development mode
               if (import.meta.env.DEV) {
                 detail = errorData.detail;
@@ -244,7 +256,13 @@ const authStore = create<AuthState>()(
               }
             }
             const fullMessage = detail ? `${msg} ${detail}` : msg;
-            throw new Error(fullMessage);
+            const err = new Error(fullMessage) as Error & {
+              status: number;
+              retryAfter?: number;
+            };
+            err.status = response.status;
+            if (retryAfterSec !== undefined) err.retryAfter = retryAfterSec;
+            throw err;
           }
 
           const authData = await response.json();
@@ -314,6 +332,7 @@ const authStore = create<AuthState>()(
             session: loginSession,
             isAuthenticated: true,
             isLoading: false,
+            authChecked: true,
           });
 
           // Reload API client token cache
@@ -408,6 +427,8 @@ const authStore = create<AuthState>()(
         // Clear all local auth state
         localStorage.removeItem('ff-access-token');
         localStorage.removeItem('ff-refresh-token');
+        // Avoid showing another account's last agent wallet in the user menu after re-login.
+        localStorage.removeItem('ff-last-wallet-agent-id');
         apiClient.clearToken();
 
         set({
@@ -454,6 +475,7 @@ const authStore = create<AuthState>()(
           set({
             mfaRequired: false,
             isLoading: false,
+            authChecked: true,
           });
 
           // Reload API client token cache

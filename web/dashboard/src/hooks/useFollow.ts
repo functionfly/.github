@@ -28,11 +28,11 @@ export function useFollowUser(username: string) {
   return useMutation({
     mutationFn: (data?: FollowUserRequest) => followApi.followUser(username, data),
     onSuccess: () => {
-      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.userStatus(username) });
       queryClient.invalidateQueries({ queryKey: ["follow", "user", username, "followers"] });
       queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.myStats() });
-      
+      queryClient.invalidateQueries({ queryKey: ["enhanced-profile", username] });
+
       toast.success(`You are now following @${username}`);
     },
     onError: (error: Error) => {
@@ -50,7 +50,8 @@ export function useUnfollowUser(username: string) {
       queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.userStatus(username) });
       queryClient.invalidateQueries({ queryKey: ["follow", "user", username, "followers"] });
       queryClient.invalidateQueries({ queryKey: FOLLOW_QUERY_KEYS.myStats() });
-      
+      queryClient.invalidateQueries({ queryKey: ["enhanced-profile", username] });
+
       toast.success(`You have unfollowed @${username}`);
     },
     onError: (error: Error) => {

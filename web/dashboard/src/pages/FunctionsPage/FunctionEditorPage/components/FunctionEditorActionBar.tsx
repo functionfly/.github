@@ -22,14 +22,7 @@ export function FunctionEditorActionBar({ editor }: Props) {
   } = editor;
 
   return (
-    <div
-      className="sticky top-0 z-40 border-b"
-      style={{
-        background: 'rgba(10,10,15,0.9)',
-        backdropFilter: 'blur(12px)',
-        borderColor: 'rgba(255,255,255,0.08)',
-      }}
-    >
+    <div className="sticky top-0 z-40 border-b border-border-subtle bg-bg-secondary/95 backdrop-blur-xl dark:border-white/10 dark:bg-[rgba(10,10,15,0.9)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 min-w-0">
           <Button

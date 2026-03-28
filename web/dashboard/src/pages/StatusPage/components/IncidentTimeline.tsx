@@ -112,6 +112,7 @@ function IncidentCard({ incident, index }: IncidentCardProps) {
   const severity = severityConfig[incident.severity];
   const status = statusConfig[incident.status];
   const SeverityIcon = severity.icon;
+  const detailsId = `incident-details-${incident.id}`;
 
   return (
     <motion.div
@@ -142,7 +143,20 @@ function IncidentCard({ incident, index }: IncidentCardProps) {
           isExpanded && 'ring-1 ring-border-default'
         )}
       >
-        <CardHeader className="pb-3 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+        <CardHeader
+          className="pb-3 cursor-pointer"
+          role="button"
+          tabIndex={0}
+          aria-expanded={isExpanded}
+          aria-controls={detailsId}
+          onClick={() => setIsExpanded(!isExpanded)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsExpanded(!isExpanded);
+            }
+          }}
+        >
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -209,6 +223,7 @@ function IncidentCard({ incident, index }: IncidentCardProps) {
         <AnimatePresence>
           {isExpanded && (
             <motion.div
+              id={detailsId}
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}

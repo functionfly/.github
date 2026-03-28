@@ -35,7 +35,7 @@ export function SupportBubble({ className = '', showLabel = true }: SupportBubbl
         zIndex: 9998,
         transition: 'transform 0.2s ease, box-shadow 0.2s ease',
       }}
-      aria-label="Open support chat"
+      aria-label="Open FunctionFly Assistant"
     >
       <svg
         width="28"

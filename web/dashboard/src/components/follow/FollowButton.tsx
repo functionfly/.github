@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { UserPlus, UserMinus, Loader2, Bell, BellOff } from "lucide-react";
+import { UserPlus, UserMinus, Loader2, Bell, BellOff, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +22,7 @@ interface FollowUserButtonProps {
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "lg";
   showDropdown?: boolean;
+  className?: string;
 }
 
 export function FollowUserButton({
@@ -28,6 +30,7 @@ export function FollowUserButton({
   variant = "default",
   size = "default",
   showDropdown = true,
+  className,
 }: FollowUserButtonProps) {
   const { data: status, isLoading: isLoadingStatus } = useUserFollowStatus(username);
   const followMutation = useFollowUser(username);
@@ -48,7 +51,7 @@ export function FollowUserButton({
 
   if (isLoadingStatus) {
     return (
-      <Button variant={variant} size={size} disabled>
+      <Button variant={variant} size={size} disabled className={cn("gap-2", className)}>
         <Loader2 className="w-4 h-4 animate-spin mr-2" />
         Loading...
       </Button>
@@ -62,12 +65,12 @@ export function FollowUserButton({
         size={size}
         onClick={handleFollow}
         disabled={followMutation.isPending}
-        className="bg-brand-600 hover:bg-brand-700"
+        className={cn("gap-2 bg-brand-600 hover:bg-brand-700", className)}
       >
         {followMutation.isPending ? (
-          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+          <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
-          <UserPlus className="w-4 h-4 mr-2" />
+          <UserPlus className="w-4 h-4" />
         )}
         Follow
       </Button>
@@ -79,7 +82,7 @@ export function FollowUserButton({
     return (
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size={size}>
+          <Button variant="outline" size={size} className={cn("gap-2", className)}>
             <Bell className="w-4 h-4 mr-2" />
             Following
           </Button>
@@ -100,13 +103,14 @@ export function FollowUserButton({
       size={size}
       onClick={handleUnfollow}
       disabled={unfollowMutation.isPending}
+      className={cn("gap-2 border-brand-500 text-brand-400", className)}
     >
       {unfollowMutation.isPending ? (
-        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+        <Loader2 className="w-4 h-4 animate-spin" />
       ) : (
-        <UserMinus className="w-4 h-4 mr-2" />
+        <Users className="w-4 h-4" />
       )}
-      Unfollow
+      Following
     </Button>
   );
 }

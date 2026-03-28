@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { DOCS_SITE_URL, getMarketingRedirectOrigin } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { Menu, MessageCircle, X } from 'lucide-react';
 import { useState } from 'react';
@@ -26,6 +27,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const theme = useThemeStore((state) => state.theme);
+  const messagesUnread = useNotificationStore((state) => state.unreadCounts.messages);
   const marketingHomeUrl = getMarketingRedirectOrigin();
 
   const settingsPath = user?.username ? `/u/${user.username}/settings` : '/settings';
@@ -205,13 +207,20 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                 {variant === 'dashboard' && (
                   <Link
                     to="/conversations"
-                    aria-label="Messages"
+                    aria-label={
+                      messagesUnread > 0 ? `Messages (${messagesUnread} unread)` : 'Messages'
+                    }
                     className={cn(
                       'relative flex items-center justify-center rounded-md p-2 text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors',
                       theme === 'light' && 'text-[#1a1a2e]'
                     )}
                   >
                     <MessageCircle className="w-5 h-5" />
+                    {messagesUnread > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-white">
+                        {messagesUnread > 99 ? '99+' : messagesUnread}
+                      </span>
+                    )}
                   </Link>
                 )}
 

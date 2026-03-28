@@ -1,105 +1,173 @@
-import { apiClient } from "./client";
 import type {
-  FunctionConfig,
   CreateFunctionRequest,
-  UpdateFunctionRequest,
-  FunctionDeployment,
-  FunctionLog,
   DeployFunctionRequest,
   DeployFunctionResponse,
+  FunctionConfig,
+  FunctionDeployment,
+  FunctionLog,
   TestFunctionRequest,
-  TestFunctionResponse
-} from "@/types";
+  TestFunctionResponse,
+  UpdateFunctionRequest,
+} from '@/types';
 import {
-  functionConfigSchema,
   createFunctionRequestSchema,
-  updateFunctionRequestSchema,
-  functionDeploymentSchema,
-  functionLogSchema,
   deployFunctionRequestSchema,
   deployFunctionResponseSchema,
+  functionConfigSchema,
   testFunctionRequestSchema,
-  testFunctionResponseSchema
-} from "../lib/api-validation";
+  testFunctionResponseSchema,
+  updateFunctionRequestSchema,
+} from '../lib/api-validation';
 import {
   validateFunctionConfigs,
   validateFunctionDeployments,
-  validateFunctionLogs
-} from "../lib/validation-utils";
+  validateFunctionLogs,
+} from '../lib/validation-utils';
+import { apiClient } from './client';
 
 export const functionsApi = {
   // List all functions for the current tenant
   list: async (): Promise<{ functions: FunctionConfig[] }> => {
-    const response = await apiClient.get("/v1/functions");
+    const response = await apiClient.get('/v1/functions');
     // Validate the response structure
-    if (response && typeof response === 'object' && 'functions' in response && Array.isArray((response as any).functions)) {
-      return { functions: validateFunctionConfigs((response as any).functions) as FunctionConfig[] };
+    if (
+      response &&
+      typeof response === 'object' &&
+      'functions' in response &&
+      Array.isArray((response as any).functions)
+    ) {
+      return {
+        functions: validateFunctionConfigs((response as any).functions) as FunctionConfig[],
+      };
     }
     return { functions: [] };
   },
 
   // Get a specific function
-  get: (functionId: string) => apiClient.getValidatedData(functionConfigSchema, `/v1/functions/${functionId}`),
+  get: (functionId: string): Promise<FunctionConfig> =>
+    apiClient.getValidatedData<FunctionConfig>(functionConfigSchema, `/v1/functions/${functionId}`),
 
   // Create a new function
-  create: async (data: CreateFunctionRequest) => {
+  create: async (data: CreateFunctionRequest): Promise<FunctionConfig> => {
     // Validate input data
     const validation = createFunctionRequestSchema.safeParse(data);
     if (!validation.success) {
       throw new Error(`Invalid function creation data: ${validation.error.message}`);
     }
-    return apiClient.postValidatedData(functionConfigSchema, "/v1/functions", data);
+    const payload = {
+      name: data.name,
+      code: data.code,
+      providers: data.providers,
+      region: data.region,
+      env_vars:
+        data.envVars?.map((e) => ({
+          key: e.key,
+          value: e.value,
+          is_secret: e.isSecret,
+        })) ?? [],
+    };
+    return apiClient.postValidatedData<FunctionConfig>(
+      functionConfigSchema,
+      '/v1/functions',
+      payload
+    );
   },
 
   // Update an existing function
-  update: async (functionId: string, data: UpdateFunctionRequest) => {
+  update: async (functionId: string, data: UpdateFunctionRequest): Promise<FunctionConfig> => {
     // Validate input data
     const validation = updateFunctionRequestSchema.safeParse(data);
     if (!validation.success) {
       throw new Error(`Invalid function update data: ${validation.error.message}`);
     }
-    return apiClient.putValidatedData(functionConfigSchema, `/v1/functions/${functionId}`, data);
+    const payload: Record<string, unknown> = {};
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.code !== undefined) payload.code = data.code;
+    if (data.providers !== undefined) payload.providers = data.providers;
+    if (data.region !== undefined) payload.region = data.region;
+    if (data.envVars !== undefined) {
+      payload.env_vars = data.envVars.map((e) => ({
+        key: e.key,
+        value: e.value,
+        is_secret: e.isSecret,
+      }));
+    }
+    return apiClient.putValidatedData<FunctionConfig>(
+      functionConfigSchema,
+      `/v1/functions/${functionId}`,
+      payload
+    );
   },
 
   // Delete a function
-  delete: (functionId: string) =>
-    apiClient.delete(`/v1/functions/${functionId}`),
+  delete: (functionId: string) => apiClient.delete(`/v1/functions/${functionId}`),
 
   // Deploy a function
-  deploy: async (data: DeployFunctionRequest) => {
+  deploy: async (data: DeployFunctionRequest): Promise<DeployFunctionResponse> => {
     // Validate input data
     const validation = deployFunctionRequestSchema.safeParse(data);
     if (!validation.success) {
       throw new Error(`Invalid deployment data: ${validation.error.message}`);
     }
-    return apiClient.postValidatedData(deployFunctionResponseSchema, "/v1/functions/deploy", data);
+    const payload: Record<string, unknown> = {
+      function_id: data.functionId,
+      backend_id: data.backendId,
+    };
+    if (data.version) payload.version = data.version;
+    if (data.environment) payload.environment = data.environment;
+    return apiClient.postValidatedData<DeployFunctionResponse>(
+      deployFunctionResponseSchema,
+      '/v1/functions/deploy',
+      payload
+    );
   },
 
   // Test a function
-  test: async (data: TestFunctionRequest) => {
+  test: async (data: TestFunctionRequest): Promise<TestFunctionResponse> => {
     // Validate input data
     const validation = testFunctionRequestSchema.safeParse(data);
     if (!validation.success) {
       throw new Error(`Invalid test data: ${validation.error.message}`);
     }
-    return apiClient.postValidatedData(testFunctionResponseSchema, "/v1/functions/test", data);
+    return apiClient.postValidatedData<TestFunctionResponse>(
+      testFunctionResponseSchema,
+      '/v1/functions/test',
+      data
+    );
   },
 
   // Get function deployments
   getDeployments: async (functionId: string): Promise<{ deployments: FunctionDeployment[] }> => {
     const response = await apiClient.get(`/v1/functions/${functionId}/deployments`);
     // Validate the response structure
-    if (response && typeof response === 'object' && 'deployments' in response && Array.isArray((response as any).deployments)) {
-      return { deployments: validateFunctionDeployments((response as any).deployments) as FunctionDeployment[] };
+    if (
+      response &&
+      typeof response === 'object' &&
+      'deployments' in response &&
+      Array.isArray((response as any).deployments)
+    ) {
+      return {
+        deployments: validateFunctionDeployments(
+          (response as any).deployments
+        ) as FunctionDeployment[],
+      };
     }
     return { deployments: [] };
   },
 
   // Get function logs
-  getLogs: async (functionId: string, params?: { limit?: number; since?: string; level?: string }): Promise<{ logs: FunctionLog[] }> => {
+  getLogs: async (
+    functionId: string,
+    params?: { limit?: number; since?: string; level?: string }
+  ): Promise<{ logs: FunctionLog[] }> => {
     const response = await apiClient.get(`/v1/functions/${functionId}/logs`, { params });
     // Validate the response structure
-    if (response && typeof response === 'object' && 'logs' in response && Array.isArray((response as any).logs)) {
+    if (
+      response &&
+      typeof response === 'object' &&
+      'logs' in response &&
+      Array.isArray((response as any).logs)
+    ) {
       return { logs: validateFunctionLogs((response as any).logs) as FunctionLog[] };
     }
     return { logs: [] };
@@ -109,7 +177,12 @@ export const functionsApi = {
   getDeploymentLogs: async (deploymentId: string): Promise<{ logs: FunctionLog[] }> => {
     const response = await apiClient.get(`/v1/deployments/${deploymentId}/logs`);
     // Validate the response structure
-    if (response && typeof response === 'object' && 'logs' in response && Array.isArray((response as any).logs)) {
+    if (
+      response &&
+      typeof response === 'object' &&
+      'logs' in response &&
+      Array.isArray((response as any).logs)
+    ) {
       return { logs: validateFunctionLogs((response as any).logs) as FunctionLog[] };
     }
     return { logs: [] };

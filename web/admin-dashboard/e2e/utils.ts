@@ -2,11 +2,22 @@ import { Page } from '@playwright/test';
 
 /**
  * Test credentials for admin dashboard
+ * SECURITY: Default credentials are only available in DEVELOPMENT mode
  */
-export const TEST_CREDENTIALS = {
-  email: 'admin@functionfly.local',
-  password: 'admin123',
-};
+function getTestCredentials() {
+  if (process.env.NODE_ENV !== 'development' && process.env.DEVELOPMENT !== 'true') {
+    throw new Error(
+      'Test credentials should not be used outside DEVELOPMENT mode. ' +
+        'Set DEVELOPMENT=true or provide credentials explicitly via environment variables.'
+    );
+  }
+  return {
+    email: process.env.TEST_ADMIN_EMAIL || 'admin@functionfly.local',
+    password: process.env.TEST_ADMIN_PASSWORD || 'admin123',
+  };
+}
+
+export const TEST_CREDENTIALS = getTestCredentials();
 
 /**
  * Navigate to the admin dashboard and wait for it to load
@@ -23,66 +34,8 @@ export async function loginToAdmin(page: Page, email?: string, password?: string
   const { email: defaultEmail, password: defaultPassword } = TEST_CREDENTIALS;
 
   await gotoAdminDashboard(page, '/auth/login');
-
-  // Fill in the login form
-  const emailInput = page.locator('input[type="email"], input[name="email"], input[id="email"]');
-  const passwordInput = page.locator(
-    'input[type="password"], input[name="password"], input[id="password"]'
-  );
-  const submitButton = page.locator(
-    'button[type="submit"], button:has-text("Sign in"), button:has-text("Login")'
-  );
-
-  if (await emailInput.isVisible()) {
-    await emailInput.fill(email || defaultEmail);
-  }
-
-  if (await passwordInput.isVisible()) {
-    await passwordInput.fill(password || defaultPassword);
-  }
-
-  if (await submitButton.isVisible()) {
-    await submitButton.click();
-  }
-
-  // Wait for navigation after login
-  await page.waitForLoadState('networkidle');
-}
-
-/**
- * Check if user is logged in (not on login page)
- */
-export async function isLoggedIn(page: Page): Promise<boolean> {
-  const currentUrl = page.url();
-  return !currentUrl.includes('/auth/login');
-}
-
-/**
- * Wait for the dashboard to be fully loaded
- */
-export async function waitForDashboardLoad(page: Page) {
-  await page.waitForLoadState('networkidle');
-
-  // Wait for any loading spinners to disappear
-  await page
-    .waitForFunction(
-      () => {
-        const spinners = document.querySelectorAll('[class*="spinner"], [class*="loading"]');
-        return spinners.length === 0;
-      },
-      { timeout: 10000 }
-    )
-    .catch(() => {
-      // Ignore timeout - spinners might not exist
-    });
-}
-
-/**
- * Take a screenshot with a descriptive name
- */
-export async function takeScreenshot(page: Page, name: string) {
-  await page.screenshot({
-    path: `e2e/screenshots/${name}-${Date.now()}.png`,
-    fullPage: true,
-  });
+  await page.fill('input[name="email"]', email || defaultEmail);
+  await page.fill('input[name="password"]', password || defaultPassword);
+  await page.click('button[type="submit"]');
+  await page.waitForURL(/\/dashboard/);
 }

@@ -33,51 +33,60 @@ function ageFromISODate(isoDate: string): number {
   return age;
 }
 
-// Signup form schema
-export const signupSchema = z
-  .object({
-    name: z
-      .string()
-      .min(1, 'Name is required')
-      .min(2, 'Name must be at least 2 characters')
-      .max(100, 'Name must be less than 100 characters'),
-    dateOfBirth: z
-      .string()
-      .min(1, 'Date of birth is required')
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date')
-      .refine((s) => !Number.isNaN(Date.parse(`${s}T12:00:00`)), 'Invalid date')
-      .refine((s) => {
-        const t = new Date(`${s}T12:00:00`);
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-        return t <= startOfToday;
-      }, 'Date of birth cannot be in the future')
-      .refine((s) => ageFromISODate(s) >= 13, 'You must be at least 13 years old'),
-    email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
-    username: z
-      .string()
-      .min(1, 'Username is required')
-      .max(50, 'Username must be less than 50 characters')
-      .regex(
-        /^[a-zA-Z0-9_-]*$/,
-        'Username can only contain letters, numbers, underscores and hyphens'
-      ),
-    companyName: z
-      .string()
-      .max(255, 'Company name must be less than 255 characters')
-      .optional()
-      .or(z.literal('')),
-    inviteCode: z.string().optional(),
-    password: passwordSchema,
-    confirmPassword: z.string(),
-    termsAccepted: z
-      .boolean()
-      .refine((val) => val === true, 'You must accept the terms and conditions'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ['confirmPassword'],
-  });
+// Signup form schema — use createSignupSchema when invite-only mode is enabled on the API.
+export function createSignupSchema(inviteRequired: boolean) {
+  const inviteCodeField = inviteRequired
+    ? z.string().trim().min(1, 'Invite code is required')
+    : z.string().optional();
+
+  return z
+    .object({
+      name: z
+        .string()
+        .min(1, 'Name is required')
+        .min(2, 'Name must be at least 2 characters')
+        .max(100, 'Name must be less than 100 characters'),
+      dateOfBirth: z
+        .string()
+        .min(1, 'Date of birth is required')
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date')
+        .refine((s) => !Number.isNaN(Date.parse(`${s}T12:00:00`)), 'Invalid date')
+        .refine((s) => {
+          const t = new Date(`${s}T12:00:00`);
+          const startOfToday = new Date();
+          startOfToday.setHours(0, 0, 0, 0);
+          return t <= startOfToday;
+        }, 'Date of birth cannot be in the future')
+        .refine((s) => ageFromISODate(s) >= 13, 'You must be at least 13 years old'),
+      email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
+      username: z
+        .string()
+        .min(1, 'Username is required')
+        .max(50, 'Username must be less than 50 characters')
+        .regex(
+          /^[a-zA-Z0-9_-]*$/,
+          'Username can only contain letters, numbers, underscores and hyphens'
+        ),
+      companyName: z
+        .string()
+        .max(255, 'Company name must be less than 255 characters')
+        .optional()
+        .or(z.literal('')),
+      inviteCode: inviteCodeField,
+      password: passwordSchema,
+      confirmPassword: z.string(),
+      termsAccepted: z
+        .boolean()
+        .refine((val) => val === true, 'You must accept the terms and conditions'),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: "Passwords don't match",
+      path: ['confirmPassword'],
+    });
+}
+
+/** Default schema when invite gating is off (or before config is loaded). */
+export const signupSchema = createSignupSchema(false);
 
 // Redirect form schema
 export const redirectSchema = z.object({

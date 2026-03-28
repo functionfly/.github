@@ -88,10 +88,9 @@ export function ConfigSummary({ editor }: Props) {
     <div className="space-y-4">
       {/* Configuration Summary */}
       <Card
-        className="card"
+        className="card border-border-subtle/50"
         style={{
           background: 'var(--bg-secondary, #12121a)',
-          border: '1px solid rgba(255,255,255,0.08)',
         }}
       >
         <CardHeader className="pb-3 pt-4 px-5">
@@ -116,10 +115,9 @@ export function ConfigSummary({ editor }: Props) {
 
       {/* Estimated Cost */}
       <Card
-        className="card"
+        className="card border-border-subtle/50"
         style={{
           background: 'var(--bg-secondary, #12121a)',
-          border: '1px solid rgba(255,255,255,0.08)',
         }}
       >
         <CardHeader className="pb-2 pt-4 px-5">
@@ -134,7 +132,7 @@ export function ConfigSummary({ editor }: Props) {
           <p className="text-sm font-mono text-emerald-400">
             {estimateCost(resources.memoryMb, resources.timeoutMs, warmInstances)}
           </p>
-          <p className="text-xs text-text-muted mt-1">
+          <p className="text-xs text-text-muted mt-1.5 leading-relaxed">
             Based on current resource limits. Actual cost depends on invocation count.
           </p>
         </CardContent>
@@ -142,10 +140,9 @@ export function ConfigSummary({ editor }: Props) {
 
       {/* Deployment Checklist */}
       <Card
-        className="card"
+        className="card border-border-subtle/50"
         style={{
           background: 'var(--bg-secondary, #12121a)',
-          border: '1px solid rgba(255,255,255,0.08)',
         }}
       >
         <CardHeader className="pb-2 pt-4 px-5">
@@ -161,7 +158,7 @@ export function ConfigSummary({ editor }: Props) {
             </span>
           </div>
           {/* Progress bar */}
-          <div className="mt-2 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
+          <div className="mt-2.5 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
