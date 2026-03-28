@@ -113,7 +113,9 @@ flyctl logs --app functionfly-control
 
 ## Required Secrets (Fly.io)
 
-Set in **Fly Dashboard → functionfly-control → Secrets** (or via `flyctl secrets set`) so the API can reach DB, Redis, etc.:
+**Preferred:** edit secrets in **Infisical** for the `prod` (or staging) environment, then sync to Fly: [`scripts/sync-infisical-to-fly.sh`](../scripts/sync-infisical-to-fly.sh). See [INFISICAL_SETUP.md](INFISICAL_SETUP.md).
+
+Otherwise set in **Fly Dashboard → functionfly-control → Secrets** (or via `flyctl secrets set`) so the API can reach DB, Redis, etc.:
 
 | Secret | Example | Required |
 |--------|---------|----------|

@@ -30,9 +30,16 @@ export DB_PASSWORD="${DB_PASSWORD:-postgres}"
 export DB_NAME="${DB_NAME:-functionfly}"
 export DB_SSLMODE="${DB_SSLMODE:-disable}"
 
-# Default admin credentials; override with ADMIN_* env or pass -email/-password/-role to this script
+# SECURITY: Require ADMIN_CREATE_PASSWORD in production, use dev default only in DEVELOPMENT mode
+if [ "$DEVELOPMENT" != "true" ]; then
+    if [ -z "$ADMIN_PASSWORD" ] && [ -z "$ADMIN_CREATE_PASSWORD" ]; then
+        echo "ERROR: In production, you must set ADMIN_PASSWORD or ADMIN_CREATE_PASSWORD env var."
+        echo "       Alternatively, set DEVELOPMENT=true to use default dev credentials (NOT recommended for production)."
+        exit 1
+    fi
+fi
 EMAIL="${ADMIN_EMAIL:-admin@functionfly.com}"
-PASSWORD="${ADMIN_PASSWORD:-admin123}"
+PASSWORD="${ADMIN_PASSWORD:-${ADMIN_CREATE_PASSWORD:-admin123}}"
 ROLE="${ADMIN_ROLE:-super_admin}"
 
 if [ $# -ge 1 ]; then

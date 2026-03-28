@@ -1,170 +1,129 @@
-# Infisical Setup Guide
+# Infisical setup (canonical secrets)
 
-This guide explains how to use Infisical for secrets management in the FunctionFly project.
+This guide describes how **Infisical** fits into FunctionFly: it is the **canonical place to create and edit** secrets for `dev`, `staging`, and `prod`. Runtime on **Fly.io** still uses **Fly secrets** (synced from Infisical; Fly does not read Infisical directly). Local development uses **`infisical run`**, a **service token**, or a **gitignored `.env`** file—never commit real secrets.
 
-## Overview
+## Roles: one mental model
 
-FunctionFly now uses Infisical to manage environment variables and secrets across all services. Secrets are stored securely in Infisical and injected at runtime.
+| Layer | Role |
+|--------|------|
+| **Infisical** | Where humans and automation **edit** secrets per environment |
+| **Fly secrets** | What Fly Machines **receive** at runtime (set via `fly secrets` after sync) |
+| **`.env`** (gitignored) | Optional **local cache** (`infisical export`) or overrides; not a second source of truth |
 
-## Project Structure
+**GitHub Actions** may keep a small set of repository secrets (e.g. `DOCKER_*`, `FLY_API_TOKEN`, `CLOUDFLARE_*`) for CI; those can mirror values stored in Infisical for operational simplicity.
 
-- **Backend**: Go services (orchestrator-api, health-monitor)
-- **Frontend**: React/Vite dashboard and Astro site
-- **Environments**: dev, staging, prod (configurable)
+## Local development
 
-## Local Development Setup
+### Authentication
 
-### 1. Authentication
+- **Interactive:** `infisical login` (browser).
+- **CI / scripts:** create a **service token** in the Infisical dashboard (read access to the right project and environment) and set `INFISICAL_TOKEN`.
 
-You've already completed this step - you're logged in as `olyntar@gmail.com`.
+### Project linkage
 
-### 2. Project Initialization
+The repo may contain [`.infisical.json`](../.infisical.json) with a `workspaceId`. If you **fork the repo** or use a **different Infisical organization**, run `infisical init` in the repo root and commit the updated file, or rely on `INFISICAL_PROJECT_ID` / dashboard-linked project without relying on a stale workspace id.
 
-The project has been initialized as "FunctionFly" in your Infisical organization.
+### Running the API and tools
 
-### 3. Running Services Locally
-
-#### Backend Services
-
-Use the updated Makefile commands:
-
-```bash
-make dev          # Start development environment with secrets
-make api          # Run orchestrator API with secrets
-make health-monitor  # Run health monitor with secrets
-```
-
-#### Frontend Services
-
-Use the updated npm scripts:
+Makefile targets prefer Infisical when the CLI is installed **and** `INFISICAL_TOKEN` is set; otherwise they use `DB_*` defaults or a sourced `.env`:
 
 ```bash
-# Dashboard
-cd web/dashboard
-npm run dev
-
-# Site
-cd web/site
-npm run dev
+make dev              # Orchestrator with Infisical (dev) or local defaults
+make api              # Same pattern
+make health-monitor
+make setup            # Sources .env if present, then Infisical or plain DB_*
 ```
 
-## Production Deployment
+**Without Infisical** (403, offline, or no token): copy [`.env.example`](../.env.example) to `.env`, fill in values, and use targets such as `make api-local`, `make setup-local`, or `make migrate-local`.
 
-### 1. Create Service Tokens
+**`make setup`** runs [`scripts/run-setup.sh`](../scripts/run-setup.sh): it tries `infisical run` when the CLI and `INFISICAL_TOKEN` are set; on failure (e.g. **403**), it **falls back** to `DB_*` from your shell / `.env`. To **skip Infisical** entirely: `SKIP_INFISICAL=1 make setup`.
 
-For production deployments, create service tokens in the Infisical dashboard:
+### Frontend
 
-1. Go to [Infisical Dashboard](https://app.infisical.com)
-2. Select your FunctionFly project
-3. Go to "Service Tokens" in the sidebar
-4. Click "Create Service Token"
-5. Configure:
-   - Name: `backend-prod` (or appropriate name)
-   - Environment: `prod` (or your target environment)
-   - Scope: Read access to all secrets (`*`)
-   - Expiration: Set as needed (or never expire for long-running services)
+Dashboard and site read `VITE_*` at build time. Store those in Infisical for your environment or local `.env` under `web/dashboard` / `web/site` (see each app’s `.env.example`).
 
-### Optional: Admin Registry AI descriptions (Open Router)
+## Sync Infisical → Fly.io
 
-To enable "Generate with AI" for function descriptions in Admin → Registry, add this secret in Infisical for your environment (e.g. `dev`):
+After you change production (or staging) secrets in Infisical, push them to the Fly app:
 
-- **Key:** `OPENROUTER_API_KEY`
-- **Value:** Your key from [Open Router](https://openrouter.ai) (e.g. `sk-or-v1-...`)
+```bash
+# From repo root; requires infisical CLI + fly CLI + INFISICAL_TOKEN (or login)
+export INFISICAL_ENV=prod          # or staging
+export FLY_APP=functionfly-control
+./scripts/sync-infisical-to-fly.sh
 
-Leave unset if you don't need AI-generated descriptions.
+# Stage only (no immediate rollout); machines pick up on next deploy/restart
+STAGE=1 ./scripts/sync-infisical-to-fly.sh
+```
 
-### Optional: Stripe billing portal
+The script exports Infisical secrets as dotenv, keeps only keys listed in [`scripts/fly-secrets-allowlist.txt`](../scripts/fly-secrets-allowlist.txt) (plus a hard block on `VITE_*` and `INFISICAL_*`), and runs `fly secrets import`. To allow additional keys, edit the allowlist file.
 
-To enable "Manage billing" on Settings (Stripe Customer Portal), add this secret in Infisical for your environment (e.g. `dev`):
+Override allowlist path: `FLY_SECRETS_ALLOWLIST=/path/to/allowlist.txt`.
 
-- **Key:** `STRIPE_SECRET_KEY`
-- **Value:** Your Stripe secret key (e.g. `sk_test_...` from [Stripe Dashboard → API keys](https://dashboard.stripe.com/test/apikeys))
+**EU / self-hosted Infisical:** set the API URL so the CLI hits the right host, for example:
 
-Leave unset if you don't need billing; the Settings page will show a clear message when the portal is unavailable.
+```bash
+export INFISICAL_API_URL=https://eu.infisical.com/api
+# or: infisical --domain https://eu.infisical.com ...
+```
 
-### 2. Docker Deployment
+See also [FLY_SECRETS_FROM_ENV.md](FLY_SECRETS_FROM_ENV.md) for manual `fly secrets` flows when you are not using Infisical.
 
-#### Using Service Tokens
+## Production: service tokens
 
-1. Copy `.env.docker` to `.env`:
+1. Open the [Infisical dashboard](https://app.infisical.com) (or your EU/self-hosted URL).
+2. Select the FunctionFly project.
+3. **Service Tokens** → create a token with read access to the target environment (`prod`, etc.).
 
-   ```bash
-   cp .env.docker .env
-   ```
+Use that token as `INFISICAL_TOKEN` in automation, Docker ([`docker-compose.yml`](../docker-compose.yml)), or CI.
 
-2. Edit `.env` and add your service token:
+### Optional secrets (examples)
 
-   ```bash
-   INFISICAL_TOKEN=st-1234567890abcdef...
-   ```
+- **Open Router** (`OPENROUTER_API_KEY`) — Admin Registry “Generate with AI” for descriptions.
+- **Stripe** (`STRIPE_SECRET_KEY`, etc.) — billing and portal; see [Stripe docs](https://stripe.com/docs).
 
-3. Run with Docker Compose:
+## Docker
 
-   ```bash
-   docker-compose up
-   ```
+1. Copy `.env.docker` to `.env` if you use that flow, and set `INFISICAL_TOKEN=...`.
+2. `docker compose up` — compose passes `INFISICAL_TOKEN` into services that need it.
 
-#### Alternative: Using Interactive Login
-
-For development containers, you can mount your Infisical config:
+## CI/CD
 
 ```yaml
-# Add to docker-compose.yml service
-volumes:
-  - ~/.infisical:/root/.infisical:ro
-  - .:/app
-```
-
-### 3. CI/CD Integration
-
-For CI/CD pipelines, use service tokens as environment variables:
-
-```bash
-# GitHub Actions example
 env:
   INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
 ```
 
-## Environment Variables
-
-### Backend Secrets
-
-- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSLMODE`
-- `JWT_SECRET`, `API_SHARED_SECRET`
-- `PORT`
-- Security headers: `RATE_LIMIT_*`, `CORS_*`, `CONTENT_SECURITY_POLICY`, `HSTS_MAX_AGE`
-
-### Frontend Secrets
-
-- **Dashboard**: `VITE_SANITY_*`, `VITE_API_*`, `VITE_METRICS_*`
-- **Site**: `SANITY_*`
+Prefer narrow-scoped tokens and environments. For **syncing to Fly** from CI, use the manual workflow [`.github/workflows/sync-infisical-to-fly.yml`](../.github/workflows/sync-infisical-to-fly.yml) (set repository secrets `INFISICAL_TOKEN` and `FLY_API_TOKEN`), or run [`scripts/sync-infisical-to-fly.sh`](../scripts/sync-infisical-to-fly.sh) locally so logs never print secret values.
 
 ## Troubleshooting
 
-### Common Issues
+### `403 Forbidden` / “You are not allowed to access this resource”
 
-1. **"You must be logged in"**
-   - Run `infisical login` and complete browser authentication
+Often the CLI is pointed at the **wrong Infisical instance** or the token cannot see the workspace:
 
-2. **"Missing credentials for generating plainTextEncryptionKey"**
-   - Ensure you're in the correct project directory with `.infisical.json`
-   - Try re-initializing: `infisical init`
+- Use **`INFISICAL_API_URL`** (or `--domain`) for **EU**: `https://eu.infisical.com/api` vs US default `https://app.infisical.com/api`.
+- Confirm the **service token** is for the correct **project** and **environment**, and has not expired.
+- If the repo’s `.infisical.json` references another team’s workspace, run **`infisical init`** or fix `workspaceId` / `INFISICAL_PROJECT_ID`.
 
-3. **Service token issues**
-   - Verify token has correct permissions for the environment
-   - Check token hasn't expired
+### “You must be logged in”
 
-4. **Secrets not loading**
-   - Verify environment name matches (`--env=dev`)
-   - Check secret names match exactly
+Run `infisical login`, or set `INFISICAL_TOKEN`.
 
-### Getting Help
+### “Missing credentials” / encryption key errors
 
-- [Infisical Documentation](https://infisical.com/docs)
-- [Infisical Slack Community](https://infisical.com/slack)
+Run commands from the directory that contains `.infisical.json`, or re-run `infisical init`.
 
-## Migration Notes
+### Wrong environment
 
-- All existing `.env` files have been migrated to Infisical
-- Original `.env` files are kept for reference but should not be used in production
-- Secrets are now managed centrally and version-controlled through Infisical
+Match `--env=dev` (or `prod`) to the Infisical environment name.
+
+### Secrets not loading in Make
+
+Check `INFISICAL_TOKEN`, environment name, and that variable names match exactly between Infisical and the app.
+
+## References
+
+- [Infisical docs](https://infisical.com/docs)
+- [Fly secrets](https://fly.io/docs/reference/secrets/) — runtime store after sync
+- [FLY_SECRETS_FROM_ENV.md](FLY_SECRETS_FROM_ENV.md) — manual import / exceptions

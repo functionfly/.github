@@ -183,11 +183,11 @@ docker-down: ## Stop docker services
 docker-logs: ## Show docker logs
 	docker compose logs -f
 
-dev-neon: ## Start API with Neon DB (no local Postgres). Requires .env with DATABASE_URL and Redis. See AGENTS.md.
+dev-neon: ## Start API with Neon DB (no local Postgres). Starts FlyMind (ai-service) on :8081 if needed. See AGENTS.md.
 	@( set -a; [ -f .env ] && . ./.env; set +a; \
 	export REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} DEVELOPMENT=true SKIP_MIGRATION_VALIDATION=true VERIFICATION_ENABLED=false; \
-	echo "Starting API (Neon DB, Redis $$REDIS_ADDR)..."; \
-	exec ./bin/orchestrator-api --skip-migrations )
+	echo "Starting API (Neon DB, Redis $$REDIS_ADDR) + FlyMind if needed..."; \
+	exec ./scripts/run-orchestrator-with-ai.sh ./bin/orchestrator-api --skip-migrations )
 
 dev: ## Start development environment (local Postgres + Redis, no Docker). Set DB_PORT=5434 for Docker Postgres. Start Prometheus with: docker compose up -d prometheus (then status page will show component health).
 	@echo "Using local services: DB_PORT=$${DB_PORT:-5432}, REDIS_ADDR=$${REDIS_ADDR:-localhost:6379}, PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091}"
@@ -278,19 +278,11 @@ migrate-version: ## Show current migration version
 reset-db: ## Drop DB, recreate, and run migrations (clean slate). Use when DB is dirty or inconsistent.
 	@./scripts/reset-db.sh
 
-setup: ## Setup initial data (tenant, user). Uses Infisical if available and INFISICAL_TOKEN set.
-	@if command -v infisical >/dev/null 2>&1 && [ -n "$$INFISICAL_TOKEN" ]; then \
-		infisical run --env=dev -- go run ./cmd/setup; \
-	else \
-		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		go run ./cmd/setup; \
-	fi
+setup: ## Setup initial data (tenant, user). Tries Infisical dev, then falls back to .env / DB_* (see scripts/run-setup.sh).
+	@./scripts/run-setup.sh
 
-setup-local: ## Setup initial data without Infisical (use when INFISICAL_TOKEN is missing or 403).
-	DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-	go run ./cmd/setup
+setup-local: ## Setup initial data without Infisical (same DB_* resolution as SKIP_INFISICAL=1 make setup).
+	@SKIP_INFISICAL=1 ./scripts/run-setup.sh
 
 seed-blog: ## Seed default blog post (State Fabric) into DB. Uses DB_* from env or defaults (load .env first if needed).
 	@test -f scripts/seed-blog-post-state-fabric.sql || (echo "Missing scripts/seed-blog-post-state-fabric.sql"; exit 1)
@@ -390,9 +382,17 @@ db-maintenance: ## Run database maintenance (analyze/vacuum) to optimize perform
 		./scripts/db-maintenance.sh; \
 	fi
 
-db-migrate-prod: ## Run migrations on production database
+db-migrate-prod: ## Run migrations on production DB via Infisical prod (requires INFISICAL_TOKEN + infisical CLI)
 	@echo "Running migrations on production database..."
-	infisical run --env=prod -- go run ./cmd/migrate up
+	@if command -v infisical >/dev/null 2>&1 && [ -n "$${INFISICAL_TOKEN:-}" ]; then \
+		infisical run --env=prod -- go run ./cmd/migrate up; \
+	else \
+		echo "Infisical not configured (install CLI and set INFISICAL_TOKEN), or run: make db-migrate-prod-local" >&2; \
+		exit 1; \
+	fi
+
+db-migrate-prod-local: ## Run migrations using DATABASE_URL or DB_* from env (sources .env if present)
+	@( set -a; [ -f .env ] && . ./.env; set +a; go run ./cmd/migrate up )
 
 # Neon CLI (neonctl). Install: make neon-install. Auth: make neon-auth. Set NEON_API_KEY or NEON_PROJECT_ID as needed.
 neon-install: ## Install Neon CLI (neonctl) via npm if 'neon' not in PATH
@@ -400,6 +400,9 @@ neon-install: ## Install Neon CLI (neonctl) via npm if 'neon' not in PATH
 
 neon-auth: ## Authenticate Neon CLI (opens browser). Or set NEON_API_KEY for CI.
 	neon auth
+
+backup-neon: ## Logical pg_dump to ./backups via Neon CLI (NEON_BRANCH=production NEON_DATABASE_NAME=functionfly NEON_PROJECT_ID optional)
+	@./scripts/backup-neon.sh
 
 neon-cs: ## Print primary connection string. Optionally set NEON_PROJECT_ID, NEON_BRANCH.
 	neon connection-string $${NEON_BRANCH:+$$NEON_BRANCH} $${NEON_PROJECT_ID:+--project-id $$NEON_PROJECT_ID}

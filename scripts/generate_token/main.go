@@ -21,7 +21,8 @@ func main() {
 	// Use JWT_SECRET so server and token stay in sync (e.g. from .env)
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "functionfly-jwt-secret-key-2026"
+		fmt.Fprintln(os.Stderr, "ERROR: JWT_SECRET environment variable is required")
+		os.Exit(1)
 	}
 
 	permissions := []string{

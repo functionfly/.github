@@ -38,9 +38,19 @@ command -v psql >/dev/null 2>&1 || {
     exit 1
 }
 
-# Default values
+# SECURITY: Default password is only allowed in DEVELOPMENT mode
+if [ "$DEVELOPMENT" != "true" ]; then
+    if [ -z "$ADMIN_CREATE_PASSWORD" ]; then
+        echo "ERROR: In production, you must set ADMIN_CREATE_PASSWORD env var for the admin password."
+        echo "       Alternatively, set DEVELOPMENT=true to use default dev credentials (NOT recommended for production)."
+        exit 1
+    fi
+    DEFAULT_PASSWORD="$ADMIN_CREATE_PASSWORD"
+else
+    # Only use default dev password in DEVELOPMENT mode
+    DEFAULT_PASSWORD="${ADMIN_CREATE_PASSWORD:-admin123}"
+fi
 DEFAULT_EMAIL="admin@functionfly.com"
-DEFAULT_PASSWORD="admin123"
 DEFAULT_ROLE="super_admin"
 DEFAULT_DB_HOST="localhost"
 DEFAULT_DB_PORT="5434"

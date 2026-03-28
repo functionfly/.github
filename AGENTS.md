@@ -45,15 +45,17 @@ When adding API surface: add handler in `internal/api/handlers/`, register in `i
 If your `.env` sets `DATABASE_URL` (e.g. Neon connection string), the API uses it and **ignores** `DB_HOST`/`DB_PORT`. No local Postgres needed.
 
 1. **Redis** (required): `redis-server --daemonize yes`
-2. **Load env and run API:**
+2. **Load env and run API** (with **FlyMind** on `:8081` if `uv` is installed — otherwise the API uses a built-in rule-based assistant until you start `ai-service`):
 
    ```bash
    source .env
    export REDIS_ADDR=localhost:6379 DEVELOPMENT=true SKIP_MIGRATION_VALIDATION=true VERIFICATION_ENABLED=false
-   ./bin/orchestrator-api --skip-migrations
+   ./scripts/run-orchestrator-with-ai.sh ./bin/orchestrator-api --skip-migrations
    ```
 
-   Or: `make dev-neon` (sources `.env` and runs the API with the above flags).
+   Or: `make dev-neon` (sources `.env`, starts FlyMind when needed, then the API).
+
+   FlyMind only: `cd ai-service && uv sync` once, then from repo root `./scripts/run-ai-service.sh` (see `ai-service/README.md`).
 
 ### Option B: Local Postgres
 

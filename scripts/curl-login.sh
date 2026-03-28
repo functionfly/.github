@@ -4,6 +4,16 @@
 # Or:     ./scripts/curl-login.sh admin@functionfly.local mypassword
 
 set -e
+
+# SECURITY: In production (DEVELOPMENT != true), require credentials as arguments
+if [ "$DEVELOPMENT" != "true" ]; then
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "ERROR: In production, you must provide email and password as arguments."
+        echo "       Usage: $0 <email> <password>"
+        exit 1
+    fi
+fi
+
 EMAIL="${1:-admin@functionfly.local}"
 PASSWORD="${2:-admin123}"
 # Direct API (use 8080 when orchestrator-api is running)

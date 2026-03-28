@@ -11,9 +11,14 @@
     "type": "object",
     "properties": {
       "data": { "description": "Data to checksum" },
-      "format": { "type": "string", "description": "Output format: 'decimal' or 'hex'", "default": "decimal", "enum": ["decimal", "hex"] }
+      "format": {
+        "type": "string",
+        "description": "Output format: 'decimal' or 'hex'",
+        "default": "decimal",
+        "enum": ["decimal", "hex"],
+      },
     },
-    "required": ["data"]
+    "required": ["data"],
   },
   "output": {
     "type": "object",
@@ -22,8 +27,8 @@
       "result": {},
       "hex": { "type": "string" },
       "decimal": { "type": "integer" },
-      "error": { "type": "string" }
-    }
+      "error": { "type": "string" },
+    },
   },
   "deterministic": true,
   "idempotent": true,
@@ -32,6 +37,12 @@
   "memory_mb": 64,
   "example": {
     "input": { "data": "Hello World" },
-    "output": { "ok": true, "decimal": 436929775 }
-  }
+    "output": { "ok": true, "decimal": 436929775 },
+  },
+  "ownership": "system admin tenant",
+  "visibility": "public",
+  "trust_level": "high",
+  "pricing": {
+    "model": "free",
+  },
 }

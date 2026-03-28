@@ -23,7 +23,16 @@ fly apps create functionfly-api
 
 ### 2. Set Secrets (upload via CLI)
 
-**Option A – Script (recommended)**  
+**Option A – Infisical → Fly (recommended)**  
+Secrets are maintained in [Infisical](https://infisical.com); sync them to Fly with:
+
+```bash
+INFISICAL_ENV=prod FLY_APP=functionfly-control ./scripts/sync-infisical-to-fly.sh
+```
+
+See [docs/INFISICAL_SETUP.md](../docs/INFISICAL_SETUP.md) (canonical store, allowlist, EU region) and [docs/FLY_SECRETS_FROM_ENV.md](../docs/FLY_SECRETS_FROM_ENV.md).
+
+**Option B – Script with inline variables**  
 Edit the variables at the top of `.fly/set-secrets.sh`, then run:
 
 ```bash
@@ -35,10 +44,10 @@ Edit the variables at the top of `.fly/set-secrets.sh`, then run:
 # Or: FLY_APP=functionfly-control ./.fly/set-secrets.sh production
 ```
 
-**Option B – From your local `.env`**  
+**Option C – From your local `.env` or manual import**  
 See [docs/FLY_SECRETS_FROM_ENV.md](../docs/FLY_SECRETS_FROM_ENV.md) for `fly secrets set`, `fly secrets import`, and what not to upload.
 
-**Option C – Manual `fly secrets set`**  
+**Option D – Manual `fly secrets set`**  
 Replace values and run (use `--app YOUR_APP` if not in the app directory):
 
 ```bash
