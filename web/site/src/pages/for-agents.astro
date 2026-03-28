@@ -1,116 +1,709 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { DOCS_ORIGIN } from '../config';
+import { APP_DASHBOARD_ORIGIN, DOCS_ORIGIN } from '../config';
 
 const trustApiUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/trust-api/`;
+const trustProtocolUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/trust-protocol-spec/`;
 ---
 
 <Layout
   title="For AI Agents — FunctionFly"
-  description="Manifests, trust scores, and the Trust API: how agents discover and run verified tools safely on FunctionFly."
+  description="Discover verified tools with manifests and schemas, enforce trust with the Trust API, and scale agent workloads with execution plans and State Fabric—built for policies that need real signals."
 >
-  <section class="hero">
+  <section class="agents-hero">
     <div class="container">
+      <div class="badge">Agents &amp; orchestrators</div>
       <h1>Built for agents that need real trust signals</h1>
       <p class="lead">
         FunctionFly exposes functions with clear manifests, verification metadata, and execution-backed trust scores—so policies can
         distinguish “callable” from “appropriate to call.”
       </p>
+      <div class="actions hero-actions">
+        <a class="btn primary" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Start free</a>
+        <a class="btn secondary" href="/trust">Trust layer</a>
+        <a class="btn secondary" href="/pricing">Pricing</a>
+      </div>
     </div>
   </section>
 
   <section class="section">
-    <div class="container grid">
-      <div class="card">
-        <h2>Discovery &amp; manifests</h2>
-        <p>
-          Tools ship with structured configuration and I/O schemas so agents (and orchestrators) can match intent to capability without
-          guessing.
-        </p>
-      </div>
-      <div class="card">
-        <h2>Trust API</h2>
-        <p>
-          Query attestations, scores, and revocation-friendly metadata to enforce budgets and trust tiers at selection time and runtime.
-        </p>
-        <p><a class="link" href={trustApiUrl}>Trust API docs →</a></p>
-      </div>
-      <div class="card">
-        <h2>Human + platform verification</h2>
-        <p>
-          Verification levels stack from format checks through platform-signed tooling. See the full model on the Trust page.
-        </p>
-        <p><a class="link" href="/trust">How trust works →</a></p>
+    <div class="container">
+      <div class="pillars">
+        <article class="pillar-card">
+          <div class="pillar-icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M11 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Zm8-2 3 3"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path d="M8 11h6M11 8v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </div>
+          <h2>Discovery &amp; manifests</h2>
+          <p>
+            Tools ship with structured configuration and I/O schemas so agents and orchestrators can match intent to capability without
+            guessing.
+          </p>
+          <ul class="pillar-list">
+            <li>Stable tool identity and versioning</li>
+            <li>Schema-first inputs and outputs</li>
+            <li>Policy hooks for capability and constraints</li>
+          </ul>
+        </article>
+
+        <article class="pillar-card pillar-card--accent">
+          <div class="pillar-icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M12 3 4 7v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V7l-8-4Z"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linejoin="round"
+              />
+              <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+          <h2>Trust API</h2>
+          <p>
+            Query attestations, scores, and verification-friendly metadata to enforce budgets and trust tiers at selection time and
+            runtime.
+          </p>
+          <ul class="pillar-list">
+            <li>Batch-friendly score lookups</li>
+            <li>Verification and reporting flows</li>
+            <li>Usage-based metering for partner workloads</li>
+          </ul>
+          <p class="pillar-links">
+            <a class="link" href={trustApiUrl}>Trust API docs →</a>
+            <a class="link" href={trustProtocolUrl}>Trust protocol spec →</a>
+          </p>
+        </article>
+
+        <article class="pillar-card">
+          <div class="pillar-icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+              <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </div>
+          <h2>Human + platform verification</h2>
+          <p>
+            Verification levels stack from format checks through platform-signed tooling. See the full model and what agents actually
+            consume at runtime.
+          </p>
+          <ul class="pillar-list">
+            <li>Multi-level verification ladder</li>
+            <li>Signing, attestations, and revocation posture</li>
+            <li>Execution-backed score components</li>
+          </ul>
+          <p class="pillar-links">
+            <a class="link" href="/trust">How trust works →</a>
+          </p>
+        </article>
       </div>
     </div>
   </section>
-</Layout>
 
-<style>
-  .hero {
-    padding: 4rem 1.5rem 2rem;
-    text-align: center;
-    background: radial-gradient(ellipse at top, rgba(99, 102, 241, 0.12) 0%, transparent 55%), var(--color-bg);
-  }
+  <section class="section section--alt">
+    <div class="container">
+      <h2 class="section-title">From discovery to a safe tool call</h2>
+      <p class="section-lead">
+        Orchestrators can treat FunctionFly as the source of truth for “what this tool is” and “whether it is allowed right now.”
+      </p>
+      <div class="flow">
+        <div class="flow-step">
+          <span class="flow-k">1</span>
+          <div>
+            <div class="flow-t">Discover</div>
+            <div class="flow-d">List candidate tools from the registry with manifests and declared capabilities.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <span class="flow-k">2</span>
+          <div>
+            <div class="flow-t">Score</div>
+            <div class="flow-d">Call the Trust API for trust tier, verification level, and components that match your policy.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <span class="flow-k">3</span>
+          <div>
+            <div class="flow-t">Decide</div>
+            <div class="flow-d">Apply budgets, tiers, and org rules before the model is allowed to bind a tool.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <span class="flow-k">4</span>
+          <div>
+            <div class="flow-t">Execute</div>
+            <div class="flow-d">Run the function with observability; scores update from real execution history.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-  .container {
-    max-width: 900px;
-    margin: 0 auto;
-  }
+  <section class="section">
+    <div class="container split">
+      <div class="split-card">
+        <h2>Agent execution</h2>
+        <p class="muted">
+          Dedicated agent plans cover tool-call volume, concurrency, and guardrails when your agents outgrow ad-hoc usage. Align spend
+          with how often tools actually run.
+        </p>
+        <ul class="checklist">
+          <li><span class="tick" aria-hidden="true">✓</span> Tool-call quotas and burst limits</li>
+          <li><span class="tick" aria-hidden="true">✓</span> Per-agent cost visibility</li>
+          <li><span class="tick" aria-hidden="true">✓</span> Enterprise options for custom caps</li>
+        </ul>
+        <a class="btn outline" href="/pricing">See agent pricing →</a>
+      </div>
+      <div class="split-card">
+        <h2 id="state-fabric-agents">Stateful tools with State Fabric</h2>
+        <p class="muted">
+          Long-running or multi-step agents often need durable state, not just stateless HTTP calls. State Fabric adds structured state,
+          snapshots, and replay-oriented workflows on top of your functions.
+        </p>
+        <ul class="checklist">
+          <li><span class="tick" aria-hidden="true">✓</span> Optional add-ons for cache, security, and AI memory</li>
+          <li><span class="tick" aria-hidden="true">✓</span> Tiers from sandbox through enterprise</li>
+          <li><span class="tick" aria-hidden="true">✓</span> Billed alongside your workspace plan</li>
+        </ul>
+        <a class="btn outline" href="/pricing#state-fabric">State Fabric pricing →</a>
+      </div>
+    </div>
+  </section>
 
-  h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    line-height: 1.15;
-    margin-bottom: 1rem;
-  }
+  <section class="section section--alt">
+    <div class="container">
+      <h2 class="section-title">Trust API at a glance</h2>
+      <p class="section-lead">
+        Authenticate with a partner API key, then read scores or drive verification. Full request and response shapes live in the docs.
+      </p>
+      <div class="endpoint-grid">
+        <div class="endpoint-card">
+          <div class="endpoint-method">GET</div>
+          <code class="endpoint-path">/v1/trust/score/<span class="param">function_id</span></code>
+          <p class="endpoint-desc">Current trust score, tier, verification level, and component breakdown.</p>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-method">POST</div>
+          <code class="endpoint-path">/v1/trust/batch</code>
+          <p class="endpoint-desc">Batch score lookup for tool shortlists and ranking.</p>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-method">GET</div>
+          <code class="endpoint-path">/v1/trust/history/<span class="param">function_id</span></code>
+          <p class="endpoint-desc">Historical windows for drift detection and policy audits.</p>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-method">POST</div>
+          <code class="endpoint-path">/v1/trust/verify</code>
+          <p class="endpoint-desc">Submit a verification request (scoped key required).</p>
+        </div>
+      </div>
+      <p class="docs-cta">
+        <a class="link" href={trustApiUrl}>Read the Trust API guide →</a>
+      </p>
+    </div>
+  </section>
 
-  .lead {
-    font-size: 1.125rem;
-    color: var(--color-text-muted);
-    line-height: 1.65;
-  }
+  <section class="section faq-block">
+    <div class="container container--narrow">
+      <h2 class="section-title">FAQ</h2>
+      <dl class="faq">
+        <div class="faq-item">
+          <dt>Do agents need FunctionFly accounts?</dt>
+          <dd>
+            Your product integrates with FunctionFly using API keys and workspace configuration. End-user agents typically talk to your
+            backend, which enforces policy and calls FunctionFly as needed.
+          </dd>
+        </div>
+        <div class="faq-item">
+          <dt>How does this relate to the zero-knowledge vault?</dt>
+          <dd>
+            Tools can use secrets without the platform ever seeing plaintext: encryption stays client-side. That pairs well with agent
+            toolchains that must not leak credentials into prompts or logs.
+          </dd>
+        </div>
+        <div class="faq-item">
+          <dt>Where do I start?</dt>
+          <dd>
+            Open the dashboard to publish or connect functions, then wire the Trust API into your tool-selection path. Use
+            <a class="inline-link" href="/trust">Trust layer</a> for the verification model and
+            <a class="inline-link" href="/pricing">Pricing</a> for execution and State Fabric.
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </section>
 
-  .section {
-    padding: 2rem 1.5rem 5rem;
-  }
+  <section class="cta">
+    <div class="container">
+      <h2>Ship agents that choose tools with evidence</h2>
+      <p class="muted">
+        Connect manifests, trust scores, and execution-backed signals in one place—then scale with agent plans and State Fabric when
+        workloads grow.
+      </p>
+      <div class="actions">
+        <a class="btn primary" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Start free</a>
+        <a class="btn secondary" href="/contact">Talk to us</a>
+      </div>
+    </div>
+  </section>
 
-  .grid {
-    display: grid;
-    gap: 1.5rem;
-  }
-
-  @media (min-width: 768px) {
-    .grid {
-      grid-template-columns: repeat(3, 1fr);
+  <style>
+    .agents-hero {
+      padding: 5.5rem 1rem 3.25rem;
+      text-align: center;
+      background:
+        radial-gradient(ellipse at top, rgba(99, 102, 241, 0.2) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 40%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+        var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
     }
-  }
 
-  .card {
-    background: var(--color-bg-light);
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    padding: 1.5rem;
-  }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
 
-  .card h2 {
-    font-size: 1.125rem;
-    margin-bottom: 0.75rem;
-  }
+    .container--narrow {
+      max-width: 720px;
+    }
 
-  .card p {
-    color: var(--color-text-muted);
-    font-size: 0.9375rem;
-    line-height: 1.6;
-    margin-bottom: 0.75rem;
-  }
+    .badge {
+      display: inline-block;
+      padding: 0.45rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      background: rgba(30, 41, 59, 0.45);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      margin-bottom: 1.25rem;
+    }
 
-  .link {
-    color: var(--color-secondary);
-    font-weight: 500;
-  }
+    h1 {
+      font-size: clamp(2.1rem, 4vw, 3rem);
+      font-weight: 700;
+      line-height: 1.08;
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
 
-  .link:hover {
-    color: var(--color-text);
-  }
-</style>
+    .lead {
+      font-size: 1.1rem;
+      color: var(--color-text-muted);
+      line-height: 1.65;
+      max-width: 42rem;
+      margin: 0 auto;
+    }
+
+    .hero-actions {
+      margin-top: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.8rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .primary {
+      background: var(--color-primary);
+      color: white;
+    }
+
+    .primary:hover {
+      background: var(--color-primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .secondary {
+      background: transparent;
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+    }
+
+    .secondary:hover {
+      border-color: rgba(99, 102, 241, 0.55);
+    }
+
+    .outline {
+      display: inline-flex;
+      margin-top: 1rem;
+      padding: 0.65rem 1.1rem;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+
+    .outline:hover {
+      border-color: var(--color-secondary);
+      color: var(--color-secondary);
+    }
+
+    .section {
+      padding: 3.5rem 0;
+    }
+
+    .section--alt {
+      background: rgba(15, 23, 42, 0.35);
+      border-top: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+      text-align: center;
+      margin-bottom: 0.65rem;
+    }
+
+    .section-lead {
+      text-align: center;
+      color: var(--color-text-muted);
+      max-width: 40rem;
+      margin: 0 auto 2rem;
+      line-height: 1.65;
+    }
+
+    .pillars {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    @media (min-width: 900px) {
+      .pillars {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .pillar-card {
+      border: 1px solid var(--color-border);
+      background: rgba(30, 41, 59, 0.35);
+      border-radius: 14px;
+      padding: 1.5rem 1.35rem;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22);
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .pillar-card:hover {
+      border-color: rgba(99, 102, 241, 0.35);
+      box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+    }
+
+    .pillar-card--accent {
+      border-color: rgba(99, 102, 241, 0.45);
+      background: linear-gradient(165deg, rgba(99, 102, 241, 0.12) 0%, rgba(30, 41, 59, 0.4) 50%);
+    }
+
+    .pillar-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(99, 102, 241, 0.14);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      color: var(--color-primary);
+      margin-bottom: 1rem;
+    }
+
+    .pillar-card h2 {
+      font-size: 1.2rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .pillar-card > p {
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 0.85rem;
+    }
+
+    .pillar-list {
+      margin: 0 0 1rem;
+      padding-left: 1.15rem;
+      color: var(--color-text-muted);
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+
+    .pillar-list li {
+      margin-bottom: 0.35rem;
+    }
+
+    .pillar-links {
+      margin-top: auto;
+      padding-top: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .link {
+      color: var(--color-secondary);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .link:hover {
+      color: var(--color-text);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .flow {
+      display: grid;
+      gap: 1rem;
+      max-width: 52rem;
+      margin: 0 auto;
+    }
+
+    @media (min-width: 768px) {
+      .flow {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .flow-step {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      border: 1px solid var(--color-border);
+      background: rgba(30, 41, 59, 0.25);
+      border-radius: 12px;
+      padding: 1.15rem 1.2rem;
+    }
+
+    .flow-k {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.22);
+      color: var(--color-text);
+    }
+
+    .flow-t {
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .flow-d {
+      color: var(--color-text-muted);
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
+
+    .split {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    @media (min-width: 900px) {
+      .split {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .split-card {
+      border: 1px solid var(--color-border);
+      border-radius: 14px;
+      padding: 1.5rem 1.35rem;
+      background: rgba(30, 41, 59, 0.3);
+    }
+
+    .split-card h2 {
+      font-size: 1.25rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .muted {
+      color: var(--color-text-muted);
+      line-height: 1.65;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+
+    .checklist {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .checklist li {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+      color: var(--color-text-muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+      margin-bottom: 0.45rem;
+    }
+
+    .tick {
+      color: var(--color-secondary);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .endpoint-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    @media (min-width: 768px) {
+      .endpoint-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .endpoint-card {
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 1.1rem 1.15rem;
+      background: rgba(2, 6, 23, 0.45);
+    }
+
+    .endpoint-method {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--color-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .endpoint-path {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--color-text);
+      word-break: break-all;
+      margin-bottom: 0.5rem;
+    }
+
+    .param {
+      color: var(--color-text-muted);
+    }
+
+    .endpoint-desc {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--color-text-muted);
+      line-height: 1.5;
+    }
+
+    .docs-cta {
+      text-align: center;
+      margin-top: 1.5rem;
+    }
+
+    .faq-block .section-title {
+      margin-bottom: 1.5rem;
+    }
+
+    .faq {
+      margin: 0;
+    }
+
+    .faq-item {
+      padding: 1.25rem 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .faq-item:first-child {
+      padding-top: 0;
+    }
+
+    .faq-item:last-child {
+      border-bottom: none;
+    }
+
+    .faq-item dt {
+      font-weight: 600;
+      font-size: 1.05rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .faq-item dd {
+      margin: 0;
+      color: var(--color-text-muted);
+      line-height: 1.65;
+      font-size: 0.95rem;
+    }
+
+    .inline-link {
+      color: var(--color-secondary);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .inline-link:hover {
+      color: var(--color-text);
+    }
+
+    .cta {
+      padding: 3.5rem 0 5rem;
+      border-top: 1px solid var(--color-border);
+      background:
+        radial-gradient(ellipse at center, rgba(99, 102, 241, 0.18) 0%, transparent 58%),
+        var(--color-bg);
+      text-align: center;
+    }
+
+    .cta h2 {
+      font-size: 1.65rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .cta .muted {
+      max-width: 36rem;
+      margin: 0 auto;
+    }
+
+    .cta .actions {
+      justify-content: center;
+    }
+  </style>
+</Layout>

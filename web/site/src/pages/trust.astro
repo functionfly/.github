@@ -15,13 +15,18 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
         Agents do not need “more tools.” They need tools they can trust. FunctionFly turns functions into
         verified, signed, auditable building blocks with execution-backed trust scores.
       </p>
+
+      <div class="actions hero-actions">
+        <a class="btn primary" href="#verification-levels">Verification levels</a>
+        <a class="btn secondary" href="#trust-api">Trust API</a>
+      </div>
     </div>
   </section>
 
   <section class="section">
     <div class="container grid-2">
       <div class="card">
-        <h2>Verification levels</h2>
+        <h2 id="verification-levels">Verification levels</h2>
         <p class="muted">Each level adds deeper assurance before a tool can be considered “trusted.”</p>
         <div class="steps">
           <div class="step">
@@ -97,6 +102,112 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
     </div>
   </section>
 
+  <section class="section trust-lifecycle">
+    <div class="container">
+      <h2 id="trust-lifecycle">Trust score lifecycle</h2>
+      <p class="muted lifecycle-intro">
+        Trust is not a static label. It starts at publish-time, evolves with execution history, and can be updated through verification, reports, and revocations.
+      </p>
+
+      <div class="trust-lifecycle-grid">
+        <div class="life-step">
+          <div class="life-step-k">1</div>
+          <div class="life-step-title">Publish</div>
+          <div class="life-step-desc">A function is published with a manifest and a declared I/O contract.</div>
+        </div>
+        <div class="life-step">
+          <div class="life-step-k">2</div>
+          <div class="life-step-title">Verify</div>
+          <div class="life-step-desc">Verification stages validate structure, security, and safety-relevant behavior.</div>
+        </div>
+        <div class="life-step">
+          <div class="life-step-k">3</div>
+          <div class="life-step-title">Sign &amp; attest</div>
+          <div class="life-step-desc">Attestations become immutable records that agents can reason about.</div>
+        </div>
+        <div class="life-step">
+          <div class="life-step-k">4</div>
+          <div class="life-step-title">Execute</div>
+          <div class="life-step-desc">Real execution updates trust score components over time.</div>
+        </div>
+        <div class="life-step">
+          <div class="life-step-k">5</div>
+          <div class="life-step-title">Evolve</div>
+          <div class="life-step-desc">History, reports, and revocation keep trust current for agents and clients.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section trust-api">
+    <div class="container grid-2">
+      <div class="card">
+        <h2 id="trust-api">Trust API for agents</h2>
+        <p class="muted">
+          Use a scoped API key to read trust scores and trigger verification workflows from your agent runtime.
+        </p>
+        <ul class="list api-endpoints">
+          <li>
+            <strong>Get trust score:</strong> <span class="mono">GET /v1/trust/score/&#123;function_id&#125;</span>
+          </li>
+          <li>
+            <strong>Batch scores:</strong> <span class="mono">POST /v1/trust/batch</span>
+          </li>
+          <li>
+            <strong>Get history:</strong> <span class="mono">GET /v1/trust/history/&#123;function_id&#125;</span>
+          </li>
+          <li>
+            <strong>Submit verification:</strong> <span class="mono">POST /v1/trust/verify</span>
+          </li>
+        </ul>
+
+        <div class="callout api-callout">
+          <div class="callout-title">Scopes matter</div>
+          <div class="callout-body">
+            Trust read endpoints require an API key; verification and reporting endpoints require the corresponding scopes (e.g. <span class="mono">verification:request</span> and <span class="mono">reports:submit</span>).
+          </div>
+        </div>
+      </div>
+
+      <div class="card api-example-card">
+        <h2>Example: submit verification</h2>
+        <p class="muted">
+          Trigger a verification run for a function version, then query status until the verification completes.
+        </p>
+
+        <div class="codeblock" role="region" aria-label="Trust API example request">
+          <pre><code>POST /v1/trust/verify
+Authorization: Bearer API_KEY
+Content-Type: application/json
+
+&#123;
+  "function_id": "550e8400-e29b-41d4-a716-446655440002",
+  "function_version": "1.2.0",
+  "verification_level": "standard",
+  "metadata": &#123;
+    "use_case": "data_processing",
+    "expected_traffic": "high"
+  &#125;
+&#125;</code></pre>
+        </div>
+
+        <div class="codeblock codeblock--response" role="region" aria-label="Trust API example response">
+          <pre><code>&#123;
+  "id": "550e8400-e29b-41d4-a716-446655440005",
+  "verification_id": "vfy_abc123def456",
+  "function_id": "550e8400-e29b-41d4-a716-446655440002",
+  "function_author": "alice",
+  "function_name": "data-processor",
+  "function_version": "1.2.0",
+  "verification_level": "standard",
+  "status": "pending",
+  "created_at": "2026-03-21T10:00:00Z"
+&#125;</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="section comparison">
     <div class="container">
       <h2>Why FunctionFly wins on trust</h2>
@@ -107,7 +218,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
           <div class="comparison-cell highlight">FunctionFly</div>
           <div class="comparison-cell">RapidAPI</div>
           <div class="comparison-cell">Toolhouse</div>
-          <div class="comparison-cell">The Agora</div>
+          <div class="comparison-cell">Theagora</div>
         </div>
         <div class="comparison-row">
           <div class="comparison-cell">Trust scoring</div>
@@ -135,14 +246,14 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
           <div class="comparison-cell highlight"><span class="check">✓</span></div>
           <div class="comparison-cell"><span class="dash">—</span></div>
           <div class="comparison-cell"><span class="dash">—</span></div>
-          <div class="comparison-cell"><span class="dash">—</span></div>
+          <div class="comparison-cell"><span class="check">✓</span></div>
         </div>
         <div class="comparison-row">
           <div class="comparison-cell">Agent-native tool discovery</div>
           <div class="comparison-cell highlight"><span class="check">✓</span></div>
           <div class="comparison-cell"><span class="dash">—</span></div>
           <div class="comparison-cell"><span class="check">✓</span></div>
-          <div class="comparison-cell"><span class="dash">—</span></div>
+          <div class="comparison-cell"><span class="check">✓</span></div>
         </div>
       </div>
     </div>
@@ -155,7 +266,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
         Browse trusted functions in the marketplace, or run your own agent trust policy to select tools safely.
       </p>
       <div class="actions">
-        <a class="btn primary" href={APP_DASHBOARD_ORIGIN}>Get Started Free</a>
+        <a class="btn primary" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Get Started Free</a>
         <a class="btn secondary" href="/pricing">See trust-aligned pricing</a>
       </div>
     </div>
@@ -311,6 +422,119 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
       background:
         radial-gradient(ellipse at center, rgba(99, 102, 241, 0.22) 0%, transparent 58%),
         var(--color-bg);
+    }
+
+    .hero-actions {
+      margin-top: 1.35rem;
+      justify-content: flex-start;
+    }
+
+    .trust-lifecycle h2 {
+      font-size: 2rem;
+      text-align: center;
+      margin-bottom: 0.65rem;
+    }
+
+    .lifecycle-intro {
+      text-align: center;
+      max-width: 860px;
+      margin: 0 auto 2rem;
+    }
+
+    .trust-lifecycle-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+      align-items: stretch;
+    }
+
+    .life-step {
+      border: 1px solid var(--color-border);
+      background: rgba(30, 41, 59, 0.25);
+      border-radius: 12px;
+      padding: 1.1rem 1rem;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+    }
+
+    .life-step-k {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.22);
+      color: var(--color-text);
+      margin-bottom: 0.85rem;
+    }
+
+    .life-step-title {
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+      color: var(--color-text);
+    }
+
+    .life-step-desc {
+      color: var(--color-text-muted);
+      line-height: 1.65;
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 1100px) {
+      .trust-lifecycle-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 560px) {
+      .trust-lifecycle-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .trust-api h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+      font-size: 0.92em;
+      color: var(--color-text);
+    }
+
+    .api-endpoints li {
+      margin-bottom: 0.55rem;
+    }
+
+    .api-callout {
+      margin-top: 1.2rem;
+    }
+
+    .codeblock {
+      border: 1px solid var(--color-border);
+      background: rgba(2, 6, 23, 0.65);
+      border-radius: 12px;
+      padding: 1rem;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .codeblock pre {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 0.86rem;
+      line-height: 1.55;
+      color: var(--color-text);
+      white-space: pre;
+    }
+
+    .codeblock--response {
+      margin-top: 0.9rem;
+      background: rgba(15, 23, 42, 0.45);
     }
 
     .cta h2 {

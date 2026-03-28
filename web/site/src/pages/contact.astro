@@ -5,22 +5,146 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
 
 <ContentPage
   title="Contact — FunctionFly"
-  description="Contact FunctionFly for sales, support, and partnerships."
+  description="Reach FunctionFly for sales, technical support, privacy and legal requests, security disclosures, and partnerships."
+  contentWidth="wide"
 >
-  <h1>Contact</h1>
-  <p class="lead">Reach the team for sales, security questions, or partnerships.</p>
-  <p class="muted" style="margin-top: 0.5rem;">
-    FunctionFly LLC (d/b/a FunctionFly), formed in Wyoming — operating in Fort Worth, Texas, United States
-  </p>
-  <h2>Sales &amp; enterprise</h2>
-  <p><a href="mailto:sales@functionfly.com">sales@functionfly.com</a></p>
-  <h2>General</h2>
-  <p>
-    <a href="mailto:hello@functionfly.com">hello@functionfly.com</a>
-  </p>
-  <h2>Dashboard</h2>
-  <p>Signed-in users can use in-app flows for account issues where available.</p>
-  <div class="actions">
-    <a class="btn-primary" href={APP_DASHBOARD_ORIGIN}>Go to dashboard</a>
+  <div class="legal-header">
+    <div class="legal-header-icon" aria-hidden="true">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+        <polyline points="22,6 12,13 2,6"></polyline>
+      </svg>
+    </div>
+    <h1>Contact</h1>
+    <p class="lead" style="margin-bottom: 0;">
+      We route each request to the right team. Choose the channel that best matches your topic so we can help you quickly.
+    </p>
+    <p class="muted">
+      <strong>FunctionFly LLC</strong> (d/b/a FunctionFly), a Wyoming limited liability company with principal operations in Fort Worth, Texas,
+      United States.
+    </p>
+  </div>
+
+  <div class="legal-card">
+    <h2>Sales &amp; enterprise</h2>
+    <p>
+      Volume pricing, custom SLAs, security questionnaires, SSO, and tailored trust policies — or anything that needs a human before you buy.
+    </p>
+    <p class="contact-email">
+      <a href="mailto:sales@functionfly.com">sales@functionfly.com</a>
+    </p>
+    <p class="muted">
+      See <a href="/pricing">Pricing</a> and <a href="/sla">SLA</a> for what we publish online; your order form may add or override specific terms.
+    </p>
+  </div>
+
+  <div class="legal-card">
+    <h2>Technical support</h2>
+    <p>
+      For account access, billing, API behavior, and production-impacting issues, email us from an address associated with your workspace and include
+      your workspace or organization name when you know it.
+    </p>
+    <p class="contact-email">
+      <a href="mailto:support@functionfly.com">support@functionfly.com</a>
+    </p>
+    <p>
+      Signed-in customers can also use in-app support and account flows in the dashboard when those surfaces are available for your plan.
+    </p>
+    <div class="actions">
+      <a class="btn-primary" href={`${APP_DASHBOARD_ORIGIN}/login`}>Sign in to dashboard</a>
+      <a class="btn-outline" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Create an account</a>
+    </div>
+    <p class="muted">
+      If your company has a dedicated support agreement, use the process described there; it may take precedence over general inbox handling.
+    </p>
+  </div>
+
+  <div class="legal-card">
+    <h2>Privacy &amp; data rights</h2>
+    <p>
+      Questions about how we process personal data, cookie preferences, or requests to exercise privacy rights (access, deletion, portability, or
+      objections where applicable).
+    </p>
+    <p class="contact-email">
+      <a href="mailto:privacy@functionfly.com">privacy@functionfly.com</a>
+    </p>
+    <p class="muted">
+      Our practices are described in the <a href="/privacy">Privacy Policy</a>.
+    </p>
+  </div>
+
+  <div class="legal-card">
+    <h2>Legal &amp; compliance</h2>
+    <p>Contract notices, compliance questions, and other legal correspondence.</p>
+    <p class="contact-email">
+      <a href="mailto:legal@functionfly.com">legal@functionfly.com</a>
+    </p>
+    <p>
+      For copyright or other intellectual-property notices under our Terms, use
+      <a href="mailto:copyright@functionfly.com">copyright@functionfly.com</a> and include the information listed in our
+      <a href="/terms">Terms of Service</a>.
+    </p>
+  </div>
+
+  <div class="legal-card">
+    <h2>Security</h2>
+    <p>
+      Responsible disclosure of security vulnerabilities. Please provide enough detail to reproduce the issue and, if possible, suggested impact. Do not
+      access or exfiltrate user data without authorization.
+    </p>
+    <p class="contact-email">
+      <a href="mailto:security@functionfly.com">security@functionfly.com</a>
+    </p>
+  </div>
+
+  <div class="legal-card">
+    <h2>General &amp; partnerships</h2>
+    <p>Everything else: press, partnerships, or a first hello.</p>
+    <p class="contact-email">
+      <a href="mailto:hello@functionfly.com">hello@functionfly.com</a>
+    </p>
+  </div>
+
+  <div class="legal-card">
+    <h2>Careers</h2>
+    <p>We post open roles on our careers page. For speculative applications, reach out by email.</p>
+    <p class="contact-email">
+      <a href="mailto:careers@functionfly.com">careers@functionfly.com</a>
+    </p>
+    <p><a href="/careers">View careers</a></p>
+  </div>
+
+  <div class="legal-card">
+    <h2>Self-service</h2>
+    <ul>
+      <li><a href="/docs">Documentation</a> — product overview and links to deeper guides</li>
+      <li><a href="/trust">Trust layer</a> — verification, scores, and vault at a glance</li>
+      <li><a href="/pricing">Pricing</a> — plans and limits as shown in product</li>
+    </ul>
+  </div>
+
+  <div class="legal-card">
+    <h2>Response times</h2>
+    <p>
+      We read every message; routing volume varies. For general inquiries we typically reply within a few <strong>U.S. business days</strong>.
+      Production-impacting issues for paying customers should be labeled clearly in the subject line (for example, &ldquo;Production outage&rdquo;)
+      so we can prioritize.
+    </p>
   </div>
 </ContentPage>
+
+<style>
+  .contact-email {
+    font-size: 1.05rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .contact-email a {
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .contact-email a:hover {
+    text-decoration: underline;
+  }
+</style>

@@ -1,22 +1,953 @@
 ---
-import ContentPage from '../layouts/ContentPage.astro';
+import Layout from '../layouts/Layout.astro';
 import { APP_DASHBOARD_ORIGIN } from '../config';
 ---
 
-<ContentPage
+<Layout
   title="Pricing — FunctionFly"
-  description="FunctionFly pricing: start free, scale with usage and trust features."
+  description="Platform plans for functions, providers, and requests—plus State Fabric and agent execution tiers for AI workloads. Start free; scale with Starter, Professional, or Enterprise."
 >
-  <h1>Pricing</h1>
-  <p class="lead">
-    We are rolling out public pricing with the launch. Start free on the dashboard; paid tiers will align usage, verification, and
-    Trust API access.
-  </p>
-  <h2>Get started</h2>
-  <p>Create an account to run functions and see current limits in product.</p>
-  <div class="actions">
-    <a class="btn-primary" href={APP_DASHBOARD_ORIGIN}>Open dashboard</a>
-    <a class="btn-outline" href="/contact">Contact sales</a>
-  </div>
-  <p class="muted" style="margin-top: 2rem;">For volume, enterprise, or custom trust policies, email sales from the contact page.</p>
-</ContentPage>
+  <section class="pricing-hero">
+    <div class="container">
+      <div class="badge">Plans &amp; limits</div>
+      <h1>Simple pricing that scales with trust</h1>
+      <p class="lead">
+        Start free on the dashboard. Paid tiers add capacity for functions, providers, and traffic—aligned with what you see in product. Agent execution is billed separately so AI workloads can grow on their own curve.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <h2>Platform</h2>
+        <p class="muted">Functions, hosting providers, custom domains, vault secrets, and collaboration—priced per workspace.</p>
+      </div>
+      <div class="pricing-grid">
+        <article class="price-card">
+          <h3 class="tier-name">Free</h3>
+          <div class="price-row">
+            <span class="price-amount">$0</span>
+            <span class="price-period">/ month</span>
+          </div>
+          <p class="tier-desc">Perfect for getting started with FunctionFly.</p>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> 1 function</li>
+            <li><span class="check" aria-hidden="true">✓</span> 2 providers</li>
+            <li><span class="check" aria-hidden="true">✓</span> 100,000 requests / month</li>
+            <li><span class="check" aria-hidden="true">✓</span> State Fabric: 0 instances</li>
+            <li><span class="check" aria-hidden="true">✓</span> Community support</li>
+          </ul>
+          <a class="btn btn-secondary full-width" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Start free</a>
+        </article>
+
+        <article class="price-card">
+          <h3 class="tier-name">Starter</h3>
+          <div class="price-row">
+            <span class="price-amount">$29</span>
+            <span class="price-period">/ month</span>
+          </div>
+          <p class="tier-desc">For side projects and MVPs.</p>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> 5 functions</li>
+            <li><span class="check" aria-hidden="true">✓</span> 3 providers</li>
+            <li><span class="check" aria-hidden="true">✓</span> 1M requests / month</li>
+            <li><span class="check" aria-hidden="true">✓</span> 1 custom domain</li>
+            <li><span class="check" aria-hidden="true">✓</span> State Fabric: up to 1 instance</li>
+            <li><span class="check" aria-hidden="true">✓</span> Email support &amp; basic analytics</li>
+          </ul>
+          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing`}>Choose Starter</a>
+        </article>
+
+        <article class="price-card price-card--featured">
+          <div class="featured-pill">Most popular</div>
+          <h3 class="tier-name">Professional</h3>
+          <div class="price-row">
+            <span class="price-amount">$99</span>
+            <span class="price-period">/ month</span>
+          </div>
+          <p class="tier-desc">For growing teams and production SaaS.</p>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> 25 functions</li>
+            <li><span class="check" aria-hidden="true">✓</span> 5 providers</li>
+            <li><span class="check" aria-hidden="true">✓</span> 10M requests / month</li>
+            <li><span class="check" aria-hidden="true">✓</span> 5 custom domains</li>
+            <li><span class="check" aria-hidden="true">✓</span> State Fabric: up to 5 instances</li>
+            <li><span class="check" aria-hidden="true">✓</span> 99.9% SLA, priority support</li>
+            <li><span class="check" aria-hidden="true">✓</span> Advanced analytics &amp; team collaboration</li>
+          </ul>
+          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing`}>Choose Professional</a>
+        </article>
+
+        <article class="price-card">
+          <h3 class="tier-name">Enterprise</h3>
+          <div class="price-row">
+            <span class="price-amount price-amount--custom">Custom</span>
+          </div>
+          <p class="tier-desc">For large-scale apps, compliance, and custom trust policies.</p>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> Unlimited functions &amp; requests</li>
+            <li><span class="check" aria-hidden="true">✓</span> All providers &amp; domains</li>
+            <li><span class="check" aria-hidden="true">✓</span> State Fabric: unlimited instances</li>
+            <li><span class="check" aria-hidden="true">✓</span> 99.99% SLA &amp; dedicated support</li>
+            <li><span class="check" aria-hidden="true">✓</span> Custom integrations &amp; onboarding</li>
+          </ul>
+          <a class="btn btn-secondary full-width" href="/contact">Contact sales</a>
+        </article>
+      </div>
+      <p class="footnote">
+        Limits and features match what your workspace shows in the dashboard. Verification, marketplace, and Trust API usage may be billed separately—see <a href="/trust">Trust layer</a> and in-product usage for current rates.
+      </p>
+    </div>
+  </section>
+
+  <section class="section statefabric-section">
+    <div class="container">
+      <div class="section-head">
+        <h2 id="state-fabric">State Fabric</h2>
+        <p class="muted">
+          Stateful capabilities for serverless. Start with Sandbox and scale up to Enterprise. Optional add-ons are available in the dashboard.
+        </p>
+      </div>
+
+      <div class="statefabric-grid">
+        <article class="price-card">
+          <h3 class="tier-name">Sandbox</h3>
+          <div class="price-row">
+            <span class="price-amount">$0</span>
+            <span class="price-period">/ month</span>
+          </div>
+          <p class="tier-desc">Great for experimentation &amp; onboarding.</p>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> Stateless usage</li>
+            <li><span class="check" aria-hidden="true">✓</span> 1 state object</li>
+            <li><span class="check" aria-hidden="true">✓</span> 1 GB event storage</li>
+            <li><span class="check" aria-hidden="true">✓</span> 10,000 state ops</li>
+            <li><span class="check" aria-hidden="true">✓</span> 7-day snapshot retention</li>
+            <li><span class="check" aria-hidden="true">✓</span> Community support</li>
+          </ul>
+          <a class="btn btn-secondary full-width" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Start in dashboard</a>
+        </article>
+
+        <article class="price-card">
+          <h3 class="tier-name">Starter</h3>
+          <div class="price-row">
+            <span class="price-amount">$19</span>
+            <span class="price-period">/ month</span>
+          </div>
+          <p class="tier-desc">Internal dev &amp; small side projects.</p>
+          <div class="tier-desc tier-desc--tight">Storage: $0.10/GB · Ops: $0.50/100k</div>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> Up to 5 state objects</li>
+            <li><span class="check" aria-hidden="true">✓</span> 10 GB event storage</li>
+            <li><span class="check" aria-hidden="true">✓</span> 100,000 state ops</li>
+            <li><span class="check" aria-hidden="true">✓</span> 30-day snapshot retention</li>
+            <li><span class="check" aria-hidden="true">✓</span> Basic snapshot scheduling</li>
+            <li><span class="check" aria-hidden="true">✓</span> Replay engine (limited)</li>
+          </ul>
+          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing`}>Choose Starter</a>
+        </article>
+
+        <article class="price-card price-card--featured">
+          <div class="featured-pill">Best for production</div>
+          <h3 class="tier-name">Pro</h3>
+          <div class="price-row">
+            <span class="price-amount">$99</span>
+            <span class="price-period">/ month</span>
+          </div>
+          <p class="tier-desc">Production apps &amp; team projects.</p>
+          <div class="tier-desc tier-desc--tight">Storage: $0.08/GB · Ops: $0.35/100k</div>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> Up to 50 state objects</li>
+            <li><span class="check" aria-hidden="true">✓</span> 100 GB event storage</li>
+            <li><span class="check" aria-hidden="true">✓</span> 1M state ops</li>
+            <li><span class="check" aria-hidden="true">✓</span> 90-day snapshot retention</li>
+            <li><span class="check" aria-hidden="true">✓</span> Hot cache tier</li>
+            <li><span class="check" aria-hidden="true">✓</span> Fast deterministic replay</li>
+            <li><span class="check" aria-hidden="true">✓</span> Replay API + billing analytics</li>
+          </ul>
+          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing`}>Choose Pro</a>
+        </article>
+
+        <article class="price-card">
+          <h3 class="tier-name">Business</h3>
+          <div class="price-row">
+            <span class="price-amount">$499</span>
+            <span class="price-period">/ month</span>
+          </div>
+          <p class="tier-desc">Business-critical systems.</p>
+          <div class="tier-desc tier-desc--tight">Storage: $0.06/GB · Archive: $30/TB/mo</div>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> Up to 500 state objects</li>
+            <li><span class="check" aria-hidden="true">✓</span> 1 TB event storage</li>
+            <li><span class="check" aria-hidden="true">✓</span> 10M state ops</li>
+            <li><span class="check" aria-hidden="true">✓</span> 180-day retention</li>
+            <li><span class="check" aria-hidden="true">✓</span> Multi-region replication</li>
+            <li><span class="check" aria-hidden="true">✓</span> Dedicated hot cache</li>
+            <li><span class="check" aria-hidden="true">✓</span> SLA + advanced analytics</li>
+            <li><span class="check" aria-hidden="true">✓</span> Event subscription streams</li>
+          </ul>
+          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing`}>Choose Business</a>
+        </article>
+
+        <article class="price-card">
+          <h3 class="tier-name">Enterprise</h3>
+          <div class="price-row">
+            <span class="price-amount price-amount--custom">Custom</span>
+          </div>
+          <p class="tier-desc">Large enterprises &amp; regulated industries.</p>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true">✓</span> Unlimited state objects</li>
+            <li><span class="check" aria-hidden="true">✓</span> Unlimited event storage</li>
+            <li><span class="check" aria-hidden="true">✓</span> Unlimited ops</li>
+            <li><span class="check" aria-hidden="true">✓</span> 365-day retention</li>
+            <li><span class="check" aria-hidden="true">✓</span> Multi-region + edge replication</li>
+            <li><span class="check" aria-hidden="true">✓</span> Enterprise key management (BYOK)</li>
+            <li><span class="check" aria-hidden="true">✓</span> Immutable audit logs</li>
+            <li><span class="check" aria-hidden="true">✓</span> Replay export · Dedicated support</li>
+          </ul>
+          <a class="btn btn-secondary full-width" href="/contact">Contact sales</a>
+        </article>
+      </div>
+
+      <div class="statefabric-table-wrap">
+        <table class="agent-table statefabric-table">
+          <thead>
+            <tr>
+              <th scope="col">Feature</th>
+              <th scope="col">Sandbox</th>
+              <th scope="col">Starter</th>
+              <th scope="col">Pro</th>
+              <th scope="col">Business</th>
+              <th scope="col">Enterprise</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>State objects</td>
+              <td>1</td>
+              <td>5</td>
+              <td>50</td>
+              <td>500</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
+              <td>Event storage</td>
+              <td>1 GB</td>
+              <td>10 GB</td>
+              <td>100 GB</td>
+              <td>1 TB</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
+              <td>State ops</td>
+              <td>10K</td>
+              <td>100K</td>
+              <td>1M</td>
+              <td>10M</td>
+              <td>Unlimited</td>
+            </tr>
+            <tr>
+              <td>Snapshot retention</td>
+              <td>7 days</td>
+              <td>30 days</td>
+              <td>90 days</td>
+              <td>180 days</td>
+              <td>365 days</td>
+            </tr>
+            <tr>
+              <td>Replay</td>
+              <td>—</td>
+              <td>Limited</td>
+              <td>Fast + API</td>
+              <td>Full</td>
+              <td>Export</td>
+            </tr>
+            <tr>
+              <td>Multi-region</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>Yes</td>
+              <td>Yes + edge</td>
+            </tr>
+            <tr>
+              <td>Hot cache</td>
+              <td>—</td>
+              <td>—</td>
+              <td>Yes</td>
+              <td>Dedicated</td>
+              <td>Dedicated</td>
+            </tr>
+            <tr>
+              <td>Support</td>
+              <td>Community</td>
+              <td>Email</td>
+              <td>Priority</td>
+              <td>SLA</td>
+              <td>Dedicated</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="statefabric-addons">
+        <h3 class="statefabric-addons-title">Optional add-ons</h3>
+        <p class="muted statefabric-addons-sub">
+          Enhance any State Fabric plan with performance, security, or analytics add-ons.
+        </p>
+
+        <div class="addon-grid">
+          <article class="addon-card">
+            <div class="addon-top">
+              <h4>Hot Cache Booster</h4>
+              <div class="addon-price">
+                $49 <span>/mo per 5GB</span>
+              </div>
+            </div>
+            <p class="addon-desc">Reduces replay and read costs.</p>
+          </article>
+
+          <article class="addon-card">
+            <div class="addon-top">
+              <h4>Advanced Security Pack</h4>
+              <div class="addon-price">
+                $99 <span>/mo</span>
+              </div>
+            </div>
+            <p class="addon-desc">SOC2-friendly logs, key rotation, audit streams.</p>
+          </article>
+
+          <article class="addon-card">
+            <div class="addon-top">
+              <h4>AI Memory Pack</h4>
+              <div class="addon-price">
+                $149 <span>/mo</span>
+              </div>
+            </div>
+            <p class="addon-desc">Vector index, embeddings storage, fast read engine.</p>
+          </article>
+
+          <article class="addon-card">
+            <div class="addon-top">
+              <h4>Advanced Insights</h4>
+              <div class="addon-price">
+                $79 <span>/mo</span>
+              </div>
+            </div>
+            <p class="addon-desc">Cost forecasting, anomaly detection, hot path alerts.</p>
+          </article>
+        </div>
+
+        <p class="statefabric-note">
+          Add-on prices can change over time. Always confirm current rates in your dashboard billing page.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt">
+    <div class="container">
+      <div class="section-head">
+        <h2>Agent execution</h2>
+        <p class="muted">
+          Run tool calls, state, and memory for AI agents on dedicated infrastructure. Add an agent plan when you outgrow experimentation.
+        </p>
+      </div>
+      <div class="agent-table-wrap">
+        <table class="agent-table">
+          <thead>
+            <tr>
+              <th scope="col">Plan</th>
+              <th scope="col">From</th>
+              <th scope="col">Includes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Agent Starter</strong></td>
+              <td>$49 / mo</td>
+              <td class="muted-cell">500K tool calls / mo, 10 concurrent agents, email support</td>
+            </tr>
+            <tr>
+              <td><strong>Agent Scale</strong></td>
+              <td>$299 / mo</td>
+              <td class="muted-cell">5M tool calls / mo, 100 concurrent agents, priority support</td>
+            </tr>
+            <tr>
+              <td><strong>Agent Pro</strong></td>
+              <td>$999 / mo</td>
+              <td class="muted-cell">25M tool calls / mo, 500 concurrent agents, dedicated support</td>
+            </tr>
+            <tr>
+              <td><strong>Agent Enterprise</strong></td>
+              <td>Custom</td>
+              <td class="muted-cell">Unlimited scale, custom caps, security reviews</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="agent-cta">
+        <a class="btn btn-primary" href={`${APP_DASHBOARD_ORIGIN}/pricing`}>Configure in dashboard</a>
+        <a class="btn btn-secondary" href="/for-agents">For AI agents</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section faq-section">
+    <div class="container container--narrow">
+      <h2>Frequently asked questions</h2>
+      <dl class="faq">
+        <div class="faq-item">
+          <dt>Do prices include tax?</dt>
+          <dd>Listed prices are in USD before applicable taxes. Your invoice will reflect tax rules for your billing address.</dd>
+        </div>
+        <div class="faq-item">
+          <dt>How does the Trust API and verification billing work?</dt>
+          <dd>
+            Trust scores, attestations, and verification levels are part of the trust layer. Usage-based components are metered separately so you only pay for what agents and policies query—details appear alongside your workspace usage.
+          </dd>
+        </div>
+        <div class="faq-item">
+          <dt>Where does State Fabric pricing show up?</dt>
+          <dd>
+            State Fabric tiers are billed alongside your workspace plan. Optional add-ons can be enabled to increase performance, security, or analytics—confirm live rates in your billing page.
+          </dd>
+        </div>
+        <div class="faq-item">
+          <dt>Can we upgrade or downgrade?</dt>
+          <dd>Yes. Move between platform tiers as your traffic and team change; agent plans can be adjusted when your concurrency and call volume need it.</dd>
+        </div>
+        <div class="faq-item">
+          <dt>What does Enterprise include?</dt>
+          <dd>
+            Volume pricing, custom SLAs, security questionnaires, SSO, and tailored trust policies. <a href="/contact">Contact sales</a> with your requirements.
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="container">
+      <h2>Ready to ship trusted tools?</h2>
+      <p class="muted">Create a workspace, connect providers, and see live limits in the dashboard.</p>
+      <div class="actions">
+        <a class="btn primary" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Open dashboard</a>
+        <a class="btn secondary" href="/contact">Talk to sales</a>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    .pricing-hero {
+      padding: 5.5rem 1rem 3.5rem;
+      background:
+        radial-gradient(ellipse at top, rgba(99, 102, 241, 0.2) 0%, transparent 55%),
+        radial-gradient(ellipse at bottom right, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+        var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    .container--narrow {
+      max-width: 720px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.45rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      background: rgba(30, 41, 59, 0.45);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-size: clamp(2.25rem, 4vw, 3.1rem);
+      line-height: 1.08;
+      margin-bottom: 1.1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .lead {
+      color: var(--color-text-muted);
+      font-size: 1.1rem;
+      line-height: 1.65;
+      max-width: 42rem;
+    }
+
+    .section {
+      padding: 3.5rem 0;
+    }
+
+    .section--alt {
+      background: rgba(15, 23, 42, 0.35);
+      border-top: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .section-head {
+      margin-bottom: 2rem;
+      max-width: 40rem;
+    }
+
+    .section-head h2 {
+      font-size: 1.65rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .muted {
+      color: var(--color-text-muted);
+      line-height: 1.65;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+      align-items: stretch;
+    }
+
+    .statefabric-section {
+      background: rgba(15, 23, 42, 0.15);
+      border-top: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .statefabric-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1.25rem;
+      align-items: stretch;
+      margin-bottom: 2rem;
+    }
+
+    .statefabric-table-wrap {
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      background: rgba(30, 41, 59, 0.35);
+      margin: 1.75rem 0 2.25rem;
+    }
+
+    .statefabric-table {
+      min-width: 920px;
+    }
+
+    .statefabric-addons {
+      padding-top: 0.25rem;
+    }
+
+    .statefabric-addons-title {
+      font-size: 1.25rem;
+      margin-bottom: 0.75rem;
+      text-align: center;
+    }
+
+    .statefabric-addons-sub {
+      text-align: center;
+      margin: 0 auto 1.25rem;
+      max-width: 56rem;
+      font-size: 0.95rem;
+    }
+
+    .addon-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+
+    .addon-card {
+      border: 1px solid var(--color-border);
+      background: rgba(30, 41, 59, 0.25);
+      border-radius: 12px;
+      padding: 1rem 1.05rem;
+      min-height: 168px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .addon-top {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .addon-card h4 {
+      font-size: 1rem;
+      font-weight: 650;
+      color: var(--color-text);
+    }
+
+    .addon-price {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .addon-price span {
+      font-size: 0.9rem;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      margin-left: 0.35rem;
+    }
+
+    .addon-desc {
+      color: var(--color-text-muted);
+      line-height: 1.55;
+      font-size: 0.9rem;
+      margin: 0;
+    }
+
+    .statefabric-note {
+      margin-top: 1.25rem;
+      color: var(--color-text-muted);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      text-align: center;
+      max-width: 60rem;
+    }
+
+    .price-card {
+      position: relative;
+      border: 1px solid var(--color-border);
+      background: rgba(30, 41, 59, 0.4);
+      border-radius: 14px;
+      padding: 1.5rem 1.35rem 1.35rem;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .price-card--featured {
+      border-color: rgba(99, 102, 241, 0.55);
+      background: linear-gradient(160deg, rgba(99, 102, 241, 0.14) 0%, rgba(30, 41, 59, 0.5) 45%);
+      box-shadow:
+        0 0 0 1px rgba(99, 102, 241, 0.2),
+        0 20px 50px rgba(0, 0, 0, 0.35);
+    }
+
+    .featured-pill {
+      position: absolute;
+      top: -0.65rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: var(--color-primary);
+      color: white;
+      white-space: nowrap;
+    }
+
+    .tier-name {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .price-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.35rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .price-amount {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .price-amount--custom {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .price-period {
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+    }
+
+    .tier-desc {
+      color: var(--color-text-muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 1.1rem;
+      min-height: 2.75rem;
+    }
+
+    .tier-desc--tight {
+      min-height: 0;
+      margin-bottom: 0.75rem;
+      opacity: 0.95;
+    }
+
+    .feature-list {
+      list-style: none;
+      margin: 0 0 1.35rem;
+      padding: 0;
+      flex: 1;
+    }
+
+    .feature-list li {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+      font-size: 0.9rem;
+      color: var(--color-text-muted);
+      line-height: 1.45;
+      margin-bottom: 0.5rem;
+    }
+
+    .check {
+      color: var(--color-secondary);
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition:
+        transform 0.15s ease,
+        background 0.15s ease,
+        border-color 0.15s ease;
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--color-primary-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+    }
+
+    .btn-secondary:hover {
+      border-color: rgba(99, 102, 241, 0.55);
+      color: var(--color-text);
+    }
+
+    .full-width {
+      width: 100%;
+    }
+
+    .footnote {
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+      line-height: 1.6;
+      max-width: 52rem;
+    }
+
+    .footnote a {
+      color: var(--color-secondary);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .footnote a:hover {
+      color: var(--color-text);
+    }
+
+    .agent-table-wrap {
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      background: rgba(30, 41, 59, 0.35);
+    }
+
+    .agent-table {
+      width: 100%;
+      min-width: 520px;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .agent-table th,
+    .agent-table td {
+      padding: 1rem 1.15rem;
+      text-align: left;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .agent-table thead th {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--color-text-muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .agent-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .muted-cell {
+      color: var(--color-text-muted);
+      line-height: 1.5;
+    }
+
+    .agent-cta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1.75rem;
+    }
+
+    .faq-section h2 {
+      font-size: 1.65rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .faq {
+      margin: 0;
+    }
+
+    .faq-item {
+      padding: 1.35rem 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .faq-item:first-child {
+      padding-top: 0;
+    }
+
+    .faq-item:last-child {
+      border-bottom: none;
+    }
+
+    .faq-item dt {
+      font-weight: 600;
+      font-size: 1.05rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .faq-item dd {
+      margin: 0;
+      color: var(--color-text-muted);
+      line-height: 1.65;
+      font-size: 0.95rem;
+    }
+
+    .faq-item dd a {
+      color: var(--color-secondary);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .cta {
+      padding: 3.5rem 0 5rem;
+      border-top: 1px solid var(--color-border);
+      background:
+        radial-gradient(ellipse at center, rgba(99, 102, 241, 0.18) 0%, transparent 58%),
+        var(--color-bg);
+    }
+
+    .cta h2 {
+      font-size: 1.75rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .cta .muted {
+      max-width: 36rem;
+    }
+
+    .cta .actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.6rem;
+      flex-wrap: wrap;
+    }
+
+    .cta .btn.primary {
+      background: var(--color-primary);
+      color: white;
+      padding: 0.85rem 1.35rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .cta .btn.primary:hover {
+      background: var(--color-primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .cta .btn.secondary {
+      background: transparent;
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+      padding: 0.85rem 1.35rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .cta .btn.secondary:hover {
+      border-color: rgba(99, 102, 241, 0.6);
+    }
+
+    @media (max-width: 1050px) {
+      .pricing-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .statefabric-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .addon-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 560px) {
+      .pricing-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .tier-desc {
+        min-height: 0;
+      }
+
+      .statefabric-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .addon-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</Layout>

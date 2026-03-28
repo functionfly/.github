@@ -12,19 +12,39 @@ let posts: Array<{
   category: { title: string; slug: string } | null;
   tags?: string[];
 }> = [];
+let categories: Array<{
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  order: number | null;
+}> = [];
 let error: string | null = null;
 
 try {
-  const res = await fetch(`${BLOG_API_ORIGIN}/api/v1/blog/posts?limit=50`);
-  if (res.ok) {
-    const json = await res.json();
+  const [postsRes, catsRes] = await Promise.all([
+    fetch(`${BLOG_API_ORIGIN}/api/v1/blog/posts?limit=50`),
+    fetch(`${BLOG_API_ORIGIN}/api/v1/blog/categories`),
+  ]);
+  if (postsRes.ok) {
+    const json = await postsRes.json();
     posts = json.data || [];
   } else {
-    error = `Blog API returned ${res.status}`;
+    error = `Blog API returned ${postsRes.status}`;
+  }
+  if (catsRes.ok) {
+    categories = await catsRes.json();
+    if (!Array.isArray(categories)) categories = [];
   }
 } catch (e) {
   error = e instanceof Error ? e.message : 'Failed to load posts';
 }
+
+const countByCategorySlug = posts.reduce<Record<string, number>>((acc, p) => {
+  const s = p.category?.slug;
+  if (s) acc[s] = (acc[s] || 0) + 1;
+  return acc;
+}, {});
 ---
 
 <Layout
@@ -73,37 +93,129 @@ try {
         )}
 
         {!error && posts.length > 0 && (
-          <ul class="post-grid">
-            {posts.map((post) => (
-              <li>
-                <a href={`/blog/${post.slug}`} class="post-card">
-                  <div class="post-card-inner">
-                    <h2 class="post-card-title">{post.title}</h2>
-                    <p class="post-card-desc">{post.description || ''}</p>
-                    <div class="post-card-meta">
-                      {post.publishedAt && (
-                        <time datetime={post.publishedAt}>
-                          {new Date(post.publishedAt).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </time>
-                      )}
-                      {post.author?.name && <span class="post-card-author">{post.author.name}</span>}
-                      {post.category?.title && (
-                        <span class="post-card-cat">{post.category.title}</span>
-                      )}
-                    </div>
-                  </div>
+          <div class="blog-layout">
+            <aside class="blog-sidebar" aria-label="Categories">
+              <h2 class="blog-sidebar-title">Categories</h2>
+              <nav class="blog-sidebar-nav">
+                <a href="/blog" class="blog-sidebar-link" data-cat-filter="all">
+                  All posts
+                  <span class="blog-sidebar-count">{posts.length}</span>
                 </a>
-              </li>
-            ))}
-          </ul>
+                {categories.length > 0
+                  ? categories.map((cat) => (
+                      <a
+                        href={`/blog?category=${encodeURIComponent(cat.slug)}`}
+                        class="blog-sidebar-link"
+                        data-cat-filter={cat.slug}
+                      >
+                        {cat.title}
+                        <span class="blog-sidebar-count">{countByCategorySlug[cat.slug] ?? 0}</span>
+                      </a>
+                    ))
+                  : Object.entries(countByCategorySlug)
+                      .sort((a, b) => a[0].localeCompare(b[0]))
+                      .map(([slug, count]) => {
+                        const label =
+                          posts.find((p) => p.category?.slug === slug)?.category?.title || slug;
+                        return (
+                          <a
+                            href={`/blog?category=${encodeURIComponent(slug)}`}
+                            class="blog-sidebar-link"
+                            data-cat-filter={slug}
+                          >
+                            {label}
+                            <span class="blog-sidebar-count">{count}</span>
+                          </a>
+                        );
+                      })}
+              </nav>
+            </aside>
+            <div class="blog-main">
+              <p class="blog-filter-hint" id="blog-filter-hint" hidden></p>
+              <ul class="post-grid" id="blog-post-list">
+                {posts.map((post) => (
+                  <li data-category-slug={post.category?.slug ?? ''}>
+                    <a href={`/blog/${post.slug}`} class="post-card">
+                      <div class="post-card-inner">
+                        <h2 class="post-card-title">{post.title}</h2>
+                        <p class="post-card-desc">{post.description || ''}</p>
+                        <div class="post-card-meta">
+                          {post.publishedAt && (
+                            <time datetime={post.publishedAt}>
+                              {new Date(post.publishedAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                              })}
+                            </time>
+                          )}
+                          {post.author?.name && <span class="post-card-author">{post.author.name}</span>}
+                          {post.category?.title && (
+                            <span class="post-card-cat">{post.category.title}</span>
+                          )}
+                        </div>
+                      </div>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         )}
       </div>
     </section>
   </div>
+
+  <script is:inline>
+    function applyBlogCategoryFilter() {
+      var params = new URLSearchParams(window.location.search);
+      var cat = params.get('category');
+      var list = document.getElementById('blog-post-list');
+      var hint = document.getElementById('blog-filter-hint');
+      if (!list) return;
+
+      var items = list.querySelectorAll('li[data-category-slug]');
+      var visible = 0;
+      items.forEach(function (li) {
+        var slug = li.getAttribute('data-category-slug') || '';
+        var show = !cat || slug === cat;
+        if (!show) li.setAttribute('hidden', '');
+        else {
+          li.removeAttribute('hidden');
+          visible++;
+        }
+      });
+
+      document.querySelectorAll('[data-cat-filter]').forEach(function (el) {
+        var filter = el.getAttribute('data-cat-filter');
+        var active = filter === 'all' ? !cat : filter === cat;
+        el.classList.toggle('blog-sidebar-link--active', active);
+        if (active) el.setAttribute('aria-current', 'page');
+        else el.removeAttribute('aria-current');
+      });
+
+      if (hint) {
+        if (cat && visible === 0) {
+          hint.textContent = 'No posts in this category.';
+          hint.hidden = false;
+        } else {
+          hint.textContent = '';
+          hint.hidden = true;
+        }
+      }
+    }
+
+    function initBlogCategoryFilter() {
+      applyBlogCategoryFilter();
+      window.addEventListener('popstate', applyBlogCategoryFilter);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initBlogCategoryFilter);
+    } else {
+      initBlogCategoryFilter();
+    }
+  </script>
 </Layout>
 
 <style>
@@ -128,8 +240,112 @@ try {
   }
 
   .blog-inner {
-    max-width: 720px;
+    max-width: 1100px;
     margin: 0 auto;
+    padding: 0 0.25rem;
+  }
+
+  .blog-layout {
+    display: grid;
+    grid-template-columns: minmax(200px, 240px) 1fr;
+    gap: 2rem 2.5rem;
+    align-items: start;
+    margin-top: 1.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .blog-layout {
+      grid-template-columns: 1fr;
+      gap: 1.75rem;
+    }
+  }
+
+  .blog-sidebar {
+    position: sticky;
+    top: 5.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: rgba(30, 41, 59, 0.45);
+    padding: 1.25rem 1.1rem;
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.35);
+  }
+
+  @media (max-width: 768px) {
+    .blog-sidebar {
+      position: static;
+    }
+  }
+
+  .blog-sidebar-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin: 0 0 0.85rem;
+    padding: 0 0.35rem;
+  }
+
+  .blog-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .blog-sidebar-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .blog-sidebar-link:hover {
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--color-text);
+  }
+
+  .blog-sidebar-link--active {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--color-secondary);
+    border: 1px solid rgba(16, 185, 129, 0.22);
+  }
+
+  .blog-sidebar-count {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    opacity: 0.85;
+    min-width: 1.5rem;
+    text-align: right;
+  }
+
+  .blog-sidebar-link--active .blog-sidebar-count {
+    color: var(--color-secondary);
+    opacity: 1;
+  }
+
+  .blog-main {
+    min-width: 0;
+  }
+
+  .blog-filter-hint {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    margin: 0 0 1rem;
+    padding: 0.65rem 1rem;
+    border-radius: 8px;
+    border: 1px dashed rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.06);
   }
 
   .blog-hero {
