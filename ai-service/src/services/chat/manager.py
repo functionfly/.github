@@ -16,6 +16,7 @@ from ...models.schemas import ChatMessage, MessageRole
 from ...providers.manager import get_provider_manager
 from .intent_classifier import IntentClassifier, get_intent_classifier
 from .context_builder import ContextBuilder, get_context_builder
+from .rag import get_rag_index
 from . import prompts
 
 logger = logging.getLogger(__name__)
@@ -294,27 +295,37 @@ class ChatManager:
             tenant_id=tenant_id,
         )
 
+        # RAG: retrieve relevant docs excerpts and append to context.
+        try:
+            rag_block = await get_rag_index().build_context_block(message)
+            if rag_block:
+                context = f"{context}\n\n{rag_block}"
+        except Exception as e:
+            logger.warning(f"RAG retrieval failed (continuing without it): {e}")
+
         # Get system prompt
         system_prompt = prompts.get_system_prompt(intent, context, message)
 
-        # Build messages for LLM
-        messages_for_llm = [
-            {"role": "system", "content": system_prompt}
+        # Build messages for LLM (providers expect ChatMessage, not raw dicts)
+        messages_for_llm: List[ChatMessage] = [
+            ChatMessage(role=MessageRole.SYSTEM, content=system_prompt)
         ]
 
         # Add recent conversation history
         for msg in session.messages[-MAX_MESSAGES_PER_SESSION:]:
             # Skip system messages we already included
             if msg["role"] != "system":
-                messages_for_llm.append({
-                    "role": msg["role"],
-                    "content": msg["content"],
-                })
+                messages_for_llm.append(
+                    ChatMessage(
+                        role=MessageRole(msg["role"]),
+                        content=msg["content"],
+                    )
+                )
 
         # Get response from LLM
         try:
             provider_manager = get_provider_manager()
-            provider = provider_manager.get_provider()
+            provider = provider_manager.get_provider_for_chat()
 
             response = await provider.complete(
                 messages=messages_for_llm,

@@ -6,6 +6,7 @@ Uses Pydantic Settings for environment-based configuration.
 from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -33,11 +34,12 @@ class Settings(BaseSettings):
 
     # Ollama configuration (local/development)
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "llama3.3"
+    # Smaller default so local dev fits typical RAM; override with OLLAMA_MODEL (e.g. llama3.3 when you have headroom)
+    ollama_model: str = "llama3.2:3b"
     ollama_embedding_model: str = "nomic-embed-text"
 
     # Default provider
-    default_provider: str = "openai"
+    default_provider: str = "openrouter"
     default_embedding_provider: str = "openai"
 
     # Rate limits per provider (requests per minute)
@@ -72,13 +74,31 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-4-6"
     anthropic_max_tokens: int = 8192
 
-    openrouter_model: str = "openrouter/hunter-alpha"
+    openrouter_model: str = "openrouter/free"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # Feature flags
     enable_streaming: bool = True
     enable_caching: bool = True
     enable_cost_tracking: bool = True
+
+    # RAG (retrieval-augmented generation) for chat
+    enable_rag: bool = True
+    rag_docs_dir: str = Field(
+        default=str((Path(__file__).resolve().parents[2] / "web" / "docs" / "src" / "content" / "docs")),
+        description="Directory containing markdown docs to use for RAG",
+    )
+    rag_top_k: int = 4
+    rag_candidate_chunks: int = 24
+    # Limit expensive embedding rerank work per request for snappy chat UX.
+    rag_embedding_rerank_chunks: int = 6
+    rag_embedding_max_seconds: float = 3.0
+    rag_chunk_max_chars: int = 1600
+    rag_chunk_min_chars: int = 250
+    rag_max_chunks: int = 2000
+    # RAG retrieval uses embeddings; default to Ollama (local) so no cloud API key is required.
+    # Set to openai | anthropic | openrouter | ollama
+    rag_embedding_provider: str = "ollama"
 
     # Cost per 1K tokens (for tracking)
     openai_input_cost: float = 0.0025  # $ per 1K tokens

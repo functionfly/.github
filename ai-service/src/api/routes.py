@@ -7,11 +7,12 @@ and Phase 2 (Intelligence Layer).
 import asyncio
 import logging
 from datetime import datetime
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional, List
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status, Body
 from fastapi.responses import StreamingResponse
 import redis.asyncio as redis
+from pydantic import BaseModel
 
 from ..config import settings
 from ..models.schemas import (
@@ -77,6 +78,12 @@ from ..services.optimization import get_recommendation_engine
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+class ChatSendBody(BaseModel):
+    session_id: str
+    user_id: str
+    message: str
+    tenant_id: Optional[str] = None
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -513,10 +520,11 @@ async def acknowledge_anomaly(request: AnomalyAcknowledgeRequest):
 
 @router.post("/api/chat/message", response_model=ChatMessageResponse)
 async def send_chat_message(
-    session_id: str,
-    user_id: str,
-    message: str,
+    session_id: Optional[str] = Query(None, description="Existing session ID (or empty to create new)"),
+    user_id: Optional[str] = Query(None, description="The user ID"),
+    message: Optional[str] = Query(None, description="The message text"),
     tenant_id: Optional[str] = Query(None, description="Tenant ID for context (e.g. deployed functions)"),
+    payload: Optional[ChatSendBody] = Body(default=None),
 ):
     """Send a message to a chat session.
 
@@ -530,12 +538,27 @@ async def send_chat_message(
         ChatMessageResponse with the assistant's reply
     """
     try:
+        # Support both JSON body (used by Go orchestrator) and query params (legacy).
+        sid = payload.session_id if payload is not None else (session_id or "")
+        uid = payload.user_id if payload is not None else (user_id or "")
+        msg = payload.message if payload is not None else (message or "")
+        tid = payload.tenant_id if payload is not None else tenant_id
+
+        if not msg:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="message is required",
+            )
+        if not uid:
+            # Keep the endpoint compatible with older callers that don't send user_id.
+            uid = "unknown"
+
         chat_manager = get_chat_manager()
         result = await chat_manager.process_message(
-            session_id=session_id,
-            user_id=user_id,
-            message=message,
-            tenant_id=tenant_id,
+            session_id=sid,
+            user_id=uid,
+            message=msg,
+            tenant_id=tid,
         )
         return ChatMessageResponse(
             session_id=result["session_id"],
@@ -543,6 +566,8 @@ async def send_chat_message(
             intent=ChatIntent(result["intent"]),
             confidence=result["confidence"],
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Chat message failed: {e}")
         raise HTTPException(

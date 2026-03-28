@@ -17,9 +17,12 @@ from .providers.manager import get_provider_manager
 from .services.embeddings import get_embeddings_service
 
 
-# Configure logging
+# Configure logging (uppercase so "info" maps to logging.INFO, not logging.info)
+_log_level = getattr(logging, settings.log_level.upper(), logging.INFO)
+if not isinstance(_log_level, int):
+    _log_level = logging.INFO
 logging.basicConfig(
-    level=getattr(logging, settings.log_level),
+    level=_log_level,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)

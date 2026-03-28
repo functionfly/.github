@@ -17,7 +17,7 @@ class ChatIntent(str, Enum):
     QUERY = "query_intent"      # "show", "list", "find" - Query and display functions
     DEBUG = "debugging_intent"  # "fix", "error", "bug" - Debugging assistance
     OPTIMIZE = "optimization_intent"  # "optimize", "improve", "cost" - Cost/performance
-    HELP = "help_intent"        # "help", "what" - General help
+    HELP = "help_intent"        # "help", capability/help intents
     UNKNOWN = "unknown_intent"  # Default fallback
 
 
@@ -72,8 +72,6 @@ class IntentClassifier:
         ],
         ChatIntent.HELP: [
             r"\bhelp\b",
-            r"\bwhat\b",
-            r"\bhow\b",
             r"\bwhat can\b",
             r"\bwhat can you\b",
             r"\bwhat can i\b",

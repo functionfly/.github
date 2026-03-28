@@ -88,6 +88,37 @@ class ProviderManager:
 
         return provider
 
+    def get_provider_for_chat(self, name: Optional[str] = None) -> BaseProvider:
+        """Resolve an LLM provider for chat/completions.
+
+        Tries *name* (if given), then :attr:`default_provider`, then common fallbacks
+        so local dev works with Ollama when ``OPENAI_API_KEY`` is unset.
+        """
+        order: list[str] = []
+        if name:
+            order.append(name)
+        order.append(self._default_provider)
+        for extra in ("ollama", "openrouter", "openai", "anthropic"):
+            order.append(extra)
+        seen: set[str] = set()
+        for pname in order:
+            if pname in seen:
+                continue
+            seen.add(pname)
+            if pname not in self._providers:
+                continue
+            provider = self._providers[pname]
+            if provider.available:
+                preferred = name or self._default_provider
+                if pname != preferred:
+                    logger.info(
+                        "LLM provider fallback: using '%s' (preferred '%s' unavailable)",
+                        pname,
+                        preferred,
+                    )
+                return provider
+        raise ValueError("No LLM provider available")
+
     def get_embedding_provider(self, name: Optional[str] = None) -> BaseProvider:
         """Get a provider that supports embeddings.
 

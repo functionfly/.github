@@ -233,6 +233,19 @@ class BaseProvider(ABC):
                 return await func(*args, **kwargs)
             except Exception as e:
                 last_exception = e
+                # Don't back off/retry for deterministic client/auth failures.
+                status_code = getattr(e, "status_code", None)
+                msg = str(e)
+                non_retryable = (
+                    (isinstance(status_code, int) and 400 <= status_code < 500 and status_code != 429)
+                    or "401" in msg
+                    or "403" in msg
+                )
+                if non_retryable:
+                    logger.error(
+                        f"Provider {self.name} non-retryable error: {e}"
+                    )
+                    raise
                 if attempt < self.retry_config.max_retries:
                     delay = self.retry_config.get_delay(attempt)
                     logger.warning(

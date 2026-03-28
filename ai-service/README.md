@@ -24,8 +24,18 @@ uv run python scripts/generate_grpc.py
 
 ## Run
 
+From the `ai-service` directory (uses `ai-service/.env`; clear a conflicting repo-root `VIRTUAL_ENV` if `uv` warns):
+
 ```bash
-uv run uvicorn api.app:app --host 0.0.0.0 --port 8081
+unset VIRTUAL_ENV
+uv sync
+PYTHONPATH=. uv run uvicorn src.main:app --host 127.0.0.1 --port 18081
+```
+
+Or use the repo helper (from repo root):
+
+```bash
+./scripts/run-ai-service.sh
 ```
 
 ## Configuration

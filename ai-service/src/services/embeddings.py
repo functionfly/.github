@@ -40,12 +40,19 @@ class EmbeddingsService:
                 self._redis = None
         return self._redis
 
-    def _get_cache_key(self, text: str, model: str, dimensions: Optional[int]) -> str:
+    def _get_cache_key(
+        self,
+        text: str,
+        model: str,
+        dimensions: Optional[int],
+        provider_name: Optional[str] = None,
+    ) -> str:
         """Generate a cache key for the embedding request."""
         key_data = {
             "text": text,
             "model": model,
             "dimensions": dimensions,
+            "provider": provider_name or "",
         }
         key_str = json.dumps(key_data, sort_keys=True)
         return f"embedding:{hashlib.sha256(key_str.encode()).hexdigest()}"
@@ -67,6 +74,7 @@ class EmbeddingsService:
         # Get the provider
         provider_name = request.provider.value if request.provider else None
         provider = provider_manager.get_embedding_provider(provider_name)
+        resolved_model = request.model or getattr(provider, "embedding_model", None) or provider.model
 
         # Check cache if enabled
         cache_key = None
@@ -75,8 +83,9 @@ class EmbeddingsService:
             if redis_client:
                 cache_key = self._get_cache_key(
                     request.text,
-                    request.model or provider.model,
+                    resolved_model,
                     request.dimensions,
+                    provider_name or provider.name,
                 )
                 try:
                     cached = await redis_client.get(cache_key)
