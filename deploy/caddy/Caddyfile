@@ -25,6 +25,16 @@ functionfly.com {
     try_files {path} /index.html
     file_server
 
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+    }
+
     # Rate limiting for the entire domain
     rate_limit {
         zone static {
@@ -159,6 +169,16 @@ functionfly.com {
 
 # App (dashboard) subdomain - app.functionfly.com
 app.functionfly.com {
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+    }
+
     reverse_proxy dashboard:3000 {
         header_up X-Forwarded-Host {host}
         header_up X-Forwarded-Proto {scheme}
@@ -168,6 +188,16 @@ app.functionfly.com {
 
 # Admin UI subdomain - admin.functionfly.com (separate origin from app)
 admin.functionfly.com {
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+    }
+
     reverse_proxy dashboard:3000 {
         header_up X-Forwarded-Host {host}
         header_up X-Forwarded-Proto {scheme}
@@ -177,6 +207,16 @@ admin.functionfly.com {
 
 # Execution subdomain - run.functionfly.com (high traffic optimization)
 run.functionfly.com {
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+    }
+
     # Cache responses for better performance
     @cacheable {
         path /@*/*
@@ -196,6 +236,16 @@ run.functionfly.com {
 
 # Registry API subdomain - registry.functionfly.com
 registry.functionfly.com {
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+    }
+
     # Stricter rate limiting for API
     rate_limit {
         zone registry_api {
@@ -214,6 +264,16 @@ registry.functionfly.com {
 
 # Documentation subdomain - docs.functionfly.com
 docs.functionfly.com {
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+    }
+
     # Serve static docs site
     root * /var/www/docs
     try_files {path} /index.html
@@ -223,6 +283,16 @@ docs.functionfly.com {
 # CDN subdomain - cdn.functionfly.com (SDK, docs, static assets with edge caching)
 # API serves these under /v1/sdk, /v1/docs, /v1/static – rewrite path before proxying
 cdn.functionfly.com {
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+    }
+
     # Rewrite /sdk|docs|static -> /v1/sdk|docs|static so orchestrator routes match
     rewrite * /v1{uri}
 

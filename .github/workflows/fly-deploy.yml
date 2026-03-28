@@ -13,6 +13,9 @@ on:
       - 'go.sum'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
   GO_VERSION: '1.24'

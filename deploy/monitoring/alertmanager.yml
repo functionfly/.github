@@ -1,59 +1,61 @@
 global:
-  smtp_smarthost: 'mailpit:1025'
-  smtp_from: 'alerts@functionfly.dev'
-  smtp_require_tls: false
+  smtp_smarthost: "${SMTP_HOST}:${SMTP_PORT}"
+  smtp_from: "${SMTP_FROM_EMAIL}"
+  smtp_require_tls: true
+  smtp_auth_username: "${SMTP_USERNAME}"
+  smtp_auth_password: "${SMTP_PASSWORD}"
 
 route:
-  group_by: ['alertname']
+  group_by: ["alertname"]
   group_wait: 10s
   group_interval: 10s
   repeat_interval: 1h
-  receiver: 'security-team'
+  receiver: "security-team"
   routes:
-  - match:
-      severity: critical
-    receiver: 'security-team'
-  - match:
-      category: security
-    receiver: 'security-team'
-  - match:
-      category: compliance
-    receiver: 'compliance-team'
+    - match:
+        severity: critical
+      receiver: "security-team"
+    - match:
+        category: security
+      receiver: "security-team"
+    - match:
+        category: compliance
+      receiver: "compliance-team"
 
 receivers:
-- name: 'security-team'
-  email_configs:
-  - to: 'security@functionfly.dev'
-    subject: '🚨 FunctionFly Security Alert: {{ .GroupLabels.alertname }}'
-    body: |
-      {{ range .Alerts }}
-      🚨 **{{ .Annotations.summary }}**
+  - name: "security-team"
+    email_configs:
+      - to: "security@functionfly.dev"
+        subject: "🚨 FunctionFly Security Alert: {{ .GroupLabels.alertname }}"
+        body: |
+          {{ range .Alerts }}
+          🚨 **{{ .Annotations.summary }}**
 
-      {{ .Annotations.description }}
+          {{ .Annotations.description }}
 
-      Labels:
-      {{ range .Labels.SortedPairs }}{{ .Name }}: {{ .Value }}
-      {{ end }}
+          Labels:
+          {{ range .Labels.SortedPairs }}{{ .Name }}: {{ .Value }}
+          {{ end }}
 
-      {{ end }}
+          {{ end }}
 
-- name: 'compliance-team'
-  email_configs:
-  - to: 'compliance@functionfly.dev'
-    subject: '📋 FunctionFly Compliance Alert: {{ .GroupLabels.alertname }}'
-    body: |
-      {{ range .Alerts }}
-      📋 **{{ .Annotations.summary }}**
+  - name: "compliance-team"
+    email_configs:
+      - to: "compliance@functionfly.dev"
+        subject: "📋 FunctionFly Compliance Alert: {{ .GroupLabels.alertname }}"
+        body: |
+          {{ range .Alerts }}
+          📋 **{{ .Annotations.summary }}**
 
-      {{ .Annotations.description }}
+          {{ .Annotations.description }}
 
-      Labels:
-      {{ range .Labels.SortedPairs }}{{ .Name }}: {{ .Value }}
-      {{ end }}
+          Labels:
+          {{ range .Labels.SortedPairs }}{{ .Name }}: {{ .Value }}
+          {{ end }}
 
-      {{ end }}
+          {{ end }}
 
-- name: 'default'
-  email_configs:
-  - to: 'ops@functionfly.dev'
-    subject: '⚠️ FunctionFly Alert: {{ .GroupLabels.alertname }}'
+  - name: "default"
+    email_configs:
+      - to: "ops@functionfly.dev"
+        subject: "⚠️ FunctionFly Alert: {{ .GroupLabels.alertname }}"

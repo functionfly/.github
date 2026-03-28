@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # =============================================================================
@@ -22,7 +22,11 @@ services:
     networks:
       - functionfly-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-functionfly} -d ${DB_NAME:-functionfly}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USER:-functionfly} -d ${DB_NAME:-functionfly}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -64,8 +68,7 @@ services:
       - DB_USER=${DB_USER:-functionfly}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_SSL_MODE=${DB_SSL_MODE:-require}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_ADDR=redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - API_SHARED_SECRET=${API_SHARED_SECRET}
@@ -161,12 +164,12 @@ services:
     networks:
       - functionfly-network
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=200h"
+      - "--web.enable-lifecycle"
     restart: unless-stopped
 
   grafana:

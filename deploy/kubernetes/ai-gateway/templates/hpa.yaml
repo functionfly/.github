@@ -1,0 +1,77 @@
+{{- /*
+AI Gateway Horizontal Pod Autoscaler Template
+*/ -}}
+{{- if .Values.autoscaling.enabled -}}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "ai-gateway.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "ai-gateway.name" . }}
+    chart: {{ include "ai-gateway.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "ai-gateway.fullname" . }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+    {{- if and .Values.autoscaling.customMetrics.enabled .Values.autoscaling.customMetrics.queueDepth }}
+    {{- /*
+    Custom metrics require the kubernetes-metrics-server or custom metrics API
+    Uncomment when your cluster supports external/custom metrics
+    */ -}}
+    # - type: External
+    #   external:
+    #     metric:
+    #       name: {{ .Values.autoscaling.customMetrics.queueDepth.metricName }}
+    #       selector:
+    #         matchLabels:
+    #           service: {{ include "ai-gateway.name" . }}
+    #     target:
+    #       type: AverageValue
+    #       averageValue: {{ .Values.autoscaling.customMetrics.queueDepth.targetAverageValue }}
+    {{- end }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+{{- end }}

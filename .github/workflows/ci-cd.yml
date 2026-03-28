@@ -2,13 +2,16 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ master, main, develop ]
+    branches: [master, main, develop]
   pull_request:
-    branches: [ master, main, develop ]
+    branches: [master, main, develop]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
-  GO_VERSION: '1.24'
+  GO_VERSION: "1.24"
   DOCKER_BUILDKIT: 1
 
 jobs:
@@ -16,47 +19,78 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ env.GO_VERSION }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
 
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-    - name: Download dependencies
-      run: go mod download
+      - name: Download dependencies
+        run: go mod download
 
-    - name: Format check
-      run: |
-        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-          echo "The following files need formatting:"
-          gofmt -s -l .
-          exit 1
-        fi
+      - name: Format check
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "The following files need formatting:"
+            gofmt -s -l .
+            exit 1
+          fi
 
-    - name: Lint
-      uses: golangci/golangci-lint-action@v4
-      with:
-        version: latest
-        args: --timeout=5m
+      - name: Lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          args: --timeout=5m
 
-    - name: Security scan
-      uses: securego/gosec@master
-      with:
-        args: ./...
+      - name: Security scan
+        uses: securego/gosec@master
+        with:
+          args: ./...
 
-    - name: Check for vulnerabilities
-      run: |
-        go install golang.org/x/vuln/cmd/govulncheck@latest
-        govulncheck ./...
+      - name: Check for vulnerabilities
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  # Frontend Build and Test
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/dashboard
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/dashboard/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm run test -- --run
 
   # Unit Tests
   test:
@@ -82,51 +116,51 @@ jobs:
           - 6379:6379
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ env.GO_VERSION }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
 
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-    - name: Download dependencies
-      run: go mod download
+      - name: Download dependencies
+        run: go mod download
 
-    - name: Wait for services
-      run: |
-        until pg_isready -h localhost -p 5432; do
-          echo "Waiting for PostgreSQL..."
-          sleep 2
-        done
-        echo "PostgreSQL is ready"
+      - name: Wait for services
+        run: |
+          until pg_isready -h localhost -p 5432; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          echo "PostgreSQL is ready"
 
-    - name: Run migrations for tests
-      run: |
-        export DB_HOST=localhost
-        export DB_PORT=5432
-        export DB_USER=postgres
-        export DB_PASSWORD=postgres
-        export DB_NAME=functionfly_test
-        go run ./cmd/migrate
+      - name: Run migrations for tests
+        run: |
+          export DB_HOST=localhost
+          export DB_PORT=5432
+          export DB_USER=postgres
+          export DB_PASSWORD=postgres
+          export DB_NAME=functionfly_test
+          go run ./cmd/migrate
 
-    - name: Run unit tests
-      run: |
-        go test -v -race -coverprofile=coverage-unit.out ./...
+      - name: Run unit tests
+        run: |
+          go test -v -race -coverprofile=coverage-unit.out ./...
 
-    - name: Upload unit test coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./coverage-unit.out
-        flags: unittests
-        name: codecov-umbrella
+      - name: Upload unit test coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage-unit.out
+          flags: unittests
+          name: codecov-umbrella
 
   # Integration Tests
   integration-test:
@@ -153,115 +187,118 @@ jobs:
           - 6379:6379
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ env.GO_VERSION }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
 
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-    - name: Download dependencies
-      run: go mod download
+      - name: Download dependencies
+        run: go mod download
 
-    - name: Wait for services
-      run: |
-        until pg_isready -h localhost -p 5432; do
-          echo "Waiting for PostgreSQL..."
-          sleep 2
-        done
+      - name: Wait for services
+        run: |
+          until pg_isready -h localhost -p 5432; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
 
-    - name: Run integration tests
-      run: |
-        export DB_HOST=localhost
-        export DB_PORT=5432
-        export DB_USER=postgres
-        export DB_PASSWORD=postgres
-        export DB_NAME=functionfly_integration
-        export REDIS_URL=redis://localhost:6379
-        go test -v -race -tags=integration -coverprofile=coverage-integration.out ./...
+      - name: Run integration tests
+        run: |
+          export DB_HOST=localhost
+          export DB_PORT=5432
+          export DB_USER=postgres
+          export DB_PASSWORD=postgres
+          export DB_NAME=functionfly_integration
+          export REDIS_URL=redis://localhost:6379
+          go test -v -race -tags=integration -coverprofile=coverage-integration.out ./...
 
-    - name: Upload integration test coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./coverage-integration.out
-        flags: integration
-        name: codecov-umbrella
+      - name: Upload integration test coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage-integration.out
+          flags: integration
+          name: codecov-umbrella
 
-    - name: Check combined coverage threshold
-      run: |
-        # Calculate combined coverage (weighted average)
-        UNIT_COVERAGE=$(go tool cover -func=coverage-unit.out | grep total | awk '{print substr($3, 1, length($3)-1)}' || echo "0")
-        INTEGRATION_COVERAGE=$(go tool cover -func=coverage-integration.out | grep total | awk '{print substr($3, 1, length($3)-1)}' || echo "0")
+      - name: Check combined coverage threshold
+        run: |
+          # Calculate combined coverage (weighted average)
+          UNIT_COVERAGE=$(go tool cover -func=coverage-unit.out | grep total | awk '{print substr($3, 1, length($3)-1)}' || echo "0")
+          INTEGRATION_COVERAGE=$(go tool cover -func=coverage-integration.out | grep total | awk '{print substr($3, 1, length($3)-1)}' || echo "0")
 
-        # Weight unit tests more heavily (70%) than integration tests (30%)
-        COMBINED_COVERAGE=$(echo "scale=2; ($UNIT_COVERAGE * 0.7) + ($INTEGRATION_COVERAGE * 0.3)" | bc -l)
+          # Weight unit tests more heavily (70%) than integration tests (30%)
+          COMBINED_COVERAGE=$(echo "scale=2; ($UNIT_COVERAGE * 0.7) + ($INTEGRATION_COVERAGE * 0.3)" | bc -l)
 
-        echo "Unit test coverage: $UNIT_COVERAGE%"
-        echo "Integration test coverage: $INTEGRATION_COVERAGE%"
-        echo "Combined coverage: $COMBINED_COVERAGE%"
+          echo "Unit test coverage: $UNIT_COVERAGE%"
+          echo "Integration test coverage: $INTEGRATION_COVERAGE%"
+          echo "Combined coverage: $COMBINED_COVERAGE%"
 
-        if (( $(echo "$COMBINED_COVERAGE < 80.0" | bc -l) )); then
-          echo "Combined coverage $COMBINED_COVERAGE% is below 80% threshold"
-          exit 1
-        fi
+          if (( $(echo "$COMBINED_COVERAGE < 80.0" | bc -l) )); then
+            echo "Combined coverage $COMBINED_COVERAGE% is below 80% threshold"
+            exit 1
+          fi
 
   # Build and Push Docker Images
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     needs: [quality, test, integration-test]
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: functionfly/orchestrator-api
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: functionfly/orchestrator-api
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
-    - name: Build and push orchestrator-api
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./deploy/docker/Dockerfile.orchestrator
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Build and push orchestrator-api
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./deploy/docker/Dockerfile.orchestrator
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-    - name: Build and push health-monitor
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./deploy/docker/Dockerfile.health-monitor
-        push: true
-        tags: functionfly/health-monitor:${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Build and push health-monitor
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./deploy/docker/Dockerfile.health-monitor
+          push: true
+          tags: functionfly/health-monitor:${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   # Deploy to Staging
   deploy-staging:
@@ -270,18 +307,18 @@ jobs:
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     environment: staging
     steps:
-    - uses: actions/checkout@v4
-    - name: Deploy to staging
-      env:
-        CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      run: |
-        echo "Deploying to staging (app.staging, admin.staging, api.staging)..."
-        if [ -f ./scripts/deploy-staging.sh ]; then
-          ./scripts/deploy-staging.sh
-        else
-          echo "scripts/deploy-staging.sh not found; skipping deploy."
-        fi
+      - uses: actions/checkout@v4
+      - name: Deploy to staging
+        env:
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          echo "Deploying to staging (app.staging, admin.staging, api.staging)..."
+          if [ -f ./scripts/deploy-staging.sh ]; then
+            ./scripts/deploy-staging.sh
+          else
+            echo "scripts/deploy-staging.sh not found; skipping deploy."
+          fi
 
   # Deploy to Production
   deploy-production:
@@ -290,46 +327,54 @@ jobs:
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     environment: production
     steps:
-    - uses: actions/checkout@v4
-    - name: Deploy to production
-      run: |
-        echo "Deploying to production (app.functionfly.com, admin.functionfly.com, api.functionfly.com)..."
-        echo "Configure deploy via secrets and run your production deploy script or docker compose."
-        if [ -f ./scripts/deploy-production.sh ]; then
-          ./scripts/deploy-production.sh
-        fi
+      - uses: actions/checkout@v4
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production (app.functionfly.com, admin.functionfly.com, api.functionfly.com)..."
+          echo "Configure deploy via secrets and run your production deploy script or docker compose."
+          if [ -f ./scripts/deploy-production.sh ]; then
+            ./scripts/deploy-production.sh
+          fi
 
   # Security Scan
   security:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     needs: [quality]
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
 
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      with:
-        sarif_file: 'trivy-results.sarif'
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-results.sarif"
 
   # Performance Testing
+  # NOTE: Performance testing requires artillery or similar tooling setup.
+  # This job is a placeholder until performance tests are implemented.
+  # To enable: replace this job with actual performance test commands.
   performance:
     runs-on: ubuntu-latest
     needs: [build]
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Run performance tests
-      run: |
-        echo "Running performance tests..."
-        # Add performance testing commands here
-        # Example: artillery run performance-tests.yml
+      - name: Performance tests placeholder
+        run: |
+          echo "Performance testing not yet configured."
+          echo "To enable, add performance test commands using artillery or similar tooling."
+          echo "See: https://www.artillery.io/docs/getting-started"
+          exit 1
+          # Example: artillery run performance-tests.yml

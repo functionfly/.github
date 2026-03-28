@@ -305,8 +305,8 @@ services:
       # Required by Firecracker / tun/tap device creation
       - NET_ADMIN
     security_opt:
-      # seccomp profile allowing KVM ioctls
-      - "seccomp=unconfined" # Replace with a tailored profile in production
+      # seccomp profile allowing KVM ioctls - see seccomp-microvm.json for tailored profile
+      - "seccomp=${PWD}/deploy/production/seccomp-microvm.json"
 
   # =============================================================================
   # REVERSE PROXY

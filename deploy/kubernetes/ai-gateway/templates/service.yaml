@@ -1,0 +1,74 @@
+{{- /*
+AI Gateway Service Template
+*/ -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ai-gateway.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "ai-gateway.name" . }}
+    chart: {{ include "ai-gateway.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+    {{- with .Values.service.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: 9090
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    app: {{ include "ai-gateway.name" . }}
+    release: {{ .Release.Name }}
+  {{- if .Values.service.sessionAffinity }}
+  sessionAffinity: {{ .Values.service.sessionAffinity }}
+  {{- end }}
+
+{{- /*
+Multi-region services for geo-aware routing (optional)
+*/ -}}
+{{- if and .Values.multiRegion.enabled .Values.multiRegion.regions }}
+---
+{{- range .Values.multiRegion.regions }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ai-gateway.fullname" $ }}-{{ .name | replace "-" "_" }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app: {{ include "ai-gateway.name" $ }}
+    chart: {{ include "ai-gateway.chart" $ }}
+    release: {{ $.Release.Name }}
+    heritage: {{ $.Release.Service }}
+    region: {{ .name }}
+    priority: {{ .priority | quote }}
+  {{- with $.Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ $.Values.service.type }}
+  ports:
+    - port: {{ $.Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ include "ai-gateway.name" $ }}
+    release: {{ $.Release.Name }}
+    region: {{ .name }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,151 @@
+# Staging values for ai-gateway chart
+# Override settings for staging environment
+
+replicaCount: 2
+
+image:
+  repository: functionfly/ai-gateway
+  tag: "staging"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8082
+  annotations: {}
+
+ingress:
+  enabled: true
+  className: "caddy"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+  hosts:
+    - host: ai-gateway.staging.functionfly.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: ai-gateway-tls-staging
+      hosts:
+        - ai-gateway.staging.functionfly.com
+
+resources:
+  requests:
+    memory: "2Gi"
+    cpu: "500m"
+    nvidia.com/gpu: "1"
+  limits:
+    memory: "8Gi"
+    cpu: "4000m"
+    nvidia.com/gpu: "1"
+
+gpu:
+  enabled: true
+  resourceName: "nvidia.com/gpu"
+  count: 1
+
+# Moderate scaling for staging
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  customMetrics:
+    enabled: false
+
+# Health check settings
+healthCheck:
+  livenessProbe:
+    path: /health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    path: /ready
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  startupProbe:
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+
+containerSecurityContext:
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# Model cache for staging
+volumes:
+  modelCache:
+    enabled: true
+    mountPath: "/tmp/model-cache"
+    size: "50Gi"
+    storageClassName: "standard-ssd"
+
+# Environment variables
+env:
+  INFERENCE_ENGINE: "onnx"
+  MODEL_CACHE_DIR: "/tmp/model-cache"
+  MAX_BATCH_SIZE: "8"
+  INFERENCE_TIMEOUT_SECONDS: "120"
+  CLUSTER_ENABLED: "true"
+  CLUSTER_REFRESH_INTERVAL: "30"
+  LOG_LEVEL: "DEBUG"
+  LOG_FORMAT: "json"
+
+configMap:
+  data:
+    RUNPOD_API_BASE_URL: "https://api.runpod.io"
+    RUNPOD_CLUSTER_NAME: "staging"
+    DEFAULT_MAX_TOKENS: "2048"
+    DEFAULT_TEMPERATURE: "0.7"
+    DEFAULT_TOP_P: "0.9"
+    RATE_LIMIT_REQUESTS_PER_MINUTE: "100"
+    RATE_LIMIT_REQUESTS_PER_HOUR: "1000"
+    REQUEST_TIMEOUT: "120"
+    CONNECT_TIMEOUT: "10"
+    READ_TIMEOUT: "120"
+
+secret:
+  create: true
+  name: "ai-gateway-secrets-staging"
+  data: {}
+
+prometheus:
+  enabled: true
+  port: 8082
+  path: "/metrics"
+
+# Single region for staging
+multiRegion:
+  enabled: false
+  regions: []
+
+topologySpreadConstraints:
+  enabled: true
+  maxSkew: 1
+  topologyKey: "topology.kubernetes.io/zone"
+  whenUnsatisfiable: ScheduleAnyway
+
+priorityClassName: ""
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0

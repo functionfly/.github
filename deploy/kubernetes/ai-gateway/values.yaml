@@ -1,0 +1,222 @@
+# Default values for ai-gateway chart
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 2
+
+image:
+  repository: functionfly/ai-gateway
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8082
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: "caddy"
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: ai-gateway.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: ai-gateway-tls
+  #    hosts:
+  #      - ai-gateway.local
+
+resources:
+  requests:
+    memory: "2Gi"
+    cpu: "500m"
+    nvidia.com/gpu: "1"
+  limits:
+    memory: "8Gi"
+    cpu: "4000m"
+    nvidia.com/gpu: "1"
+
+# GPU configuration
+gpu:
+  enabled: true
+  resourceName: "nvidia.com/gpu"
+  count: 1
+
+# Node selection for GPU nodes
+nodeSelector:
+  node-type: gpu
+
+tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+# Pod affinity/anti-affinity
+affinity: {}
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 1  # Use either minAvailable or maxUnavailable
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  # Custom metrics for inference queue depth (requires custom metrics server)
+  customMetrics:
+    enabled: false
+    queueDepth:
+      metricName: "inference_queue_depth"
+      targetAverageValue: "100"
+
+# Health check configuration
+healthCheck:
+  livenessProbe:
+    path: /health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    path: /ready
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  startupProbe:
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30
+
+# Service account
+serviceAccount:
+  create: true
+  name: "ai-gateway"
+  annotations: {}
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+
+containerSecurityContext:
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# Volume mounts for model cache
+volumes:
+  modelCache:
+    enabled: true
+    mountPath: "/tmp/model-cache"
+    size: "50Gi"
+    storageClassName: "fast-ssd"
+
+# Environment variables (non-sensitive)
+env:
+  # Inference engine configuration
+  INFERENCE_ENGINE: "onnx"
+  MODEL_CACHE_DIR: "/tmp/model-cache"
+  MAX_BATCH_SIZE: "8"
+  INFERENCE_TIMEOUT_SECONDS: "120"
+
+  # Cluster configuration
+  CLUSTER_ENABLED: "true"
+  CLUSTER_REFRESH_INTERVAL: "30"
+
+  # Logging
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"
+
+# ConfigMap data (non-sensitive configuration)
+configMap:
+  data:
+    # RunPod cluster configuration
+    RUNPOD_API_BASE_URL: "https://api.runpod.io"
+    RUNPOD_CLUSTER_NAME: "default"
+
+    # Inference defaults
+    DEFAULT_MAX_TOKENS: "2048"
+    DEFAULT_TEMPERATURE: "0.7"
+    DEFAULT_TOP_P: "0.9"
+
+    # Rate limiting
+    RATE_LIMIT_REQUESTS_PER_MINUTE: "100"
+    RATE_LIMIT_REQUESTS_PER_HOUR: "1000"
+
+    # Timeouts (in seconds)
+    REQUEST_TIMEOUT: "120"
+    CONNECT_TIMEOUT: "10"
+    READ_TIMEOUT: "120"
+
+# Secret references (sensitive data - managed externally)
+secret:
+  create: true
+  name: "ai-gateway-secrets"
+  # Reference to external secret management (e.g., AWS Secrets Manager, HashiCorp Vault)
+  # The actual secret data should be managed via external secrets operator
+  data: {}
+    # RUNPOD_API_KEY: ""  # Set via external secrets
+    # ANTHROPIC_API_KEY: ""  # Set via external secrets
+
+# Prometheus metrics annotation
+prometheus:
+  enabled: true
+  port: 8082
+  path: "/metrics"
+
+# Multi-region support
+multiRegion:
+  enabled: false
+  regions: []
+    # - name: us-east-1
+    #   priority: 1
+    # - name: eu-west-1
+    #   priority: 2
+
+# Monitoring and observability
+monitoring:
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+    dashboard:
+      enabled: true
+
+# Rollout strategy
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+# Pod topology spread constraints for HA
+topologySpreadConstraints:
+  enabled: true
+  maxSkew: 1
+  topologyKey: "topology.kubernetes.io/zone"
+  whenUnsatisfiable: ScheduleAnyway
+
+# Priority class for pods
+priorityClassName: ""
+
+# Name overrides
+nameOverride: ""
+fullnameOverride: ""

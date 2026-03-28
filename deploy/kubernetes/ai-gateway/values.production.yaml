@@ -1,0 +1,169 @@
+# Production values for ai-gateway chart
+# Override settings for production environment
+
+replicaCount: 3
+
+image:
+  repository: functionfly/ai-gateway
+  tag: "v1.0.0"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8082
+  annotations:
+    # Enable internal AWS load balancer for cross-AZ traffic
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+
+ingress:
+  enabled: true
+  className: "caddy"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: ai-gateway.functionfly.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: ai-gateway-tls
+      hosts:
+        - ai-gateway.functionfly.com
+
+resources:
+  requests:
+    memory: "4Gi"
+    cpu: "1000m"
+    nvidia.com/gpu: "1"
+  limits:
+    memory: "16Gi"
+    cpu: "8000m"
+    nvidia.com/gpu: "1"
+
+gpu:
+  enabled: true
+  resourceName: "nvidia.com/gpu"
+  count: 1
+
+# More aggressive scaling for production
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 70
+  customMetrics:
+    enabled: true
+    queueDepth:
+      metricName: "inference_queue_depth"
+      targetAverageValue: "50"
+
+# Stricter health checks for production
+healthCheck:
+  livenessProbe:
+    path: /health
+    initialDelaySeconds: 45
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    path: /ready
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  startupProbe:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+
+# Production security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+
+containerSecurityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# Larger model cache for production
+volumes:
+  modelCache:
+    enabled: true
+    mountPath: "/tmp/model-cache"
+    size: "200Gi"
+    storageClassName: "premium-ssd"
+
+# Environment variables
+env:
+  INFERENCE_ENGINE: "onnx"
+  MODEL_CACHE_DIR: "/tmp/model-cache"
+  MAX_BATCH_SIZE: "16"
+  INFERENCE_TIMEOUT_SECONDS: "180"
+  CLUSTER_ENABLED: "true"
+  CLUSTER_REFRESH_INTERVAL: "15"
+  LOG_LEVEL: "WARNING"
+  LOG_FORMAT: "json"
+
+configMap:
+  data:
+    RUNPOD_API_BASE_URL: "https://api.runpod.io"
+    RUNPOD_CLUSTER_NAME: "production"
+    DEFAULT_MAX_TOKENS: "4096"
+    DEFAULT_TEMPERATURE: "0.7"
+    DEFAULT_TOP_P: "0.9"
+    RATE_LIMIT_REQUESTS_PER_MINUTE: "500"
+    RATE_LIMIT_REQUESTS_PER_HOUR: "10000"
+    REQUEST_TIMEOUT: "180"
+    CONNECT_TIMEOUT: "10"
+    READ_TIMEOUT: "180"
+
+# Production secret configuration - use external secrets
+secret:
+  create: true
+  name: "ai-gateway-secrets-prod"
+  data: {}
+
+prometheus:
+  enabled: true
+  port: 8082
+  path: "/metrics"
+
+# Multi-region for production
+multiRegion:
+  enabled: true
+  regions:
+    - name: us-east-1
+      priority: 1
+    - name: us-west-2
+      priority: 2
+    - name: eu-west-1
+      priority: 3
+
+# Enable topology spread for multi-AZ
+topologySpreadConstraints:
+  enabled: true
+  maxSkew: 1
+  topologyKey: "topology.kubernetes.io/zone"
+  whenUnsatisfiable: DoNotSchedule
+
+# Production priority
+priorityClassName: "ai-gateway-high"
+
+# Aggressive rollout for faster deployments
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 2
+    maxUnavailable: 0

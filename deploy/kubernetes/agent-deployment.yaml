@@ -6,6 +6,7 @@ metadata:
   labels:
     app: agent-service
     tier: backend
+    component: ai-agent
 spec:
   replicas: 3
   selector:
@@ -16,6 +17,7 @@ spec:
       labels:
         app: agent-service
         tier: backend
+        component: ai-agent
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
@@ -52,15 +54,31 @@ spec:
               value: "true"
             - name: VERIFICATION_ENABLED
               value: "false"
-            - name: DEVELOPMENT
+            # Cluster manager integration for multi-region AI inference
+            - name: CLUSTER_MANAGER_ENABLED
               value: "true"
+            - name: CLUSTER_REFRESH_INTERVAL
+              value: "30"
+            # RunPod integration
+            - name: RUNPOD_CLUSTER_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: runpod.cluster.name
+                  optional: true
+            - name: RUNPOD_API_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: runpod.api.base.url
+                  optional: true
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "250m"
+              memory: "512Mi"
+              cpu: "500m"
             limits:
-              memory: "1Gi"
-              cpu: "1000m"
+              memory: "2Gi"
+              cpu: "2000m"
           livenessProbe:
             httpGet:
               path: /health

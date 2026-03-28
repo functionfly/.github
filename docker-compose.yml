@@ -35,13 +35,16 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-    command: [
-      "redis-server",
-      "--appendonly",
-      "yes",
-      "--maxmemory", "256mb",
-      "--maxmemory-policy", "allkeys-lru"
-    ]
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory",
+        "256mb",
+        "--maxmemory-policy",
+        "allkeys-lru",
+      ]
 
   clamav:
     image: clamav/clamav:latest
@@ -87,7 +90,11 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3001/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:3001/health || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -100,7 +107,11 @@ services:
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -120,8 +131,7 @@ services:
       - DB_NAME=functionfly
       - DB_SSLMODE=disable
       # Redis configuration for StateFabric caching and pub/sub
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_ADDR=redis:6379
       - REDIS_PASSWORD=
       - REDIS_DB=0
       # Email configuration for development (Mailpit) - these will be overridden by Infisical in production
@@ -187,15 +197,23 @@ services:
   mailpit:
     image: axllent/mailpit
     ports:
-      - "1025:1025"    # SMTP port
-      - "8025:8025"    # Web interface
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web interface
     environment:
       - MP_SMTP_AUTH_ACCEPT_ANY=1
       - MP_SMTP_AUTH_ALLOW_INSECURE=1
     volumes:
       - mailpit_data:/data
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8025/"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8025/",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -209,7 +227,7 @@ services:
     working_dir: /app/web/dashboard
     command: sh -c "npm install --legacy-peer-deps && npx vite"
     ports:
-      - "3001:3000"   # host 3001 so local "bun dev" can use 3000
+      - "3001:3000" # host 3001 so local "bun dev" can use 3000
     environment:
       - API_PROXY_TARGET=http://orchestrator-api:8080
       - VITE_API_URL=/api
@@ -235,12 +253,12 @@ services:
       - ./deploy/monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=200h"
+      - "--web.enable-lifecycle"
     extra_hosts:
-      - 'host.docker.internal:host-gateway'
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
 volumes:

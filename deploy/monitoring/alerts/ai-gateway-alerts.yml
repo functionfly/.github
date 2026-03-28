@@ -1,0 +1,106 @@
+# AI Gateway Alert Rules for Prometheus
+# Place in /etc/prometheus/rules/ or include via prometheus.yml
+
+groups:
+  - name: ai_gateway_alerts
+    rules:
+      # High inference latency
+      - alert: AIGatewayHighLatency
+        expr: histogram_quantile(0.95, rate(ai_gateway_inference_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: ai-gateway
+        annotations:
+          summary: "AI Gateway high inference latency"
+          description: 'P95 inference latency is {{ $value | printf "%.2f" }}s (threshold: 5s)'
+
+      # GPU utilization low
+      - alert: AIGatewayGPUUnderutilized
+        expr: ai_gateway_gpu_utilization < 0.2
+        for: 10m
+        labels:
+          severity: info
+          service: ai-gateway
+        annotations:
+          summary: "AI Gateway GPU underutilized"
+          description: 'GPU utilization is {{ $value | printf "%.2f" }}% - consider scaling down'
+
+      # GPU utilization high
+      - alert: AIGatewayGPUOverutilized
+        expr: ai_gateway_gpu_utilization > 0.95
+        for: 5m
+        labels:
+          severity: warning
+          service: ai-gateway
+        annotations:
+          summary: "AI Gateway GPU overutilized"
+          description: 'GPU utilization is {{ $value | printf "%.2f" }}% - consider scaling up'
+
+      # High error rate
+      - alert: AIGatewayHighErrorRate
+        expr: rate(ai_gateway_inference_errors_total[5m]) / rate(ai_gateway_inference_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: ai-gateway
+        annotations:
+          summary: "AI Gateway high error rate"
+          description: 'Error rate is {{ $value | printf "%.2f" }}% (threshold: 5%)'
+
+      # Queue depth high
+      - alert: AIGatewayQueueDepthHigh
+        expr: ai_gateway_queue_depth > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: ai-gateway
+        annotations:
+          summary: "AI Gateway queue depth high"
+          description: 'Queue depth is {{ $value | printf "%.0f" }} - scaling up'
+
+      # No replicas available
+      - alert: AIGatewayNoReplicas
+        expr: sum(kube_pod_status_ready{namespace="functionfly", pod=~"ai-gateway-.*"}) == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: ai-gateway
+        annotations:
+          summary: "AI Gateway has no ready replicas"
+          description: "All AI Gateway pods are not ready"
+
+      # High memory usage
+      - alert: AIGatewayHighMemoryUsage
+        expr: (1 - (kube_pod_container_resource_limits_memory_bytes{namespace="functionfly", pod=~"ai-gateway-.*"} - kube_pod_container_resource_usage_memory_bytes{namespace="functionfly", pod=~"ai-gateway-.*"}) / kube_pod_container_resource_limits_memory_bytes{namespace="functionfly", pod=~"ai-gateway-.*"}) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: ai-gateway
+        annotations:
+          summary: "AI Gateway high memory usage"
+          description: "Memory usage is above 90%"
+
+  - name: ai_gateway_scaling_alerts
+    rules:
+      # Scaling needed but at max replicas
+      - alert: AIGatewayAtMaxReplicas
+        expr: sum(kube_hpa_status_current_replicas{namespace="functionfly", horizontalpodautoscaler="ai-gateway"}) >= kube_hpa_spec_max_replicas{namespace="functionfly", horizontalpodautoscaler="ai-gateway"}
+        for: 10m
+        labels:
+          severity: warning
+          service: ai-gateway
+        annotations:
+          summary: "AI Gateway at maximum replicas"
+          description: "AI Gateway is at max replicas ({{ $value }}) and still under load"
+
+      # Scaling at minimum
+      - alert: AIGatewayAtMinReplicas
+        expr: sum(kube_hpa_status_current_replicas{namespace="functionfly", horizontalpodautoscaler="ai-gateway"}) <= kube_hpa_spec_min_replicas{namespace="functionfly", horizontalpodautoscaler="ai-gateway"}
+        for: 30m
+        labels:
+          severity: info
+          service: ai-gateway
+        annotations:
+          summary: "AI Gateway at minimum replicas"
+          description: "AI Gateway is at min replicas ({{ $value }}) - consider if load is expected to stay low"

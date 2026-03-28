@@ -108,7 +108,7 @@ monitoring.${SSL_DOMAIN} {
 
     # Basic auth for monitoring
     basicauth {
-        admin $2a$14$YOUR_BCRYPT_HASH_HERE
+        admin ${MONITORING_BASIC_AUTH_HASH}
     }
 
     log {
