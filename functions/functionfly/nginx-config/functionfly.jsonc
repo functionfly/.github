@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "nginx-config",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Nginx Config",
+  "description": "Generate an Nginx server configuration for reverse proxy, static files, or SSL termination.",
+  "category": "devops",
+  "tags": ["nginx", "webserver", "proxy", "configuration", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "server_name": { "type": "string" },
+      "listen_port": { "type": "integer", "default": 80 },
+      "root": { "type": "string" },
+      "proxy_pass": { "type": "string", "description": "Upstream URL for reverse proxy" },
+      "ssl": { "type": "boolean", "default": false },
+      "ssl_cert": { "type": "string" },
+      "ssl_key": { "type": "string" },
+      "locations": { "type": "array", "items": { "type": "object" } },
+      "gzip": { "type": "boolean", "default": true }
+    },
+    "required": ["server_name"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "config": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 64,
+  "example": {
+    "input": { "server_name": "example.com", "proxy_pass": "http://localhost:3000", "ssl": false },
+    "output": { "ok": true, "config": "server {\n    listen 80;\n    server_name example.com;\n    location / {\n        proxy_pass http://localhost:3000;\n    }\n}\n" }
+  }
+}

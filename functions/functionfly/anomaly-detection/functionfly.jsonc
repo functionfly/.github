@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "anomaly-detection",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Anomaly Detection",
+  "description": "Detect anomalies in numerical data using statistical methods (Z-score, IQR).",
+  "category": "ai-ml",
+  "tags": [
+    "anomaly-detection",
+    "ml",
+    "data",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        }
+      },
+      "method": {
+        "type": "string",
+        "default": "zscore"
+      },
+      "threshold": {
+        "type": "number",
+        "default": 3.0
+      }
+    },
+    "required": [
+      "data"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "data": [
+        1,
+        2,
+        3,
+        100,
+        4,
+        5
+      ],
+      "method": "zscore"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

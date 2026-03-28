@@ -1,0 +1,76 @@
+{
+  "author": "functionfly",
+  "name": "yield-to-maturity",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Yield to Maturity Calculate",
+  "description": "Calculate the yield to maturity (YTM) of a bond.",
+  "category": "finance",
+  "tags": [
+    "yield-to-maturity",
+    "ytm",
+    "bond",
+    "fixed-income"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "face_value": {
+        "type": "number",
+        "description": "Bond face value"
+      },
+      "coupon_rate": {
+        "type": "number",
+        "description": "Annual coupon rate (decimal)"
+      },
+      "years_to_maturity": {
+        "type": "number",
+        "description": "Years to maturity"
+      },
+      "market_price": {
+        "type": "number",
+        "description": "Current market price of bond"
+      },
+      "periods_per_year": {
+        "type": "number",
+        "description": "Coupon payments per year (default 2)",
+        "default": 2
+      }
+    },
+    "required": [
+      "face_value",
+      "coupon_rate",
+      "years_to_maturity",
+      "market_price"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "face_value": 1000,
+      "coupon_rate": 0.06,
+      "years_to_maturity": 10,
+      "market_price": 950
+    },
+    "output": {
+      "ok": true,
+      "result": 0.0653
+    }
+  }
+}

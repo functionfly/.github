@@ -1,0 +1,30 @@
+{
+  "author": "functionfly",
+  "name": "k8s-configmap",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate K8s ConfigMap",
+  "description": "Generate a Kubernetes ConfigMap manifest from key-value data.",
+  "category": "devops",
+  "tags": ["kubernetes", "configmap", "k8s", "configuration", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string" },
+      "data": { "type": "object", "description": "Key-value pairs for the ConfigMap" },
+      "namespace": { "type": "string", "default": "default" },
+      "labels": { "type": "object" }
+    },
+    "required": ["name", "data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "yaml": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 64,
+  "example": {
+    "input": { "name": "app-config", "data": { "config.yaml": "key: value", "APP_ENV": "production" } },
+    "output": { "ok": true, "yaml": "apiVersion: v1\nkind: ConfigMap\n..." }
+  }
+}

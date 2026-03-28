@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "profit-margin",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Profit Margin Calculate",
+  "description": "Calculate net profit margin as a percentage of revenue.",
+  "category": "finance",
+  "tags": [
+    "profit-margin",
+    "profitability",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "net_profit": {
+        "type": "number",
+        "description": "Net profit"
+      },
+      "revenue": {
+        "type": "number",
+        "description": "Total revenue"
+      }
+    },
+    "required": [
+      "net_profit",
+      "revenue"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "net_profit": 20000,
+      "revenue": 100000
+    },
+    "output": {
+      "ok": true,
+      "result": 0.2,
+      "result_pct": 20.0
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "cache-headers",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Analyze Cache Headers",
+  "description": "Analyze HTTP caching headers (Cache-Control, ETag, Last-Modified) for a URL.",
+  "category": "devops",
+  "tags": ["cache", "headers", "http", "performance", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "cacheable": { "type": "boolean" }, "cache_control": { "type": "string" }, "etag": { "type": "string" }, "last_modified": { "type": "string" }, "max_age": { "type": "integer" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "url": "https://example.com/style.css" },
+    "output": { "ok": true, "cacheable": true, "cache_control": "public, max-age=31536000", "max_age": 31536000 }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "author": "functionfly",
+  "name": "epoch-convert",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Epoch Convert",
+  "description": "Convert between epoch formats.",
+  "category": "datetime",
+  "tags": ["epoch", "timestamp"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "epoch_seconds": {
+        "type": "number",
+      },
+      "epoch_millis": {
+        "type": "number",
+      },
+      "date": {
+        "type": "string",
+      },
+    },
+    "required": [],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "epoch_seconds": {
+        "type": "number",
+      },
+      "epoch_millis": {
+        "type": "number",
+      },
+      "date": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "epoch_seconds": 1705312800,
+    },
+    "output": {
+      "ok": true,
+      "epoch_seconds": 1705312800,
+      "epoch_millis": 1705312800000,
+      "date": "2024-01-15T09:00:00Z",
+    },
+  },
+}

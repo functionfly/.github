@@ -1,0 +1,87 @@
+{
+  "author": "functionfly",
+  "name": "sun-times",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Sun Times",
+  "description": "Calculate sunrise, sunset, solar noon, and twilight times for a given location and date.",
+  "category": "geospatial",
+  "tags": ["sun", "sunrise", "sunset", "solar", "astronomy", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+      "date": {
+        "type": "string",
+        "description": "Date in YYYY-MM-DD format (default: today UTC)",
+      },
+    },
+    "required": ["lat", "lng"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string" },
+          "sunrise": {
+            "type": "string",
+            "description": "Sunrise time in HH:MM UTC",
+          },
+          "sunset": {
+            "type": "string",
+            "description": "Sunset time in HH:MM UTC",
+          },
+          "solar_noon": {
+            "type": "string",
+            "description": "Solar noon time in HH:MM UTC",
+          },
+          "day_length_hours": {
+            "type": "number",
+            "description": "Day length in hours",
+          },
+          "civil_twilight_begin": { "type": "string" },
+          "civil_twilight_end": { "type": "string" },
+          "polar_day": {
+            "type": "boolean",
+            "description": "True if sun never sets",
+          },
+          "polar_night": {
+            "type": "boolean",
+            "description": "True if sun never rises",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+      "date": "2024-06-21",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "date": "2024-06-21",
+        "sunrise": "09:25",
+        "sunset": "00:31",
+        "solar_noon": "16:58",
+        "day_length_hours": 15.1,
+        "civil_twilight_begin": "08:55",
+        "civil_twilight_end": "01:01",
+        "polar_day": false,
+        "polar_night": false,
+      },
+    },
+  },
+}

@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "current-ratio",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Current Ratio Calculate",
+  "description": "Calculate the current ratio (current assets / current liabilities).",
+  "category": "finance",
+  "tags": [
+    "current-ratio",
+    "liquidity",
+    "finance",
+    "accounting"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "current_assets": {
+        "type": "number",
+        "description": "Current assets"
+      },
+      "current_liabilities": {
+        "type": "number",
+        "description": "Current liabilities"
+      }
+    },
+    "required": [
+      "current_assets",
+      "current_liabilities"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "current_assets": 150000,
+      "current_liabilities": 75000
+    },
+    "output": {
+      "ok": true,
+      "result": 2.0
+    }
+  }
+}

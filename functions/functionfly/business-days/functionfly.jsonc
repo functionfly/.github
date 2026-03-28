@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "business-days",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Business Days",
+  "description": "Calculate business days between dates.",
+  "category": "datetime",
+  "tags": ["business", "days"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "start_date": {
+        "type": "string",
+      },
+      "end_date": {
+        "type": "string",
+      },
+      "exclude_weekends": {
+        "type": "boolean",
+      },
+      "exclude_holidays": {
+        "type": "boolean",
+      },
+      "country": {
+        "type": "string",
+      },
+    },
+    "required": ["start_date", "end_date"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "business_days": {
+        "type": "integer",
+      },
+      "total_days": {
+        "type": "integer",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "start_date": "2024-01-01",
+      "end_date": "2024-01-15",
+    },
+    "output": {
+      "ok": true,
+      "business_days": 10,
+      "total_days": 14,
+    },
+  },
+}

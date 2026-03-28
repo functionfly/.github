@@ -1,0 +1,32 @@
+{
+  "author": "functionfly",
+  "name": "commit-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Git Commit",
+  "description": "Parse a git commit message into structured components (type, scope, subject, body, footer).",
+  "category": "devops",
+  "tags": ["git", "commit", "parse", "conventional-commits", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "message": { "type": "string", "description": "Full git commit message" }
+    },
+    "required": ["message"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "object" },
+      "conventional": { "type": "boolean" },
+      "error": {}
+    }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "message": "feat(auth): add OAuth2 support\n\nAdded Google and GitHub OAuth2 providers.\n\nBREAKING CHANGE: removed legacy auth endpoint" },
+    "output": { "ok": true, "conventional": true, "result": { "type": "feat", "scope": "auth", "subject": "add OAuth2 support", "body": "Added Google and GitHub OAuth2 providers.", "breaking": true } }
+  }
+}

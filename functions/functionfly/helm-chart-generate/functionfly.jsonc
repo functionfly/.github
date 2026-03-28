@@ -1,0 +1,33 @@
+{
+  "author": "functionfly",
+  "name": "helm-chart-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Helm Chart",
+  "description": "Generate a Helm chart structure with Chart.yaml, values.yaml, and basic templates.",
+  "category": "devops",
+  "tags": ["helm", "kubernetes", "k8s", "packaging", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string" },
+      "version": { "type": "string", "default": "0.1.0" },
+      "app_version": { "type": "string" },
+      "description": { "type": "string" },
+      "image": { "type": "string" },
+      "replicas": { "type": "integer", "default": 1 },
+      "service_port": { "type": "integer", "default": 80 }
+    },
+    "required": ["name"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "chart": { "type": "object" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 3000, "memory_mb": 128,
+  "example": {
+    "input": { "name": "my-app", "version": "1.0.0", "description": "My application chart" },
+    "output": { "ok": true, "chart": { "Chart.yaml": "...", "values.yaml": "..." } }
+  }
+}

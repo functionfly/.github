@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "endpoint-latency",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Measure Endpoint Latency",
+  "description": "Measure HTTP endpoint latency with multiple samples and return statistics.",
+  "category": "devops",
+  "tags": ["latency", "performance", "http", "monitoring", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "samples": { "type": "integer", "default": 3, "description": "Number of requests to make" },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "min_ms": { "type": "number" }, "max_ms": { "type": "number" }, "avg_ms": { "type": "number" }, "samples": { "type": "array" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 30000, "memory_mb": 128,
+  "example": {
+    "input": { "url": "https://example.com", "samples": 3 },
+    "output": { "ok": true, "min_ms": 100.1, "max_ms": 150.3, "avg_ms": 125.2, "samples": [100.1, 125.2, 150.3] }
+  }
+}

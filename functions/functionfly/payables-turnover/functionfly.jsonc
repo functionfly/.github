@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "payables-turnover",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Payables Turnover Calculate",
+  "description": "Calculate accounts payable turnover ratio.",
+  "category": "finance",
+  "tags": [
+    "payables-turnover",
+    "efficiency",
+    "finance",
+    "accounting"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cost_of_goods_sold": {
+        "type": "number",
+        "description": "Cost of goods sold"
+      },
+      "average_accounts_payable": {
+        "type": "number",
+        "description": "Average accounts payable"
+      }
+    },
+    "required": [
+      "cost_of_goods_sold",
+      "average_accounts_payable"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "cost_of_goods_sold": 500000,
+      "average_accounts_payable": 50000
+    },
+    "output": {
+      "ok": true,
+      "result": 10.0,
+      "days_payable_outstanding": 36.5
+    }
+  }
+}

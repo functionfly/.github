@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "semver-satisfies",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Check Semver Satisfies Range",
+  "description": "Check if a semantic version satisfies a given version range.",
+  "category": "devops",
+  "tags": ["semver", "version", "range", "dependency", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "version": { "type": "string" },
+      "range": { "type": "string" }
+    },
+    "required": ["version", "range"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "boolean" }, "satisfies": { "type": "boolean" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "version": "1.5.0", "range": "^1.2.3" },
+    "output": { "ok": true, "result": true, "satisfies": true }
+  }
+}

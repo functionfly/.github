@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "operating-margin",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Operating Margin Calculate",
+  "description": "Calculate operating margin (EBIT / Revenue) as a percentage.",
+  "category": "finance",
+  "tags": [
+    "operating-margin",
+    "profitability",
+    "ebit",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "operating_income": {
+        "type": "number",
+        "description": "Operating income (EBIT)"
+      },
+      "revenue": {
+        "type": "number",
+        "description": "Total revenue"
+      }
+    },
+    "required": [
+      "operating_income",
+      "revenue"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "operating_income": 15000,
+      "revenue": 100000
+    },
+    "output": {
+      "ok": true,
+      "result": 0.15,
+      "result_pct": 15.0
+    }
+  }
+}

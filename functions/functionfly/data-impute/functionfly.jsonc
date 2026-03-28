@@ -1,0 +1,58 @@
+{
+  "author": "functionfly",
+  "name": "data-impute",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Data Imputation",
+  "description": "Impute missing values in data using various strategies.",
+  "category": "ai-ml",
+  "tags": [
+    "data-impute",
+    "ml",
+    "data",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array"
+      },
+      "strategy": {
+        "type": "string",
+        "default": "mean"
+      }
+    },
+    "required": [
+      "data"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "data": [
+        1,
+        null,
+        3,
+        null,
+        5
+      ],
+      "strategy": "mean"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

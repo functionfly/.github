@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "http-status",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Get HTTP Status",
+  "description": "Get the HTTP status code and description for a URL.",
+  "category": "devops",
+  "tags": ["http", "status", "networking", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "timeout": { "type": "integer", "default": 10 },
+      "follow_redirects": { "type": "boolean", "default": true }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "status_code": { "type": "integer" }, "status_text": { "type": "string" }, "success": { "type": "boolean" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 60, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "url": "https://example.com" },
+    "output": { "ok": true, "status_code": 200, "status_text": "OK", "success": true }
+  }
+}

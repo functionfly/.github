@@ -1,0 +1,32 @@
+{
+  "author": "functionfly",
+  "name": "k8s-ingress",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate K8s Ingress",
+  "description": "Generate a Kubernetes Ingress manifest with host rules and optional TLS.",
+  "category": "devops",
+  "tags": ["kubernetes", "ingress", "k8s", "networking", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string" },
+      "host": { "type": "string" },
+      "paths": { "type": "array", "items": { "type": "object", "properties": { "path": { "type": "string" }, "service_name": { "type": "string" }, "service_port": { "type": "integer" } } } },
+      "tls": { "type": "array", "items": { "type": "object" } },
+      "namespace": { "type": "string", "default": "default" },
+      "ingress_class": { "type": "string" }
+    },
+    "required": ["name", "host"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "yaml": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 64,
+  "example": {
+    "input": { "name": "web-ingress", "host": "example.com", "paths": [{ "path": "/", "service_name": "web-service", "service_port": 80 }] },
+    "output": { "ok": true, "yaml": "apiVersion: networking.k8s.io/v1\nkind: Ingress\n..." }
+  }
+}

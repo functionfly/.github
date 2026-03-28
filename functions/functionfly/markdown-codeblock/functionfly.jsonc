@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "markdown-codeblock",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Markdown Codeblock",
+  "description": "Extract code blocks from Markdown.",
+  "category": "text",
+  "tags": ["markdown", "code", "extract"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "markdown": {
+        "type": "string",
+      },
+    },
+    "required": ["markdown"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "code_blocks": {
+        "type": "array",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "markdown": "```python\nprint('hello')\n```",
+    },
+    "output": {
+      "ok": true,
+      "code_blocks": [{ "language": "python", "code": "print('hello')" }],
+    },
+  },
+}

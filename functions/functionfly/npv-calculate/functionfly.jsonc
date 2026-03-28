@@ -1,0 +1,67 @@
+{
+  "author": "functionfly",
+  "name": "npv-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Net Present Value Calculate",
+  "description": "Calculate the net present value of a series of cash flows discounted at a given rate.",
+  "category": "finance",
+  "tags": [
+    "npv",
+    "net-present-value",
+    "finance",
+    "investment"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "rate": {
+        "type": "number",
+        "description": "Discount rate per period (decimal)"
+      },
+      "cash_flows": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "List of cash flows (first is initial investment, negative)"
+      }
+    },
+    "required": [
+      "rate",
+      "cash_flows"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "rate": 0.1,
+      "cash_flows": [
+        -1000,
+        300,
+        400,
+        500
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": 8.43
+    }
+  }
+}

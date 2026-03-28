@@ -1,0 +1,45 @@
+{
+  "author": "functionfly",
+  "name": "text-generation",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Text Generation",
+  "description": "Generate text completions using template-based and Markov-chain-inspired approaches from a given prompt.",
+  "category": "ai-ml",
+  "tags": ["text-generation", "nlp", "completion", "language-model", "ai"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "prompt": { "type": "string" },
+      "max_tokens": { "type": "integer", "default": 50 },
+      "style": {
+        "type": "string",
+        "enum": ["formal", "casual", "technical", "creative"],
+        "default": "formal",
+      },
+    },
+    "required": ["prompt"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "generated_text": {},
+      "tokens_generated": {},
+      "error": {},
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "prompt": "The future of artificial intelligence",
+      "max_tokens": 30,
+    },
+    "output": { "ok": true },
+  },
+}

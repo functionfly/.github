@@ -1,0 +1,72 @@
+{
+  "author": "functionfly",
+  "name": "s2-cell",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "S2 Cell",
+  "description": "Get the S2 cell ID for given coordinates at a specified level. S2 is Google's spherical geometry library. Mock implementation.",
+  "category": "geospatial",
+  "tags": ["s2", "cell", "spatial-index", "google", "geospatial", "mock"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+      "level": {
+        "type": "integer",
+        "description": "S2 cell level (0-30, default: 13)",
+      },
+    },
+    "required": ["lat", "lng"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "cell_id": {
+            "type": "string",
+            "description": "S2 cell ID as decimal string",
+          },
+          "cell_token": {
+            "type": "string",
+            "description": "S2 cell token (hex)",
+          },
+          "level": { "type": "integer" },
+          "lat": { "type": "number" },
+          "lng": { "type": "number" },
+          "area_km2": {
+            "type": "number",
+            "description": "Approximate cell area in km²",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+      "level": 13,
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "cell_id": "9926595610498498560",
+        "cell_token": "89c25a3c",
+        "level": 13,
+        "lat": 40.7128,
+        "lng": -74.006,
+        "area_km2": 1.27,
+      },
+    },
+  },
+}

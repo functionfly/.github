@@ -1,0 +1,52 @@
+{
+  "author": "functionfly",
+  "name": "pitch-detection",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Pitch Detection",
+  "description": "Detect pitch and fundamental frequency in audio (mock implementation).",
+  "category": "ai-ml",
+  "tags": [
+    "pitch-detection",
+    "audio",
+    "speech",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "audio_url": {
+        "type": "string"
+      },
+      "audio_base64": {
+        "type": "string"
+      },
+      "algorithm": {
+        "type": "string",
+        "default": "yin"
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 3000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "audio_url": "https://example.com/music.mp3"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

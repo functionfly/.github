@@ -1,0 +1,68 @@
+{
+  "author": "functionfly",
+  "name": "geojson-simplify",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "GeoJSON Simplify",
+  "description": "Simplify GeoJSON geometry using the Ramer-Douglas-Peucker algorithm.",
+  "category": "geospatial",
+  "tags": ["geojson", "simplify", "rdp", "geometry", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "geojson": {
+        "type": "object",
+        "description": "GeoJSON geometry or Feature to simplify",
+      },
+      "tolerance": {
+        "type": "number",
+        "description": "Simplification tolerance in degrees (default: 0.0001)",
+      },
+    },
+    "required": ["geojson"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "description": "Simplified GeoJSON object",
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "geojson": {
+        "type": "LineString",
+        "coordinates": [
+          [0, 0],
+          [1, 0.1],
+          [2, -0.1],
+          [3, 5],
+          [4, 6],
+          [5, 7],
+        ],
+      },
+      "tolerance": 1.0,
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "type": "LineString",
+        "coordinates": [
+          [0, 0],
+          [2, -0.1],
+          [3, 5],
+          [5, 7],
+        ],
+      },
+    },
+  },
+}

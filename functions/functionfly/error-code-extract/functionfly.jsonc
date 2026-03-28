@@ -1,0 +1,27 @@
+{
+  "author": "functionfly",
+  "name": "error-code-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Extract Error Codes",
+  "description": "Extract error codes, HTTP status codes, and error identifiers from log text.",
+  "category": "devops",
+  "tags": ["error", "code", "logging", "observability", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": { "type": "string" }
+    },
+    "required": ["text"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "codes": { "type": "array" }, "http_codes": { "type": "array" }, "error_codes": { "type": "array" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "text": "Request failed with HTTP 404, error code E_NOT_FOUND, errno 2" },
+    "output": { "ok": true, "http_codes": [404], "error_codes": ["E_NOT_FOUND"], "codes": [404, "E_NOT_FOUND", "errno 2"] }
+  }
+}

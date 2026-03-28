@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "robots-txt",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse robots.txt",
+  "description": "Parse a robots.txt file content and extract rules for user agents.",
+  "category": "devops",
+  "tags": ["robots", "seo", "web", "crawling", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "content": { "type": "string", "description": "robots.txt file content" },
+      "user_agent": { "type": "string", "description": "User agent to check rules for", "default": "*" }
+    },
+    "required": ["content"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "rules": { "type": "object" }, "sitemaps": { "type": "array" }, "crawl_delay": {}, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": {
+    "input": { "content": "User-agent: *\nDisallow: /admin/\nAllow: /\nSitemap: https://example.com/sitemap.xml\n" },
+    "output": { "ok": true, "rules": { "*": { "disallow": ["/admin/"], "allow": ["/"] } }, "sitemaps": ["https://example.com/sitemap.xml"] }
+  }
+}

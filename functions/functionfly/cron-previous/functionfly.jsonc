@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "cron-previous",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Cron Previous",
+  "description": "Get previous execution time for cron expression.",
+  "category": "datetime",
+  "tags": ["cron", "schedule", "previous"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "expression": {
+        "type": "string",
+      },
+      "from_time": {
+        "type": "string",
+      },
+      "count": {
+        "type": "integer",
+      },
+    },
+    "required": ["expression"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "previous_runs": {
+        "type": "array",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "expression": "0 9 * * 1-5",
+    },
+    "output": {
+      "ok": true,
+      "previous_runs": ["2024-01-12T09:00:00Z"],
+    },
+  },
+}

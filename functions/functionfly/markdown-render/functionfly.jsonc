@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "markdown-render",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Markdown Render",
+  "description": "Render Markdown to HTML.",
+  "category": "text",
+  "tags": ["markdown", "html", "render"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "markdown": {
+        "type": "string",
+      },
+    },
+    "required": ["markdown"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "html": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "markdown": "# Hello\n\nThis is **bold** text.",
+    },
+    "output": {
+      "ok": true,
+      "html": "<h1>Hello</h1>\n<p>This is <strong>bold</strong> text.</p>",
+    },
+  },
+}

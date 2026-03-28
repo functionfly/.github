@@ -1,0 +1,72 @@
+{
+  "author": "functionfly",
+  "name": "historical-volatility",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Historical Volatility Calculate",
+  "description": "Calculate historical volatility (annualized standard deviation of log returns).",
+  "category": "analytics",
+  "tags": [
+    "volatility",
+    "historical-volatility",
+    "risk",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "prices": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "List of historical prices"
+      },
+      "periods_per_year": {
+        "type": "number",
+        "description": "Trading periods per year (default 252)",
+        "default": 252
+      }
+    },
+    "required": [
+      "prices"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "prices": [
+        100,
+        102,
+        99,
+        103,
+        101,
+        105,
+        103,
+        107,
+        104,
+        108
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": 0.1823
+    }
+  }
+}

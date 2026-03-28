@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "rst-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "RST Parse",
+  "description": "Parse reStructuredText to structured data.",
+  "category": "text",
+  "tags": ["rst", "restructuredtext", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "rst": {
+        "type": "string",
+      },
+    },
+    "required": ["rst"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "title": {
+        "type": "string",
+      },
+      "sections": {
+        "type": "array",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "rst": "Title\n=====\n\nSection 1\n---------\n\nContent",
+    },
+    "output": {
+      "ok": true,
+      "title": "Title",
+      "sections": [{ "level": 1, "title": "Section 1", "content": "Content" }],
+    },
+  },
+}

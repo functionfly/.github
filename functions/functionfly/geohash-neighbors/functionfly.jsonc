@@ -1,0 +1,85 @@
+{
+  "author": "functionfly",
+  "name": "geohash-neighbors",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Geohash Neighbors",
+  "description": "Get the 8 neighboring geohashes surrounding a given geohash.",
+  "category": "geospatial",
+  "tags": ["geohash", "neighbors", "adjacent", "spatial-index", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "geohash": { "type": "string", "description": "Geohash string" },
+    },
+    "required": ["geohash"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "geohash": { "type": "string", "description": "Input geohash" },
+          "neighbors": {
+            "type": "object",
+            "properties": {
+              "n": { "type": "string" },
+              "ne": { "type": "string" },
+              "e": { "type": "string" },
+              "se": { "type": "string" },
+              "s": { "type": "string" },
+              "sw": { "type": "string" },
+              "w": { "type": "string" },
+              "nw": { "type": "string" },
+            },
+          },
+          "all": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "All 9 geohashes (center + 8 neighbors)",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "geohash": "dr5r",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "geohash": "dr5r",
+        "neighbors": {
+          "n": "dr5x",
+          "ne": "dr5z",
+          "e": "dr5p",
+          "se": "dr5n",
+          "s": "dr5q",
+          "sw": "dr5m",
+          "w": "dr5j",
+          "nw": "dr5w",
+        },
+        "all": [
+          "dr5r",
+          "dr5x",
+          "dr5z",
+          "dr5p",
+          "dr5n",
+          "dr5q",
+          "dr5m",
+          "dr5j",
+          "dr5w",
+        ],
+      },
+    },
+  },
+}

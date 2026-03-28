@@ -1,0 +1,77 @@
+{
+  "author": "functionfly",
+  "name": "ebitda",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "EBITDA Calculate",
+  "description": "Calculate EBITDA (Earnings Before Interest, Taxes, Depreciation, and Amortization).",
+  "category": "finance",
+  "tags": [
+    "ebitda",
+    "profitability",
+    "finance",
+    "accounting"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "net_income": {
+        "type": "number",
+        "description": "Net income"
+      },
+      "interest": {
+        "type": "number",
+        "description": "Interest expense"
+      },
+      "taxes": {
+        "type": "number",
+        "description": "Tax expense"
+      },
+      "depreciation": {
+        "type": "number",
+        "description": "Depreciation"
+      },
+      "amortization": {
+        "type": "number",
+        "description": "Amortization"
+      }
+    },
+    "required": [
+      "net_income",
+      "interest",
+      "taxes",
+      "depreciation",
+      "amortization"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "net_income": 50000,
+      "interest": 5000,
+      "taxes": 15000,
+      "depreciation": 8000,
+      "amortization": 2000
+    },
+    "output": {
+      "ok": true,
+      "result": 80000.0
+    }
+  }
+}

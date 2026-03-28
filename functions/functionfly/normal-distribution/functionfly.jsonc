@@ -1,0 +1,68 @@
+{
+  "author": "functionfly",
+  "name": "normal-distribution",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Normal Distribution Calculate",
+  "description": "Calculate the PDF and CDF of the normal (Gaussian) distribution.",
+  "category": "analytics",
+  "tags": [
+    "normal-distribution",
+    "gaussian",
+    "statistics",
+    "probability"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "x": {
+        "type": "number",
+        "description": "Value to evaluate"
+      },
+      "mean": {
+        "type": "number",
+        "description": "Mean (mu)",
+        "default": 0
+      },
+      "std_dev": {
+        "type": "number",
+        "description": "Standard deviation (sigma)",
+        "default": 1
+      }
+    },
+    "required": [
+      "x"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "x": 1.96,
+      "mean": 0,
+      "std_dev": 1
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "pdf": 0.0584,
+        "cdf": 0.975
+      }
+    }
+  }
+}

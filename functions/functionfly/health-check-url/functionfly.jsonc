@@ -1,0 +1,30 @@
+{
+  "author": "functionfly",
+  "name": "health-check-url",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Health Check URL",
+  "description": "Perform an HTTP health check on a URL and return status, latency, and response details.",
+  "category": "devops",
+  "tags": ["health", "monitoring", "http", "uptime", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "timeout": { "type": "integer", "default": 10, "description": "Timeout in seconds" },
+      "expected_status": { "type": "integer", "default": 200 },
+      "method": { "type": "string", "default": "GET" }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "healthy": { "type": "boolean" }, "status_code": { "type": "integer" }, "latency_ms": { "type": "number" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 0, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "url": "https://example.com/health" },
+    "output": { "ok": true, "healthy": true, "status_code": 200, "latency_ms": 123.4 }
+  }
+}

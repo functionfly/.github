@@ -1,0 +1,77 @@
+{
+  "author": "functionfly",
+  "name": "wacc-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "WACC Calculate",
+  "description": "Calculate the Weighted Average Cost of Capital (WACC).",
+  "category": "finance",
+  "tags": [
+    "wacc",
+    "cost-of-capital",
+    "finance",
+    "valuation"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "equity_value": {
+        "type": "number",
+        "description": "Market value of equity"
+      },
+      "debt_value": {
+        "type": "number",
+        "description": "Market value of debt"
+      },
+      "cost_of_equity": {
+        "type": "number",
+        "description": "Cost of equity (decimal)"
+      },
+      "cost_of_debt": {
+        "type": "number",
+        "description": "Cost of debt (decimal)"
+      },
+      "tax_rate": {
+        "type": "number",
+        "description": "Corporate tax rate (decimal)"
+      }
+    },
+    "required": [
+      "equity_value",
+      "debt_value",
+      "cost_of_equity",
+      "cost_of_debt",
+      "tax_rate"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "equity_value": 500000,
+      "debt_value": 200000,
+      "cost_of_equity": 0.12,
+      "cost_of_debt": 0.06,
+      "tax_rate": 0.25
+    },
+    "output": {
+      "ok": true,
+      "result": 0.0994
+    }
+  }
+}

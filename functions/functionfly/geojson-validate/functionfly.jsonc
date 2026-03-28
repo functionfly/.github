@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "geojson-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "GeoJSON Validate",
+  "description": "Validate a GeoJSON object structure according to RFC 7946 specification.",
+  "category": "geospatial",
+  "tags": ["geojson", "validate", "rfc7946", "geometry", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "geojson": {
+        "type": "object",
+        "description": "GeoJSON object to validate",
+      },
+    },
+    "required": ["geojson"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "description": "Whether the GeoJSON is valid",
+          },
+          "type": { "type": "string", "description": "GeoJSON type" },
+          "errors": { "type": "array", "items": { "type": "string" } },
+          "warnings": { "type": "array", "items": { "type": "string" } },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "geojson": {
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-74.006, 40.7128],
+        },
+        "properties": { "name": "New York" },
+      },
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "valid": true,
+        "type": "Feature",
+        "errors": [],
+        "warnings": [],
+      },
+    },
+  },
+}

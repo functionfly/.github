@@ -1,0 +1,32 @@
+{
+  "author": "functionfly",
+  "name": "docker-tag-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Docker Tags",
+  "description": "Generate Docker image tags from a version string (latest, semver, branch-based).",
+  "category": "devops",
+  "tags": ["docker", "tag", "version", "registry", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image": { "type": "string", "description": "Image name (e.g. myapp or registry.io/myapp)" },
+      "version": { "type": "string" },
+      "registry": { "type": "string" },
+      "branch": { "type": "string" },
+      "commit_sha": { "type": "string" },
+      "latest": { "type": "boolean", "default": true }
+    },
+    "required": ["image", "version"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "array", "items": { "type": "string" } }, "tags": { "type": "array" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "image": "myapp", "version": "1.2.3", "registry": "ghcr.io/myorg" },
+    "output": { "ok": true, "tags": ["ghcr.io/myorg/myapp:1.2.3", "ghcr.io/myorg/myapp:1.2", "ghcr.io/myorg/myapp:1", "ghcr.io/myorg/myapp:latest"] }
+  }
+}

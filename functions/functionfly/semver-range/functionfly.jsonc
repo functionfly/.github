@@ -1,0 +1,27 @@
+{
+  "author": "functionfly",
+  "name": "semver-range",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Semver Range",
+  "description": "Parse a semantic version range expression (^, ~, >=, etc.) into its components.",
+  "category": "devops",
+  "tags": ["semver", "version", "range", "dependency", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "range": { "type": "string", "description": "Version range (e.g. ^1.2.3, ~2.0, >=1.0.0 <2.0.0)" }
+    },
+    "required": ["range"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "object" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "range": "^1.2.3" },
+    "output": { "ok": true, "result": { "operator": "^", "version": "1.2.3", "min": "1.2.3", "max": "2.0.0", "description": "Compatible with 1.2.3" } }
+  }
+}

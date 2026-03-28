@@ -1,0 +1,71 @@
+{
+  "author": "functionfly",
+  "name": "lat-long-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Lat/Long Validate",
+  "description": "Validate latitude and longitude values, checking ranges and formats.",
+  "category": "geospatial",
+  "tags": ["validate", "latitude", "longitude", "coordinates", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number", "description": "Latitude value to validate" },
+      "lng": { "type": "number", "description": "Longitude value to validate" },
+    },
+    "required": ["lat", "lng"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "description": "Whether both lat and lng are valid",
+          },
+          "lat_valid": {
+            "type": "boolean",
+            "description": "Whether latitude is valid",
+          },
+          "lng_valid": {
+            "type": "boolean",
+            "description": "Whether longitude is valid",
+          },
+          "lat": { "type": "number" },
+          "lng": { "type": "number" },
+          "hemisphere_lat": { "type": "string", "description": "N or S" },
+          "hemisphere_lng": { "type": "string", "description": "E or W" },
+          "errors": { "type": "array", "items": { "type": "string" } },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "valid": true,
+        "lat_valid": true,
+        "lng_valid": true,
+        "lat": 40.7128,
+        "lng": -74.006,
+        "hemisphere_lat": "N",
+        "hemisphere_lng": "W",
+        "errors": [],
+      },
+    },
+  },
+}

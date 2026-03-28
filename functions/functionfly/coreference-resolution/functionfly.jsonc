@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "coreference-resolution",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Coreference Resolution",
+  "description": "Resolve coreferences in text by identifying pronouns and linking them to their antecedents using rule-based heuristics.",
+  "category": "ai-ml",
+  "tags": ["coreference", "nlp", "pronouns", "resolution", "ai"],
+  "input": {
+    "type": "object",
+    "properties": { "text": { "type": "string" } },
+    "required": ["text"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "chains": {},
+      "resolved_text": {},
+      "error": {},
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "text": "Alice went to the store. She bought milk. It was fresh.",
+    },
+    "output": { "ok": true },
+  },
+}

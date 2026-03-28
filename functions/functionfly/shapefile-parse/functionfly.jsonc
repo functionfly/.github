@@ -1,0 +1,71 @@
+{
+  "author": "functionfly",
+  "name": "shapefile-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Shapefile Parse",
+  "description": "Parse Shapefile data (mock implementation). Accepts base64-encoded shapefile data or a URL and returns GeoJSON.",
+  "category": "geospatial",
+  "tags": ["shapefile", "parse", "geojson", "convert", "esri", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "string",
+        "description": "Base64-encoded shapefile (.shp) data",
+      },
+      "url": {
+        "type": "string",
+        "description": "URL to shapefile (mock: returns sample data)",
+      },
+      "format": {
+        "type": "string",
+        "description": "Input format: 'base64' or 'url' (default: 'url')",
+      },
+    },
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "features": { "type": "array" },
+          "feature_count": { "type": "integer" },
+          "geometry_type": { "type": "string" },
+          "note": { "type": "string" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 5000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "url": "https://example.com/data.shp",
+      "format": "url",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "geometry": { "type": "Point", "coordinates": [-74.006, 40.7128] },
+            "properties": { "id": 1, "name": "Sample Point" },
+          },
+        ],
+        "feature_count": 1,
+        "geometry_type": "Point",
+        "note": "Mock data - actual shapefile parsing requires binary .shp file processing",
+      },
+    },
+  },
+}

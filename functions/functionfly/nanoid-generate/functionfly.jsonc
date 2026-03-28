@@ -1,0 +1,44 @@
+{
+  "author": "functionfly",
+  "name": "nanoid-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "NanoID Generate",
+  "description": "Generate NanoID.",
+  "category": "utilities",
+  "tags": ["nanoid", "generate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "size": {
+        "type": "integer",
+      },
+    },
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "nanoid": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true,
+      "nanoid": "V1StGXR8_Z5jdHi6B-myT",
+    },
+  },
+}

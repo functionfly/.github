@@ -1,0 +1,71 @@
+{
+  "author": "functionfly",
+  "name": "alpha-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Alpha Calculate",
+  "description": "Calculate Jensen's alpha (excess return over CAPM expected return).",
+  "category": "analytics",
+  "tags": [
+    "alpha",
+    "capm",
+    "portfolio",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "portfolio_return": {
+        "type": "number",
+        "description": "Portfolio return (decimal)"
+      },
+      "risk_free_rate": {
+        "type": "number",
+        "description": "Risk-free rate (decimal)"
+      },
+      "beta": {
+        "type": "number",
+        "description": "Portfolio beta"
+      },
+      "market_return": {
+        "type": "number",
+        "description": "Market return (decimal)"
+      }
+    },
+    "required": [
+      "portfolio_return",
+      "risk_free_rate",
+      "beta",
+      "market_return"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "portfolio_return": 0.15,
+      "risk_free_rate": 0.03,
+      "beta": 1.2,
+      "market_return": 0.1
+    },
+    "output": {
+      "ok": true,
+      "result": 0.036
+    }
+  }
+}

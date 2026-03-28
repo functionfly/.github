@@ -1,0 +1,54 @@
+{
+  "author": "functionfly",
+  "name": "bag-of-words",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Bag of Words",
+  "description": "Create a bag-of-words representation of text as a sparse term frequency vector.",
+  "category": "ai-ml",
+  "tags": [
+    "bag-of-words",
+    "embeddings",
+    "nlp",
+    "vectors",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      },
+      "vocabulary": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "text": "the cat sat on the mat"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

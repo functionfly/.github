@@ -1,0 +1,74 @@
+{
+  "author": "functionfly",
+  "name": "dcf-valuation",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "DCF Valuation",
+  "description": "Calculate discounted cash flow (DCF) valuation of a business or investment.",
+  "category": "finance",
+  "tags": [
+    "dcf",
+    "discounted-cash-flow",
+    "valuation",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cash_flows": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "Projected free cash flows"
+      },
+      "discount_rate": {
+        "type": "number",
+        "description": "Discount rate (WACC, decimal)"
+      },
+      "terminal_growth_rate": {
+        "type": "number",
+        "description": "Terminal growth rate (decimal)",
+        "default": 0.02
+      }
+    },
+    "required": [
+      "cash_flows",
+      "discount_rate"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "cash_flows": [
+        100000,
+        110000,
+        121000,
+        133100,
+        146410
+      ],
+      "discount_rate": 0.1,
+      "terminal_growth_rate": 0.02
+    },
+    "output": {
+      "ok": true,
+      "result": 1234567.0
+    }
+  }
+}

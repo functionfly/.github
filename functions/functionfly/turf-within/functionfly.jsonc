@@ -1,0 +1,72 @@
+{
+  "author": "functionfly",
+  "name": "turf-within",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Turf Within",
+  "description": "Check if a point or polygon is completely within another polygon (Turf.js compatible). Uses [lng, lat] coordinate order.",
+  "category": "geospatial",
+  "tags": ["turf", "within", "contains", "polygon", "geospatial", "geojson"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "point": {
+        "type": "array",
+        "description": "Point as [lng, lat] (GeoJSON order)",
+        "items": { "type": "number" },
+        "minItems": 2,
+        "maxItems": 2,
+      },
+      "polygon": {
+        "type": "array",
+        "description": "Polygon as array of [lng, lat] coordinate pairs",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+    },
+    "required": ["point", "polygon"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "within": {
+            "type": "boolean",
+            "description": "Whether the point is within the polygon",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "point": [-73.95, 40.69],
+      "polygon": [
+        [-74.006, 40.7128],
+        [-73.906, 40.7128],
+        [-73.906, 40.6628],
+        [-74.006, 40.6628],
+        [-74.006, 40.7128],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "within": true,
+      },
+    },
+  },
+}

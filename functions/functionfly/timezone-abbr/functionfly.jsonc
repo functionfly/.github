@@ -1,0 +1,50 @@
+{
+  "author": "functionfly",
+  "name": "timezone-abbr",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Timezone Abbreviation",
+  "description": "Get timezone abbreviation.",
+  "category": "datetime",
+  "tags": ["timezone", "abbreviation"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "timezone": {
+        "type": "string",
+      },
+      "date": {
+        "type": "string",
+      },
+    },
+    "required": ["timezone"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "abbreviation": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "timezone": "America/New_York",
+    },
+    "output": {
+      "ok": true,
+      "abbreviation": "EST",
+    },
+  },
+}

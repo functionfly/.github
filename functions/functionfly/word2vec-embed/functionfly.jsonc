@@ -1,0 +1,61 @@
+{
+  "author": "functionfly",
+  "name": "word2vec-embed",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Word2Vec Embeddings",
+  "description": "Generate Word2Vec-style word embeddings using hash-based deterministic simulation.",
+  "category": "ai-ml",
+  "tags": [
+    "word2vec-embed",
+    "embeddings",
+    "nlp",
+    "vectors",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "words": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "dimensions": {
+        "type": "integer",
+        "default": 100
+      }
+    },
+    "required": [
+      "words"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "words": [
+        "king",
+        "queen",
+        "man",
+        "woman"
+      ],
+      "dimensions": 8
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

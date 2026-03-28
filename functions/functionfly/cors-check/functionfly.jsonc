@@ -1,0 +1,30 @@
+{
+  "author": "functionfly",
+  "name": "cors-check",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Check CORS Headers",
+  "description": "Check CORS configuration for a URL by sending a preflight request.",
+  "category": "devops",
+  "tags": ["cors", "http", "security", "headers", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "origin": { "type": "string", "default": "https://example.com" },
+      "method": { "type": "string", "default": "GET" },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "cors_enabled": { "type": "boolean" }, "allow_origin": { "type": "string" }, "allow_methods": { "type": "string" }, "allow_headers": { "type": "string" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "url": "https://api.example.com/data", "origin": "https://app.example.com" },
+    "output": { "ok": true, "cors_enabled": true, "allow_origin": "*", "allow_methods": "GET, POST, OPTIONS" }
+  }
+}

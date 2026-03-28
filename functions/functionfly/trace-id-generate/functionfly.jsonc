@@ -1,0 +1,26 @@
+{
+  "author": "functionfly",
+  "name": "trace-id-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Trace ID",
+  "description": "Generate a distributed tracing trace ID (W3C TraceContext format or custom).",
+  "category": "devops",
+  "tags": ["tracing", "observability", "distributed", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "format": { "type": "string", "enum": ["w3c", "b3", "uuid", "hex"], "default": "w3c" }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "trace_id": { "type": "string" }, "format": { "type": "string" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": false,
+  "cache_ttl": 0, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "format": "w3c" },
+    "output": { "ok": true, "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736", "format": "w3c" }
+  }
+}

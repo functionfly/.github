@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "form-recognition",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Form Recognition",
+  "description": "Recognize and extract form fields and values from structured text.",
+  "category": "ai-ml",
+  "tags": [
+    "form-recognition",
+    "vision",
+    "image",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      },
+      "fields": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "text": "Name: John Doe\nEmail: john@example.com\nPhone: 555-1234"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

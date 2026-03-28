@@ -1,0 +1,72 @@
+{
+  "author": "functionfly",
+  "name": "turf-bbox",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Turf BBox",
+  "description": "Calculate the bounding box of a GeoJSON geometry (Turf.js compatible). Returns [minLng, minLat, maxLng, maxLat].",
+  "category": "geospatial",
+  "tags": ["turf", "bbox", "bounding-box", "geojson", "geospatial", "extent"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "coordinates": {
+        "type": "array",
+        "description": "Array of [lng, lat] coordinate pairs (GeoJSON order)",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+    },
+    "required": ["coordinates"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "bbox": {
+            "type": "array",
+            "description": "Bounding box as [minLng, minLat, maxLng, maxLat]",
+            "items": { "type": "number" },
+          },
+          "min_lng": { "type": "number" },
+          "min_lat": { "type": "number" },
+          "max_lng": { "type": "number" },
+          "max_lat": { "type": "number" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "coordinates": [
+        [-74.006, 40.7128],
+        [-73.906, 40.7128],
+        [-73.906, 40.6628],
+        [-74.006, 40.6628],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "bbox": [-74.006, 40.6628, -73.906, 40.7128],
+        "min_lng": -74.006,
+        "min_lat": 40.6628,
+        "max_lng": -73.906,
+        "max_lat": 40.7128,
+      },
+    },
+  },
+}

@@ -1,0 +1,75 @@
+{
+  "author": "functionfly",
+  "name": "air-quality",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Air Quality",
+  "description": "Get air quality data for a location including AQI, pollutant levels, and health recommendations. Returns simulated data.",
+  "category": "geospatial",
+  "tags": [
+    "air-quality",
+    "aqi",
+    "pollution",
+    "environment",
+    "geospatial",
+    "mock",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+    },
+    "required": ["lat", "lng"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "aqi": {
+            "type": "integer",
+            "description": "Air Quality Index (0-500)",
+          },
+          "category": { "type": "string", "description": "AQI category" },
+          "color": { "type": "string", "description": "AQI color code" },
+          "health_message": { "type": "string" },
+          "pollutants": { "type": "object" },
+          "dominant_pollutant": { "type": "string" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 1800,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "aqi": 42,
+        "category": "Good",
+        "color": "#00E400",
+        "health_message": "Air quality is satisfactory, and air pollution poses little or no risk.",
+        "pollutants": {
+          "pm25": 8.2,
+          "pm10": 15.4,
+          "o3": 45.2,
+          "no2": 12.1,
+          "so2": 2.3,
+          "co": 0.4,
+        },
+        "dominant_pollutant": "pm25",
+      },
+    },
+  },
+}

@@ -1,0 +1,77 @@
+{
+  "author": "functionfly",
+  "name": "correlation-coefficient",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Correlation Coefficient Calculate",
+  "description": "Calculate the Pearson correlation coefficient between two data series.",
+  "category": "analytics",
+  "tags": [
+    "correlation",
+    "statistics",
+    "analytics",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "x": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "First data series"
+      },
+      "y": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "Second data series"
+      }
+    },
+    "required": [
+      "x",
+      "y"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "x": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "y": [
+        2,
+        4,
+        5,
+        4,
+        5
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": 0.9129
+    }
+  }
+}

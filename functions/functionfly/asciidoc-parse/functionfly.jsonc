@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "asciidoc-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "AsciiDoc Parse",
+  "description": "Parse AsciiDoc to structured data.",
+  "category": "text",
+  "tags": ["asciidoc", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "asciidoc": {
+        "type": "string",
+      },
+    },
+    "required": ["asciidoc"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "title": {
+        "type": "string",
+      },
+      "sections": {
+        "type": "array",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "asciidoc": "= Title\n\n== Section 1\n\nContent",
+    },
+    "output": {
+      "ok": true,
+      "title": "Title",
+      "sections": [{ "level": 1, "title": "Section 1", "content": "Content" }],
+    },
+  },
+}

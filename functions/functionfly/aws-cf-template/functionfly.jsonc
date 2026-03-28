@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "aws-cf-template",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate AWS CloudFormation Template",
+  "description": "Generate an AWS CloudFormation template for infrastructure resources.",
+  "category": "devops",
+  "tags": ["aws", "cloudformation", "iac", "infrastructure", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "description": { "type": "string" },
+      "parameters": { "type": "object" },
+      "resources": { "type": "object", "description": "CloudFormation resources map" },
+      "outputs": { "type": "object" }
+    },
+    "required": ["resources"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "template": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 3000, "memory_mb": 128,
+  "example": {
+    "input": {
+      "description": "Simple EC2 instance",
+      "resources": {
+        "MyEC2Instance": {
+          "Type": "AWS::EC2::Instance",
+          "Properties": { "ImageId": "ami-0c55b159cbfafe1f0", "InstanceType": "t2.micro" }
+        }
+      }
+    },
+    "output": { "ok": true, "template": "AWSTemplateFormatVersion: '2010-09-09'\nDescription: Simple EC2 instance\n..." }
+  }
+}

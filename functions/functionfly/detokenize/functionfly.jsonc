@@ -1,0 +1,55 @@
+{
+  "author": "functionfly",
+  "name": "detokenize",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Detokenize",
+  "description": "Join tokens back into text, handling punctuation spacing correctly.",
+  "category": "ai-ml",
+  "tags": [
+    "detokenize",
+    "nlp",
+    "text",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "tokens": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "tokens"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "tokens": [
+        "Hello",
+        ",",
+        "world",
+        "!"
+      ]
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "author": "functionfly",
+  "name": "greeks-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Options Greeks Calculate",
+  "description": "Calculate all option Greeks (Delta, Gamma, Theta, Vega, Rho) using Black-Scholes.",
+  "category": "finance",
+  "tags": [
+    "greeks",
+    "options",
+    "delta",
+    "gamma",
+    "theta",
+    "vega"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "spot_price": {
+        "type": "number",
+        "description": "Current price of underlying asset"
+      },
+      "strike_price": {
+        "type": "number",
+        "description": "Option strike price"
+      },
+      "time_to_expiry": {
+        "type": "number",
+        "description": "Time to expiry in years"
+      },
+      "risk_free_rate": {
+        "type": "number",
+        "description": "Risk-free rate (decimal)"
+      },
+      "volatility": {
+        "type": "number",
+        "description": "Volatility (decimal)"
+      },
+      "option_type": {
+        "type": "string",
+        "description": "Option type: 'call' or 'put'",
+        "default": "call"
+      }
+    },
+    "required": [
+      "spot_price",
+      "strike_price",
+      "time_to_expiry",
+      "risk_free_rate",
+      "volatility"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "spot_price": 100,
+      "strike_price": 100,
+      "time_to_expiry": 1.0,
+      "risk_free_rate": 0.05,
+      "volatility": 0.2
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "delta": 0.6368,
+        "gamma": 0.0188,
+        "theta": -6.414,
+        "vega": 37.524,
+        "rho": 53.232
+      }
+    }
+  }
+}

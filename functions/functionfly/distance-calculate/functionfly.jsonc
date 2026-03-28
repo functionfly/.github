@@ -1,0 +1,95 @@
+{
+  "author": "functionfly",
+  "name": "distance-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Distance Calculate",
+  "description": "Calculate the great-circle distance between two geographic points using the Haversine formula.",
+  "category": "geospatial",
+  "tags": [
+    "distance",
+    "haversine",
+    "coordinates",
+    "great-circle",
+    "geospatial",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat1": {
+        "type": "number",
+        "description": "Latitude of first point (-90 to 90)",
+      },
+      "lng1": {
+        "type": "number",
+        "description": "Longitude of first point (-180 to 180)",
+      },
+      "lat2": {
+        "type": "number",
+        "description": "Latitude of second point (-90 to 90)",
+      },
+      "lng2": {
+        "type": "number",
+        "description": "Longitude of second point (-180 to 180)",
+      },
+      "unit": {
+        "type": "string",
+        "description": "Unit of distance: 'km', 'miles', 'meters', 'feet' (default: 'km')",
+      },
+    },
+    "required": ["lat1", "lng1", "lat2", "lng2"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "distance": {
+            "type": "number",
+            "description": "Distance in requested unit",
+          },
+          "unit": { "type": "string", "description": "Unit of distance" },
+          "distance_km": {
+            "type": "number",
+            "description": "Distance in kilometers",
+          },
+          "distance_miles": {
+            "type": "number",
+            "description": "Distance in miles",
+          },
+          "distance_meters": {
+            "type": "number",
+            "description": "Distance in meters",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat1": 40.7128,
+      "lng1": -74.006,
+      "lat2": 34.0522,
+      "lng2": -118.2437,
+      "unit": "km",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "distance": 3940.07,
+        "unit": "km",
+        "distance_km": 3940.07,
+        "distance_miles": 2448.24,
+        "distance_meters": 3940070.0,
+      },
+    },
+  },
+}

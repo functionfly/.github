@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "dockerignore-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate .dockerignore",
+  "description": "Generate a .dockerignore file for a given language or framework.",
+  "category": "devops",
+  "tags": ["docker", "dockerignore", "build", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "language": { "type": "string", "description": "Programming language (python, node, go, java, rust)" },
+      "framework": { "type": "string" },
+      "extras": { "type": "array", "items": { "type": "string" }, "description": "Additional patterns to ignore" }
+    },
+    "required": ["language"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "dockerignore": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 1000, "memory_mb": 64,
+  "example": {
+    "input": { "language": "python" },
+    "output": { "ok": true, "dockerignore": "# Python\n__pycache__/\n*.pyc\n*.pyo\n.venv/\nvenv/\n.env\n" }
+  }
+}

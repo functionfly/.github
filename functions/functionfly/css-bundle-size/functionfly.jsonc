@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "css-bundle-size",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Check CSS Bundle Size",
+  "description": "Check the size of a CSS bundle URL and provide optimization suggestions.",
+  "category": "devops",
+  "tags": ["css", "bundle", "performance", "web", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "size_bytes": { "type": "integer" }, "size_kb": { "type": "number" }, "suggestions": { "type": "array" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "url": "https://example.com/styles.css" },
+    "output": { "ok": true, "size_bytes": 102400, "size_kb": 100.0, "suggestions": ["CSS exceeds 50KB - consider critical CSS extraction"] }
+  }
+}

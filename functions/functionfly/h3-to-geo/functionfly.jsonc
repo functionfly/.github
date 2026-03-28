@@ -1,0 +1,75 @@
+{
+  "author": "functionfly",
+  "name": "h3-to-geo",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "H3 to Geo",
+  "description": "Convert an H3 index to geographic coordinates (center lat/lng and boundary). Mock implementation.",
+  "category": "geospatial",
+  "tags": [
+    "h3",
+    "hexagon",
+    "spatial-index",
+    "coordinates",
+    "geospatial",
+    "mock",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "h3_index": {
+        "type": "string",
+        "description": "H3 index string (15 hex characters)",
+      },
+    },
+    "required": ["h3_index"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "h3_index": { "type": "string" },
+          "resolution": { "type": "integer" },
+          "lat": { "type": "number", "description": "Center latitude" },
+          "lng": { "type": "number", "description": "Center longitude" },
+          "boundary": {
+            "type": "array",
+            "description": "Hexagon boundary vertices as [lat, lng] pairs",
+            "items": { "type": "array" },
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "h3_index": "892a1072803ffff",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "h3_index": "892a1072803ffff",
+        "resolution": 9,
+        "lat": 40.7128,
+        "lng": -74.006,
+        "boundary": [
+          [40.7138, -74.0045],
+          [40.7138, -74.0075],
+          [40.7128, -74.009],
+          [40.7118, -74.0075],
+          [40.7118, -74.0045],
+          [40.7128, -74.003],
+        ],
+      },
+    },
+  },
+}

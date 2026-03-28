@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "receivables-turnover",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Receivables Turnover Calculate",
+  "description": "Calculate accounts receivable turnover ratio.",
+  "category": "finance",
+  "tags": [
+    "receivables-turnover",
+    "efficiency",
+    "finance",
+    "accounting"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "net_credit_sales": {
+        "type": "number",
+        "description": "Net credit sales"
+      },
+      "average_accounts_receivable": {
+        "type": "number",
+        "description": "Average accounts receivable"
+      }
+    },
+    "required": [
+      "net_credit_sales",
+      "average_accounts_receivable"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "net_credit_sales": 500000,
+      "average_accounts_receivable": 50000
+    },
+    "output": {
+      "ok": true,
+      "result": 10.0,
+      "days_sales_outstanding": 36.5
+    }
+  }
+}

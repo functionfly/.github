@@ -1,0 +1,48 @@
+{
+  "author": "functionfly",
+  "name": "emotion-from-speech",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Emotion from Speech",
+  "description": "Detect emotions from speech audio (mock implementation).",
+  "category": "ai-ml",
+  "tags": [
+    "emotion-from-speech",
+    "audio",
+    "speech",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "audio_url": {
+        "type": "string"
+      },
+      "audio_base64": {
+        "type": "string"
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 3000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "audio_url": "https://example.com/speech.mp3"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

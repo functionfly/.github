@@ -1,0 +1,42 @@
+{
+  "author": "functionfly",
+  "name": "question-answering",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Question Answering",
+  "description": "Answer questions from a given context passage using extractive span selection based on keyword overlap.",
+  "category": "ai-ml",
+  "tags": ["qa", "nlp", "question-answering", "reading-comprehension", "ai"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "question": { "type": "string" },
+      "context": { "type": "string" },
+    },
+    "required": ["question", "context"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "answer": {},
+      "confidence": {},
+      "span_start": {},
+      "span_end": {},
+      "error": {},
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "question": "Who founded Apple?",
+      "context": "Apple Inc. was founded by Steve Jobs, Steve Wozniak, and Ronald Wayne in 1976.",
+    },
+    "output": { "ok": true },
+  },
+}

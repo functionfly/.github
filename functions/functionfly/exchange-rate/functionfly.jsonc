@@ -1,0 +1,71 @@
+{
+  "author": "functionfly",
+  "name": "exchange-rate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Exchange Rate Conversion",
+  "description": "Convert an amount from one currency to another using a given exchange rate.",
+  "category": "finance",
+  "tags": [
+    "exchange-rate",
+    "currency",
+    "forex",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "amount": {
+        "type": "number",
+        "description": "Amount to convert"
+      },
+      "from_currency": {
+        "type": "string",
+        "description": "Source currency code (e.g. USD)"
+      },
+      "to_currency": {
+        "type": "string",
+        "description": "Target currency code (e.g. EUR)"
+      },
+      "rate": {
+        "type": "number",
+        "description": "Exchange rate (1 from_currency = rate to_currency)"
+      }
+    },
+    "required": [
+      "amount",
+      "from_currency",
+      "to_currency",
+      "rate"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "amount": 1000,
+      "from_currency": "USD",
+      "to_currency": "EUR",
+      "rate": 0.92
+    },
+    "output": {
+      "ok": true,
+      "result": 920.0
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "author": "functionfly",
+  "name": "fv-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Future Value Calculate",
+  "description": "Calculate the future value of an investment given present value, interest rate, and number of periods.",
+  "category": "finance",
+  "tags": [
+    "future-value",
+    "finance",
+    "investment"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "present_value": {
+        "type": "number",
+        "description": "Present value amount"
+      },
+      "rate": {
+        "type": "number",
+        "description": "Interest rate per period (decimal)"
+      },
+      "periods": {
+        "type": "number",
+        "description": "Number of periods"
+      },
+      "payment": {
+        "type": "number",
+        "description": "Periodic payment (default 0)",
+        "default": 0
+      }
+    },
+    "required": [
+      "present_value",
+      "rate",
+      "periods"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "present_value": 1000,
+      "rate": 0.05,
+      "periods": 10
+    },
+    "output": {
+      "ok": true,
+      "result": 1628.89
+    }
+  }
+}

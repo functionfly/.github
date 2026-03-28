@@ -1,0 +1,55 @@
+{
+  "author": "functionfly",
+  "name": "image-similarity",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Similarity",
+  "description": "Calculate similarity between two images using hash-based perceptual similarity.",
+  "category": "ai-ml",
+  "tags": [
+    "image-similarity",
+    "vision",
+    "image",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image_url_1": {
+        "type": "string"
+      },
+      "image_url_2": {
+        "type": "string"
+      },
+      "image_base64_1": {
+        "type": "string"
+      },
+      "image_base64_2": {
+        "type": "string"
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "image_url_1": "https://example.com/a.jpg",
+      "image_url_2": "https://example.com/b.jpg"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

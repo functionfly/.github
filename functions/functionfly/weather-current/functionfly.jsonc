@@ -1,0 +1,78 @@
+{
+  "author": "functionfly",
+  "name": "weather-current",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Weather Current",
+  "description": "Get current weather conditions for a location. Returns simulated weather data based on location and season.",
+  "category": "geospatial",
+  "tags": [
+    "weather",
+    "current",
+    "temperature",
+    "conditions",
+    "geospatial",
+    "mock",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+      "units": {
+        "type": "string",
+        "description": "Temperature units: 'metric' (Celsius) or 'imperial' (Fahrenheit) (default: 'metric')",
+      },
+    },
+    "required": ["lat", "lng"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "temperature": { "type": "number" },
+          "feels_like": { "type": "number" },
+          "humidity": { "type": "integer" },
+          "pressure_hpa": { "type": "number" },
+          "wind_speed": { "type": "number" },
+          "wind_direction": { "type": "integer" },
+          "conditions": { "type": "string" },
+          "description": { "type": "string" },
+          "visibility_km": { "type": "number" },
+          "units": { "type": "string" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 600,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+      "units": "metric",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "temperature": 18.5,
+        "feels_like": 17.2,
+        "humidity": 65,
+        "pressure_hpa": 1013.25,
+        "wind_speed": 12.3,
+        "wind_direction": 225,
+        "conditions": "Partly Cloudy",
+        "description": "partly cloudy with light winds",
+        "visibility_km": 10.0,
+        "units": "metric",
+      },
+    },
+  },
+}

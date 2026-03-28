@@ -1,0 +1,31 @@
+{
+  "author": "functionfly",
+  "name": "k8s-service",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate K8s Service",
+  "description": "Generate a Kubernetes Service manifest for ClusterIP, NodePort, or LoadBalancer.",
+  "category": "devops",
+  "tags": ["kubernetes", "service", "k8s", "networking", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string" },
+      "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"], "default": "ClusterIP" },
+      "ports": { "type": "array", "items": { "type": "object", "properties": { "port": { "type": "integer" }, "targetPort": {}, "protocol": { "type": "string" } } } },
+      "selector": { "type": "object" },
+      "namespace": { "type": "string", "default": "default" }
+    },
+    "required": ["name", "ports"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "yaml": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 64,
+  "example": {
+    "input": { "name": "web-service", "type": "ClusterIP", "ports": [{ "port": 80, "targetPort": 8080 }], "selector": { "app": "web" } },
+    "output": { "ok": true, "yaml": "apiVersion: v1\nkind: Service\n..." }
+  }
+}

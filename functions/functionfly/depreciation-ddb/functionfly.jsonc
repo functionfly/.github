@@ -1,0 +1,71 @@
+{
+  "author": "functionfly",
+  "name": "depreciation-ddb",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Double Declining Balance Depreciation",
+  "description": "Calculate depreciation using the double declining balance method.",
+  "category": "finance",
+  "tags": [
+    "depreciation",
+    "ddb",
+    "double-declining",
+    "accounting"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cost": {
+        "type": "number",
+        "description": "Asset cost"
+      },
+      "salvage_value": {
+        "type": "number",
+        "description": "Salvage value at end of life"
+      },
+      "useful_life": {
+        "type": "number",
+        "description": "Useful life in years"
+      },
+      "period": {
+        "type": "number",
+        "description": "Period to calculate depreciation for (1-based)"
+      }
+    },
+    "required": [
+      "cost",
+      "salvage_value",
+      "useful_life",
+      "period"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "cost": 10000,
+      "salvage_value": 1000,
+      "useful_life": 5,
+      "period": 1
+    },
+    "output": {
+      "ok": true,
+      "result": 4000.0
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "author": "functionfly",
+  "name": "cloudwatch-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse CloudWatch Log",
+  "description": "Parse an AWS CloudWatch log event into structured fields.",
+  "category": "devops",
+  "tags": ["cloudwatch", "aws", "logging", "parse", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "event": { "type": "object", "description": "CloudWatch log event object with timestamp and message" },
+      "line": { "type": "string", "description": "Raw CloudWatch log line" }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "timestamp": {}, "message": {}, "level": {}, "request_id": {}, "duration_ms": {}, "billed_duration_ms": {}, "memory_mb": {}, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "line": "START RequestId: abc-123 Version: $LATEST\n2024-01-01T00:00:00.000Z\tINFO\tHello World\nEND RequestId: abc-123\nREPORT RequestId: abc-123\tDuration: 100.00 ms\tBilled Duration: 100 ms\tMemory Size: 128 MB\tMax Memory Used: 64 MB" },
+    "output": { "ok": true, "request_id": "abc-123", "duration_ms": 100.0, "billed_duration_ms": 100, "memory_mb": 128 }
+  }
+}

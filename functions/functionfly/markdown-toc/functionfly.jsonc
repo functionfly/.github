@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "markdown-toc",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Markdown TOC",
+  "description": "Generate table of contents from Markdown.",
+  "category": "text",
+  "tags": ["markdown", "toc", "table of contents"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "markdown": {
+        "type": "string",
+      },
+    },
+    "required": ["markdown"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "toc": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "markdown": "# Title\n\n## Section 1\n\n## Section 2",
+    },
+    "output": {
+      "ok": true,
+      "toc": "- [Title](#title)\n  - [Section 1](#section-1)\n  - [Section 2](#section-2)",
+    },
+  },
+}

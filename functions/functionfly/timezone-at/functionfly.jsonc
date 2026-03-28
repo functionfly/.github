@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "timezone-at",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Timezone At",
+  "description": "Get the timezone at a given geographic coordinate. Returns timezone name and UTC offset.",
+  "category": "geospatial",
+  "tags": ["timezone", "coordinates", "utc", "offset", "geospatial", "time"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+    },
+    "required": ["lat", "lng"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "timezone": { "type": "string", "description": "IANA timezone name" },
+          "utc_offset": {
+            "type": "number",
+            "description": "UTC offset in hours",
+          },
+          "utc_offset_str": {
+            "type": "string",
+            "description": "UTC offset as string (e.g., UTC-5:00)",
+          },
+          "abbreviation": {
+            "type": "string",
+            "description": "Timezone abbreviation",
+          },
+          "country": { "type": "string", "description": "Country name" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "timezone": "America/New_York",
+        "utc_offset": -5,
+        "utc_offset_str": "UTC-5:00",
+        "abbreviation": "EST",
+        "country": "United States",
+      },
+    },
+  },
+}

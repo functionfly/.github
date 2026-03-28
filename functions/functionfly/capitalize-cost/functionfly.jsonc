@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "capitalize-cost",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Capitalize Cost Calculate",
+  "description": "Calculate the capitalized cost of an asset including purchase price and additional costs.",
+  "category": "finance",
+  "tags": [
+    "capitalize",
+    "cost",
+    "accounting",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "purchase_price": {
+        "type": "number",
+        "description": "Purchase price of asset"
+      },
+      "additional_costs": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "List of additional capitalized costs",
+        "default": []
+      }
+    },
+    "required": [
+      "purchase_price"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "purchase_price": 50000,
+      "additional_costs": [
+        2000,
+        1500,
+        500
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": 54000.0
+    }
+  }
+}

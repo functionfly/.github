@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "glove-embed",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "GloVe Embeddings",
+  "description": "Generate GloVe-style word embeddings using hash-based deterministic simulation.",
+  "category": "ai-ml",
+  "tags": [
+    "glove-embed",
+    "embeddings",
+    "nlp",
+    "vectors",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "words": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "dimensions": {
+        "type": "integer",
+        "default": 100
+      }
+    },
+    "required": [
+      "words"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "words": [
+        "hello",
+        "world"
+      ],
+      "dimensions": 8
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

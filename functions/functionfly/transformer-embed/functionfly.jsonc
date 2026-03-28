@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "transformer-embed",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Transformer Embeddings",
+  "description": "Generate transformer-style embeddings with positional encoding using hash-based simulation.",
+  "category": "ai-ml",
+  "tags": [
+    "transformer-embed",
+    "embeddings",
+    "nlp",
+    "vectors",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      },
+      "dimensions": {
+        "type": "integer",
+        "default": 512
+      },
+      "model": {
+        "type": "string",
+        "default": "base"
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "text": "Attention is all you need",
+      "dimensions": 16
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

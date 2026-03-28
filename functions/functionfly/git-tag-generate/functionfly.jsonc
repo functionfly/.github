@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "git-tag-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Git Tag",
+  "description": "Generate a git tag name from a version string with optional prefix and format.",
+  "category": "devops",
+  "tags": ["git", "tag", "version", "release", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "version": { "type": "string" },
+      "prefix": { "type": "string", "default": "v" },
+      "format": { "type": "string", "description": "Tag format template (e.g. {prefix}{version})" }
+    },
+    "required": ["version"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "tag": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "version": "1.2.3", "prefix": "v" },
+    "output": { "ok": true, "result": "v1.2.3", "tag": "v1.2.3" }
+  }
+}

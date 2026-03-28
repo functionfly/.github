@@ -1,0 +1,33 @@
+{
+  "author": "functionfly",
+  "name": "version-compare",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Compare Versions",
+  "description": "Compare two semantic version strings and return which is greater, equal, or lesser.",
+  "category": "devops",
+  "tags": ["semver", "version", "compare", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "version_a": { "type": "string" },
+      "version_b": { "type": "string" }
+    },
+    "required": ["version_a", "version_b"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "integer", "description": "-1 if a < b, 0 if equal, 1 if a > b" },
+      "comparison": { "type": "string" },
+      "error": {}
+    }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "version_a": "1.2.3", "version_b": "1.2.4" },
+    "output": { "ok": true, "result": -1, "comparison": "1.2.3 < 1.2.4" }
+  }
+}

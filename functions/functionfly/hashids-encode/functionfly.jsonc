@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "hashids-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Hashids Encode",
+  "description": "Encode numbers to Hashids.",
+  "category": "encoding",
+  "tags": ["hashids", "encode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "numbers": {
+        "type": "array",
+      },
+      "salt": {
+        "type": "string",
+      },
+      "min_length": {
+        "type": "integer",
+      },
+    },
+    "required": ["numbers"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "hashid": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "numbers": [123, 456],
+    },
+    "output": {
+      "ok": true,
+      "hashid": "NkK9",
+    },
+  },
+}

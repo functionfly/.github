@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "morse-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Morse Encode",
+  "description": "Encode text to Morse code.",
+  "category": "encoding",
+  "tags": ["morse", "encode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string",
+      },
+    },
+    "required": ["text"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "morse": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "text": "HELLO",
+    },
+    "output": {
+      "ok": true,
+      "morse": ".... . .-.. .-.. ---",
+    },
+  },
+}

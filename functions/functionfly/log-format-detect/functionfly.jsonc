@@ -1,0 +1,27 @@
+{
+  "author": "functionfly",
+  "name": "log-format-detect",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Detect Log Format",
+  "description": "Detect the format of a log line (JSON, syslog, nginx, apache, etc.).",
+  "category": "devops",
+  "tags": ["logging", "format", "detect", "observability", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "line": { "type": "string" }
+    },
+    "required": ["line"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "format": { "type": "string" }, "confidence": { "type": "number" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "line": "{\"level\":\"info\",\"msg\":\"server started\",\"time\":\"2024-01-01T00:00:00Z\"}" },
+    "output": { "ok": true, "format": "json", "confidence": 1.0 }
+  }
+}

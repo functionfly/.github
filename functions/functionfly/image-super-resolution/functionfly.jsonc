@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "image-super-resolution",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Super Resolution",
+  "description": "Upscale image resolution (mock implementation returning upscaling parameters).",
+  "category": "ai-ml",
+  "tags": [
+    "image-super-resolution",
+    "vision",
+    "image",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image_url": {
+        "type": "string"
+      },
+      "image_base64": {
+        "type": "string"
+      },
+      "scale_factor": {
+        "type": "integer",
+        "default": 2
+      },
+      "method": {
+        "type": "string",
+        "default": "bicubic"
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "scale_factor": 2,
+      "method": "bicubic"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

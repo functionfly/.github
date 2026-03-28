@@ -1,0 +1,68 @@
+{
+  "author": "functionfly",
+  "name": "standard-deviation-portfolio",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Portfolio Standard Deviation",
+  "description": "Calculate the standard deviation of a portfolio's returns.",
+  "category": "analytics",
+  "tags": [
+    "standard-deviation",
+    "volatility",
+    "portfolio",
+    "statistics"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "returns": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "List of portfolio returns"
+      },
+      "population": {
+        "type": "boolean",
+        "description": "Use population std dev (default false = sample)",
+        "default": false
+      }
+    },
+    "required": [
+      "returns"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "returns": [
+        0.05,
+        0.1,
+        -0.03,
+        0.08,
+        0.12,
+        0.07
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": 0.0516
+    }
+  }
+}

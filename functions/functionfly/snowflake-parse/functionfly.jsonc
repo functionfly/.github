@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "snowflake-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Snowflake Parse",
+  "description": "Parse Snowflake ID.",
+  "category": "utilities",
+  "tags": ["snowflake", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+      },
+    },
+    "required": ["id"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "timestamp": {
+        "type": "integer",
+      },
+      "datacenter_id": {
+        "type": "integer",
+      },
+      "machine_id": {
+        "type": "integer",
+      },
+      "sequence": {
+        "type": "integer",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "id": "1234567890123456789",
+    },
+    "output": {
+      "ok": true,
+      "timestamp": 1609459200000,
+      "datacenter_id": 1,
+      "machine_id": 1,
+      "sequence": 0,
+    },
+  },
+}

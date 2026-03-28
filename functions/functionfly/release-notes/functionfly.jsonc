@@ -1,0 +1,33 @@
+{
+  "author": "functionfly",
+  "name": "release-notes",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Release Notes",
+  "description": "Generate human-readable release notes from a list of changes.",
+  "category": "devops",
+  "tags": ["release", "notes", "changelog", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "version": { "type": "string" },
+      "features": { "type": "array", "items": { "type": "string" } },
+      "fixes": { "type": "array", "items": { "type": "string" } },
+      "breaking_changes": { "type": "array", "items": { "type": "string" } },
+      "deprecations": { "type": "array", "items": { "type": "string" } },
+      "date": { "type": "string" },
+      "format": { "type": "string", "enum": ["markdown", "html", "text"], "default": "markdown" }
+    },
+    "required": ["version"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "notes": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": {
+    "input": { "version": "2.0.0", "features": ["New dashboard UI", "API v2 support"], "fixes": ["Fixed login bug"] },
+    "output": { "ok": true, "notes": "# Release 2.0.0\n\n## What's New\n- New dashboard UI\n- API v2 support\n\n## Bug Fixes\n- Fixed login bug\n" }
+  }
+}

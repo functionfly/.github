@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "recovery-rate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Recovery Rate Calculate",
+  "description": "Calculate the expected recovery rate and loss given default (LGD) for a bond.",
+  "category": "finance",
+  "tags": [
+    "recovery-rate",
+    "lgd",
+    "credit-risk",
+    "bond"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "face_value": {
+        "type": "number",
+        "description": "Bond face value"
+      },
+      "recovery_amount": {
+        "type": "number",
+        "description": "Expected recovery amount in default"
+      },
+      "accrued_interest": {
+        "type": "number",
+        "description": "Accrued interest (default 0)",
+        "default": 0
+      }
+    },
+    "required": [
+      "face_value",
+      "recovery_amount"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "face_value": 1000,
+      "recovery_amount": 400
+    },
+    "output": {
+      "ok": true,
+      "result": 0.4,
+      "lgd": 0.6,
+      "loss_amount": 600.0
+    }
+  }
+}

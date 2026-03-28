@@ -1,0 +1,62 @@
+{
+  "author": "functionfly",
+  "name": "geojson-buffer",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "GeoJSON Buffer",
+  "description": "Create a buffer around a GeoJSON Point geometry at a given radius.",
+  "category": "geospatial",
+  "tags": ["geojson", "buffer", "radius", "geometry", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "geojson": {
+        "type": "object",
+        "description": "GeoJSON Point geometry or Feature with Point geometry",
+      },
+      "radius": { "type": "number", "description": "Buffer radius" },
+      "unit": {
+        "type": "string",
+        "description": "Unit: 'km', 'miles', 'meters' (default: 'km')",
+      },
+      "steps": {
+        "type": "integer",
+        "description": "Number of polygon vertices (default: 64)",
+      },
+    },
+    "required": ["geojson", "radius"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "description": "GeoJSON Polygon representing the buffer",
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "geojson": {
+        "type": "Point",
+        "coordinates": [-74.006, 40.7128],
+      },
+      "radius": 1,
+      "unit": "km",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "type": "Polygon",
+        "coordinates": [[["-74.006", "40.7218"], ["..."]]],
+      },
+    },
+  },
+}

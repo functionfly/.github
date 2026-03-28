@@ -1,0 +1,87 @@
+{
+  "author": "functionfly",
+  "name": "turf-along",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Turf Along",
+  "description": "Get a point at a specified distance along a line (Turf.js compatible). Uses [lng, lat] coordinate order.",
+  "category": "geospatial",
+  "tags": ["turf", "along", "line", "distance", "interpolate", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "coordinates": {
+        "type": "array",
+        "description": "Line as array of [lng, lat] coordinate pairs",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+      "distance": {
+        "type": "number",
+        "description": "Distance along the line",
+      },
+      "unit": {
+        "type": "string",
+        "description": "Unit: 'km', 'miles', 'meters' (default: 'km')",
+      },
+    },
+    "required": ["coordinates", "distance"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "lng": {
+            "type": "number",
+            "description": "Longitude of point along line",
+          },
+          "lat": {
+            "type": "number",
+            "description": "Latitude of point along line",
+          },
+          "distance_along": {
+            "type": "number",
+            "description": "Actual distance along line",
+          },
+          "total_length_km": {
+            "type": "number",
+            "description": "Total line length in km",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "coordinates": [
+        [-74.006, 40.7128],
+        [-87.6298, 41.8781],
+        [-118.2437, 34.0522],
+      ],
+      "distance": 1000,
+      "unit": "km",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "lng": -87.1234,
+        "lat": 41.5678,
+        "distance_along": 1000,
+        "total_length_km": 3940.07,
+      },
+    },
+  },
+}

@@ -1,0 +1,44 @@
+{
+  "author": "functionfly",
+  "name": "ner-labels",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "NER Label Definitions",
+  "description": "Get definitions and descriptions of Named Entity Recognition (NER) label types.",
+  "category": "ai-ml",
+  "tags": [
+    "ner-labels",
+    "nlp",
+    "text",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "schema": {
+        "type": "string",
+        "default": "standard"
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true
+    }
+  }
+}

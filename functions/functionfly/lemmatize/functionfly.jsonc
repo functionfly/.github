@@ -1,0 +1,58 @@
+{
+  "author": "functionfly",
+  "name": "lemmatize",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Lemmatize Words",
+  "description": "Lemmatize words to their dictionary base form using rule-based morphological analysis.",
+  "category": "ai-ml",
+  "tags": [
+    "lemmatize",
+    "nlp",
+    "text",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "words": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "pos": {
+        "type": "string",
+        "default": "auto"
+      }
+    },
+    "required": [
+      "words"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "words": [
+        "running",
+        "better",
+        "mice"
+      ]
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

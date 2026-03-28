@@ -1,0 +1,72 @@
+{
+  "author": "functionfly",
+  "name": "terrain-data",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Terrain Data",
+  "description": "Get terrain data including elevation, slope, aspect, and terrain classification for a location.",
+  "category": "geospatial",
+  "tags": ["terrain", "elevation", "slope", "aspect", "geospatial", "mock"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+    },
+    "required": ["lat", "lng"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "lat": { "type": "number" },
+          "lng": { "type": "number" },
+          "elevation_m": { "type": "number" },
+          "slope_degrees": {
+            "type": "number",
+            "description": "Terrain slope in degrees",
+          },
+          "aspect_degrees": {
+            "type": "number",
+            "description": "Aspect (direction slope faces) in degrees",
+          },
+          "terrain_type": {
+            "type": "string",
+            "description": "Terrain classification",
+          },
+          "roughness": {
+            "type": "string",
+            "description": "Terrain roughness: flat, gentle, moderate, steep, cliff",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "lat": 40.7128,
+        "lng": -74.006,
+        "elevation_m": 10,
+        "slope_degrees": 2.1,
+        "aspect_degrees": 180,
+        "terrain_type": "coastal_plain",
+        "roughness": "flat",
+      },
+    },
+  },
+}

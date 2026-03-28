@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "metaphone",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Metaphone",
+  "description": "Generate Metaphone code.",
+  "category": "text",
+  "tags": ["metaphone", "phonetic"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "string": {
+        "type": "string",
+      },
+    },
+    "required": ["string"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "metaphone": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "string": "Robert",
+    },
+    "output": {
+      "ok": true,
+      "metaphone": "RBRT",
+    },
+  },
+}

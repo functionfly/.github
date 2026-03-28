@@ -1,0 +1,69 @@
+{
+  "author": "functionfly",
+  "name": "polygon-centroid",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Polygon Centroid",
+  "description": "Calculate the geographic centroid (center of mass) of a polygon defined by coordinates.",
+  "category": "geospatial",
+  "tags": [
+    "polygon",
+    "centroid",
+    "center",
+    "coordinates",
+    "geospatial",
+    "geometry",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "coordinates": {
+        "type": "array",
+        "description": "Array of [lat, lng] coordinate pairs forming the polygon",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+    },
+    "required": ["coordinates"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "lat": { "type": "number", "description": "Centroid latitude" },
+          "lng": { "type": "number", "description": "Centroid longitude" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "coordinates": [
+        [40.7128, -74.006],
+        [40.7128, -73.906],
+        [40.6628, -73.906],
+        [40.6628, -74.006],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "lat": 40.6878,
+        "lng": -73.956,
+      },
+    },
+  },
+}

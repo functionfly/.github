@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "goodwill-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Goodwill Calculate",
+  "description": "Calculate goodwill in a business acquisition (purchase price minus fair value of net assets).",
+  "category": "finance",
+  "tags": [
+    "goodwill",
+    "acquisition",
+    "accounting",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "purchase_price": {
+        "type": "number",
+        "description": "Acquisition purchase price"
+      },
+      "fair_value_assets": {
+        "type": "number",
+        "description": "Fair value of acquired assets"
+      },
+      "fair_value_liabilities": {
+        "type": "number",
+        "description": "Fair value of acquired liabilities"
+      }
+    },
+    "required": [
+      "purchase_price",
+      "fair_value_assets",
+      "fair_value_liabilities"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "purchase_price": 500000,
+      "fair_value_assets": 400000,
+      "fair_value_liabilities": 100000
+    },
+    "output": {
+      "ok": true,
+      "result": 200000.0,
+      "net_assets": 300000.0
+    }
+  }
+}

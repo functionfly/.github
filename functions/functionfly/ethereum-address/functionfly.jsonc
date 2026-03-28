@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "ethereum-address",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Ethereum Address",
+  "description": "Validate Ethereum address.",
+  "category": "utilities",
+  "tags": ["ethereum", "address", "validate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "address": {
+        "type": "string",
+      },
+    },
+    "required": ["address"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "valid": {
+        "type": "boolean",
+      },
+      "checksum": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f8bE21",
+    },
+    "output": {
+      "ok": true,
+      "valid": true,
+      "checksum": "0x742d35Cc6634C0532925a3b844Bc9e7595f8bE21",
+    },
+  },
+}

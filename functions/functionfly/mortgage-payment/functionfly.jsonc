@@ -1,0 +1,72 @@
+{
+  "author": "functionfly",
+  "name": "mortgage-payment",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Mortgage Payment Calculate",
+  "description": "Calculate monthly mortgage payment including principal and interest.",
+  "category": "finance",
+  "tags": [
+    "mortgage",
+    "payment",
+    "real-estate",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "home_price": {
+        "type": "number",
+        "description": "Home purchase price"
+      },
+      "down_payment": {
+        "type": "number",
+        "description": "Down payment amount"
+      },
+      "annual_rate": {
+        "type": "number",
+        "description": "Annual interest rate (decimal)"
+      },
+      "years": {
+        "type": "number",
+        "description": "Loan term in years"
+      }
+    },
+    "required": [
+      "home_price",
+      "down_payment",
+      "annual_rate",
+      "years"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "home_price": 300000,
+      "down_payment": 60000,
+      "annual_rate": 0.065,
+      "years": 30
+    },
+    "output": {
+      "ok": true,
+      "result": 1516.42,
+      "loan_amount": 240000
+    }
+  }
+}

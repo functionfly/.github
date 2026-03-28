@@ -1,0 +1,62 @@
+{
+  "author": "functionfly",
+  "name": "gpx-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "GPX Parse",
+  "description": "Parse GPX (GPS Exchange Format) XML data and convert to GeoJSON format.",
+  "category": "geospatial",
+  "tags": ["gpx", "parse", "geojson", "convert", "gps", "geospatial", "xml"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "gpx": { "type": "string", "description": "GPX XML string to parse" },
+    },
+    "required": ["gpx"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "features": { "type": "array" },
+          "metadata": { "type": "object" },
+          "waypoint_count": { "type": "integer" },
+          "track_count": { "type": "integer" },
+          "route_count": { "type": "integer" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "gpx": "<?xml version=\"1.0\"?><gpx version=\"1.1\"><wpt lat=\"40.7128\" lon=\"-74.006\"><name>New York</name></wpt></gpx>",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "geometry": { "type": "Point", "coordinates": [-74.006, 40.7128] },
+            "properties": { "name": "New York", "gpx_type": "waypoint" },
+          },
+        ],
+        "metadata": {},
+        "waypoint_count": 1,
+        "track_count": 0,
+        "route_count": 0,
+      },
+    },
+  },
+}

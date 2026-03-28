@@ -1,0 +1,84 @@
+{
+  "author": "functionfly",
+  "name": "polygon-area",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Polygon Area",
+  "description": "Calculate the area of a polygon defined by geographic coordinates using the spherical excess formula.",
+  "category": "geospatial",
+  "tags": ["polygon", "area", "coordinates", "geospatial", "geometry"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "coordinates": {
+        "type": "array",
+        "description": "Array of [lat, lng] coordinate pairs forming the polygon (first and last point should be the same to close the polygon)",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+    },
+    "required": ["coordinates"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "area_sq_km": {
+            "type": "number",
+            "description": "Area in square kilometers",
+          },
+          "area_sq_miles": {
+            "type": "number",
+            "description": "Area in square miles",
+          },
+          "area_sq_meters": {
+            "type": "number",
+            "description": "Area in square meters",
+          },
+          "area_hectares": {
+            "type": "number",
+            "description": "Area in hectares",
+          },
+          "perimeter_km": {
+            "type": "number",
+            "description": "Perimeter in kilometers",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "coordinates": [
+        [40.7128, -74.006],
+        [40.7128, -73.906],
+        [40.6628, -73.906],
+        [40.6628, -74.006],
+        [40.7128, -74.006],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "area_sq_km": 49.87,
+        "area_sq_miles": 19.25,
+        "area_sq_meters": 49870000.0,
+        "area_hectares": 4987.0,
+        "perimeter_km": 28.32,
+      },
+    },
+  },
+}

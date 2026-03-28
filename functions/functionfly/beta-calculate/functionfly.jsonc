@@ -1,0 +1,77 @@
+{
+  "author": "functionfly",
+  "name": "beta-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Beta Calculate",
+  "description": "Calculate the beta of a security relative to a benchmark.",
+  "category": "analytics",
+  "tags": [
+    "beta",
+    "systematic-risk",
+    "capm",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "asset_returns": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "List of asset returns"
+      },
+      "market_returns": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "List of market returns"
+      }
+    },
+    "required": [
+      "asset_returns",
+      "market_returns"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "asset_returns": [
+        0.05,
+        0.1,
+        -0.03,
+        0.08,
+        0.12
+      ],
+      "market_returns": [
+        0.04,
+        0.08,
+        -0.02,
+        0.06,
+        0.1
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": 1.25
+    }
+  }
+}

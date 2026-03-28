@@ -1,0 +1,82 @@
+{
+  "author": "functionfly",
+  "name": "turf-kinks",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Turf Kinks",
+  "description": "Find self-intersections (kinks) in a polygon or line (Turf.js compatible). Uses [lng, lat] coordinate order.",
+  "category": "geospatial",
+  "tags": [
+    "turf",
+    "kinks",
+    "self-intersection",
+    "polygon",
+    "validation",
+    "geospatial",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "coordinates": {
+        "type": "array",
+        "description": "Polygon or line as array of [lng, lat] coordinate pairs",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+    },
+    "required": ["coordinates"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "kinks": {
+            "type": "array",
+            "description": "Array of self-intersection points as [lng, lat]",
+            "items": { "type": "array" },
+          },
+          "kink_count": {
+            "type": "integer",
+            "description": "Number of self-intersections found",
+          },
+          "is_simple": {
+            "type": "boolean",
+            "description": "Whether the geometry has no self-intersections",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "coordinates": [
+        [0, 0],
+        [10, 10],
+        [10, 0],
+        [0, 10],
+        [0, 0],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "kinks": [[5.0, 5.0]],
+        "kink_count": 1,
+        "is_simple": false,
+      },
+    },
+  },
+}

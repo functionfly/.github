@@ -1,0 +1,82 @@
+{
+  "author": "functionfly",
+  "name": "black-scholes",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Black-Scholes Option Pricing",
+  "description": "Calculate option price using the Black-Scholes model.",
+  "category": "finance",
+  "tags": [
+    "black-scholes",
+    "options",
+    "derivatives",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "spot_price": {
+        "type": "number",
+        "description": "Current price of underlying asset"
+      },
+      "strike_price": {
+        "type": "number",
+        "description": "Option strike price"
+      },
+      "time_to_expiry": {
+        "type": "number",
+        "description": "Time to expiry in years"
+      },
+      "risk_free_rate": {
+        "type": "number",
+        "description": "Risk-free rate (decimal)"
+      },
+      "volatility": {
+        "type": "number",
+        "description": "Volatility (decimal)"
+      },
+      "option_type": {
+        "type": "string",
+        "description": "Option type: 'call' or 'put'",
+        "default": "call"
+      }
+    },
+    "required": [
+      "spot_price",
+      "strike_price",
+      "time_to_expiry",
+      "risk_free_rate",
+      "volatility"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "spot_price": 100,
+      "strike_price": 100,
+      "time_to_expiry": 1.0,
+      "risk_free_rate": 0.05,
+      "volatility": 0.2
+    },
+    "output": {
+      "ok": true,
+      "result": 10.45
+    }
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "author": "functionfly",
+  "name": "turf-length",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Turf Length",
+  "description": "Calculate the total length of a line (polyline) using the Haversine formula for each segment.",
+  "category": "geospatial",
+  "tags": ["turf", "length", "polyline", "distance", "geospatial", "line"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "coordinates": {
+        "type": "array",
+        "description": "Array of [lat, lng] coordinate pairs forming the line",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+      "unit": {
+        "type": "string",
+        "description": "Unit: 'km', 'miles', 'meters' (default: 'km')",
+      },
+    },
+    "required": ["coordinates"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "length": {
+            "type": "number",
+            "description": "Total length in requested unit",
+          },
+          "unit": { "type": "string" },
+          "length_km": { "type": "number" },
+          "length_miles": { "type": "number" },
+          "length_meters": { "type": "number" },
+          "segment_count": { "type": "integer" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "coordinates": [
+        [40.7128, -74.006],
+        [34.0522, -118.2437],
+      ],
+      "unit": "km",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "length": 3940.07,
+        "unit": "km",
+        "length_km": 3940.07,
+        "length_miles": 2448.24,
+        "length_meters": 3940070.0,
+        "segment_count": 1,
+      },
+    },
+  },
+}

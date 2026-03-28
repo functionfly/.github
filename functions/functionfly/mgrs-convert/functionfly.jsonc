@@ -1,0 +1,84 @@
+{
+  "author": "functionfly",
+  "name": "mgrs-convert",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "MGRS Convert",
+  "description": "Convert between geographic coordinates (lat/lng) and MGRS (Military Grid Reference System) coordinates.",
+  "category": "geospatial",
+  "tags": ["mgrs", "convert", "coordinates", "military-grid", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": {
+        "type": "number",
+        "description": "Latitude for lat/lng to MGRS conversion",
+      },
+      "lng": {
+        "type": "number",
+        "description": "Longitude for lat/lng to MGRS conversion",
+      },
+      "mgrs": {
+        "type": "string",
+        "description": "MGRS string for MGRS to lat/lng conversion",
+      },
+      "direction": {
+        "type": "string",
+        "description": "'to_mgrs' or 'to_latlong' (default: 'to_mgrs')",
+      },
+      "precision": {
+        "type": "integer",
+        "description": "MGRS precision 1-5 (default: 5, 1m resolution)",
+      },
+    },
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "mgrs": { "type": "string", "description": "MGRS coordinate string" },
+          "lat": {
+            "type": "number",
+            "description": "Latitude (for to_latlong)",
+          },
+          "lng": {
+            "type": "number",
+            "description": "Longitude (for to_latlong)",
+          },
+          "zone": { "type": "integer" },
+          "band": { "type": "string" },
+          "grid_square": { "type": "string" },
+          "easting": { "type": "string" },
+          "northing": { "type": "string" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+      "direction": "to_mgrs",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "mgrs": "18TWL8396007523",
+        "zone": 18,
+        "band": "T",
+        "grid_square": "WL",
+        "easting": "83960",
+        "northing": "07523",
+      },
+    },
+  },
+}

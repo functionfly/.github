@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "treynor-ratio",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Treynor Ratio Calculate",
+  "description": "Calculate the Treynor ratio (excess return per unit of systematic risk).",
+  "category": "analytics",
+  "tags": [
+    "treynor-ratio",
+    "systematic-risk",
+    "beta",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "portfolio_return": {
+        "type": "number",
+        "description": "Portfolio return (decimal)"
+      },
+      "risk_free_rate": {
+        "type": "number",
+        "description": "Risk-free rate (decimal)"
+      },
+      "beta": {
+        "type": "number",
+        "description": "Portfolio beta"
+      }
+    },
+    "required": [
+      "portfolio_return",
+      "risk_free_rate",
+      "beta"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "portfolio_return": 0.12,
+      "risk_free_rate": 0.03,
+      "beta": 1.2
+    },
+    "output": {
+      "ok": true,
+      "result": 0.075
+    }
+  }
+}

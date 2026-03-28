@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "phonetic-compare",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Phonetic Compare",
+  "description": "Compare strings phonetically.",
+  "category": "text",
+  "tags": ["phonetic", "compare"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "string1": {
+        "type": "string",
+      },
+      "string2": {
+        "type": "string",
+      },
+      "algorithm": {
+        "type": "string",
+      },
+    },
+    "required": ["string1", "string2"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "match": {
+        "type": "boolean",
+      },
+      "algorithm": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "string1": "Robert",
+      "string2": "Rupert",
+      "algorithm": "soundex",
+    },
+    "output": {
+      "ok": true,
+      "match": true,
+      "algorithm": "soundex",
+    },
+  },
+}

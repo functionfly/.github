@@ -1,0 +1,94 @@
+{
+  "author": "functionfly",
+  "name": "weather-forecast",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Weather Forecast",
+  "description": "Get weather forecast for a location for the next 1-7 days. Returns simulated forecast data.",
+  "category": "geospatial",
+  "tags": [
+    "weather",
+    "forecast",
+    "temperature",
+    "prediction",
+    "geospatial",
+    "mock",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+      "days": {
+        "type": "integer",
+        "description": "Number of forecast days (1-7, default: 5)",
+      },
+      "units": {
+        "type": "string",
+        "description": "Temperature units: 'metric' or 'imperial' (default: 'metric')",
+      },
+    },
+    "required": ["lat", "lng"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "location": { "type": "object" },
+          "forecast": {
+            "type": "array",
+            "description": "Array of daily forecasts",
+          },
+          "units": { "type": "string" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+      "days": 3,
+      "units": "metric",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "location": { "lat": 40.7128, "lng": -74.006 },
+        "forecast": [
+          {
+            "date": "2024-06-21",
+            "temp_high": 24.5,
+            "temp_low": 16.2,
+            "conditions": "Partly Cloudy",
+            "precipitation_mm": 0,
+          },
+          {
+            "date": "2024-06-22",
+            "temp_high": 22.1,
+            "temp_low": 15.8,
+            "conditions": "Rain",
+            "precipitation_mm": 12.5,
+          },
+          {
+            "date": "2024-06-23",
+            "temp_high": 26.3,
+            "temp_low": 17.4,
+            "conditions": "Clear",
+            "precipitation_mm": 0,
+          },
+        ],
+        "units": "metric",
+      },
+    },
+  },
+}

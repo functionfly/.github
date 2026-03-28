@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "iban-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "IBAN Validate",
+  "description": "Validate IBAN.",
+  "category": "utilities",
+  "tags": ["iban", "validate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "iban": {
+        "type": "string",
+      },
+    },
+    "required": ["iban"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "valid": {
+        "type": "boolean",
+      },
+      "country": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "iban": "GB82WEST12345698765432",
+    },
+    "output": {
+      "ok": true,
+      "valid": true,
+      "country": "GB",
+    },
+  },
+}

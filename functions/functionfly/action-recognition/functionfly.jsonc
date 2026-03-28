@@ -1,0 +1,49 @@
+{
+  "author": "functionfly",
+  "name": "action-recognition",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Action Recognition",
+  "description": "Recognize human actions in video (mock implementation).",
+  "category": "ai-ml",
+  "tags": [
+    "action-recognition",
+    "ml",
+    "data",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "video_url": {
+        "type": "string"
+      },
+      "top_k": {
+        "type": "integer",
+        "default": 5
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "video_url": "https://example.com/action.mp4"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

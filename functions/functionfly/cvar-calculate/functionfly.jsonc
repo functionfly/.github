@@ -1,0 +1,78 @@
+{
+  "author": "functionfly",
+  "name": "cvar-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Conditional Value at Risk Calculate",
+  "description": "Calculate Conditional Value at Risk (CVaR / Expected Shortfall).",
+  "category": "analytics",
+  "tags": [
+    "cvar",
+    "expected-shortfall",
+    "risk",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "returns": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "Historical returns"
+      },
+      "confidence_level": {
+        "type": "number",
+        "description": "Confidence level (e.g. 0.95 for 95%)",
+        "default": 0.95
+      },
+      "portfolio_value": {
+        "type": "number",
+        "description": "Portfolio value (default 1)",
+        "default": 1
+      }
+    },
+    "required": [
+      "returns"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "returns": [
+        0.01,
+        -0.02,
+        0.03,
+        -0.05,
+        0.02,
+        -0.01,
+        0.04,
+        -0.03,
+        0.01,
+        -0.04
+      ],
+      "confidence_level": 0.95
+    },
+    "output": {
+      "ok": true,
+      "result": -0.05
+    }
+  }
+}

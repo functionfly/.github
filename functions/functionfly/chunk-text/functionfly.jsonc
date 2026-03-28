@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "chunk-text",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Text Chunking",
+  "description": "Split text into overlapping or non-overlapping chunks of specified size for processing.",
+  "category": "ai-ml",
+  "tags": [
+    "chunk-text",
+    "nlp",
+    "text",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      },
+      "chunk_size": {
+        "type": "integer",
+        "default": 512
+      },
+      "overlap": {
+        "type": "integer",
+        "default": 50
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "text": "Long text...",
+      "chunk_size": 100,
+      "overlap": 20
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

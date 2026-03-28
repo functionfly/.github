@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "duration-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Duration Parse",
+  "description": "Parse duration strings (ISO 8601, human-readable).",
+  "category": "datetime",
+  "tags": ["duration", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "duration": {
+        "type": "string",
+      },
+    },
+    "required": ["duration"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "seconds": {
+        "type": "number",
+      },
+      "minutes": {
+        "type": "number",
+      },
+      "hours": {
+        "type": "number",
+      },
+      "days": {
+        "type": "number",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "duration": "PT1H30M",
+    },
+    "output": {
+      "ok": true,
+      "seconds": 5400,
+      "minutes": 90,
+      "hours": 1.5,
+      "days": 0.0625,
+    },
+  },
+}

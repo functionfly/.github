@@ -1,0 +1,32 @@
+{
+  "author": "functionfly",
+  "name": "caddy-config",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Caddy Config",
+  "description": "Generate a Caddyfile configuration for reverse proxy or static file serving.",
+  "category": "devops",
+  "tags": ["caddy", "webserver", "proxy", "configuration", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "domain": { "type": "string" },
+      "proxy_pass": { "type": "string" },
+      "root": { "type": "string" },
+      "tls_email": { "type": "string" },
+      "headers": { "type": "object" },
+      "routes": { "type": "array", "items": { "type": "object" } }
+    },
+    "required": ["domain"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "caddyfile": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 64,
+  "example": {
+    "input": { "domain": "example.com", "proxy_pass": "localhost:3000" },
+    "output": { "ok": true, "caddyfile": "example.com {\n    reverse_proxy localhost:3000\n}\n" }
+  }
+}

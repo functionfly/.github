@@ -1,0 +1,27 @@
+{
+  "author": "functionfly",
+  "name": "log-level-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Log Level",
+  "description": "Extract and normalize the log level from a log line.",
+  "category": "devops",
+  "tags": ["logging", "parse", "observability", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "line": { "type": "string", "description": "Log line to parse" }
+    },
+    "required": ["line"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "level": { "type": "string" }, "normalized": { "type": "string" }, "severity": { "type": "integer" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "line": "2024-01-01 12:00:00 ERROR Failed to connect to database" },
+    "output": { "ok": true, "level": "ERROR", "normalized": "error", "severity": 3 }
+  }
+}

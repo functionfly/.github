@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "tsid-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "TSID Generate",
+  "description": "Generate TSID (Time-Sorted ID).",
+  "category": "utilities",
+  "tags": ["tsid", "generate"],
+  "input": {
+    "type": "object",
+    "properties": {},
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "tsid": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true,
+      "tsid": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    },
+  },
+}

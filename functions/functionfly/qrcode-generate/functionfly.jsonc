@@ -1,0 +1,50 @@
+{
+  "author": "functionfly",
+  "name": "qrcode-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "QR Code Generate",
+  "description": "Generate QR code data (text representation).",
+  "category": "utilities",
+  "tags": ["qrcode", "generate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "string",
+      },
+      "size": {
+        "type": "integer",
+      },
+    },
+    "required": ["data"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "qrcode": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "data": "Hello",
+    },
+    "output": {
+      "ok": true,
+      "qrcode": "█████████████████████████████████\n██ ▄▄▄▄▄ █▀█ █▄▀▄▀▄█ ▀▄█ ▄▄▄▄▄ ██\n██ █   █ █▀▀▀█ ▀▄█▀▄█▀▀█ █   █ ██\n██ █▄▄▄█ █▀ █▀▀██▀▀▀▄▀█ █ █▄▄▄ ██\n██▄▄▄▄▄▄▄█▄▀ ▀▄█▄▀ █▄█ █▄▄▄▄▄▄██\n██ ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀██\n██ ▄▄▄▄▄ █▄█▀ ▄█▄█▀▀▄█▀█ ▄▄▄▄▄ ██\n██ █   █ █ ▀▄▀▀▄▀▄▀▀▀▄▀▀█ █   █ ██\n██ █▄▄▄█ █ ▀▄▀▀▄▀▄▀▀▀▄▀▀█ █▄▄▄ ██\n██▄▄▄▄▄▄▄█ ▀▄█ ▀▄█▄▀ █▄█▄▄▄▄▄▄██\n█████████████████████████████████",
+    },
+  },
+}

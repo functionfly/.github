@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "style-transfer",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Style Transfer",
+  "description": "Apply artistic style transfer to an image (mock implementation returning transfer parameters).",
+  "category": "ai-ml",
+  "tags": [
+    "style-transfer",
+    "vision",
+    "image",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "content_image_url": {
+        "type": "string"
+      },
+      "style_image_url": {
+        "type": "string"
+      },
+      "style": {
+        "type": "string",
+        "default": "impressionist"
+      },
+      "strength": {
+        "type": "number",
+        "default": 0.7
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "style": "impressionist",
+      "strength": 0.8
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

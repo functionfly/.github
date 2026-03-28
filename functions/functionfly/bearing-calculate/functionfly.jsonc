@@ -1,0 +1,56 @@
+{
+  "author": "functionfly",
+  "name": "bearing-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Bearing Calculate",
+  "description": "Calculate the initial and final bearing between two geographic points.",
+  "category": "geospatial",
+  "tags": ["bearing", "direction", "azimuth", "coordinates", "navigation", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat1": { "type": "number", "description": "Latitude of start point (-90 to 90)" },
+      "lng1": { "type": "number", "description": "Longitude of start point (-180 to 180)" },
+      "lat2": { "type": "number", "description": "Latitude of end point (-90 to 90)" },
+      "lng2": { "type": "number", "description": "Longitude of end point (-180 to 180)" }
+    },
+    "required": ["lat1", "lng1", "lat2", "lng2"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "initial_bearing": { "type": "number", "description": "Initial bearing in degrees (0-360)" },
+          "final_bearing": { "type": "number", "description": "Final bearing in degrees (0-360)" },
+          "compass_direction": { "type": "string", "description": "Compass direction (N, NE, E, SE, S, SW, W, NW)" }
+        }
+      },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat1": 40.7128,
+      "lng1": -74.006,
+      "lat2": 34.0522,
+      "lng2": -118.2437
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "initial_bearing": 273.97,
+        "final_bearing": 261.14,
+        "compass_direction": "W"
+      }
+    }
+  }
+}

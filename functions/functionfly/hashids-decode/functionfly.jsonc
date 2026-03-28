@@ -1,0 +1,50 @@
+{
+  "author": "functionfly",
+  "name": "hashids-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Hashids Decode",
+  "description": "Decode Hashids to numbers.",
+  "category": "encoding",
+  "tags": ["hashids", "decode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "hashid": {
+        "type": "string",
+      },
+      "salt": {
+        "type": "string",
+      },
+    },
+    "required": ["hashid"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "numbers": {
+        "type": "array",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "hashid": "NkK9",
+    },
+    "output": {
+      "ok": true,
+      "numbers": [123, 456],
+    },
+  },
+}

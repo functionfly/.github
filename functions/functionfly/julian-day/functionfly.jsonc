@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "julian-day",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Julian Day",
+  "description": "Convert to/from Julian Day Number.",
+  "category": "datetime",
+  "tags": ["julian", "day"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "date": {
+        "type": "string",
+      },
+      "julian_day": {
+        "type": "number",
+      },
+    },
+    "required": [],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "julian_day": {
+        "type": "number",
+      },
+      "date": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "date": "2024-01-15",
+    },
+    "output": {
+      "ok": true,
+      "julian_day": 2460324.5,
+    },
+  },
+}

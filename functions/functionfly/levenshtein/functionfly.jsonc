@@ -1,0 +1,55 @@
+{
+  "author": "functionfly",
+  "name": "levenshtein",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Levenshtein Distance",
+  "description": "Calculate Levenshtein distance.",
+  "category": "text",
+  "tags": ["levenshtein", "distance", "similarity"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "string1": {
+        "type": "string",
+      },
+      "string2": {
+        "type": "string",
+      },
+    },
+    "required": ["string1", "string2"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "distance": {
+        "type": "integer",
+      },
+      "similarity": {
+        "type": "number",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "string1": "kitten",
+      "string2": "sitting",
+    },
+    "output": {
+      "ok": true,
+      "distance": 3,
+      "similarity": 0.57,
+    },
+  },
+}

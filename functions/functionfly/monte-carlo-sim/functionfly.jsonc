@@ -1,0 +1,87 @@
+{
+  "author": "functionfly",
+  "name": "monte-carlo-sim",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Monte Carlo Simulation",
+  "description": "Run a Monte Carlo simulation for portfolio or investment value projection.",
+  "category": "analytics",
+  "tags": [
+    "monte-carlo",
+    "simulation",
+    "risk",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "initial_value": {
+        "type": "number",
+        "description": "Initial portfolio value"
+      },
+      "expected_return": {
+        "type": "number",
+        "description": "Expected annual return (decimal)"
+      },
+      "volatility": {
+        "type": "number",
+        "description": "Annual volatility (decimal)"
+      },
+      "years": {
+        "type": "number",
+        "description": "Simulation horizon in years"
+      },
+      "simulations": {
+        "type": "integer",
+        "description": "Number of simulations (default 1000)",
+        "default": 1000
+      },
+      "seed": {
+        "type": "integer",
+        "description": "Random seed for reproducibility (optional)"
+      }
+    },
+    "required": [
+      "initial_value",
+      "expected_return",
+      "volatility",
+      "years"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "initial_value": 10000,
+      "expected_return": 0.08,
+      "volatility": 0.15,
+      "years": 10,
+      "simulations": 100,
+      "seed": 42
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "mean": 21589.0,
+        "median": 20000.0,
+        "p5": 12000.0,
+        "p95": 35000.0
+      }
+    }
+  }
+}

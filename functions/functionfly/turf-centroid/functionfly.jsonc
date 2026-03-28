@@ -1,0 +1,63 @@
+{
+  "author": "functionfly",
+  "name": "turf-centroid",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Turf Centroid",
+  "description": "Calculate the centroid of a GeoJSON-style polygon (Turf.js compatible). Uses [lng, lat] coordinate order.",
+  "category": "geospatial",
+  "tags": ["turf", "centroid", "polygon", "geospatial", "geojson", "center"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "coordinates": {
+        "type": "array",
+        "description": "Array of [lng, lat] coordinate pairs (GeoJSON order)",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+    },
+    "required": ["coordinates"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "lng": { "type": "number", "description": "Centroid longitude" },
+          "lat": { "type": "number", "description": "Centroid latitude" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "coordinates": [
+        [-74.006, 40.7128],
+        [-73.906, 40.7128],
+        [-73.906, 40.6628],
+        [-74.006, 40.6628],
+        [-74.006, 40.7128],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "lng": -73.956,
+        "lat": 40.6878,
+      },
+    },
+  },
+}

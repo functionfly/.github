@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "bech32-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Bech32 Encode",
+  "description": "Encode to Bech32.",
+  "category": "encoding",
+  "tags": ["bech32", "encode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "string",
+      },
+      "prefix": {
+        "type": "string",
+      },
+    },
+    "required": ["data"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "encoded": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "data": "Hello",
+      "prefix": "bc",
+    },
+    "output": {
+      "ok": true,
+      "encoded": "bc1q9zpgru",
+    },
+  },
+}

@@ -1,0 +1,27 @@
+{
+  "author": "functionfly",
+  "name": "sitemap-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Validate Sitemap",
+  "description": "Validate a sitemap XML string and extract URL entries.",
+  "category": "devops",
+  "tags": ["sitemap", "seo", "xml", "web", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "content": { "type": "string", "description": "Sitemap XML content" }
+    },
+    "required": ["content"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "valid": { "type": "boolean" }, "url_count": { "type": "integer" }, "urls": { "type": "array" }, "errors": { "type": "array" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 64,
+  "example": {
+    "input": { "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n  <url><loc>https://example.com/</loc></url>\n</urlset>" },
+    "output": { "ok": true, "valid": true, "url_count": 1, "urls": [{ "loc": "https://example.com/" }] }
+  }
+}

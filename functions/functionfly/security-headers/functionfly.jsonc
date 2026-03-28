@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "security-headers",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Check Security Headers",
+  "description": "Analyze HTTP security headers for a URL and return a security score.",
+  "category": "devops",
+  "tags": ["security", "headers", "http", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "score": { "type": "integer" }, "grade": { "type": "string" }, "present": { "type": "array" }, "missing": { "type": "array" }, "headers": { "type": "object" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "url": "https://example.com" },
+    "output": { "ok": true, "score": 60, "grade": "C", "present": ["Strict-Transport-Security"], "missing": ["Content-Security-Policy", "X-Frame-Options"] }
+  }
+}

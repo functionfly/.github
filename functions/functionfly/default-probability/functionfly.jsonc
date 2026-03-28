@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "default-probability",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Default Probability Calculate",
+  "description": "Calculate the implied default probability from credit spread using reduced-form model.",
+  "category": "finance",
+  "tags": [
+    "default-probability",
+    "credit-risk",
+    "bond",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "credit_spread": {
+        "type": "number",
+        "description": "Credit spread (decimal)"
+      },
+      "recovery_rate": {
+        "type": "number",
+        "description": "Expected recovery rate (decimal, default 0.4)",
+        "default": 0.4
+      },
+      "years": {
+        "type": "number",
+        "description": "Time horizon in years (default 1)",
+        "default": 1
+      }
+    },
+    "required": [
+      "credit_spread"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "credit_spread": 0.025,
+      "recovery_rate": 0.4,
+      "years": 1
+    },
+    "output": {
+      "ok": true,
+      "result": 0.0417
+    }
+  }
+}

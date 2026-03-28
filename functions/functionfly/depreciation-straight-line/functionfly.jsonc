@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "depreciation-straight-line",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Straight-Line Depreciation",
+  "description": "Calculate straight-line depreciation for an asset.",
+  "category": "finance",
+  "tags": [
+    "depreciation",
+    "straight-line",
+    "accounting",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cost": {
+        "type": "number",
+        "description": "Asset cost"
+      },
+      "salvage_value": {
+        "type": "number",
+        "description": "Salvage value at end of life"
+      },
+      "useful_life": {
+        "type": "number",
+        "description": "Useful life in years"
+      }
+    },
+    "required": [
+      "cost",
+      "salvage_value",
+      "useful_life"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "cost": 10000,
+      "salvage_value": 1000,
+      "useful_life": 5
+    },
+    "output": {
+      "ok": true,
+      "result": 1800.0,
+      "annual_depreciation": 1800.0
+    }
+  }
+}

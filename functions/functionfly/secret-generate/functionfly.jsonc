@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "secret-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Secret",
+  "description": "Generate cryptographically secure secrets, passwords, or API keys.",
+  "category": "devops",
+  "tags": ["secret", "password", "api-key", "security", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "type": { "type": "string", "enum": ["password", "api_key", "jwt_secret", "hex", "base64", "uuid"], "default": "password" },
+      "length": { "type": "integer", "default": 32 },
+      "include_symbols": { "type": "boolean", "default": true },
+      "count": { "type": "integer", "default": 1, "description": "Number of secrets to generate" }
+    }
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": {}, "secrets": { "type": "array" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": false,
+  "cache_ttl": 0, "timeout_ms": 1000, "memory_mb": 64,
+  "example": {
+    "input": { "type": "password", "length": 16 },
+    "output": { "ok": true, "secrets": ["Xk9#mP2$nQ7@wR4!"] }
+  }
+}

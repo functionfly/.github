@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "text-classification",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Text Classification",
+  "description": "Classify text into predefined categories (news, sports, technology, science, politics, entertainment, business, health) using keyword-based scoring.",
+  "category": "ai-ml",
+  "tags": ["classification", "nlp", "categories", "text", "ai"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": { "type": "string" },
+      "categories": { "type": "array", "items": { "type": "string" } },
+    },
+    "required": ["text"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "category": {},
+      "confidence": {},
+      "scores": {},
+      "error": {},
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "text": "The stock market rallied today as tech companies reported strong earnings.",
+    },
+    "output": { "ok": true, "category": "business" },
+  },
+}

@@ -1,0 +1,68 @@
+{
+  "author": "functionfly",
+  "name": "beta-distribution",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Beta Distribution Calculate",
+  "description": "Calculate the probability density function (PDF) and CDF of the beta distribution.",
+  "category": "analytics",
+  "tags": [
+    "beta-distribution",
+    "statistics",
+    "probability",
+    "analytics"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "x": {
+        "type": "number",
+        "description": "Value between 0 and 1"
+      },
+      "alpha": {
+        "type": "number",
+        "description": "Alpha shape parameter (> 0)"
+      },
+      "beta": {
+        "type": "number",
+        "description": "Beta shape parameter (> 0)"
+      }
+    },
+    "required": [
+      "x",
+      "alpha",
+      "beta"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "x": 0.5,
+      "alpha": 2,
+      "beta": 5
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "pdf": 1.3125,
+        "cdf": 0.8906
+      }
+    }
+  }
+}

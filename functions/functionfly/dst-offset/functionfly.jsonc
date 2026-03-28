@@ -1,0 +1,58 @@
+{
+  "author": "functionfly",
+  "name": "dst-offset",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "DST Offset",
+  "description": "Get DST offset for timezone.",
+  "category": "datetime",
+  "tags": ["timezone", "dst", "offset"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "timezone": {
+        "type": "string",
+      },
+      "date": {
+        "type": "string",
+      },
+    },
+    "required": ["timezone"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "dst_offset_seconds": {
+        "type": "integer",
+      },
+      "dst_offset_hours": {
+        "type": "number",
+      },
+      "is_dst": {
+        "type": "boolean",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "timezone": "America/New_York",
+    },
+    "output": {
+      "ok": true,
+      "is_dst": true,
+      "dst_offset_seconds": 3600,
+      "dst_offset_hours": 1.0,
+    },
+  },
+}

@@ -1,0 +1,75 @@
+{
+  "author": "functionfly",
+  "name": "rate-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Interest Rate Calculate",
+  "description": "Calculate the interest rate per period for a loan or investment.",
+  "category": "finance",
+  "tags": [
+    "rate",
+    "interest-rate",
+    "loan",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "periods": {
+        "type": "number",
+        "description": "Number of periods"
+      },
+      "payment": {
+        "type": "number",
+        "description": "Periodic payment amount"
+      },
+      "present_value": {
+        "type": "number",
+        "description": "Present value"
+      },
+      "future_value": {
+        "type": "number",
+        "description": "Future value (default 0)",
+        "default": 0
+      },
+      "guess": {
+        "type": "number",
+        "description": "Initial guess (default 0.01)",
+        "default": 0.01
+      }
+    },
+    "required": [
+      "periods",
+      "payment",
+      "present_value"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "periods": 360,
+      "payment": -1199.1,
+      "present_value": 200000
+    },
+    "output": {
+      "ok": true,
+      "result": 0.005
+    }
+  }
+}

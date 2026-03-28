@@ -1,0 +1,67 @@
+{
+  "author": "functionfly",
+  "name": "forex-convert",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Forex Convert",
+  "description": "Convert currency amounts using forex rates with optional fee calculation.",
+  "category": "finance",
+  "tags": [
+    "forex",
+    "currency-conversion",
+    "exchange",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "amount": {
+        "type": "number",
+        "description": "Amount to convert"
+      },
+      "rate": {
+        "type": "number",
+        "description": "Exchange rate"
+      },
+      "fee_pct": {
+        "type": "number",
+        "description": "Transaction fee percentage (default 0)",
+        "default": 0
+      }
+    },
+    "required": [
+      "amount",
+      "rate"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "amount": 1000,
+      "rate": 1.25,
+      "fee_pct": 0.5
+    },
+    "output": {
+      "ok": true,
+      "result": 1243.75,
+      "converted": 1250.0,
+      "fee": 6.25
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "pos-tag",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Part-of-Speech Tagging",
+  "description": "Tag words with their part-of-speech labels (noun, verb, adjective, etc.) using rule-based heuristics.",
+  "category": "ai-ml",
+  "tags": [
+    "pos-tag",
+    "nlp",
+    "text",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "text": "The quick brown fox jumps over the lazy dog."
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

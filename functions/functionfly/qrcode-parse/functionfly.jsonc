@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "qrcode-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "QR Code Parse",
+  "description": "Parse QR code data.",
+  "category": "utilities",
+  "tags": ["qrcode", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "qrcode": {
+        "type": "string",
+      },
+    },
+    "required": ["qrcode"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "data": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "qrcode": "█████████████████████████████████\n██ ▄▄▄▄▄ █▀█ █▄▀▄▀▄█ ▀▄█ ▄▄▄▄▄ ██\n██ █   █ █▀▀▀█ ▀▄█▀▄█▀▀█ █   █ ██\n██ █▄▄▄█ █▀ █▀▀██▀▀▀▄▀█ █ █▄▄▄ ██\n██▄▄▄▄▄▄▄█▄▀ ▀▄█▄▀ █▄█ █▄▄▄▄▄▄██\n██ ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀██\n██ ▄▄▄▄▄ █▄█▀ ▄█▄█▀▀▄█▀█ ▄▄▄▄▄ ██\n██ █   █ █ ▀▄▀▀▄▀▄▀▀▀▄▀▀█ █   █ ██\n██ █▄▄▄█ █ ▀▄▀▀▄▀▄▀▀▀▄▀▀█ █▄▄▄ ██\n██▄▄▄▄▄▄▄█ ▀▄█ ▀▄█▄▀ █▄█▄▄▄▄▄▄██\n█████████████████████████████████",
+    },
+    "output": {
+      "ok": true,
+      "data": "Hello",
+    },
+  },
+}

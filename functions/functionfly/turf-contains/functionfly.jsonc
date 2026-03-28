@@ -1,0 +1,72 @@
+{
+  "author": "functionfly",
+  "name": "turf-contains",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Turf Contains",
+  "description": "Check if a polygon contains a point (inverse of within). Uses [lng, lat] coordinate order (GeoJSON).",
+  "category": "geospatial",
+  "tags": ["turf", "contains", "polygon", "point", "geospatial", "geojson"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "polygon": {
+        "type": "array",
+        "description": "Polygon as array of [lng, lat] coordinate pairs",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+      "point": {
+        "type": "array",
+        "description": "Point as [lng, lat] (GeoJSON order)",
+        "items": { "type": "number" },
+        "minItems": 2,
+        "maxItems": 2,
+      },
+    },
+    "required": ["polygon", "point"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "contains": {
+            "type": "boolean",
+            "description": "Whether the polygon contains the point",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "polygon": [
+        [-74.006, 40.7128],
+        [-73.906, 40.7128],
+        [-73.906, 40.6628],
+        [-74.006, 40.6628],
+        [-74.006, 40.7128],
+      ],
+      "point": [-73.95, 40.69],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "contains": true,
+      },
+    },
+  },
+}

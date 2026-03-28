@@ -1,0 +1,32 @@
+{
+  "author": "functionfly",
+  "name": "haproxy-config",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate HAProxy Config",
+  "description": "Generate an HAProxy configuration for load balancing and proxying.",
+  "category": "devops",
+  "tags": ["haproxy", "loadbalancer", "proxy", "configuration", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "frontend_name": { "type": "string", "default": "main" },
+      "frontend_port": { "type": "integer", "default": 80 },
+      "backend_name": { "type": "string", "default": "servers" },
+      "servers": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "host": { "type": "string" }, "port": { "type": "integer" } } } },
+      "balance": { "type": "string", "enum": ["roundrobin", "leastconn", "source", "random"], "default": "roundrobin" },
+      "mode": { "type": "string", "enum": ["http", "tcp"], "default": "http" }
+    },
+    "required": ["servers"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "config": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 64,
+  "example": {
+    "input": { "servers": [{ "name": "web1", "host": "192.168.1.10", "port": 8080 }, { "name": "web2", "host": "192.168.1.11", "port": 8080 }] },
+    "output": { "ok": true, "config": "global\n    log /dev/log local0\n\ndefaults\n    mode http\n..." }
+  }
+}

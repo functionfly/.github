@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "stacktrace-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Stack Trace",
+  "description": "Parse a stack trace string into structured frames.",
+  "category": "devops",
+  "tags": ["stacktrace", "error", "debugging", "observability", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "stacktrace": { "type": "string" },
+      "language": { "type": "string", "description": "Language hint (python, java, javascript, go)", "default": "auto" }
+    },
+    "required": ["stacktrace"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "frames": { "type": "array" }, "exception": { "type": "string" }, "message": { "type": "string" }, "language": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": {
+    "input": { "stacktrace": "Traceback (most recent call last):\n  File \"app.py\", line 42, in main\n    result = process(data)\nValueError: invalid data" },
+    "output": { "ok": true, "language": "python", "exception": "ValueError", "message": "invalid data", "frames": [{ "file": "app.py", "line": 42, "function": "main" }] }
+  }
+}

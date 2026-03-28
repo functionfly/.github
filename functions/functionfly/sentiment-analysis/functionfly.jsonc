@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "sentiment-analysis",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Sentiment Analysis",
+  "description": "Analyze text sentiment (positive, negative, neutral) using a lexicon-based approach with negation handling.",
+  "category": "ai-ml",
+  "tags": ["sentiment", "nlp", "opinion", "emotion", "ai"],
+  "input": {
+    "type": "object",
+    "properties": { "text": { "type": "string" } },
+    "required": ["text"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "sentiment": {},
+      "score": {},
+      "positive": {},
+      "negative": {},
+      "error": {},
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": { "text": "I absolutely love this product! It works great." },
+    "output": { "ok": true, "sentiment": "positive" },
+  },
+}

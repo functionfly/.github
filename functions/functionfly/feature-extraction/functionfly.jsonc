@@ -1,0 +1,54 @@
+{
+  "author": "functionfly",
+  "name": "feature-extraction",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Feature Extraction",
+  "description": "Extract numerical features from text including statistical, lexical, and syntactic features.",
+  "category": "ai-ml",
+  "tags": [
+    "feature-extraction",
+    "embeddings",
+    "nlp",
+    "vectors",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      },
+      "feature_types": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "text": "The quick brown fox"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

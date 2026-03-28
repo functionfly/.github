@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "ksuid-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "KSUID Parse",
+  "description": "Parse KSUID.",
+  "category": "utilities",
+  "tags": ["ksuid", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "ksuid": {
+        "type": "string",
+      },
+    },
+    "required": ["ksuid"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "timestamp": {
+        "type": "integer",
+      },
+      "payload": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "ksuid": "0ujtsYcgvSTl8PAuAdqWYSmznOt",
+    },
+    "output": {
+      "ok": true,
+      "timestamp": 1400000000,
+      "payload": "...",
+    },
+  },
+}

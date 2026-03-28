@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "cron-next",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Cron Next",
+  "description": "Get next execution time for cron expression.",
+  "category": "datetime",
+  "tags": ["cron", "schedule", "next"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "expression": {
+        "type": "string",
+      },
+      "from_time": {
+        "type": "string",
+      },
+      "count": {
+        "type": "integer",
+      },
+    },
+    "required": ["expression"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "next_runs": {
+        "type": "array",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "expression": "0 9 * * 1-5",
+    },
+    "output": {
+      "ok": true,
+      "next_runs": ["2024-01-15T09:00:00Z"],
+    },
+  },
+}

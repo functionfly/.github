@@ -1,0 +1,73 @@
+{
+  "author": "functionfly",
+  "name": "clustering",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Data Clustering",
+  "description": "Cluster data points using k-means algorithm.",
+  "category": "ai-ml",
+  "tags": [
+    "clustering",
+    "ml",
+    "data",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array"
+      },
+      "k": {
+        "type": "integer",
+        "default": 3
+      },
+      "max_iterations": {
+        "type": "integer",
+        "default": 100
+      }
+    },
+    "required": [
+      "data"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "data": [
+        [
+          1,
+          2
+        ],
+        [
+          1.5,
+          2
+        ],
+        [
+          5,
+          6
+        ],
+        [
+          5.5,
+          6.5
+        ]
+      ],
+      "k": 2
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

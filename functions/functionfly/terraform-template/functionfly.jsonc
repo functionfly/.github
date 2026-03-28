@@ -1,0 +1,31 @@
+{
+  "author": "functionfly",
+  "name": "terraform-template",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Terraform Template",
+  "description": "Generate Terraform HCL configuration templates for common cloud resources.",
+  "category": "devops",
+  "tags": ["terraform", "iac", "infrastructure", "cloud", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "provider": { "type": "string", "description": "Cloud provider (aws, gcp, azure)" },
+      "resource_type": { "type": "string", "description": "Resource type (e.g. aws_instance, google_compute_instance)" },
+      "resource_name": { "type": "string" },
+      "config": { "type": "object", "description": "Resource configuration properties" },
+      "variables": { "type": "object", "description": "Terraform variables to declare" }
+    },
+    "required": ["provider", "resource_type", "resource_name"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "hcl": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 3000, "memory_mb": 128,
+  "example": {
+    "input": { "provider": "aws", "resource_type": "aws_instance", "resource_name": "web_server", "config": { "ami": "ami-0c55b159cbfafe1f0", "instance_type": "t2.micro" } },
+    "output": { "ok": true, "hcl": "terraform {\n  required_providers {\n    aws = {\n      source = \"hashicorp/aws\"\n    }\n  }\n}\n\nresource \"aws_instance\" \"web_server\" {\n  ami = \"ami-0c55b159cbfafe1f0\"\n  instance_type = \"t2.micro\"\n}\n" }
+  }
+}

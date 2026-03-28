@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "inventory-turnover",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Inventory Turnover Calculate",
+  "description": "Calculate inventory turnover ratio (COGS / average inventory).",
+  "category": "finance",
+  "tags": [
+    "inventory-turnover",
+    "efficiency",
+    "finance",
+    "accounting"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cost_of_goods_sold": {
+        "type": "number",
+        "description": "Cost of goods sold"
+      },
+      "average_inventory": {
+        "type": "number",
+        "description": "Average inventory value"
+      }
+    },
+    "required": [
+      "cost_of_goods_sold",
+      "average_inventory"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "cost_of_goods_sold": 500000,
+      "average_inventory": 100000
+    },
+    "output": {
+      "ok": true,
+      "result": 5.0,
+      "days_in_inventory": 73.0
+    }
+  }
+}

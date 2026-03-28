@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "investment-return",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Investment Return Calculate",
+  "description": "Calculate the total return and annualized return on an investment.",
+  "category": "finance",
+  "tags": [
+    "investment",
+    "return",
+    "roi",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "initial_value": {
+        "type": "number",
+        "description": "Initial investment value"
+      },
+      "final_value": {
+        "type": "number",
+        "description": "Final investment value"
+      },
+      "years": {
+        "type": "number",
+        "description": "Investment period in years",
+        "default": 1
+      }
+    },
+    "required": [
+      "initial_value",
+      "final_value"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "initial_value": 10000,
+      "final_value": 15000,
+      "years": 5
+    },
+    "output": {
+      "ok": true,
+      "result": 0.5,
+      "annualized_return": 0.0845
+    }
+  }
+}

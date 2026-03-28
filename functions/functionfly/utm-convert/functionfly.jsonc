@@ -1,0 +1,97 @@
+{
+  "author": "functionfly",
+  "name": "utm-convert",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "UTM Convert",
+  "description": "Convert between geographic coordinates (lat/lng) and UTM (Universal Transverse Mercator) coordinates.",
+  "category": "geospatial",
+  "tags": [
+    "utm",
+    "convert",
+    "coordinates",
+    "projection",
+    "geospatial",
+    "transverse-mercator",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": {
+        "type": "number",
+        "description": "Latitude (-80 to 84) for lat/lng to UTM conversion",
+      },
+      "lng": {
+        "type": "number",
+        "description": "Longitude (-180 to 180) for lat/lng to UTM conversion",
+      },
+      "easting": {
+        "type": "number",
+        "description": "UTM easting for UTM to lat/lng conversion",
+      },
+      "northing": {
+        "type": "number",
+        "description": "UTM northing for UTM to lat/lng conversion",
+      },
+      "zone": {
+        "type": "integer",
+        "description": "UTM zone number (1-60) for UTM to lat/lng conversion",
+      },
+      "hemisphere": {
+        "type": "string",
+        "description": "Hemisphere 'N' or 'S' for UTM to lat/lng conversion",
+      },
+      "direction": {
+        "type": "string",
+        "description": "'to_utm' or 'to_latlong' (default: 'to_utm')",
+      },
+    },
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "easting": { "type": "number", "description": "UTM easting" },
+          "northing": { "type": "number", "description": "UTM northing" },
+          "zone": { "type": "integer", "description": "UTM zone number" },
+          "hemisphere": { "type": "string", "description": "N or S" },
+          "zone_letter": { "type": "string", "description": "UTM zone letter" },
+          "lat": {
+            "type": "number",
+            "description": "Latitude (for to_latlong)",
+          },
+          "lng": {
+            "type": "number",
+            "description": "Longitude (for to_latlong)",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+      "direction": "to_utm",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "easting": 583960.0,
+        "northing": 4507523.0,
+        "zone": 18,
+        "hemisphere": "N",
+        "zone_letter": "T",
+      },
+    },
+  },
+}

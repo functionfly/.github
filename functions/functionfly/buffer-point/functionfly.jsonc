@@ -1,0 +1,96 @@
+{
+  "author": "functionfly",
+  "name": "buffer-point",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Buffer Point",
+  "description": "Create a circular buffer (polygon approximation) around a geographic point at a given radius.",
+  "category": "geospatial",
+  "tags": [
+    "buffer",
+    "circle",
+    "radius",
+    "coordinates",
+    "geospatial",
+    "geometry",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number", "description": "Center latitude (-90 to 90)" },
+      "lng": {
+        "type": "number",
+        "description": "Center longitude (-180 to 180)",
+      },
+      "radius": { "type": "number", "description": "Buffer radius" },
+      "unit": {
+        "type": "string",
+        "description": "Unit of radius: 'km', 'miles', 'meters' (default: 'km')",
+      },
+      "steps": {
+        "type": "integer",
+        "description": "Number of polygon vertices (default: 64, min: 8, max: 360)",
+      },
+    },
+    "required": ["lat", "lng", "radius"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "center": {
+            "type": "object",
+            "properties": {
+              "lat": { "type": "number" },
+              "lng": { "type": "number" },
+            },
+          },
+          "radius": { "type": "number" },
+          "unit": { "type": "string" },
+          "coordinates": {
+            "type": "array",
+            "description": "Polygon vertices as [lat, lng] pairs",
+            "items": { "type": "array" },
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+      "radius": 1,
+      "unit": "km",
+      "steps": 8,
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "center": { "lat": 40.7128, "lng": -74.006 },
+        "radius": 1,
+        "unit": "km",
+        "coordinates": [
+          [40.7218, -74.006],
+          [40.7192, -73.9929],
+          [40.7128, -73.9942],
+          [40.7064, -73.9929],
+          [40.7038, -74.006],
+          [40.7064, -74.0191],
+          [40.7128, -74.0178],
+          [40.7192, -74.0191],
+          [40.7218, -74.006],
+        ],
+      },
+    },
+  },
+}

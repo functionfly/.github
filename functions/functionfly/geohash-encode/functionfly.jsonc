@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "geohash-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Geohash Encode",
+  "description": "Encode latitude/longitude coordinates to a geohash string.",
+  "category": "geospatial",
+  "tags": ["geohash", "encode", "coordinates", "spatial-index", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+      "precision": {
+        "type": "integer",
+        "description": "Geohash precision (1-12, default: 9)",
+      },
+    },
+    "required": ["lat", "lng"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "geohash": { "type": "string", "description": "Geohash string" },
+          "precision": { "type": "integer" },
+          "lat": { "type": "number" },
+          "lng": { "type": "number" },
+          "error_km": {
+            "type": "number",
+            "description": "Approximate error in km at this precision",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+      "precision": 9,
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "geohash": "dr5regw3p",
+        "precision": 9,
+        "lat": 40.7128,
+        "lng": -74.006,
+        "error_km": 0.0024,
+      },
+    },
+  },
+}

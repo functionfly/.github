@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "hamming-distance",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Hamming Distance",
+  "description": "Calculate Hamming distance.",
+  "category": "text",
+  "tags": ["hamming", "distance"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "string1": {
+        "type": "string",
+      },
+      "string2": {
+        "type": "string",
+      },
+    },
+    "required": ["string1", "string2"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "distance": {
+        "type": "integer",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "string1": "karolin",
+      "string2": "kathrin",
+    },
+    "output": {
+      "ok": true,
+      "distance": 3,
+    },
+  },
+}

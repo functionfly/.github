@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "otp-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "OTP Validate",
+  "description": "Validate OTP.",
+  "category": "security",
+  "tags": ["otp", "validate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "otp": {
+        "type": "string",
+      },
+      "expected": {
+        "type": "string",
+      },
+    },
+    "required": ["otp", "expected"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "valid": {
+        "type": "boolean",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "otp": "123456",
+      "expected": "123456",
+    },
+    "output": {
+      "ok": true,
+      "valid": true,
+    },
+  },
+}

@@ -1,0 +1,54 @@
+{
+  "author": "functionfly",
+  "name": "hotp-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "HOTP Generate",
+  "description": "Generate HOTP (HMAC-based OTP).",
+  "category": "security",
+  "tags": ["hotp", "generate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "secret": {
+        "type": "string",
+      },
+      "counter": {
+        "type": "integer",
+      },
+      "digits": {
+        "type": "integer",
+      },
+    },
+    "required": ["secret", "counter"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "hotp": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "secret": "JBSWY3DPEHPK3PXP",
+      "counter": 0,
+    },
+    "output": {
+      "ok": true,
+      "hotp": "123456",
+    },
+  },
+}

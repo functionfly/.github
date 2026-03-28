@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "midpoint",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Midpoint",
+  "description": "Calculate the geographic midpoint (halfway point) between two coordinates on the Earth's surface.",
+  "category": "geospatial",
+  "tags": ["midpoint", "halfway", "coordinates", "geospatial", "interpolation"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat1": {
+        "type": "number",
+        "description": "Latitude of first point (-90 to 90)",
+      },
+      "lng1": {
+        "type": "number",
+        "description": "Longitude of first point (-180 to 180)",
+      },
+      "lat2": {
+        "type": "number",
+        "description": "Latitude of second point (-90 to 90)",
+      },
+      "lng2": {
+        "type": "number",
+        "description": "Longitude of second point (-180 to 180)",
+      },
+    },
+    "required": ["lat1", "lng1", "lat2", "lng2"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "lat": { "type": "number", "description": "Midpoint latitude" },
+          "lng": { "type": "number", "description": "Midpoint longitude" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat1": 40.7128,
+      "lng1": -74.006,
+      "lat2": 34.0522,
+      "lng2": -118.2437,
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "lat": 39.5479,
+        "lng": -97.2131,
+      },
+    },
+  },
+}

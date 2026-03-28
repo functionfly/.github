@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "json-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Validate JSON",
+  "description": "Check if a string is valid JSON and optionally validate against a JSON Schema.",
+  "category": "devops",
+  "tags": ["json", "validate", "schema", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "JSON string to validate" },
+      "schema": { "type": "object", "description": "Optional JSON Schema to validate against" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "valid": { "type": "boolean" }, "parsed": {}, "errors": { "type": "array" }, "message": {}, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": {
+    "input": { "data": "{\"name\": \"John\", \"age\": 30}" },
+    "output": { "ok": true, "valid": true, "parsed": { "name": "John", "age": 30 } }
+  }
+}

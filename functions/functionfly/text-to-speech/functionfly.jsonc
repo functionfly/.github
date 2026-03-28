@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "text-to-speech",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Text to Speech",
+  "description": "Convert text to speech synthesis parameters.",
+  "category": "ai-ml",
+  "tags": [
+    "text-to-speech",
+    "audio",
+    "speech",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      },
+      "voice": {
+        "type": "string",
+        "default": "neutral"
+      },
+      "language": {
+        "type": "string",
+        "default": "en"
+      },
+      "speed": {
+        "type": "number",
+        "default": 1.0
+      },
+      "pitch": {
+        "type": "number",
+        "default": 1.0
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 3000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "text": "Hello, world!",
+      "voice": "female"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

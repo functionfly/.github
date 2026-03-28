@@ -1,0 +1,33 @@
+{
+  "author": "functionfly",
+  "name": "apache-config",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Apache Config",
+  "description": "Generate an Apache HTTP server VirtualHost configuration.",
+  "category": "devops",
+  "tags": ["apache", "webserver", "proxy", "configuration", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "server_name": { "type": "string" },
+      "document_root": { "type": "string" },
+      "proxy_pass": { "type": "string" },
+      "ssl": { "type": "boolean", "default": false },
+      "ssl_cert": { "type": "string" },
+      "ssl_key": { "type": "string" },
+      "listen_port": { "type": "integer", "default": 80 }
+    },
+    "required": ["server_name"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "config": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 64,
+  "example": {
+    "input": { "server_name": "example.com", "document_root": "/var/www/html" },
+    "output": { "ok": true, "config": "<VirtualHost *:80>\n    ServerName example.com\n    DocumentRoot /var/www/html\n</VirtualHost>\n" }
+  }
+}

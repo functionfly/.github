@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "json-log-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse JSON Log",
+  "description": "Parse a JSON-formatted log line and extract standard fields.",
+  "category": "devops",
+  "tags": ["logging", "json", "parse", "observability", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "line": { "type": "string", "description": "JSON log line" },
+      "field_map": { "type": "object", "description": "Custom field name mappings" }
+    },
+    "required": ["line"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "timestamp": {}, "level": {}, "message": {}, "fields": { "type": "object" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "line": "{\"time\":\"2024-01-01T00:00:00Z\",\"level\":\"info\",\"msg\":\"server started\",\"port\":8080}" },
+    "output": { "ok": true, "timestamp": "2024-01-01T00:00:00Z", "level": "info", "message": "server started", "fields": { "port": 8080 } }
+  }
+}

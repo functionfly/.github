@@ -1,0 +1,34 @@
+{
+  "author": "functionfly",
+  "name": "semantic-release",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Determine Semantic Release",
+  "description": "Analyze conventional commits to determine the next semantic version bump type.",
+  "category": "devops",
+  "tags": ["semver", "release", "conventional-commits", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "commits": { "type": "array", "items": { "type": "object" } },
+      "current_version": { "type": "string", "default": "0.0.0" }
+    },
+    "required": ["commits"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "bump_type": { "type": "string" },
+      "next_version": { "type": "string" },
+      "current_version": { "type": "string" },
+      "error": {}
+    }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": {
+    "input": { "current_version": "1.0.0", "commits": [{ "type": "feat", "subject": "add new feature" }, { "type": "fix", "subject": "fix bug" }] },
+    "output": { "ok": true, "bump_type": "minor", "next_version": "1.1.0", "current_version": "1.0.0" }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "text-embeddings",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Text Embeddings",
+  "description": "Generate dense vector embeddings for text using a hash-based deterministic simulation. Returns a fixed-dimension float vector suitable for similarity comparisons.",
+  "category": "ai-ml",
+  "tags": ["embeddings", "nlp", "vectors", "similarity", "ai"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": { "type": "string" },
+      "dimensions": { "type": "integer", "default": 128 },
+    },
+    "required": ["text"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "embedding": {},
+      "dimensions": {},
+      "error": {},
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": { "text": "Hello world", "dimensions": 8 },
+    "output": { "ok": true, "dimensions": 8 },
+  },
+}

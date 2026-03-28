@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "nysiis",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "NYSIIS",
+  "description": "Generate NYSIIS code.",
+  "category": "text",
+  "tags": ["nysiis", "phonetic"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "string": {
+        "type": "string",
+      },
+    },
+    "required": ["string"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "nysiis": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "string": "Robert",
+    },
+    "output": {
+      "ok": true,
+      "nysiis": "ROBAD",
+    },
+  },
+}

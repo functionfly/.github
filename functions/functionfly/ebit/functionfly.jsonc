@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "ebit",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "EBIT Calculate",
+  "description": "Calculate EBIT (Earnings Before Interest and Taxes).",
+  "category": "finance",
+  "tags": [
+    "ebit",
+    "profitability",
+    "finance",
+    "accounting"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "net_income": {
+        "type": "number",
+        "description": "Net income"
+      },
+      "interest": {
+        "type": "number",
+        "description": "Interest expense"
+      },
+      "taxes": {
+        "type": "number",
+        "description": "Tax expense"
+      }
+    },
+    "required": [
+      "net_income",
+      "interest",
+      "taxes"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "net_income": 50000,
+      "interest": 5000,
+      "taxes": 15000
+    },
+    "output": {
+      "ok": true,
+      "result": 70000.0
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "conventional-commits",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Validate Conventional Commits",
+  "description": "Validate that a commit message follows the Conventional Commits specification.",
+  "category": "devops",
+  "tags": ["git", "commit", "conventional-commits", "validate", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "message": { "type": "string" },
+      "allowed_types": { "type": "array", "items": { "type": "string" } }
+    },
+    "required": ["message"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "valid": { "type": "boolean" }, "errors": { "type": "array" }, "parsed": { "type": "object" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "message": "feat(api): add new endpoint" },
+    "output": { "ok": true, "valid": true, "errors": [], "parsed": { "type": "feat", "scope": "api", "subject": "add new endpoint" } }
+  }
+}

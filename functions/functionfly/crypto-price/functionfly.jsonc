@@ -1,0 +1,61 @@
+{
+  "author": "functionfly",
+  "name": "crypto-price",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Crypto Price Lookup",
+  "description": "Simulate cryptocurrency price lookup with mock data for common cryptocurrencies.",
+  "category": "finance",
+  "tags": [
+    "crypto",
+    "cryptocurrency",
+    "price",
+    "bitcoin"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "symbol": {
+        "type": "string",
+        "description": "Cryptocurrency symbol (e.g. BTC, ETH, SOL)"
+      },
+      "currency": {
+        "type": "string",
+        "description": "Quote currency (default USD)",
+        "default": "USD"
+      }
+    },
+    "required": [
+      "symbol"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "symbol": "BTC"
+    },
+    "output": {
+      "ok": true,
+      "result": 45000.0,
+      "symbol": "BTC",
+      "currency": "USD",
+      "simulated": true
+    }
+  }
+}

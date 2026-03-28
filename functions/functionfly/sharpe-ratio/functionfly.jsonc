@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "sharpe-ratio",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Sharpe Ratio Calculate",
+  "description": "Calculate the Sharpe ratio (risk-adjusted return) of a portfolio or investment.",
+  "category": "analytics",
+  "tags": [
+    "sharpe-ratio",
+    "risk-adjusted-return",
+    "portfolio",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "portfolio_return": {
+        "type": "number",
+        "description": "Portfolio return (decimal)"
+      },
+      "risk_free_rate": {
+        "type": "number",
+        "description": "Risk-free rate (decimal)"
+      },
+      "portfolio_std_dev": {
+        "type": "number",
+        "description": "Portfolio standard deviation"
+      }
+    },
+    "required": [
+      "portfolio_return",
+      "risk_free_rate",
+      "portfolio_std_dev"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "portfolio_return": 0.12,
+      "risk_free_rate": 0.03,
+      "portfolio_std_dev": 0.15
+    },
+    "output": {
+      "ok": true,
+      "result": 0.6
+    }
+  }
+}

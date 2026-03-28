@@ -1,0 +1,27 @@
+{
+  "author": "functionfly",
+  "name": "syslog-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Syslog",
+  "description": "Parse a syslog format log line (RFC 3164 or RFC 5424).",
+  "category": "devops",
+  "tags": ["syslog", "logging", "parse", "observability", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "line": { "type": "string" }
+    },
+    "required": ["line"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "facility": { "type": "integer" }, "severity": { "type": "integer" }, "timestamp": {}, "hostname": {}, "process": {}, "pid": {}, "message": {}, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "line": "<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8" },
+    "output": { "ok": true, "facility": 4, "severity": 2, "timestamp": "Oct 11 22:14:15", "hostname": "mymachine", "process": "su", "message": "'su root' failed for lonvick on /dev/pts/8" }
+  }
+}

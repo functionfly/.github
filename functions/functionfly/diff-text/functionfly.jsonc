@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "diff-text",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Diff Text",
+  "description": "Generate diff between two texts.",
+  "category": "text",
+  "tags": ["diff", "text", "compare"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text1": {
+        "type": "string",
+      },
+      "text2": {
+        "type": "string",
+      },
+    },
+    "required": ["text1", "text2"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "diff": {
+        "type": "string",
+      },
+      "added": {
+        "type": "integer",
+      },
+      "removed": {
+        "type": "integer",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "text1": "Hello World",
+      "text2": "Hello Python",
+    },
+    "output": {
+      "ok": true,
+      "diff": "- Hello World\n+ Hello Python",
+      "added": 1,
+      "removed": 1,
+    },
+  },
+}

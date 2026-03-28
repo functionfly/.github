@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "patch-apply",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Patch Apply",
+  "description": "Apply a patch to text.",
+  "category": "text",
+  "tags": ["patch", "apply"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string",
+      },
+      "patch": {
+        "type": "string",
+      },
+    },
+    "required": ["text", "patch"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "result": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "text": "Hello World",
+      "patch": "--- a/file.txt\n+++ b/file.txt\n@@ -1 +1 @@\n-Hello World\n+Hello Python",
+    },
+    "output": {
+      "ok": true,
+      "result": "Hello Python",
+    },
+  },
+}

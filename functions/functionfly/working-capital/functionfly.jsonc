@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "working-capital",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Working Capital Calculate",
+  "description": "Calculate working capital (current assets - current liabilities).",
+  "category": "finance",
+  "tags": [
+    "working-capital",
+    "liquidity",
+    "finance",
+    "accounting"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "current_assets": {
+        "type": "number",
+        "description": "Current assets"
+      },
+      "current_liabilities": {
+        "type": "number",
+        "description": "Current liabilities"
+      }
+    },
+    "required": [
+      "current_assets",
+      "current_liabilities"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "current_assets": 150000,
+      "current_liabilities": 75000
+    },
+    "output": {
+      "ok": true,
+      "result": 75000.0
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "org-mode-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Org Mode Parse",
+  "description": "Parse Org-mode to structured data.",
+  "category": "text",
+  "tags": ["org", "org-mode", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "org": {
+        "type": "string",
+      },
+    },
+    "required": ["org"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "title": {
+        "type": "string",
+      },
+      "sections": {
+        "type": "array",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "org": "#+TITLE: My Document\n\n* Section 1\n\nContent",
+    },
+    "output": {
+      "ok": true,
+      "title": "My Document",
+      "sections": [{ "level": 1, "title": "Section 1", "content": "Content" }],
+    },
+  },
+}

@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "cron-human",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Cron Human",
+  "description": "Convert cron to human-readable description.",
+  "category": "datetime",
+  "tags": ["cron", "human", "readable"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "expression": {
+        "type": "string",
+      },
+    },
+    "required": ["expression"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "description": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "expression": "0 9 * * 1-5",
+    },
+    "output": {
+      "ok": true,
+      "description": "At the start of the hour, at 09:00, on Monday through Friday",
+    },
+  },
+}

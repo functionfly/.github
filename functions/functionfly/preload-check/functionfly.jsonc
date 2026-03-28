@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "preload-check",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Check Preload Headers",
+  "description": "Check for preload Link headers on a URL.",
+  "category": "devops",
+  "tags": ["preload", "performance", "http", "web", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "preloads": { "type": "array" }, "count": { "type": "integer" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "url": "https://example.com" },
+    "output": { "ok": true, "count": 1, "preloads": [{ "href": "/font.woff2", "as": "font" }] }
+  }
+}

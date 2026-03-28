@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "totp-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "TOTP Validate",
+  "description": "Validate TOTP.",
+  "category": "security",
+  "tags": ["totp", "validate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "totp": {
+        "type": "string",
+      },
+      "secret": {
+        "type": "string",
+      },
+      "digits": {
+        "type": "integer",
+      },
+      "period": {
+        "type": "integer",
+      },
+    },
+    "required": ["totp", "secret"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "valid": {
+        "type": "boolean",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "totp": "123456",
+      "secret": "JBSWY3DPEHPK3PXP",
+    },
+    "output": {
+      "ok": true,
+      "valid": true,
+    },
+  },
+}

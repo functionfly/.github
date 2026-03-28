@@ -1,0 +1,86 @@
+{
+  "author": "functionfly",
+  "name": "bounds-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Bounds Calculate",
+  "description": "Calculate the bounding box (min/max lat/lng) for a set of geographic coordinates.",
+  "category": "geospatial",
+  "tags": [
+    "bounds",
+    "bounding-box",
+    "bbox",
+    "coordinates",
+    "geospatial",
+    "extent",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "coordinates": {
+        "type": "array",
+        "description": "Array of [lat, lng] coordinate pairs",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+    },
+    "required": ["coordinates"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "min_lat": { "type": "number", "description": "Minimum latitude" },
+          "min_lng": { "type": "number", "description": "Minimum longitude" },
+          "max_lat": { "type": "number", "description": "Maximum latitude" },
+          "max_lng": { "type": "number", "description": "Maximum longitude" },
+          "center_lat": { "type": "number", "description": "Center latitude" },
+          "center_lng": { "type": "number", "description": "Center longitude" },
+          "width_km": {
+            "type": "number",
+            "description": "Width of bounding box in km",
+          },
+          "height_km": {
+            "type": "number",
+            "description": "Height of bounding box in km",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "coordinates": [
+        [40.7128, -74.006],
+        [34.0522, -118.2437],
+        [41.8781, -87.6298],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "min_lat": 34.0522,
+        "min_lng": -118.2437,
+        "max_lat": 41.8781,
+        "max_lng": -74.006,
+        "center_lat": 37.9652,
+        "center_lng": -96.1249,
+        "width_km": 3940.07,
+        "height_km": 869.12,
+      },
+    },
+  },
+}

@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "language-detection",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Language Detection",
+  "description": "Detect the language of text using character n-gram frequency profiles for 20+ languages.",
+  "category": "ai-ml",
+  "tags": ["language-detection", "nlp", "multilingual", "identification", "ai"],
+  "input": {
+    "type": "object",
+    "properties": { "text": { "type": "string" } },
+    "required": ["text"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "language": {},
+      "language_code": {},
+      "confidence": {},
+      "scores": {},
+      "error": {},
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": { "text": "Bonjour, comment allez-vous aujourd'hui?" },
+    "output": { "ok": true, "language": "French", "language_code": "fr" },
+  },
+}

@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "ssl-cert-check",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Check SSL Certificate",
+  "description": "Check SSL/TLS certificate details, expiry, and validity for a domain.",
+  "category": "devops",
+  "tags": ["ssl", "tls", "certificate", "security", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "host": { "type": "string" },
+      "port": { "type": "integer", "default": 443 },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["host"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "valid": { "type": "boolean" }, "expires_at": { "type": "string" }, "days_until_expiry": { "type": "integer" }, "issuer": {}, "subject": {}, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "host": "example.com" },
+    "output": { "ok": true, "valid": true, "expires_at": "2025-01-01T00:00:00", "days_until_expiry": 90, "issuer": "Let's Encrypt" }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "author": "functionfly",
+  "name": "amortization-schedule",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Amortization Schedule",
+  "description": "Generate a full amortization schedule for a loan showing principal, interest, and balance for each period.",
+  "category": "finance",
+  "tags": [
+    "amortization",
+    "loan",
+    "schedule",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "principal": {
+        "type": "number",
+        "description": "Loan principal amount"
+      },
+      "annual_rate": {
+        "type": "number",
+        "description": "Annual interest rate (decimal)"
+      },
+      "years": {
+        "type": "number",
+        "description": "Loan term in years"
+      },
+      "periods_per_year": {
+        "type": "number",
+        "description": "Payment periods per year (default 12)",
+        "default": 12
+      }
+    },
+    "required": [
+      "principal",
+      "annual_rate",
+      "years"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "principal": 10000,
+      "annual_rate": 0.06,
+      "years": 1
+    },
+    "output": {
+      "ok": true,
+      "result": []
+    }
+  }
+}

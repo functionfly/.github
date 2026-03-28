@@ -1,0 +1,81 @@
+{
+  "author": "functionfly",
+  "name": "turf-intersects",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Turf Intersects",
+  "description": "Check if two polygons intersect (share any area or boundary). Uses [lng, lat] coordinate order (GeoJSON).",
+  "category": "geospatial",
+  "tags": ["turf", "intersects", "polygon", "overlap", "geospatial", "geojson"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "polygon1": {
+        "type": "array",
+        "description": "First polygon as array of [lng, lat] coordinate pairs",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+      "polygon2": {
+        "type": "array",
+        "description": "Second polygon as array of [lng, lat] coordinate pairs",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+    },
+    "required": ["polygon1", "polygon2"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "intersects": {
+            "type": "boolean",
+            "description": "Whether the polygons intersect",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "polygon1": [
+        [-74.006, 40.7128],
+        [-73.906, 40.7128],
+        [-73.906, 40.6628],
+        [-74.006, 40.6628],
+        [-74.006, 40.7128],
+      ],
+      "polygon2": [
+        [-73.956, 40.7378],
+        [-73.856, 40.7378],
+        [-73.856, 40.6878],
+        [-73.956, 40.6878],
+        [-73.956, 40.7378],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "intersects": true,
+      },
+    },
+  },
+}

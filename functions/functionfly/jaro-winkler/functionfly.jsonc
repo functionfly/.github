@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "jaro-winkler",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Jaro-Winkler Similarity",
+  "description": "Calculate Jaro-Winkler similarity.",
+  "category": "text",
+  "tags": ["jaro", "winkler", "similarity"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "string1": {
+        "type": "string",
+      },
+      "string2": {
+        "type": "string",
+      },
+    },
+    "required": ["string1", "string2"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "similarity": {
+        "type": "number",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "string1": "MARTHA",
+      "string2": "MARHTA",
+    },
+    "output": {
+      "ok": true,
+      "similarity": 0.96,
+    },
+  },
+}

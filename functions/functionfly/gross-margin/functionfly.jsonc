@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "gross-margin",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Gross Margin Calculate",
+  "description": "Calculate gross margin as a percentage of revenue.",
+  "category": "finance",
+  "tags": [
+    "gross-margin",
+    "profitability",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "revenue": {
+        "type": "number",
+        "description": "Total revenue"
+      },
+      "cost_of_goods_sold": {
+        "type": "number",
+        "description": "Cost of goods sold (COGS)"
+      }
+    },
+    "required": [
+      "revenue",
+      "cost_of_goods_sold"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "revenue": 100000,
+      "cost_of_goods_sold": 60000
+    },
+    "output": {
+      "ok": true,
+      "result": 0.4,
+      "result_pct": 40.0,
+      "gross_profit": 40000.0
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "author": "functionfly",
+  "name": "stem-word",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Word Stemmer",
+  "description": "Stem words to their root form using the Porter stemming algorithm.",
+  "category": "ai-ml",
+  "tags": [
+    "stem-word",
+    "nlp",
+    "text",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "words": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "words"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "words": [
+        "running",
+        "flies",
+        "happily"
+      ]
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

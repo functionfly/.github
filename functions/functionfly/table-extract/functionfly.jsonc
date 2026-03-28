@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "table-extract",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Table Extraction",
+  "description": "Extract tabular data from text or document content.",
+  "category": "ai-ml",
+  "tags": [
+    "table-extract",
+    "vision",
+    "image",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      },
+      "format": {
+        "type": "string",
+        "default": "auto"
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "text": "Name | Age | City\nAlice | 30 | NYC\nBob | 25 | LA"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

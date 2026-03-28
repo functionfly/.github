@@ -1,0 +1,81 @@
+{
+  "author": "functionfly",
+  "name": "turf-nearest",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Turf Nearest",
+  "description": "Find the nearest point from a set of points to a target point (Turf.js compatible). Uses [lng, lat] coordinate order.",
+  "category": "geospatial",
+  "tags": ["turf", "nearest", "closest", "point", "distance", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "target": {
+        "type": "array",
+        "description": "Target point as [lng, lat]",
+        "items": { "type": "number" },
+        "minItems": 2,
+        "maxItems": 2,
+      },
+      "points": {
+        "type": "array",
+        "description": "Array of candidate points as [lng, lat]",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+    },
+    "required": ["target", "points"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "nearest": {
+            "type": "array",
+            "description": "Nearest point as [lng, lat]",
+            "items": { "type": "number" },
+          },
+          "index": {
+            "type": "integer",
+            "description": "Index of nearest point in input array",
+          },
+          "distance_km": {
+            "type": "number",
+            "description": "Distance to nearest point in km",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "target": [-74.006, 40.7128],
+      "points": [
+        [-73.906, 40.7128],
+        [-87.6298, 41.8781],
+        [-118.2437, 34.0522],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "nearest": [-73.906, 40.7128],
+        "index": 0,
+        "distance_km": 8.52,
+      },
+    },
+  },
+}

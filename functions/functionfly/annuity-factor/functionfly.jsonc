@@ -1,0 +1,58 @@
+{
+  "author": "functionfly",
+  "name": "annuity-factor",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Annuity Factor Calculate",
+  "description": "Calculate the present value annuity factor (PVAF) for a series of equal payments.",
+  "category": "finance",
+  "tags": [
+    "annuity",
+    "annuity-factor",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "rate": {
+        "type": "number",
+        "description": "Interest rate per period (decimal)"
+      },
+      "periods": {
+        "type": "number",
+        "description": "Number of periods"
+      }
+    },
+    "required": [
+      "rate",
+      "periods"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "rate": 0.05,
+      "periods": 10
+    },
+    "output": {
+      "ok": true,
+      "result": 7.7217
+    }
+  }
+}

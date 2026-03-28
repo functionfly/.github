@@ -1,0 +1,78 @@
+{
+  "author": "functionfly",
+  "name": "geohash-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Geohash Decode",
+  "description": "Decode a geohash string to latitude/longitude coordinates and bounding box.",
+  "category": "geospatial",
+  "tags": ["geohash", "decode", "coordinates", "spatial-index", "geospatial"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "geohash": {
+        "type": "string",
+        "description": "Geohash string to decode",
+      },
+    },
+    "required": ["geohash"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "lat": { "type": "number", "description": "Center latitude" },
+          "lng": { "type": "number", "description": "Center longitude" },
+          "lat_error": {
+            "type": "number",
+            "description": "Latitude error margin",
+          },
+          "lng_error": {
+            "type": "number",
+            "description": "Longitude error margin",
+          },
+          "bbox": {
+            "type": "object",
+            "properties": {
+              "min_lat": { "type": "number" },
+              "min_lng": { "type": "number" },
+              "max_lat": { "type": "number" },
+              "max_lng": { "type": "number" },
+            },
+          },
+          "precision": { "type": "integer" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "geohash": "dr5regw3p",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "lat": 40.7128,
+        "lng": -74.006,
+        "lat_error": 0.000021,
+        "lng_error": 0.000021,
+        "bbox": {
+          "min_lat": 40.71278,
+          "min_lng": -74.00602,
+          "max_lat": 40.71282,
+          "max_lng": -74.00598,
+        },
+        "precision": 9,
+      },
+    },
+  },
+}

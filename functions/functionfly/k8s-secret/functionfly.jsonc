@@ -1,0 +1,31 @@
+{
+  "author": "functionfly",
+  "name": "k8s-secret",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate K8s Secret",
+  "description": "Generate a Kubernetes Secret manifest. Data values should be base64-encoded.",
+  "category": "devops",
+  "tags": ["kubernetes", "secret", "k8s", "security", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string" },
+      "type": { "type": "string", "default": "Opaque" },
+      "data": { "type": "object", "description": "Base64-encoded key-value pairs" },
+      "string_data": { "type": "object", "description": "Plain text key-value pairs (auto-encoded)" },
+      "namespace": { "type": "string", "default": "default" }
+    },
+    "required": ["name"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "yaml": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 64,
+  "example": {
+    "input": { "name": "db-secret", "type": "Opaque", "string_data": { "password": "mysecret" } },
+    "output": { "ok": true, "yaml": "apiVersion: v1\nkind: Secret\n..." }
+  }
+}

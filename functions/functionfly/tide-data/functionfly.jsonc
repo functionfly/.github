@@ -1,0 +1,68 @@
+{
+  "author": "functionfly",
+  "name": "tide-data",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Tide Data",
+  "description": "Get tide data (high/low tides) for a coastal location. Returns mock/simulated tide predictions.",
+  "category": "geospatial",
+  "tags": ["tide", "ocean", "coastal", "water", "geospatial", "mock"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+      "date": {
+        "type": "string",
+        "description": "Date in YYYY-MM-DD format (default: today)",
+      },
+      "days": {
+        "type": "integer",
+        "description": "Number of days to forecast (1-7, default: 1)",
+      },
+    },
+    "required": ["lat", "lng"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "location": { "type": "object" },
+          "tides": { "type": "array", "description": "Array of tide events" },
+          "unit": { "type": "string" },
+          "note": { "type": "string" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+      "date": "2024-06-21",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "location": { "lat": 40.7128, "lng": -74.006 },
+        "tides": [
+          { "time": "02:15", "height_m": 1.82, "type": "high" },
+          { "time": "08:30", "height_m": 0.21, "type": "low" },
+          { "time": "14:45", "height_m": 1.65, "type": "high" },
+          { "time": "21:00", "height_m": 0.35, "type": "low" },
+        ],
+        "unit": "meters",
+        "note": "Simulated tide data - use NOAA or similar service for accurate predictions",
+      },
+    },
+  },
+}

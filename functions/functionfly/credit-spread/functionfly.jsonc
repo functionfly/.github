@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "credit-spread",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Credit Spread Calculate",
+  "description": "Calculate the credit spread between a corporate bond yield and a risk-free rate.",
+  "category": "finance",
+  "tags": [
+    "credit-spread",
+    "bond",
+    "credit-risk",
+    "fixed-income"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "corporate_yield": {
+        "type": "number",
+        "description": "Corporate bond yield (decimal)"
+      },
+      "risk_free_rate": {
+        "type": "number",
+        "description": "Risk-free rate (decimal)"
+      },
+      "face_value": {
+        "type": "number",
+        "description": "Bond face value (optional)",
+        "default": 1000
+      }
+    },
+    "required": [
+      "corporate_yield",
+      "risk_free_rate"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "corporate_yield": 0.065,
+      "risk_free_rate": 0.04
+    },
+    "output": {
+      "ok": true,
+      "result": 0.025,
+      "result_bps": 250.0
+    }
+  }
+}

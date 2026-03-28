@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "dockerfile-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Dockerfile",
+  "description": "Generate a Dockerfile based on project language, framework, ports, and environment variables.",
+  "category": "devops",
+  "tags": ["docker", "container", "build", "infrastructure", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "language": {
+        "type": "string",
+        "description": "Programming language (python, node, go, rust, java, php, ruby)",
+      },
+      "framework": {
+        "type": "string",
+        "description": "Framework name (flask, django, express, gin, etc.)",
+      },
+      "ports": {
+        "type": "array",
+        "items": { "type": "integer" },
+        "description": "Ports to expose",
+      },
+      "env_vars": {
+        "type": "object",
+        "description": "Environment variables to set",
+      },
+      "base_image": { "type": "string", "description": "Override base image" },
+      "cmd": { "type": "string", "description": "Override CMD instruction" },
+    },
+    "required": ["language"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "string" },
+      "dockerfile": { "type": "string" },
+      "error": {},
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 64,
+  "example": {
+    "input": { "language": "python", "framework": "flask", "ports": [8000] },
+    "output": {
+      "ok": true,
+      "result": "Dockerfile generated successfully",
+      "dockerfile": "FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nEXPOSE 8000\nCMD [\"python\", \"app.py\"]",
+    },
+  },
+}

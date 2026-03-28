@@ -1,0 +1,67 @@
+{
+  "author": "functionfly",
+  "name": "tax-loss-carryforward",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Tax Loss Carryforward Calculate",
+  "description": "Calculate the tax benefit from carrying forward net operating losses.",
+  "category": "finance",
+  "tags": [
+    "tax",
+    "loss-carryforward",
+    "nol",
+    "accounting"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "net_operating_loss": {
+        "type": "number",
+        "description": "Net operating loss amount"
+      },
+      "taxable_income": {
+        "type": "number",
+        "description": "Current year taxable income"
+      },
+      "tax_rate": {
+        "type": "number",
+        "description": "Tax rate (decimal)"
+      }
+    },
+    "required": [
+      "net_operating_loss",
+      "taxable_income",
+      "tax_rate"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "net_operating_loss": 50000,
+      "taxable_income": 80000,
+      "tax_rate": 0.25
+    },
+    "output": {
+      "ok": true,
+      "result": 12500.0,
+      "remaining_loss": 0.0,
+      "applied_loss": 50000.0
+    }
+  }
+}

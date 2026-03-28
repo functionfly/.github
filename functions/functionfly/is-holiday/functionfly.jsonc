@@ -1,0 +1,55 @@
+{
+  "author": "functionfly",
+  "name": "is-holiday",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Is Holiday",
+  "description": "Check if date is a holiday.",
+  "category": "datetime",
+  "tags": ["holiday", "check"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "date": {
+        "type": "string",
+      },
+      "country": {
+        "type": "string",
+      },
+    },
+    "required": ["date", "country"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "is_holiday": {
+        "type": "boolean",
+      },
+      "holiday_name": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "date": "2024-07-04",
+      "country": "US",
+    },
+    "output": {
+      "ok": true,
+      "is_holiday": true,
+      "holiday_name": "Independence Day",
+    },
+  },
+}

@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "stock-price",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Stock Price Lookup",
+  "description": "Simulate stock price lookup with mock data for common stocks.",
+  "category": "finance",
+  "tags": [
+    "stock",
+    "equity",
+    "price",
+    "market"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "ticker": {
+        "type": "string",
+        "description": "Stock ticker symbol (e.g. AAPL, MSFT)"
+      },
+      "currency": {
+        "type": "string",
+        "description": "Quote currency (default USD)",
+        "default": "USD"
+      }
+    },
+    "required": [
+      "ticker"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "ticker": "AAPL"
+    },
+    "output": {
+      "ok": true,
+      "result": 175.0,
+      "ticker": "AAPL",
+      "simulated": true
+    }
+  }
+}

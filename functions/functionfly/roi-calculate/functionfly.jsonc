@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "roi-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Return on Investment Calculate",
+  "description": "Calculate return on investment (ROI) as a percentage.",
+  "category": "finance",
+  "tags": [
+    "roi",
+    "return-on-investment",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "gain": {
+        "type": "number",
+        "description": "Net gain from investment"
+      },
+      "cost": {
+        "type": "number",
+        "description": "Cost of investment"
+      }
+    },
+    "required": [
+      "gain",
+      "cost"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "gain": 5000,
+      "cost": 10000
+    },
+    "output": {
+      "ok": true,
+      "result": 0.5,
+      "result_pct": 50.0
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "author": "functionfly",
+  "name": "named-entity-recognition",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Named Entity Recognition",
+  "description": "Extract named entities (persons, organizations, locations, dates, money, percentages) from text using rule-based heuristics.",
+  "category": "ai-ml",
+  "tags": ["ner", "nlp", "entities", "extraction", "ai"],
+  "input": {
+    "type": "object",
+    "properties": { "text": { "type": "string" } },
+    "required": ["text"],
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": {}, "entities": {}, "error": {} },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "text": "Apple Inc. was founded by Steve Jobs in Cupertino, California in 1976.",
+    },
+    "output": { "ok": true },
+  },
+}

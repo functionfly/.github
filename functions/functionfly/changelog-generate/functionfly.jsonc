@@ -1,0 +1,36 @@
+{
+  "author": "functionfly",
+  "name": "changelog-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Changelog",
+  "description": "Generate a CHANGELOG.md from a list of conventional commits.",
+  "category": "devops",
+  "tags": ["changelog", "git", "release", "conventional-commits", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "commits": { "type": "array", "items": { "type": "object", "properties": { "type": { "type": "string" }, "scope": { "type": "string" }, "subject": { "type": "string" }, "hash": { "type": "string" } } } },
+      "version": { "type": "string" },
+      "date": { "type": "string" },
+      "repo_url": { "type": "string" }
+    },
+    "required": ["commits", "version"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "changelog": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 64,
+  "example": {
+    "input": {
+      "version": "1.2.0",
+      "commits": [
+        { "type": "feat", "scope": "auth", "subject": "add OAuth2 support", "hash": "abc1234" },
+        { "type": "fix", "scope": "api", "subject": "fix rate limiting", "hash": "def5678" }
+      ]
+    },
+    "output": { "ok": true, "changelog": "## [1.2.0] - 2024-01-01\n\n### Features\n- **auth:** add OAuth2 support\n\n### Bug Fixes\n- **api:** fix rate limiting\n" }
+  }
+}

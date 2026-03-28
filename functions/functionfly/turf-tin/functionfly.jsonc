@@ -1,0 +1,84 @@
+{
+  "author": "functionfly",
+  "name": "turf-tin",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Turf TIN",
+  "description": "Generate a Triangulated Irregular Network (TIN) from a set of points using Delaunay triangulation (Turf.js compatible).",
+  "category": "geospatial",
+  "tags": ["turf", "tin", "triangulation", "delaunay", "geospatial", "mesh"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "points": {
+        "type": "array",
+        "description": "Array of points as [lng, lat] or [lng, lat, z]",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 3,
+        },
+      },
+    },
+    "required": ["points"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "triangles": {
+            "type": "array",
+            "description": "Array of triangles, each as array of 3 [lng, lat] points",
+            "items": { "type": "array" },
+          },
+          "triangle_count": { "type": "integer" },
+          "point_count": { "type": "integer" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "points": [
+        [0, 0],
+        [10, 0],
+        [5, 8],
+        [5, 3],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "triangles": [
+          [
+            [0, 0],
+            [10, 0],
+            [5, 3],
+          ],
+          [
+            [0, 0],
+            [5, 3],
+            [5, 8],
+          ],
+          [
+            [10, 0],
+            [5, 8],
+            [5, 3],
+          ],
+        ],
+        "triangle_count": 3,
+        "point_count": 4,
+      },
+    },
+  },
+}

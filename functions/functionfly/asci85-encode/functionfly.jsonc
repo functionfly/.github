@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "asci85-encode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "ASCII85 Encode",
+  "description": "Encode to ASCII85.",
+  "category": "encoding",
+  "tags": ["ascii85", "encode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "string",
+      },
+    },
+    "required": ["data"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "encoded": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "data": "Hello",
+    },
+    "output": {
+      "ok": true,
+      "encoded": "<~87cURD]~>",
+    },
+  },
+}

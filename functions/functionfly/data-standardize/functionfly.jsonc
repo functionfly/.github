@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "data-standardize",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Data Standardization",
+  "description": "Standardize data to zero mean and unit variance (Z-score normalization).",
+  "category": "ai-ml",
+  "tags": [
+    "data-standardize",
+    "ml",
+    "data",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array"
+      }
+    },
+    "required": [
+      "data"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "data": [
+        1,
+        5,
+        10,
+        3,
+        7
+      ]
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

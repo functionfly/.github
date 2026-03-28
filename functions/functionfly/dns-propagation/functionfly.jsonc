@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "dns-propagation",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Check DNS Propagation",
+  "description": "Check DNS record propagation by querying multiple DNS resolvers.",
+  "category": "devops",
+  "tags": ["dns", "propagation", "networking", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "domain": { "type": "string" },
+      "record_type": { "type": "string", "enum": ["A", "AAAA", "CNAME", "MX", "TXT", "NS"], "default": "A" },
+      "resolvers": { "type": "array", "items": { "type": "string" }, "description": "DNS resolver IPs to query" }
+    },
+    "required": ["domain"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "results": { "type": "array" }, "propagated": { "type": "boolean" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 60, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "domain": "example.com", "record_type": "A" },
+    "output": { "ok": true, "propagated": true, "results": [{ "resolver": "8.8.8.8", "records": ["93.184.216.34"] }] }
+  }
+}

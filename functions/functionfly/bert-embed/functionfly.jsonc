@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "bert-embed",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "BERT Embeddings",
+  "description": "Generate BERT-style contextual embeddings using hash-based deterministic simulation.",
+  "category": "ai-ml",
+  "tags": [
+    "bert-embed",
+    "embeddings",
+    "nlp",
+    "vectors",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      },
+      "dimensions": {
+        "type": "integer",
+        "default": 768
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "text": "Hello world",
+      "dimensions": 16
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

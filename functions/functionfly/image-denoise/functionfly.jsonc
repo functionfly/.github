@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "image-denoise",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Denoising",
+  "description": "Remove noise from an image (mock implementation returning denoising parameters).",
+  "category": "ai-ml",
+  "tags": [
+    "image-denoise",
+    "vision",
+    "image",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image_url": {
+        "type": "string"
+      },
+      "image_base64": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "default": "gaussian"
+      },
+      "strength": {
+        "type": "number",
+        "default": 0.5
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "method": "gaussian",
+      "strength": 0.5
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "author": "functionfly",
+  "name": "point-in-polygon",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Point in Polygon",
+  "description": "Check if a geographic point is inside a polygon using the ray casting algorithm.",
+  "category": "geospatial",
+  "tags": [
+    "point",
+    "polygon",
+    "contains",
+    "geospatial",
+    "geometry",
+    "ray-casting",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "point": {
+        "type": "array",
+        "description": "Point as [lat, lng]",
+        "items": { "type": "number" },
+        "minItems": 2,
+        "maxItems": 2,
+      },
+      "polygon": {
+        "type": "array",
+        "description": "Array of [lat, lng] coordinate pairs forming the polygon",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+    },
+    "required": ["point", "polygon"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "inside": {
+            "type": "boolean",
+            "description": "Whether the point is inside the polygon",
+          },
+          "on_boundary": {
+            "type": "boolean",
+            "description": "Whether the point is on the polygon boundary",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "point": [40.69, -73.95],
+      "polygon": [
+        [40.7128, -74.006],
+        [40.7128, -73.906],
+        [40.6628, -73.906],
+        [40.6628, -74.006],
+        [40.7128, -74.006],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "inside": true,
+        "on_boundary": false,
+      },
+    },
+  },
+}

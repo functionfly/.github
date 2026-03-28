@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "parse-dependency",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Dependency Parsing",
+  "description": "Parse the dependency structure of a sentence, identifying grammatical relationships between words.",
+  "category": "ai-ml",
+  "tags": [
+    "parse-dependency",
+    "nlp",
+    "text",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "text": "The cat sat on the mat."
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

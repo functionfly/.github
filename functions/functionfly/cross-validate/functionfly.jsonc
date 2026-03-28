@@ -1,0 +1,83 @@
+{
+  "author": "functionfly",
+  "name": "cross-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Cross Validation",
+  "description": "Perform k-fold cross-validation scoring.",
+  "category": "ai-ml",
+  "tags": [
+    "cross-validate",
+    "ml",
+    "data",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array"
+      },
+      "labels": {
+        "type": "array"
+      },
+      "k": {
+        "type": "integer",
+        "default": 5
+      },
+      "metric": {
+        "type": "string",
+        "default": "accuracy"
+      }
+    },
+    "required": [
+      "data",
+      "labels"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "data": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ],
+        [
+          7,
+          8
+        ]
+      ],
+      "labels": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "k": 2
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

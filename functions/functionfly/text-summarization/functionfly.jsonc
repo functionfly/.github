@@ -1,0 +1,42 @@
+{
+  "author": "functionfly",
+  "name": "text-summarization",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Text Summarization",
+  "description": "Summarize text using extractive summarization — selects the most important sentences based on TF-IDF scoring.",
+  "category": "ai-ml",
+  "tags": ["summarization", "nlp", "extractive", "text", "ai"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": { "type": "string" },
+      "num_sentences": { "type": "integer", "default": 3 },
+      "ratio": { "type": "number", "default": 0.3 },
+    },
+    "required": ["text"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "summary": {},
+      "sentences": {},
+      "compression_ratio": {},
+      "error": {},
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "text": "Artificial intelligence is transforming industries. Machine learning enables computers to learn from data. Deep learning uses neural networks with many layers.",
+      "num_sentences": 2,
+    },
+    "output": { "ok": true },
+  },
+}

@@ -1,0 +1,56 @@
+{
+  "author": "functionfly",
+  "name": "duration-human",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Duration Human",
+  "description": "Convert duration to human-readable.",
+  "category": "datetime",
+  "tags": ["duration", "human", "readable"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "seconds": {
+        "type": "number",
+      },
+      "minutes": {
+        "type": "number",
+      },
+      "hours": {
+        "type": "number",
+      },
+      "days": {
+        "type": "number",
+      },
+    },
+    "required": [],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "human": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "seconds": 5400,
+    },
+    "output": {
+      "ok": true,
+      "human": "1 hour 30 minutes",
+    },
+  },
+}

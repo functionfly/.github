@@ -1,0 +1,44 @@
+{
+  "author": "functionfly",
+  "name": "otp-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "OTP Generate",
+  "description": "Generate OTP.",
+  "category": "security",
+  "tags": ["otp", "generate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "length": {
+        "type": "integer",
+      },
+    },
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "otp": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true,
+      "otp": "123456",
+    },
+  },
+}

@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "image-optimization",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Analyze Image Optimization",
+  "description": "Analyze an image URL for optimization opportunities (format, size, compression).",
+  "category": "devops",
+  "tags": ["image", "optimization", "performance", "web", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "size_bytes": { "type": "integer" }, "format": { "type": "string" }, "suggestions": { "type": "array" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "url": "https://example.com/image.png" },
+    "output": { "ok": true, "size_bytes": 102400, "format": "png", "suggestions": ["Consider converting to WebP for better compression"] }
+  }
+}

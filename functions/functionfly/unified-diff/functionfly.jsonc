@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "unified-diff",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Unified Diff",
+  "description": "Generate unified diff format.",
+  "category": "text",
+  "tags": ["diff", "unified"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text1": {
+        "type": "string",
+      },
+      "text2": {
+        "type": "string",
+      },
+      "filename1": {
+        "type": "string",
+      },
+      "filename2": {
+        "type": "string",
+      },
+    },
+    "required": ["text1", "text2"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "diff": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "text1": "Hello World",
+      "text2": "Hello Python",
+    },
+    "output": {
+      "ok": true,
+      "diff": "--- a/file.txt\n+++ b/file.txt\n@@ -1 +1 @@\n-Hello World\n+Hello Python",
+    },
+  },
+}

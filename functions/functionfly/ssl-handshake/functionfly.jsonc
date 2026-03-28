@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "ssl-handshake",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "SSL Handshake Check",
+  "description": "Test SSL/TLS handshake and return protocol version, cipher suite, and timing.",
+  "category": "devops",
+  "tags": ["ssl", "tls", "handshake", "security", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "host": { "type": "string" },
+      "port": { "type": "integer", "default": 443 },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["host"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "success": { "type": "boolean" }, "protocol": { "type": "string" }, "cipher": { "type": "string" }, "handshake_ms": { "type": "number" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "host": "example.com" },
+    "output": { "ok": true, "success": true, "protocol": "TLSv1.3", "cipher": "TLS_AES_256_GCM_SHA384", "handshake_ms": 45.2 }
+  }
+}

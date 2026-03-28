@@ -1,0 +1,70 @@
+{
+  "author": "functionfly",
+  "name": "quick-ratio",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Quick Ratio Calculate",
+  "description": "Calculate the quick ratio (liquid assets / current liabilities), excluding inventory.",
+  "category": "finance",
+  "tags": [
+    "quick-ratio",
+    "acid-test",
+    "liquidity",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cash": {
+        "type": "number",
+        "description": "Cash and cash equivalents"
+      },
+      "short_term_investments": {
+        "type": "number",
+        "description": "Short-term investments",
+        "default": 0
+      },
+      "accounts_receivable": {
+        "type": "number",
+        "description": "Accounts receivable"
+      },
+      "current_liabilities": {
+        "type": "number",
+        "description": "Current liabilities"
+      }
+    },
+    "required": [
+      "cash",
+      "accounts_receivable",
+      "current_liabilities"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "cash": 50000,
+      "accounts_receivable": 30000,
+      "current_liabilities": 40000
+    },
+    "output": {
+      "ok": true,
+      "result": 2.0
+    }
+  }
+}

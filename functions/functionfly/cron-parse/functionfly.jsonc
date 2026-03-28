@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "cron-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Cron Parse",
+  "description": "Parse and validate cron expressions, generate human-readable descriptions and next run times.",
+  "category": "datetime",
+  "tags": ["cron", "schedule", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "expression": {
+        "type": "string",
+      },
+      "get_next_runs": {
+        "type": "boolean",
+      },
+      "count": {
+        "type": "integer",
+      },
+    },
+    "required": ["expression"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "result": {
+        "type": "object",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "expression": "0 9 * * 1-5",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "expression": "0 9 * * 1-5",
+        "is_valid": true,
+        "description": "At the start of the hour, at 09:00, on Monday through Friday",
+      },
+    },
+  },
+}

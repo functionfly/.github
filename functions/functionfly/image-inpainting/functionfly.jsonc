@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "image-inpainting",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Image Inpainting",
+  "description": "Fill in masked regions of an image (mock implementation).",
+  "category": "ai-ml",
+  "tags": [
+    "image-inpainting",
+    "vision",
+    "image",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "image_url": {
+        "type": "string"
+      },
+      "mask_url": {
+        "type": "string"
+      },
+      "prompt": {
+        "type": "string"
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "prompt": "grass field"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

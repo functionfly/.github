@@ -1,0 +1,76 @@
+{
+  "author": "functionfly",
+  "name": "convexity-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Bond Convexity Calculate",
+  "description": "Calculate the convexity of a bond to measure price sensitivity to interest rate changes.",
+  "category": "finance",
+  "tags": [
+    "convexity",
+    "bond",
+    "fixed-income",
+    "interest-rate-risk"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "face_value": {
+        "type": "number",
+        "description": "Bond face value"
+      },
+      "coupon_rate": {
+        "type": "number",
+        "description": "Annual coupon rate (decimal)"
+      },
+      "years_to_maturity": {
+        "type": "number",
+        "description": "Years to maturity"
+      },
+      "yield_to_maturity": {
+        "type": "number",
+        "description": "Yield to maturity (decimal)"
+      },
+      "periods_per_year": {
+        "type": "number",
+        "description": "Coupon payments per year (default 2)",
+        "default": 2
+      }
+    },
+    "required": [
+      "face_value",
+      "coupon_rate",
+      "years_to_maturity",
+      "yield_to_maturity"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "face_value": 1000,
+      "coupon_rate": 0.06,
+      "years_to_maturity": 10,
+      "yield_to_maturity": 0.065
+    },
+    "output": {
+      "ok": true,
+      "result": 68.34
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "author": "functionfly",
+  "name": "pca-transform",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "PCA Transform",
+  "description": "Apply Principal Component Analysis transformation to data.",
+  "category": "ai-ml",
+  "tags": [
+    "pca-transform",
+    "ml",
+    "data",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array"
+      },
+      "n_components": {
+        "type": "integer",
+        "default": 2
+      },
+      "whiten": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "data"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "data": [
+        [
+          1,
+          2,
+          3
+        ],
+        [
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9
+        ]
+      ],
+      "n_components": 2
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

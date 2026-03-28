@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "bitcoin-address",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Bitcoin Address",
+  "description": "Validate Bitcoin address.",
+  "category": "utilities",
+  "tags": ["bitcoin", "address", "validate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "address": {
+        "type": "string",
+      },
+    },
+    "required": ["address"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "valid": {
+        "type": "boolean",
+      },
+      "type": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+    },
+    "output": {
+      "ok": true,
+      "valid": true,
+      "type": "P2PKH",
+    },
+  },
+}

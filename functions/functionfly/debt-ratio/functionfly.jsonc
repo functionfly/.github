@@ -1,0 +1,59 @@
+{
+  "author": "functionfly",
+  "name": "debt-ratio",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Debt Ratio Calculate",
+  "description": "Calculate the debt ratio (total liabilities / total assets).",
+  "category": "finance",
+  "tags": [
+    "debt-ratio",
+    "leverage",
+    "finance",
+    "accounting"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "total_liabilities": {
+        "type": "number",
+        "description": "Total liabilities"
+      },
+      "total_assets": {
+        "type": "number",
+        "description": "Total assets"
+      }
+    },
+    "required": [
+      "total_liabilities",
+      "total_assets"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "total_liabilities": 50000,
+      "total_assets": 100000
+    },
+    "output": {
+      "ok": true,
+      "result": 0.5
+    }
+  }
+}

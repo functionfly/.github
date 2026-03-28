@@ -1,0 +1,60 @@
+{
+  "author": "functionfly",
+  "name": "deferred-tax",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Deferred Tax Calculate",
+  "description": "Calculate deferred tax asset or liability from temporary differences.",
+  "category": "finance",
+  "tags": [
+    "deferred-tax",
+    "tax",
+    "accounting",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "temporary_difference": {
+        "type": "number",
+        "description": "Temporary difference amount (positive = deferred tax liability)"
+      },
+      "tax_rate": {
+        "type": "number",
+        "description": "Tax rate (decimal)"
+      }
+    },
+    "required": [
+      "temporary_difference",
+      "tax_rate"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "temporary_difference": 20000,
+      "tax_rate": 0.25
+    },
+    "output": {
+      "ok": true,
+      "result": 5000.0,
+      "type": "liability"
+    }
+  }
+}

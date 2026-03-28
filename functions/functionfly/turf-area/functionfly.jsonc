@@ -1,0 +1,79 @@
+{
+  "author": "functionfly",
+  "name": "turf-area",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Turf Area",
+  "description": "Calculate the area of a GeoJSON-style polygon using the spherical excess formula (Turf.js compatible).",
+  "category": "geospatial",
+  "tags": ["turf", "area", "polygon", "geospatial", "geojson"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "coordinates": {
+        "type": "array",
+        "description": "Array of [lng, lat] coordinate pairs (GeoJSON order) forming the polygon ring",
+        "items": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+        },
+      },
+    },
+    "required": ["coordinates"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "area_sq_meters": {
+            "type": "number",
+            "description": "Area in square meters",
+          },
+          "area_sq_km": {
+            "type": "number",
+            "description": "Area in square kilometers",
+          },
+          "area_hectares": {
+            "type": "number",
+            "description": "Area in hectares",
+          },
+          "area_sq_miles": {
+            "type": "number",
+            "description": "Area in square miles",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "coordinates": [
+        [-74.006, 40.7128],
+        [-73.906, 40.7128],
+        [-73.906, 40.6628],
+        [-74.006, 40.6628],
+        [-74.006, 40.7128],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "area_sq_meters": 49870000.0,
+        "area_sq_km": 49.87,
+        "area_hectares": 4987.0,
+        "area_sq_miles": 19.25,
+      },
+    },
+  },
+}

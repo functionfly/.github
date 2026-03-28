@@ -1,0 +1,52 @@
+{
+  "author": "functionfly",
+  "name": "beat-detection",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Beat Detection",
+  "description": "Detect beats and tempo in audio (mock implementation).",
+  "category": "ai-ml",
+  "tags": [
+    "beat-detection",
+    "audio",
+    "speech",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "audio_url": {
+        "type": "string"
+      },
+      "audio_base64": {
+        "type": "string"
+      },
+      "algorithm": {
+        "type": "string",
+        "default": "onset"
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 3000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "audio_url": "https://example.com/music.mp3"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

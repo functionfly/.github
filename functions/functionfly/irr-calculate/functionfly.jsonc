@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "irr-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Internal Rate of Return Calculate",
+  "description": "Calculate the internal rate of return for a series of cash flows.",
+  "category": "finance",
+  "tags": [
+    "irr",
+    "internal-rate-of-return",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "cash_flows": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "List of cash flows (first is initial investment, negative)"
+      },
+      "guess": {
+        "type": "number",
+        "description": "Initial guess for IRR (default 0.1)",
+        "default": 0.1
+      }
+    },
+    "required": [
+      "cash_flows"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "cash_flows": [
+        -1000,
+        300,
+        400,
+        500
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": 0.1234
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "cron-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Cron Validate",
+  "description": "Validate cron expression syntax.",
+  "category": "datetime",
+  "tags": ["cron", "validate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "expression": {
+        "type": "string",
+      },
+    },
+    "required": ["expression"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "is_valid": {
+        "type": "boolean",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "expression": "0 9 * * 1-5",
+    },
+    "output": {
+      "ok": true,
+      "is_valid": true,
+    },
+  },
+}

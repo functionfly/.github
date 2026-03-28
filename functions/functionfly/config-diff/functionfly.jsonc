@@ -1,0 +1,33 @@
+{
+  "author": "functionfly",
+  "name": "config-diff",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Diff Configs",
+  "description": "Compare two configuration objects and return the differences.",
+  "category": "devops",
+  "tags": ["config", "diff", "compare", "configuration", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "base": { "type": "object", "description": "Base configuration" },
+      "target": { "type": "object", "description": "Target configuration to compare against" }
+    },
+    "required": ["base", "target"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": { "type": "object", "properties": { "added": { "type": "object" }, "removed": { "type": "object" }, "changed": { "type": "object" }, "unchanged": { "type": "object" } } },
+      "has_changes": { "type": "boolean" },
+      "error": {}
+    }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": {
+    "input": { "base": { "host": "localhost", "port": 5432, "name": "db" }, "target": { "host": "prod.db", "port": 5432, "ssl": true } },
+    "output": { "ok": true, "has_changes": true, "result": { "added": { "ssl": true }, "removed": { "name": "db" }, "changed": { "host": { "from": "localhost", "to": "prod.db" } }, "unchanged": { "port": 5432 } } }
+  }
+}

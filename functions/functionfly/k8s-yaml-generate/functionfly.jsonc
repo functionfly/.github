@@ -1,0 +1,32 @@
+{
+  "author": "functionfly",
+  "name": "k8s-yaml-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate Kubernetes YAML",
+  "description": "Generate Kubernetes manifest YAML files for any resource type.",
+  "category": "devops",
+  "tags": ["kubernetes", "k8s", "yaml", "infrastructure", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "resource_type": { "type": "string", "description": "K8s resource type (Deployment, Service, Ingress, etc.)" },
+      "name": { "type": "string" },
+      "namespace": { "type": "string" },
+      "labels": { "type": "object" },
+      "annotations": { "type": "object" },
+      "spec": { "type": "object" }
+    },
+    "required": ["resource_type", "name"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "yaml": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 64,
+  "example": {
+    "input": { "resource_type": "Deployment", "name": "my-app", "namespace": "default", "spec": { "replicas": 2 } },
+    "output": { "ok": true, "yaml": "apiVersion: apps/v1\nkind: Deployment\n..." }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "author": "functionfly",
+  "name": "outlier-detection",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Outlier Detection",
+  "description": "Detect outliers in data using statistical methods.",
+  "category": "ai-ml",
+  "tags": [
+    "outlier-detection",
+    "ml",
+    "data",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        }
+      },
+      "method": {
+        "type": "string",
+        "default": "iqr"
+      },
+      "contamination": {
+        "type": "number",
+        "default": 0.1
+      }
+    },
+    "required": [
+      "data"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "data": [
+        1,
+        2,
+        3,
+        100,
+        4,
+        5
+      ],
+      "method": "iqr"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

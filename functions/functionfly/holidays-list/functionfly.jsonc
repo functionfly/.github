@@ -1,0 +1,54 @@
+{
+  "author": "functionfly",
+  "name": "holidays-list",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Holidays List",
+  "description": "List holidays for a country/year.",
+  "category": "datetime",
+  "tags": ["holidays", "country"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "country": {
+        "type": "string",
+      },
+      "year": {
+        "type": "integer",
+      },
+    },
+    "required": ["country"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "holidays": {
+        "type": "array",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "country": "US",
+      "year": 2024,
+    },
+    "output": {
+      "ok": true,
+      "holidays": [
+        { "date": "2024-01-01", "name": "New Year's Day" },
+        { "date": "2024-07-04", "name": "Independence Day" },
+      ],
+    },
+  },
+}

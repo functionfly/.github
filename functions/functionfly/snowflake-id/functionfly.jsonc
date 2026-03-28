@@ -1,0 +1,48 @@
+{
+  "author": "functionfly",
+  "name": "snowflake-id",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Snowflake ID",
+  "description": "Generate Snowflake ID.",
+  "category": "utilities",
+  "tags": ["snowflake", "id", "generate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "machine_id": {
+        "type": "integer",
+      },
+      "datacenter_id": {
+        "type": "integer",
+      },
+    },
+    "required": [],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "id": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true,
+      "id": "1234567890123456789",
+    },
+  },
+}

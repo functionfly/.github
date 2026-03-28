@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "elmo-embed",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "ELMo Embeddings",
+  "description": "Generate ELMo-style contextual embeddings using hash-based deterministic simulation.",
+  "category": "ai-ml",
+  "tags": [
+    "elmo-embed",
+    "embeddings",
+    "nlp",
+    "vectors",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      },
+      "dimensions": {
+        "type": "integer",
+        "default": 1024
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "text": "The bank can guarantee deposits",
+      "dimensions": 16
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

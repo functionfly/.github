@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "sortino-ratio",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Sortino Ratio Calculate",
+  "description": "Calculate the Sortino ratio using downside deviation instead of total standard deviation.",
+  "category": "analytics",
+  "tags": [
+    "sortino-ratio",
+    "downside-risk",
+    "portfolio",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "portfolio_return": {
+        "type": "number",
+        "description": "Portfolio return (decimal)"
+      },
+      "risk_free_rate": {
+        "type": "number",
+        "description": "Risk-free rate (decimal)"
+      },
+      "downside_deviation": {
+        "type": "number",
+        "description": "Downside deviation"
+      }
+    },
+    "required": [
+      "portfolio_return",
+      "risk_free_rate",
+      "downside_deviation"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "portfolio_return": 0.12,
+      "risk_free_rate": 0.03,
+      "downside_deviation": 0.08
+    },
+    "output": {
+      "ok": true,
+      "result": 1.125
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "author": "functionfly",
+  "name": "log-normal-distribution",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Log-Normal Distribution Calculate",
+  "description": "Calculate the PDF and CDF of the log-normal distribution.",
+  "category": "analytics",
+  "tags": [
+    "log-normal",
+    "statistics",
+    "probability",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "x": {
+        "type": "number",
+        "description": "Value to evaluate (> 0)"
+      },
+      "mu": {
+        "type": "number",
+        "description": "Mean of the underlying normal distribution",
+        "default": 0
+      },
+      "sigma": {
+        "type": "number",
+        "description": "Std dev of the underlying normal distribution",
+        "default": 1
+      }
+    },
+    "required": [
+      "x"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "x": 1.0,
+      "mu": 0,
+      "sigma": 1
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "pdf": 0.3989,
+        "cdf": 0.5
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "similarity-search",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Similarity Search",
+  "description": "Find the most similar items from a list of candidates to a query string using TF-IDF cosine similarity.",
+  "category": "ai-ml",
+  "tags": ["similarity", "search", "nlp", "ranking", "ai"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "query": { "type": "string" },
+      "candidates": { "type": "array", "items": { "type": "string" } },
+      "top_k": { "type": "integer", "default": 5 },
+    },
+    "required": ["query", "candidates"],
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": {}, "matches": {}, "error": {} },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "query": "machine learning",
+      "candidates": [
+        "deep learning",
+        "data science",
+        "cooking recipes",
+        "neural networks",
+      ],
+      "top_k": 2,
+    },
+    "output": { "ok": true },
+  },
+}

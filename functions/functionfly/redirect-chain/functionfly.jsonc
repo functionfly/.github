@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "redirect-chain",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Follow Redirect Chain",
+  "description": "Follow and return the full redirect chain for a URL.",
+  "category": "devops",
+  "tags": ["http", "redirect", "networking", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "max_redirects": { "type": "integer", "default": 10 },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "chain": { "type": "array" }, "final_url": { "type": "string" }, "redirect_count": { "type": "integer" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 60, "timeout_ms": 30000, "memory_mb": 128,
+  "example": {
+    "input": { "url": "http://example.com" },
+    "output": { "ok": true, "chain": [{ "url": "http://example.com", "status": 301 }, { "url": "https://example.com", "status": 200 }], "final_url": "https://example.com", "redirect_count": 1 }
+  }
+}

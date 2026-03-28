@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "bbcode-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "BBCode Parse",
+  "description": "Parse BBCode to HTML.",
+  "category": "text",
+  "tags": ["bbcode", "html", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "bbcode": {
+        "type": "string",
+      },
+    },
+    "required": ["bbcode"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "html": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "bbcode": "[b]Bold[/b] [i]Italic[/i]",
+    },
+    "output": {
+      "ok": true,
+      "html": "<b>Bold</b> <i>Italic</i>",
+    },
+  },
+}

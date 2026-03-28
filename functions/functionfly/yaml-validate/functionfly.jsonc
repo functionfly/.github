@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "yaml-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Validate YAML",
+  "description": "Check if a string is valid YAML syntax and return a validation result with error details.",
+  "category": "devops",
+  "tags": ["yaml", "validate", "lint", "config", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "string", "description": "YAML string to validate" },
+      "schema": { "type": "object", "description": "Optional JSON Schema to validate against" }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "valid": { "type": "boolean" }, "parsed": {}, "message": {}, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": {
+    "input": { "data": "name: John\nage: 30\n" },
+    "output": { "ok": true, "valid": true, "parsed": { "name": "John", "age": 30 } }
+  }
+}

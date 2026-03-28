@@ -1,0 +1,67 @@
+{
+  "author": "functionfly",
+  "name": "break-even",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Break-Even Analysis",
+  "description": "Calculate the break-even point in units and revenue.",
+  "category": "finance",
+  "tags": [
+    "break-even",
+    "cost-analysis",
+    "finance",
+    "accounting"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "fixed_costs": {
+        "type": "number",
+        "description": "Total fixed costs"
+      },
+      "variable_cost_per_unit": {
+        "type": "number",
+        "description": "Variable cost per unit"
+      },
+      "price_per_unit": {
+        "type": "number",
+        "description": "Selling price per unit"
+      }
+    },
+    "required": [
+      "fixed_costs",
+      "variable_cost_per_unit",
+      "price_per_unit"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "fixed_costs": 10000,
+      "variable_cost_per_unit": 5,
+      "price_per_unit": 15
+    },
+    "output": {
+      "ok": true,
+      "result": 1000.0,
+      "break_even_units": 1000.0,
+      "break_even_revenue": 15000.0
+    }
+  }
+}

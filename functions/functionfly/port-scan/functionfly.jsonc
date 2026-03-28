@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "port-scan",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Port Scan",
+  "description": "Check if specific ports are open on a host.",
+  "category": "devops",
+  "tags": ["port", "scan", "networking", "security", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "host": { "type": "string" },
+      "ports": { "type": "array", "items": { "type": "integer" }, "description": "Ports to check" },
+      "timeout": { "type": "number", "default": 3 }
+    },
+    "required": ["host", "ports"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "results": { "type": "array" }, "open_ports": { "type": "array" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 60, "timeout_ms": 30000, "memory_mb": 128,
+  "example": {
+    "input": { "host": "example.com", "ports": [80, 443, 22, 8080] },
+    "output": { "ok": true, "open_ports": [80, 443], "results": [{ "port": 80, "open": true }, { "port": 443, "open": true }, { "port": 22, "open": false }, { "port": 8080, "open": false }] }
+  }
+}

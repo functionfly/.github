@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "h3-index",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "H3 Index",
+  "description": "Get the H3 hexagonal hierarchical spatial index for given coordinates. Returns a mock H3 index string.",
+  "category": "geospatial",
+  "tags": ["h3", "hexagon", "spatial-index", "uber", "geospatial", "mock"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+      "resolution": {
+        "type": "integer",
+        "description": "H3 resolution (0-15, default: 9)",
+      },
+    },
+    "required": ["lat", "lng"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "h3_index": { "type": "string", "description": "H3 index string" },
+          "resolution": { "type": "integer" },
+          "lat": { "type": "number" },
+          "lng": { "type": "number" },
+          "avg_area_km2": {
+            "type": "number",
+            "description": "Average hexagon area at this resolution",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "lat": 40.7128,
+      "lng": -74.006,
+      "resolution": 9,
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "h3_index": "892a1072803ffff",
+        "resolution": 9,
+        "lat": 40.7128,
+        "lng": -74.006,
+        "avg_area_km2": 0.1053,
+      },
+    },
+  },
+}

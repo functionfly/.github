@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "hyperparameter-tune",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Hyperparameter Tuning",
+  "description": "Perform grid search hyperparameter tuning.",
+  "category": "ai-ml",
+  "tags": [
+    "hyperparameter-tune",
+    "ml",
+    "data",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "param_grid": {
+        "type": "object"
+      },
+      "metric": {
+        "type": "string",
+        "default": "accuracy"
+      },
+      "cv": {
+        "type": "integer",
+        "default": 5
+      }
+    },
+    "required": [
+      "param_grid"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "param_grid": {
+        "learning_rate": [
+          0.01,
+          0.1
+        ],
+        "max_depth": [
+          3,
+          5
+        ]
+      }
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

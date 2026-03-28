@@ -1,0 +1,31 @@
+{
+  "author": "functionfly",
+  "name": "gitignore-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate .gitignore",
+  "description": "Generate a .gitignore file for a given language, framework, or IDE.",
+  "category": "devops",
+  "tags": ["git", "gitignore", "vcs", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "language": { "type": "string" },
+      "framework": { "type": "string" },
+      "ide": { "type": "string", "description": "IDE (vscode, jetbrains, vim)" },
+      "os": { "type": "string", "description": "OS (macos, windows, linux)" },
+      "extras": { "type": "array", "items": { "type": "string" } }
+    },
+    "required": ["language"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "gitignore": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 86400, "timeout_ms": 1000, "memory_mb": 64,
+  "example": {
+    "input": { "language": "python", "ide": "vscode" },
+    "output": { "ok": true, "gitignore": "# Python\n__pycache__/\n*.pyc\n\n# VSCode\n.vscode/\n" }
+  }
+}

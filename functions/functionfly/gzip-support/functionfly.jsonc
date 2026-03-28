@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "gzip-support",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Check Gzip Support",
+  "description": "Check if a server supports gzip content encoding.",
+  "category": "devops",
+  "tags": ["gzip", "compression", "http", "performance", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "supported": { "type": "boolean" }, "encoding": { "type": "string" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "url": "https://example.com" },
+    "output": { "ok": true, "supported": true, "encoding": "gzip" }
+  }
+}

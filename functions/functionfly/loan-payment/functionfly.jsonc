@@ -1,0 +1,67 @@
+{
+  "author": "functionfly",
+  "name": "loan-payment",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Loan Payment Calculate",
+  "description": "Calculate the monthly payment for a loan given principal, annual interest rate, and term in years.",
+  "category": "finance",
+  "tags": [
+    "loan",
+    "payment",
+    "mortgage",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "principal": {
+        "type": "number",
+        "description": "Loan principal amount"
+      },
+      "annual_rate": {
+        "type": "number",
+        "description": "Annual interest rate (decimal, e.g. 0.06)"
+      },
+      "years": {
+        "type": "number",
+        "description": "Loan term in years"
+      }
+    },
+    "required": [
+      "principal",
+      "annual_rate",
+      "years"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "principal": 200000,
+      "annual_rate": 0.06,
+      "years": 30
+    },
+    "output": {
+      "ok": true,
+      "result": 1199.1,
+      "total_payment": 431676.0,
+      "total_interest": 231676.0
+    }
+  }
+}

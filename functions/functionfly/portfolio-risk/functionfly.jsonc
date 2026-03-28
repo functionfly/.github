@@ -1,0 +1,89 @@
+{
+  "author": "functionfly",
+  "name": "portfolio-risk",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Portfolio Risk Calculate",
+  "description": "Calculate portfolio risk (standard deviation) given asset weights, standard deviations, and correlation.",
+  "category": "analytics",
+  "tags": [
+    "portfolio",
+    "risk",
+    "standard-deviation",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "weights": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "Asset weights (must sum to 1)"
+      },
+      "std_devs": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "description": "Asset standard deviations"
+      },
+      "correlation_matrix": {
+        "type": "array",
+        "items": {
+          "type": "array"
+        },
+        "description": "Correlation matrix"
+      }
+    },
+    "required": [
+      "weights",
+      "std_devs",
+      "correlation_matrix"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "weights": [
+        0.6,
+        0.4
+      ],
+      "std_devs": [
+        0.15,
+        0.1
+      ],
+      "correlation_matrix": [
+        [
+          1.0,
+          0.3
+        ],
+        [
+          0.3,
+          1.0
+        ]
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": 0.1136
+    }
+  }
+}

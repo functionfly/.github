@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "tokenize",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Tokenize",
+  "description": "Tokenize text into individual tokens (words, punctuation, numbers) with position information.",
+  "category": "ai-ml",
+  "tags": [
+    "tokenize",
+    "nlp",
+    "text",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      },
+      "lowercase": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "text": "Hello, world! How are you?"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

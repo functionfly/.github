@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "http3-support",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Check HTTP/3 Support",
+  "description": "Check if a server advertises HTTP/3 (QUIC) support via Alt-Svc header.",
+  "category": "devops",
+  "tags": ["http3", "quic", "protocol", "networking", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string" },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["url"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "supported": { "type": "boolean" }, "alt_svc": { "type": "string" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "url": "https://example.com" },
+    "output": { "ok": true, "supported": false, "alt_svc": null }
+  }
+}

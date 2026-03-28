@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "cuid-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "CUID Generate",
+  "description": "Generate CUID.",
+  "category": "utilities",
+  "tags": ["cuid", "generate"],
+  "input": {
+    "type": "object",
+    "properties": {},
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "cuid": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true,
+      "cuid": "cjld2cyuq0000t3rmniod1foy",
+    },
+  },
+}

@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "http2-support",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Check HTTP/2 Support",
+  "description": "Check if a server supports HTTP/2 via ALPN negotiation.",
+  "category": "devops",
+  "tags": ["http2", "protocol", "networking", "performance", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "host": { "type": "string" },
+      "port": { "type": "integer", "default": 443 },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["host"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "supported": { "type": "boolean" }, "protocol": { "type": "string" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "host": "example.com" },
+    "output": { "ok": true, "supported": true, "protocol": "h2" }
+  }
+}

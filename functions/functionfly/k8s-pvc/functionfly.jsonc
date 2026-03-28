@@ -1,0 +1,31 @@
+{
+  "author": "functionfly",
+  "name": "k8s-pvc",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Generate K8s PVC",
+  "description": "Generate a Kubernetes PersistentVolumeClaim manifest.",
+  "category": "devops",
+  "tags": ["kubernetes", "pvc", "k8s", "storage", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string" },
+      "storage": { "type": "string", "description": "Storage size (e.g. 10Gi)" },
+      "access_modes": { "type": "array", "items": { "type": "string" }, "default": ["ReadWriteOnce"] },
+      "storage_class": { "type": "string" },
+      "namespace": { "type": "string", "default": "default" }
+    },
+    "required": ["name", "storage"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "yaml": { "type": "string" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 2000, "memory_mb": 64,
+  "example": {
+    "input": { "name": "app-storage", "storage": "10Gi", "access_modes": ["ReadWriteOnce"] },
+    "output": { "ok": true, "yaml": "apiVersion: v1\nkind: PersistentVolumeClaim\n..." }
+  }
+}

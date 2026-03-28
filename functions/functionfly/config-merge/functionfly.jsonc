@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "config-merge",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Merge Configs",
+  "description": "Deep merge multiple configuration objects, with later values overriding earlier ones.",
+  "category": "devops",
+  "tags": ["config", "merge", "configuration", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "configs": { "type": "array", "items": { "type": "object" }, "description": "Array of config objects to merge (later overrides earlier)" },
+      "strategy": { "type": "string", "enum": ["deep", "shallow", "replace"], "default": "deep" }
+    },
+    "required": ["configs"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "object" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": {
+    "input": { "configs": [{ "db": { "host": "localhost", "port": 5432 } }, { "db": { "port": 5433, "name": "mydb" } }] },
+    "output": { "ok": true, "result": { "db": { "host": "localhost", "port": 5433, "name": "mydb" } } }
+  }
+}

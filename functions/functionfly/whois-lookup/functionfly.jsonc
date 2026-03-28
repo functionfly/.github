@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "whois-lookup",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "WHOIS Lookup",
+  "description": "Perform a WHOIS lookup for a domain name.",
+  "category": "devops",
+  "tags": ["whois", "domain", "networking", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "domain": { "type": "string" },
+      "timeout": { "type": "integer", "default": 10 }
+    },
+    "required": ["domain"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": { "type": "string" }, "registrar": { "type": "string" }, "expiry": { "type": "string" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 15000, "memory_mb": 128,
+  "example": {
+    "input": { "domain": "example.com" },
+    "output": { "ok": true, "registrar": "IANA", "expiry": "2024-08-13" }
+  }
+}

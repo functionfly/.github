@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "compound-growth",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Compound Growth Calculate",
+  "description": "Calculate the future value using compound growth formula.",
+  "category": "finance",
+  "tags": [
+    "compound-growth",
+    "finance",
+    "investment"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "initial_value": {
+        "type": "number",
+        "description": "Initial value"
+      },
+      "growth_rate": {
+        "type": "number",
+        "description": "Growth rate per period (decimal)"
+      },
+      "periods": {
+        "type": "number",
+        "description": "Number of periods"
+      }
+    },
+    "required": [
+      "initial_value",
+      "growth_rate",
+      "periods"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "initial_value": 1000,
+      "growth_rate": 0.1,
+      "periods": 5
+    },
+    "output": {
+      "ok": true,
+      "result": 1610.51
+    }
+  }
+}

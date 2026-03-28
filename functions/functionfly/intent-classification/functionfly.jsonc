@@ -1,0 +1,35 @@
+{
+  "author": "functionfly",
+  "name": "intent-classification",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Intent Classification",
+  "description": "Classify user intent from text into categories like question, command, complaint, compliment, request, greeting, farewell, and more.",
+  "category": "ai-ml",
+  "tags": ["intent", "nlp", "classification", "chatbot", "ai"],
+  "input": {
+    "type": "object",
+    "properties": { "text": { "type": "string" } },
+    "required": ["text"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "intent": {},
+      "confidence": {},
+      "scores": {},
+      "error": {},
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": { "text": "Can you help me reset my password?" },
+    "output": { "ok": true, "intent": "request" },
+  },
+}

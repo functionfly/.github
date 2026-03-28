@@ -1,0 +1,52 @@
+{
+  "author": "functionfly",
+  "name": "voice-cloning",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Voice Cloning",
+  "description": "Voice cloning parameters and configuration (mock implementation).",
+  "category": "ai-ml",
+  "tags": [
+    "voice-cloning",
+    "audio",
+    "speech",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "reference_audio_url": {
+        "type": "string"
+      },
+      "text": {
+        "type": "string"
+      },
+      "similarity_boost": {
+        "type": "number",
+        "default": 0.75
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 3000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "text": "Hello from cloned voice"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

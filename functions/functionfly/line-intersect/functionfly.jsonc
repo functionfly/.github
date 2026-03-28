@@ -1,0 +1,81 @@
+{
+  "author": "functionfly",
+  "name": "line-intersect",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Line Intersect",
+  "description": "Check if two line segments intersect and find the intersection point if they do.",
+  "category": "geospatial",
+  "tags": [
+    "line",
+    "intersect",
+    "intersection",
+    "geometry",
+    "geospatial",
+    "segment",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "line1": {
+        "type": "array",
+        "description": "First line as [[lat1, lng1], [lat2, lng2]]",
+        "items": { "type": "array" },
+      },
+      "line2": {
+        "type": "array",
+        "description": "Second line as [[lat1, lng1], [lat2, lng2]]",
+        "items": { "type": "array" },
+      },
+    },
+    "required": ["line1", "line2"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "intersects": {
+            "type": "boolean",
+            "description": "Whether the lines intersect",
+          },
+          "intersection": {
+            "type": "object",
+            "description": "Intersection point (if intersects is true)",
+            "properties": {
+              "lat": { "type": "number" },
+              "lng": { "type": "number" },
+            },
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "line1": [
+        [0, 0],
+        [10, 10],
+      ],
+      "line2": [
+        [0, 10],
+        [10, 0],
+      ],
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "intersects": true,
+        "intersection": { "lat": 5.0, "lng": 5.0 },
+      },
+    },
+  },
+}

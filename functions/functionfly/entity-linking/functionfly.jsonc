@@ -1,0 +1,33 @@
+{
+  "author": "functionfly",
+  "name": "entity-linking",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Entity Linking",
+  "description": "Link extracted entities to predefined categories and knowledge domains (technology, science, geography, people, organizations, etc.).",
+  "category": "ai-ml",
+  "tags": ["entity-linking", "nlp", "knowledge", "classification", "ai"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "entities": { "type": "array", "items": { "type": "string" } },
+      "text": { "type": "string" },
+    },
+    "required": ["entities"],
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "result": {}, "linked": {}, "error": {} },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "entities": ["Python", "Google", "New York", "Albert Einstein"],
+    },
+    "output": { "ok": true },
+  },
+}

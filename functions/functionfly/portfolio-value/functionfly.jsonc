@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "portfolio-value",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Portfolio Value Calculate",
+  "description": "Calculate the total value of an investment portfolio.",
+  "category": "finance",
+  "tags": [
+    "portfolio",
+    "value",
+    "investment",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "holdings": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        },
+        "description": "List of holdings with 'shares' and 'price' fields"
+      }
+    },
+    "required": [
+      "holdings"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "holdings": [
+        {
+          "shares": 100,
+          "price": 150.0
+        },
+        {
+          "shares": 50,
+          "price": 200.0
+        }
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": 25000.0
+    }
+  }
+}

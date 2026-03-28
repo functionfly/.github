@@ -1,0 +1,67 @@
+{
+  "author": "functionfly",
+  "name": "moon-phase",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Moon Phase",
+  "description": "Calculate the moon phase for a given date, including phase name, illumination percentage, and age.",
+  "category": "geospatial",
+  "tags": ["moon", "phase", "lunar", "astronomy", "calendar"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "date": {
+        "type": "string",
+        "description": "Date in YYYY-MM-DD format (default: today UTC)",
+      },
+    },
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string" },
+          "phase_name": { "type": "string", "description": "Moon phase name" },
+          "phase_angle": {
+            "type": "number",
+            "description": "Phase angle in degrees (0-360)",
+          },
+          "illumination": {
+            "type": "number",
+            "description": "Illumination percentage (0-100)",
+          },
+          "age_days": {
+            "type": "number",
+            "description": "Age of moon in days (0-29.5)",
+          },
+          "emoji": { "type": "string", "description": "Moon phase emoji" },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "date": "2024-01-01",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "date": "2024-01-01",
+        "phase_name": "Waxing Gibbous",
+        "phase_angle": 135.2,
+        "illumination": 72.4,
+        "age_days": 19.8,
+        "emoji": "🌔",
+      },
+    },
+  },
+}

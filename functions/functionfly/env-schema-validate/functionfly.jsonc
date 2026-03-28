@@ -1,0 +1,43 @@
+{
+  "author": "functionfly",
+  "name": "env-schema-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Validate Env Schema",
+  "description": "Validate environment variables against a schema definition.",
+  "category": "devops",
+  "tags": ["env", "validate", "schema", "configuration", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "env": { "type": "object", "description": "Environment variables as key-value pairs" },
+      "schema": {
+        "type": "object",
+        "description": "Schema definition with variable names as keys",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "required": { "type": "boolean" },
+            "type": { "type": "string" },
+            "pattern": { "type": "string" },
+            "default": {}
+          }
+        }
+      }
+    },
+    "required": ["env", "schema"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "valid": { "type": "boolean" }, "errors": { "type": "array" }, "warnings": { "type": "array" }, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 1000, "memory_mb": 64,
+  "example": {
+    "input": {
+      "env": { "DATABASE_URL": "postgres://localhost/mydb", "PORT": "3000" },
+      "schema": { "DATABASE_URL": { "required": true, "type": "string" }, "PORT": { "required": true, "type": "number" }, "SECRET_KEY": { "required": true } }
+    },
+    "output": { "ok": true, "valid": false, "errors": ["SECRET_KEY is required but not set"], "warnings": [] }
+  }
+}

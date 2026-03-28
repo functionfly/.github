@@ -1,0 +1,54 @@
+{
+  "author": "functionfly",
+  "name": "birthday-calculator",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Birthday Calculator",
+  "description": "Calculate days until next birthday.",
+  "category": "datetime",
+  "tags": ["birthday", "days"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "birthdate": {
+        "type": "string",
+      },
+      "reference_date": {
+        "type": "string",
+      },
+    },
+    "required": ["birthdate"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "days_until_next": {
+        "type": "integer",
+      },
+      "next_birthday": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "birthdate": "1990-01-15",
+    },
+    "output": {
+      "ok": true,
+      "days_until_next": 365,
+      "next_birthday": "2025-01-15",
+    },
+  },
+}

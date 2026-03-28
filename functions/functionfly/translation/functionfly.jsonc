@@ -1,0 +1,39 @@
+{
+  "author": "functionfly",
+  "name": "translation",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Text Translation",
+  "description": "Translate text between languages using a lookup table for common phrases and word-by-word dictionary translation.",
+  "category": "ai-ml",
+  "tags": ["translation", "nlp", "multilingual", "language", "ai"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": { "type": "string" },
+      "source_lang": { "type": "string", "default": "en" },
+      "target_lang": { "type": "string" },
+    },
+    "required": ["text", "target_lang"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "translated_text": {},
+      "source_lang": {},
+      "target_lang": {},
+      "error": {},
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": { "text": "Hello, how are you?", "target_lang": "es" },
+    "output": { "ok": true, "translated_text": "Hola, ¿cómo estás?" },
+  },
+}

@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "nginx-log-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Nginx Log",
+  "description": "Parse an Nginx access log line into structured fields.",
+  "category": "devops",
+  "tags": ["nginx", "logging", "parse", "observability", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "line": { "type": "string" },
+      "format": { "type": "string", "description": "Log format (combined, common, or custom pattern)", "default": "combined" }
+    },
+    "required": ["line"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "remote_addr": {}, "timestamp": {}, "method": {}, "path": {}, "protocol": {}, "status": { "type": "integer" }, "bytes_sent": { "type": "integer" }, "referer": {}, "user_agent": {}, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "line": "192.168.1.1 - - [01/Jan/2024:00:00:00 +0000] \"GET /api/health HTTP/1.1\" 200 1234 \"-\" \"curl/7.68.0\"" },
+    "output": { "ok": true, "remote_addr": "192.168.1.1", "method": "GET", "path": "/api/health", "status": 200, "bytes_sent": 1234 }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "author": "functionfly",
+  "name": "sentence-similarity",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Sentence Similarity",
+  "description": "Calculate semantic similarity between two sentences using TF-IDF cosine similarity and Jaccard overlap.",
+  "category": "ai-ml",
+  "tags": ["similarity", "nlp", "cosine", "semantic", "ai"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "sentence1": { "type": "string" },
+      "sentence2": { "type": "string" },
+    },
+    "required": ["sentence1", "sentence2"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "similarity": {},
+      "jaccard": {},
+      "cosine": {},
+      "error": {},
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 500,
+  "memory_mb": 64,
+  "example": {
+    "input": {
+      "sentence1": "The cat sat on the mat",
+      "sentence2": "A cat is sitting on a mat",
+    },
+    "output": { "ok": true, "similarity": 0.72 },
+  },
+}

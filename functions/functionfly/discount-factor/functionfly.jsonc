@@ -1,0 +1,58 @@
+{
+  "author": "functionfly",
+  "name": "discount-factor",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Discount Factor Calculate",
+  "description": "Calculate the discount factor for a given rate and number of periods.",
+  "category": "finance",
+  "tags": [
+    "discount-factor",
+    "time-value",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "rate": {
+        "type": "number",
+        "description": "Discount rate per period (decimal)"
+      },
+      "periods": {
+        "type": "number",
+        "description": "Number of periods"
+      }
+    },
+    "required": [
+      "rate",
+      "periods"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "rate": 0.1,
+      "periods": 5
+    },
+    "output": {
+      "ok": true,
+      "result": 0.6209
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "author": "functionfly",
+  "name": "asci85-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "ASCII85 Decode",
+  "description": "Decode ASCII85.",
+  "category": "encoding",
+  "tags": ["ascii85", "decode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "encoded": {
+        "type": "string",
+      },
+    },
+    "required": ["encoded"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "data": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "encoded": "<~87cURD]~>",
+    },
+    "output": {
+      "ok": true,
+      "data": "Hello",
+    },
+  },
+}

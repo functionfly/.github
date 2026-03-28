@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "portfolio-return",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Portfolio Return Calculate",
+  "description": "Calculate the weighted return of an investment portfolio.",
+  "category": "finance",
+  "tags": [
+    "portfolio",
+    "return",
+    "investment",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "holdings": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        },
+        "description": "List of holdings with 'weight' and 'return' fields"
+      }
+    },
+    "required": [
+      "holdings"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "holdings": [
+        {
+          "weight": 0.6,
+          "return": 0.12
+        },
+        {
+          "weight": 0.4,
+          "return": 0.08
+        }
+      ]
+    },
+    "output": {
+      "ok": true,
+      "result": 0.104
+    }
+  }
+}

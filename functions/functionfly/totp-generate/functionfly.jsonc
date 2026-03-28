@@ -1,0 +1,53 @@
+{
+  "author": "functionfly",
+  "name": "totp-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "TOTP Generate",
+  "description": "Generate TOTP (Time-based OTP).",
+  "category": "security",
+  "tags": ["totp", "generate"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "secret": {
+        "type": "string",
+      },
+      "digits": {
+        "type": "integer",
+      },
+      "period": {
+        "type": "integer",
+      },
+    },
+    "required": ["secret"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "totp": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "secret": "JBSWY3DPEHPK3PXP",
+    },
+    "output": {
+      "ok": true,
+      "totp": "123456",
+    },
+  },
+}

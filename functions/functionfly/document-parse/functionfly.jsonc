@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "document-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Document Parsing",
+  "description": "Parse document structure including headings, paragraphs, tables, and lists.",
+  "category": "ai-ml",
+  "tags": [
+    "document-parse",
+    "vision",
+    "image",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      },
+      "format": {
+        "type": "string",
+        "default": "auto"
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "text": "# Title\n\nParagraph text here.\n\n- Item 1\n- Item 2"
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}

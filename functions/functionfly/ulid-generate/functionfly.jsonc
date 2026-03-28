@@ -1,0 +1,40 @@
+{
+  "author": "functionfly",
+  "name": "ulid-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "ULID Generate",
+  "description": "Generate ULID.",
+  "category": "utilities",
+  "tags": ["ulid", "generate"],
+  "input": {
+    "type": "object",
+    "properties": {},
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "ulid": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {},
+    "output": {
+      "ok": true,
+      "ulid": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    },
+  },
+}

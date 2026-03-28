@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "ulid-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "ULID Parse",
+  "description": "Parse ULID.",
+  "category": "utilities",
+  "tags": ["ulid", "parse"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "ulid": {
+        "type": "string",
+      },
+    },
+    "required": ["ulid"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+      },
+      "timestamp": {
+        "type": "integer",
+      },
+      "randomness": {
+        "type": "string",
+      },
+      "error": {
+        "type": "string",
+      },
+    },
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "ulid": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    },
+    "output": {
+      "ok": true,
+      "timestamp": 1400000000000,
+      "randomness": "...",
+    },
+  },
+}

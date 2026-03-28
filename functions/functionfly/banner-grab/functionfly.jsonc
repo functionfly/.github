@@ -1,0 +1,29 @@
+{
+  "author": "functionfly",
+  "name": "banner-grab",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Banner Grab",
+  "description": "Grab the service banner from a TCP port to identify the service and version.",
+  "category": "devops",
+  "tags": ["banner", "networking", "security", "reconnaissance", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "host": { "type": "string" },
+      "port": { "type": "integer" },
+      "timeout": { "type": "number", "default": 5 }
+    },
+    "required": ["host", "port"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "banner": { "type": "string" }, "service": { "type": "string" }, "error": {} }
+  },
+  "deterministic": false, "idempotent": true,
+  "cache_ttl": 300, "timeout_ms": 10000, "memory_mb": 64,
+  "example": {
+    "input": { "host": "example.com", "port": 22 },
+    "output": { "ok": true, "banner": "SSH-2.0-OpenSSH_8.9p1", "service": "SSH" }
+  }
+}

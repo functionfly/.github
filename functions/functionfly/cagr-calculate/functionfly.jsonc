@@ -1,0 +1,65 @@
+{
+  "author": "functionfly",
+  "name": "cagr-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Compound Annual Growth Rate Calculate",
+  "description": "Calculate the compound annual growth rate (CAGR) of an investment.",
+  "category": "finance",
+  "tags": [
+    "cagr",
+    "growth-rate",
+    "investment",
+    "finance"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "beginning_value": {
+        "type": "number",
+        "description": "Beginning value"
+      },
+      "ending_value": {
+        "type": "number",
+        "description": "Ending value"
+      },
+      "years": {
+        "type": "number",
+        "description": "Number of years"
+      }
+    },
+    "required": [
+      "beginning_value",
+      "ending_value",
+      "years"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "beginning_value": 10000,
+      "ending_value": 20000,
+      "years": 5
+    },
+    "output": {
+      "ok": true,
+      "result": 0.1487
+    }
+  }
+}

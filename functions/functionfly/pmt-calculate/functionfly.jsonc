@@ -1,0 +1,70 @@
+{
+  "author": "functionfly",
+  "name": "pmt-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Payment Amount Calculate",
+  "description": "Calculate the periodic payment for a loan or annuity given rate, number of periods, and present value.",
+  "category": "finance",
+  "tags": [
+    "payment",
+    "pmt",
+    "loan",
+    "annuity"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "rate": {
+        "type": "number",
+        "description": "Interest rate per period (decimal)"
+      },
+      "periods": {
+        "type": "number",
+        "description": "Number of periods"
+      },
+      "present_value": {
+        "type": "number",
+        "description": "Present value (loan amount)"
+      },
+      "future_value": {
+        "type": "number",
+        "description": "Future value (default 0)",
+        "default": 0
+      }
+    },
+    "required": [
+      "rate",
+      "periods",
+      "present_value"
+    ]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "result": {},
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "rate": 0.005,
+      "periods": 360,
+      "present_value": 200000
+    },
+    "output": {
+      "ok": true,
+      "result": -1199.1
+    }
+  }
+}

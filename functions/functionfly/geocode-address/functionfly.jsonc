@@ -1,0 +1,75 @@
+{
+  "author": "functionfly",
+  "name": "geocode-address",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Geocode Address",
+  "description": "Convert a street address to latitude/longitude coordinates. Returns mock data for common cities and addresses.",
+  "category": "geospatial",
+  "tags": [
+    "geocode",
+    "address",
+    "coordinates",
+    "latitude",
+    "longitude",
+    "location",
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "address": {
+        "type": "string",
+        "description": "Street address or place name to geocode",
+      },
+    },
+    "required": ["address"],
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {
+        "type": "object",
+        "properties": {
+          "address": { "type": "string", "description": "Input address" },
+          "lat": { "type": "number", "description": "Latitude" },
+          "lng": { "type": "number", "description": "Longitude" },
+          "formatted_address": {
+            "type": "string",
+            "description": "Formatted address",
+          },
+          "confidence": {
+            "type": "number",
+            "description": "Confidence score 0-1",
+          },
+          "type": {
+            "type": "string",
+            "description": "Location type (city, street, etc.)",
+          },
+        },
+      },
+      "error": { "type": "string" },
+    },
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 86400,
+  "timeout_ms": 3000,
+  "memory_mb": 128,
+  "example": {
+    "input": {
+      "address": "New York, NY",
+    },
+    "output": {
+      "ok": true,
+      "result": {
+        "address": "New York, NY",
+        "lat": 40.7128,
+        "lng": -74.006,
+        "formatted_address": "New York, NY, USA",
+        "confidence": 0.95,
+        "type": "city",
+      },
+    },
+  },
+}

@@ -1,0 +1,28 @@
+{
+  "author": "functionfly",
+  "name": "apache-log-parse",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Parse Apache Log",
+  "description": "Parse an Apache HTTP server access log line into structured fields.",
+  "category": "devops",
+  "tags": ["apache", "logging", "parse", "observability", "devops"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "line": { "type": "string" },
+      "format": { "type": "string", "default": "combined" }
+    },
+    "required": ["line"]
+  },
+  "output": {
+    "type": "object",
+    "properties": { "ok": {}, "remote_addr": {}, "timestamp": {}, "method": {}, "path": {}, "status": { "type": "integer" }, "bytes_sent": { "type": "integer" }, "referer": {}, "user_agent": {}, "error": {} }
+  },
+  "deterministic": true, "idempotent": true,
+  "cache_ttl": 3600, "timeout_ms": 500, "memory_mb": 64,
+  "example": {
+    "input": { "line": "127.0.0.1 - frank [10/Oct/2000:13:55:36 -0700] \"GET /apache_pb.gif HTTP/1.0\" 200 2326 \"http://www.example.com/start.html\" \"Mozilla/4.08\"" },
+    "output": { "ok": true, "remote_addr": "127.0.0.1", "method": "GET", "path": "/apache_pb.gif", "status": 200, "bytes_sent": 2326 }
+  }
+}

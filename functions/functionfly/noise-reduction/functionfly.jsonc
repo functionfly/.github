@@ -1,0 +1,57 @@
+{
+  "author": "functionfly",
+  "name": "noise-reduction",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Noise Reduction",
+  "description": "Noise reduction parameters and configuration for audio processing.",
+  "category": "ai-ml",
+  "tags": [
+    "noise-reduction",
+    "audio",
+    "speech",
+    "ai"
+  ],
+  "input": {
+    "type": "object",
+    "properties": {
+      "audio_url": {
+        "type": "string"
+      },
+      "audio_base64": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "default": "spectral"
+      },
+      "strength": {
+        "type": "number",
+        "default": 0.5
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": {},
+      "result": {},
+      "error": {}
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 3000,
+  "memory_mb": 256,
+  "example": {
+    "input": {
+      "method": "spectral",
+      "strength": 0.7
+    },
+    "output": {
+      "ok": true
+    }
+  }
+}
