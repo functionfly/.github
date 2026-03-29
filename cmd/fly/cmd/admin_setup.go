@@ -14,29 +14,43 @@ import (
 
 // newAdminSetupCmd creates the admin setup command
 func newAdminSetupCmd() *cobra.Command {
+	var password string
 	cmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Initialize system setup",
 		Long: `Initialize the FunctionFly system with default tenant and admin user.
 
 This command sets up the initial system configuration including
-creating a default tenant and admin user.`,
+creating a default tenant and admin user.
+
+The admin password must be provided via --password or ADMIN_CREATE_PASSWORD env var.`,
 		Example: `  # Initialize system setup
-  fly admin setup`,
+  fly admin setup --password <secure-password>
+
+  # Or via environment variable
+  ADMIN_CREATE_PASSWORD=<secure-password> fly admin setup`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAdminSetup(cmd)
+			return runAdminSetup(cmd, password)
 		},
 	}
-
+	cmd.Flags().StringVar(&password, "password", "", "Admin user password (or set ADMIN_CREATE_PASSWORD)")
 	return cmd
 }
 
-func runAdminSetup(cmd *cobra.Command) error {
+func runAdminSetup(cmd *cobra.Command, password string) error {
 	// Get database URL from environment
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		return fmt.Errorf("DATABASE_URL environment variable is required")
+	}
+
+	// Resolve password: flag > env var
+	if password == "" {
+		password = os.Getenv("ADMIN_CREATE_PASSWORD")
+	}
+	if password == "" {
+		return fmt.Errorf("admin password is required (use --password flag or ADMIN_CREATE_PASSWORD env var)")
 	}
 
 	// Connect to database
@@ -70,15 +84,14 @@ func runAdminSetup(cmd *cobra.Command) error {
 		if err != nil {
 			return fmt.Errorf("failed to get tenant: %w", err)
 		}
-		fmt.Println("✅ Default tenant already exists")
+		fmt.Println("Default tenant already exists")
 	} else {
-		fmt.Println("✅ Created default tenant")
+		fmt.Println("Created default tenant")
 	}
 
 	// Create default admin user if not exists
 	var userID string
-	defaultPassword := "admin123"
-	hashedPassword, err := hashPassword(defaultPassword)
+	hashedPassword, err := hashPassword(password)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
@@ -95,15 +108,14 @@ func runAdminSetup(cmd *cobra.Command) error {
 	}
 
 	if userID == "" {
-		fmt.Println("✅ Admin user already exists")
+		fmt.Println("Admin user already exists")
 	} else {
-		fmt.Println("✅ Created admin user")
+		fmt.Println("Created admin user")
 	}
 
 	fmt.Println()
 	fmt.Println("Setup complete!")
-	fmt.Printf("  Admin email: admin@example.com\n")
-	fmt.Printf("  Admin password: %s\n", defaultPassword)
+	fmt.Println("  Admin email: admin@example.com")
 	fmt.Println()
 	fmt.Println("You can now login with:")
 	fmt.Println("  fly login")

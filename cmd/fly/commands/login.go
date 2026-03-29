@@ -25,25 +25,23 @@ func NewLoginCmd() *cobra.Command {
 	var noBrowser bool
 	var dev bool
 	var email string
-	var password string
 	cmd := &cobra.Command{
 		Use:     "login",
 		Short:   "Authenticate with FunctionFly",
-		Long:    "Authenticate with FunctionFly using OAuth or dev email/password.\n\nIn dev mode (FFLY_API_URL set or --dev), use email/password against POST /v1/auth/login.",
-		Example: "  fly login\n  fly login --provider github\n  fly login --dev --email admin@functionfly.local\n  FFLY_API_URL=http://localhost:8080 fly login --dev",
+		Long:    "Authenticate with FunctionFly using OAuth or dev email/password.\n\nIn dev mode (--dev flag required), use email/password against the API.",
+		Example: "  fly login\n  fly login --provider github\n  fly login --dev --email admin@functionfly.local",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runLogin(provider, noBrowser, dev, email, password)
+			return runLogin(provider, noBrowser, dev, email)
 		},
 	}
 	cmd.Flags().StringVar(&provider, "provider", "github", "OAuth provider (github, google)")
 	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "Print the auth URL instead of opening a browser")
-	cmd.Flags().BoolVar(&dev, "dev", false, "Use email/password login (dev mode). Use with FFLY_API_URL for local API.")
+	cmd.Flags().BoolVar(&dev, "dev", false, "Use email/password login (dev mode). Requires FFLY_API_URL for local API.")
 	cmd.Flags().StringVar(&email, "email", "", "Email for dev login (or set FFLY_DEV_EMAIL)")
-	cmd.Flags().StringVar(&password, "password", "", "Password for dev login (or set FFLY_DEV_PASSWORD)")
 	return cmd
 }
 
-func runLogin(provider string, noBrowser bool, dev bool, emailFlag, passwordFlag string) error {
+func runLogin(provider string, noBrowser bool, dev bool, emailFlag string) error {
 	baseURL := os.Getenv("FFLY_API_URL")
 	if baseURL == "" {
 		cfg, _ := LoadConfig()
@@ -55,11 +53,10 @@ func runLogin(provider string, noBrowser bool, dev bool, emailFlag, passwordFlag
 		baseURL = "https://api.functionfly.com"
 	}
 
-	// Dev mode: email/password when --dev, FFLY_DEV_LOGIN=1, or API is localhost
-	useDev := dev || os.Getenv("FFLY_DEV_LOGIN") == "1" ||
-		(baseURL != "" && (contains(baseURL, "localhost") || contains(baseURL, "127.0.0.1")))
+	// Dev mode: only activated by explicit --dev flag or FFLY_DEV_LOGIN=1
+	useDev := dev || os.Getenv("FFLY_DEV_LOGIN") == "1"
 	if useDev {
-		return runDevLogin(baseURL, emailFlag, passwordFlag)
+		return runDevLogin(baseURL, emailFlag)
 	}
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -213,15 +210,13 @@ func openBrowser(url string) error {
 }
 
 // runDevLogin uses POST /v1/auth/login with email/password (for local/dev API).
-func runDevLogin(baseURL, emailFlag, passwordFlag string) error {
+// The password is always prompted interactively to avoid exposure in process listings or shell history.
+func runDevLogin(baseURL, emailFlag string) error {
 	email := emailFlag
 	if email == "" {
 		email = os.Getenv("FFLY_DEV_EMAIL")
 	}
-	password := passwordFlag
-	if password == "" {
-		password = os.Getenv("FFLY_DEV_PASSWORD")
-	}
+	password := os.Getenv("FFLY_DEV_PASSWORD")
 	if IsInteractive() && email == "" {
 		email = Prompt("Email", "admin@functionfly.local")
 	}
@@ -229,7 +224,7 @@ func runDevLogin(baseURL, emailFlag, passwordFlag string) error {
 		password = Prompt("Password", "")
 	}
 	if email == "" || password == "" {
-		return fmt.Errorf("email and password required for dev login (use --email and --password, or FFLY_DEV_EMAIL and FFLY_DEV_PASSWORD)")
+		return fmt.Errorf("email and password required for dev login (use --email and FFLY_DEV_PASSWORD)")
 	}
 
 	loginPath := "/v1/auth/login"

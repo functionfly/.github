@@ -72,8 +72,8 @@ func newScheduleSetCmd() *cobra.Command {
 func newScheduleListCmd() *cobra.Command {
 	var asJSON bool
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List all scheduled functions",
+		Use:     "list",
+		Short:   "List all scheduled functions",
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runScheduleList(asJSON)
@@ -98,8 +98,8 @@ func newScheduleGetCmd() *cobra.Command {
 
 func newScheduleRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "remove",
-		Short: "Remove schedule from the current function",
+		Use:     "remove",
+		Short:   "Remove schedule from the current function",
 		Aliases: []string{"delete", "rm", "unset"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runScheduleRemove()
@@ -177,8 +177,8 @@ func runScheduleSet(cronExpr, preset, timezone string, runOnDeploy bool) error {
 	// Create schedule
 	schedulePath := fmt.Sprintf("/v1/functions/%s/schedule", functionID)
 	reqBody := map[string]interface{}{
-		"cron":         cronExpr,
-		"timezone":     timezone,
+		"cron":          cronExpr,
+		"timezone":      timezone,
 		"run_on_deploy": runOnDeploy,
 	}
 
@@ -209,7 +209,7 @@ func runScheduleList(asJSON bool) error {
 	}
 
 	var schedules []ScheduleInfo
-	path := fmt.Sprintf("/v1/schedules")
+	path := "/v1/schedules"
 	if err := client.Get(path, &schedules); err != nil {
 		return fmt.Errorf("could not fetch schedules: %w", err)
 	}
@@ -416,7 +416,7 @@ func runScheduleTrigger() error {
 
 func getSchedulePresetsMap() map[string]SchedulePreset {
 	return map[string]SchedulePreset{
-		"every-minute":      {Name: "every-minute", Cron: "* * * * *", Description: "Runs every minute"},
+		"every-minute":     {Name: "every-minute", Cron: "* * * * *", Description: "Runs every minute"},
 		"every-5-minutes":  {Name: "every-5-minutes", Cron: "*/5 * * * *", Description: "Runs every 5 minutes"},
 		"every-15-minutes": {Name: "every-15-minutes", Cron: "*/15 * * * *", Description: "Runs every 15 minutes"},
 		"every-30-minutes": {Name: "every-30-minutes", Cron: "*/30 * * * *", Description: "Runs every 30 minutes"},

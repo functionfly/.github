@@ -6,6 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/zalando/go-keyring"
+)
+
+const (
+	keyringService = "functionfly"
+	keyringUser    = "cli-credentials"
 )
 
 // Credentials stores the authenticated user's identity and token.
@@ -36,8 +43,26 @@ func credentialsPath() (string, error) {
 	return filepath.Join(home, ".functionfly", "credentials.json"), nil
 }
 
-// LoadCredentials reads credentials from disk.
+// LoadCredentials reads credentials from the OS keychain, falling back to the file on disk.
 func LoadCredentials() (*Credentials, error) {
+	// Try OS keychain first
+	data, err := keyring.Get(keyringService, keyringUser)
+	if err == nil {
+		var creds Credentials
+		if err := json.Unmarshal([]byte(data), &creds); err == nil {
+			if !creds.ExpiresAt.IsZero() && time.Now().After(creds.ExpiresAt) {
+				return nil, fmt.Errorf("your session has expired\n   → Run: fly login")
+			}
+			return &creds, nil
+		}
+	}
+
+	// Fall back to file-based storage
+	return loadCredentialsFromFile()
+}
+
+// loadCredentialsFromFile reads credentials from disk (legacy fallback).
+func loadCredentialsFromFile() (*Credentials, error) {
 	path, err := credentialsPath()
 	if err != nil {
 		return nil, err
@@ -59,8 +84,29 @@ func LoadCredentials() (*Credentials, error) {
 	return &creds, nil
 }
 
-// SaveCredentials writes credentials to disk.
+// SaveCredentials writes credentials to the OS keychain, with a file-based fallback.
 func SaveCredentials(creds *Credentials) error {
+	data, err := json.Marshal(creds)
+	if err != nil {
+		return fmt.Errorf("could not serialize credentials: %w", err)
+	}
+
+	// Try OS keychain first
+	if err := keyring.Set(keyringService, keyringUser, string(data)); err != nil {
+		// Keychain unavailable (headless Linux, CI, etc.) — fall back to file
+		if err := saveCredentialsToFile(creds); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// Keychain write succeeded — remove any legacy file to avoid confusion
+	_ = deleteCredentialsFile()
+	return nil
+}
+
+// saveCredentialsToFile writes credentials to disk (legacy fallback).
+func saveCredentialsToFile(creds *Credentials) error {
 	path, err := credentialsPath()
 	if err != nil {
 		return err
@@ -75,8 +121,16 @@ func SaveCredentials(creds *Credentials) error {
 	return os.WriteFile(path, data, 0600)
 }
 
-// DeleteCredentials removes the credentials file.
+// DeleteCredentials removes credentials from both the OS keychain and disk.
 func DeleteCredentials() error {
+	// Remove from keychain (ignore if not found)
+	_ = keyring.Delete(keyringService, keyringUser)
+	// Remove legacy file
+	return deleteCredentialsFile()
+}
+
+// deleteCredentialsFile removes the credentials file from disk.
+func deleteCredentialsFile() error {
 	path, err := credentialsPath()
 	if err != nil {
 		return err

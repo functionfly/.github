@@ -136,7 +136,7 @@ func runAdminDBCleanFunctions(cmd *cobra.Command) error {
 
 	for _, table := range tables {
 		fmt.Printf("Deleting from %s...\n", table)
-		query := fmt.Sprintf("DELETE FROM %s", table)
+		query := fmt.Sprintf("DELETE FROM %q", table)
 		result, err := db.ExecContext(ctx, query)
 		if err != nil {
 			return fmt.Errorf("failed to delete from %s: %w", table, err)
@@ -163,7 +163,7 @@ func runAdminDBCleanFunctions(cmd *cobra.Command) error {
 	}
 
 	for _, seq := range sequences {
-		query := fmt.Sprintf("ALTER SEQUENCE %s RESTART WITH 1", seq)
+		query := fmt.Sprintf("ALTER SEQUENCE %q RESTART WITH 1", seq)
 		_, err := db.ExecContext(ctx, query)
 		if err != nil {
 			fmt.Printf("  Warning: Failed to reset %s: %v\n", seq, err)

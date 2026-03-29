@@ -16,8 +16,8 @@ func NewTestCmd() *cobra.Command {
 	var asJSON bool
 	var verbose bool
 	cmd := &cobra.Command{
-		Use:   "test",
-		Short: "Test your deployed function",
+		Use:     "test",
+		Short:   "Test your deployed function",
 		Example: "  fly test\n  fly test --input \"Hello World\"\n  fly test --json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runTest(input, asJSON, verbose)
@@ -43,7 +43,7 @@ func runTest(input string, asJSON, verbose bool) error {
 	if cfg != nil && cfg.API.URL != "" {
 		baseURL = cfg.API.URL
 	}
-	url := fmt.Sprintf("%s/%s/%s", baseURL, creds.User.Username, manifest.Name)
+	url := fmt.Sprintf("%s/v1/registry/%s/%s", baseURL, creds.User.Username, manifest.Name)
 	if !asJSON {
 		fmt.Printf("Testing %s/%s...\n", creds.User.Username, manifest.Name)
 		fmt.Printf("POST %s\n\n", url)

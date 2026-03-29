@@ -8,8 +8,8 @@ import (
 
 func main() {
 	root := commands.NewRootCmd()
-	// Attach backend, admin, flypy from the cmd package (no import cycle: main imports both)
-	root.AddCommand(cmd.BackendCmd(), cmd.AdminCmd(), cmd.FlypyCmd(), cmd.CompileCmd())
+	// Attach backend, flypy, compile from the cmd package (admin excluded from public CLI)
+	root.AddCommand(cmd.BackendCmd(), cmd.FlypyCmd(), cmd.CompileCmd())
 	if err := root.Execute(); err != nil {
 		commands.ExitOnError(err)
 	}

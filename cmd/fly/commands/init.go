@@ -56,9 +56,8 @@ func runInit(name, template string, force bool) error {
 		return fmt.Errorf("could not create directory: %w", err)
 	}
 
-	var err error
 	// Generate template files with spinner
-	err = WithSpinner("Generating template files", func() error {
+	err := WithSpinner("Generating template files", func() error {
 		files, err := generateTemplateFiles(name, template)
 		if err != nil {
 			return err

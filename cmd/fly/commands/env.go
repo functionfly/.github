@@ -9,8 +9,8 @@ import (
 
 func NewEnvCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "env",
-		Short: "Manage environment variables",
+		Use:     "env",
+		Short:   "Manage environment variables",
 		Example: "  fly env list\n  fly env set KEY=value\n  fly env get KEY\n  fly env unset KEY",
 	}
 	cmd.AddCommand(newEnvListCmd(), newEnvSetCmd(), newEnvGetCmd(), newEnvUnsetCmd())
@@ -79,9 +79,10 @@ func runEnvList(asJSON bool) error {
 		return nil
 	}
 	fmt.Printf("Environment variables for %s/%s:\n\n", creds.User.Username, manifest.Name)
-	for k, v := range envVars {
-		fmt.Printf("  %s=%s\n", k, v)
+	for k := range envVars {
+		fmt.Printf("  %s\n", k)
 	}
+	fmt.Printf("\n%d variable(s) — values hidden; use 'fly env get KEY' to view a specific value\n", len(envVars))
 	return nil
 }
 
@@ -114,8 +115,8 @@ func runEnvSet(pairs []string) error {
 	if err := client.Put(path, envVars, nil); err != nil {
 		return fmt.Errorf("could not set environment variables: %w", err)
 	}
-	for k, v := range envVars {
-		fmt.Printf("✅ Set %s=%s\n", k, v)
+	for k := range envVars {
+		fmt.Printf("  %s (set)\n", k)
 	}
 	return nil
 }

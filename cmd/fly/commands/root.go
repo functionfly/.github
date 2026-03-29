@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/functionfly/functionfly/internal/version"
 	"github.com/spf13/cobra"
@@ -107,21 +106,4 @@ Use this to verify which version of fly you have installed.`,
 	return cmd
 }
 
-// handleError handles errors from command execution.
-// It prints the error message and exits with the appropriate code.
-func handleError(err error) {
-	if err == nil {
-		return
-	}
-
-	// In debug mode, also print stack trace or additional context
-	if DebugMode {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Error: %v\n", err)
-	} else {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
-	}
-
-	// Get the appropriate exit code
-	code := GetExitCode(err)
-	os.Exit(code)
-}
+// GetVersion returns the current CLI version string.

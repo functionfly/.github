@@ -153,9 +153,9 @@ func (m ProgressModel) View() string {
 
 	// Create a simple progress indicator
 	barWidth := 30
-	filled := int((int64(barWidth) * int64(m.current)) / int64(m.total))
-	if m.total == 0 {
-		filled = 0
+	filled := 0
+	if m.total > 0 {
+		filled = int((int64(barWidth) * int64(m.current)) / int64(m.total))
 	}
 
 	bar := ""
@@ -368,9 +368,9 @@ func (m FileProgressModel) View() string {
 
 	// Create progress bar
 	barWidth := 30
-	filled := int((int64(barWidth) * m.current) / m.total)
-	if m.total == 0 {
-		filled = 0
+	filled := 0
+	if m.total > 0 {
+		filled = int((int64(barWidth) * m.current) / m.total)
 	}
 
 	bar := ""

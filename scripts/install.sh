@@ -46,11 +46,48 @@ mkdir -p "$BINDIR"
 # Download URL (GoReleaser wrap_in_directory: archive contains fly_VER_OS_ARCH/fly)
 ASSET="fly_${VER_STRIP}_${OS_ID}_${ARCH_ID}.tar.gz"
 URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET}"
+CHECKSUMS_URL="https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt"
 
 echo "Installing fly ${VERSION} (${OS_ID}/${ARCH_ID}) to ${BINDIR}"
 TMPDIR=$(mktemp -d)
 trap "rm -rf ${TMPDIR}" EXIT
+
+# Download the binary archive
 curl -fsSL -o "${TMPDIR}/fly.tar.gz" "$URL"
+
+# Download and verify checksums
+CHECKSUM_OK=0
+if curl -fsSL -o "${TMPDIR}/checksums.txt" "$CHECKSUMS_URL" 2>/dev/null; then
+  # Extract the expected checksum for our asset
+  EXPECTED=$(grep " ${ASSET}$" "${TMPDIR}/checksums.txt" | awk '{print $1}')
+  if [ -n "$EXPECTED" ]; then
+    # Compute actual checksum
+    if command -v sha256sum >/dev/null 2>&1; then
+      ACTUAL=$(sha256sum "${TMPDIR}/fly.tar.gz" | awk '{print $1}')
+    elif command -v shasum >/dev/null 2>&1; then
+      ACTUAL=$(shasum -a 256 "${TMPDIR}/fly.tar.gz" | awk '{print $1}')
+    else
+      echo "Warning: No sha256sum or shasum found, skipping checksum verification"
+      ACTUAL=""
+    fi
+    if [ -n "$ACTUAL" ]; then
+      if [ "$ACTUAL" = "$EXPECTED" ]; then
+        CHECKSUM_OK=1
+        echo "Checksum verified"
+      else
+        echo "ERROR: Checksum mismatch!"
+        echo "  Expected: ${EXPECTED}"
+        echo "  Got:      ${ACTUAL}"
+        exit 1
+      fi
+    fi
+  else
+    echo "Warning: Asset not found in checksums file, skipping verification"
+  fi
+else
+  echo "Warning: Could not download checksums file, skipping verification"
+fi
+
 tar -xzf "${TMPDIR}/fly.tar.gz" -C "${TMPDIR}"
 # Binary may be in a subdir when wrap_in_directory is true
 if [ -f "${TMPDIR}/fly/fly" ]; then

@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/functionfly/functionfly/internal/version"
 )
 
 // APIClient is a simple HTTP client for the FunctionFly API.
@@ -92,17 +94,19 @@ func (c *APIClient) Delete(path string, out interface{}) error {
 	return c.do(req, out)
 }
 
+const maxResponseSize = 10 << 20 // 10 MB
+
 func (c *APIClient) do(req *http.Request, out interface{}) error {
 	if c.Token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.Token)
 	}
-	req.Header.Set("User-Agent", "fly-cli/1.0.0")
+	req.Header.Set("User-Agent", "fly-cli/"+version.Short())
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("network error: %w\n   → Check your internet connection", err)
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize))
 	if err != nil {
 		return fmt.Errorf("could not read response: %w", err)
 	}
@@ -241,7 +245,7 @@ func (c *APIClient) StreamLines(path string, fn func(line string) bool) error {
 		req.Header.Set("Authorization", "Bearer "+c.Token)
 	}
 	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("User-Agent", "fly-cli/1.0.0")
+	req.Header.Set("User-Agent", "fly-cli/"+version.Short())
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("network error: %w", err)

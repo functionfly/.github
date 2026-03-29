@@ -40,10 +40,10 @@ type TelConfig struct {
 
 func DefaultConfig() *GlobalConfig {
 	return &GlobalConfig{
-		Version: "1.0.0",
-		API:     APIConfig{URL: "https://api.functionfly.com", Timeout: "30s"},
-		Dev:     DevConfig{Port: 8787, Watch: true, HotReload: true},
-		Publish: PubConfig{Confirm: false, AutoUpdate: true},
+		Version:   "1.0.0",
+		API:       APIConfig{URL: "https://api.functionfly.com", Timeout: "30s"},
+		Dev:       DevConfig{Port: 8787, Watch: true, HotReload: true},
+		Publish:   PubConfig{Confirm: false, AutoUpdate: true},
 		Telemetry: TelConfig{Enabled: true, Anonymize: false},
 	}
 }
@@ -110,7 +110,7 @@ func SaveConfig(cfg *GlobalConfig) error {
 	if err != nil {
 		return fmt.Errorf("could not serialize config: %w", err)
 	}
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }
 
 type Manifest struct {

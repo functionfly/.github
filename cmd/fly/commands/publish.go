@@ -46,7 +46,6 @@ type PublishResult struct {
 }
 
 func runPublish(access string, force, build, dryRun, asJSON, skipTypeCheck bool) error {
-	var bundle []byte
 	manifest, err := LoadManifest("")
 	if err != nil {
 		return err
@@ -67,7 +66,6 @@ func runPublish(access string, force, build, dryRun, asJSON, skipTypeCheck bool)
 		}
 	}
 
-	// Validate manifest with spinner
 	err = WithSpinner("Validating manifest", func() error {
 		return validateManifest(manifest)
 	})
@@ -75,8 +73,7 @@ func runPublish(access string, force, build, dryRun, asJSON, skipTypeCheck bool)
 		return fmt.Errorf("manifest validation failed: %w", err)
 	}
 
-	// Bundle code - using simple bundling (for full bundling, use deploy command)
-	bundle, err = bundleFunction("", manifest)
+	bundle, err := bundleFunction(manifest)
 	if err != nil {
 		return fmt.Errorf("bundling failed: %w", err)
 	}
@@ -107,10 +104,9 @@ func runPublish(access string, force, build, dryRun, asJSON, skipTypeCheck bool)
 		}
 	}
 
-	// Upload to registry with file progress
+	var result PublishResult
 	err = WithFileProgress("Uploading to registry", int64(len(bundle)), func(updater FileProgressUpdater) error {
-		updater(int64(len(bundle)), int64(len(bundle))) // Mark as complete
-
+		updater(int64(len(bundle)), int64(len(bundle)))
 		client := NewAPIClientWithToken(creds.Token)
 		publishReq := map[string]interface{}{
 			"author":   creds.User.Username,
@@ -122,53 +118,15 @@ func runPublish(access string, force, build, dryRun, asJSON, skipTypeCheck bool)
 			"public":   isPublic,
 			"manifest": manifest,
 		}
-		var result PublishResult
-		if err := client.Post("/v1/registry/publish", publishReq, &result); err != nil {
-			return fmt.Errorf("publish failed: %w", err)
-		}
-		return nil
+		return client.Post("/v1/registry/publish", publishReq, &result)
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("publish failed: %w", err)
 	}
 
-	if !asJSON {
-		fmt.Printf("✓ Deploying to edge...\n")
-	}
 	if asJSON {
-		client := NewAPIClientWithToken(creds.Token)
-		publishReq := map[string]interface{}{
-			"author":   creds.User.Username,
-			"name":     manifest.Name,
-			"version":  manifest.Version,
-			"runtime":  manifest.Runtime,
-			"bundle":   base64.StdEncoding.EncodeToString(bundle),
-			"hash":     hash,
-			"public":   isPublic,
-			"manifest": manifest,
-		}
-		var result PublishResult
-		if err := client.Post("/v1/registry/publish", publishReq, &result); err != nil {
-			return fmt.Errorf("publish failed: %w", err)
-		}
 		printJSON(map[string]interface{}{"success": true, "function_id": result.FunctionID, "version": result.Version, "url": result.URL, "hash": result.Hash, "deployed_regions": result.DeployedRegions, "deployed_at": result.DeployedAt})
 		return nil
-	}
-	// Get the result again for display
-	client := NewAPIClientWithToken(creds.Token)
-	publishReq := map[string]interface{}{
-		"author":   creds.User.Username,
-		"name":     manifest.Name,
-		"version":  manifest.Version,
-		"runtime":  manifest.Runtime,
-		"bundle":   base64.StdEncoding.EncodeToString(bundle),
-		"hash":     hash,
-		"public":   isPublic,
-		"manifest": manifest,
-	}
-	var result PublishResult
-	if err := client.Post("/v1/registry/publish", publishReq, &result); err != nil {
-		return fmt.Errorf("publish failed: %w", err)
 	}
 	fmt.Printf("\n✅ Published %s/%s@%s\n\n", creds.User.Username, manifest.Name, manifest.Version)
 	fmt.Printf("Public URL:\n  %s\n\n", result.URL)
@@ -210,12 +168,15 @@ func validateManifest(m *Manifest) error {
 	return nil
 }
 
-func bundleFunction(funcFile string, manifest *Manifest) ([]byte, error) {
-	data, err := os.ReadFile(funcFile)
-	if err != nil {
-		return nil, fmt.Errorf("could not read %s: %w", funcFile, err)
+func bundleFunction(manifest *Manifest) ([]byte, error) {
+	candidates := []string{"index.js", "index.ts", "main.py", "handler.js", "handler.ts", "handler.py"}
+	for _, f := range candidates {
+		data, err := os.ReadFile(f)
+		if err == nil {
+			return data, nil
+		}
 	}
-	return data, nil
+	return nil, fmt.Errorf("no function file found\n   → Expected one of: %v", candidates)
 }
 
 func computeHash(data []byte) string {

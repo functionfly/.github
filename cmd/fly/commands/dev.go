@@ -21,8 +21,8 @@ func NewDevCmd() *cobra.Command {
 	var watch bool
 	var noWatch bool
 	cmd := &cobra.Command{
-		Use:   "dev",
-		Short: "Run your function locally",
+		Use:     "dev",
+		Short:   "Run your function locally",
 		Example: "  fly dev\n  fly dev --port 8080\n  fly dev --watch",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, _ := LoadConfig()
@@ -66,7 +66,7 @@ func runDev(port int, watch bool) error {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok", "function": manifest.Name, "version": manifest.Version})
 	})
-	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
+	server := &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: mux}
 	if watch {
 		go watchFiles(funcFile, handler)
 	}
