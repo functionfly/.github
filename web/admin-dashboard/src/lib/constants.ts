@@ -43,6 +43,7 @@ export const ROUTES = {
   ADMIN_IP_ALLOWLIST: '/ip-allowlist',
   ADMIN_SIEM: '/siem',
   ADMIN_AUTH_AUDIT: '/auth-audit',
+  ADMIN_SIGNUP_INVITES: '/signup-invites',
 };
 
 export const API_ROUTES = {

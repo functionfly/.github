@@ -110,8 +110,8 @@ func NewExecutionSecurityMiddleware(db *gorm.DB, config *ExecutionSecurityConfig
 // RateLimitAndQuotaMiddleware enforces per-user execution quotas and rate limits
 func (esm *ExecutionSecurityMiddleware) RateLimitAndQuotaMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Bypass rate limiting in development mode
-		if os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development" {
+		// Bypass rate limiting in development mode (never in production)
+		if (os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development") && os.Getenv("PRODUCTION_ENV") != "true" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -167,8 +167,8 @@ func (esm *ExecutionSecurityMiddleware) RateLimitAndQuotaMiddleware(next http.Ha
 // CaptchaRequiredMiddleware checks if CAPTCHA is required for anonymous executions
 func (esm *ExecutionSecurityMiddleware) CaptchaRequiredMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Bypass CAPTCHA check in development mode
-		if os.Getenv("DEVELOPMENT") == "true" {
+		// Bypass CAPTCHA check in development mode (never in production)
+		if os.Getenv("DEVELOPMENT") == "true" && os.Getenv("PRODUCTION_ENV") != "true" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -233,8 +233,8 @@ func (esm *ExecutionSecurityMiddleware) AbuseDetectionMiddleware(next http.Handl
 			return
 		}
 
-		// Bypass abuse detection in development mode
-		if os.Getenv("DEVELOPMENT") == "true" {
+		// Bypass abuse detection in development mode (never in production)
+		if os.Getenv("DEVELOPMENT") == "true" && os.Getenv("PRODUCTION_ENV") != "true" {
 			next.ServeHTTP(w, r)
 			return
 		}

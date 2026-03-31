@@ -4,7 +4,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
@@ -41,37 +41,61 @@ type SAMLServiceConfig struct {
 	Repo        storage.Repository
 	AuthService *AuthService
 	BaseURL     string
+	PrivateKey  string // PEM-encoded RSA private key (optional; generated if empty)
+	Certificate string // PEM-encoded X.509 certificate (optional; generated if empty)
 }
 
 // NewSAMLService creates a new SAML service
 func NewSAMLService(config SAMLServiceConfig) (*SAMLService, error) {
-	// Generate a default key pair if not provided
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate key pair: %w", err)
+	var privateKey *rsa.PrivateKey
+	var cert *x509.Certificate
+
+	// Try to load persisted key pair from config
+	if config.PrivateKey != "" && config.Certificate != "" {
+		block, _ := pem.Decode([]byte(config.PrivateKey))
+		if block != nil {
+			if pk, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
+				privateKey = pk
+			}
+		}
+		certBlock, _ := pem.Decode([]byte(config.Certificate))
+		if certBlock != nil {
+			if c, err := x509.ParseCertificate(certBlock.Bytes); err == nil {
+				cert = c
+			}
+		}
 	}
 
-	// Create a self-signed certificate
-	template := x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject: pkix.Name{
-			CommonName: "functionfly-saml",
-		},
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
-	}
+	// Generate a new key pair if none was loaded
+	if privateKey == nil {
+		var err error
+		privateKey, err = rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate key pair: %w", err)
+		}
 
-	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create certificate: %w", err)
-	}
+		// Create a self-signed certificate
+		template := x509.Certificate{
+			SerialNumber: big.NewInt(time.Now().UnixNano()),
+			Subject: pkix.Name{
+				CommonName: "functionfly-saml",
+			},
+			NotBefore:             time.Now(),
+			NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
+			KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+			BasicConstraintsValid: true,
+		}
 
-	cert, err := x509.ParseCertificate(certDER)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse certificate: %w", err)
+		certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create certificate: %w", err)
+		}
+
+		cert, err = x509.ParseCertificate(certDER)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse certificate: %w", err)
+		}
 	}
 
 	return &SAMLService{
@@ -182,15 +206,15 @@ type SAMLResponse struct {
 
 // SAMLSignature represents a digital signature (XML DSig)
 type SAMLSignature struct {
-	XMLName xml.Name `xml:"ds:Signature"`
-	KeyInfo *DSKeyInfo `xml:"KeyInfo"`
-	SignatureValue string `xml:"SignatureValue"`
+	XMLName        xml.Name   `xml:"ds:Signature"`
+	KeyInfo        *DSKeyInfo `xml:"KeyInfo"`
+	SignatureValue string     `xml:"SignatureValue"`
 }
 
 // DSKeyInfo contains key information for signature verification
 type DSKeyInfo struct {
-	XMLName       xml.Name `xml:"KeyInfo"`
-	X509Data      *X509Data `xml:"X509Data"`
+	XMLName  xml.Name  `xml:"KeyInfo"`
+	X509Data *X509Data `xml:"X509Data"`
 }
 
 // X509Data contains X509 certificate data
@@ -305,8 +329,8 @@ func (s *SAMLService) verifySAMLSignature(decodedResponse []byte, config *storag
 		}
 	}
 
-	// Hash the SignedInfo with SHA-1 (common for SAML signatures)
-	hashed := sha1.Sum(signedInfoMatches)
+	// Hash the SignedInfo with SHA-256 (SHA-1 is cryptographically broken)
+	hashed := sha256.Sum256(signedInfoMatches)
 
 	// Verify the signature using RSA PKCS1v15
 	pubKey, ok := cert.PublicKey.(*rsa.PublicKey)
@@ -314,7 +338,7 @@ func (s *SAMLService) verifySAMLSignature(decodedResponse []byte, config *storag
 		return fmt.Errorf("certificate does not contain RSA public key")
 	}
 
-	err = rsa.VerifyPKCS1v15(pubKey, crypto.SHA1, hashed[:], signatureBytes)
+	err = rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hashed[:], signatureBytes)
 	if err != nil {
 		logrus.WithError(err).Warn("SAML signature verification failed - response may be forged")
 		return fmt.Errorf("SAML signature verification failed: %w", err)

@@ -82,13 +82,16 @@ type Server struct {
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
-	// SECURITY: Block startup if DEVELOPMENT=true is set in production (non-localhost) environment
+	// SECURITY: Block DEVELOPMENT=true on machines whose hostname looks like a deployed server.
+	// Many dev laptops/WSL hosts use a real hostname (not "localhost"), so allow an explicit opt-in.
 	if os.Getenv("DEVELOPMENT") == "true" {
 		hostname, _ := os.Hostname()
 		isLocalhost := strings.HasPrefix(hostname, "localhost") || strings.HasPrefix(hostname, "127.0.0.1") || strings.Contains(hostname, ".local")
-		if !isLocalhost {
-			logrus.Fatal("FATAL: DEVELOPMENT=true is set but hostname is not localhost. " +
-				"This is a production security risk. Remove DEVELOPMENT=true from your environment.")
+		allowNonlocal := os.Getenv("DEVELOPMENT_ALLOW_NONLOCAL_HOST") == "true"
+		if !isLocalhost && !allowNonlocal {
+			logrus.Fatal("FATAL: DEVELOPMENT=true is set but this machine's hostname is not localhost-like (" + hostname + "). " +
+				"For a normal dev workstation (e.g. WSL), set DEVELOPMENT_ALLOW_NONLOCAL_HOST=true or unset DEVELOPMENT. " +
+				"Never set DEVELOPMENT=true in real production.")
 		}
 		logrus.Warn("WARNING: DEVELOPMENT mode is enabled. Do not use in production.")
 	}
@@ -274,8 +277,13 @@ func NewServer(db *storage.PostgresDB) *Server {
 
 	// Serve /metrics before any wrapper so Prometheus (no Origin, from Docker) can scrape without 403
 	metricsHandler := monitoring.Handler()
-	// Always wrap with localhost CORS so dashboard (e.g. :3000) and admin dashboard (:3002) can call API from localhost without requiring DEVELOPMENT=true
-	var mainHandler http.Handler = localhostCORSWrapper(s.router)
+	// Gate localhost CORS behind development mode: in production, only explicitly configured CORS_ALLOWED_ORIGINS apply.
+	var mainHandler http.Handler
+	if os.Getenv("DEVELOPMENT") == "true" || os.Getenv("PRODUCTION_ENV") != "true" {
+		mainHandler = localhostCORSWrapper(s.router)
+	} else {
+		mainHandler = s.router
+	}
 	handlerWithMetrics := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/metrics" && r.Method == http.MethodGet {
 			metricsHandler.ServeHTTP(w, r)
@@ -288,13 +296,20 @@ func NewServer(db *storage.PostgresDB) *Server {
 	return s
 }
 
-// corsResponseWriter wraps http.ResponseWriter to add CORS headers
+// corsResponseWriter wraps http.ResponseWriter to add CORS headers.
+// WriteHeader must be idempotent: outer middleware (e.g. response tracking) or net/http may
+// trigger multiple WriteHeader paths; only the first may call the underlying writer.
 type corsResponseWriter struct {
 	http.ResponseWriter
-	origin string
+	origin      string
+	wroteHeader bool
 }
 
 func (w *corsResponseWriter) WriteHeader(code int) {
+	if w.wroteHeader {
+		return
+	}
+	w.wroteHeader = true
 	if w.origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", w.origin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
@@ -302,6 +317,14 @@ func (w *corsResponseWriter) WriteHeader(code int) {
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 	}
 	w.ResponseWriter.WriteHeader(code)
+}
+
+// Write ensures CORS headers are applied when handlers write a body without calling WriteHeader.
+func (w *corsResponseWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(b)
 }
 
 // localhostCORSWrapper ensures CORS headers are set for localhost origins on every response.
@@ -344,6 +367,34 @@ func localhostCORSWrapper(next http.Handler) http.Handler {
 		// Call the next handler
 		next.ServeHTTP(w, r)
 	})
+}
+
+// runFunctionLogRetention deletes function_logs older than retention (e.g. daily job, 90-day retention).
+// Set retentionDays to 0 to disable (goroutine not started by caller).
+func runFunctionLogRetention(ctx context.Context, db *storage.PostgresDB, interval time.Duration, retentionDays int) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	retention := time.Duration(retentionDays) * 24 * time.Hour
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			cutoff := time.Now().UTC().Add(-retention)
+			n, err := db.DeleteFunctionLogsOlderThan(ctx, cutoff)
+			if err != nil {
+				logrus.WithError(err).Warn("Function log retention cleanup failed")
+				continue
+			}
+			if n > 0 {
+				logrus.WithFields(logrus.Fields{
+					"deleted_rows":   n,
+					"cutoff_utc":     cutoff.Format(time.RFC3339),
+					"retention_days": retentionDays,
+				}).Info("Function log retention: deleted old rows")
+			}
+		}
+	}
 }
 
 // runVaultTokenCleanup runs CleanupExpiredTokens periodically (e.g. daily) with the given olderThan (e.g. 30 days).
@@ -421,6 +472,29 @@ func (s *Server) ListenAndServe(addr string) error {
 	if s.vaultRepo != nil {
 		go runVaultTokenCleanup(ctx, s.vaultRepo, 24*time.Hour, 30*24*time.Hour)
 		logrus.Info("Vault token cleanup routine started")
+	}
+
+	// Function log retention (default 90 days; FUNCTION_LOG_RETENTION_DAYS=0 disables)
+	retentionDays := 90
+	if v := strings.TrimSpace(os.Getenv("FUNCTION_LOG_RETENTION_DAYS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			retentionDays = n
+		}
+	}
+	cleanupInterval := 24 * time.Hour
+	if v := strings.TrimSpace(os.Getenv("FUNCTION_LOG_CLEANUP_INTERVAL")); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d >= time.Hour {
+			cleanupInterval = d
+		}
+	}
+	if retentionDays > 0 {
+		go runFunctionLogRetention(ctx, s.postgresDB, cleanupInterval, retentionDays)
+		logrus.WithFields(logrus.Fields{
+			"retention_days": retentionDays,
+			"interval":       cleanupInterval.String(),
+		}).Info("Function log retention cleanup started")
+	} else {
+		logrus.Info("Function log retention cleanup disabled (FUNCTION_LOG_RETENTION_DAYS=0)")
 	}
 
 	// Start usage metrics aggregation service

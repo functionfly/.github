@@ -110,6 +110,9 @@ const AdminCloudflareAnalyticsPage = lazy(() =>
     default: m.AdminCloudflareAnalyticsPage,
   }))
 );
+const AdminSignupInvitesPage = lazy(() =>
+  import('@/pages/AdminSignupInvitesPage').then((m) => ({ default: m.AdminSignupInvitesPage }))
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -401,6 +404,14 @@ function App() {
                   element={
                     <Suspense fallback={<LoadingScreen />}>
                       <AdminSupportPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="signup-invites"
+                  element={
+                    <Suspense fallback={<LoadingScreen />}>
+                      <AdminSignupInvitesPage />
                     </Suspense>
                   }
                 />

@@ -67,8 +67,11 @@ func New(db *gorm.DB, config *SAMLPluginConfig, logger *logrus.Logger) (*SAMLPlu
 	// Generate or use provided JWT secret
 	jwtSecret := []byte(config.JWTSecret)
 	if len(jwtSecret) == 0 {
-		jwtSecret = []byte(getEnvOrDefault("JWT_SECRET", "default-secret-change-in-production"))
-		logger.Warn("Using default JWT secret - please set JWT_SECRET environment variable")
+		envSecret := os.Getenv("JWT_SECRET")
+		if envSecret == "" {
+			return nil, fmt.Errorf("JWT_SECRET environment variable is required for SAML plugin")
+		}
+		jwtSecret = []byte(envSecret)
 	}
 
 	// Create SAML service
