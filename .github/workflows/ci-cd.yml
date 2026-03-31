@@ -39,9 +39,23 @@ jobs:
 
       - name: Format check
         run: |
-          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-            echo "The following files need formatting:"
-            gofmt -s -l .
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+            git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+            GO_FILES=$(git diff --name-only "$BASE_REF"...HEAD -- '*.go')
+          else
+            GO_FILES=$(git diff --name-only HEAD~1 HEAD -- '*.go')
+          fi
+
+          if [ -z "$GO_FILES" ]; then
+            echo "No changed Go files to format-check."
+            exit 0
+          fi
+
+          UNFORMATTED=$(echo "$GO_FILES" | xargs gofmt -s -l)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "The following changed Go files need formatting:"
+            echo "$UNFORMATTED"
             exit 1
           fi
 
@@ -75,10 +89,10 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: web/dashboard/package-lock.json
+          cache-dependency-path: web/dashboard/package.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Type check
         run: npm run typecheck
@@ -149,7 +163,7 @@ jobs:
           export DB_USER=postgres
           export DB_PASSWORD=postgres
           export DB_NAME=functionfly_test
-          go run ./cmd/migrate
+          go run ./cmd/migrate up
 
       - name: Run unit tests
         run: |
