@@ -65,10 +65,15 @@ jobs:
           fi
 
       - name: Lint
+        if: github.event_name != 'pull_request'
         uses: golangci/golangci-lint-action@v4
         with:
           version: latest
           args: --timeout=5m
+
+      - name: PR static compile gate
+        if: github.event_name == 'pull_request'
+        run: go test -run '^$' ./...
 
       - name: Security scan
         uses: securego/gosec@v2.22.4
