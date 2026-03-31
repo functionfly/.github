@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/email"
@@ -41,9 +43,33 @@ func NewAuthService(repo storage.Repository, jwtSecret string) *AuthService {
 		BaseURL:      "http://localhost:8080",
 	}
 
+	// In production, require real SMTP configuration
+	var emailSvc email.Service
+	if os.Getenv("PRODUCTION_ENV") == "true" {
+		smtpHost := os.Getenv("SMTP_HOST")
+		if smtpHost == "" {
+			panic("PRODUCTION_ENV=true requires SMTP_HOST to be set. Mock email service is not allowed in production.")
+		}
+		emailConfig.SMTPHost = smtpHost
+		emailConfig.SMTPUsername = os.Getenv("SMTP_USERNAME")
+		emailConfig.SMTPPassword = os.Getenv("SMTP_PASSWORD")
+		emailConfig.FromEmail = os.Getenv("FROM_EMAIL")
+		emailConfig.FromName = os.Getenv("FROM_NAME")
+		emailConfig.BaseURL = os.Getenv("BASE_URL")
+		if p := os.Getenv("SMTP_PORT"); p != "" {
+			var port int
+			if _, err := fmt.Sscanf(p, "%d", &port); err == nil && port > 0 {
+				emailConfig.SMTPPort = port
+			}
+		}
+		emailSvc = email.NewSMTPService(emailConfig)
+	} else {
+		emailSvc = email.NewMockService(emailConfig)
+	}
+
 	service := &AuthService{
 		repo:           repo,
-		emailSvc:       email.NewMockService(emailConfig), // Default to mock service with config
+		emailSvc:       emailSvc,
 		jwtSecret:      []byte(jwtSecret),
 		jwtDuration:    30 * time.Minute, // 30 minutes - short lived access tokens
 		oauthProviders: make(map[string]*OAuthProvider),

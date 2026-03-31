@@ -145,7 +145,7 @@ func (m *Middleware) nextWithLegacyAuth(w http.ResponseWriter, r *http.Request, 
 		next.ServeHTTP(w, r)
 		return
 	}
-	if os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development" {
+	if (os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development") && os.Getenv("PRODUCTION_ENV") != "true" {
 		m.logger.WithFields(logrus.Fields{"user_id": claims.UserID, "email": claims.Email}).
 			Debug("Legacy permission check bypassed for development")
 		next.ServeHTTP(w, r)

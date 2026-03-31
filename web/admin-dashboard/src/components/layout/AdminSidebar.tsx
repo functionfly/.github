@@ -55,6 +55,11 @@ const NAV_ITEMS = [
     icon: Users,
   },
   {
+    label: 'Signup Invites',
+    path: ROUTES.ADMIN_SIGNUP_INVITES,
+    icon: Shield,
+  },
+  {
     label: 'Billing',
     path: ROUTES.ADMIN_BILLING,
     icon: CreditCard,
