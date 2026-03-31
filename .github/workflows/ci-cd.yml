@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -40,9 +42,12 @@ jobs:
       - name: Format check
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_REF="origin/${{ github.base_ref }}"
-            git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
-            GO_FILES=$(git diff --name-only "$BASE_REF"...HEAD -- '*.go')
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            if git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+              GO_FILES=$(git diff --name-only "$BASE_SHA"...HEAD -- '*.go')
+            else
+              GO_FILES=$(git diff --name-only HEAD~1 HEAD -- '*.go')
+            fi
           else
             GO_FILES=$(git diff --name-only HEAD~1 HEAD -- '*.go')
           fi
@@ -92,7 +97,7 @@ jobs:
           cache-dependency-path: web/dashboard/package.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Type check
         run: npm run typecheck
@@ -163,6 +168,7 @@ jobs:
           export DB_USER=postgres
           export DB_PASSWORD=postgres
           export DB_NAME=functionfly_test
+          export DB_SSLMODE=disable
           go run ./cmd/migrate up
 
       - name: Run unit tests
