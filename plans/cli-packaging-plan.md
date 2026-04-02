@@ -3,6 +3,7 @@
 ## Executive Summary
 
 This plan addresses two key requirements:
+
 1. **Cross-platform CLI packaging** - Make the `fly` CLI easily installable on all platforms (Linux, macOS, Windows)
 2. **Dev mode publishing** - Allow developers to quickly publish default utility functions during development
 
@@ -129,19 +130,19 @@ nfpms:
 ```makefile
 # CLI Release targets
 release-dry-run: ## Run GoReleaser in dry-run mode
-	goreleaser release --clean --dry-run
+ goreleaser release --clean --dry-run
 
 release: ## Create and publish a release
-	goreleaser release --clean
+ goreleaser release --clean
 
 release-snapshot: ## Create a snapshot release
-	goreleaser release --clean --snapshot
+ goreleaser release --clean --snapshot
 
 install-locally: ## Install CLI locally for testing
-	go install ./cmd/fly
+ go install ./cmd/fly
 
 dist: ## Build distribution packages
-	goreleaser build --clean --single-target
+ goreleaser build --clean --single-target
 
 .PHONY: release-dry-run release release-snapshot install-locally dist
 ```
@@ -190,10 +191,12 @@ jobs:
 #### 2.1 Discover Default Functions
 
 The default functions are located in:
+
 - `functions/` directory (9 functions)
 - `publish_*.json` files (additional functions)
 
 **Function List**:
+
 1. base64-decode
 2. base64-encode
 3. csv-to-json
@@ -217,25 +220,25 @@ The default functions are located in:
 package commands
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
-	"path/filepath"
-	"sync"
+ "encoding/json"
+ "fmt"
+ "os"
+ "path/filepath"
+ "sync"
 
-	"github.com/spf13/cobra"
+ "github.com/spf13/cobra"
 )
 
 func NewPublishDefaultsCmd() *cobra.Command {
-	var dryRun bool
-	var asJSON bool
-	var concurrency int
-	var author string
+ var dryRun bool
+ var asJSON bool
+ var concurrency int
+ var author string
 
-	cmd := &cobra.Command{
-		Use:   "publish-defaults",
-		Short: "Publish all default utility functions",
-		Long: `Publish all default utility functions to the registry.
+ cmd := &cobra.Command{
+  Use:   "publish-defaults",
+  Short: "Publish all default utility functions",
+  Long: `Publish all default utility functions to the registry.
 
 This command publishes all functions in the 'functions/' directory as
 default functions available to all users.
@@ -244,46 +247,46 @@ Examples:
   fly publish-defaults
   fly publish-defaults --dry-run
   fly publish-defaults --author functionfly`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPublishDefaults(dryRun, asJSON, concurrency, author)
-		},
-	}
+  RunE: func(cmd *cobra.Command, args []string) error {
+   return runPublishDefaults(dryRun, asJSON, concurrency, author)
+  },
+ }
 
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate without publishing")
-	cmd.Flags().BoolVar(&asJSON, "json", false, "Output as JSON")
-	cmd.Flags().IntVar(&concurrency, "concurrency", 3, "Number of parallel uploads")
-	cmd.Flags().StringVar(&author, "author", "functionfly", "Author namespace for functions")
-	return cmd
+ cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate without publishing")
+ cmd.Flags().BoolVar(&asJSON, "json", false, "Output as JSON")
+ cmd.Flags().IntVar(&concurrency, "concurrency", 3, "Number of parallel uploads")
+ cmd.Flags().StringVar(&author, "author", "functionfly", "Author namespace for functions")
+ return cmd
 }
 
 func runPublishDefaults(dryRun, asJSON bool, concurrency int, author string) error {
-	// Discover functions in functions/ directory
-	funcDirs, err := findFunctionDirs("functions", "*/functionfly.jsonc")
-	if err != nil {
-		return fmt.Errorf("failed to find functions: %w", err)
-	}
+ // Discover functions in functions/ directory
+ funcDirs, err := findFunctionDirs("functions", "*/functionfly.jsonc")
+ if err != nil {
+  return fmt.Errorf("failed to find functions: %w", err)
+ }
 
-	if !asJSON {
-		fmt.Printf("Found %d default functions to publish\n\n", len(funcDirs))
-		if dryRun {
-			fmt.Println("🔍 Dry run mode - no functions will be published\n")
-		}
-	}
+ if !asJSON {
+  fmt.Printf("Found %d default functions to publish\n\n", len(funcDirs))
+  if dryRun {
+   fmt.Println("🔍 Dry run mode - no functions will be published\n")
+  }
+ }
 
-	// Publish concurrently
-	results := publishDefaultsConcurrently(funcDirs, dryRun, concurrency, author, asJSON)
+ // Publish concurrently
+ results := publishDefaultsConcurrently(funcDirs, dryRun, concurrency, author, asJSON)
 
-	// Print summary
-	printPublishDefaultsSummary(results, asJSON)
+ // Print summary
+ printPublishDefaultsSummary(results, asJSON)
 
-	return nil
+ return nil
 }
 
 type DefaultPublishResult struct {
-	Name    string `json:"name"`
-	Status  string `json:"status"` // success, failed, skipped
-	Error   string `json:"error,omitempty"`
-	Version string `json:"version,omitempty"`
+ Name    string `json:"name"`
+ Status  string `json:"status"` // success, failed, skipped
+ Error   string `json:"error,omitempty"`
+ Version string `json:"version,omitempty"`
 }
 
 // Implementation details in code mode...
@@ -297,36 +300,36 @@ Add new flag to auto-seed default functions:
 
 ```go
 func NewDevCmd() *cobra.Command {
-	var port int
-	var watch bool
-	var noWatch bool
-	var seedDefaults bool  // NEW FLAG
+ var port int
+ var watch bool
+ var noWatch bool
+ var seedDefaults bool  // NEW FLAG
 
-	cmd := &cobra.Command{
-		Use:   "dev",
-		Short: "Run your function locally",
-		Example: `  fly dev
+ cmd := &cobra.Command{
+  Use:   "dev",
+  Short: "Run your function locally",
+  Example: `  fly dev
   fly dev --port 8080
   fly dev --watch
   fly dev --seed  # Start dev server and publish default functions`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// ... existing code ...
-			
-			// If --seed flag provided, publish defaults first
-			if seedDefaults {
-				fmt.Println("📦 Publishing default functions...")
-				if err := runPublishDefaults(false, false, 3, "functionfly"); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: failed to publish defaults: %v\n", err)
-				} else {
-					fmt.Println("✅ Default functions published\n")
-				}
-			}
-			
-			return runDev(port, enableWatch)
-		},
-	}
-	cmd.Flags().BoolVar(&seedDefaults, "seed", false, "Publish default functions before starting dev server")
-	// ... rest unchanged
+  RunE: func(cmd *cobra.Command, args []string) error {
+   // ... existing code ...
+   
+   // If --seed flag provided, publish defaults first
+   if seedDefaults {
+    fmt.Println("📦 Publishing default functions...")
+    if err := runPublishDefaults(false, false, 3, "functionfly"); err != nil {
+     fmt.Fprintf(os.Stderr, "Warning: failed to publish defaults: %v\n", err)
+    } else {
+     fmt.Println("✅ Default functions published\n")
+    }
+   }
+   
+   return runDev(port, enableWatch)
+  },
+ }
+ cmd.Flags().BoolVar(&seedDefaults, "seed", false, "Publish default functions before starting dev server")
+ // ... rest unchanged
 }
 ```
 
@@ -341,37 +344,37 @@ func NewDevCmd() *cobra.Command {
 ```go
 // RefreshTokenIfNeeded refreshes the token if it's close to expiring
 func (c *Credentials) RefreshTokenIfNeeded(client *APIClient) error {
-	if c.RefreshToken == "" {
-		return nil // No refresh token available
-	}
-	
-	// Refresh if token expires within 5 minutes
-	if time.Now().Add(5 * time.Minute).After(c.ExpiresAt) {
-		return c.doRefresh(client)
-	}
-	return nil
+ if c.RefreshToken == "" {
+  return nil // No refresh token available
+ }
+ 
+ // Refresh if token expires within 5 minutes
+ if time.Now().Add(5 * time.Minute).After(c.ExpiresAt) {
+  return c.doRefresh(client)
+ }
+ return nil
 }
 
 func (c *Credentials) doRefresh(client *APIClient) error {
-	req := map[string]interface{}{
-		"refresh_token": c.RefreshToken,
-	}
-	
-	var resp struct {
-		Token        string    `json:"token"`
-		RefreshToken string    `json:"refresh_token"`
-		ExpiresAt    time.Time `json:"expires_at"`
-	}
-	
-	if err := client.Post("/v1/auth/refresh", req, &resp); err != nil {
-		return fmt.Errorf("token refresh failed: %w", err)
-	}
-	
-	c.Token = resp.Token
-	c.RefreshToken = resp.RefreshToken
-	c.ExpiresAt = resp.ExpiresAt
-	
-	return SaveCredentials(c)
+ req := map[string]interface{}{
+  "refresh_token": c.RefreshToken,
+ }
+ 
+ var resp struct {
+  Token        string    `json:"token"`
+  RefreshToken string    `json:"refresh_token"`
+  ExpiresAt    time.Time `json:"expires_at"`
+ }
+ 
+ if err := client.Post("/v1/auth/refresh", req, &resp); err != nil {
+  return fmt.Errorf("token refresh failed: %w", err)
+ }
+ 
+ c.Token = resp.Token
+ c.RefreshToken = resp.RefreshToken
+ c.ExpiresAt = resp.ExpiresAt
+ 
+ return SaveCredentials(c)
 }
 ```
 
@@ -382,14 +385,14 @@ func (c *Credentials) doRefresh(client *APIClient) error {
 ```go
 // VerifyBundleChecksum ensures the bundle hasn't been tampered with
 func VerifyBundleChecksum(bundle []byte, expectedHash string) error {
-	hash := sha256.Sum256(bundle)
-	actualHash := fmt.Sprintf("%x", hash)
-	
-	if actualHash != expectedHash {
-		return fmt.Errorf("checksum verification failed: expected %s, got %s", 
-			expectedHash, actualHash)
-	}
-	return nil
+ hash := sha256.Sum256(bundle)
+ actualHash := fmt.Sprintf("%x", hash)
+ 
+ if actualHash != expectedHash {
+  return fmt.Errorf("checksum verification failed: expected %s, got %s", 
+   expectedHash, actualHash)
+ }
+ return nil
 }
 ```
 
@@ -399,17 +402,17 @@ func VerifyBundleChecksum(bundle []byte, expectedHash string) error {
 
 ```go
 func (c *APIClient) do(req *http.Request, out interface{}) error {
-	if c.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Token)
-	}
-	
-	// Add security headers
-	req.Header.Set("User-Agent", "fly-cli/"+version)
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("X-Request-ID", uuid.New().String())
-	req.Header.Set("X-Client-OS", runtime.GOOS+"/"+runtime.GOARCH)
-	
-	// Existing code...
+ if c.Token != "" {
+  req.Header.Set("Authorization", "Bearer "+c.Token)
+ }
+ 
+ // Add security headers
+ req.Header.Set("User-Agent", "fly-cli/"+version)
+ req.Header.Set("Accept", "application/json")
+ req.Header.Set("X-Request-ID", uuid.New().String())
+ req.Header.Set("X-Client-OS", runtime.GOOS+"/"+runtime.GOARCH)
+ 
+ // Existing code...
 }
 ```
 
@@ -502,7 +505,7 @@ end
 
 ```bash
 # Using Homebrew
-brew install functionfly/tap/fly
+brew install functionfly/tap/ffly
 
 # Or download directly
 curl -sSL https://get.functionfly.com | sh
@@ -579,6 +582,7 @@ Or build from source:
 make build
 ./bin/fly --version
 ```
+
 ```
 
 ---

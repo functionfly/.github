@@ -36,7 +36,7 @@ curl -fsSL https://raw.githubusercontent.com/functionfly/functionfly/main/script
 
 # Homebrew (macOS)
 brew tap functionfly/tap
-brew install fly
+brew install ffly
 
 # From source
 go build -o bin/fly ./cmd/fly

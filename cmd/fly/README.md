@@ -6,10 +6,10 @@ The `fly` CLI is the primary developer interface for FunctionFly.
 
 - **Install script (Linux/macOS):**  
   `curl -fsSL https://raw.githubusercontent.com/functionfly/functionfly/main/scripts/install.sh | bash`
-- **Homebrew:** `brew tap functionfly/tap && brew install fly` (when tap is configured)
+- **Homebrew:** `brew tap functionfly/tap && brew install ffly` (when tap is configured)
 - **From source:** `go build -o bin/fly ./cmd/fly` (binary at `bin/fly`)
 
-Upgrade: run the install script again with `VERSION=latest`, or `brew upgrade fly` / `scoop update fly` / `choco upgrade fly`. Or run `fly self-update` to print instructions.
+Upgrade: run the install script again with `VERSION=latest`, or `brew upgrade ffly` / `scoop update fly` / `choco upgrade fly`. Or run `ffly self-update` to print instructions.
 
 See [packaging/README.md](../../packaging/README.md) for Windows and release artifacts.
 

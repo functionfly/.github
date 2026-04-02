@@ -116,7 +116,7 @@ go run cmd/fly/main.go deploy --path ./examples/hello-world
 
 - **Install script (Linux/macOS):**  
   `curl -fsSL https://raw.githubusercontent.com/functionfly/functionfly/main/scripts/install.sh | bash`
-- **Homebrew:** `brew tap functionfly/tap && brew install fly` (when tap is configured)
+- **Homebrew:** `brew tap functionfly/tap && brew install ffly` (when tap is configured)
 - **From source:** `go build -o bin/fly ./cmd/fly` (binary at `bin/fly`)
 
 See [packaging/README.md](packaging/README.md) for Windows (Scoop/Chocolatey), upgrade steps, and release artifacts.

@@ -19,10 +19,10 @@ When a tap is set up (e.g. `homebrew-functionfly`):
 
 ```bash
 brew tap functionfly/tap
-brew install fly
+brew install ffly
 ```
 
-To maintain the formula: copy `homebrew/fly.rb` into your tap and update `version` and each `sha256` from the [releases](https://github.com/functionfly/functionfly/releases) checksums file for the matching asset.
+To maintain the formula: copy `homebrew/ffly.rb` into your tap and update `version` and each `sha256` from the [releases](https://github.com/functionfly/fly/releases) checksums file for the matching asset.
 
 ## Windows
 
@@ -34,6 +34,6 @@ Binary artifact names follow GoReleaser: `fly_<version>_windows_x86_64.zip` (no 
 ## Upgrading
 
 - **Install script**: Re-run with `VERSION=latest` (or a specific version).
-- **Homebrew**: `brew upgrade fly` (after the tap is updated).
+- **Homebrew**: `brew upgrade ffly` (after the tap is updated).
 - **Scoop**: `scoop update fly`.
 - **Chocolatey**: `choco upgrade fly`.

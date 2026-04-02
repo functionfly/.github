@@ -252,7 +252,7 @@ Download a prebuilt binary for your OS/arch from the [releases page](https://git
 ### Homebrew (when a tap is published)
 
 \`\`\`bash
-brew install functionfly/tap/fly
+brew install functionfly/tap/ffly
 \`\`\`
 
 If the tap is not available yet, use Go install or Releases above.
