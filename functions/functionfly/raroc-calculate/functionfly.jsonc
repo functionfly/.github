@@ -1,0 +1,46 @@
+{
+  "author": "functionfly",
+  "name": "raroc-calculate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "RAROC Calculate",
+  "description": "Calculate Risk-Adjusted Return on Capital (RAROC).",
+  "category": "finance",
+  "tags": ["raroc", "risk-adjusted", "return", "capital", "finance"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "net_income": {
+        "type": "number",
+        "description": "Net income or expected return"
+      },
+      "economic_capital": {
+        "type": "number",
+        "description": "Economic capital allocated"
+      },
+      "expected_loss": {
+        "type": "number",
+        "description": "Expected loss (default 0)",
+        "default": 0
+      }
+    },
+    "required": ["net_income", "economic_capital"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {},
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "net_income": 500000, "economic_capital": 2000000, "expected_loss": 50000 },
+    "output": { "ok": true }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "author": "functionfly",
+  "name": "capital-charge",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Capital Charge Calculate",
+  "description": "Calculate regulatory capital charge using standardized approach.",
+  "category": "finance",
+  "tags": ["capital-charge", "regulatory", "basel", "finance"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "exposure": {
+        "type": "number",
+        "description": "Total exposure amount"
+      },
+      "risk_weight": {
+        "type": "number",
+        "description": "Risk weight (decimal, e.g. 1.0 for 100%)"
+      },
+      "capital_ratio": {
+        "type": "number",
+        "description": "Minimum capital ratio (default 0.08)",
+        "default": 0.08
+      }
+    },
+    "required": ["exposure", "risk_weight"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {},
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "exposure": 1000000, "risk_weight": 1.0, "capital_ratio": 0.08 },
+    "output": { "ok": true, "result": 80000 }
+  }
+}

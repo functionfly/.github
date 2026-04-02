@@ -1,0 +1,51 @@
+{
+  "author": "functionfly",
+  "name": "economic-capital",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Economic Capital Calculate",
+  "description": "Calculate economic capital using Value at Risk approach.",
+  "category": "finance",
+  "tags": ["economic-capital", "var", "risk", "finance"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "portfolio_value": {
+        "type": "number",
+        "description": "Total portfolio value"
+      },
+      "volatility": {
+        "type": "number",
+        "description": "Annual volatility (decimal)"
+      },
+      "confidence_level": {
+        "type": "number",
+        "description": "Confidence level (default 0.99)",
+        "default": 0.99
+      },
+      "time_horizon": {
+        "type": "number",
+        "description": "Time horizon in years (default 1)",
+        "default": 1
+      }
+    },
+    "required": ["portfolio_value", "volatility"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {},
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 1000,
+  "memory_mb": 128,
+  "example": {
+    "input": { "portfolio_value": 10000000, "volatility": 0.20, "confidence_level": 0.99 },
+    "output": { "ok": true }
+  }
+}

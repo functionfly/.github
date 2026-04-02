@@ -1,0 +1,46 @@
+{
+  "author": "functionfly",
+  "name": "roc-curve",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "ROC Curve",
+  "description": "Calculate ROC curve points and AUC from binary classification scores.",
+  "category": "ai-ml",
+  "tags": ["roc", "auc", "classification", "ml", "ai"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "y_true": {
+        "type": "array",
+        "description": "Binary labels (0 or 1)"
+      },
+      "y_score": {
+        "type": "array",
+        "description": "Predicted probabilities for positive class"
+      },
+      "num_thresholds": {
+        "type": "integer",
+        "description": "Number of thresholds (default 100)",
+        "default": 100
+      }
+    },
+    "required": ["y_true", "y_score"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {},
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": { "y_true": [0, 0, 1, 1], "y_score": [0.1, 0.4, 0.35, 0.8] },
+    "output": { "ok": true }
+  }
+}

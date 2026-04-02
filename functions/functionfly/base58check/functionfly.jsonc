@@ -1,0 +1,42 @@
+{
+  "author": "functionfly",
+  "name": "base58check",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Base58Check Encode",
+  "description": "Encode data to Base58Check format with version byte and checksum.",
+  "category": "encoding",
+  "tags": ["base58", "base58check", "encode", "bitcoin", "crypto"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "string",
+        "description": "Hex-encoded data to encode"
+      },
+      "version": {
+        "type": "integer",
+        "description": "Version byte (default 0)",
+        "default": 0
+      }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "encoded": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "data": "00010966776006953D5567439E5E39F86A0D273BEED61967F6", "version": 0 },
+    "output": { "ok": true, "encoded": "11csU3KSAQMEYLPudM8UWJVxFfptcZSDvXGUQx3" }
+  }
+}

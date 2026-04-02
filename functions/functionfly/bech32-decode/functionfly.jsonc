@@ -1,0 +1,38 @@
+{
+  "author": "functionfly",
+  "name": "bech32-decode",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Bech32 Decode",
+  "description": "Decode a Bech32-encoded string.",
+  "category": "encoding",
+  "tags": ["bech32", "decode"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "string",
+        "description": "Bech32-encoded string"
+      }
+    },
+    "required": ["data"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "decoded": { "type": "string" },
+      "prefix": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "data": "bc1q9zpgru" },
+    "output": { "ok": true, "decoded": "", "prefix": "bc" }
+  }
+}

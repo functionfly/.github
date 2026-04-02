@@ -1,0 +1,42 @@
+{
+  "author": "functionfly",
+  "name": "mnemonic-generate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Mnemonic Generate",
+  "description": "Generate a BIP-39 mnemonic phrase from entropy.",
+  "category": "utils",
+  "tags": ["mnemonic", "bip39", "seed", "crypto", "wallet"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "strength": {
+        "type": "integer",
+        "description": "Entropy bits: 128 (12 words), 160 (15 words), 192 (18 words), 224 (21 words), 256 (24 words). Default 128.",
+        "default": 128
+      },
+      "entropy": {
+        "type": "string",
+        "description": "Hex entropy (overrides strength if provided)"
+      }
+    },
+    "required": []
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "mnemonic": { "type": "string" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": false,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "strength": 128 },
+    "output": { "ok": true }
+  }
+}

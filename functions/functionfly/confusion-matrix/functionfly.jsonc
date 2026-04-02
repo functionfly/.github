@@ -1,0 +1,45 @@
+{
+  "author": "functionfly",
+  "name": "confusion-matrix",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Confusion Matrix",
+  "description": "Generate a confusion matrix from predicted and actual labels.",
+  "category": "ai-ml",
+  "tags": ["confusion-matrix", "ml", "classification", "ai"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "y_true": {
+        "type": "array",
+        "description": "Actual labels"
+      },
+      "y_pred": {
+        "type": "array",
+        "description": "Predicted labels"
+      },
+      "labels": {
+        "type": "array",
+        "description": "Label order (optional, auto-detected if omitted)"
+      }
+    },
+    "required": ["y_true", "y_pred"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {},
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": { "y_true": [0, 1, 0, 1, 0], "y_pred": [0, 0, 0, 1, 1] },
+    "output": { "ok": true }
+  }
+}

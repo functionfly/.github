@@ -1,0 +1,46 @@
+{
+  "author": "functionfly",
+  "name": "model-evaluate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Model Evaluate",
+  "description": "Evaluate classification model with precision, recall, F1, and accuracy.",
+  "category": "ai-ml",
+  "tags": ["model-evaluate", "ml", "classification", "metrics", "ai"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "y_true": {
+        "type": "array",
+        "description": "Actual labels"
+      },
+      "y_pred": {
+        "type": "array",
+        "description": "Predicted labels"
+      },
+      "average": {
+        "type": "string",
+        "description": "Averaging method: micro, macro, weighted (default macro)",
+        "default": "macro"
+      }
+    },
+    "required": ["y_true", "y_pred"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "result": {},
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 3600,
+  "timeout_ms": 2000,
+  "memory_mb": 256,
+  "example": {
+    "input": { "y_true": [0, 1, 2, 0, 1], "y_pred": [0, 0, 2, 0, 1] },
+    "output": { "ok": true }
+  }
+}

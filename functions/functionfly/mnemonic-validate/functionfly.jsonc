@@ -1,0 +1,37 @@
+{
+  "author": "functionfly",
+  "name": "mnemonic-validate",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Mnemonic Validate",
+  "description": "Validate a BIP-39 mnemonic phrase.",
+  "category": "utils",
+  "tags": ["mnemonic", "bip39", "validate", "crypto", "wallet"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "mnemonic": {
+        "type": "string",
+        "description": "Space-separated mnemonic phrase"
+      }
+    },
+    "required": ["mnemonic"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "valid": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": true,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 500,
+  "memory_mb": 128,
+  "example": {
+    "input": { "mnemonic": "abandon ability able about above absent absorb abstract" },
+    "output": { "ok": true, "valid": false }
+  }
+}
