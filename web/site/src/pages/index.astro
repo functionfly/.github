@@ -6,8 +6,8 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
 ---
 
 <Layout
-  title="FunctionFly — Trust Layer for AI Agents"
-  description="Verified, signed, auditable tools with trust scores and a zero-knowledge vault for safe AI agent execution."
+  title="FunctionFly — Ship Functions. Agents Trust Them."
+  description="The platform for AI-accessible functions. Publish in any language, execute in sandboxes, route by trust, and monitor everything — so your agents can call tools safely at scale."
 >
   <section class="hero">
     <div class="hero-content">
@@ -16,31 +16,31 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
         Now in General Availability
       </div>
       <h1>
-        <span class="hero-title-line">The Trust Layer for</span><br />
-        <span class="gradient-text">AI Agents</span>
+        <span class="hero-title-line">Ship Functions.</span><br />
+        <span class="gradient-text">Agents Trust Them.</span>
       </h1>
       <p class="hero-lead">
-        The Trust Layer for AI Agents. Verified, signed, auditable tools with trust scores and a zero-knowledge vault for safe
-        agent execution.
+        The platform for AI-accessible functions. Publish in Python, Go, Rust, JavaScript, or WebAssembly — then let agents
+        discover, call, and trust your tools with full observability, sandboxed execution, and policy controls built in.
       </p>
       <div class="hero-actions">
         <a href={`${APP_DASHBOARD_ORIGIN}/signup`} class="btn btn-primary">
-          Request Access <span class="hero-arrow" aria-hidden="true">→</span>
+          Start Free <span class="hero-arrow" aria-hidden="true">→</span>
         </a>
         <a href={docsGuidesUrl} class="btn btn-secondary" target="_blank" rel="noopener noreferrer">View Documentation</a>
       </div>
       <div class="hero-stats">
         <div class="stat">
-          <span class="stat-value">Verified</span>
-          <span class="stat-label">tiered checks</span>
+          <span class="stat-value">Multi-lang</span>
+          <span class="stat-label">Python, Go, Rust, JS, WASM</span>
         </div>
         <div class="stat">
-          <span class="stat-value">Signed</span>
-          <span class="stat-label">function attestations</span>
+          <span class="stat-value">Isolated</span>
+          <span class="stat-label">Wasm + WASI per-request sandbox</span>
         </div>
         <div class="stat">
-          <span class="stat-value">Private</span>
-          <span class="stat-label">zero-knowledge vault</span>
+          <span class="stat-value">Trust-scored</span>
+          <span class="stat-label">execution + routing</span>
         </div>
       </div>
     </div>
@@ -72,12 +72,12 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
           </div>
           <p class="audience-desc">
             You built an amazing product and now need trustworthy agent tooling without enterprise overhead. FunctionFly gives you
-            verified functions, clear trust signals, and a path to scale safely.
+            multi-language functions, sandboxed execution, trust signals, and a path to scale safely.
           </p>
           <ul class="audience-benefits">
-            <li>Publish once, run everywhere</li>
+            <li>Python, Go, Rust, JS, WASM support</li>
+            <li>Wasm + WASI sandbox isolation</li>
             <li>Trust scores and verification tiers</li>
-            <li>Zero-knowledge vault for secrets</li>
             <li>Pay as you grow</li>
           </ul>
         </article>
@@ -103,9 +103,9 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
           </p>
           <ul class="audience-benefits">
             <li>Multi-level verification workflows</li>
-            <li>Signed artifacts and revocation</li>
-            <li>Execution history for trust scoring</li>
-            <li>Marketplace discovery with trust filters</li>
+            <li>Agent swarm orchestration</li>
+            <li>Policy engine for safe agent execution</li>
+            <li>Multi-provider routing (CF, Fly.io, custom)</li>
           </ul>
         </article>
         <article class="audience-card">
@@ -126,13 +126,13 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
           </div>
           <p class="audience-desc">
             Your organization needs auditability, least-privilege access to tools, and consistent trust policies across agents and
-            teams. FunctionFly aligns verification, signing, and vault semantics with how you already think about risk.
+            teams. Firecracker MicroVMs, attestations, and policy enforcement — without rewriting how you think about risk.
           </p>
           <ul class="audience-benefits">
-            <li>Enterprise-grade security posture</li>
-            <li>Attestations and policy-ready metadata</li>
+            <li>Firecracker MicroVMs for CPython workloads</li>
+            <li>Multi-level verification and attestations</li>
+            <li>Custom SLAs, priority support, and audit logs</li>
             <li>Multi-team and multi-app patterns</li>
-            <li>Room for custom SLAs and support</li>
           </ul>
         </article>
       </div>
@@ -141,8 +141,8 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
 
   <section class="features">
     <div class="container">
-      <h2>Everything you need to trust agent tools</h2>
-      <p class="section-subtitle">Verification + trust scoring so agents can act safely.</p>
+      <h2>Everything agents need to call your functions safely</h2>
+      <p class="section-subtitle">Publish once. Agents everywhere can discover, trust, and execute your tools — with full isolation and observability built in.</p>
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon">
@@ -150,8 +150,8 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
             </svg>
           </div>
-          <h3>Verified Tool Publishing</h3>
-          <p>Turn code into trusted functions with verification checks and signed artifacts before they can be used by agents.</p>
+          <h3>Multi-language Functions</h3>
+          <p>Publish in Python, Go, Rust, JavaScript, or WebAssembly. One SDK, every runtime — no rewrites when you switch languages.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -159,8 +159,8 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             </svg>
           </div>
-          <h3>Verification Levels & Revocation</h3>
-          <p>Trust is earned. Verify at multiple levels, sign with platform keys, and revoke when issues are found.</p>
+          <h3>Sandboxed Execution</h3>
+          <p>Firecracker MicroVMs isolate every function call. Memory and CPU enforced at the hardware level — not containers.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -179,8 +179,8 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <line x1="12" y1="17" x2="12" y2="21"></line>
             </svg>
           </div>
-          <h3>Agent-ready Tooling</h3>
-          <p>Expose capabilities with clear manifests and schemas—so agents can select tools that match their trust policy.</p>
+          <h3>Agent Swarms</h3>
+          <p>Spawn child agents, orchestrate messaging, evolve behavior over time, and schedule multi-agent tasks — all with quota controls.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -189,8 +189,8 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <polyline points="22,6 12,13 2,6"></polyline>
             </svg>
           </div>
-          <h3>Marketplace for Verified Tools</h3>
-          <p>Creators publish once. Agents discover trusted functions with built-in trust filters and ranked placement.</p>
+          <h3>Policy Engine</h3>
+          <p>Execution depth limits, recursion guards, wall-time caps, and memory constraints — so agents cannot go rogue on your infrastructure.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -199,17 +199,394 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <path d="M12 6v6l4 2"></path>
             </svg>
           </div>
-          <h3>Trust-powered Routing</h3>
-          <p>Enforce budgets and trust constraints at runtime—so agent execution is predictable, not reckless.</p>
+          <h3>Multi-Provider Routing</h3>
+          <p>Route function calls across Cloudflare Workers, Fly.io, and custom backends — with trust-based selection and budget enforcement.</p>
         </div>
       </div>
     </div>
   </section>
 
+  <!-- HOW IT WORKS -->
+  <section class="how-it-works">
+    <div class="container">
+      <h2>From code to trusted agent tool in four steps</h2>
+      <p class="section-subtitle">FunctionFly handles verification, isolation, routing, and observability — so you can focus on writing business logic.</p>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">01</div>
+          <div class="step-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+          </div>
+          <h3>Write</h3>
+          <p>Implement your function in Python, Go, Rust, JavaScript, or TypeScript. Your code runs in isolation — it cannot phone home or access the filesystem unless you grant capabilities explicitly.</p>
+        </div>
+        <div class="step-connector" aria-hidden="true">
+          <svg width="40" height="12" viewBox="0 0 40 12"><path d="M0 6h35M30 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </div>
+        <div class="step-card">
+          <div class="step-number">02</div>
+          <div class="step-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+          </div>
+          <h3>Publish</h3>
+          <p>Run <code>fly deploy</code>. FunctionFly bundles your code, compiles it for the target runtime, signs the artifact, and runs multi-level verification checks before making it live.</p>
+        </div>
+        <div class="step-connector" aria-hidden="true">
+          <svg width="40" height="12" viewBox="0 0 40 12"><path d="M0 6h35M30 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </div>
+        <div class="step-card">
+          <div class="step-number">03</div>
+          <div class="step-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35M11 8v6M8 11h6"></path>
+            </svg>
+          </div>
+          <h3>Discover</h3>
+          <p>Agents find your function through manifests and trust filters. Your function's trust score, verification tier, execution history, and capability declarations are all surfaced automatically.</p>
+        </div>
+        <div class="step-connector" aria-hidden="true">
+          <svg width="40" height="12" viewBox="0 0 40 12"><path d="M0 6h35M30 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </div>
+        <div class="step-card">
+          <div class="step-number">04</div>
+          <div class="step-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </div>
+          <h3>Execute</h3>
+          <p>Agents call your function over HTTPS. FunctionFly routes to the right backend, enforces policy limits, runs in a Wasm sandbox, and records every result for trust scoring.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LANGUAGE EXAMPLES -->
+  <section class="language-examples">
+    <div class="container">
+      <h2>Your function, any language</h2>
+      <p class="section-subtitle">Write once. Select your runtime at publish time — FunctionFly handles compilation, bundling, and isolation.</p>
+      <div class="lang-tabs" role="tablist">
+        <button class="lang-tab active" role="tab" data-lang="python" aria-selected="true">Python</button>
+        <button class="lang-tab" role="tab" data-lang="go" aria-selected="false">Go</button>
+        <button class="lang-tab" role="tab" data-lang="rust" aria-selected="false">Rust</button>
+        <button class="lang-tab" role="tab" data-lang="javascript" aria-selected="false">JavaScript</button>
+        <button class="lang-tab" role="tab" data-lang="typescript" aria-selected="false">TypeScript</button>
+      </div>
+      <div class="lang-panels">
+        <div class="lang-panel active" data-lang="python">
+          <div class="code-block">
+            <pre><code><span class="code-comment"># functionfly.config.jsonc</span>
+<span class="code-punctuation">&#123;</span><span class="code-string">"name"</span><span class="code-punctuation">:</span> <span class="code-string">"calculate-risk-score"</span><span class="code-punctuation">,</span>
+  <span class="code-string">"runtime"</span><span class="code-punctuation">:</span> <span class="code-string">"python"</span><span class="code-punctuation">,</span>
+  <span class="code-string">"capabilities"</span><span class="code-punctuation">:</span> <span class="code-punctuation">[</span><span class="code-string">"kv:read"</span><span class="code-punctuation">,</span> <span class="code-string">"fetch:read"</span><span class="code-punctuation">]</span>
+<span class="code-punctuation">&#125;</span>
+
+<span class="code-comment"># risk_score.py</span>
+<span class="code-keyword">import</span> json
+<span class="code-keyword">from</span> functionfly <span class="code-keyword">import</span> context, kv
+
+<span class="code-keyword">async def</span> <span class="code-fn">handle</span><span class="code-punctuation">(</span>input<span class="code-punctuation">:</span> dict<span class="code-punctuation">)</span> <span class="code-punctuation">-&gt;</span> dict<span class="code-punctuation">:</span>
+    user_id <span class="code-punctuation">=</span> input<span class="code-punctuation">[</span><span class="code-string">"user_id"</span><span class="code-punctuation">]</span>
+    history <span class="code-punctuation">=</span> <span class="code-keyword">await</span> kv<span class="code-punctuation">.</span><span class="code-fn">get</span><span class="code-punctuation">(</span><span class="code-string">f"risk:</span><span class="code-punctuation">&#123;</span>user_id<span class="code-punctuation">&#125;</span><span class="code-string">"</span><span class="code-punctuation">)</span>
+    score <span class="code-punctuation">=</span> <span class="code-fn">compute_score</span><span class="code-punctuation">(</span>history <span class="code-keyword">or</span> <span class="code-punctuation">[])</span>
+    <span class="code-keyword">return</span> <span class="code-punctuation">&#123;</span><span class="code-string">"score"</span><span class="code-punctuation">:</span> score<span class="code-punctuation">,</span> <span class="code-string">"band"</span><span class="code-punctuation">:</span> <span class="code-fn">band</span><span class="code-punctuation">(</span>score<span class="code-punctuation">)</span><span class="code-punctuation">&#125;</span></code></pre>
+          </div>
+        </div>
+        <div class="lang-panel" data-lang="go">
+          <div class="code-block">
+            <pre><code><span class="code-comment">// functionfly.jsonc</span>
+<span class="code-comment">// &#123;"name": "forward-email", "runtime": "go", "capabilities": ["email:send"]\&#125;</span>
+
+<span class="code-keyword">package</span> functionfly
+
+<span class="code-keyword">import</span> <span class="code-punctuation">(</span>
+  <span class="code-string">"context"</span>
+  <span class="code-string">"encoding/json"</span>
+  fly <span class="code-string">"github.com/functionfly/functionfly/sdk/go"</span>
+<span class="code-punctuation">)</span>
+
+<span class="code-keyword">type</span> Input <span class="code-keyword">struct</span> <span class="code-punctuation">&#123;</span>
+  To      <span class="code-type">string</span> <span class="code-string">`json:"to"`</span>
+  Subject <span class="code-type">string</span> <span class="code-string">`json:"subject"`</span>
+  Body    <span class="code-type">string</span> <span class="code-string">`json:"body"`</span>
+<span class="code-punctuation">&#125;</span>
+
+<span class="code-keyword">func</span> <span class="code-fn">Handle</span><span class="code-punctuation">(</span>ctx context<span class="code-punctuation">.</span>Context, input Input<span class="code-punctuation">)</span> <span class="code-punctuation">(</span>any<span class="code-punctuation">,</span> error<span class="code-punctuation">)</span> <span class="code-punctuation">&#123;</span>
+  <span class="code-keyword">return</span> map<span class="code-punctuation">[</span>string<span class="code-punctuation">]</span>any<span class="code-punctuation">&#123;</span>
+    <span class="code-string">"sent"</span><span class="code-punctuation">:</span>   <span class="code-type">true</span><span class="code-punctuation">,</span>
+    <span class="code-string">"to"</span><span class="code-punctuation">:</span>     input<span class="code-punctuation">.</span>To<span class="code-punctuation">,</span>
+    <span class="code-string">"msg_id"</span><span class="code-punctuation">:</span> ctx<span class="code-punctuation">.</span>Value<span class="code-punctuation">(</span>fly<span class="code-punctuation">.</span>TraceIDKey<span class="code-punctuation">)</span><span class="code-punctuation">,</span>
+  <span class="code-punctuation">&#125;</span><span class="code-punctuation">,</span> <span class="code-keyword">nil</span>
+<span class="code-punctuation">&#125;</span></code></pre>
+          </div>
+        </div>
+        <div class="lang-panel" data-lang="rust">
+          <div class="code-block">
+            <pre><code><span class="code-comment">// functionfly.jsonc</span>
+<span class="code-comment">// &#123;"name": "mnemonic-check", "runtime": "wasm", "capabilities": []\&#125;</span>
+
+<span class="code-keyword">use</span> functionfly::prelude::*;
+
+<span class="code-punctuation">#[</span>fnfly::function<span class="code-punctuation">]</span>
+<span class="code-keyword">pub fn</span> <span class="code-fn">validate_mnemonic</span><span class="code-punctuation">(</span>phrase<span class="code-punctuation">:</span> String<span class="code-punctuation">)</span> <span class="code-punctuation">-&gt;</span> MnemonicResult <span class="code-punctuation">&#123;</span>
+  <span class="code-keyword">let</span> words<span class="code-punctuation">:</span> Vec<span class="code-punctuation">&lt;</span>String<span class="code-punctuation">&gt;</span> <span class="code-punctuation">=</span> phrase<span class="code-punctuation">.</span><span class="code-fn">split_whitespace</span><span class="code-punctuation">().</span><span class="code-fn">map</span><span class="code-punctuation">(</span>String::from<span class="code-punctuation">).</span><span class="code-fn">collect</span><span class="code-punctuation">();</span>
+  MnemonicResult <span class="code-punctuation">&#123;</span>
+    valid<span class="code-punctuation">:</span> words<span class="code-punctuation">.</span>len<span class="code-punctuation">()</span> <span class="code-punctuation">==</span> <span class="code-number">24</span> <span class="code-punctuation">&amp;&amp;</span> words<span class="code-punctuation">.</span>iter<span class="code-punctuation">().</span><span class="code-fn">all</span><span class="code-punctuation">(</span>is_valid_word<span class="code-punctuation">),</span>
+    word_count<span class="code-punctuation">:</span> words<span class="code-punctuation">.</span>len<span class="code-punctuation">()</span> <span class="code-keyword">as</span> u32<span class="code-punctuation">,</span>
+  <span class="code-punctuation">&#125;</span>
+<span class="code-punctuation">&#125;</span></code></pre>
+          </div>
+        </div>
+        <div class="lang-panel" data-lang="javascript">
+          <div class="code-block">
+            <pre><code><span class="code-comment">// functionfly.config.jsonc</span>
+<span class="code-comment">// &#123;"name": "scrape-metadata", "runtime": "node20", "capabilities": ["fetch:read"]\&#125;</span>
+
+<span class="code-keyword">export async function</span> <span class="code-fn">handle</span><span class="code-punctuation">(</span>input<span class="code-punctuation">)</span> <span class="code-punctuation">&#123;</span>
+  <span class="code-keyword">const</span> <span class="code-punctuation">&#123;</span> url <span class="code-punctuation">&#125;</span> <span class="code-punctuation">=</span> input<span class="code-punctuation">;</span>
+  <span class="code-keyword">const</span> res <span class="code-punctuation">=</span> <span class="code-keyword">await</span> <span class="code-fn">fetch</span><span class="code-punctuation">(</span>url<span class="code-punctuation">);</span>
+  <span class="code-keyword">const</span> html <span class="code-punctuation">=</span> <span class="code-keyword">await</span> res<span class="code-punctuation">.</span><span class="code-fn">text</span><span class="code-punctuation">();</span>
+  <span class="code-keyword">return</span> <span class="code-punctuation">&#123;</span>
+    title<span class="code-punctuation">:</span> <span class="code-fn">extract</span><span class="code-punctuation">(</span><span class="code-string">"&lt;title&gt;(.*?)&lt;/title&gt;"</span><span class="code-punctuation">,</span> html<span class="code-punctuation">),</span>
+    description<span class="code-punctuation">:</span> <span class="code-fn">extract</span><span class="code-punctuation">(</span><span class="code-string">`&lt;meta name="description" content="(.*?)"&gt;`</span><span class="code-punctuation">,</span> html<span class="code-punctuation">),</span>
+  <span class="code-punctuation">};</span>
+<span class="code-punctuation">&#125;</span></code></pre>
+          </div>
+        </div>
+        <div class="lang-panel" data-lang="typescript">
+          <div class="code-block">
+            <pre><code><span class="code-comment">// functionfly.config.jsonc</span>
+<span class="code-comment">// &#123;"name": "raroc-calculate", "runtime": "node20", "capabilities": ["kv:read", "kv:write"]\&#125;</span>
+
+<span class="code-keyword">import</span> <span class="code-punctuation">&#123;</span> kv <span class="code-punctuation">&#125;</span> <span class="code-keyword">from</span> <span class="code-string">"functionfly"</span><span class="code-punctuation">;</span>
+
+<span class="code-keyword">interface</span> <span class="code-type">RAROCInput</span> <span class="code-punctuation">&#123;</span>
+  pd<span class="code-punctuation">:</span> number<span class="code-punctuation">;</span>
+  lgd<span class="code-punctuation">:</span> number<span class="code-punctuation">;</span>
+  ead<span class="code-punctuation">:</span> number<span class="code-punctuation">;</span>
+  corr<span class="code-punctuation">:</span> number<span class="code-punctuation">;</span>
+<span class="code-punctuation">&#125;</span>
+
+<span class="code-keyword">export async function</span> <span class="code-fn">handle</span><span class="code-punctuation">(</span>input<span class="code-punctuation">:</span> <span class="code-type">RAROCInput</span><span class="code-punctuation">)</span><span class="code-punctuation">:</span> <span class="code-type">Promise</span><span class="code-punctuation">&lt;</span><span class="code-type">RAROCResult</span><span class="code-punctuation">&gt;</span> <span class="code-punctuation">{'{'}</span>
+  <span class="code-keyword">const</span> key <span class="code-punctuation">=</span> <span class="code-string">`raroc:</span><span class="code-punctuation">{'$'}{'{'}hash(input){'}'}</span><span class="code-string">`</span><span class="code-punctuation">;</span>
+  <span class="code-keyword">const</span> cached <span class="code-punctuation">=</span> <span class="code-keyword">await</span> kv<span class="code-punctuation">.</span><span class="code-fn">get</span><span class="code-punctuation">(</span>key<span class="code-punctuation">);</span>
+  <span class="code-keyword">if</span> <span class="code-punctuation">(</span>cached<span class="code-punctuation">)</span> <span class="code-keyword">return</span> JSON<span class="code-punctuation">.</span><span class="code-fn">parse</span><span class="code-punctuation">(</span>cached<span class="code-punctuation">);</span>
+  <span class="code-keyword">const</span> result <span class="code-punctuation">=</span> <span class="code-fn">computeRAROC</span><span class="code-punctuation">(</span>input<span class="code-punctuation">);</span>
+  <span class="code-keyword">await</span> kv<span class="code-punctuation">.</span><span class="code-fn">set</span><span class="code-punctuation">(</span>key, JSON<span class="code-punctuation">.</span><span class="code-fn">stringify</span><span class="code-punctuation">(</span>result<span class="code-punctuation">),</span> <span class="code-punctuation">&#123;</span> ttl<span class="code-punctuation">:</span> <span class="code-number">3600</span> <span class="code-punctuation">&#125;</span><span class="code-punctuation">);</span>
+  <span class="code-keyword">return</span> result<span class="code-punctuation">;</span>
+<span class="code-punctuation">&#125;</span></code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CAPABILITIES -->
+  <section class="capabilities">
+    <div class="container">
+      <div class="capabilities-layout">
+        <div class="capabilities-intro">
+          <h2>Capabilities — what your function can and cannot do</h2>
+          <p class="section-subtitle">Sandbox isolation means every function runs with zero implicit permissions. Capabilities are declared at publish time and enforced at runtime — there is no ambient authority.</p>
+          <div class="capability-legend">
+            <div class="legend-item">
+              <span class="legend-dot allowed"></span>
+              <span>Explicitly granted — declare in <code>functionfly.jsonc</code></span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot denied"></span>
+              <span>Deny-by-default — function cannot access this unless re-deployed with updated capabilities</span>
+            </div>
+          </div>
+        </div>
+        <div class="capability-grid">
+          <div class="capability-category">
+            <h4>Network</h4>
+            <ul>
+              <li><span class="cap-badge cap-allow">granted</span> <code>fetch:read</code> — outbound HTTPS GET</li>
+              <li><span class="cap-badge cap-allow">granted</span> <code>fetch:write</code> — outbound HTTPS POST/PUT/PATCH</li>
+              <li><span class="cap-badge cap-deny">denied</span> <code>websocket</code> — persistent connections</li>
+            </ul>
+          </div>
+          <div class="capability-category">
+            <h4>Storage</h4>
+            <ul>
+              <li><span class="cap-badge cap-allow">granted</span> <code>kv:read</code> — read from key-value store</li>
+              <li><span class="cap-badge cap-allow">granted</span> <code>kv:write</code> — write to key-value store</li>
+              <li><span class="cap-badge cap-deny">denied</span> <code>storage:*</code> — any other storage access</li>
+            </ul>
+          </div>
+          <div class="capability-category">
+            <h4>Communication</h4>
+            <ul>
+              <li><span class="cap-badge cap-allow">granted</span> <code>email:send</code> — send transactional email</li>
+              <li><span class="cap-badge cap-allow">granted</span> <code>agent:message</code> — inter-agent messaging</li>
+              <li><span class="cap-badge cap-deny">denied</span> <code>notification:push</code> — push notifications</li>
+            </ul>
+          </div>
+          <div class="capability-category">
+            <h4>Execution</h4>
+            <ul>
+              <li><span class="cap-badge cap-allow">granted</span> <code>function:invoke</code> — call other functions</li>
+              <li><span class="cap-badge cap-allow">granted</span> <code>agent:spawn</code> — spawn child agents (Enterprise)</li>
+              <li><span class="cap-badge cap-deny">denied</span> <code>exec:*</code> — shell or subprocess execution</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OBSERVABILITY -->
+  <section class="observability">
+    <div class="container">
+      <h2>Full observability, every execution</h2>
+      <p class="section-subtitle">Execution traces, trust scores, and metrics — so you know exactly what your agents are doing.</p>
+      <div class="observability-grid">
+        <div class="obs-card">
+          <div class="obs-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3h18v4H3zM3 10h12v4H3zM3 17h6v4H3z"></path>
+            </svg>
+          </div>
+          <h3>Execution Traces</h3>
+          <p>Every function call is recorded with input, output, latency, cost, and the full call stack. Trace a single execution from agent prompt to function result.</p>
+        </div>
+        <div class="obs-card">
+          <div class="obs-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 20V10M12 20V4M6 20v-6"></path>
+            </svg>
+          </div>
+          <h3>Trust Score History</h3>
+          <p>Trust scores are computed from real execution outcomes — not static analysis. High trust means a proven track record of correct results.</p>
+        </div>
+        <div class="obs-card">
+          <div class="obs-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 6v6l4 2"></path>
+            </svg>
+          </div>
+          <h3>Latency and Cost Metrics</h3>
+          <p>P50, P95, P99 latency per function. Cost per execution in USD. Set budget alerts and get notified before quotas hit.</p>
+        </div>
+        <div class="obs-card">
+          <div class="obs-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <path d="M9 12l2 2 4-4"></path>
+            </svg>
+          </div>
+          <h3>Verification Audit Log</h3>
+          <p>Every verification submission, artifact signing, revocation event, and level change is logged immutably. Exportable to your SIEM.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPARISON -->
+  <section class="comparison">
+    <div class="container">
+      <h2>Why teams switch to FunctionFly</h2>
+      <p class="section-subtitle">Other options leave agents flying blind. We give them the trust infrastructure they need.</p>
+      <div class="comparison-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Raw API Endpoints</th>
+              <th>Traditional FaaS<br /><span class="th-sub">Lambda, Cloud Functions</span></th>
+              <th class="col-functionfly">FunctionFly</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="row-label">Agent-discoverable manifests</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-yes">&#10004;</td>
+            </tr>
+            <tr>
+              <td class="row-label">Trust scores</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-yes">&#10004;</td>
+            </tr>
+            <tr>
+              <td class="row-label">Multi-level verification</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-yes">&#10004;</td>
+            </tr>
+            <tr>
+              <td class="row-label">Wasm sandbox isolation</td>
+              <td class="cell-maybe">&#9432; DIY</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-yes">&#10004;</td>
+            </tr>
+            <tr>
+              <td class="row-label">Firecracker VMs (Enterprise)</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-yes">&#10004;</td>
+            </tr>
+            <tr>
+              <td class="row-label">Signed attestations</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-yes">&#10004;</td>
+            </tr>
+            <tr>
+              <td class="row-label">Capability-based security</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-yes">&#10004;</td>
+            </tr>
+            <tr>
+              <td class="row-label">Agent swarm orchestration</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-yes">&#10004;</td>
+            </tr>
+            <tr>
+              <td class="row-label">Multi-provider routing</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-maybe">&#9432; Manual</td>
+              <td class="cell-yes">&#10004;</td>
+            </tr>
+            <tr>
+              <td class="row-label">Policy engine</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-no">&#10060;</td>
+              <td class="cell-yes">&#10004;</td>
+            </tr>
+            <tr>
+              <td class="row-label">Execution traces + audit log</td>
+              <td class="cell-maybe">&#9432; Basic</td>
+              <td class="cell-maybe">&#9432; Cloud logs</td>
+              <td class="cell-yes">&#10004;</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+
+
+
   <section class="code-example">
     <div class="container">
-      <h2>Verify & publish in seconds</h2>
-      <p class="section-subtitle">Turn your code into an agent-ready trusted tool</p>
+      <h2>Publish a function in minutes</h2>
+      <p class="section-subtitle">Initialize, configure, deploy, and let agents start calling it — with trust scores computed automatically.</p>
       <div class="code-block">
         <pre><code><span class="code-comment"># Install the fly CLI (Go 1.25+)</span>
 <span class="code-prompt">$</span> go install github.com/functionfly/functionfly/cmd/fly@latest
@@ -234,14 +611,122 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
 
   <section class="cta">
     <div class="container">
-      <h2>Where trusted tools meet agent execution</h2>
-      <p>Start free. Verified tooling and auditable execution history help your agents move faster—with fewer surprises.</p>
+      <h2>The platform your agents actually need</h2>
+      <p>Start free. Multi-language support, sandboxed execution, trust scoring, and full observability — so agents can call your functions with confidence.</p>
       <div class="cta-actions">
-        <a href={`${APP_DASHBOARD_ORIGIN}/signup`} class="btn btn-primary btn-large">Request Access</a>
+        <a href={`${APP_DASHBOARD_ORIGIN}/signup`} class="btn btn-primary btn-large">Start Free</a>
         <a href="/contact" class="btn btn-outline">Contact Sales</a>
+      </div>
+      <div class="waitlist-form-wrapper">
+        <p class="waitlist-tagline">Join the waitlist for early access to new features</p>
+        <form id="waitlist-form" class="waitlist-form" novalidate>
+          <div class="waitlist-input-group">
+            <input
+              type="email"
+              id="waitlist-email"
+              name="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required
+            />
+            <button type="submit" class="btn btn-primary waitlist-btn">
+              <span class="waitlist-btn-text">Join Waitlist</span>
+              <span class="waitlist-btn-loading" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div id="waitlist-success" class="waitlist-success" role="alert" aria-live="polite" hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+            <span>You're on the list. We'll be in touch.</span>
+          </div>
+          <div id="waitlist-error" class="waitlist-error" role="alert" aria-live="polite" hidden></div>
+        </form>
       </div>
     </div>
   </section>
+<script is:inline>
+(function() {
+  if (typeof document === 'undefined') return;
+
+  // Language tabs
+  document.querySelectorAll('.lang-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var lang = tab.getAttribute('data-lang');
+      document.querySelectorAll('.lang-tab').forEach(function(t) {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      document.querySelectorAll('.lang-panel').forEach(function(p) {
+        p.classList.remove('active');
+        if (p.getAttribute('data-lang') === lang) {
+          p.classList.add('active');
+        }
+      });
+    });
+  });
+
+  // Waitlist form
+  var waitlistForm = document.getElementById('waitlist-form');
+  if (waitlistForm) {
+    waitlistForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var emailInput = document.getElementById('waitlist-email');
+      var btnText = waitlistForm.querySelector('.waitlist-btn-text');
+      var btnLoading = waitlistForm.querySelector('.waitlist-btn-loading');
+      var successMsg = document.getElementById('waitlist-success');
+      var errorMsg = document.getElementById('waitlist-error');
+      var submitBtn = waitlistForm.querySelector('.waitlist-btn');
+      var email = emailInput.value.trim();
+      if (!email || !email.includes('@') || !email.includes('.')) {
+        errorMsg.textContent = 'Please enter a valid email address.';
+        errorMsg.hidden = false;
+        successMsg.hidden = true;
+        return;
+      }
+      btnText.textContent = 'Joining...';
+      btnLoading.style.display = 'inline-flex';
+      submitBtn.disabled = true;
+      errorMsg.hidden = true;
+      successMsg.hidden = true;
+      fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          feedbackType: 'launch_waitlist',
+          subject: 'Waitlist signup',
+          message: 'Waitlist signup from homepage form.',
+          email: email
+        })
+      }).then(function(res) {
+        if (res.ok) {
+          successMsg.hidden = false;
+          errorMsg.hidden = true;
+          emailInput.value = '';
+        } else {
+          return res.json().then(function(data) {
+            throw new Error(data.error || 'Something went wrong. Please try again.');
+          });
+        }
+      }).catch(function(err) {
+        errorMsg.textContent = err.message;
+        errorMsg.hidden = false;
+        successMsg.hidden = true;
+      }).finally(function() {
+        btnText.textContent = 'Join Waitlist';
+        btnLoading.style.display = 'none';
+        submitBtn.disabled = false;
+      });
+    });
+  }
+})();
+</script>
 </Layout>
 
 <style>
@@ -614,13 +1099,14 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
   }
 
   .code-block {
-    max-width: 600px;
+    max-width: 100%;
     margin: 3rem auto 0;
     background: #1a1f2e;
     border-radius: 12px;
     padding: 2rem;
     border: 1px solid var(--color-border);
     text-align: left;
+    overflow-x: auto;
   }
 
   .code-block pre {
@@ -629,7 +1115,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
 
   .code-block code {
     font-family: var(--font-mono);
-    font-size: 0.9375rem;
+    font-size: 1rem;
     line-height: 1.8;
     color: var(--color-text);
   }
@@ -676,6 +1162,27 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     .audience-grid {
       grid-template-columns: 1fr;
     }
+
+    .steps-grid {
+      flex-wrap: wrap;
+    }
+
+    .step-card {
+      flex-basis: calc(50% - 0.75rem);
+    }
+
+    .step-connector {
+      display: none;
+    }
+
+    .observability-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .capabilities-layout {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
   }
 
   @media (max-width: 768px) {
@@ -702,5 +1209,591 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
       max-width: 280px;
       justify-content: center;
     }
+
+    .steps-grid {
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .step-connector {
+      display: none;
+    }
+
+    .observability-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .capabilities-layout {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    .capability-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 0.75rem 0.5rem;
+      font-size: 0.8125rem;
+    }
+
+    .waitlist-input-group {
+      flex-direction: column;
+      border-radius: 10px;
+    }
+
+    .waitlist-input-group input {
+      padding: 0.875rem 1rem;
+    }
+
+    .waitlist-btn {
+      border-radius: 0 0 8px 8px;
+      padding: 0.875rem 1rem;
+      justify-content: center;
+    }
   }
+
+
+  /* =============================================
+     HOW IT WORKS
+     ============================================= */
+  .how-it-works {
+    padding: 6rem 0;
+    background: var(--color-bg);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .how-it-works h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .steps-grid {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    margin-top: 4rem;
+  }
+
+  .step-card {
+    flex: 1;
+    padding: 2rem 1.5rem;
+    background: var(--color-bg-light);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    position: relative;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .step-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-4px);
+  }
+
+  .step-number {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--color-primary);
+    opacity: 0.6;
+    margin-bottom: 1rem;
+  }
+
+  .step-icon {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 14px;
+    color: var(--color-primary);
+    margin-bottom: 1.25rem;
+  }
+
+  .step-card h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .step-card p {
+    font-size: 0.9375rem;
+    color: var(--color-text-muted);
+    line-height: 1.65;
+  }
+
+  .step-connector {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
+    padding-top: 2rem;
+    color: var(--color-border);
+  }
+
+  /* =============================================
+     LANGUAGE EXAMPLES
+     ============================================= */
+  .language-examples {
+    padding: 6rem 0;
+    background: var(--color-bg-light);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .language-examples h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .lang-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+    margin-top: 3rem;
+    margin-bottom: 0;
+    flex-wrap: wrap;
+  }
+
+  .lang-tab {
+    padding: 0.625rem 1.25rem;
+    border-radius: 8px 8px 0 0;
+    border: 1px solid var(--color-border);
+    border-bottom: none;
+    background: var(--color-bg);
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .lang-tab:hover {
+    background: var(--color-bg-light);
+    color: var(--color-text);
+  }
+
+  .lang-tab.active {
+    background: #1a1f2e;
+    color: #e2e8f0;
+    border-color: #2d3748;
+  }
+
+  .lang-panels {
+    background: #1a1f2e;
+    border-radius: 0 12px 12px 12px;
+    border: 1px solid #2d3748;
+    padding: 2rem;
+  }
+
+  .lang-panel {
+    display: none;
+  }
+
+  .lang-panel.active {
+    display: block;
+  }
+
+  .lang-panel .code-block {
+    margin: 0;
+    max-width: 100%;
+    background: transparent;
+    border: none;
+    padding: 0;
+    overflow-x: auto;
+  }
+
+  /* =============================================
+     CAPABILITIES
+     ============================================= */
+  .capabilities {
+    padding: 6rem 0;
+    background: var(--color-bg);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .capabilities-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: start;
+  }
+
+  .capabilities-intro h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    text-align: left;
+  }
+
+  .capability-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .legend-dot.allowed {
+    background: #10b981;
+  }
+
+  .legend-dot.denied {
+    background: #ef4444;
+  }
+
+  .capability-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .capability-category {
+    background: var(--color-bg-light);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+
+  .capability-category h4 {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted);
+    margin-bottom: 1rem;
+  }
+
+  .capability-category ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .capability-category li {
+    font-size: 0.875rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    line-height: 1.5;
+  }
+
+  .capability-category code {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--color-text);
+    background: var(--color-bg);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+  }
+
+  .cap-badge {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+  }
+
+  .cap-badge.cap-allow {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .cap-badge.cap-deny {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  /* =============================================
+     OBSERVABILITY
+     ============================================= */
+  .observability {
+    padding: 6rem 0;
+    background: var(--color-bg-light);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .observability h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .observability-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    margin-top: 4rem;
+  }
+
+  .obs-card {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 2rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .obs-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-4px);
+  }
+
+  .obs-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 12px;
+    color: var(--color-primary);
+    margin-bottom: 1.5rem;
+  }
+
+  .obs-card h3 {
+    font-size: 1.125rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .obs-card p {
+    font-size: 0.9375rem;
+    color: var(--color-text-muted);
+    line-height: 1.65;
+  }
+
+  /* =============================================
+     COMPARISON TABLE
+     ============================================= */
+  .comparison {
+    padding: 6rem 0;
+    background: var(--color-bg);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .comparison h2 {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .comparison-table-wrapper {
+    overflow-x: auto;
+    margin-top: 3.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+  }
+
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    padding: 1rem 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .comparison-table th {
+    background: var(--color-bg-light);
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--color-text);
+  }
+
+  .comparison-table th.th-sub {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--color-text-muted);
+  }
+
+  .comparison-table thead th:first-child {
+    text-align: left;
+    background: transparent;
+  }
+
+  .comparison-table .col-functionfly {
+    background: rgba(99, 102, 241, 0.08);
+    color: var(--color-primary);
+    position: relative;
+  }
+
+  .comparison-table td:first-child {
+    text-align: left;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .comparison-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .comparison-table tr:hover td {
+    background: rgba(99, 102, 241, 0.03);
+  }
+
+  .cell-yes {
+    color: #10b981;
+  }
+
+  .cell-no {
+    color: #ef4444;
+  }
+
+  .cell-maybe {
+    color: #f59e0b;
+  }
+
+  /* =============================================
+     RESPONSIVE
+     ============================================= */
+
+  /* =============================================
+     WAITLIST FORM
+     ============================================= */
+  .waitlist-form-wrapper {
+    margin-top: 3rem;
+    max-width: 520px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .waitlist-tagline {
+    text-align: center;
+    font-size: 0.9375rem;
+    color: var(--color-text-muted);
+    margin-bottom: 1.25rem;
+  }
+
+  .waitlist-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .waitlist-input-group {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--color-bg-light);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .waitlist-input-group:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+
+  .waitlist-input-group input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 0.9375rem;
+    color: var(--color-text);
+    min-width: 0;
+  }
+
+  .waitlist-input-group input::placeholder {
+    color: var(--color-text-muted);
+    opacity: 0.7;
+  }
+
+  .waitlist-btn {
+    flex-shrink: 0;
+    padding: 0.75rem 1.25rem;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 0;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  .waitlist-btn:hover:not(:disabled) {
+    background: var(--color-primary-dark);
+  }
+
+  .waitlist-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  .waitlist-btn-loading {
+    display: none;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .waitlist-success {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 8px;
+    color: #10b981;
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+
+  .waitlist-success[hidden] {
+    display: none;
+  }
+
+  .waitlist-error {
+    display: flex;
+    padding: 0.75rem 1rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 8px;
+    color: #ef4444;
+    font-size: 0.875rem;
+  }
+
+  .waitlist-error[hidden] {
+    display: none;
+  }
+
 </style>

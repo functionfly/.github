@@ -122,6 +122,46 @@ Match `--env=dev` (or `prod`) to the Infisical environment name.
 
 Check `INFISICAL_TOKEN`, environment name, and that variable names match exactly between Infisical and the app.
 
+## Auth Site & Invite-Only Signup
+
+The standalone auth site (`auth.functionfly.com`) is a static Astro site built into the Caddy container. The signup flow is gated by `SIGNUP_REQUIRE_INVITE_CODE` on the orchestrator API.
+
+### Production Setup (Infisical)
+
+To enable invite-only signup in production:
+
+1. In the **Infisical dashboard**, go to your `prod` environment
+2. Add or update the secret:
+   - **Key:** `SIGNUP_REQUIRE_INVITE_CODE`
+   - **Value:** `true`
+3. Sync to Fly.io:
+
+```bash
+export INFISICAL_ENV=prod
+export FLY_APP=functionfly-api
+./scripts/sync-infisical-to-fly.sh
+```
+
+### Creating Invite Codes
+
+After deployment, create invite codes via the admin API:
+
+```bash
+# Create an invite code (requires admin authentication)
+curl -X POST https://api.functionfly.com/admin/signup-invites \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+Or use the admin dashboard at `admin.functionfly.com`.
+
+### Disabling Invite-Only (Open Registration)
+
+To allow open registration (not recommended for production):
+
+1. In **Infisical**, set `SIGNUP_REQUIRE_INVITE_CODE` to `false` or remove it
+2. Sync to Fly: `./scripts/sync-infisical-to-fly.sh`
+3. Restart machines: `fly apps restart functionfly-api`
+
 ## References
 
 - [Infisical docs](https://infisical.com/docs)

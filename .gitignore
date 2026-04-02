@@ -203,3 +203,5 @@ security-audit-simple.go.disabled
 
 # Nx monorepo cache (local machine state)
 .nx/
+.vercel
+.env*.local

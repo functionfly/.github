@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:vite": "vite build",
+    "vercel:deploy": "bun run build:vite && vercel --prod",
+    "vercel:deploy:preview": "bun run build:vite && vercel",
     "pages:deploy": "bun run build:vite && wrangler pages deploy dist --project-name=functionfly-admin-dashboard",
     "pages:deploy:preview": "bun run build:vite && wrangler pages deploy dist --project-name=functionfly-admin-dashboard --branch=preview",
     "preview": "vite preview",

@@ -37,6 +37,20 @@
       "options": {
         "lintFilePatterns": ["web/admin-dashboard/**/*.{ts,tsx,js,jsx}"]
       }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vercel --prod",
+        "cwd": "web/admin-dashboard"
+      }
+    },
+    "deploy:preview": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vercel",
+        "cwd": "web/admin-dashboard"
+      }
     }
   }
 }

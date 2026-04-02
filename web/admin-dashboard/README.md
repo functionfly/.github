@@ -78,38 +78,52 @@ npm run build
 
 Output is in `dist/` directory.
 
-### Cloudflare Pages (Wrangler CLI)
+### Vercel Deployment
 
-Static assets and SPA redirects are configured via `public/_redirects` and `public/_headers`. The project name defaults to `functionfly-admin-dashboard` (override with `--project-name`).
+The admin dashboard is deployed to Vercel with SPA routing and security headers configured in `vercel.json`.
 
 **Production hostname: `admin.functionfly.com`**
 
 Wrangler’s success URL (`https://<hash>.functionfly-admin-dashboard.pages.dev`) is only the default Pages preview host. To serve the admin app at **`https://admin.functionfly.com`**:
 
-1. **DNS** — In the `functionfly.com` zone, **CNAME** `admin` → `functionfly-admin-dashboard.pages.dev` (proxied / orange cloud). The repo template for this is `deploy/dns/cloudflare-geo-dns.json` (record name `admin`).
-2. **Custom domain on the Pages project** — Cloudflare Dashboard → **Workers & Pages** → **functionfly-admin-dashboard** → **Custom domains** → **Set up a domain** → `admin.functionfly.com`. Finish the flow so Pages issues TLS and routes that hostname to this project (same account as the zone).
-3. **API** — Add `https://admin.functionfly.com` to `CORS_ALLOWED_ORIGINS` on the orchestrator so the browser can call `https://api.functionfly.com`.
+1. Install Vercel CLI: `npm i -g vercel`
+2. Login to Vercel: `vercel login`
+3. Link the project (from `web/admin-dashboard` dir): `vercel link`
+4. Pull environment variables: `vercel env pull`
+5. Add custom domain in Vercel Dashboard: **Settings → Domains → Add** → `admin.functionfly.com`
+6. Configure DNS in Cloudflare: **CNAME** `admin` → `cname.vercel-dns.com` (or use Vercel DNS if migrating fully)
+7. Add `https://admin.functionfly.com` to `CORS_ALLOWED_ORIGINS` on the orchestrator API
 
-**One-time**
-
-1. Create an API token with **Account: Cloudflare Pages: Edit** (and **Account: Read** if prompted).
-2. Export it: `export CLOUDFLARE_API_TOKEN=...` (required in CI/non-interactive shells), or run `wrangler login` locally.
-3. Create the Pages project once (optional; Wrangler may prompt on first deploy):
-
-   ```bash
-   bunx wrangler pages project create functionfly-admin-dashboard --production-branch=master
-   ```
-
-**Deploy**
+**Deploy:**
 
 ```bash
 cd web/admin-dashboard
-bun run pages:deploy
+
+# Production deploy
+bun run vercel:deploy
+
+# Or using Nx
+nx run admin-dashboard:deploy
+
+# Preview deploy
+bun run vercel:deploy:preview
 ```
 
-This runs `vite build` then `wrangler pages deploy dist`. Set `VITE_*` variables in the Cloudflare Pages project for production builds, or use `.env.production` when building locally.
+**Environment variables** (set in Vercel Dashboard or via `vercel env add`):
 
-**Note:** `npm run build` runs `tsc && vite build`. Until `tsc` is clean, the Pages script uses `build:vite` only. Fix TypeScript errors to restore strict `tsc` in CI.
+- `VITE_API_BASE_URL` - API base URL (e.g., `https://api.functionfly.com`)
+- `VITE_ADMIN_API_BASE_URL` - Admin API URL (e.g., `https://api.functionfly.com/v1/admin`)
+- `VITE_ADMIN_SHARED_SECRET` - HMAC signing secret
+- `VITE_SESSION_TIMEOUT` - Session timeout in ms
+- `VITE_IDLE_TIMEOUT` - Idle timeout in ms
+- `VITE_MFA_REVERIFY_INTERVAL` - MFA re-verification interval
+- `VITE_ENABLE_IP_WHITELIST` - Enable IP whitelisting
+- `VITE_ENABLE_DEVICE_FINGERPRINT` - Enable device fingerprinting
+- `VITE_ENABLE_AUDIT_LOGGING` - Enable audit logging
+- `VITE_SENTRY_DSN` - Sentry DSN (optional)
+- `VITE_EXPECT_ZT_HEADERS` - Expect Zero Trust headers
+
+**Note:** `npm run build` runs `tsc && vite build`. Until `tsc` is clean, the deploy script uses `build:vite` only. Fix TypeScript errors to restore strict `tsc` in CI.
 
 ## Docker Deployment
 

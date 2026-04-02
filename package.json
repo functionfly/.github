@@ -43,7 +43,8 @@
     "jspdf": "^4.2.1",
     "minimatch": "^9.0.7",
     "next": "^16.1.7",
-    "undici": "^7.24.0"
+    "undici": "^7.24.0",
+    "vercel": "^50.38.2"
   },
   "overrides": {
     "dompurify": "^3.3.3",
