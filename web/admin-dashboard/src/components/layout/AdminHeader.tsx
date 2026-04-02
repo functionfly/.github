@@ -55,7 +55,7 @@ export function AdminHeader({
 
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
-              {user ? 'Admin Dashboard' : 'FlyAdmin'}
+              {user ? 'Admin Dashboard' : 'FunctionFly Admin'}
             </h1>
           </div>
         </div>

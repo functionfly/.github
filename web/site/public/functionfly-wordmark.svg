@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" viewBox="0 0 800 200">
+  <rect width="800" height="200" fill="#0F172A"/>
+  <!-- Logo mark -->
+  <rect x="60" y="50" width="100" height="100" rx="20" fill="#0F172A"/>
+  <path d="M110 67L161 118L110 169L59 118L110 67Z" fill="#6366F1"/>
+  <path d="M110 84.5L139.5 114L110 143.5L80.5 114L110 84.5Z" fill="white"/>
+  <path d="M110 94L119.5 114L110 134L100.5 114L110 94Z" fill="#6366F1"/>
+  <!-- Wordmark -->
+  <text x="190" y="118" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="56" font-weight="700">FunctionFly</text>
+  <!-- Tagline -->
+  <text x="190" y="148" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="22">The trust layer for AI agents</text>
+</svg>

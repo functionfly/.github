@@ -218,7 +218,21 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-            <h2 className="text-2xl font-bold">FlyAdmin</h2>
+            <div className="flex items-center gap-3">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 32 32"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect width="32" height="32" rx="6" fill="#0F172A" />
+                <path d="M16 5L27 16L16 27L5 16L16 5Z" fill="#6366F1" />
+                <path d="M16 9.5L22.5 16L16 22.5L9.5 16L16 9.5Z" fill="white" />
+                <path d="M16 12.5L19.5 16L16 19.5L12.5 16L16 12.5Z" fill="#6366F1" />
+              </svg>
+              <span className="text-lg font-bold text-white">FunctionFly</span>
+            </div>
             <button onClick={onClose} className="md:hidden">
               <X className="w-5 h-5" />
             </button>
@@ -250,9 +264,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
           {/* Footer */}
           <div className="px-6 py-4 border-t border-gray-800">
-            <p className="text-xs text-gray-400">
-              FunctionFly LLC · Admin © {new Date().getFullYear()}
-            </p>
+            <p className="text-xs text-gray-400">FunctionFly Admin © {new Date().getFullYear()}</p>
           </div>
         </div>
       </aside>

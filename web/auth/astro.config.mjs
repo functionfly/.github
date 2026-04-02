@@ -9,7 +9,7 @@ export default defineConfig({
   output: "static",
   server: {
     host: true,
-    port: 4323,
+    port: 4324,
     strictPort: true,
   },
   build: {

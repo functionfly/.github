@@ -7,7 +7,7 @@
     "web/*"
   ],
   "scripts": {
-    "dev": "nx run-many -t dev -p dashboard,functionfly-marketing,docs --parallel=3",
+    "dev": "nx run-many -t dev -p dashboard,functionfly-marketing,docs,admin-dashboard,functionfly-auth --parallel=5",
     "dev:all": "nx run-many -t dev --all --parallel=4",
     "dev:admin": "nx run admin-dashboard -t dev",
     "dev:blog": "nx run blog-api -t dev",

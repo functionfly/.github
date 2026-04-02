@@ -18,6 +18,14 @@ export default defineConfig({
     format: "file",
   },
   vite: {
+    server: {
+      proxy: {
+        "/v1": {
+          target: "http://localhost:8080",
+          changeOrigin: true,
+        },
+      },
+    },
     build: {
       cssMinify: true,
       minify: "esbuild",

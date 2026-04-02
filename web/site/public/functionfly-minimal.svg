@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="120" viewBox="0 0 600 120">
+  <rect width="600" height="120" fill="#0F172A"/>
+  <!-- Logo mark -->
+  <rect x="40" y="25" width="70" height="70" rx="14" fill="#0F172A"/>
+  <path d="M75 42L116 83L75 124L34 83L75 42Z" fill="#6366F1"/>
+  <path d="M75 56.5L97.5 79L75 101.5L52.5 79L75 56.5Z" fill="white"/>
+  <path d="M75 63L83.5 79L75 95L66.5 79L75 63Z" fill="#6366F1"/>
+  <!-- Wordmark -->
+  <text x="135" y="80" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="52" font-weight="700">FunctionFly</text>
+</svg>

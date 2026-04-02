@@ -6,8 +6,13 @@
     </linearGradient>
   </defs>
   <rect width="1200" height="630" fill="url(#g)"/>
-  <rect x="80" y="220" width="72" height="72" rx="16" fill="#6366f1"/>
-  <path d="M98 256L116 238L134 256L116 274L98 256Z" fill="white"/>
+  <!-- Logo mark: geometric diamond/wing -->
+  <rect x="80" y="220" width="72" height="72" rx="14" fill="#0F172A"/>
+  <path d="M116 237L157 278L116 319L75 278L116 237Z" fill="#6366F1"/>
+  <path d="M116 254.5L135.5 274L116 293.5L96.5 274L116 254.5Z" fill="white"/>
+  <path d="M116 264L125.5 274L116 284L106.5 274L116 264Z" fill="#6366F1"/>
+  <!-- Wordmark -->
   <text x="180" y="285" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="56" font-weight="700">FunctionFly</text>
-  <text x="80" y="380" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="32">Trusted functions for AI agents</text>
+  <!-- Tagline -->
+  <text x="80" y="380" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="32">The trust layer for AI agents</text>
 </svg>
