@@ -73,6 +73,15 @@ from ..services.chat import get_chat_manager
 from ..services.search import get_search_indexer, get_result_ranker, get_query_processor
 from ..services.debugging import get_error_analyzer, get_fix_suggester
 from ..services.optimization import get_recommendation_engine
+from ..services.flyembed import get_flyembed_service
+from ..models.schemas import (
+    TripleEmbeddingRequest,
+    TripleEmbeddingResult,
+    TripleEmbeddingBatchRequest,
+    TripleEmbeddingBatchResponse,
+    TripleQueryRequest,
+    TripleQueryVector,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -662,27 +671,44 @@ async def search_functions(
         SearchResponse with results
     """
     try:
-        # Process the query
         query_processor = get_query_processor()
-        processed_query, embedding, metadata = await query_processor.process_query(
-            request.query,
-        )
-
-        # Search using the indexer
         indexer = get_search_indexer()
-        results = await indexer.search(
-            tenant_id=tenant_id,
-            query_embedding=embedding,
-            limit=request.limit,
-        )
-
-        # Re-rank results
         ranker = get_result_ranker()
-        if request.filters:
-            results = ranker.filter_results(results, request.filters)
-        ranked_results = ranker.rank_results(results, request.query)
 
-        # If no semantic results, try keyword fallback
+        if request.use_triple:
+            # Triple-vector search path
+            processed_query, _, metadata = await query_processor.process_query(request.query)
+
+            # Generate triple query vectors
+            flyembed = get_flyembed_service()
+            triple_query = await flyembed.embed_query(request.query)
+
+            results = await indexer.search_triple(
+                tenant_id=tenant_id,
+                query_vectors={
+                    "contract_vector": triple_query.contract_vector,
+                    "semantic_vector": triple_query.semantic_vector,
+                    "code_vector": triple_query.code_vector,
+                },
+                limit=request.limit,
+            )
+
+            if request.filters:
+                results = ranker.filter_results(results, request.filters)
+            ranked_results = ranker.rank_results_triple(results, request.query, request.weights)
+        else:
+            # Single-vector search path (legacy)
+            processed_query, embedding, metadata = await query_processor.process_query(request.query)
+            results = await indexer.search(
+                tenant_id=tenant_id,
+                query_embedding=embedding,
+                limit=request.limit,
+            )
+            if request.filters:
+                results = ranker.filter_results(results, request.filters)
+            ranked_results = ranker.rank_results(results, request.query)
+
+        # Keyword fallback if no results
         if not ranked_results:
             all_functions = await indexer.index_tenant_functions(tenant_id)
             ranked_results = query_processor.process_keyword_fallback(
@@ -856,3 +882,115 @@ async def apply_optimization_recommendation(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to apply recommendation",
         )
+
+
+# =============================================================================
+# FlyEmbed Triple-Vector Embedding Endpoints
+# =============================================================================
+
+@router.post("/api/flyembed/embed", response_model=TripleEmbeddingResult)
+async def flyembed_embed(request: TripleEmbeddingRequest):
+    """Generate triple embeddings for a single function.
+
+    Args:
+        request: Triple embedding request with function data
+
+    Returns:
+        TripleEmbeddingResult with contract, semantic, and code embeddings
+    """
+    try:
+        service = get_flyembed_service()
+        result = await service.embed_function(request.model_dump())
+        return TripleEmbeddingResult(
+            function_id=result.function_id,
+            contract_embedding=result.contract_embedding,
+            semantic_embedding=result.semantic_embedding,
+            code_embedding=result.code_embedding,
+            contract_text=result.contract_text,
+            semantic_text=result.semantic_text,
+            code_text=result.code_text,
+            latency_ms=result.latency_ms,
+        )
+    except Exception as e:
+        logger.error(f"FlyEmbed embed failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate triple embeddings: {e}",
+        )
+
+
+@router.post("/api/flyembed/embed-batch", response_model=TripleEmbeddingBatchResponse)
+async def flyembed_embed_batch(request: TripleEmbeddingBatchRequest):
+    """Batch generate triple embeddings for multiple functions.
+
+    Args:
+        request: Batch of function data
+
+    Returns:
+        TripleEmbeddingBatchResponse with all results
+    """
+    try:
+        service = get_flyembed_service()
+        functions_data = [f.model_dump() for f in request.functions]
+        results = await service.embed_batch(functions_data)
+        return TripleEmbeddingBatchResponse(
+            results=[
+                TripleEmbeddingResult(
+                    function_id=r.function_id,
+                    contract_embedding=r.contract_embedding,
+                    semantic_embedding=r.semantic_embedding,
+                    code_embedding=r.code_embedding,
+                    contract_text=r.contract_text,
+                    semantic_text=r.semantic_text,
+                    code_text=r.code_text,
+                    latency_ms=r.latency_ms,
+                )
+                for r in results
+            ],
+            total_count=len(results),
+        )
+    except Exception as e:
+        logger.error(f"FlyEmbed batch embed failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to batch generate triple embeddings: {e}",
+        )
+
+
+@router.post("/api/flyembed/query", response_model=TripleQueryVector)
+async def flyembed_query(request: TripleQueryRequest):
+    """Generate triple query vectors for search.
+
+    Args:
+        request: Query request with search text
+
+    Returns:
+        TripleQueryVector with three query vectors
+    """
+    try:
+        service = get_flyembed_service()
+        result = await service.embed_query(request.query)
+        return TripleQueryVector(
+            query=result.query,
+            contract_vector=result.contract_vector,
+            semantic_vector=result.semantic_vector,
+            code_vector=result.code_vector,
+            dimensions=512,
+            latency_ms=result.latency_ms,
+        )
+    except Exception as e:
+        logger.error(f"FlyEmbed query failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate triple query vectors: {e}",
+        )
+
+
+@router.get("/api/flyembed/health")
+async def flyembed_health():
+    """Health check for FlyEmbed service.
+
+    Returns:
+        Status of the FlyEmbed service
+    """
+    return {"status": "healthy", "service": "flyembed"}

@@ -291,6 +291,20 @@ pub struct Config {
     /// Maximum number of distinct named queues allowed per function instance.
     #[arg(long, default_value = "16")]
     pub queue_max_queues: usize,
+
+    /// Enable seccomp-BPF syscall filtering after initialization.
+    /// When true, only syscalls in the runtime's allowlist are permitted.
+    /// Default: false (opt-in for now; will default to true in production).
+    #[arg(long, default_value = "false")]
+    pub enable_seccomp: bool,
+
+    /// Enable Linux network namespace isolation.
+    /// When true, the runtime process is moved to a new network namespace with
+    /// only the loopback interface available. Egress must be explicitly allowed
+    /// via --network-whitelist iptables rules.
+    /// Default: false (opt-in; requires CAP_NET_ADMIN).
+    #[arg(long, default_value = "false")]
+    pub enable_net_ns: bool,
 }
 
 impl Config {
@@ -307,7 +321,10 @@ impl Config {
             "medium" => BudgetTier::Medium,
             "high" => BudgetTier::High,
             _ => {
-                eprintln!("Warning: Unknown tier '{}', defaulting to UltraLow", self.tier);
+                eprintln!(
+                    "Warning: Unknown tier '{}', defaulting to UltraLow",
+                    self.tier
+                );
                 BudgetTier::UltraLow
             }
         }
@@ -335,7 +352,9 @@ impl Config {
         if self.memory_mb as usize > tier_specs.ram_gb * 1024 {
             return Err(format!(
                 "Memory limit {}MB exceeds {} tier maximum of {}MB",
-                self.memory_mb, self.tier, tier_specs.ram_gb * 1024
+                self.memory_mb,
+                self.tier,
+                tier_specs.ram_gb * 1024
             ));
         }
 
@@ -344,7 +363,11 @@ impl Config {
 
     /// Check if this tier supports MicroVM execution
     pub fn supports_microvm(&self) -> bool {
-        self.enterprise_enabled && matches!(self.get_budget_tier(), BudgetTier::High | BudgetTier::Medium)
+        self.enterprise_enabled
+            && matches!(
+                self.get_budget_tier(),
+                BudgetTier::High | BudgetTier::Medium
+            )
     }
 
     /// Check if CPython-WASM is enabled and available
@@ -406,8 +429,8 @@ impl Default for Config {
             package_caching_enabled: false,
             package_cache_dir: "./package-cache".to_string(),
             package_cache_size_mb: 1024,
-            max_output_bytes: 1024 * 1024,   // 1 MiB
-            max_input_bytes: 1024 * 1024,    // 1 MiB
+            max_output_bytes: 1024 * 1024, // 1 MiB
+            max_input_bytes: 1024 * 1024,  // 1 MiB
             microvm_fallback_allowed: true,
             cors_allow_origin: "*".to_string(),
             aot_cache_enabled: true,

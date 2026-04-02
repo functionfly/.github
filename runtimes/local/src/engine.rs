@@ -734,6 +734,38 @@ impl wasmtime::ResourceLimiter for FunctionMemoryLimiter {
     }
 }
 
+/// Thread-local storage for the per-execution memory limiter.
+///
+/// Because `Store<WasiP1Ctx>` uses an opaque data type that we cannot extend,
+/// we store the limiter in a thread-local and hand out `&mut` references to it
+/// through `store.limiter()`.  Each `spawn_blocking` task gets its own OS
+/// thread, so this is safe for concurrent execution.
+std::thread_local! {
+    static MEMORY_LIMITER: std::cell::RefCell<Option<FunctionMemoryLimiter>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Guard that clears the thread-local limiter on drop.
+struct LimiterGuard;
+
+impl Drop for LimiterGuard {
+    fn drop(&mut self) {
+        MEMORY_LIMITER.with(|cell| {
+            *cell.borrow_mut() = None;
+        });
+    }
+}
+
+/// Install the memory limiter for the current thread and return a guard that
+/// clears it when the execution is done.
+fn install_memory_limiter(memory_mb: u32) -> LimiterGuard {
+    let max_bytes = (memory_mb as usize) * 1024 * 1024;
+    MEMORY_LIMITER.with(|cell| {
+        *cell.borrow_mut() = Some(FunctionMemoryLimiter { max_bytes });
+    });
+    LimiterGuard
+}
+
 /// Synchronous WASI execution function for use in spawn_blocking.
 /// Accepts an optional pre-compiled module (from the AOT cache) to skip re-compilation.
 fn execute_wasi_sync_inner(
@@ -754,6 +786,22 @@ fn execute_wasi_sync_inner(
 
     // Create store with WASI context
     let mut store = Store::new(engine, wasi_ctx.ctx);
+
+    // Install the hard memory limiter via the thread-local mechanism.
+    // The `LimiterGuard` clears the thread-local on drop so subsequent
+    // executions on the same thread start clean.
+    let _limiter_guard = install_memory_limiter(config.memory_mb);
+    store.limiter(|_data| {
+        MEMORY_LIMITER.with(|cell| {
+            // Safety: the limiter is always Some while the guard is alive, and
+            // Wasmtime only calls this closure while the Store (and thus the
+            // guard on the same stack frame) is alive.
+            let ptr = cell.as_ptr();
+            unsafe { &mut *ptr }
+                .as_mut()
+                .expect("MEMORY_LIMITER must be set before Store is used")
+        })
+    });
 
     // Calibrated fuel metering: prefer timeout_ms × fuel_per_ms, else cpu_ms_limit × fuel_per_ms, else cpu_fuel_limit.
     let fuel_limit = if config.fuel_for_timeout() > 0 {

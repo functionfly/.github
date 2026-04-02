@@ -15,7 +15,7 @@ use tower_http::trace::TraceLayer;
 use crate::cache::ResultCache;
 use crate::config::Config;
 use crate::engine::{SharedState, WasmEngine};
-use crate::handlers::{execute_function, health_check, ready_check, monitoring_stats, budget_analysis, security_status, kv_status, webhook_status, orchestrator_status, prometheus_metrics, AppState};
+use crate::handlers::{execute_function, execute_function_daemon, health_check, ready_check, monitoring_stats, budget_analysis, security_status, kv_status, webhook_status, orchestrator_status, prometheus_metrics, AppState};
 use crate::kv::SharedKVStore;
 use crate::logging::{CorrelationId, StructuredLogger};
 use crate::monitoring::ResourceMonitor;
@@ -162,6 +162,7 @@ pub async fn run_server(
     // Build router
     let app = Router::new()
         .route("/", post(execute_function))
+        .route("/execute/{function_id}/{version}", post(execute_function_daemon))
         .route("/health", get(health_check))
         .route("/ready", get(ready_check))
         .route("/monitoring", get(monitoring_stats))
@@ -187,6 +188,41 @@ pub async fn run_server(
 
     // Start server
     let listener = tokio::net::TcpListener::bind(addr).await?;
+
+    // Apply network namespace isolation after binding (inherited socket still works)
+    if config.enable_net_ns {
+        logger.log_with_correlation(
+            crate::logging::LogLevel::Info,
+            "Applying network namespace isolation".to_string(),
+            &startup_correlation_id,
+        );
+        if let Err(e) = crate::netns::apply_net_namespace() {
+            logger.log_with_correlation(
+                crate::logging::LogLevel::Warn,
+                format!("Failed to apply network namespace: {}", e),
+                &startup_correlation_id,
+            );
+        }
+    }
+
+    // Apply seccomp-BPF profile after initialization is complete but before
+    // serving requests.  This limits the blast radius of any Wasmtime sandbox
+    // escape by restricting which host syscalls the runtime process can make.
+    if config.enable_seccomp {
+        logger.log_with_correlation(
+            crate::logging::LogLevel::Info,
+            "Applying seccomp-BPF syscall filter".to_string(),
+            &startup_correlation_id,
+        );
+        if let Err(e) = crate::seccomp::apply_seccomp_profile() {
+            logger.log_with_correlation(
+                crate::logging::LogLevel::Warn,
+                format!("Failed to apply seccomp profile: {}", e),
+                &startup_correlation_id,
+            );
+        }
+    }
+
     axum::serve(listener, app).await?;
 
     Ok(())

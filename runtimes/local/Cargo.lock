@@ -1175,6 +1175,7 @@ dependencies = [
  "hex",
  "hmac",
  "lettre",
+ "libc",
  "lru",
  "once_cell",
  "prometheus",

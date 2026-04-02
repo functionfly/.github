@@ -10,9 +10,10 @@ from datetime import datetime
 
 import redis.asyncio as redis
 
-from ...config import settings
+from ...config import settings, get_settings
 from ...integrations.orchestrator.client import get_orchestrator_client
 from ..embeddings import get_embeddings_service
+from ..flyembed import get_flyembed_service
 
 logger = logging.getLogger(__name__)
 
@@ -97,12 +98,24 @@ class SearchIndexer:
                 "metadata": function_data.get("metadata", {}),
                 "indexed_at": datetime.utcnow().isoformat(),
             }
+            mapping = {
+                "data": json.dumps(function_storage),
+                "embedding": json.dumps(embedding),
+            }
+
+            # Generate and store triple vectors (best-effort, don't fail indexing if this fails)
+            try:
+                flyembed = get_flyembed_service()
+                triple = await flyembed.embed_function(function_data)
+                mapping["contract_embedding"] = json.dumps(triple.contract_embedding)
+                mapping["semantic_embedding"] = json.dumps(triple.semantic_embedding)
+                mapping["code_embedding"] = json.dumps(triple.code_embedding)
+            except Exception as embed_err:
+                logger.warning(f"Failed to generate triple embeddings for {function_id}: {embed_err}")
+
             await redis_client.hset(
                 self._get_function_key(function_id),
-                mapping={
-                    "data": json.dumps(function_storage),
-                    "embedding": json.dumps(embedding),
-                },
+                mapping=mapping,
             )
 
             logger.info(f"Indexed function {function_id}")
@@ -258,6 +271,94 @@ class SearchIndexer:
 
         except Exception as e:
             logger.error(f"Search failed: {e}")
+            return []
+
+    async def search_triple(
+        self,
+        tenant_id: str,
+        query_vectors: dict,
+        limit: int = 20,
+    ) -> list[dict]:
+        """Search functions using triple-vector MaxSim scoring.
+
+        Args:
+            tenant_id: The tenant ID
+            query_vectors: Dict with contract_vector, semantic_vector, code_vector keys
+            limit: Maximum results to return
+
+        Returns:
+            List of matching functions with per-vector and combined scores
+        """
+        redis_client = await self.get_redis()
+        if not redis_client:
+            logger.error("Redis not available for triple search")
+            return []
+
+        try:
+            function_ids = await redis_client.smembers(
+                self._get_user_index_key(tenant_id),
+            )
+            if not function_ids:
+                return []
+
+            settings = get_settings()
+            weights = {
+                "contract": settings.flyembed_default_weight_contract,
+                "semantic": settings.flyembed_default_weight_semantic,
+                "code": settings.flyembed_default_weight_code,
+            }
+
+            results = []
+            for function_id in function_ids:
+                func_data = await redis_client.hgetall(
+                    self._get_function_key(function_id),
+                )
+                if not func_data:
+                    continue
+
+                try:
+                    contract_emb = json.loads(func_data.get("contract_embedding", "null"))
+                    semantic_emb = json.loads(func_data.get("semantic_embedding", "null"))
+                    code_emb = json.loads(func_data.get("code_embedding", "null"))
+                    function_data = json.loads(func_data["data"])
+
+                    if not (contract_emb and semantic_emb and code_emb):
+                        continue
+
+                    contract_sim = self._cosine_similarity(
+                        query_vectors.get("contract_vector", []), contract_emb
+                    )
+                    semantic_sim = self._cosine_similarity(
+                        query_vectors.get("semantic_vector", []), semantic_emb
+                    )
+                    code_sim = self._cosine_similarity(
+                        query_vectors.get("code_vector", []), code_emb
+                    )
+
+                    combined = (
+                        weights["contract"] * contract_sim
+                        + weights["semantic"] * semantic_sim
+                        + weights["code"] * code_sim
+                    )
+
+                    results.append({
+                        "function_id": function_id,
+                        "data": function_data,
+                        "contract_score": contract_sim,
+                        "semantic_score": semantic_sim,
+                        "code_score": code_sim,
+                        "triple_score": combined,
+                        "score": combined,
+                    })
+                except Exception as e:
+                    logger.warning(f"Failed to process function {function_id}: {e}")
+                    continue
+
+            results.sort(key=lambda x: x["score"], reverse=True)
+            return results[:limit]
+
+        except Exception as e:
+            logger.error(f"Triple search failed: {e}")
             return []
 
     def _cosine_similarity(

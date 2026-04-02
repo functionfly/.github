@@ -66,11 +66,8 @@ func runLogin(provider string, noBrowser bool, dev bool, emailFlag string) error
 	port := listener.Addr().(*net.TCPAddr).Port
 	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
 
-	// Get OAuth URL from API (includes our redirect_uri so callback sends token to this CLI)
-	authURL, err := getOAuthURLFromAPI(baseURL, provider, callbackURL)
-	if err != nil {
-		return fmt.Errorf("get OAuth URL: %w", err)
-	}
+	// Use auth.functionfly.com directly (like the dashboard)
+	authURL := buildAuthSiteLoginURL(provider, callbackURL)
 
 	fmt.Printf("🔐 Authenticating with %s...\n", provider)
 	if noBrowser {
@@ -192,6 +189,25 @@ func getOAuthURLFromAPI(baseURL, provider, redirectURI string) (string, error) {
 	return out.URL, nil
 }
 
+// buildAuthSiteLoginURL constructs the auth.functionfly.com login URL.
+// The auth site handles OAuth providers (GitHub/Google) and redirects back with the token.
+func buildAuthSiteLoginURL(provider, redirectURI string) string {
+	authSiteURL := os.Getenv("FFLY_AUTH_SITE_URL")
+	if authSiteURL == "" {
+		authSiteURL = "https://auth.functionfly.com"
+	}
+	authSiteURL = strings.TrimSuffix(authSiteURL, "/")
+
+	// Build redirect URL for after authentication
+	encodedRedirect := url.QueryEscape(redirectURI)
+
+	// Construct the login URL with provider hint
+	// The auth site will redirect to our callback with ?token=...
+	loginURL := fmt.Sprintf("%s/login?provider=%s&redirect_uri=%s", authSiteURL, url.QueryEscape(provider), encodedRedirect)
+
+	return loginURL
+}
+
 func openBrowser(url string) error {
 	var cmd string
 	var args []string
@@ -203,10 +219,26 @@ func openBrowser(url string) error {
 		cmd = "cmd"
 		args = []string{"/c", "start", url}
 	default:
-		cmd = "xdg-open"
-		args = []string{url}
+		if isWSL() {
+			cmd = "cmd"
+			args = []string{"/c", "start", url}
+		} else {
+			cmd = "xdg-open"
+			args = []string{url}
+		}
 	}
 	return exec.Command(cmd, args...).Start()
+}
+
+func isWSL() bool {
+	if runtime.GOOS != "linux" {
+		return false
+	}
+	data, err := os.ReadFile("/proc/version")
+	if err != nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(string(data)), "microsoft")
 }
 
 // runDevLogin uses POST /v1/auth/login with email/password (for local/dev API).

@@ -136,6 +136,15 @@ class Settings(BaseSettings):
     moderation_provider: str = "auto"  # auto | openai | detoxify | keywords
     openai_moderation_model: str = "omni-moderation-latest"
 
+    # FlyEmbed Triple-Vector Configuration
+    flyembed_model: str = "text-embedding-3-small"
+    flyembed_dimensions: int = 512
+    flyembed_default_weight_contract: float = 0.35
+    flyembed_default_weight_semantic: float = 0.40
+    flyembed_default_weight_code: float = 0.25
+    flyembed_batch_size: int = 10
+    flyembed_max_source_code_chars: int = 2000
+
 
 # Global settings instance
 settings = Settings()

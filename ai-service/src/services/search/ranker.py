@@ -184,6 +184,55 @@ class ResultRanker:
 
         return results
 
+    def rank_results_triple(
+        self,
+        results: List[Dict[str, Any]],
+        query: str,
+        weights: Optional[Dict[str, float]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Rank results using triple-vector scores + keyword + recency.
+
+        Args:
+            results: Triple search results with contract/semantic/code scores
+            query: Original search query
+            weights: Optional custom weights for contract/semantic/code
+
+        Returns:
+            Re-ranked results with final scores
+        """
+        if not results:
+            return []
+
+        if weights is None:
+            weights = {"contract": 0.35, "semantic": 0.40, "code": 0.25}
+
+        query_terms = query.lower().split()
+
+        for result in results:
+            # Triple score already computed in search_triple
+            triple_score = result.get("triple_score", 0.0)
+
+            # Keyword boost
+            keyword_score = self._calculate_keyword_score(result.get("data", {}), query_terms)
+
+            # Recency boost
+            recency_score = self._calculate_recency_score(result.get("data", {}))
+
+            result["final_score"] = (
+                triple_score * 0.5
+                + keyword_score * 0.3
+                + recency_score * 0.2
+            )
+            result["keyword_score"] = keyword_score
+            result["recency_score"] = recency_score
+
+        results.sort(key=lambda x: x.get("final_score", 0), reverse=True)
+
+        for i, result in enumerate(results):
+            result["rank"] = i + 1
+
+        return results
+
     def filter_results(
         self,
         results: List[Dict[str, Any]],

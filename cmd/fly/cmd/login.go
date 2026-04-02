@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/credentials"
@@ -57,11 +58,6 @@ func loginRun(cmd *cobra.Command, args []string) {
 		log.Fatalf("Invalid provider '%s'. Supported: github, google", provider)
 	}
 
-	baseURL := os.Getenv("FFLY_API_URL")
-	if baseURL == "" {
-		baseURL = "https://api.functionfly.com"
-	}
-
 	// Local server to receive the redirect with token
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -70,10 +66,8 @@ func loginRun(cmd *cobra.Command, args []string) {
 	port := listener.Addr().(*net.TCPAddr).Port
 	callbackURL := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
 
-	authURL, err := getOAuthURL(baseURL, provider, callbackURL)
-	if err != nil {
-		log.Fatalf("Failed to get login URL: %v", err)
-	}
+	// Use auth.functionfly.com directly (like the dashboard)
+	authURL := buildAuthSiteLoginURL(provider, callbackURL)
 
 	fmt.Printf("Logging in with %s...\n", provider)
 	if openBrowser {
@@ -127,6 +121,10 @@ func loginRun(cmd *cobra.Command, args []string) {
 	_ = server.Shutdown(context.Background())
 
 	// Fetch user info and save credentials
+	baseURL := os.Getenv("FFLY_API_URL")
+	if baseURL == "" {
+		baseURL = "https://api.functionfly.com"
+	}
 	creds, err := fetchUserAndBuildCredentials(baseURL, token, provider)
 	if err != nil {
 		log.Fatalf("Failed to save credentials: %v", err)
@@ -172,6 +170,25 @@ func getOAuthURL(baseURL, provider, redirectURI string) (string, error) {
 		return "", fmt.Errorf("API returned empty login URL")
 	}
 	return out.URL, nil
+}
+
+// buildAuthSiteLoginURL constructs the auth.functionfly.com login URL.
+// The auth site handles OAuth providers (GitHub/Google) and redirects back with the token.
+func buildAuthSiteLoginURL(provider, redirectURI string) string {
+	authSiteURL := os.Getenv("FFLY_AUTH_SITE_URL")
+	if authSiteURL == "" {
+		authSiteURL = "https://auth.functionfly.com"
+	}
+	authSiteURL = strings.TrimSuffix(authSiteURL, "/")
+
+	// Build redirect URL for after authentication
+	encodedRedirect := url.QueryEscape(redirectURI)
+
+	// Construct the login URL with provider hint
+	// The auth site will redirect to our callback with ?token=...
+	loginURL := fmt.Sprintf("%s/login?provider=%s&redirect_uri=%s", authSiteURL, url.QueryEscape(provider), encodedRedirect)
+
+	return loginURL
 }
 
 func fetchUserAndBuildCredentials(baseURL, token, provider string) (*credentials.Credentials, error) {
@@ -221,7 +238,22 @@ func openBrowserTo(u string) error {
 	case "windows":
 		name, args = "cmd", []string{"/c", "start", u}
 	default:
-		name, args = "xdg-open", []string{u}
+		if isWSL() {
+			name, args = "cmd", []string{"/c", "start", u}
+		} else {
+			name, args = "xdg-open", []string{u}
+		}
 	}
 	return exec.Command(name, args...).Start()
+}
+
+func isWSL() bool {
+	if runtime.GOOS != "linux" {
+		return false
+	}
+	data, err := os.ReadFile("/proc/version")
+	if err != nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(string(data)), "microsoft")
 }

@@ -154,6 +154,14 @@ var DebugMode = false
 var VerboseMode = false
 var TraceMode = false
 
+// WantJSON returns true if the user wants JSON output (via --json flag or FFLY_JSON env var).
+func WantJSON() bool {
+	if os.Getenv("FFLY_JSON") == "1" {
+		return true
+	}
+	return false
+}
+
 // InitDebugFlags initializes the debug/verbose/trace flags on a cobra command.
 // This should be called in the init() function of each command that needs these flags.
 func InitDebugFlags(cmd *cobra.Command) {

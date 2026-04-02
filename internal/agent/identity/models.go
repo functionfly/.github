@@ -354,6 +354,17 @@ func (EvolutionProposal) TableName() string {
 	return "agent_evolution_proposals"
 }
 
+// SetProposalData sets the ProposalData field from a generic map.
+// It marshals the map to JSON and stores it, allowing dynamic proposal data to be persisted.
+func (p *EvolutionProposal) SetProposalData(data map[string]any) error {
+	if data == nil {
+		p.ProposalData = make(map[string]any)
+		return nil
+	}
+	p.ProposalData = data
+	return nil
+}
+
 // AutonomySchedule represents a scheduled or triggered execution
 type AutonomySchedule struct {
 	ID               uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`

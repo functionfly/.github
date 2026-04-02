@@ -357,6 +357,11 @@ class SearchQuery(BaseModel):
     query: str = Field(..., min_length=1, max_length=500)
     limit: int = Field(default=20, ge=1, le=50)
     filters: Optional[Dict[str, Any]] = None
+    use_triple: bool = Field(default=True, description="Enable triple-vector search")
+    weights: Optional[Dict[str, float]] = Field(
+        default=None,
+        description="Custom weights for contract/semantic/code triple scoring"
+    )
 
 
 class SearchResult(BaseModel):
@@ -506,3 +511,62 @@ class ExecutionResult(BaseModel):
     error: Optional[str] = None
     started_at: datetime
     completed_at: datetime
+
+
+# =============================================================================
+# FlyEmbed Triple-Vector Embedding Schemas
+# =============================================================================
+
+class TripleEmbeddingRequest(BaseModel):
+    """Request to generate triple embeddings for a function."""
+    function_id: str
+    name: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    manifest: Dict[str, Any] = Field(default_factory=dict)
+    source_code: Optional[str] = None
+    runtime: Optional[str] = None
+    capabilities: List[str] = Field(default_factory=list)
+
+
+class TripleEmbeddingResult(BaseModel):
+    """Response with triple embeddings for a function."""
+    function_id: str
+    contract_embedding: List[float]
+    semantic_embedding: List[float]
+    code_embedding: List[float]
+    contract_text: str
+    semantic_text: str
+    code_text: str
+    embedding_model: str = "flyembed-v1"
+    dimensions: int = 512
+    latency_ms: float = 0.0
+
+
+class TripleQueryRequest(BaseModel):
+    """Request to generate triple query vectors for search."""
+    query: str = Field(..., min_length=1, max_length=500)
+
+
+class TripleQueryVector(BaseModel):
+    """Triple query vectors for search."""
+    query: str
+    contract_vector: List[float]
+    semantic_vector: List[float]
+    code_vector: List[float]
+    dimensions: int = 512
+    latency_ms: float = 0.0
+
+
+class TripleEmbeddingBatchRequest(BaseModel):
+    """Request to batch generate triple embeddings."""
+    functions: List[TripleEmbeddingRequest] = Field(..., max_length=50)
+
+
+class TripleEmbeddingBatchResponse(BaseModel):
+    """Response for batch triple embeddings."""
+    results: List[TripleEmbeddingResult]
+    total_count: int
+    latency_ms: float = 0.0

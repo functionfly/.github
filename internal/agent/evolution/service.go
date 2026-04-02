@@ -209,6 +209,28 @@ func (s *Service) ApproveProposal(ctx context.Context, proposalID uuid.UUID, app
 	return &proposal, nil
 }
 
+// RejectProposal rejects an evolution proposal.
+func (s *Service) RejectProposal(ctx context.Context, proposalID uuid.UUID, rejectedBy string) (*identity.EvolutionProposal, error) {
+	var proposal identity.EvolutionProposal
+	if err := s.db.WithContext(ctx).Where("id = ?", proposalID).First(&proposal).Error; err != nil {
+		return nil, err
+	}
+
+	if proposal.Status != "pending" {
+		return nil, fmt.Errorf("proposal is not pending")
+	}
+
+	proposal.Status = "rejected"
+	proposal.ApprovedBy = &rejectedBy
+	proposal.UpdatedAt = time.Now()
+
+	if err := s.db.WithContext(ctx).Save(&proposal).Error; err != nil {
+		return nil, err
+	}
+
+	return &proposal, nil
+}
+
 // ImplementProposal implements an approved evolution proposal
 func (s *Service) ImplementProposal(ctx context.Context, proposalID uuid.UUID) error {
 	var proposal identity.EvolutionProposal

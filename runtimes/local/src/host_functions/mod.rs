@@ -98,7 +98,13 @@ impl HostFunctionsLinker {
                 .as_ref()
                 .context("KV store required for kv capability")?
                 .clone();
-            let namespace = self.config.function_key();
+            // Use tenant_id:function_key as namespace for cross-tenant isolation.
+            // If tenant_id is not set (e.g. local dev), fall back to function_key only.
+            let namespace = if let Some(ref tenant_id) = self.config.tenant_id {
+                format!("{}:{}", tenant_id, self.config.function_key())
+            } else {
+                self.config.function_key()
+            };
             kv::add_kv_functions_namespaced(kv_store, namespace, linker)?;
         }
 

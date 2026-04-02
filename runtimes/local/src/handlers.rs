@@ -1,7 +1,7 @@
 //! HTTP handlers for the local runtime.
 
 use axum::{
-    extract::{Json, State},
+    extract::{Json, Path, State},
     response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
@@ -44,6 +44,25 @@ pub struct AppState {
 pub struct ExecuteRequest {
     /// Input to the function
     pub input: Option<String>,
+    /// Tenant ID for KV namespace isolation (optional; falls back to config).
+    pub tenant_id: Option<String>,
+}
+
+/// Daemon execution request (from SandboxClient)
+#[derive(Debug, Deserialize)]
+pub struct DaemonExecuteRequest {
+    /// Base64-encoded WASM binary
+    pub wasm_binary: String,
+    /// Base64-encoded AOT-compiled module bytes (optional, avoids JIT compilation)
+    pub wasm_compiled: Option<String>,
+    /// Input to the function
+    pub input: String,
+    /// Timeout in milliseconds
+    pub timeout_ms: Option<u64>,
+    /// Memory limit in MB
+    pub memory_mb: Option<u32>,
+    /// Tenant ID for KV namespace isolation
+    pub tenant_id: Option<String>,
 }
 
 /// Execute response
@@ -543,6 +562,109 @@ pub async fn orchestrator_status(
             .unwrap_or_default()
             .as_secs()
     })).into_response()
+}
+
+/// Execute a function via the daemon endpoint (Phase 3.2).
+///
+/// This handler is used by SandboxClient when the runtime runs in daemon mode.
+/// It receives the WASM binary (base64) and per-request resource limits,
+/// allowing a single runtime process to serve multiple functions with
+/// independent memory/CPU/timeout constraints.
+pub async fn execute_function_daemon(
+    State(state): State<Arc<AppState>>,
+    Path((function_id, version)): Path<(String, String)>,
+    Json(payload): Json<DaemonExecuteRequest>,
+) -> axum::response::Response {
+    let correlation_id = state.logger.generate_correlation_id().await;
+
+    // Decode the WASM binary from base64
+    let wasm_bytes = match base64_decode(&payload.wasm_binary) {
+        Ok(bytes) => bytes,
+        Err(e) => return ErrorResponse {
+            error: format!("Failed to decode wasm_binary: {}", e),
+            correlation_id: Some(correlation_id.to_string()),
+            recovery_suggestions: vec!["Ensure wasm_binary is valid base64".to_string()],
+        }.into_response(),
+    };
+
+    // Build a temporary config with per-request resource limits
+    let mut exec_config = state.config.clone();
+    exec_config.function = function_id.clone();
+    exec_config.version = version.clone();
+    if let Some(ms) = payload.timeout_ms {
+        exec_config.timeout_ms = ms;
+    }
+    if let Some(mb) = payload.memory_mb {
+        exec_config.memory_mb = mb;
+    }
+    // Use tenant_id from request for KV namespace isolation
+    if let Some(ref tid) = payload.tenant_id {
+        exec_config.tenant_id = Some(tid.clone());
+    }
+
+    let start = std::time::Instant::now();
+
+    // Execute using the engine with per-request config
+    let result = match state.engine.execute(&wasm_bytes, &payload.input, &exec_config).await {
+        Ok(output) => output,
+        Err(e) => return ErrorResponse {
+            error: format!("Execution failed: {}", e),
+            correlation_id: Some(correlation_id.to_string()),
+            recovery_suggestions: vec![
+                "Check that the WASM binary is valid".to_string(),
+                "Verify resource limits are sufficient".to_string(),
+            ],
+        }.into_response(),
+    };
+
+    let exec_time = start.elapsed().as_millis() as u64;
+
+    state.logger.log_function_execution(
+        &correlation_id,
+        &function_id,
+        exec_time,
+        true,
+        false,
+    );
+
+    Json(ExecuteResponse {
+        result,
+        exec_time_ms: exec_time,
+        cache_hit: false,
+        instance_id: Uuid::new_v4().to_string(),
+        function: function_id,
+        version,
+    }).into_response()
+}
+
+/// Simple base64 decoder (standard alphabet, no padding enforcement).
+fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
+    // Use a simple approach without adding a dependency
+    let input = input.replace('\n', "").replace('\r', "").replace(' ', "");
+    let mut output = Vec::new();
+    let mut buf: u32 = 0;
+    let mut bits: u32 = 0;
+
+    for ch in input.bytes() {
+        let val = match ch {
+            b'A'..=b'Z' => (ch - b'A') as u32,
+            b'a'..=b'z' => (ch - b'a' + 26) as u32,
+            b'0'..=b'9' => (ch - b'0' + 52) as u32,
+            b'+' => 62,
+            b'/' => 63,
+            b'=' => break, // padding
+            _ => return Err(format!("Invalid base64 character: {}", ch as char)),
+        };
+        buf = (buf << 6) | val;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            output.push((buf >> bits) as u8);
+            buf &= (1 << bits) - 1;
+        }
+    }
+
+    Ok(output)
 }
 
 /// Prometheus metrics handler.
