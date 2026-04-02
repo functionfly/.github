@@ -1,7 +1,4 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "projectId": "prj_02XSPbSvrU1EI1k5w5kZbP2uJeXl",
-  "orgId": "team_zmVgVCsjTYfNBDhLZDd4vBa2",
   "buildCommand": "cd web/site && bun run astro build",
   "outputDirectory": "web/site/dist",
   "installCommand": "bun install",
