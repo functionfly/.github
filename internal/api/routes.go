@@ -178,6 +178,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	}
 	registryRepo := registry.NewRegistryRepository(s.postgresDB.GORM, registryCache)
 
+	// Initialize the persistent SandboxClient daemon for function execution.
+	// This replaces per-request process spawning with a single long-lived runtime.
+	if err := registryexecution.InitSandboxClient(); err != nil {
+		logrus.WithError(err).Warn("Failed to init SandboxClient daemon, falling back to per-request executor")
+	}
+
 	edgeCache := cache.NewEdgeCacheService(
 		cacheService.GetRegistryCache(),
 		cdnService,
@@ -185,7 +191,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	)
 	edgeCache.SetRepository(registryRepo)
 
-	registryHandler := registryhandler.NewHandler(registryRepo, s.repo, cacheService, cdnService, edgeCache, s.realtimeMonitor, platformFeeRepo)
+	registryHandler := registryhandler.NewHandler(registryRepo, s.repo, cacheService, cdnService, edgeCache, s.realtimeMonitor, platformFeeRepo, s.recommendationSvc)
 	adminRegistryHandler := admin.NewRegistryHandler(registryRepo, cacheService)
 	oversightHandler := admin.NewOversightHandler(registryRepo, s.postgresDB.GORM, nil)
 	docsHandler := registryhandler.NewDocumentationHandler(registryRepo)

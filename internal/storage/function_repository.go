@@ -499,6 +499,17 @@ func (r *FunctionRepository) GetFunctionLogs(ctx context.Context, functionID *uu
 	return logs, nil
 }
 
+// DeleteFunctionLogsOlderThan deletes function log entries older than the cutoff time and returns the number deleted.
+func (r *FunctionRepository) DeleteFunctionLogsOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
+	result, err := r.db.ExecContext(ctx, `
+		DELETE FROM function_logs WHERE timestamp < $1`,
+		cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete old function logs: %w", err)
+	}
+	return result.RowsAffected()
+}
+
 // UsageByDay is a single day's usage count for dashboard
 type UsageByDay struct {
 	Time  string `json:"time"` // date as YYYY-MM-DD or formatted for display

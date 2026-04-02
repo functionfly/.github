@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"crypto/ed25519"
 	"encoding/json"
 	"fmt"
@@ -13,19 +14,21 @@ import (
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
 // Handler contains registry API handlers
 type Handler struct {
-	repo            *registry.RegistryRepository
-	backendRepo     storage.Repository
-	cacheService    *cache.CacheService
-	cdnService      *cache.CDNService
-	edgeCache       *cache.EdgeCacheService
-	realtimeMonitor *monitoring.RealtimeMonitor
+	repo              *registry.RegistryRepository
+	backendRepo       storage.Repository
+	cacheService     *cache.CacheService
+	cdnService       *cache.CDNService
+	edgeCache        *cache.EdgeCacheService
+	realtimeMonitor  *monitoring.RealtimeMonitor
 	platformFeeRepo  *registry.PlatformFeeRepository
+	recommendationSvc interface{ EmbedFunctionViaAIService(ctx context.Context, functionID uuid.UUID, name, title, description, category string, tags []string, manifest map[string]interface{}, sourceCode, runtime string, capabilities []string) error }
 	// DRE execution node config (optional): when set, FXCERTs are signed
 	dreNodeKey      ed25519.PrivateKey
 	drePlatformKey  ed25519.PrivateKey
@@ -35,15 +38,25 @@ type Handler struct {
 
 // NewHandler creates a new registry handler.
 // DRE node key is loaded from env (DRE_NODE_PRIVATE_KEY or DRE_NODE_PRIVATE_KEY_PATH); when set, FXCERTs are signed.
-func NewHandler(repo *registry.RegistryRepository, backendRepo storage.Repository, cacheService *cache.CacheService, cdnService *cache.CDNService, edgeCache *cache.EdgeCacheService, realtimeMonitor *monitoring.RealtimeMonitor, platformFeeRepo *registry.PlatformFeeRepository) *Handler {
+func NewHandler(
+	repo *registry.RegistryRepository,
+	backendRepo storage.Repository,
+	cacheService *cache.CacheService,
+	cdnService *cache.CDNService,
+	edgeCache *cache.EdgeCacheService,
+	realtimeMonitor *monitoring.RealtimeMonitor,
+	platformFeeRepo *registry.PlatformFeeRepository,
+	recommendationSvc interface{ EmbedFunctionViaAIService(ctx context.Context, functionID uuid.UUID, name, title, description, category string, tags []string, manifest map[string]interface{}, sourceCode, runtime string, capabilities []string) error },
+) *Handler {
 	h := &Handler{
-		repo:            repo,
-		backendRepo:     backendRepo,
-		cacheService:    cacheService,
-		cdnService:      cdnService,
-		edgeCache:       edgeCache,
-		realtimeMonitor: realtimeMonitor,
-		platformFeeRepo: platformFeeRepo,
+		repo:              repo,
+		backendRepo:       backendRepo,
+		cacheService:     cacheService,
+		cdnService:       cdnService,
+		edgeCache:        edgeCache,
+		realtimeMonitor:  realtimeMonitor,
+		platformFeeRepo:  platformFeeRepo,
+		recommendationSvc: recommendationSvc,
 	}
 	key, nodeID, region, err := dre.LoadNodeKeyFromEnv()
 	if err != nil {

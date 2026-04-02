@@ -51,6 +51,7 @@ type SandboxExecutor struct {
 	wasmHash       string // SHA-256 hash of the loaded WASM binary
 	fnVersion      *storage.RegistryFunctionVersion
 	enterpriseConf *EnterpriseExecutionConfig
+	tenantID       string // Tenant UUID for KV namespace isolation
 }
 
 // hashWasmBinary computes a hex-encoded SHA-256 hash of the given WASM bytes.
@@ -255,6 +256,16 @@ func (se *SandboxExecutor) ensureRuntimeRunning(ctx context.Context, wasmPath st
 		"--memory-mb", fmt.Sprintf("%d", maxMemoryMB),
 		"--function", fnVersion.FunctionID.String(),
 		"--version", fnVersion.Version,
+	}
+
+	// Add tenant-id for KV namespace isolation when available.
+	// Enterprise config has priority, then the executor's tenantID field.
+	tenantID := se.tenantID
+	if se.enterpriseConf != nil && se.enterpriseConf.TenantID != "" {
+		tenantID = se.enterpriseConf.TenantID
+	}
+	if tenantID != "" {
+		args = append(args, "--tenant-id", tenantID)
 	}
 
 	// Add capabilities if declared in function version
@@ -535,6 +546,59 @@ func findLocalRuntime() (string, error) {
 	return "", fmt.Errorf("local runtime not found, searched: %v", paths)
 }
 
+// ---------------------------------------------------------------------------
+// Global SandboxClient for daemon mode (Phase 3.1)
+//
+// When initialized at server startup, the global SandboxClient replaces the
+// per-request SandboxExecutor, eliminating the ~200ms process-spawn overhead.
+// If not initialized, execution falls back to the legacy per-request path.
+// ---------------------------------------------------------------------------
+
+var (
+	globalSandboxClient *SandboxClient
+	globalClientMu      sync.Mutex
+)
+
+// InitSandboxClient starts the persistent runtime daemon and stores it as
+// the global execution client. Call this once at server startup.
+// Returns an error if the daemon cannot be started.
+func InitSandboxClient() error {
+	globalClientMu.Lock()
+	defer globalClientMu.Unlock()
+
+	if globalSandboxClient != nil {
+		return nil // already initialized
+	}
+
+	client, err := NewSandboxClient("")
+	if err != nil {
+		return fmt.Errorf("failed to initialize sandbox daemon: %w", err)
+	}
+	globalSandboxClient = client
+	logrus.Info("SandboxClient daemon initialized successfully")
+	return nil
+}
+
+// ShutdownSandboxClient stops the persistent runtime daemon.
+// Call this during server shutdown.
+func ShutdownSandboxClient() {
+	globalClientMu.Lock()
+	defer globalClientMu.Unlock()
+
+	if globalSandboxClient != nil {
+		globalSandboxClient.Close()
+		globalSandboxClient = nil
+		logrus.Info("SandboxClient daemon shut down")
+	}
+}
+
+// getGlobalSandboxClient returns the global client if initialized.
+func getGlobalSandboxClient() *SandboxClient {
+	globalClientMu.Lock()
+	defer globalClientMu.Unlock()
+	return globalSandboxClient
+}
+
 // ExecuteLocally runs a registry function version locally (sandbox/WASM) with the given resource limits.
 // It is the exported entry point for use by flywheel and other callers that need to run registry functions.
 // Pass fn=nil, backendRepo=nil when tenant context is not available (enterprise MicroVM will be disabled).
@@ -545,7 +609,37 @@ func ExecuteLocally(fnVersion *storage.RegistryFunctionVersion, input json.RawMe
 // executeLocallyWithLimits executes a function locally with specific resource limits.
 // fn and backendRepo are optional; when provided and tenant has enterprise plan, enables MicroVM for python-microvm runtime.
 func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input json.RawMessage, maxMemoryMB, maxCPUTimeMs int, fn *storage.RegistryFunction, backendRepo storage.Repository) (json.RawMessage, error) {
-	// Create sandbox executor
+	// Try the persistent daemon client first (Phase 3.1)
+	if client := getGlobalSandboxClient(); client != nil && len(fnVersion.WasmBinary) > 0 {
+		inputBytes, err := json.Marshal(input)
+		if err != nil {
+			return nil, &ExecutionError{
+				Err: fmt.Errorf("failed to marshal input: %w", err),
+				ResourceUsage: &ResourceUsage{
+					MaxMemoryMB:  maxMemoryMB,
+					MaxCPUTimeMs: maxCPUTimeMs,
+				},
+				TerminatedBy: "error",
+			}
+		}
+		output, err := client.Execute(fnVersion, inputBytes, fnVersion.TimeoutMs)
+		if err != nil {
+			// If the daemon is down, fall back to per-request executor
+			if !client.IsRunning() {
+				logrus.Warn("SandboxClient daemon is not running, falling back to per-request executor")
+			} else {
+				return nil, &ExecutionError{
+					Err:           fmt.Errorf("daemon execution failed: %w", err),
+					ResourceUsage: &ResourceUsage{MaxMemoryMB: maxMemoryMB, MaxCPUTimeMs: maxCPUTimeMs},
+					TerminatedBy:  "error",
+				}
+			}
+		} else {
+			return json.RawMessage(output), nil
+		}
+	}
+
+	// Legacy: per-request sandbox executor
 	executor, err := NewSandboxExecutor()
 	if err != nil {
 		return nil, &ExecutionError{
@@ -573,6 +667,12 @@ func executeLocallyWithLimits(fnVersion *storage.RegistryFunctionVersion, input 
 	}
 
 	enterpriseConf := buildEnterpriseConfig(fnVersion, fn, backendRepo)
+
+	// Set tenant ID for KV namespace isolation (available for all plans, not just enterprise)
+	if fn != nil && fn.TenantID != nil {
+		executor.tenantID = fn.TenantID.String()
+	}
+
 	output, err := executor.ExecuteFunctionWithLimits(fnVersion, inputBytes, fnVersion.TimeoutMs, maxMemoryMB, maxCPUTimeMs, enterpriseConf)
 	if err != nil {
 		if execErr, ok := err.(*ExecutionError); ok {
@@ -599,9 +699,9 @@ type microvmManifestExtras struct {
 			Packages []string `json:"packages"`
 		} `json:"python"`
 		Enterprise *struct {
-			NetworkAllowlist         []string `json:"network_allowlist"`
-			PackageCacheEnabled      *bool    `json:"package_cache_enabled"`
-			StrictNetworkWhitelist   *bool    `json:"strict_network_whitelist"`
+			NetworkAllowlist       []string `json:"network_allowlist"`
+			PackageCacheEnabled    *bool    `json:"package_cache_enabled"`
+			StrictNetworkWhitelist *bool    `json:"strict_network_whitelist"`
 		} `json:"enterprise"`
 	} `json:"function"`
 	Python *struct {
@@ -985,12 +1085,13 @@ func (sc *SandboxClient) Execute(fnVersion *storage.RegistryFunctionVersion, inp
 		fnVersion.Version,
 	)
 
-	// Request body: wasm_binary (base64) + input
+	// Request body: wasm_binary (base64) + wasm_compiled (base64, optional) + input
 	type execRequest struct {
-		WasmBinary string `json:"wasm_binary"` // base64-encoded
-		Input      string `json:"input"`
-		TimeoutMs  int    `json:"timeout_ms"`
-		MemoryMB   int    `json:"memory_mb"`
+		WasmBinary   string `json:"wasm_binary"`             // base64-encoded
+		WasmCompiled string `json:"wasm_compiled,omitempty"` // base64-encoded AOT .cwasm
+		Input        string `json:"input"`
+		TimeoutMs    int    `json:"timeout_ms"`
+		MemoryMB     int    `json:"memory_mb"`
 	}
 
 	reqBody := execRequest{
@@ -998,6 +1099,11 @@ func (sc *SandboxClient) Execute(fnVersion *storage.RegistryFunctionVersion, inp
 		Input:      string(input),
 		TimeoutMs:  timeoutMs,
 		MemoryMB:   fnVersion.MemoryMB,
+	}
+
+	// Include precompiled module bytes if available (avoids JIT compilation)
+	if len(fnVersion.WasmCompiled) > 0 {
+		reqBody.WasmCompiled = base64.StdEncoding.EncodeToString(fnVersion.WasmCompiled)
 	}
 
 	jsonBody, err := json.Marshal(reqBody)

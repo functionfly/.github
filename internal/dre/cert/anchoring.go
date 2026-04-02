@@ -115,7 +115,7 @@ func (s *EthereumAnchoringService) Anchor(ctx context.Context, req *AnchorReques
 	if chain == "" {
 		chain = DefaultChain
 	}
-	if !isChainSupported(chain) {
+	if !IsChainSupported(chain) {
 		return nil, fmt.Errorf("cert: unsupported chain: %s", chain)
 	}
 	if req.ExecutionRootHash == "" {
@@ -166,8 +166,8 @@ func (s *EthereumAnchoringService) GetBlockNumber(ctx context.Context, chain str
 	return s.getBlockNumberOnChain(ctx, chain)
 }
 
-// isChainSupported checks if a chain is supported.
-func isChainSupported(chain string) bool {
+// IsChainSupported checks if a chain is supported.
+func IsChainSupported(chain string) bool {
 	for _, c := range SupportedChains {
 		if c == chain {
 			return true

@@ -32,6 +32,7 @@ func (r *Repository) AutoMigrate() error {
 		&CategorySimilarity{},
 		&RecommendationFeedback{},
 		&FunctionEmbedding{},
+		&FunctionEmbeddingTriple{},
 	)
 }
 
@@ -523,4 +524,160 @@ func (r *Repository) SearchFunctionEmbeddingsByVector(ctx context.Context, query
 	var out []*FunctionEmbeddingWithDistance
 	err := r.db.WithContext(ctx).Raw(sql, args...).Scan(&out).Error
 	return out, err
+}
+
+// vectorToSlice converts a float32 slice to a pgvector-compatible string.
+func vectorToSlice(v []float32) string {
+	if len(v) == 0 {
+		return "[]"
+	}
+	s := "["
+	for i, f := range v {
+		if i > 0 {
+			s += ","
+		}
+		s += fmt.Sprintf("%.6f", f)
+	}
+	s += "]"
+	return s
+}
+
+// UpsertFunctionEmbeddingTriple creates or updates triple embeddings for a function.
+func (r *Repository) UpsertFunctionEmbeddingTriple(ctx context.Context, t *FunctionEmbeddingTriple) error {
+	t.ComputedAt = time.Now()
+	return r.db.WithContext(ctx).
+		Where("function_id = ?", t.FunctionID).
+		Assign(FunctionEmbeddingTriple{
+			ContractEmbedding: t.ContractEmbedding,
+			SemanticEmbedding: t.SemanticEmbedding,
+			CodeEmbedding:     t.CodeEmbedding,
+			ContractText:      t.ContractText,
+			SemanticText:      t.SemanticText,
+			CodeText:          t.CodeText,
+			EmbeddingModel:    t.EmbeddingModel,
+			EmbeddingVersion:  t.EmbeddingVersion,
+			ComputedAt:        t.ComputedAt,
+		}).
+		FirstOrCreate(t).Error
+}
+
+// GetFunctionEmbeddingTriple returns the triple embedding for a function, or nil.
+func (r *Repository) GetFunctionEmbeddingTriple(ctx context.Context, functionID uuid.UUID) (*FunctionEmbeddingTriple, error) {
+	var t FunctionEmbeddingTriple
+	err := r.db.WithContext(ctx).Where("function_id = ?", functionID).First(&t).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// SearchByTripleVector performs weighted MaxSim across all three vector columns.
+// Returns top `limit` functions ordered by combined weighted score.
+func (r *Repository) SearchByTripleVector(ctx context.Context, contractVec, semanticVec, codeVec []float32, weights TripleSearchWeights, limit int, excludeID *uuid.UUID) ([]TripleSearchResult, error) {
+	cVec := vectorToSlice(contractVec)
+	sVec := vectorToSlice(semanticVec)
+	codeVecStr := vectorToSlice(codeVec)
+
+	var args []interface{}
+	sql := `SELECT function_id,
+		1 - (contract_embedding <=> $1::vector) AS contract_score,
+		1 - (semantic_embedding <=> $2::vector) AS semantic_score,
+		1 - (code_embedding <=> $3::vector) AS code_score,
+		($4 * (1 - (contract_embedding <=> $1::vector))) +
+		($5 * (1 - (semantic_embedding <=> $2::vector))) +
+		($6 * (1 - (code_embedding <=> $3::vector))) AS combined_score
+	FROM function_embedding_triples
+	WHERE contract_embedding IS NOT NULL
+		AND semantic_embedding IS NOT NULL
+		AND code_embedding IS NOT NULL`
+
+	argIdx := 4
+	args = append(args, cVec, sVec, codeVecStr, weights.Contract, weights.Semantic, weights.Code)
+
+	if excludeID != nil {
+		sql += fmt.Sprintf(" AND function_id != $%d", argIdx)
+		args = append(args, *excludeID)
+		argIdx++
+	}
+
+	sql += fmt.Sprintf(" ORDER BY combined_score DESC LIMIT $%d", argIdx)
+	args = append(args, limit)
+
+	var results []TripleSearchResult
+	err := r.db.WithContext(ctx).Raw(sql, args...).Scan(&results).Error
+	return results, err
+}
+
+// SearchByContractVector searches by contract vector only (for schema matching).
+func (r *Repository) SearchByContractVector(ctx context.Context, vector []float32, limit int) ([]TripleSearchResult, error) {
+	vec := vectorToSlice(vector)
+	sql := `SELECT function_id,
+		1 - (contract_embedding <=> $1::vector) AS contract_score,
+		0.0 AS semantic_score,
+		0.0 AS code_score,
+		1 - (contract_embedding <=> $1::vector) AS combined_score
+	FROM function_embedding_triples
+	WHERE contract_embedding IS NOT NULL
+	ORDER BY contract_embedding <=> $1::vector
+	LIMIT $2`
+	var results []TripleSearchResult
+	err := r.db.WithContext(ctx).Raw(sql, vec, limit).Scan(&results).Error
+	return results, err
+}
+
+// SearchBySemanticVector searches by semantic vector only.
+func (r *Repository) SearchBySemanticVector(ctx context.Context, vector []float32, limit int) ([]TripleSearchResult, error) {
+	vec := vectorToSlice(vector)
+	sql := `SELECT function_id,
+		0.0 AS contract_score,
+		1 - (semantic_embedding <=> $1::vector) AS semantic_score,
+		0.0 AS code_score,
+		1 - (semantic_embedding <=> $1::vector) AS combined_score
+	FROM function_embedding_triples
+	WHERE semantic_embedding IS NOT NULL
+	ORDER BY semantic_embedding <=> $1::vector
+	LIMIT $2`
+	var results []TripleSearchResult
+	err := r.db.WithContext(ctx).Raw(sql, vec, limit).Scan(&results).Error
+	return results, err
+}
+
+// SearchByCodeVector searches by code vector only.
+func (r *Repository) SearchByCodeVector(ctx context.Context, vector []float32, limit int) ([]TripleSearchResult, error) {
+	vec := vectorToSlice(vector)
+	sql := `SELECT function_id,
+		0.0 AS contract_score,
+		0.0 AS semantic_score,
+		1 - (code_embedding <=> $1::vector) AS code_score,
+		1 - (code_embedding <=> $1::vector) AS combined_score
+	FROM function_embedding_triples
+	WHERE code_embedding IS NOT NULL
+	ORDER BY code_embedding <=> $1::vector
+	LIMIT $2`
+	var results []TripleSearchResult
+	err := r.db.WithContext(ctx).Raw(sql, vec, limit).Scan(&results).Error
+	return results, err
+}
+
+// CountTripleEmbeddings returns the number of functions with triple embeddings.
+func (r *Repository) CountTripleEmbeddings(ctx context.Context) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&FunctionEmbeddingTriple{}).Count(&count).Error
+	return count, err
+}
+
+// ListFunctionsWithoutTriples returns function IDs that lack triple embeddings.
+func (r *Repository) ListFunctionsWithoutTriples(ctx context.Context, limit int) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	err := r.db.WithContext(ctx).
+		Raw(`SELECT rf.id FROM registry_functions rf
+			LEFT JOIN function_embedding_triples ft ON ft.function_id = rf.id
+			WHERE ft.id IS NULL AND rf.visibility = 'public'
+			ORDER BY rf.popularity_score DESC NULLS LAST
+			LIMIT $1`, limit).
+		Scan(&ids).Error
+	return ids, err
 }

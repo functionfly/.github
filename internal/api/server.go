@@ -18,6 +18,7 @@ import (
 	"github.com/functionfly/functionfly/internal/adapters/functionfly"
 	"github.com/functionfly/functionfly/internal/adapters/vercel"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
+	regexec "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/deployment"
 	"github.com/functionfly/functionfly/internal/email"
@@ -563,6 +564,10 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	}
 
 	// Shutdown the HTTP server gracefully
+
+	// Shutdown the persistent SandboxClient daemon
+	regexec.ShutdownSandboxClient()
+
 	return s.httpServer.Shutdown(ctx)
 }
 

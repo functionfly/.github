@@ -367,6 +367,7 @@ type Repository interface {
 	// Function log operations
 	CreateFunctionLog(ctx context.Context, log *FunctionLog) error
 	GetFunctionLogs(ctx context.Context, functionID *uuid.UUID, deploymentID *uuid.UUID, limit int, since *time.Time, level *string) ([]*FunctionLog, error)
+	DeleteFunctionLogsOlderThan(ctx context.Context, cutoff time.Time) (int64, error)
 
 	// Dashboard aggregations (tenant-scoped)
 	GetUsageByDay(ctx context.Context, tenantID uuid.UUID, days int) ([]UsageByDay, error)
@@ -448,6 +449,7 @@ type Repository interface {
 	GetUserExecutionStats(userID uuid.UUID) (map[string]interface{}, error)
 	// GetUserProfileStats returns authoritative counts for profile UI (not limited by registry list pagination).
 	GetUserProfileStats(userID uuid.UUID) (map[string]interface{}, error)
+	GetUserTrustBreakdown(userID uuid.UUID) (map[string]interface{}, error)
 	GetUserPopularFunctions(userID uuid.UUID, limit int) ([]map[string]interface{}, error)
 	GetUserGeographicStats(userID uuid.UUID) (map[string]interface{}, error)
 	GetUserDeviceStats(userID uuid.UUID) (map[string]interface{}, error)
@@ -458,4 +460,11 @@ type Repository interface {
 	GetPendingBounceReviews(ctx context.Context, limit, offset int) ([]*EmailEvent, error)
 	MarkEmailEventReviewed(ctx context.Context, eventID int64, reviewedBy uuid.UUID) error
 	GetEmailEventStats(ctx context.Context, filters map[string]interface{}) (map[string]interface{}, error)
+
+	// Waitlist operations
+	ListWaitlistEntries(ctx context.Context, status string, limit, offset int) ([]WaitlistEntryAdminList, int64, error)
+	GetWaitlistStats(ctx context.Context) (*WaitlistStats, error)
+	UpdateWaitlistEntryStatus(ctx context.Context, id uuid.UUID, status, notes string) error
+	IssueInviteToWaitlistEntry(ctx context.Context, entryID, inviteCodeID uuid.UUID) error
+	DeleteWaitlistEntry(ctx context.Context, id uuid.UUID) error
 }

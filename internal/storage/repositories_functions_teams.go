@@ -68,6 +68,10 @@ func (db *PostgresDB) GetFunctionLogs(ctx context.Context, functionID *uuid.UUID
 	return db.functionRepository.GetFunctionLogs(ctx, functionID, deploymentID, limit, since, level)
 }
 
+func (db *PostgresDB) DeleteFunctionLogsOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
+	return db.functionRepository.DeleteFunctionLogsOlderThan(ctx, cutoff)
+}
+
 // Dashboard aggregations
 func (db *PostgresDB) GetUsageByDay(ctx context.Context, tenantID uuid.UUID, days int) ([]UsageByDay, error) {
 	return db.functionRepository.GetUsageByDay(ctx, tenantID, days)

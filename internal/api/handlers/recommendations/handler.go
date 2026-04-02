@@ -354,3 +354,100 @@ func (h *Handler) HandleRefreshRecommendations(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "refreshed"})
 }
+
+// HandleTripleSearch handles triple-vector search requests
+// POST /v1/recommendations/triple-search
+func (h *Handler) HandleTripleSearch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	var req struct {
+		Query string `json:"query"`
+		Limit int    `json:"limit"`
+		Weights *struct {
+			Contract float64 `json:"contract"`
+			Semantic float64 `json:"semantic"`
+			Code     float64 `json:"code"`
+		} `json:"weights,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Query == "" {
+		http.Error(w, "query is required", http.StatusBadRequest)
+		return
+	}
+
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 50 {
+		limit = 50
+	}
+
+	var weights *recommendations.TripleSearchWeights
+	if req.Weights != nil {
+		weights = &recommendations.TripleSearchWeights{
+			Contract: req.Weights.Contract,
+			Semantic: req.Weights.Semantic,
+			Code:     req.Weights.Code,
+		}
+	}
+
+	results, err := h.service.SearchByTripleEmbedding(r.Context(), req.Query, weights, limit)
+	if err != nil {
+		logrus.WithError(err).Error("Failed triple search")
+		http.Error(w, "Failed to perform triple search", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"recommendations": results,
+		"total":          len(results),
+		"query":          req.Query,
+	})
+}
+
+// HandleFindComposable finds functions composable with the target
+// GET /v1/recommendations/composable/{function_id}
+func (h *Handler) HandleFindComposable(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	functionIDStr := vars["function_id"]
+
+	functionID, err := uuid.Parse(functionIDStr)
+	if err != nil {
+		http.Error(w, "Invalid function_id format", http.StatusBadRequest)
+		return
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 50 {
+		limit = 50
+	}
+
+	results, err := h.service.FindComposableFunctions(r.Context(), functionID, limit)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to find composable functions")
+		http.Error(w, "Failed to find composable functions", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"recommendations": results,
+		"total":          len(results),
+		"function_id":    functionIDStr,
+	})
+}

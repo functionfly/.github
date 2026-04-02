@@ -209,3 +209,27 @@ func (r *RegistryRepository) IsFunctionVersionDeterministic(functionID uuid.UUID
 	cacheTTL := time.Duration(functionVersion.CacheTTL) * time.Second
 	return true, cacheTTL, nil
 }
+
+// SetWasmCompiled stores AOT-compiled module bytes for a function version.
+// This allows the runtime to deserialize precompiled modules in ~0.1ms
+// instead of recompiling on every cold start.
+func (r *RegistryRepository) SetWasmCompiled(functionID uuid.UUID, version string, compiled []byte) error {
+	if err := r.db.Model(&RegistryFunctionVersion{}).
+		Where("function_id = ? AND version = ?", functionID, version).
+		Update("wasm_compiled", compiled).Error; err != nil {
+		return fmt.Errorf("failed to set wasm_compiled: %w", err)
+	}
+	return nil
+}
+
+// GetWasmCompiled retrieves AOT-compiled module bytes for a function version.
+// Returns nil if no precompiled bytes are available.
+func (r *RegistryRepository) GetWasmCompiled(functionID uuid.UUID, version string) ([]byte, error) {
+	var fnVersion RegistryFunctionVersion
+	if err := r.db.Select("wasm_compiled").
+		Where("function_id = ? AND version = ?", functionID, version).
+		First(&fnVersion).Error; err != nil {
+		return nil, fmt.Errorf("failed to get wasm_compiled: %w", err)
+	}
+	return fnVersion.WasmCompiled, nil
+}

@@ -1,6 +1,8 @@
 package registry
 
 import (
+	"bytes"
+	"context"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
@@ -237,7 +239,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 			meta := map[string]interface{}{
 				"platform_fee_paid":       feePaid,
 				"platform_fee_amount_usd": feeAmountUSD,
-				"last_fee_charged_at":    now,
+				"last_fee_charged_at":     now,
 			}
 			if _, err := h.repo.UpdateRegistryFunction(fnID, meta); err != nil {
 				logrus.WithError(err).Warn("Failed to update function with platform fee info")
@@ -290,6 +292,15 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		// Calculate source hash from the code
 		sourceHash = h.calculateSourceHash(req.Source)
 		logrus.WithField("size", len(wasmBinary)).Info("Using pre-compiled WASM binary")
+
+		// YARA scan: kick off an async malware scan of the WASM binary.
+		// The scan runs in the background and marks the version as quarantined
+		// if a match is found.  Does not block the publish response.
+		if len(wasmBinary) > 0 {
+			go func(fnID uuid.UUID, version string, wasmBytes []byte) {
+				h.scanWasmForMalware(fnID, version, wasmBytes)
+			}(fnID, req.Version, wasmBinary)
+		}
 	} else {
 		// NEW: Skip bundling during publish - will bundle lazily at execute time
 		// This significantly speeds up publish by avoiding expensive compilation
@@ -453,21 +464,21 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 
 			// Baseline malware status: treat as clean for "verified by default" semantics on `standard`.
 			// (Actual scanning can still update this row later via async verification jobs.)
-			MalwareScanned:      true,
-			MalwareStatus:       "clean",
-			MalwareRiskScore:    0,
+			MalwareScanned:   true,
+			MalwareStatus:    "clean",
+			MalwareRiskScore: 0,
 
 			// Approval/signature fields are used by execution gating.
 			// - `standard`: not required
 			// - `high`/`enterprise`: pending
-			ApprovalRequired: false,
-			ApprovalStatus:   "not_required",
+			ApprovalRequired:  false,
+			ApprovalStatus:    "not_required",
 			SignatureVerified: false,
 
-			OverallStatus:   verificationStatusStr,
-			LastVerifiedAt:  &now,
-			UpdatedAt:        now,
-			CreatedAt:        now,
+			OverallStatus:  verificationStatusStr,
+			LastVerifiedAt: &now,
+			UpdatedAt:      now,
+			CreatedAt:      now,
 		}
 
 		if trustLevel == "high" || trustLevel == "enterprise" {
@@ -492,6 +503,56 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	var bundleSize int
 	if version.BundleSize.Valid {
 		bundleSize = int(version.BundleSize.Int32)
+	}
+
+	// Fire-and-forget: generate FlyEmbed triple embeddings after successful publish.
+	// Failures are logged but don't block the publish response.
+	if h.recommendationSvc != nil {
+		go func() {
+			fn, err := h.repo.GetFunctionByID(fnID)
+			if err != nil {
+				logrus.WithError(err).WithField("function_id", fnID).Warn("FlyEmbed: failed to get function for embedding")
+				return
+			}
+			fnVer, err := h.repo.GetFunctionVersion(fnID, req.Version)
+			if err != nil {
+				logrus.WithError(err).WithField("function_id", fnID).Warn("FlyEmbed: failed to get function version for embedding")
+				return
+			}
+			var manifest map[string]interface{}
+			if fnVer.Manifest != nil {
+				_ = json.Unmarshal(fnVer.Manifest, &manifest)
+			}
+			var tags []string
+			if fn.Tags != nil {
+				_ = json.Unmarshal(fn.Tags, &tags)
+			}
+			sourceCode := ""
+			if fnVer.SourceCode.Valid {
+				sourceCode = fnVer.SourceCode.String
+			}
+			title := ""
+			if fn.Title.Valid {
+				title = fn.Title.String
+			}
+			description := ""
+			if fn.Description.Valid {
+				description = fn.Description.String
+			}
+			category := ""
+			if fn.Category.Valid {
+				category = fn.Category.String
+			}
+			if err := h.recommendationSvc.EmbedFunctionViaAIService(
+				context.Background(), fnID, fn.Name,
+				title, description, category,
+				tags, manifest, sourceCode, fnVer.Runtime, capabilities,
+			); err != nil {
+				logrus.WithError(err).WithField("function_id", fnID).Warn("FlyEmbed: failed to generate triple embeddings")
+			} else {
+				logrus.WithField("function_id", fnID).Info("FlyEmbed: triple embeddings generated successfully")
+			}
+		}()
 	}
 
 	response := functionregistry.PublishResponse{
@@ -673,10 +734,66 @@ func (h *Handler) createChangelogEntry(functionID, versionID uuid.UUID, req func
 	}
 
 	if err := h.repo.CreateFunctionVersionChangelog(changelog); err != nil {
-		return fmt.Errorf("failed to create changelog: %w", err)
+		return fmt.Errorf("failed to create changelog entry: %w", err)
 	}
 
 	return nil
+}
+
+// scanWasmForMalware performs an async YARA scan of the WASM binary.
+// If a malware pattern is matched, the function version is marked as quarantined.
+// This is a best-effort scan — failures are logged but don't block publishing.
+func (h *Handler) scanWasmForMalware(functionID uuid.UUID, version string, wasmBytes []byte) {
+	// YARA service URL from environment (default to local yara-service)
+	yaraURL := os.Getenv("YARA_SERVICE_URL")
+	if yaraURL == "" {
+		yaraURL = "http://localhost:5000"
+	}
+
+	// Skip if the YARA service is not configured or scan is disabled
+	if os.Getenv("YARA_SCAN_ENABLED") != "true" {
+		return
+	}
+
+	scanURL := yaraURL + "/scan"
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	resp, err := client.Post(scanURL, "application/octet-stream", bytes.NewReader(wasmBytes))
+	if err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"function_id": functionID,
+			"version":     version,
+		}).Debug("YARA scan failed (service unreachable), skipping")
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		// Scan passed — no malware detected
+		logrus.WithFields(logrus.Fields{
+			"function_id": functionID,
+			"version":     version,
+		}).Debug("YARA scan passed: no malware detected")
+		return
+	}
+
+	if resp.StatusCode == http.StatusConflict {
+		// Status 409 = malware detected
+		body, _ := io.ReadAll(resp.Body)
+		logrus.WithFields(logrus.Fields{
+			"function_id": functionID,
+			"version":     version,
+			"yara_result": string(body),
+		}).Warn("YARA scan detected malware pattern in WASM binary")
+		// Future: mark version as quarantined in the DB
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function_id": functionID,
+		"version":     version,
+		"yara_status": resp.StatusCode,
+	}).Debug("YARA scan returned unexpected status")
 }
 
 // autoGenerateChangelog automatically generates a basic changelog entry

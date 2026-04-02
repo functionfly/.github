@@ -47,3 +47,24 @@ func (ptf *PathTraversalFilter) Detect(r *http.Request) bool {
 	}
 	return false
 }
+
+// sqlInjectionQueryPatterns returns regex patterns for detecting SQL injection in query strings.
+func sqlInjectionQueryPatterns() []*regexp.Regexp {
+	return []*regexp.Regexp{
+		regexp.MustCompile(`(?i)\bUNION\b.*\bSELECT\b`),
+		regexp.MustCompile(`(?i)\bDELETE\b.*\bFROM\b`),
+		regexp.MustCompile(`(?i)\bINSERT\b.*\bINTO\b`),
+		regexp.MustCompile(`(?i)\bUPDATE\b.*\bSET\b`),
+		regexp.MustCompile(`(?i)\bDROP\b.*\bTABLE\b`),
+		regexp.MustCompile(`(?i)\bEXEC(UTE)?\b`),
+		regexp.MustCompile(`(?i)\bWAITFOR\b.*\bDELAY\b`),
+		regexp.MustCompile(`(?i)\bBENCHMARK\b`),
+		regexp.MustCompile(`(?i)\bSLEEP\b`),
+		regexp.MustCompile(`(?i)\bLOAD_FILE\b`),
+		regexp.MustCompile(`(?i)\bINTO\s+(OUTFILE|DUMPFILE)\b`),
+		regexp.MustCompile(`(?i)--\s*$`),
+		regexp.MustCompile(`(?i);\s*\bDROP\b`),
+		regexp.MustCompile(`(?i)\bOR\b\s+1\s*=\s*1`),
+		regexp.MustCompile(`(?i)\bAND\b\s+1\s*=\s*1`),
+	}
+}

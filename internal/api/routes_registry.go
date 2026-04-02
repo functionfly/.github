@@ -118,6 +118,8 @@ func registerRegistryRoutes(
 	api.HandleFunc("/recommendations/executions", recommendationHandler.HandleRecordExecution).Methods("POST", "OPTIONS")
 	api.HandleFunc("/recommendations/feedback", recommendationHandler.HandleRecordFeedback).Methods("POST", "OPTIONS")
 	api.HandleFunc("/recommendations/refresh", authMiddleware.RequirePermission(auth.PermSystemWrite)(recommendationHandler.HandleRefreshRecommendations)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/recommendations/triple-search", recommendationHandler.HandleTripleSearch).Methods("POST", "OPTIONS")
+	api.HandleFunc("/recommendations/composable/{function_id}", recommendationHandler.HandleFindComposable).Methods("GET", "OPTIONS")
 
 	// ── Registry v2 ──────────────────────────────────────────────────────────
 	apiV2.HandleFunc("/registry/functions", registryHandler.HandleListFunctions).Methods("GET")
@@ -223,14 +225,22 @@ func registerRegistryRoutes(
 
 	// ── DRE 2.0 — Certificates & Passports (public) ──────────────────────────
 	api.HandleFunc("/registry/{author}/{name}/cert/{cert_id}", dreHandler.HandleGetCertificate).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/{author}/{name}/cert/{cert_id}/verify", dreHandler.HandleVerifyCertificate).Methods("POST", "OPTIONS")
+	api.HandleFunc("/registry/{author}/{name}/cert/{cert_id}/anchor", dreHandler.HandleAnchorCertificate).Methods("POST", "OPTIONS")
 	api.HandleFunc("/registry/{author}/{name}/certs", dreHandler.HandleListCertificates).Methods("GET", "OPTIONS")
 	api.HandleFunc("/registry/{author}/{name}/replay/{execution_id}", dreHandler.HandleReplay).Methods("POST", "OPTIONS")
 	api.HandleFunc("/registry/{author}/{name}/passport", dreHandler.HandleGetPassport).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/{author}/{name}/passport/public", dreHandler.HandleGetPassportPublic).Methods("GET", "OPTIONS")
 	api.HandleFunc("/registry/{author}/{name}/diverge", dreHandler.HandleDivergenceSimulation).Methods("POST", "OPTIONS")
 	api.HandleFunc("/registry/{author}/{name}/executions", dreHandler.HandleListExecutions).Methods("GET", "OPTIONS")
 	api.HandleFunc("/registry/{author}/{name}/executions/by-hash", dreHandler.HandleGetExecutionByHash).Methods("GET", "OPTIONS")
 	api.HandleFunc("/registry/{author}/{name}/executions/timeline", dreHandler.HandleGetExecutionTimeline).Methods("GET", "OPTIONS")
 	api.HandleFunc("/registry/{author}/{name}/executions/{execution_id}", dreHandler.HandleGetExecution).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/{author}/{name}/drift-reports", dreHandler.HandleListDriftReports).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/{author}/{name}/dre-stats", dreHandler.HandleGetDRESummary).Methods("GET", "OPTIONS")
+
+	// Internal DRE endpoints (for platform services)
+	api.HandleFunc("/internal/functions/{function_id}/passport", dreHandler.HandleGetPassportByFunctionID).Methods("GET", "OPTIONS")
 
 	// Execution security (public)
 	executionSecurityMW.CreateExecutionSecurityRoutes(api)

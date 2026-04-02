@@ -114,6 +114,47 @@ type CategorySimilarity struct {
 	ComputedAt        time.Time `json:"computed_at"`
 }
 
+// FunctionEmbeddingTriple stores three specialized vectors per function (FlyEmbed ColBERT).
+type FunctionEmbeddingTriple struct {
+	ID                 uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID         uuid.UUID `json:"function_id" gorm:"type:uuid;not null;uniqueIndex"`
+	ContractEmbedding  []float32 `json:"contract_embedding" gorm:"type:vector(512)"`
+	SemanticEmbedding  []float32 `json:"semantic_embedding" gorm:"type:vector(512)"`
+	CodeEmbedding      []float32 `json:"code_embedding" gorm:"type:vector(512)"`
+	ContractText       *string   `json:"contract_text,omitempty" gorm:"type:text"`
+	SemanticText       *string   `json:"semantic_text,omitempty" gorm:"type:text"`
+	CodeText           *string   `json:"code_text,omitempty" gorm:"type:text"`
+	EmbeddingModel     string    `json:"embedding_model" gorm:"type:varchar(100);default:flyembed-v1"`
+	EmbeddingVersion   int       `json:"embedding_version" gorm:"default:1"`
+	ComputedAt         time.Time `json:"computed_at"`
+}
+
+// TableName overrides the table name for FunctionEmbeddingTriple.
+func (FunctionEmbeddingTriple) TableName() string {
+	return "function_embedding_triples"
+}
+
+// TripleSearchWeights controls the contribution of each vector to the final score.
+type TripleSearchWeights struct {
+	Contract float64 `json:"contract"` // α — schema/contract match weight
+	Semantic float64 `json:"semantic"` // β — behavioral/semantic match weight
+	Code     float64 `json:"code"`    // γ — code pattern match weight
+}
+
+// DefaultTripleSearchWeights returns the default weight configuration.
+func DefaultTripleSearchWeights() TripleSearchWeights {
+	return TripleSearchWeights{Contract: 0.35, Semantic: 0.40, Code: 0.25}
+}
+
+// TripleSearchResult holds per-vector scores for a single function match.
+type TripleSearchResult struct {
+	FunctionID    uuid.UUID `json:"function_id"`
+	ContractScore float64   `json:"contract_score"`
+	SemanticScore float64   `json:"semantic_score"`
+	CodeScore     float64   `json:"code_score"`
+	CombinedScore float64   `json:"combined_score"`
+}
+
 // RecommendationFeedback tracks user feedback on recommendations
 type RecommendationFeedback struct {
 	ID                    uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`

@@ -51,16 +51,16 @@ type RegistryFunction struct {
 
 // PlatformFee - audit trail for all platform fees
 type PlatformFee struct {
-	ID              uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	FunctionID      uuid.UUID  `json:"function_id" gorm:"type:uuid;not null;index"`
-	UserID          uuid.UUID  `json:"user_id" gorm:"type:uuid;not null;index"`
-	FeeType         string     `json:"fee_type" gorm:"not null;index"` // 'publish', 'version_update', 'commission'
-	AmountUSD       float64    `json:"amount_usd" gorm:"type:decimal(14,4);not null"`
-	ChargedAt       time.Time  `json:"charged_at" gorm:"type:timestamptz;not null;index"`
-	StripePaymentID string     `json:"stripe_payment_id,omitempty" gorm:"type:text;index"`
-	Status          string     `json:"status" gorm:"not null;default:'pending';index"` // 'pending', 'completed', 'failed', 'refunded'
-	CreatedAt       time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt       time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	ID              uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID      uuid.UUID `json:"function_id" gorm:"type:uuid;not null;index"`
+	UserID          uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
+	FeeType         string    `json:"fee_type" gorm:"not null;index"` // 'publish', 'version_update', 'commission'
+	AmountUSD       float64   `json:"amount_usd" gorm:"type:decimal(14,4);not null"`
+	ChargedAt       time.Time `json:"charged_at" gorm:"type:timestamptz;not null;index"`
+	StripePaymentID string    `json:"stripe_payment_id,omitempty" gorm:"type:text;index"`
+	Status          string    `json:"status" gorm:"not null;default:'pending';index"` // 'pending', 'completed', 'failed', 'refunded'
+	CreatedAt       time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt       time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// Relationships
 	Function *RegistryFunction `json:"function,omitempty" gorm:"foreignKey:FunctionID;references:ID"`
@@ -113,6 +113,7 @@ type RegistryFunctionVersion struct {
 	SourceHash   sql.NullString `json:"source_hash" gorm:"type:text"`
 	SourceCode   sql.NullString `json:"source_code,omitempty" gorm:"type:text"` // Source code for lazy bundling
 	BundleSize   sql.NullInt32  `json:"bundle_size"`
+	WasmCompiled []byte         `json:"wasm_compiled,omitempty" gorm:"type:bytea"` // AOT-compiled module bytes (.cwasm)
 	PublishedAt  time.Time      `json:"published_at" gorm:"autoCreateTime"`
 	UpdatedAt    time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
 
@@ -552,28 +553,28 @@ type FunctionChangelogChange struct {
 type TrustTier string
 
 const (
-	TrustTierUntrusted  TrustTier = "untrusted"
-	TrustTierTrusted    TrustTier = "trusted"
-	TrustTierVerified   TrustTier = "verified"
+	TrustTierUntrusted     TrustTier = "untrusted"
+	TrustTierTrusted       TrustTier = "trusted"
+	TrustTierVerified      TrustTier = "verified"
 	TrustTierHighlyTrusted TrustTier = "highly_trusted"
 )
 
 // TrustScoreWeights holds the weights for trust score components
 type TrustScoreWeights struct {
-	Reliability    float64 `json:"reliability"`
-	Latency        float64 `json:"latency"`
-	ErrorRate      float64 `json:"error_rate"`
-	UserRating     float64 `json:"user_rating"`
-	Verification   float64 `json:"verification"`
+	Reliability  float64 `json:"reliability"`
+	Latency      float64 `json:"latency"`
+	ErrorRate    float64 `json:"error_rate"`
+	UserRating   float64 `json:"user_rating"`
+	Verification float64 `json:"verification"`
 }
 
 // DefaultTrustScoreWeights returns the default trust score weights
 func DefaultTrustScoreWeights() TrustScoreWeights {
 	return TrustScoreWeights{
 		Reliability:  0.30,
-		Latency:     0.20,
-		ErrorRate:   0.20,
-		UserRating:  0.15,
+		Latency:      0.20,
+		ErrorRate:    0.20,
+		UserRating:   0.15,
 		Verification: 0.15,
 	}
 }
@@ -596,14 +597,14 @@ type TrustHistory struct {
 	ErrorRate          float64   `json:"error_rate" gorm:"default:0"`
 	TimeoutRate        float64   `json:"timeout_rate" gorm:"default:0"`
 	ConsumerDiversity  int       `json:"consumer_diversity" gorm:"default:0"`
-	TenantDiversity   int       `json:"tenant_diversity" gorm:"default:0"`
-	UserDiversity     int       `json:"user_diversity" gorm:"default:0"`
-	IsVerified        bool      `json:"is_verified" gorm:"default:false"`
+	TenantDiversity    int       `json:"tenant_diversity" gorm:"default:0"`
+	UserDiversity      int       `json:"user_diversity" gorm:"default:0"`
+	IsVerified         bool      `json:"is_verified" gorm:"default:false"`
 	VerificationLevel  string    `json:"verification_level" gorm:"size:50;default:'none'"`
-	TrustTier         TrustTier `json:"trust_tier" gorm:"size:20;default:'untrusted'"`
-	CalculatedAt      time.Time `json:"calculated_at" gorm:"type:timestamptz"`
-	WindowStart       time.Time `json:"window_start" gorm:"type:timestamptz"`
-	WindowEnd         time.Time `json:"window_end" gorm:"type:timestamptz"`
+	TrustTier          TrustTier `json:"trust_tier" gorm:"size:20;default:'untrusted'"`
+	CalculatedAt       time.Time `json:"calculated_at" gorm:"type:timestamptz"`
+	WindowStart        time.Time `json:"window_start" gorm:"type:timestamptz"`
+	WindowEnd          time.Time `json:"window_end" gorm:"type:timestamptz"`
 	CalculationVersion int       `json:"calculation_version" gorm:"default:1"`
 }
 
@@ -668,15 +669,15 @@ func (TrustScoreWeightsConfig) TableName() string {
 
 // TrustScoreJob represents a trust score recalculation job
 type TrustScoreJob struct {
-	ID                uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	JobType           string          `json:"job_type" gorm:"size:50;default:'scheduled'"`
-	Status            string          `json:"status" gorm:"size:20;default:'pending'"`
+	ID                 uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	JobType            string          `json:"job_type" gorm:"size:50;default:'scheduled'"`
+	Status             string          `json:"status" gorm:"size:20;default:'pending'"`
 	FunctionsProcessed int             `json:"functions_processed" gorm:"default:0"`
-	FunctionsTotal    int             `json:"functions_total" gorm:"default:0"`
-	Errors            json.RawMessage `json:"errors" gorm:"type:jsonb"`
-	StartedAt         *time.Time      `json:"started_at,omitempty" gorm:"type:timestamptz"`
-	CompletedAt       *time.Time      `json:"completed_at,omitempty" gorm:"type:timestamptz"`
-	CreatedAt         time.Time       `json:"created_at" gorm:"type:timestamptz"`
+	FunctionsTotal     int             `json:"functions_total" gorm:"default:0"`
+	Errors             json.RawMessage `json:"errors" gorm:"type:jsonb"`
+	StartedAt          *time.Time      `json:"started_at,omitempty" gorm:"type:timestamptz"`
+	CompletedAt        *time.Time      `json:"completed_at,omitempty" gorm:"type:timestamptz"`
+	CreatedAt          time.Time       `json:"created_at" gorm:"type:timestamptz"`
 }
 
 // TableName returns the database table name for TrustScoreJob.
@@ -686,26 +687,26 @@ func (TrustScoreJob) TableName() string {
 
 // TrustScoreResponse is the API response for trust score queries
 type TrustScoreResponse struct {
-	FunctionID         uuid.UUID   `json:"function_id"`
-	TrustScore         float64     `json:"trust_score"`
-	TrustTier          TrustTier   `json:"trust_tier"`
-	IsVerified         bool        `json:"is_verified"`
-	VerificationLevel  string      `json:"verification_level"`
-	Components         struct {
-		Reliability   float64 `json:"reliability"`
-		Latency       float64 `json:"latency"`
-		ErrorRate     float64 `json:"error_rate"`
-		UserRating    float64 `json:"user_rating"`
-		Verification  float64 `json:"verification"`
+	FunctionID        uuid.UUID `json:"function_id"`
+	TrustScore        float64   `json:"trust_score"`
+	TrustTier         TrustTier `json:"trust_tier"`
+	IsVerified        bool      `json:"is_verified"`
+	VerificationLevel string    `json:"verification_level"`
+	Components        struct {
+		Reliability  float64 `json:"reliability"`
+		Latency      float64 `json:"latency"`
+		ErrorRate    float64 `json:"error_rate"`
+		UserRating   float64 `json:"user_rating"`
+		Verification float64 `json:"verification"`
 	} `json:"components"`
 	Metrics struct {
-		TotalCalls    int     `json:"total_calls"`
-		SuccessRate   float64 `json:"success_rate"`
-		P50LatencyMs  int     `json:"p50_latency_ms"`
-		P95LatencyMs  int     `json:"p95_latency_ms"`
-		P99LatencyMs  int     `json:"p99_latency_ms"`
-		ErrorRate     float64 `json:"error_rate"`
-		TimeoutRate   float64 `json:"timeout_rate"`
+		TotalCalls   int     `json:"total_calls"`
+		SuccessRate  float64 `json:"success_rate"`
+		P50LatencyMs int     `json:"p50_latency_ms"`
+		P95LatencyMs int     `json:"p95_latency_ms"`
+		P99LatencyMs int     `json:"p99_latency_ms"`
+		ErrorRate    float64 `json:"error_rate"`
+		TimeoutRate  float64 `json:"timeout_rate"`
 	} `json:"metrics"`
 	Diversity struct {
 		Consumers int `json:"consumers"`
@@ -719,8 +720,8 @@ type TrustScoreResponse struct {
 
 // TrustHistoryResponse is the API response for trust history queries
 type TrustHistoryResponse struct {
-	FunctionID  uuid.UUID      `json:"function_id"`
-	History     []TrustHistory `json:"history"`
+	FunctionID uuid.UUID      `json:"function_id"`
+	History    []TrustHistory `json:"history"`
 	TotalCount int            `json:"total_count"`
 	Page       int            `json:"page"`
 	PageSize   int            `json:"page_size"`
@@ -732,24 +733,24 @@ type TrustHistoryResponse struct {
 
 // VerificationJob represents a verification pipeline job
 type VerificationJob struct {
-	ID                 uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	FunctionID         uuid.UUID      `json:"function_id" gorm:"type:uuid;not null;index"`
-	FunctionVersionID  uuid.UUID      `json:"function_version_id" gorm:"type:uuid;not null;index"`
-	Level              string         `json:"level" gorm:"not null;size:20;default:'basic'"`
-	Status             string         `json:"status" gorm:"not null;size:20;default:'queued'"`
-	Priority           string         `json:"priority" gorm:"not null;size:20;default:'normal'"`
-	RequestedAt        time.Time      `json:"requested_at" gorm:"type:timestamptz"`
-	StartedAt          *time.Time     `json:"started_at,omitempty" gorm:"type:timestamptz"`
-	CompletedAt        *time.Time     `json:"completed_at,omitempty" gorm:"type:timestamptz"`
-	ResultStatus       string         `json:"result_status" gorm:"size:20"`
-	ResultData         json.RawMessage `json:"result_data" gorm:"type:jsonb"`
-	Error              string         `json:"error" gorm:"type:text"`
-	RequestedBy        *uuid.UUID     `json:"requested_by,omitempty" gorm:"type:uuid"`
-	IsAutoVerify       bool           `json:"is_auto_verify" gorm:"default:false"`
-	RetryCount         int            `json:"retry_count" gorm:"default:0"`
-	MaxRetries         int            `json:"max_retries" gorm:"default:3"`
-	CreatedAt          time.Time      `json:"created_at" gorm:"type:timestamptz"`
-	UpdatedAt          time.Time      `json:"updated_at" gorm:"type:timestamptz"`
+	ID                uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID        uuid.UUID       `json:"function_id" gorm:"type:uuid;not null;index"`
+	FunctionVersionID uuid.UUID       `json:"function_version_id" gorm:"type:uuid;not null;index"`
+	Level             string          `json:"level" gorm:"not null;size:20;default:'basic'"`
+	Status            string          `json:"status" gorm:"not null;size:20;default:'queued'"`
+	Priority          string          `json:"priority" gorm:"not null;size:20;default:'normal'"`
+	RequestedAt       time.Time       `json:"requested_at" gorm:"type:timestamptz"`
+	StartedAt         *time.Time      `json:"started_at,omitempty" gorm:"type:timestamptz"`
+	CompletedAt       *time.Time      `json:"completed_at,omitempty" gorm:"type:timestamptz"`
+	ResultStatus      string          `json:"result_status" gorm:"size:20"`
+	ResultData        json.RawMessage `json:"result_data" gorm:"type:jsonb"`
+	Error             string          `json:"error" gorm:"type:text"`
+	RequestedBy       *uuid.UUID      `json:"requested_by,omitempty" gorm:"type:uuid"`
+	IsAutoVerify      bool            `json:"is_auto_verify" gorm:"default:false"`
+	RetryCount        int             `json:"retry_count" gorm:"default:0"`
+	MaxRetries        int             `json:"max_retries" gorm:"default:3"`
+	CreatedAt         time.Time       `json:"created_at" gorm:"type:timestamptz"`
+	UpdatedAt         time.Time       `json:"updated_at" gorm:"type:timestamptz"`
 }
 
 // TableName returns the database table name for VerificationJob.
@@ -759,30 +760,30 @@ func (VerificationJob) TableName() string {
 
 // VerificationResult represents detailed results of a verification pipeline run
 type VerificationResult struct {
-	ID                  uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	JobID               uuid.UUID       `json:"job_id" gorm:"type:uuid;not null;index"`
-	FunctionID          uuid.UUID       `json:"function_id" gorm:"type:uuid;not null;index"`
-	FunctionVersionID  uuid.UUID       `json:"function_version_id" gorm:"type:uuid;not null;index"`
-	Level               string          `json:"level" gorm:"not null;size:20"`
-	Status              string          `json:"status" gorm:"not null;size:20"`
-	StagesData          json.RawMessage `json:"stages_data" gorm:"type:jsonb"`
-	MalwareScanPassed   *bool           `json:"malware_scan_passed"`
-	MalwareScanRiskScore float64        `json:"malware_scan_risk_score" gorm:"default:0"`
-	DRPassed            *bool           `json:"dre_passed"`
-	DRPassRate          float64         `json:"dre_pass_rate" gorm:"default:0"`
-	DREIsDeterministic  bool            `json:"dre_is_deterministic" gorm:"default:false"`
-	FXCERTPassed        *bool           `json:"fxcert_passed"`
-	FXCERTValidUntil    *time.Time      `json:"fxcert_valid_until,omitempty" gorm:"type:timestamptz"`
-	ManualReviewStatus  string          `json:"manual_review_status" gorm:"size:20"`
-	TotalExecutions     int             `json:"total_executions" gorm:"default:0"`
-	SuccessRate         float64         `json:"success_rate" gorm:"default:0"`
-	AvgLatencyMs        int             `json:"avg_latency_ms" gorm:"default:0"`
-	ErrorRate           float64         `json:"error_rate" gorm:"default:0"`
-	TrustScoreImpact    float64         `json:"trust_score_impact" gorm:"default:0"`
-	StartedAt           time.Time       `json:"started_at" gorm:"type:timestamptz"`
-	CompletedAt         *time.Time      `json:"completed_at,omitempty" gorm:"type:timestamptz"`
-	Error               string          `json:"error" gorm:"type:text"`
-	CreatedAt           time.Time       `json:"created_at" gorm:"type:timestamptz"`
+	ID                   uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	JobID                uuid.UUID       `json:"job_id" gorm:"type:uuid;not null;index"`
+	FunctionID           uuid.UUID       `json:"function_id" gorm:"type:uuid;not null;index"`
+	FunctionVersionID    uuid.UUID       `json:"function_version_id" gorm:"type:uuid;not null;index"`
+	Level                string          `json:"level" gorm:"not null;size:20"`
+	Status               string          `json:"status" gorm:"not null;size:20"`
+	StagesData           json.RawMessage `json:"stages_data" gorm:"type:jsonb"`
+	MalwareScanPassed    *bool           `json:"malware_scan_passed"`
+	MalwareScanRiskScore float64         `json:"malware_scan_risk_score" gorm:"default:0"`
+	DRPassed             *bool           `json:"dre_passed"`
+	DRPassRate           float64         `json:"dre_pass_rate" gorm:"default:0"`
+	DREIsDeterministic   bool            `json:"dre_is_deterministic" gorm:"default:false"`
+	FXCERTPassed         *bool           `json:"fxcert_passed"`
+	FXCERTValidUntil     *time.Time      `json:"fxcert_valid_until,omitempty" gorm:"type:timestamptz"`
+	ManualReviewStatus   string          `json:"manual_review_status" gorm:"size:20"`
+	TotalExecutions      int             `json:"total_executions" gorm:"default:0"`
+	SuccessRate          float64         `json:"success_rate" gorm:"default:0"`
+	AvgLatencyMs         int             `json:"avg_latency_ms" gorm:"default:0"`
+	ErrorRate            float64         `json:"error_rate" gorm:"default:0"`
+	TrustScoreImpact     float64         `json:"trust_score_impact" gorm:"default:0"`
+	StartedAt            time.Time       `json:"started_at" gorm:"type:timestamptz"`
+	CompletedAt          *time.Time      `json:"completed_at,omitempty" gorm:"type:timestamptz"`
+	Error                string          `json:"error" gorm:"type:text"`
+	CreatedAt            time.Time       `json:"created_at" gorm:"type:timestamptz"`
 }
 
 // TableName returns the database table name for VerificationResult.
@@ -792,24 +793,24 @@ func (VerificationResult) TableName() string {
 
 // ManualReviewQueue represents a human review queue entry for Level 3 verification
 type ManualReviewQueue struct {
-	ID                    uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	FunctionID            uuid.UUID      `json:"function_id" gorm:"type:uuid;not null;index"`
-	FunctionVersionID     uuid.UUID      `json:"function_version_id" gorm:"type:uuid;not null;index"`
-	VerificationJobID     *uuid.UUID     `json:"verification_job_id,omitempty" gorm:"type:uuid"`
-	Status                string         `json:"status" gorm:"not null;size:20;default:'pending'"`
-	Priority              string         `json:"priority" gorm:"not null;size:20;default:'normal'"`
-	AssignedTo            *uuid.UUID     `json:"assigned_to,omitempty" gorm:"type:uuid"`
-	ReviewType            string         `json:"review_type" gorm:"not null;size:50"`
-	ReviewNotes           string         `json:"review_notes" gorm:"type:text"`
-	ReviewComments        string         `json:"review_comments" gorm:"type:text"`
-	DecisionAt            *time.Time     `json:"decision_at,omitempty" gorm:"type:timestamptz"`
-	DecisionBy            *uuid.UUID     `json:"decision_by,omitempty" gorm:"type:uuid"`
-	DecisionReason        string         `json:"decision_reason" gorm:"type:text"`
-	CreatedAt             time.Time      `json:"created_at" gorm:"type:timestamptz"`
-	UpdatedAt             time.Time      `json:"updated_at" gorm:"type:timestamptz"`
-	DueAt                 *time.Time     `json:"due_at,omitempty" gorm:"type:timestamptz"`
-	CompletedAt           *time.Time     `json:"completed_at,omitempty" gorm:"type:timestamptz"`
-	AutoApproveIfNoResponseDays int      `json:"auto_approve_if_no_response_days" gorm:"default:7"`
+	ID                          uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID                  uuid.UUID  `json:"function_id" gorm:"type:uuid;not null;index"`
+	FunctionVersionID           uuid.UUID  `json:"function_version_id" gorm:"type:uuid;not null;index"`
+	VerificationJobID           *uuid.UUID `json:"verification_job_id,omitempty" gorm:"type:uuid"`
+	Status                      string     `json:"status" gorm:"not null;size:20;default:'pending'"`
+	Priority                    string     `json:"priority" gorm:"not null;size:20;default:'normal'"`
+	AssignedTo                  *uuid.UUID `json:"assigned_to,omitempty" gorm:"type:uuid"`
+	ReviewType                  string     `json:"review_type" gorm:"not null;size:50"`
+	ReviewNotes                 string     `json:"review_notes" gorm:"type:text"`
+	ReviewComments              string     `json:"review_comments" gorm:"type:text"`
+	DecisionAt                  *time.Time `json:"decision_at,omitempty" gorm:"type:timestamptz"`
+	DecisionBy                  *uuid.UUID `json:"decision_by,omitempty" gorm:"type:uuid"`
+	DecisionReason              string     `json:"decision_reason" gorm:"type:text"`
+	CreatedAt                   time.Time  `json:"created_at" gorm:"type:timestamptz"`
+	UpdatedAt                   time.Time  `json:"updated_at" gorm:"type:timestamptz"`
+	DueAt                       *time.Time `json:"due_at,omitempty" gorm:"type:timestamptz"`
+	CompletedAt                 *time.Time `json:"completed_at,omitempty" gorm:"type:timestamptz"`
+	AutoApproveIfNoResponseDays int        `json:"auto_approve_if_no_response_days" gorm:"default:7"`
 }
 
 // TableName returns the database table name for ManualReviewQueue.
@@ -819,23 +820,23 @@ func (ManualReviewQueue) TableName() string {
 
 // VerificationLevelConfig defines requirements for each verification level
 type VerificationLevelConfig struct {
-	ID                     uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Level                  string     `json:"level" gorm:"uniqueIndex;not null;size:20"`
-	RequiresMalwareScan    bool       `json:"requires_malware_scan" gorm:"default:true"`
-	RequiresDRE            bool       `json:"requires_dre" gorm:"default:false"`
-	RequiresFXCERT         bool       `json:"requires_fxcert" gorm:"default:false"`
-	RequiresManualReview   bool       `json:"requires_manual_review" gorm:"default:false"`
-	MinDRuEPassRate        float64    `json:"min_dre_pass_rate" gorm:"default:0.95"`
-	MaxLatencyMs           int        `json:"max_latency_ms" gorm:"default:5000"`
-	MinSuccessRate         float64    `json:"min_success_rate" gorm:"default:0.99"`
-	AutoUpgradeFromLevel   string     `json:"auto_upgrade_from_level" gorm:"size:20"`
-	AutoUpgradeAfterDays   int        `json:"auto_upgrade_after_days"`
-	TrustBonus             float64    `json:"trust_bonus" gorm:"default:0"`
-	IsActive               bool       `json:"is_active" gorm:"default:true"`
-	Description            string     `json:"description" gorm:"type:text"`
-	CreatedAt              time.Time  `json:"created_at" gorm:"type:timestamptz"`
-	UpdatedAt              time.Time  `json:"updated_at" gorm:"type:timestamptz"`
-	UpdatedBy              *uuid.UUID `json:"updated_by,omitempty" gorm:"type:uuid"`
+	ID                   uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Level                string     `json:"level" gorm:"uniqueIndex;not null;size:20"`
+	RequiresMalwareScan  bool       `json:"requires_malware_scan" gorm:"default:true"`
+	RequiresDRE          bool       `json:"requires_dre" gorm:"default:false"`
+	RequiresFXCERT       bool       `json:"requires_fxcert" gorm:"default:false"`
+	RequiresManualReview bool       `json:"requires_manual_review" gorm:"default:false"`
+	MinDRuEPassRate      float64    `json:"min_dre_pass_rate" gorm:"default:0.95"`
+	MaxLatencyMs         int        `json:"max_latency_ms" gorm:"default:5000"`
+	MinSuccessRate       float64    `json:"min_success_rate" gorm:"default:0.99"`
+	AutoUpgradeFromLevel string     `json:"auto_upgrade_from_level" gorm:"size:20"`
+	AutoUpgradeAfterDays int        `json:"auto_upgrade_after_days"`
+	TrustBonus           float64    `json:"trust_bonus" gorm:"default:0"`
+	IsActive             bool       `json:"is_active" gorm:"default:true"`
+	Description          string     `json:"description" gorm:"type:text"`
+	CreatedAt            time.Time  `json:"created_at" gorm:"type:timestamptz"`
+	UpdatedAt            time.Time  `json:"updated_at" gorm:"type:timestamptz"`
+	UpdatedBy            *uuid.UUID `json:"updated_by,omitempty" gorm:"type:uuid"`
 }
 
 // TableName returns the database table name for VerificationLevelConfig.
@@ -845,19 +846,19 @@ func (VerificationLevelConfig) TableName() string {
 
 // VerificationAuditLog represents audit trail for verification activities
 type VerificationAuditLog struct {
-	ID                   uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	FunctionID           *uuid.UUID     `json:"function_id,omitempty" gorm:"type:uuid"`
-	VerificationJobID    *uuid.UUID     `json:"verification_job_id,omitempty" gorm:"type:uuid"`
-	VerificationResultID *uuid.UUID     `json:"verification_result_id,omitempty" gorm:"type:uuid"`
-	Action               string         `json:"action" gorm:"not null;size:50"`
-	ActorType            string         `json:"actor_type" gorm:"not null;size:20"`
-	ActorID              *uuid.UUID     `json:"actor_id,omitempty" gorm:"type:uuid"`
-	ActorEmail           string         `json:"actor_email" gorm:"size:255"`
+	ID                   uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID           *uuid.UUID      `json:"function_id,omitempty" gorm:"type:uuid"`
+	VerificationJobID    *uuid.UUID      `json:"verification_job_id,omitempty" gorm:"type:uuid"`
+	VerificationResultID *uuid.UUID      `json:"verification_result_id,omitempty" gorm:"type:uuid"`
+	Action               string          `json:"action" gorm:"not null;size:50"`
+	ActorType            string          `json:"actor_type" gorm:"not null;size:20"`
+	ActorID              *uuid.UUID      `json:"actor_id,omitempty" gorm:"type:uuid"`
+	ActorEmail           string          `json:"actor_email" gorm:"size:255"`
 	OldValue             json.RawMessage `json:"old_value" gorm:"type:jsonb"`
 	NewValue             json.RawMessage `json:"new_value" gorm:"type:jsonb"`
-	IPAddress            string         `json:"ip_address" gorm:"size:45"`
-	UserAgent            string         `json:"user_agent" gorm:"type:text"`
-	CreatedAt            time.Time      `json:"created_at" gorm:"type:timestamptz"`
+	IPAddress            string          `json:"ip_address" gorm:"size:45"`
+	UserAgent            string          `json:"user_agent" gorm:"type:text"`
+	CreatedAt            time.Time       `json:"created_at" gorm:"type:timestamptz"`
 }
 
 // TableName returns the database table name for VerificationAuditLog.
@@ -867,21 +868,21 @@ func (VerificationAuditLog) TableName() string {
 
 // VerificationSchedule represents scheduled periodic re-verification
 type VerificationSchedule struct {
-	ID                       uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	FunctionID               uuid.UUID      `json:"function_id" gorm:"type:uuid;not null;index"`
-	VerificationLevel        string         `json:"verification_level" gorm:"not null;size:20"`
-	Frequency                string         `json:"frequency" gorm:"not null;size:20;default:'monthly'"`
-	NextVerificationAt       time.Time      `json:"next_verification_at" gorm:"type:timestamptz;index"`
-	LastVerificationAt       *time.Time     `json:"last_verification_at,omitempty" gorm:"type:timestamptz"`
-	LastVerificationResult   string         `json:"last_verification_result" gorm:"size:20"`
-	IsActive                 bool           `json:"is_active" gorm:"default:true"`
-	IsPaused                 bool           `json:"is_paused" gorm:"default:false"`
-	PauseReason              string         `json:"pause_reason" gorm:"type:text"`
-	NotifyOnFailure          bool           `json:"notify_on_failure" gorm:"default:true"`
-	NotificationEmail        string         `json:"notification_email" gorm:"size:255"`
-	CreatedAt                time.Time      `json:"created_at" gorm:"type:timestamptz"`
-	UpdatedAt                time.Time      `json:"updated_at" gorm:"type:timestamptz"`
-	CreatedBy                *uuid.UUID     `json:"created_by,omitempty" gorm:"type:uuid"`
+	ID                     uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID             uuid.UUID  `json:"function_id" gorm:"type:uuid;not null;index"`
+	VerificationLevel      string     `json:"verification_level" gorm:"not null;size:20"`
+	Frequency              string     `json:"frequency" gorm:"not null;size:20;default:'monthly'"`
+	NextVerificationAt     time.Time  `json:"next_verification_at" gorm:"type:timestamptz;index"`
+	LastVerificationAt     *time.Time `json:"last_verification_at,omitempty" gorm:"type:timestamptz"`
+	LastVerificationResult string     `json:"last_verification_result" gorm:"size:20"`
+	IsActive               bool       `json:"is_active" gorm:"default:true"`
+	IsPaused               bool       `json:"is_paused" gorm:"default:false"`
+	PauseReason            string     `json:"pause_reason" gorm:"type:text"`
+	NotifyOnFailure        bool       `json:"notify_on_failure" gorm:"default:true"`
+	NotificationEmail      string     `json:"notification_email" gorm:"size:255"`
+	CreatedAt              time.Time  `json:"created_at" gorm:"type:timestamptz"`
+	UpdatedAt              time.Time  `json:"updated_at" gorm:"type:timestamptz"`
+	CreatedBy              *uuid.UUID `json:"created_by,omitempty" gorm:"type:uuid"`
 }
 
 // TableName returns the database table name for VerificationSchedule.

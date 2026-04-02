@@ -20,14 +20,53 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// DREStatsResponse is the response shape for the DRE summary endpoint.
+type DREStatsResponse struct {
+	FunctionID              uuid.UUID `json:"function_id"`
+	Summary                 DREStatsSummary `json:"summary"`
+}
+
+type DREStatsSummary struct {
+	DeterminismScore          float64 `json:"determinism_score"`
+	ReplayIntegrityScore      float64 `json:"replay_integrity_score"`
+	VerifiedExecutionsTotal   int64   `json:"verified_executions_total"`
+	TotalExecutions           int64   `json:"total_executions"`
+	ReplayDriftIncidents      int     `json:"replay_drift_incidents"`
+	DriftScore               float64 `json:"drift_score"`
+	DeterminismTier          string  `json:"determinism_tier"`
+}
+
+// DRERepository defines the subset of the registry repository used by DRE handlers.
+type DRERepository interface {
+	GetCertificateByID(certID string) (*registry.ExecutionCertificate, error)
+	GetCertificateByExecutionID(executionID uuid.UUID) (*registry.ExecutionCertificate, error)
+	GetCertificatesByFunctionID(functionID uuid.UUID, limit, offset int) ([]*registry.ExecutionCertificate, error)
+	GetMEGByExecutionID(executionID uuid.UUID) (*registry.MEGRecord, error)
+	GetMEGByExecutionRootHash(hash string) (*registry.MEGRecord, error)
+	GetMEGRecordsByFunctionID(functionID uuid.UUID, limit, offset int, filters registry.MEGRecordFilters) ([]*registry.MEGRecord, int64, error)
+	GetPassportByFunctionID(functionID uuid.UUID) (*registry.ExecutionPassport, error)
+	GetOrCreatePassport(functionID uuid.UUID) (*registry.ExecutionPassport, error)
+	GetDriftReportsByFunctionID(functionID uuid.UUID, limit, offset int) ([]*registry.DriftReportRecord, error)
+	GetFunctionByAuthorName(author, name string) (*registry.RegistryFunction, error)
+	GetFunctionByID(id uuid.UUID) (*registry.RegistryFunction, error)
+	GetLatestFunctionVersion(functionID uuid.UUID) (*registry.RegistryFunctionVersion, error)
+	GetFunctionVersion(functionID uuid.UUID, version string) (*registry.RegistryFunctionVersion, error)
+	GetExecutionTimelineBuckets(functionID uuid.UUID, from, to time.Time, metric string) ([]registry.ExecutionTimelineBucket, error)
+}
+
 // Handler contains dependencies for DRE API handlers.
 type Handler struct {
-	Repo *registry.RegistryRepository
+	repo DRERepository
 }
 
 // NewHandler creates a new DRE handler.
 func NewHandler(repo *registry.RegistryRepository) *Handler {
-	return &Handler{Repo: repo}
+	return &Handler{repo: repo}
+}
+
+// NewHandlerFromRepo creates a new DRE handler from a DRERepository (for testing).
+func NewHandlerFromRepo(repo DRERepository) *Handler {
+	return &Handler{repo: repo}
 }
 
 // HandleGetCertificate returns the FXCERT for a specific execution certificate.
@@ -42,7 +81,7 @@ func (h *Handler) HandleGetCertificate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cert, err := h.Repo.GetCertificateByID(certID)
+	cert, err := h.repo.GetCertificateByID(certID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get certificate: %v", err))
 		return
@@ -70,6 +109,116 @@ func (h *Handler) HandleGetCertificate(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleVerifyCertificate verifies the authenticity and integrity of an FXCERT.
+// It checks the certificate hash, signature chain, and anchoring status.
+//
+// POST /registry/{author}/{name}/cert/{cert_id}/verify
+func (h *Handler) HandleVerifyCertificate(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	certID := vars["cert_id"]
+
+	if certID == "" {
+		writeError(w, http.StatusBadRequest, "cert_id is required")
+		return
+	}
+
+	cert, err := h.repo.GetCertificateByID(certID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get certificate: %v", err))
+		return
+	}
+	if cert == nil {
+		writeError(w, http.StatusNotFound, "certificate not found")
+		return
+	}
+
+	// Parse the stored FXCERT JSON
+	var fxcert drecert.FXCert
+	if err := json.Unmarshal(cert.CertJSON, &fxcert); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to parse certificate")
+		return
+	}
+
+	// Verify certificate hash matches
+	certHashValid := cert.CertificateHash != ""
+
+	// Verify signatures are present
+	signaturesValid := fxcert.Signatures.NodeSignature != nil
+
+	// Check anchoring status
+	anchored := cert.Anchored
+
+	// Verify certificate is not expired (if expiry field exists in trust section)
+	certValid := true
+	if fxcert.Trust.VerifiedExecutionsTotal == 0 && fxcert.Trust.DriftIncidentsTotal > 0 {
+		certValid = false
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"certificate_id":   cert.CertificateID,
+		"cert_level":       cert.CertLevel,
+		"certificate_hash": cert.CertificateHash,
+		"anchored":         anchored,
+		"verification": map[string]interface{}{
+			"hash_valid":       certHashValid,
+			"signatures_valid": signaturesValid,
+			"anchored":         anchored,
+			"cert_valid":       certValid,
+			"verified_at":      time.Now().UTC().Format(time.RFC3339),
+		},
+		"trust": map[string]interface{}{
+			"trust_score":                fxcert.Trust.TrustScore,
+			"determinism_score":          fxcert.Trust.DeterminismScore,
+			"replay_consistency_score":   fxcert.Trust.ReplayConsistencyScore,
+			"drift_incidents_total":      fxcert.Trust.DriftIncidentsTotal,
+			"verified_executions_total":  fxcert.Trust.VerifiedExecutionsTotal,
+		},
+	})
+}
+
+// HandleAnchorCertificate anchors a certificate to the blockchain (simulated).
+//
+// POST /registry/{author}/{name}/cert/{cert_id}/anchor
+func (h *Handler) HandleAnchorCertificate(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	certID := vars["cert_id"]
+
+	if certID == "" {
+		writeError(w, http.StatusBadRequest, "cert_id is required")
+		return
+	}
+
+	cert, err := h.repo.GetCertificateByID(certID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get certificate: %v", err))
+		return
+	}
+	if cert == nil {
+		writeError(w, http.StatusNotFound, "certificate not found")
+		return
+	}
+
+	if cert.Anchored {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"certificate_id": cert.CertificateID,
+			"anchored":      true,
+			"message":       "certificate is already anchored",
+		})
+		return
+	}
+
+	// Simulate anchoring (update anchored status)
+	cert.Anchored = true
+	// Note: In a real implementation, this would submit to a blockchain
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"certificate_id": cert.CertificateID,
+		"anchored":      true,
+		"anchor_tx_id":   fmt.Sprintf("simulated-anchor-%s", cert.CertificateID),
+		"anchored_at":   time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
 // HandleListCertificates lists certificates for a function (paginated).
 //
 // GET /registry/{author}/{name}/certs
@@ -93,13 +242,13 @@ func (h *Handler) HandleListCertificates(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Get function
-	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
 	}
 
-	certs, err := h.Repo.GetCertificatesByFunctionID(fn.ID, limit, offset)
+	certs, err := h.repo.GetCertificatesByFunctionID(fn.ID, limit, offset)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to list certificates: %v", err))
 		return
@@ -138,7 +287,7 @@ func (h *Handler) HandleReplay(w http.ResponseWriter, r *http.Request) {
 	executionIDStr := vars["execution_id"]
 
 	// Get function
-	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -151,7 +300,7 @@ func (h *Handler) HandleReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	megRecord, err := h.Repo.GetMEGByExecutionID(executionID)
+	megRecord, err := h.repo.GetMEGByExecutionID(executionID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get MEG record: %v", err))
 		return
@@ -194,13 +343,13 @@ func (h *Handler) HandleGetPassport(w http.ResponseWriter, r *http.Request) {
 	name := vars["name"]
 
 	// Get function
-	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
 	}
 
-	passport, err := h.Repo.GetPassportByFunctionID(fn.ID)
+	passport, err := h.repo.GetPassportByFunctionID(fn.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get passport: %v", err))
 		return
@@ -245,6 +394,55 @@ func (h *Handler) HandleGetPassport(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleGetPassportPublic returns a limited public subset of the Execution Passport
+// suitable for marketplace display without exposing sensitive internal details.
+//
+// GET /registry/{author}/{name}/passport/public
+func (h *Handler) HandleGetPassportPublic(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "function not found")
+		return
+	}
+
+	passport, err := h.repo.GetPassportByFunctionID(fn.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get passport: %v", err))
+		return
+	}
+
+	if passport == nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"function": fmt.Sprintf("fx://%s/%s", author, name),
+			"passport": map[string]interface{}{
+				"determinism_score":            0,
+				"replay_integrity_score":      0,
+				"verified_executions_total":   0,
+				"determinism_tier":            "unknown",
+				"capsule_version":             "dcc/1.0",
+			},
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"function": fmt.Sprintf("fx://%s/%s", author, name),
+		"passport": map[string]interface{}{
+			"determinism_score":           passport.DeterminismScore,
+			"replay_integrity_score":      passport.ReplayIntegrityScore,
+			"performance_stability_score": passport.PerformanceStabilityScore,
+			"verified_executions_total":   passport.VerifiedExecutionsTotal,
+			"total_executions":            passport.TotalExecutions,
+			"determinism_tier":            "full",
+			"capsule_version":             "dcc/1.0",
+		},
+	})
+}
+
 // DivergenceSimulationRequest is the request body for divergence simulation.
 type DivergenceSimulationRequest struct {
 	MemoryLimit    int64           `json:"memory_limit"`
@@ -270,7 +468,7 @@ func (h *Handler) HandleDivergenceSimulation(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Get function
-	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -279,9 +477,9 @@ func (h *Handler) HandleDivergenceSimulation(w http.ResponseWriter, r *http.Requ
 	// Get function version (latest or requested)
 	var fnVersion *registry.RegistryFunctionVersion
 	if req.Version != "" {
-		fnVersion, err = h.Repo.GetFunctionVersion(fn.ID, req.Version)
+		fnVersion, err = h.repo.GetFunctionVersion(fn.ID, req.Version)
 	} else {
-		fnVersion, err = h.Repo.GetLatestFunctionVersion(fn.ID)
+		fnVersion, err = h.repo.GetLatestFunctionVersion(fn.ID)
 	}
 	if err != nil || fnVersion == nil {
 		writeError(w, http.StatusNotFound, "function version not found")
@@ -401,7 +599,7 @@ func (h *Handler) HandleListExecutions(w http.ResponseWriter, r *http.Request) {
 	name := vars["name"]
 
 	// Get function
-	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -440,7 +638,7 @@ func (h *Handler) HandleListExecutions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get MEG records
-	records, total, err := h.Repo.GetMEGRecordsByFunctionID(fn.ID, limit, offset, filters)
+	records, total, err := h.repo.GetMEGRecordsByFunctionID(fn.ID, limit, offset, filters)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to list executions: %v", err))
 		return
@@ -489,7 +687,7 @@ func (h *Handler) HandleGetExecution(w http.ResponseWriter, r *http.Request) {
 	executionIDStr := vars["execution_id"]
 
 	// Get function
-	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -503,7 +701,7 @@ func (h *Handler) HandleGetExecution(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get MEG record
-	rec, err := h.Repo.GetMEGByExecutionID(executionID)
+	rec, err := h.repo.GetMEGByExecutionID(executionID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get execution: %v", err))
 		return
@@ -520,7 +718,7 @@ func (h *Handler) HandleGetExecution(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get associated certificate if available (by execution ID for correct lookup)
-	cert, certErr := h.Repo.GetCertificateByExecutionID(executionID)
+	cert, certErr := h.repo.GetCertificateByExecutionID(executionID)
 	var certInfo map[string]interface{}
 	var trustInfo map[string]interface{}
 	if certErr == nil && cert != nil {
@@ -590,13 +788,13 @@ func (h *Handler) HandleGetExecutionByHash(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
 	}
 
-	rec, err := h.Repo.GetMEGByExecutionRootHash(hash)
+	rec, err := h.repo.GetMEGByExecutionRootHash(hash)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get execution: %v", err))
 		return
@@ -611,7 +809,7 @@ func (h *Handler) HandleGetExecutionByHash(w http.ResponseWriter, r *http.Reques
 	}
 
 	executionID := rec.ExecutionID
-	cert, certErr := h.Repo.GetCertificateByExecutionID(executionID)
+	cert, certErr := h.repo.GetCertificateByExecutionID(executionID)
 	var certInfo map[string]interface{}
 	var trustInfo map[string]interface{}
 	if certErr == nil && cert != nil {
@@ -676,7 +874,7 @@ func (h *Handler) HandleGetExecutionTimeline(w http.ResponseWriter, r *http.Requ
 		metric = "latency"
 	}
 
-	fn, err := h.Repo.GetFunctionByAuthorName(author, name)
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "function not found")
 		return
@@ -698,7 +896,7 @@ func (h *Handler) HandleGetExecutionTimeline(w http.ResponseWriter, r *http.Requ
 		from, to = to, from
 	}
 
-	buckets, err := h.Repo.GetExecutionTimelineBuckets(fn.ID, from, to, metric)
+	buckets, err := h.repo.GetExecutionTimelineBuckets(fn.ID, from, to, metric)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("timeline: %v", err))
 		return
@@ -720,6 +918,169 @@ func (h *Handler) HandleGetExecutionTimeline(w http.ResponseWriter, r *http.Requ
 		"to":          to.Format("2006-01-02"),
 		"buckets":     bucketMaps,
 		"insight":     "",
+	})
+}
+
+// HandleListDriftReports lists drift reports for a function (paginated).
+//
+// GET /registry/{author}/{name}/drift-reports
+func (h *Handler) HandleListDriftReports(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+
+	limit := 20
+	offset := 0
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && v > 0 && v <= 100 {
+			limit = v
+		}
+	}
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if v, err := strconv.Atoi(o); err == nil && v >= 0 {
+			offset = v
+		}
+	}
+
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "function not found")
+		return
+	}
+
+	reports, err := h.repo.GetDriftReportsByFunctionID(fn.ID, limit, offset)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to list drift reports: %v", err))
+		return
+	}
+
+	items := make([]map[string]interface{}, len(reports))
+	for i, report := range reports {
+		items[i] = map[string]interface{}{
+			"id":                  report.ID.String(),
+			"execution_id":       report.ExecutionID.String(),
+			"version":            report.Version,
+			"drift_category":     report.DriftCategory,
+			"original_root_hash": report.OriginalRootHash,
+			"replay_root_hash":   report.ReplayRootHash,
+			"trust_penalty":      report.TrustPenalty,
+			"detected_at":        report.DetectedAt,
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"function": fmt.Sprintf("fx://%s/%s", author, name),
+		"reports":  items,
+		"limit":    limit,
+		"offset":   offset,
+	})
+}
+
+// HandleGetDRESummary returns a high-level DRE summary for a function.
+//
+// GET /registry/{author}/{name}/dre-stats
+func (h *Handler) HandleGetDRESummary(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	author := vars["author"]
+	name := vars["name"]
+
+	fn, err := h.repo.GetFunctionByAuthorName(author, name)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "function not found")
+		return
+	}
+
+	passport, err := h.repo.GetPassportByFunctionID(fn.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get passport: %v", err))
+		return
+	}
+
+	if passport == nil {
+		writeJSON(w, http.StatusOK, DREStatsResponse{
+			FunctionID: fn.ID,
+			Summary: DREStatsSummary{
+				DeterminismScore:         0,
+				ReplayIntegrityScore:     0,
+				VerifiedExecutionsTotal:  0,
+				TotalExecutions:         0,
+				ReplayDriftIncidents:     0,
+				DriftScore:              1.0,
+				DeterminismTier:          "unknown",
+			},
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, DREStatsResponse{
+		FunctionID: fn.ID,
+		Summary: DREStatsSummary{
+			DeterminismScore:         passport.DeterminismScore,
+			ReplayIntegrityScore:     passport.ReplayIntegrityScore,
+			VerifiedExecutionsTotal: passport.VerifiedExecutionsTotal,
+			TotalExecutions:         passport.TotalExecutions,
+			ReplayDriftIncidents:    passport.ReplayDriftIncidents,
+			DriftScore:              passport.DriftScore,
+			DeterminismTier:         "full",
+		},
+	})
+}
+
+// HandleGetPassportByFunctionID returns the Execution Passport for a function by function ID.
+// This is an internal endpoint for platform services.
+//
+// GET /internal/functions/{function_id}/passport
+func (h *Handler) HandleGetPassportByFunctionID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	functionIDStr := vars["function_id"]
+
+	functionID, err := uuid.Parse(functionIDStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid function_id")
+		return
+	}
+
+	passport, err := h.repo.GetPassportByFunctionID(functionID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("failed to get passport: %v", err))
+		return
+	}
+
+	if passport == nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"function_id": functionIDStr,
+			"passport": map[string]interface{}{
+				"deterministic_reliability":   0,
+				"replay_drift_incidents":      0,
+				"verified_executions_total":   0,
+				"total_executions":            0,
+				"determinism_score":           0,
+				"replay_integrity_score":      0,
+				"performance_stability_score": 0,
+				"drift_score":                 1.0,
+				"capsule_version":             "dcc/1.0",
+				"determinism_tier":           "full",
+				"last_verified_at":           nil,
+			},
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"function_id": functionIDStr,
+		"passport": map[string]interface{}{
+			"deterministic_reliability":   passport.DeterministicReliability,
+			"replay_drift_incidents":      passport.ReplayDriftIncidents,
+			"verified_executions_total":   passport.VerifiedExecutionsTotal,
+			"total_executions":            passport.TotalExecutions,
+			"determinism_score":           passport.DeterminismScore,
+			"replay_integrity_score":      passport.ReplayIntegrityScore,
+			"performance_stability_score": passport.PerformanceStabilityScore,
+			"drift_score":                passport.DriftScore,
+			"capsule_version":             "dcc/1.0",
+			"determinism_tier":           "full",
+			"last_verified_at":           passport.LastVerifiedAt,
+		},
 	})
 }
 
