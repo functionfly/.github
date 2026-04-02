@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd web/dashboard && bun run build:standalone",
-  "outputDirectory": "web/dashboard/dist",
+  "buildCommand": "cd web/site && bun run astro build",
+  "outputDirectory": "web/site/dist",
   "installCommand": "bun install",
   "framework": null,
   "bunVersion": "1.x"
