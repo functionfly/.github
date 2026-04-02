@@ -1,0 +1,4 @@
+# SPA routing redirects
+/auth/callback /auth/callback.html 200
+/auth/saml/sso /auth/saml/sso.html 200
+/auth/saml/metadata /auth/saml/metadata.xml 200

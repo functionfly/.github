@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "overview": "Overzicht",
+    "functions": "Functies",
+    "registry": "Register",
+    "providers": "Aanbieders",
+    "analytics": "Analyse",
+    "apps": "Apps",
+    "teams": "Teams",
+    "settings": "Instellingen",
+    "apiKeys": "API-sleutels",
+    "billing": "Facturatie",
+    "logout": "Uitloggen",
+    "profile": "Profiel",
+    "documentation": "Documentatie"
+  },
+  "auth": {
+    "login": "Inloggen",
+    "signup": "Aanmelden",
+    "logout": "Uitloggen",
+    "email": "E-mail",
+    "password": "Wachtwoord",
+    "forgotPassword": "Wachtwoord vergeten?",
+    "noAccount": "Geen account?",
+    "hasAccount": "Heb je al een account?"
+  },
+  "common": {
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "edit": "Bewerken",
+    "create": "Maken",
+    "search": "Zoeken",
+    "loading": "Laden...",
+    "error": "Fout",
+    "success": "Succes",
+    "confirm": "Bevestigen",
+    "back": "Terug",
+    "next": "Volgende",
+    "submit": "Verzenden",
+    "close": "Sluiten",
+    "copy": "Kopiëren",
+    "copied": "Gekopieerd!",
+    "retry": "Opnieuw proberen",
+    "noResults": "Geen resultaten gevonden",
+    "seeAll": "Alles bekijken",
+    "learnMore": "Meer informatie"
+  },
+  "dashboard": {
+    "welcomeBack": "Welkom terug",
+    "overview": "Overzicht",
+    "recentActivity": "Recente activiteit",
+    "quickActions": "Snelle acties",
+    "deployFunction": "Functie implementeren",
+    "viewFunctions": "Functies bekijken",
+    "viewAnalytics": "Analyse bekijken"
+  },
+  "functions": {
+    "title": "Functies",
+    "deploy": "Implementeren",
+    "test": "Testen",
+    "logs": "Logboeken",
+    "settings": "Instellingen",
+    "delete": "Functie verwijderen",
+    "noFunctions": "Nog geen functies",
+    "createFirst": "Maak je eerste functie om te beginnen"
+  },
+  "settings": {
+    "title": "Instellingen",
+    "profile": "Profiel",
+    "notifications": "Meldingen",
+    "security": "Beveiliging",
+    "language": "Taal",
+    "languageDescription": "Kies je voorkeurstaal voor het dashboard"
+  },
+  "language": {
+    "title": "Taal",
+    "description": "Selecteer je voorkeurstaal",
+    "autoDetected": "Automatisch gedetecteerd",
+    "changeLanguage": "Taal wijzigen",
+    "detected": "Gedetecteerd"
+  },
+  "errors": {
+    "generic": "Er ging iets mis. Probeer het opnieuw.",
+    "network": "Netwerkfout. Controleer je verbinding.",
+    "unauthorized": "Je moet ingelogd zijn om door te gaan.",
+    "notFound": "De opgevraagde bron is niet gevonden.",
+    "serverError": "Interne serverfout. Probeer het later opnieuw."
+  },
+  "footer": {
+    "privacy": "Privacy",
+    "terms": "Voorwaarden",
+    "docs": "Documentatie"
+  }
+}

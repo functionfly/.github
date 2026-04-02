@@ -1,0 +1,24 @@
+---
+// SAML SSO endpoint — initiates SAML authentication flow
+// The actual SSO initiation is handled server-side; this page redirects to the IdP
+import { API_ORIGIN } from "../../../config";
+
+const tenantId = Astro.url.searchParams.get("tenant") || "";
+const relayState = Astro.url.searchParams.get("RelayState") || Astro.url.searchParams.get("redirect_to") || "";
+
+// Initiate SAML login via API
+const res = await fetch(`${API_ORIGIN}/auth/saml/sso/initiate${tenantId ? `?tenant=${tenantId}` : ""}&relay_state=${encodeURIComponent(relayState)}`, {
+  credentials: "include",
+});
+const data = await res.json().catch(() => ({}));
+if (data.redirect_url) {
+  return Astro.redirect(data.redirect_url);
+}
+---
+<html>
+  <head><meta charset="UTF-8" /><title>SAML SSO</title></head>
+  <body>
+    <p>Initiating SAML login…</p>
+    {data.error && <p style="color:red">Error: {data.error}</p>}
+  </body>
+</html>

@@ -1,0 +1,813 @@
+---
+import AuthLayout from "../layouts/AuthLayout.astro";
+import FormCard from "../components/FormCard";
+import InputField from "../components/InputField";
+import Button from "../components/Button";
+import OAuthProviders from "../components/OAuthProviders";
+import UsernameField from "../components/UsernameField";
+
+const urlInviteCode = Astro.url.searchParams.get("invite_code") || undefined;
+const redirectAfterLogin = Astro.url.searchParams.get("redirect_uri") || undefined;
+const inviteCode = urlInviteCode || "";
+---
+
+<AuthLayout title="Create account — FunctionFly">
+  <FormCard title="Create your account" subtitle="Start building on FunctionFly" client:load>
+    <OAuthProviders client:load inviteCode={inviteCode} redirectAfterLogin={redirectAfterLogin} />
+
+    <!-- Divider -->
+    <div class="form-divider">
+      <span class="divider-text">or sign up with email</span>
+    </div>
+
+    <!-- Step Indicator -->
+    <div class="step-indicator" id="step-indicator">
+      <div class="step active" data-step="1">
+        <div class="step-number">1</div>
+        <span class="step-label">Account</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step" data-step="2">
+        <div class="step-number">2</div>
+        <span class="step-label">Profile</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step" data-step="3">
+        <div class="step-number">3</div>
+        <span class="step-label">Finish</span>
+      </div>
+    </div>
+
+    <form id="signup-form" method="POST" novalidate>
+      <!-- Step 1: Account Info (Email, Password) -->
+      <div class="step-content active" data-step="1">
+        <div class="step-header">
+          <h3 class="step-title">Create your account</h3>
+          <p class="step-description">Start with your email and a secure password</p>
+        </div>
+
+        <InputField
+          client:load
+          label="Email"
+          name="email"
+          type="email"
+          placeholder="you@example.com"
+          required
+          autocomplete="email"
+          id="email-field"
+        />
+
+        <div class="password-section">
+          <InputField
+            client:load
+            label="Password"
+            name="password"
+            type="password"
+            placeholder="Min. 8 characters"
+            required
+            minLength={8}
+            autocomplete="new-password"
+            id="password-field"
+          />
+          <div id="password-strength" class="password-strength hidden">
+            <div class="strength-bar">
+              <div class="strength-fill" id="strength-fill"></div>
+            </div>
+            <p class="strength-text" id="strength-text"></p>
+            <ul class="password-requirements">
+              <li id="req-length">At least 8 characters</li>
+              <li id="req-upper">One uppercase letter</li>
+              <li id="req-lower">One lowercase letter</li>
+              <li id="req-number">One number</li>
+              <li id="req-special">One special character</li>
+            </ul>
+          </div>
+        </div>
+
+        <InputField
+          client:load
+          label="Confirm Password"
+          name="confirm_password"
+          type="password"
+          placeholder="Re-enter your password"
+          required
+          minLength={8}
+          autocomplete="new-password"
+          id="confirm-password-field"
+        />
+        <p id="password-match-error" class="field-error hidden">Passwords do not match</p>
+
+        <div class="step-navigation">
+          <div></div> <!-- Spacer -->
+          <button type="button" class="btn btn-primary" id="step1-next">
+            Continue
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 6px;">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Profile Info (Name, Username, DOB) -->
+      <div class="step-content" data-step="2">
+        <div class="step-header">
+          <h3 class="step-title">Tell us about yourself</h3>
+          <p class="step-description">This helps us personalize your experience</p>
+        </div>
+
+        <InputField
+          client:load
+          label="Full Name"
+          name="name"
+          type="text"
+          placeholder="John Doe"
+          required
+          autocomplete="name"
+        />
+
+        <UsernameField client:load />
+
+        <div class="dob-field">
+          <label class="field-label" for="date_of_birth">Date of birth <span class="required">*</span></label>
+          <input
+            class="field-input"
+            id="date_of_birth"
+            name="date_of_birth"
+            type="date"
+            required
+          />
+          <p class="field-hint">You must be at least 13 years old.</p>
+        </div>
+
+        <div class="step-navigation">
+          <button type="button" class="btn btn-secondary" id="step2-back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back
+          </button>
+          <button type="button" class="btn btn-primary" id="step2-next">
+            Continue
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 6px;">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Invite Code & Terms -->
+      <div class="step-content" data-step="3">
+        <div class="step-header">
+          <h3 class="step-title">Almost done!</h3>
+          <p class="step-description" id="invite-description">Enter your invite code to join</p>
+        </div>
+
+        <div class="invite-section" id="invite-section">
+          <p class="invite-message">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="invite-icon">
+              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+            </svg>
+            Private beta — enter the code you received from the team.
+          </p>
+          <InputField
+            client:load
+            label="Invite code *"
+            name="invite_code"
+            type="text"
+            placeholder="Enter your invite code"
+            required={true}
+            autocomplete="off"
+            value={inviteCode}
+          />
+          <p class="invite-request">
+            Don't have one? <a href="/waitlist">Request one now</a>
+          </p>
+        </div>
+        <input type="hidden" name="invite_code" id="invite-code-hidden" value={inviteCode} />
+
+        <!-- Terms Checkbox -->
+        <div class="terms-row">
+          <label class="checkbox-label">
+            <input type="checkbox" name="terms" required />
+            <span>
+              I agree to the <a href="https://functionfly.com/terms" target="_blank" rel="noopener">Terms of Service</a> and <a href="https://functionfly.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>
+            </span>
+          </label>
+        </div>
+
+        <div class="step-navigation">
+          <button type="button" class="btn btn-secondary" id="step3-back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back
+          </button>
+          <Button type="submit" client:load>Create account</Button>
+        </div>
+      </div>
+    </form>
+
+    <div class="card-footer">
+      Already have an account? <a href="/login">Sign in</a>
+    </div>
+  </FormCard>
+</AuthLayout>
+
+<style>
+  /* Divider */
+  .form-divider {
+    display: flex;
+    align-items: center;
+    margin: 1.5rem 0;
+    position: relative;
+  }
+  .form-divider::before,
+  .form-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #3f3f46, transparent);
+  }
+  .divider-text {
+    padding: 0 1rem;
+    font-size: 0.75rem;
+    color: #71717a;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Step Indicator */
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding: 0 1rem;
+  }
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .step-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #27272a;
+    color: #71717a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+  .step.active .step-number {
+    background: #6366f1;
+    color: white;
+  }
+  .step.completed .step-number {
+    background: #22c55e;
+    color: white;
+  }
+  .step-label {
+    font-size: 0.75rem;
+    color: #71717a;
+    font-weight: 500;
+  }
+  .step.active .step-label {
+    color: #e4e4e7;
+  }
+  .step-connector {
+    width: 40px;
+    height: 2px;
+    background: #27272a;
+    transition: background 0.3s ease;
+  }
+  .step-connector.completed {
+    background: #22c55e;
+  }
+
+  /* Step Content */
+  .step-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .step-content.active {
+    display: block;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Step Header */
+  .step-header {
+    text-align: center;
+    margin-bottom: 1.25rem;
+  }
+  .step-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #e4e4e7;
+    margin-bottom: 0.25rem;
+  }
+  .step-description {
+    font-size: 0.875rem;
+    color: #71717a;
+  }
+
+  /* Step Navigation */
+  .step-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #27272a;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+  }
+  .btn-primary {
+    background: #6366f1;
+    color: white;
+  }
+  .btn-primary:hover {
+    background: #4f46e5;
+  }
+  .btn-secondary {
+    background: transparent;
+    color: #a1a1aa;
+    border: 1px solid #3f3f46;
+  }
+  .btn-secondary:hover {
+    background: #27272a;
+    color: #e4e4e7;
+  }
+
+  /* Invite Section */
+  .invite-section {
+    margin-bottom: 1rem;
+  }
+  .invite-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: #a1a1aa;
+    margin-bottom: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 8px;
+  }
+  .invite-icon {
+    flex-shrink: 0;
+    color: #818cf8;
+  }
+  .invite-request {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: #71717a;
+    text-align: center;
+  }
+  .invite-request a {
+    color: #818cf8;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .invite-request a:hover {
+    text-decoration: underline;
+    color: #a5b4fc;
+  }
+  .required {
+    color: #ef4444;
+  }
+
+  /* Terms checkbox */
+  .terms-row {
+    margin-bottom: 1.25rem;
+    padding: 0.75rem;
+    background: rgba(39, 39, 42, 0.3);
+    border-radius: 8px;
+    border: 1px solid #27272a;
+  }
+  .checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    font-size: 0.875rem;
+    color: #a1a1aa;
+    cursor: pointer;
+    line-height: 1.5;
+  }
+  .checkbox-label input {
+    margin-top: 0.15rem;
+    width: 16px;
+    height: 16px;
+    accent-color: #6366f1;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .checkbox-label a {
+    color: #818cf8;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .checkbox-label a:hover {
+    text-decoration: underline;
+    color: #a5b4fc;
+  }
+
+  /* Password Strength */
+  .password-section {
+    margin-bottom: 0.5rem;
+  }
+  .password-strength {
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: rgba(39, 39, 42, 0.3);
+    border-radius: 6px;
+    border: 1px solid #27272a;
+  }
+  .password-strength.hidden {
+    display: none;
+  }
+  .strength-bar {
+    height: 4px;
+    background: #27272a;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+  }
+  .strength-fill {
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s, background-color 0.3s;
+  }
+  .strength-fill.weak { background: #ef4444; width: 25%; }
+  .strength-fill.fair { background: #f97316; width: 50%; }
+  .strength-fill.good { background: #eab308; width: 75%; }
+  .strength-fill.strong { background: #22c55e; width: 100%; }
+  .strength-text {
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+  .strength-text.weak { color: #ef4444; }
+  .strength-text.fair { color: #f97316; }
+  .strength-text.good { color: #eab308; }
+  .strength-text.strong { color: #22c55e; }
+  .password-requirements {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .password-requirements li {
+    font-size: 0.75rem;
+    color: #71717a;
+    padding: 0.125rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+  .password-requirements li::before {
+    content: "○";
+    font-size: 0.5rem;
+  }
+  .password-requirements li.met {
+    color: #22c55e;
+  }
+  .password-requirements li.met::before {
+    content: "✓";
+  }
+  .field-error {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin: -0.5rem 0 0.75rem 0;
+  }
+  .field-error.hidden {
+    display: none;
+  }
+
+  /* Date of birth field */
+  .dob-field {
+    margin-bottom: 1rem;
+  }
+  .dob-field .field-label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #e4e4e7;
+  }
+  .dob-field .field-input {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 0.375rem;
+    color: #e4e4e7;
+    font-size: 0.9375rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .dob-field .field-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+  .dob-field .field-hint {
+    margin-top: 0.375rem;
+    font-size: 0.75rem;
+    color: #71717a;
+  }
+
+  /* Card footer */
+  .card-footer {
+    text-align: center;
+    font-size: 0.875rem;
+    color: #71717a;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #27272a;
+  }
+  .card-footer a {
+    color: #818cf8;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .card-footer a:hover {
+    text-decoration: underline;
+    color: #a5b4fc;
+  }
+</style>
+
+<script>
+  // Step management
+  let currentStep = 1;
+  const totalSteps = 3;
+
+  const stepIndicator = document.getElementById('step-indicator');
+  const stepContents = document.querySelectorAll('.step-content');
+  const steps = document.querySelectorAll('.step');
+  const connectors = document.querySelectorAll('.step-connector');
+
+  function updateStepIndicator() {
+    steps.forEach((step, index) => {
+      const stepNum = index + 1;
+      step.classList.remove('active', 'completed');
+      if (stepNum === currentStep) {
+        step.classList.add('active');
+      } else if (stepNum < currentStep) {
+        step.classList.add('completed');
+      }
+    });
+
+    connectors.forEach((conn, index) => {
+      conn.classList.toggle('completed', index + 1 < currentStep);
+    });
+  }
+
+  function showStep(stepNum: number) {
+    stepContents.forEach((content) => {
+      const contentStep = parseInt(content.getAttribute('data-step') || '1');
+      content.classList.toggle('active', contentStep === stepNum);
+    });
+    currentStep = stepNum;
+    updateStepIndicator();
+  }
+
+  // Validation functions
+  function validateEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function validateStep1(): boolean {
+    const email = (document.getElementById('email-field') as HTMLInputElement)?.value;
+    const password = (document.getElementById('password-field') as HTMLInputElement)?.value;
+    const confirmPassword = (document.getElementById('confirm-password-field') as HTMLInputElement)?.value;
+
+    let isValid = true;
+
+    if (!email || !validateEmail(email)) {
+      const emailField = document.getElementById('email-field');
+      emailField?.classList.add('error');
+      isValid = false;
+    }
+
+    if (!password || password.length < 8) {
+      isValid = false;
+    }
+
+    if (password !== confirmPassword) {
+      const matchError = document.getElementById('password-match-error');
+      matchError?.classList.remove('hidden');
+      isValid = false;
+    } else {
+      const matchError = document.getElementById('password-match-error');
+      matchError?.classList.add('hidden');
+    }
+
+    return isValid;
+  }
+
+  function validateStep2(): boolean {
+    const dobField = document.getElementById('date_of_birth') as HTMLInputElement;
+    if (!dobField?.value) {
+      dobField?.classList.add('error');
+      return false;
+    }
+
+    // Check age (13+)
+    const dob = new Date(dobField.value);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+
+    if (age < 13) {
+      alert('You must be at least 13 years old to sign up.');
+      return false;
+    }
+
+    return true;
+  }
+
+  // Navigation handlers
+  document.getElementById('step1-next')?.addEventListener('click', () => {
+    if (validateStep1()) {
+      showStep(2);
+    }
+  });
+
+  document.getElementById('step2-back')?.addEventListener('click', () => {
+    showStep(1);
+  });
+
+  document.getElementById('step2-next')?.addEventListener('click', () => {
+    if (validateStep2()) {
+      showStep(3);
+    }
+  });
+
+  document.getElementById('step3-back')?.addEventListener('click', () => {
+    showStep(2);
+  });
+
+  // Password strength checker
+  const passwordField = document.getElementById('password-field') as HTMLInputElement;
+  const passwordStrength = document.getElementById('password-strength') as HTMLDivElement;
+  const strengthFill = document.getElementById('strength-fill') as HTMLDivElement;
+  const strengthText = document.getElementById('strength-text') as HTMLParagraphElement;
+
+  const requirements = {
+    length: document.getElementById('req-length') as HTMLLIElement,
+    upper: document.getElementById('req-upper') as HTMLLIElement,
+    lower: document.getElementById('req-lower') as HTMLLIElement,
+    number: document.getElementById('req-number') as HTMLLIElement,
+    special: document.getElementById('req-special') as HTMLLIElement,
+  };
+
+  function checkPasswordStrength(password: string) {
+    const checks = {
+      length: password.length >= 8,
+      upper: /[A-Z]/.test(password),
+      lower: /[a-z]/.test(password),
+      number: /[0-9]/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    };
+
+    Object.entries(requirements).forEach(([key, el]) => {
+      el.classList.toggle('met', checks[key as keyof typeof checks]);
+    });
+
+    const score = Object.values(checks).filter(Boolean).length;
+
+    strengthFill.className = 'strength-fill';
+    strengthText.className = 'strength-text';
+
+    if (password.length === 0) {
+      passwordStrength.classList.add('hidden');
+    } else {
+      passwordStrength.classList.remove('hidden');
+      if (score <= 2) {
+        strengthFill.classList.add('weak');
+        strengthText.classList.add('weak');
+        strengthText.textContent = 'Weak password';
+      } else if (score === 3) {
+        strengthFill.classList.add('fair');
+        strengthText.classList.add('fair');
+        strengthText.textContent = 'Fair password';
+      } else if (score === 4) {
+        strengthFill.classList.add('good');
+        strengthText.classList.add('good');
+        strengthText.textContent = 'Good password';
+      } else {
+        strengthFill.classList.add('strong');
+        strengthText.classList.add('strong');
+        strengthText.textContent = 'Strong password';
+      }
+    }
+  }
+
+  // Password match check
+  const confirmPasswordField = document.getElementById('confirm-password-field') as HTMLInputElement;
+  const passwordMatchError = document.getElementById('password-match-error') as HTMLParagraphElement;
+
+  function checkPasswordMatch() {
+    const password = passwordField.value;
+    const confirm = confirmPasswordField.value;
+
+    if (confirm && password !== confirm) {
+      passwordMatchError.classList.remove('hidden');
+    } else {
+      passwordMatchError.classList.add('hidden');
+    }
+  }
+
+  passwordField?.addEventListener('input', (e) => {
+    checkPasswordStrength((e.target as HTMLInputElement).value);
+    if (confirmPasswordField.value) checkPasswordMatch();
+  });
+
+  confirmPasswordField?.addEventListener('input', checkPasswordMatch);
+
+  // Date of birth max date (13 years ago)
+  const dobField = document.getElementById('date_of_birth') as HTMLInputElement;
+  if (dobField) {
+    const maxDate = new Date();
+    maxDate.setFullYear(maxDate.getFullYear() - 13);
+    dobField.max = maxDate.toISOString().split('T')[0];
+  }
+
+  // Fetch signup config client-side
+  const inviteSection = document.getElementById('invite-section');
+  const inviteDescription = document.getElementById('invite-description');
+  const inviteCodeHidden = document.getElementById('invite-code-hidden') as HTMLInputElement;
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasInviteCode = urlParams.has('invite_code');
+
+  fetch('/auth/signup-config', { credentials: 'include' })
+    .then(res => res.json())
+    .then(data => {
+      const inviteRequired = data.invite_required || data.InviteRequired || false;
+      if (!inviteRequired && !hasInviteCode) {
+        // Invite not required - hide invite field
+        if (inviteSection) inviteSection.style.display = 'none';
+        if (inviteDescription) inviteDescription.textContent = 'Review and complete your signup';
+      }
+    })
+    .catch(() => {
+      // On error, keep invite field visible (safer)
+    });
+
+  // Form submission
+  const form = document.getElementById('signup-form') as HTMLFormElement;
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const termsCheckbox = form.querySelector('input[name="terms"]') as HTMLInputElement;
+    if (!termsCheckbox?.checked) {
+      alert('Please accept the Terms of Service and Privacy Policy to continue.');
+      return;
+    }
+
+    const fd = new FormData(form);
+    const body: Record<string, string> = {};
+    fd.forEach((v, k) => { body[k] = v as string; });
+    body.terms_accepted = 'true';
+    delete body.terms;
+    delete body.confirm_password;
+
+    const res = await fetch('/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      credentials: 'include',
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      window.location.href = `/confirm?email=${encodeURIComponent(body.email)}&sent=${data.email_sent || false}`;
+    } else {
+      const errEl = document.querySelector('.alert-error') || document.createElement('div');
+      errEl.className = 'alert alert-error';
+      errEl.textContent = data.message || 'Sign up failed. Please try again.';
+      form.before(errEl);
+    }
+  });
+</script>

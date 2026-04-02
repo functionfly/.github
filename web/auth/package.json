@@ -1,0 +1,25 @@
+{
+  "name": "functionfly-auth",
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "bun run astro dev",
+    "start": "bun run astro dev",
+    "build": "bun run astro build",
+    "preview": "bun run astro preview",
+    "astro": "astro",
+    "vercel:deploy": "bun run astro build && vercel --prod",
+    "vercel:deploy:preview": "bun run astro build && vercel"
+  },
+  "dependencies": {
+    "@astrojs/react": "^3.6.0",
+    "astro": "^5.15.9",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.0.0"
+  }
+}

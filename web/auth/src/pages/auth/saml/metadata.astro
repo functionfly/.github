@@ -1,0 +1,19 @@
+---
+// SAML SP metadata endpoint — provides XML metadata for IdP configuration
+import { API_ORIGIN } from "../../../config";
+
+const tenantId = Astro.url.searchParams.get("tenant") || "";
+const res = await fetch(`${API_ORIGIN}/auth/saml/metadata${tenantId ? `?tenant=${tenantId}` : ""}`, {
+  headers: { Accept: "application/xml" },
+});
+const metadata = await res.text().catch(() => "");
+---
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>SAML Metadata — FunctionFly</title>
+  </head>
+  <body>
+    <pre>{metadata}</pre>
+  </body>
+</html>

@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "overview": "개요",
+    "functions": "함수",
+    "registry": "레지스트리",
+    "providers": "공급자",
+    "analytics": "분석",
+    "apps": "앱",
+    "teams": "팀",
+    "settings": "설정",
+    "apiKeys": "API 키",
+    "billing": "결제",
+    "logout": "로그아웃",
+    "profile": "프로필",
+    "documentation": "문서"
+  },
+  "auth": {
+    "login": "로그인",
+    "signup": "회원가입",
+    "logout": "로그아웃",
+    "email": "이메일",
+    "password": "비밀번호",
+    "forgotPassword": "비밀번호를 잊으셨나요?",
+    "noAccount": "계정이 없으신가요?",
+    "hasAccount": "이미 계정이 있으신가요?"
+  },
+  "common": {
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "편집",
+    "create": "만들기",
+    "search": "검색",
+    "loading": "로딩 중...",
+    "error": "오류",
+    "success": "성공",
+    "confirm": "확인",
+    "back": "뒤로",
+    "next": "다음",
+    "submit": "제출",
+    "close": "닫기",
+    "copy": "복사",
+    "copied": "복사됨!",
+    "retry": "다시 시도",
+    "noResults": "결과를 찾을 수 없습니다",
+    "seeAll": "모두 보기",
+    "learnMore": "자세히 알아보기"
+  },
+  "dashboard": {
+    "welcomeBack": "다시 오신 것을 환영합니다",
+    "overview": "개요",
+    "recentActivity": "최근 활동",
+    "quickActions": "빠른 작업",
+    "deployFunction": "함수 배포",
+    "viewFunctions": "함수 보기",
+    "viewAnalytics": "분석 보기"
+  },
+  "functions": {
+    "title": "함수",
+    "deploy": "배포",
+    "test": "테스트",
+    "logs": "로그",
+    "settings": "설정",
+    "delete": "함수 삭제",
+    "noFunctions": "아직 함수가 없습니다",
+    "createFirst": "첫 번째 함수를 만들어 시작하세요"
+  },
+  "settings": {
+    "title": "설정",
+    "profile": "프로필",
+    "notifications": "알림",
+    "security": "보안",
+    "language": "언어",
+    "languageDescription": "대시보드의 기본 언어를 선택하세요"
+  },
+  "language": {
+    "title": "언어",
+    "description": "기본 언어를 선택하세요",
+    "autoDetected": "자동 감지",
+    "changeLanguage": "언어 변경",
+    "detected": "감지됨"
+  },
+  "errors": {
+    "generic": "문제가 발생했습니다. 다시 시도해 주세요.",
+    "network": "네트워크 오류입니다. 연결을 확인해 주세요.",
+    "unauthorized": "계속하려면 로그인해야 합니다.",
+    "notFound": "요청한 리소스를 찾을 수 없습니다.",
+    "serverError": "서버 내부 오류입니다. 나중에 다시 시도해 주세요."
+  },
+  "footer": {
+    "privacy": "개인정보",
+    "terms": "이용약관",
+    "docs": "문서"
+  }
+}

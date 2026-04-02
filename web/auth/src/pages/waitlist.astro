@@ -1,0 +1,308 @@
+---
+import AuthLayout from "../layouts/AuthLayout.astro";
+import FormCard from "../components/FormCard";
+import InputField from "../components/InputField";
+import Button from "../components/Button";
+
+// Get signup config to check if we're in invite-only mode
+let inviteRequired = false;
+try {
+  const response = await fetch(`${import.meta.env.PUBLIC_API_URL || ''}/auth/signup-config`);
+  if (response.ok) {
+    const config = await response.json();
+    inviteRequired = config.invite_required || config.InviteRequired || false;
+  }
+} catch (e) {
+  console.error("Failed to fetch signup config:", e);
+}
+
+// If not invite-only, redirect to signup
+if (!inviteRequired) {
+  return Astro.redirect("/signup");
+}
+---
+
+<AuthLayout title="Join the Waitlist — FunctionFly">
+  <FormCard 
+    title="Join the Waitlist" 
+    subtitle="Get early access to FunctionFly" 
+    client:load
+  >
+    <div class="waitlist-intro">
+      <div class="intro-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <p class="intro-text">
+        FunctionFly is currently in private beta. Join our waitlist and be among the first to experience the future of serverless functions.
+      </p>
+    </div>
+
+    <form id="waitlist-form" method="POST">
+      <InputField
+        client:load
+        label="Email"
+        name="email"
+        type="email"
+        placeholder="you@example.com"
+        required
+        autocomplete="email"
+        id="email-field"
+      />
+      
+      <InputField
+        client:load
+        label="Full Name"
+        name="name"
+        type="text"
+        placeholder="John Doe"
+        autocomplete="name"
+      />
+      
+      <InputField
+        client:load
+        label="Company (optional)"
+        name="company"
+        type="text"
+        placeholder="Acme Inc"
+        autocomplete="organization"
+      />
+      
+      <div class="field">
+        <label class="field-label" for="use_case">How do you plan to use FunctionFly?</label>
+        <textarea 
+          class="field-textarea" 
+          id="use_case" 
+          name="use_case" 
+          rows="3" 
+          placeholder="Tell us about your use case..."
+        ></textarea>
+      </div>
+
+      <Button type="submit" client:load>Join Waitlist</Button>
+    </form>
+
+    <div id="success-message" class="success-message hidden">
+      <div class="success-icon">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
+      <h3 class="success-title">You're on the list!</h3>
+      <p class="success-text">
+        Thanks for your interest in FunctionFly. We'll review your request and send you an invite code as soon as we're ready for more users.
+      </p>
+      <a href="/login" class="success-link">Already have an invite? Sign in</a>
+    </div>
+
+    <div class="card-footer">
+      <p>Already have an invite code? <a href="/signup">Sign up now</a></p>
+    </div>
+  </FormCard>
+</AuthLayout>
+
+<style>
+  .waitlist-intro {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  .intro-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+    color: #6366f1;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .intro-text {
+    font-size: 0.9375rem;
+    color: #a1a1aa;
+    line-height: 1.6;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+
+  .field {
+    margin-bottom: 1rem;
+  }
+  .field-label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #e4e4e7;
+  }
+  .field-textarea {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 0.375rem;
+    color: #e4e4e7;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 80px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field-textarea:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+  .field-textarea::placeholder {
+    color: #52525b;
+  }
+
+  .success-message {
+    text-align: center;
+    padding: 2rem 1rem;
+    animation: fadeIn 0.4s ease;
+  }
+  .success-message.hidden {
+    display: none;
+  }
+  .success-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1.5rem;
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .success-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #e4e4e7;
+    margin-bottom: 0.75rem;
+  }
+  .success-text {
+    font-size: 0.9375rem;
+    color: #a1a1aa;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+  .success-link {
+    display: inline-block;
+    color: #818cf8;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.875rem;
+  }
+  .success-link:hover {
+    text-decoration: underline;
+    color: #a5b4fc;
+  }
+
+  .card-footer {
+    text-align: center;
+    font-size: 0.875rem;
+    color: #71717a;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #27272a;
+  }
+  .card-footer a {
+    color: #818cf8;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .card-footer a:hover {
+    text-decoration: underline;
+    color: #a5b4fc;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+<script>
+  const form = document.getElementById('waitlist-form') as HTMLFormElement;
+  const successMessage = document.getElementById('success-message') as HTMLDivElement;
+  const emailField = document.getElementById('email-field') as HTMLInputElement;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Joining...';
+
+    const formData = new FormData(form);
+    const body = {
+      email: formData.get('email'),
+      name: formData.get('name'),
+      company: formData.get('company'),
+      useCase: formData.get('use_case'),
+      source: 'auth_site',
+    };
+
+    try {
+      const response = await fetch('/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        form.style.display = 'none';
+        successMessage.classList.remove('hidden');
+      } else {
+        const data = await response.json().catch(() => ({}));
+        const errorMsg = data.message || 'Failed to join waitlist. Please try again.';
+        
+        // Show error
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-error';
+        errorDiv.textContent = errorMsg;
+        errorDiv.style.cssText = `
+          padding: 0.75rem 1rem;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          border-radius: 8px;
+          color: #fca5a5;
+          font-size: 0.875rem;
+          margin-bottom: 1rem;
+        `;
+        form.prepend(errorDiv);
+
+        // Remove error after 5 seconds
+        setTimeout(() => errorDiv.remove(), 5000);
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Join Waitlist';
+      }
+    } catch (error) {
+      console.error('Waitlist submission error:', error);
+      
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'alert alert-error';
+      errorDiv.textContent = 'Network error. Please check your connection and try again.';
+      errorDiv.style.cssText = `
+        padding: 0.75rem 1rem;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 8px;
+        color: #fca5a5;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+      `;
+      form.prepend(errorDiv);
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Join Waitlist';
+    }
+  });
+</script>

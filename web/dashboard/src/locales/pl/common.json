@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "overview": "Przegląd",
+    "functions": "Funkcje",
+    "registry": "Rejestr",
+    "providers": "Dostawcy",
+    "analytics": "Analityka",
+    "apps": "Aplikacje",
+    "teams": "Zespoły",
+    "settings": "Ustawienia",
+    "apiKeys": "Klucze API",
+    "billing": "Rozliczenia",
+    "logout": "Wyloguj się",
+    "profile": "Profil",
+    "documentation": "Dokumentacja"
+  },
+  "auth": {
+    "login": "Zaloguj się",
+    "signup": "Zarejestruj się",
+    "logout": "Wyloguj się",
+    "email": "E-mail",
+    "password": "Hasło",
+    "forgotPassword": "Nie pamiętasz hasła?",
+    "noAccount": "Nie masz konta?",
+    "hasAccount": "Masz już konto?"
+  },
+  "common": {
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "delete": "Usuń",
+    "edit": "Edytuj",
+    "create": "Utwórz",
+    "search": "Szukaj",
+    "loading": "Ładowanie...",
+    "error": "Błąd",
+    "success": "Sukces",
+    "confirm": "Potwierdź",
+    "back": "Wstecz",
+    "next": "Dalej",
+    "submit": "Wyślij",
+    "close": "Zamknij",
+    "copy": "Kopiuj",
+    "copied": "Skopiowano!",
+    "retry": "Ponów",
+    "noResults": "Nie znaleziono wyników",
+    "seeAll": "Zobacz wszystkie",
+    "learnMore": "Dowiedz się więcej"
+  },
+  "dashboard": {
+    "welcomeBack": "Witaj ponownie",
+    "overview": "Przegląd",
+    "recentActivity": "Ostatnia aktywność",
+    "quickActions": "Szybkie akcje",
+    "deployFunction": "Wdróż funkcję",
+    "viewFunctions": "Wyświetl funkcje",
+    "viewAnalytics": "Wyświetl analitykę"
+  },
+  "functions": {
+    "title": "Funkcje",
+    "deploy": "Wdróż",
+    "test": "Testuj",
+    "logs": "Logi",
+    "settings": "Ustawienia",
+    "delete": "Usuń funkcję",
+    "noFunctions": "Jeszcze brak funkcji",
+    "createFirst": "Utwórz pierwszą funkcję, aby rozpocząć"
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "profile": "Profil",
+    "notifications": "Powiadomienia",
+    "security": "Bezpieczeństwo",
+    "language": "Język",
+    "languageDescription": "Wybierz preferowany język dla panelu"
+  },
+  "language": {
+    "title": "Język",
+    "description": "Wybierz preferowany język",
+    "autoDetected": "Wykryto automatycznie",
+    "changeLanguage": "Zmień język",
+    "detected": "Wykryto"
+  },
+  "errors": {
+    "generic": "Coś poszło nie tak. Spróbuj ponownie.",
+    "network": "Błąd sieci. Sprawdź połączenie.",
+    "unauthorized": "Musisz się zalogować, aby kontynuować.",
+    "notFound": "Nie znaleziono żądanego zasobu.",
+    "serverError": "Wewnętrzny błąd serwera. Spróbuj ponownie później."
+  },
+  "footer": {
+    "privacy": "Prywatność",
+    "terms": "Warunki",
+    "docs": "Dokumentacja"
+  }
+}

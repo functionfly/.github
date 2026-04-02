@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "overview": "अवलोकन",
+    "functions": "फ़ंक्शन",
+    "registry": "रजिस्ट्री",
+    "providers": "प्रदाता",
+    "analytics": "विश्लेषण",
+    "apps": "ऐप्स",
+    "teams": "टीमें",
+    "settings": "सेटिंग्स",
+    "apiKeys": "API कुंजियाँ",
+    "billing": "बिलिंग",
+    "logout": "लॉग आउट",
+    "profile": "प्रोफ़ाइल",
+    "documentation": "दस्तावेज़ीकरण"
+  },
+  "auth": {
+    "login": "लॉग इन",
+    "signup": "साइन अप",
+    "logout": "लॉग आउट",
+    "email": "ईमेल",
+    "password": "पासवर्ड",
+    "forgotPassword": "पासवर्ड भूल गए?",
+    "noAccount": "कोई खाता नहीं है?",
+    "hasAccount": "पहले से खाता है?"
+  },
+  "common": {
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "create": "बनाएं",
+    "search": "खोजें",
+    "loading": "लोड हो रहा है...",
+    "error": "त्रुटि",
+    "success": "सफल",
+    "confirm": "पुष्टि करें",
+    "back": "वापस",
+    "next": "अगला",
+    "submit": "जमा करें",
+    "close": "बंद करें",
+    "copy": "कॉपी करें",
+    "copied": "कॉपी किया गया!",
+    "retry": "पुनः प्रयास करें",
+    "noResults": "कोई परिणाम नहीं मिला",
+    "seeAll": "सभी देखें",
+    "learnMore": "और जानें"
+  },
+  "dashboard": {
+    "welcomeBack": "वापसी पर स्वागत है",
+    "overview": "अवलोकन",
+    "recentActivity": "हाल की गतिविधि",
+    "quickActions": "त्वरित कार्रवाई",
+    "deployFunction": "फ़ंक्शन तैनात करें",
+    "viewFunctions": "फ़ंक्शन देखें",
+    "viewAnalytics": "विश्लेषण देखें"
+  },
+  "functions": {
+    "title": "फ़ंक्शन",
+    "deploy": "तैनात करें",
+    "test": "परीक्षण",
+    "logs": "लॉग",
+    "settings": "सेटिंग्स",
+    "delete": "फ़ंक्शन हटाएं",
+    "noFunctions": "अभी तक कोई फ़ंक्शन नहीं",
+    "createFirst": "शुरू करने के लिए अपना पहला फ़ंक्शन बनाएं"
+  },
+  "settings": {
+    "title": "सेटिंग्स",
+    "profile": "प्रोफ़ाइल",
+    "notifications": "सूचनाएं",
+    "security": "सुरक्षा",
+    "language": "भाषा",
+    "languageDescription": "डैशबोर्ड के लिए अपनी पसंदीदा भाषा चुनें"
+  },
+  "language": {
+    "title": "भाषा",
+    "description": "अपनी पसंदीदा भाषा चुनें",
+    "autoDetected": "स्वतः पहचाना गया",
+    "changeLanguage": "भाषा बदलें",
+    "detected": "पहचाना गया"
+  },
+  "errors": {
+    "generic": "कुछ गलत हो गया। कृपया पुनः प्रयास करें।",
+    "network": "नेटवर्क त्रुटि। कृपया अपना कनेक्शन जांचें।",
+    "unauthorized": "जारी रखने के लिए आपको लॉग इन होना होगा।",
+    "notFound": "अनुरोधित संसाधन नहीं मिला।",
+    "serverError": "आंतरिक सर्वर त्रुटि। कृपया बाद में पुनः प्रयास करें।"
+  },
+  "footer": {
+    "privacy": "गोपनीयता",
+    "terms": "नियम",
+    "docs": "दस्तावेज़ीकरण"
+  }
+}

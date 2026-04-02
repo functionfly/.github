@@ -1,0 +1,35 @@
+{
+  "nav": {
+    "docs": "Docs",
+    "forAgents": "For AI Agents",
+    "trust": "Trust",
+    "pricing": "Pricing",
+    "blog": "Blog",
+    "dashboard": "Dashboard"
+  },
+  "footer": {
+    "tagline": "The platform for AI agent tooling. Publish, discover, verify, and run functions — with trust scores, encrypted secrets, and durable state built in.",
+    "product": "Product",
+    "company": "Company",
+    "legal": "Legal",
+    "documentation": "Documentation",
+    "trustLayer": "Platform",
+    "forAIAgents": "For AI agents",
+    "pricing": "Pricing",
+    "changelog": "Changelog",
+    "about": "About",
+    "blog": "Blog",
+    "careers": "Careers",
+    "contact": "Contact",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "sla": "SLA",
+    "copyright": "All rights reserved."
+  },
+  "language": {
+    "title": "Language",
+    "description": "Choose your preferred language",
+    "detected": "Detected",
+    "autoDetected": "Auto-detected from your browser"
+  }
+}

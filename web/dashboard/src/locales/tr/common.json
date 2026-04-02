@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "overview": "Genel Bakış",
+    "functions": "Fonksiyonlar",
+    "registry": "Kayıt Defteri",
+    "providers": "Sağlayıcılar",
+    "analytics": "Analitik",
+    "apps": "Uygulamalar",
+    "teams": "Ekipler",
+    "settings": "Ayarlar",
+    "apiKeys": "API Anahtarları",
+    "billing": "Faturalama",
+    "logout": "Çıkış yap",
+    "profile": "Profil",
+    "documentation": "Dokümantasyon"
+  },
+  "auth": {
+    "login": "Giriş yap",
+    "signup": "Kaydol",
+    "logout": "Çıkış yap",
+    "email": "E-posta",
+    "password": "Şifre",
+    "forgotPassword": "Şifrenizi mi unuttunuz?",
+    "noAccount": "Hesabınız yok mu?",
+    "hasAccount": "Zaten hesabınız var mı?"
+  },
+  "common": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "create": "Oluştur",
+    "search": "Ara",
+    "loading": "Yükleniyor...",
+    "error": "Hata",
+    "success": "Başarılı",
+    "confirm": "Onayla",
+    "back": "Geri",
+    "next": "İleri",
+    "submit": "Gönder",
+    "close": "Kapat",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı!",
+    "retry": "Tekrar dene",
+    "noResults": "Sonuç bulunamadı",
+    "seeAll": "Tümünü gör",
+    "learnMore": "Daha fazla bilgi"
+  },
+  "dashboard": {
+    "welcomeBack": "Tekrar hoş geldiniz",
+    "overview": "Genel Bakış",
+    "recentActivity": "Son Aktivite",
+    "quickActions": "Hızlı İşlemler",
+    "deployFunction": "Fonksiyon dağıt",
+    "viewFunctions": "Fonksiyonları görüntüle",
+    "viewAnalytics": "Analitik görüntüle"
+  },
+  "functions": {
+    "title": "Fonksiyonlar",
+    "deploy": "Dağıt",
+    "test": "Test et",
+    "logs": "Kayıtlar",
+    "settings": "Ayarlar",
+    "delete": "Fonksiyonu sil",
+    "noFunctions": "Henüz fonksiyon yok",
+    "createFirst": "Başlamak için ilk fonksiyonunuzu oluşturun"
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "profile": "Profil",
+    "notifications": "Bildirimler",
+    "security": "Güvenlik",
+    "language": "Dil",
+    "languageDescription": "Pano için tercih ettiğiniz dili seçin"
+  },
+  "language": {
+    "title": "Dil",
+    "description": "Tercih ettiğiniz dili seçin",
+    "autoDetected": "Otomatik algılandı",
+    "changeLanguage": "Dili değiştir",
+    "detected": "Algılandı"
+  },
+  "errors": {
+    "generic": "Bir şeyler yanlış gitti. Lütfen tekrar deneyin.",
+    "network": "Ağ hatası. Bağlantınızı kontrol edin.",
+    "unauthorized": "Devam etmek için giriş yapmanız gerekiyor.",
+    "notFound": "İstenen kaynak bulunamadı.",
+    "serverError": "Sunucu iç hatası. Lütfen daha sonra tekrar deneyin."
+  },
+  "footer": {
+    "privacy": "Gizlilik",
+    "terms": "Kullanım Şartları",
+    "docs": "Dokümantasyon"
+  }
+}

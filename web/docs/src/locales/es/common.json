@@ -1,0 +1,19 @@
+{
+  "sidebar": {
+    "docs": "Docs",
+    "github": "GitHub",
+    "website": "functionfly.com"
+  },
+  "footer": {
+    "copyright": "FunctionFly",
+    "github": "GitHub",
+    "website": "Sitio web",
+    "terms": "Términos"
+  },
+  "language": {
+    "title": "Idioma",
+    "description": "Elige tu idioma preferido",
+    "detected": "Detectado",
+    "autoDetected": "Detectado automáticamente desde tu navegador"
+  }
+}

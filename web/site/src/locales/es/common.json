@@ -1,0 +1,35 @@
+{
+  "nav": {
+    "docs": "Docs",
+    "forAgents": "Para Agentes IA",
+    "trust": "Confianza",
+    "pricing": "Precios",
+    "blog": "Blog",
+    "dashboard": "Panel"
+  },
+  "footer": {
+    "tagline": "La plataforma para herramientas de agentes IA. Publica, descubre, verifica y ejecuta funciones — con puntuaciones de confianza, secretos cifrados y estado duradero integrados.",
+    "product": "Producto",
+    "company": "Empresa",
+    "legal": "Legal",
+    "documentation": "Documentación",
+    "trustLayer": "Plataforma",
+    "forAIAgents": "Para agentes IA",
+    "pricing": "Precios",
+    "changelog": "Historial",
+    "about": "Acerca de",
+    "blog": "Blog",
+    "careers": "Empleo",
+    "contact": "Contacto",
+    "privacy": "Privacidad",
+    "terms": "Términos",
+    "sla": "SLA",
+    "copyright": "Todos los derechos reservados."
+  },
+  "language": {
+    "title": "Idioma",
+    "description": "Elige tu idioma preferido",
+    "detected": "Detectado",
+    "autoDetected": "Detectado automáticamente desde tu navegador"
+  }
+}

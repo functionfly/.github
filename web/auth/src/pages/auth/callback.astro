@@ -1,0 +1,47 @@
+---
+// OAuth callback page — the orchestrator redirects here with token/refresh_token params
+import { APP_ORIGIN } from "../../config";
+
+const token = Astro.url.searchParams.get("token") || "";
+const refreshToken = Astro.url.searchParams.get("refresh_token") || "";
+const error = Astro.url.searchParams.get("error") || "";
+const errorDescription = Astro.url.searchParams.get("error_description") || "";
+const isNewUser = Astro.url.searchParams.get("new_user") === "true";
+---
+
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>{error ? "Auth failed" : "Signing in…"} — FunctionFly</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: system-ui, sans-serif; background: #0a0a0b; color: #fafafa; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+      .card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 2rem; max-width: 420px; width: 90%; text-align: center; }
+      h1 { font-size: 1.25rem; margin-bottom: 0.75rem; }
+      p { color: #71717a; font-size: 0.9375rem; line-height: 1.6; }
+      a { color: #6366f1; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    {error ? (
+      <div class="card">
+        <h1>Authentication failed</h1>
+        <p>{errorDescription || error}. <a href="/login">Try again</a>.</p>
+      </div>
+    ) : (
+      <div class="card">
+        <h1>{isNewUser ? "Account created!" : "Signed in!"}</h1>
+        <p>Redirecting to your dashboard…</p>
+        <script define:vars={{ token, refreshToken, appOrigin: APP_ORIGIN }}>
+          // Store tokens and redirect
+          if (token) {
+            sessionStorage.setItem("ff_token", token);
+            if (refreshToken) sessionStorage.setItem("ff_refresh_token", refreshToken);
+          }
+          window.location.href = appOrigin + "/auth/callback";
+        </script>
+      </div>
+    )}
+  </body>
+</html>

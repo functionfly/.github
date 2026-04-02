@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "overview": "概要",
+    "functions": "関数",
+    "registry": "レジストリ",
+    "providers": "プロバイダー",
+    "analytics": "分析",
+    "apps": "アプリ",
+    "teams": "チーム",
+    "settings": "設定",
+    "apiKeys": "API キー",
+    "billing": "請求",
+    "logout": "ログアウト",
+    "profile": "プロフィール",
+    "documentation": "ドキュメント"
+  },
+  "auth": {
+    "login": "ログイン",
+    "signup": "新規登録",
+    "logout": "ログアウト",
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "forgotPassword": "パスワードをお忘れですか？",
+    "noAccount": "アカウントをお持ちでないですか？",
+    "hasAccount": "すでにアカウントをお持ちですか？"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "create": "作成",
+    "search": "検索",
+    "loading": "読み込み中...",
+    "error": "エラー",
+    "success": "成功",
+    "confirm": "確認",
+    "back": "戻る",
+    "next": "次へ",
+    "submit": "送信",
+    "close": "閉じる",
+    "copy": "コピー",
+    "copied": "コピーしました！",
+    "retry": "再試行",
+    "noResults": "結果が見つかりません",
+    "seeAll": "すべて表示",
+    "learnMore": "詳細を見る"
+  },
+  "dashboard": {
+    "welcomeBack": "おかえりなさい",
+    "overview": "概要",
+    "recentActivity": "最近のアクティビティ",
+    "quickActions": "クイックアクション",
+    "deployFunction": "関数をデプロイ",
+    "viewFunctions": "関数を表示",
+    "viewAnalytics": "分析を表示"
+  },
+  "functions": {
+    "title": "関数",
+    "deploy": "デプロイ",
+    "test": "テスト",
+    "logs": "ログ",
+    "settings": "設定",
+    "delete": "関数を削除",
+    "noFunctions": "関数がまだありません",
+    "createFirst": "最初の関数を作成して始めましょう"
+  },
+  "settings": {
+    "title": "設定",
+    "profile": "プロフィール",
+    "notifications": "通知",
+    "security": "セキュリティ",
+    "language": "言語",
+    "languageDescription": "ダッシュボードの優先言語を選択してください"
+  },
+  "language": {
+    "title": "言語",
+    "description": "優先言語を選択してください",
+    "autoDetected": "自動検出",
+    "changeLanguage": "言語を変更",
+    "detected": "検出済み"
+  },
+  "errors": {
+    "generic": "問題が発生しました。もう一度お試しください。",
+    "network": "ネットワークエラー。接続を確認してください。",
+    "unauthorized": "続行するにはログインする必要があります。",
+    "notFound": "リクエストされたリソースが見つかりませんでした。",
+    "serverError": "サーバー内部エラー。後でもう一度お試しください。"
+  },
+  "footer": {
+    "privacy": "プライバシー",
+    "terms": "利用規約",
+    "docs": "ドキュメント"
+  }
+}

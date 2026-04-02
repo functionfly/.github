@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "overview": "Tổng quan",
+    "functions": "Hàm",
+    "registry": "Sổ đăng ký",
+    "providers": "Nhà cung cấp",
+    "analytics": "Phân tích",
+    "apps": "Ứng dụng",
+    "teams": "Nhóm",
+    "settings": "Cài đặt",
+    "apiKeys": "Khóa API",
+    "billing": "Thanh toán",
+    "logout": "Đăng xuất",
+    "profile": "Hồ sơ",
+    "documentation": "Tài liệu"
+  },
+  "auth": {
+    "login": "Đăng nhập",
+    "signup": "Đăng ký",
+    "logout": "Đăng xuất",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "forgotPassword": "Quên mật khẩu?",
+    "noAccount": "Chưa có tài khoản?",
+    "hasAccount": "Đã có tài khoản?"
+  },
+  "common": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Chỉnh sửa",
+    "create": "Tạo",
+    "search": "Tìm kiếm",
+    "loading": "Đang tải...",
+    "error": "Lỗi",
+    "success": "Thành công",
+    "confirm": "Xác nhận",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "submit": "Gửi",
+    "close": "Đóng",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép!",
+    "retry": "Thử lại",
+    "noResults": "Không tìm thấy kết quả",
+    "seeAll": "Xem tất cả",
+    "learnMore": "Tìm hiểu thêm"
+  },
+  "dashboard": {
+    "welcomeBack": "Chào mừng trở lại",
+    "overview": "Tổng quan",
+    "recentActivity": "Hoạt động gần đây",
+    "quickActions": "Thao tác nhanh",
+    "deployFunction": "Triển khai hàm",
+    "viewFunctions": "Xem hàm",
+    "viewAnalytics": "Xem phân tích"
+  },
+  "functions": {
+    "title": "Hàm",
+    "deploy": "Triển khai",
+    "test": "Kiểm tra",
+    "logs": "Nhật ký",
+    "settings": "Cài đặt",
+    "delete": "Xóa hàm",
+    "noFunctions": "Chưa có hàm nào",
+    "createFirst": "Tạo hàm đầu tiên của bạn để bắt đầu"
+  },
+  "settings": {
+    "title": "Cài đặt",
+    "profile": "Hồ sơ",
+    "notifications": "Thông báo",
+    "security": "Bảo mật",
+    "language": "Ngôn ngữ",
+    "languageDescription": "Chọn ngôn ngữ ưa thích của bạn cho bảng điều khiển"
+  },
+  "language": {
+    "title": "Ngôn ngữ",
+    "description": "Chọn ngôn ngữ ưa thích của bạn",
+    "autoDetected": "Tự động phát hiện",
+    "changeLanguage": "Thay đổi ngôn ngữ",
+    "detected": "Đã phát hiện"
+  },
+  "errors": {
+    "generic": "Đã xảy ra sự cố. Vui lòng thử lại.",
+    "network": "Lỗi mạng. Vui lòng kiểm tra kết nối của bạn.",
+    "unauthorized": "Bạn phải đăng nhập để tiếp tục.",
+    "notFound": "Không tìm thấy tài nguyên được yêu cầu.",
+    "serverError": "Lỗi máy chủ nội bộ. Vui lòng thử lại sau."
+  },
+  "footer": {
+    "privacy": "Quyền riêng tư",
+    "terms": "Điều khoản",
+    "docs": "Tài liệu"
+  }
+}

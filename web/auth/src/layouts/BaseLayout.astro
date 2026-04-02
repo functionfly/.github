@@ -1,0 +1,30 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = "Authenticate to FunctionFly" } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { height: 100%; }
+      body {
+        font-family: "Geist", "Inter", system-ui, -apple-system, sans-serif;
+        background: #0a0a0b;
+        color: #fafafa;
+        -webkit-font-smoothing: antialiased;
+      }
+      ::selection { background: #6366f1; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

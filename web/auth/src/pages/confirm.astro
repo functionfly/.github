@@ -1,0 +1,60 @@
+---
+import AuthLayout from "../layouts/AuthLayout.astro";
+import FormCard from "../components/FormCard";
+import Button from "../components/Button";
+
+const email = Astro.url.searchParams.get("email") || "";
+const sent = Astro.url.searchParams.get("sent") === "true";
+---
+
+<AuthLayout title="Check your email — FunctionFly" maxWidth="440px">
+  <FormCard
+    title="Check your email"
+    subtitle={email ? `We sent a verification link to ${email}` : "Check your inbox for a verification link"}
+    client:load
+  >
+    <div class="confirm-icon" aria-hidden="true">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+        <polyline points="22,6 12,13 2,6"/>
+      </svg>
+    </div>
+
+    {sent ? (
+      <p class="confirm-msg">Click the link in the email to verify your account. The link expires in 24 hours.</p>
+    ) : (
+      <form id="resend-form">
+        <p class="confirm-msg">If you didn't receive the email, we can send another one.</p>
+        <Button client:load type="submit" fullWidth variant="secondary">Resend verification email</Button>
+      </form>
+    )}
+
+    <div slot="footer">
+      <a href="/login">Back to sign in</a>
+    </div>
+  </FormCard>
+</AuthLayout>
+
+<style>
+  .confirm-icon { display: flex; justify-content: center; margin-bottom: 1.25rem; }
+  .confirm-msg { color: #71717a; font-size: 0.9375rem; margin-bottom: 1.25rem; text-align: center; line-height: 1.6; }
+</style>
+
+{!sent && (
+  <script>
+    const form = document.getElementById("resend-form") as HTMLFormElement;
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const params = new URLSearchParams(window.location.search);
+      const email = params.get("email") || "";
+      const btn = form.querySelector("button") as HTMLButtonElement;
+      btn.disabled = true; btn.textContent = "Sending…";
+      await fetch("/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      btn.textContent = "Sent!";
+    });
+  </script>
+)}

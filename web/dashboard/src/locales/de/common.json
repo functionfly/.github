@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "overview": "Übersicht",
+    "functions": "Funktionen",
+    "registry": "Registry",
+    "providers": "Anbieter",
+    "analytics": "Analytik",
+    "apps": "Apps",
+    "teams": "Teams",
+    "settings": "Einstellungen",
+    "apiKeys": "API-Schlüssel",
+    "billing": "Abrechnung",
+    "logout": "Abmelden",
+    "profile": "Profil",
+    "documentation": "Dokumentation"
+  },
+  "auth": {
+    "login": "Anmelden",
+    "signup": "Registrieren",
+    "logout": "Abmelden",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "forgotPassword": "Passwort vergessen?",
+    "noAccount": "Noch kein Konto?",
+    "hasAccount": "Haben Sie bereits ein Konto?"
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "search": "Suchen",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "confirm": "Bestätigen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "submit": "Absenden",
+    "close": "Schließen",
+    "copy": "Kopieren",
+    "copied": "Kopiert!",
+    "retry": "Erneut versuchen",
+    "noResults": "Keine Ergebnisse gefunden",
+    "seeAll": "Alle anzeigen",
+    "learnMore": "Mehr erfahren"
+  },
+  "dashboard": {
+    "welcomeBack": "Willkommen zurück",
+    "overview": "Übersicht",
+    "recentActivity": "Letzte Aktivität",
+    "quickActions": "Schnellaktionen",
+    "deployFunction": "Funktion bereitstellen",
+    "viewFunctions": "Funktionen anzeigen",
+    "viewAnalytics": "Analytik anzeigen"
+  },
+  "functions": {
+    "title": "Funktionen",
+    "deploy": "Bereitstellen",
+    "test": "Testen",
+    "logs": "Protokolle",
+    "settings": "Einstellungen",
+    "delete": "Funktion löschen",
+    "noFunctions": "Noch keine Funktionen",
+    "createFirst": "Erstellen Sie Ihre erste Funktion, um zu beginnen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "profile": "Profil",
+    "notifications": "Benachrichtigungen",
+    "security": "Sicherheit",
+    "language": "Sprache",
+    "languageDescription": "Wählen Sie Ihre bevorzugte Sprache für das Dashboard"
+  },
+  "language": {
+    "title": "Sprache",
+    "description": "Wählen Sie Ihre bevorzugte Sprache",
+    "autoDetected": "Automatisch erkannt",
+    "changeLanguage": "Sprache ändern",
+    "detected": "Erkannt"
+  },
+  "errors": {
+    "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+    "network": "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.",
+    "unauthorized": "Sie müssen angemeldet sein, um fortzufahren.",
+    "notFound": "Die angeforderte Ressource wurde nicht gefunden.",
+    "serverError": "Interner Serverfehler. Bitte versuchen Sie es später erneut."
+  },
+  "footer": {
+    "privacy": "Datenschutz",
+    "terms": "Nutzungsbedingungen",
+    "docs": "Dokumentation"
+  }
+}

@@ -1,0 +1,79 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+  maxWidth?: string;
+}
+const { title, description, maxWidth = "440px" } = Astro.props;
+---
+<BaseLayout title={title} description={description}>
+  <div class="auth-shell">
+    <div class="auth-brand">
+      <a href="/" class="brand-link">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="#6366f1"/>
+          <path d="M8 16C8 11.5817 11.5817 8 16 8C18.2091 8 20.2091 8.89543 21.6569 10.3431L19.5355 12.4645C18.6834 11.6124 17.4913 11.1111 16.2 11.1111C13.5 11.1111 11.3333 13.2778 11.3333 15.9778C11.3333 18.6778 13.5 20.8444 16.2 20.8444C17.4913 20.8444 18.6834 20.3431 19.5355 19.491L21.6569 21.6124C20.2091 23.0601 18.2091 23.9555 16 23.9555C11.5817 23.9555 8 20.3738 8 15.9555V16Z" fill="white"/>
+          <circle cx="22" cy="10" r="3" fill="#a5b4fc"/>
+        </svg>
+        <span>FunctionFly</span>
+      </a>
+    </div>
+
+    <main class="auth-card-wrap" style={`max-width: ${maxWidth}`}>
+      <slot />
+    </main>
+
+    <footer class="auth-footer">
+      <p>By continuing, you agree to our <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.</p>
+    </footer>
+  </div>
+</BaseLayout>
+
+<style>
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  gap: 2rem;
+  background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,0.15) 0%, transparent 60%);
+}
+
+.auth-brand {
+  width: 100%;
+  max-width: 440px;
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  text-decoration: none;
+  color: #fafafa;
+  font-weight: 600;
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+}
+
+.brand-link:hover { opacity: 0.85; }
+
+.auth-card-wrap {
+  width: 100%;
+}
+
+.auth-footer {
+  color: #71717a;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.auth-footer a {
+  color: #a1a1aa;
+  text-decoration: none;
+}
+.auth-footer a:hover { color: #fafafa; text-decoration: underline; }
+</style>

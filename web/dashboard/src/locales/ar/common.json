@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "overview": "نظرة عامة",
+    "functions": "الوظائف",
+    "registry": "السجل",
+    "providers": "المزودون",
+    "analytics": "التحليلات",
+    "apps": "التطبيقات",
+    "teams": "الفرق",
+    "settings": "الإعدادات",
+    "apiKeys": "مفاتيح API",
+    "billing": "الفواتير",
+    "logout": "تسجيل الخروج",
+    "profile": "الملف الشخصي",
+    "documentation": "التوثيق"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "signup": "إنشاء حساب",
+    "logout": "تسجيل الخروج",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "noAccount": "ليس لديك حساب؟",
+    "hasAccount": "لديك حساب بالفعل؟"
+  },
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "create": "إنشاء",
+    "search": "بحث",
+    "loading": "جارٍ التحميل...",
+    "error": "خطأ",
+    "success": "نجاح",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "next": "التالي",
+    "submit": "إرسال",
+    "close": "إغلاق",
+    "copy": "نسخ",
+    "copied": "تم النسخ!",
+    "retry": "إعادة المحاولة",
+    "noResults": "لم يتم العثور على نتائج",
+    "seeAll": "عرض الكل",
+    "learnMore": "اعرف المزيد"
+  },
+  "dashboard": {
+    "welcomeBack": "مرحباً بعودتك",
+    "overview": "نظرة عامة",
+    "recentActivity": "النشاط الأخير",
+    "quickActions": "إجراءات سريعة",
+    "deployFunction": "نشر الوظيفة",
+    "viewFunctions": "عرض الوظائف",
+    "viewAnalytics": "عرض التحليلات"
+  },
+  "functions": {
+    "title": "الوظائف",
+    "deploy": "نشر",
+    "test": "اختبار",
+    "logs": "السجلات",
+    "settings": "الإعدادات",
+    "delete": "حذف الوظيفة",
+    "noFunctions": "لا توجد وظائف بعد",
+    "createFirst": "أنشئ وظيفتك الأولى للبدء"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "profile": "الملف الشخصي",
+    "notifications": "الإشعارات",
+    "security": "الأمان",
+    "language": "اللغة",
+    "languageDescription": "اختر لغتك المفضلة للوحة التحكم"
+  },
+  "language": {
+    "title": "اللغة",
+    "description": "اختر لغتك المفضلة",
+    "autoDetected": "تم الكشف تلقائياً",
+    "changeLanguage": "تغيير اللغة",
+    "detected": "تم الكشف"
+  },
+  "errors": {
+    "generic": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+    "network": "خطأ في الشبكة. يرجى التحقق من اتصالك.",
+    "unauthorized": "يجب تسجيل الدخول للمتابعة.",
+    "notFound": "لم يتم العثور على المورد المطلوب.",
+    "serverError": "خطأ داخلي في الخادم. يرجى المحاولة لاحقاً."
+  },
+  "footer": {
+    "privacy": "الخصوصية",
+    "terms": "الشروط",
+    "docs": "التوثيق"
+  }
+}

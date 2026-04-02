@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "overview": "Visão Geral",
+    "functions": "Funções",
+    "registry": "Registro",
+    "providers": "Provedores",
+    "analytics": "Análises",
+    "apps": "Aplicações",
+    "teams": "Equipas",
+    "settings": "Definições",
+    "apiKeys": "Chaves API",
+    "billing": "Faturação",
+    "logout": "Terminar sessão",
+    "profile": "Perfil",
+    "documentation": "Documentação"
+  },
+  "auth": {
+    "login": "Iniciar sessão",
+    "signup": "Registar-se",
+    "logout": "Terminar sessão",
+    "email": "E-mail",
+    "password": "Palavra-passe",
+    "forgotPassword": "Esqueceu-se da palavra-passe?",
+    "noAccount": "Não tem uma conta?",
+    "hasAccount": "Já tem uma conta?"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Criar",
+    "search": "Pesquisar",
+    "loading": "A carregar...",
+    "error": "Erro",
+    "success": "Sucesso",
+    "confirm": "Confirmar",
+    "back": "Voltar",
+    "next": "Seguinte",
+    "submit": "Submeter",
+    "close": "Fechar",
+    "copy": "Copiar",
+    "copied": "Copiado!",
+    "retry": "Tentar novamente",
+    "noResults": "Nenhum resultado encontrado",
+    "seeAll": "Ver tudo",
+    "learnMore": "Saber mais"
+  },
+  "dashboard": {
+    "welcomeBack": "Bem-vindo de volta",
+    "overview": "Visão Geral",
+    "recentActivity": "Atividade recente",
+    "quickActions": "Ações rápidas",
+    "deployFunction": "Implementar função",
+    "viewFunctions": "Ver funções",
+    "viewAnalytics": "Ver análises"
+  },
+  "functions": {
+    "title": "Funções",
+    "deploy": "Implementar",
+    "test": "Testar",
+    "logs": "Registos",
+    "settings": "Definições",
+    "delete": "Eliminar função",
+    "noFunctions": "Ainda não há funções",
+    "createFirst": "Crie a sua primeira função para começar"
+  },
+  "settings": {
+    "title": "Definições",
+    "profile": "Perfil",
+    "notifications": "Notificações",
+    "security": "Segurança",
+    "language": "Idioma",
+    "languageDescription": "Escolha o seu idioma preferido para o painel"
+  },
+  "language": {
+    "title": "Idioma",
+    "description": "Selecione o seu idioma preferido",
+    "autoDetected": "Detetado automaticamente",
+    "changeLanguage": "Mudar idioma",
+    "detected": "Detetado"
+  },
+  "errors": {
+    "generic": "Algo correu mal. Por favor, tente novamente.",
+    "network": "Erro de rede. Por favor, verifique a sua ligação.",
+    "unauthorized": "Tem de iniciar sessão para continuar.",
+    "notFound": "O recurso solicitado não foi encontrado.",
+    "serverError": "Erro interno do servidor. Por favor, tente mais tarde."
+  },
+  "footer": {
+    "privacy": "Privacidade",
+    "terms": "Termos",
+    "docs": "Documentação"
+  }
+}

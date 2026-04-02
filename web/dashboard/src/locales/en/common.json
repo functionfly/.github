@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "overview": "Overview",
+    "functions": "Functions",
+    "registry": "Registry",
+    "providers": "Providers",
+    "analytics": "Analytics",
+    "apps": "Apps",
+    "teams": "Teams",
+    "settings": "Settings",
+    "apiKeys": "API Keys",
+    "billing": "Billing",
+    "logout": "Logout",
+    "profile": "Profile",
+    "documentation": "Documentation"
+  },
+  "auth": {
+    "login": "Log In",
+    "signup": "Sign Up",
+    "logout": "Log Out",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "retry": "Retry",
+    "noResults": "No results found",
+    "seeAll": "See all",
+    "learnMore": "Learn more"
+  },
+  "dashboard": {
+    "welcomeBack": "Welcome back",
+    "overview": "Overview",
+    "recentActivity": "Recent Activity",
+    "quickActions": "Quick Actions",
+    "deployFunction": "Deploy Function",
+    "viewFunctions": "View Functions",
+    "viewAnalytics": "View Analytics"
+  },
+  "functions": {
+    "title": "Functions",
+    "deploy": "Deploy",
+    "test": "Test",
+    "logs": "Logs",
+    "settings": "Settings",
+    "delete": "Delete Function",
+    "noFunctions": "No functions yet",
+    "createFirst": "Create your first function to get started"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "notifications": "Notifications",
+    "security": "Security",
+    "language": "Language",
+    "languageDescription": "Choose your preferred language for the dashboard"
+  },
+  "language": {
+    "title": "Language",
+    "description": "Select your preferred language",
+    "autoDetected": "Auto-detected",
+    "changeLanguage": "Change language",
+    "detected": "Detected"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Network error. Please check your connection.",
+    "unauthorized": "You must be logged in to continue.",
+    "notFound": "The requested resource was not found.",
+    "serverError": "Internal server error. Please try again later."
+  },
+  "footer": {
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "docs": "Documentation"
+  }
+}
