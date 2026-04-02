@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { APP_DASHBOARD_ORIGIN, DOCS_ORIGIN } from '../config';
+import { APP_DASHBOARD_ORIGIN, DOCS_ORIGIN, AUTH_ORIGIN } from '../config';
 
 const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
 ---
@@ -13,7 +13,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     <div class="hero-content">
       <div class="hero-badge">
         <span class="hero-badge-dot" aria-hidden="true"></span>
-        Now in General Availability
+        Now in Private Beta
       </div>
       <h1>
         <span class="hero-title-line">Ship Functions.</span><br />
@@ -24,7 +24,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
         discover, call, and trust your tools with full observability, sandboxed execution, and policy controls built in.
       </p>
       <div class="hero-actions">
-        <a href={`${APP_DASHBOARD_ORIGIN}/signup`} class="btn btn-primary">
+        <a href={`${AUTH_ORIGIN}/signup`} class="btn btn-primary">
           Start Free <span class="hero-arrow" aria-hidden="true">→</span>
         </a>
         <a href={docsGuidesUrl} class="btn btn-secondary" target="_blank" rel="noopener noreferrer">View Documentation</a>
@@ -234,7 +234,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
             </svg>
           </div>
           <h3>Publish</h3>
-          <p>Run <code>fly deploy</code>. FunctionFly bundles your code, compiles it for the target runtime, signs the artifact, and runs multi-level verification checks before making it live.</p>
+          <p>Run <code>ffly deploy</code>. FunctionFly bundles your code, compiles it for the target runtime, signs the artifact, and runs multi-level verification checks before making it live.</p>
         </div>
         <div class="step-connector" aria-hidden="true">
           <svg width="40" height="12" viewBox="0 0 40 12"><path d="M0 6h35M30 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
@@ -583,28 +583,87 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
 
 
 
-  <section class="code-example">
+  <section class="publish-section">
     <div class="container">
       <h2>Publish a function in minutes</h2>
       <p class="section-subtitle">Initialize, configure, deploy, and let agents start calling it — with trust scores computed automatically.</p>
-      <div class="code-block">
-        <pre><code><span class="code-comment"># Install the fly CLI (Go 1.25+)</span>
-<span class="code-prompt">$</span> go install github.com/functionfly/functionfly/cmd/fly@latest
 
-<span class="code-comment"># Or download a release binary from GitHub Releases</span>
-
-<span class="code-comment"># Initialize a new function</span>
-<span class="code-prompt">$</span> fly init my-function
-
-<span class="code-comment"># Publish with verification</span>
-<span class="code-prompt">$</span> fly deploy
-
-🚀 Published verified & signed tool!
-🧾 Verification: Level 2+  <span class="code-comment">(example; actual level depends on checks)</span></code></pre>
+      <!-- Per-OS install tabs + CLI block -->
+      <div class="install-os-tabs" role="tablist" aria-label="Select your operating system">
+        <button class="install-os-tab active" role="tab" data-os="macos" aria-selected="true">macOS</button>
+        <button class="install-os-tab" role="tab" data-os="linux" aria-selected="false">Linux</button>
+        <button class="install-os-tab" role="tab" data-os="windows" aria-selected="false">Windows</button>
       </div>
+
+      <div class="code-block publish-cli">
+        <div class="install-panel active" data-os="macos">
+          <div class="code-lines">
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Install</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> brew install functionfly/tap/ffly</span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># or</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> curl -fsSL https://raw.githubusercontent.com/functionfly/fly/main/scripts/install.sh | bash</span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># or</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> go install github.com/functionfly/fly/cmd/ffly@latest</span></div>
+            <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Authenticate</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> ffly login</span></div>
+            <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Initialize a new function</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> ffly init my-function</span></div>
+            <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Publish with verification</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> ffly deploy</span></div>
+            <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-success">🚀 Published verified &amp; signed tool!</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-info">🧾 Verification: Level 2+</span></span></div>
+          </div>
+        </div>
+        <div class="install-panel" data-os="linux">
+          <div class="code-lines">
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Install</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> curl -fsSL https://raw.githubusercontent.com/functionfly/fly/main/scripts/install.sh | bash</span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># or</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> go install github.com/functionfly/fly/cmd/ffly@latest</span></div>
+            <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Authenticate</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> ffly login</span></div>
+            <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Initialize a new function</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> ffly init my-function</span></div>
+            <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Publish with verification</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> ffly deploy</span></div>
+            <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-success">🚀 Published verified &amp; signed tool!</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-info">🧾 Verification: Level 2+</span></span></div>
+          </div>
+        </div>
+        <div class="install-panel" data-os="windows">
+          <div class="code-lines">
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Install (requires Go 1.25+)</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> go install github.com/functionfly/fly/cmd/ffly@latest</span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># or download from GitHub Releases</span></span></div>
+            <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Authenticate</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> ffly login</span></div>
+            <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Initialize a new function</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> ffly init my-function</span></div>
+            <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Publish with verification</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> ffly deploy</span></div>
+            <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-success">🚀 Published verified &amp; signed tool!</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-info">🧾 Verification: Level 2+</span></span></div>
+          </div>
+        </div>
+      </div>
+
       <p class="code-footnote">
-        The CLI ships as the <code>fly</code> binary via Go install or
-        <a href="https://github.com/functionfly/functionfly/releases">GitHub Releases</a>, not as an npm package.
+        The <code>ffly</code> CLI is installed via Homebrew, the shell installer
+        (<code>curl -fsSL https://raw.githubusercontent.com/functionfly/fly/main/scripts/install.sh | bash</code>),
+        <code>go install</code>, or
+        <a href="https://github.com/functionfly/fly/releases">GitHub Releases</a> — not as an npm package.
       </p>
     </div>
   </section>
@@ -614,7 +673,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
       <h2>The platform your agents actually need</h2>
       <p>Start free. Multi-language support, sandboxed execution, trust scoring, and full observability — so agents can call your functions with confidence.</p>
       <div class="cta-actions">
-        <a href={`${APP_DASHBOARD_ORIGIN}/signup`} class="btn btn-primary btn-large">Start Free</a>
+        <a href={`${AUTH_ORIGIN}/signup`} class="btn btn-primary btn-large">Start Free</a>
         <a href="/contact" class="btn btn-outline">Contact Sales</a>
       </div>
       <div class="waitlist-form-wrapper">
@@ -672,6 +731,70 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     });
   });
 
+  // OS install tabs
+  document.querySelectorAll('.install-os-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var os = tab.getAttribute('data-os');
+      document.querySelectorAll('.install-os-tab').forEach(function(t) {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      document.querySelectorAll('.install-panel').forEach(function(p) {
+        p.classList.remove('active');
+        if (p.getAttribute('data-os') === os) {
+          p.classList.add('active');
+        }
+      });
+    });
+  });
+
+  // Copy buttons
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var panel = btn.closest('.install-panel');
+      var code = panel.querySelector('code');
+      var text = code ? code.innerText : '';
+      navigator.clipboard.writeText(text).then(function() {
+        btn.classList.add('copied');
+        var iconCopy = btn.querySelector('.icon-copy');
+        var iconCheck = btn.querySelector('.icon-check');
+        var label = btn.querySelector('.copy-label');
+        if (iconCopy) iconCopy.style.display = 'none';
+        if (iconCheck) iconCheck.style.display = 'block';
+        if (label) label.textContent = 'Copied!';
+        setTimeout(function() {
+          btn.classList.remove('copied');
+          if (iconCopy) iconCopy.style.display = 'block';
+          if (iconCheck) iconCheck.style.display = 'none';
+          if (label) label.textContent = 'Copy';
+        }, 2000);
+      });
+    });
+  });
+
+  // Line-level copy buttons
+  document.querySelectorAll('.line-copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var line = btn.closest('.code-line');
+      var textEl = line ? line.querySelector('.lc-text') : null;
+      var text = textEl ? textEl.innerText : '';
+      navigator.clipboard.writeText(text).then(function() {
+        btn.classList.add('copied');
+        var iconCopy = btn.querySelector('.lc-icon-copy');
+        var iconCheck = btn.querySelector('.lc-icon-check');
+        if (iconCopy) iconCopy.style.display = 'none';
+        if (iconCheck) iconCheck.style.display = 'block';
+        setTimeout(function() {
+          btn.classList.remove('copied');
+          if (iconCopy) iconCopy.style.display = 'block';
+          if (iconCheck) iconCheck.style.display = 'none';
+        }, 2000);
+      });
+    });
+  });
+
   // Waitlist form
   var waitlistForm = document.getElementById('waitlist-form');
   if (waitlistForm) {
@@ -695,15 +818,14 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
       submitBtn.disabled = true;
       errorMsg.hidden = true;
       successMsg.hidden = true;
-      fetch('/api/feedback', {
+      var formData = new FormData();
+      formData.append('feedbackType', 'launch_waitlist');
+      formData.append('subject', 'Waitlist signup');
+      formData.append('message', 'Waitlist signup from homepage form.');
+      formData.append('email', email);
+      fetch('/v1/feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          feedbackType: 'launch_waitlist',
-          subject: 'Waitlist signup',
-          message: 'Waitlist signup from homepage form.',
-          email: email
-        })
+        body: formData
       }).then(function(res) {
         if (res.ok) {
           successMsg.hidden = false;
@@ -1067,15 +1189,79 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     font-size: 0.9375rem;
   }
 
-  .code-example {
+  .publish-section {
     padding: 6rem 0;
     background: var(--color-bg);
   }
 
-  .code-example h2 {
+  .publish-section h2 {
     text-align: center;
     font-size: 2.5rem;
     margin-bottom: 1rem;
+  }
+
+  /* Per-OS install tabs */
+  .install-os-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+    margin-bottom: 0;
+  }
+
+  .install-os-tab {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    padding: 0.5rem 1.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s;
+  }
+
+  .install-os-tab:hover {
+    color: var(--color-text);
+    background: var(--color-bg-light);
+  }
+
+  .install-os-tab.active {
+    color: var(--color-text);
+    background: #1a1f2e;
+    border-color: var(--color-border);
+  }
+
+  /* CLI block */
+  .publish-cli {
+    max-width: 760px;
+    margin: 0 auto;
+    border-radius: 0 12px 12px 12px;
+    margin-top: 0;
+  }
+
+  .install-panel {
+    display: none;
+  }
+
+  .install-panel.active {
+    display: block;
+  }
+
+  .code-block-inner {
+    position: relative;
+  }
+
+  .code-block-inner .code-pre {
+    margin: 0;
+  }
+
+  .code-block-inner code {
+    font-family: var(--font-mono);
+    font-size: 0.9375rem;
+    line-height: 1.8;
+    color: var(--color-text);
   }
 
   .code-footnote {
@@ -1100,7 +1286,6 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
 
   .code-block {
     max-width: 100%;
-    margin: 3rem auto 0;
     background: #1a1f2e;
     border-radius: 12px;
     padding: 2rem;
@@ -1126,6 +1311,98 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
 
   .code-prompt {
     color: var(--color-primary);
+  }
+
+  .code-success {
+    color: var(--color-secondary);
+  }
+
+  .code-info {
+    color: #38bdf8;
+  }
+
+  /* Copy button */
+  .copy-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s, border-color 0.2s;
+    z-index: 10;
+  }
+
+  .copy-btn:hover {
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .copy-btn.copied {
+    color: var(--color-secondary);
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+
+  .copy-label {
+    line-height: 1;
+  }
+
+  /* Line-level copy button */
+  .code-line {
+    display: flex;
+    align-items: center;
+    min-height: 1.8em;
+  }
+
+  .line-copy-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-right: 0.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
+  }
+
+  .code-line:hover .line-copy-btn {
+    opacity: 1;
+  }
+
+  .line-copy-btn:hover {
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .line-copy-btn.copied {
+    color: var(--color-secondary);
+    opacity: 1;
+  }
+
+  .lc-icon {
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+  }
+
+  .lc-text {
+    flex: 1;
   }
 
   .cta {
