@@ -7,16 +7,35 @@ on:
 permissions:
   contents: read
 
+# Requires the following GitHub secrets to be configured in repository settings:
+#   VERCEL_TOKEN        - Vercel API token (shared)
+#   VERCEL_ORG_ID       - Vercel organization ID (shared)
+#   VERCEL_PROJECT_ID_SITE  - Vercel project ID for the marketing site (web/site)
+#   VERCEL_PROJECT_ID_ADMIN - Vercel project ID for the admin dashboard (web/admin-dashboard)
+
 jobs:
-  deploy:
+  deploy-site:
+    name: Deploy Marketing Site
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_SITE }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          working-directory: ./web/site
+
+  deploy-admin:
+    name: Deploy Admin Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           working-directory: ./web/admin-dashboard
