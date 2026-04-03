@@ -15,7 +15,7 @@ export default defineConfig({
     strictPort: false,
   },
   build: {
-    format: "file",
+    format: "directory",
   },
   vite: {
     server: {
