@@ -3,11 +3,11 @@
  * Manage invite-only beta signup codes.
  */
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminApiClient } from '@/lib/api/adminClient';
-import { Plus, Copy, Ban, RefreshCw } from 'lucide-react';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
+import { adminApiClient } from '@/lib/api/adminClient';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Ban, Copy, Plus, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 
 interface SignupInvite {
   id: string;
@@ -31,6 +31,7 @@ export function AdminSignupInvitesPage() {
   const [maxUses, setMaxUses] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
   const [newCode, setNewCode] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
@@ -42,20 +43,28 @@ export function AdminSignupInvitesPage() {
     staleTime: 1000 * 60,
   });
 
-  const invites: SignupInvite[] = (data as { data?: SignupInvite[] })?.data ?? [];
+  const invites: SignupInvite[] = data?.data?.data ?? [];
 
   const createMutation = useMutation({
     mutationFn: async (body: { label: string; maxUses?: number; expiresAt?: string }) => {
       return adminApiClient.post<CreateInviteResponse>('/signup-invites', body);
     },
     onSuccess: (res) => {
-      const code = (res as CreateInviteResponse)?.code;
+      // Backend returns flat {id, code, label} — not wrapped in AdminAPIResponse
+      const flat = res as unknown as CreateInviteResponse;
+      const code = flat?.code;
       if (code) setNewCode(code);
       queryClient.invalidateQueries({ queryKey: ['admin-signup-invites'] });
+      setCreateError(null);
       setLabel('');
       setMaxUses('');
       setExpiresAt('');
       setIsCreateOpen(false);
+    },
+    onError: (err: unknown) => {
+      const message =
+        err instanceof Error ? err.message : 'Failed to create invite. Please try again.';
+      setCreateError(message);
     },
   });
 
@@ -67,10 +76,16 @@ export function AdminSignupInvitesPage() {
   });
 
   const handleCreate = () => {
+    setCreateError(null);
     const body: { label: string; maxUses?: number; expiresAt?: string } = { label };
     if (maxUses) body.maxUses = parseInt(maxUses, 10);
     if (expiresAt) body.expiresAt = new Date(expiresAt).toISOString();
     createMutation.mutate(body);
+  };
+
+  const handleCancelCreate = () => {
+    setIsCreateOpen(false);
+    setCreateError(null);
   };
 
   const copyCode = (text: string) => {
@@ -94,7 +109,10 @@ export function AdminSignupInvitesPage() {
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
           <button
-            onClick={() => setIsCreateOpen(true)}
+            onClick={() => {
+              setCreateError(null);
+              setIsCreateOpen(true);
+            }}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
           >
             <Plus className="w-4 h-4" /> Create Invite
@@ -106,7 +124,9 @@ export function AdminSignupInvitesPage() {
       {newCode && (
         <div className="rounded-lg bg-green-50 border border-green-200 p-4 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-green-800">Invite code created — copy it now, it won't be shown again.</p>
+            <p className="text-sm font-medium text-green-800">
+              Invite code created — copy it now, it won't be shown again.
+            </p>
             <code className="text-sm font-mono text-green-900 select-all">{newCode}</code>
           </div>
           <button
@@ -134,7 +154,9 @@ export function AdminSignupInvitesPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Max Uses (optional)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Max Uses (optional)
+              </label>
               <input
                 type="number"
                 value={maxUses}
@@ -144,7 +166,9 @@ export function AdminSignupInvitesPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Expires At (optional)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Expires At (optional)
+              </label>
               <input
                 type="datetime-local"
                 value={expiresAt}
@@ -152,9 +176,14 @@ export function AdminSignupInvitesPage() {
                 className="w-full border rounded-lg px-3 py-2 text-sm"
               />
             </div>
+            {createError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-700">{createError}</p>
+              </div>
+            )}
             <div className="flex gap-2 justify-end pt-2">
               <button
-                onClick={() => setIsCreateOpen(false)}
+                onClick={handleCancelCreate}
                 className="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50"
               >
                 Cancel
@@ -207,7 +236,8 @@ export function AdminSignupInvitesPage() {
                   <tr key={inv.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium text-gray-900">{inv.label || '—'}</td>
                     <td className="px-4 py-3 text-gray-600">
-                      {inv.usesCount}{inv.maxUses != null ? ` / ${inv.maxUses}` : ''}
+                      {inv.usesCount}
+                      {inv.maxUses != null ? ` / ${inv.maxUses}` : ''}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : 'Never'}

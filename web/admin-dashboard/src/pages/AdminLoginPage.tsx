@@ -10,7 +10,7 @@ import { generateDeviceFingerprint } from '@/lib/security/deviceFingerprint';
 import { useAdminAuthStore } from '@/stores/adminAuthStore';
 import { AlertTriangle, Check, LogIn, Shield } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 interface LastLoginDisplay {
   ip_address: string;
@@ -28,13 +28,22 @@ export function AdminLoginPage() {
   const [suspiciousConfirmed, setSuspiciousConfirmed] = useState(false);
   const navigate = useNavigate();
   const { login, setDeviceFingerprint, setLastLoginInfo } = useAdminAuthStore();
+  const isAuthenticated = useAdminAuthStore((s) => s.isAuthenticated);
+
+  // If already authenticated, redirect to dashboard immediately
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   // Fetch last login info on mount (if user has a session cookie)
   useEffect(() => {
     async function fetchLastLogin() {
       try {
-        // Try to get last login info from the API
-        const resp = await adminApiClient.get<LastLoginDisplay>('/auth/last-login');
+        // Use getNoAuth so a 401 (not authenticated) doesn't trigger
+        // a redirect to login, which would cause a redirect loop
+        const resp = await adminApiClient.getNoAuth<{ data?: LastLoginDisplay }>(
+          '/auth/last-login'
+        );
         if (resp?.data) {
           setLastLogin(resp.data);
         }
@@ -76,6 +85,14 @@ export function AdminLoginPage() {
       login(bootstrap.session, bootstrap.user, lastLoginInfo);
       setDeviceFingerprint(fingerprint);
       setLastLoginInfo(lastLoginInfo || null);
+
+      // Store token in regular localStorage for cross-app compatibility
+      try {
+        localStorage.setItem('ffly_jwt', auth.token);
+      } catch {
+        /* localStorage may be unavailable */
+      }
+
       navigate('/');
     } catch (err) {
       trackSecurityEvent('login_failed', { email });
@@ -203,7 +220,7 @@ export function AdminLoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@functionfly.com"
               autoComplete="email"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 placeholder:text-gray-400"
+              className="w-full px-4 py-2.5 bg-white rounded-lg ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-500 transition-all text-gray-900 placeholder:text-gray-400 outline-none"
               required
             />
           </div>
@@ -222,7 +239,7 @@ export function AdminLoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               autoComplete="current-password"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 placeholder:text-gray-400"
+              className="w-full px-4 py-2.5 bg-white rounded-lg ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-500 transition-all text-gray-900 placeholder:text-gray-400 outline-none"
               required
             />
           </div>

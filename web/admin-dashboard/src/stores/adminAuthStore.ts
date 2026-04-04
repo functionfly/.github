@@ -8,7 +8,7 @@ import { extendAdminSession } from '@/lib/api/adminAuth';
 import { adminApiClient } from '@/lib/api/adminClient';
 import { CACHE_KEYS } from '@/lib/constants';
 import { trackSecurityEvent } from '@/lib/monitoring/securityEvents';
-import { clearCsrfToken } from '@/lib/security/csrf';
+import { clearCsrfToken, refreshCsrfToken } from '@/lib/security/csrf';
 import type { AdminSession, AdminUser } from '@/types';
 import { create } from 'zustand';
 
@@ -47,6 +47,7 @@ interface AdminAuthState {
   setIpAllowed: (allowed: boolean, reason?: string) => void;
   setLastLoginInfo: (info: LastLoginInfo | null) => void;
   reportSuspiciousLogin: () => Promise<void>;
+  initialize: () => Promise<void>;
 }
 
 export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
@@ -91,6 +92,11 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
       activityLog: [{ timestamp: Date.now(), action: 'login' }],
     });
 
+    // Pre-fetch CSRF token so mutating requests don't fail before it's fetched on-demand
+    refreshCsrfToken().catch(() => {
+      /* silent — first mutating request will retry */
+    });
+
     // Track security event
     trackSecurityEvent('login_success', {
       ip_address: session.ip_address,
@@ -115,7 +121,11 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
       /* ignore */
     }
 
-    // Clear all state on logout
+    // Clear all state on logout.
+    // Do NOT use window.location.href — that causes a hard reload which re-runs
+    // AdminAuthRestore and can bounce the user back to / if a stale token remains.
+    // ProtectedRoute reads isAuthenticated from this store and will redirect to
+    // /auth/login via React Router as soon as isAuthenticated becomes false.
     set({
       user: null,
       session: null,
@@ -128,9 +138,6 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
       sessionIpAddress: null,
       activityLog: [],
     });
-
-    // Redirect to auth page
-    window.location.href = '/auth/login';
   },
 
   logoutAllSessions: async () => {
@@ -299,6 +306,37 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
       });
     } catch {
       // Silently fail
+    }
+  },
+
+  initialize: async () => {
+    try {
+      // Check for existing token in sessionStorage
+      const token =
+        typeof sessionStorage !== 'undefined'
+          ? sessionStorage.getItem(CACHE_KEYS.ADMIN_ACCESS_TOKEN)
+          : null;
+
+      if (token) {
+        // Try to bootstrap session with existing token
+        try {
+          const bootstrap = await extendAdminSession(token);
+          if (bootstrap.session && bootstrap.user) {
+            get().login(bootstrap.session as AdminSession, bootstrap.user as AdminUser);
+            return;
+          }
+        } catch (error) {
+          // Token might be expired, clear it
+          console.warn('Failed to restore admin session:', error);
+          try {
+            sessionStorage.removeItem(CACHE_KEYS.ADMIN_ACCESS_TOKEN);
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to initialize admin auth:', error);
     }
   },
 }));

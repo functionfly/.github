@@ -31,7 +31,12 @@ export function AdminLayout() {
     navigate('/auth/login');
   };
 
-  const isLoggedIn = !!user;
+  // Treat the login page (and any /auth/* sub-path) as a public (unauthenticated) view
+  // regardless of transient user state in the store during session restore.
+  const isAuthPage =
+    location.pathname === '/auth/login' || location.pathname.startsWith('/auth/');
+
+  const isLoggedIn = !!user && !isAuthPage;
 
   return (
     <MFAReVerificationChecker>
@@ -43,9 +48,9 @@ export function AdminLayout() {
 
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {/* Header */}
+          {/* Header: pass null user on auth pages so it renders the public variant */}
           <AdminHeader
-            user={user}
+            user={isLoggedIn ? user : null}
             onMenuClick={() => setSidebarOpen(!sidebarOpen)}
             onLogout={handleLogout}
             showMenuButton={isLoggedIn}
