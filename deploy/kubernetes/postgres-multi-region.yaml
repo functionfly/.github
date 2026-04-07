@@ -1,0 +1,379 @@
+# Multi-Region PostgreSQL Configuration for FunctionFly
+# This configuration sets up read replicas in EU and APAC regions
+# with automatic failover and cross-region replication.
+#
+# Prerequisites:
+#   - Primary PostgreSQL cluster running (e.g., Neon, AWS RDS, or self-hosted)
+#   - Network connectivity between regions
+#   - Streaming replication configured on primary
+#
+# Environment Variables for Application:
+#   DB_READ_REPLICA_ENABLED=true
+#   DB_REPLICA_1_HOST=replica-eu.yourdomain.com
+#   DB_REPLICA_1_PORT=5432
+#   DB_REPLICA_1_WEIGHT=30
+#   DB_REPLICA_1_PRIORITY=1
+#   DB_REPLICA_1_REGION=eu-west-1
+#   DB_REPLICA_2_HOST=replica-apac.yourdomain.com
+#   DB_REPLICA_2_PORT=5432
+#   DB_REPLICA_2_WEIGHT=20
+#   DB_REPLICA_2_PRIORITY=2
+#   DB_REPLICA_2_REGION=ap-southeast-1
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-replica-config
+  namespace: functionfly
+data:
+  # Read replica configuration for application
+  DB_READ_REPLICA_ENABLED: "true"
+  DB_HEALTH_CHECK_INTERVAL: "30s"
+  DB_HEALTH_CHECK_TIMEOUT: "5s"
+  DB_MAX_HEALTH_FAILURES: "3"
+  DB_RETRY_ATTEMPTS: "3"
+  DB_RETRY_DELAY: "1s"
+  DB_CIRCUIT_BREAKER_TIMEOUT: "60s"
+
+  # Primary database (US East)
+  DB_PRIMARY_HOST: "postgres-primary.functionfly.svc.cluster.local"
+  DB_PRIMARY_PORT: "5432"
+  DB_PRIMARY_REGION: "us-east-1"
+
+  # Replica 1 - EU West (Frankfurt)
+  DB_REPLICA_1_HOST: "postgres-replica-eu.functionfly.svc.cluster.local"
+  DB_REPLICA_1_PORT: "5432"
+  DB_REPLICA_1_WEIGHT: "30"
+  DB_REPLICA_1_PRIORITY: "1"
+  DB_REPLICA_1_REGION: "eu-west-1"
+
+  # Replica 2 - APAC Southeast (Singapore)
+  DB_REPLICA_2_HOST: "postgres-replica-apac.functionfly.svc.cluster.local"
+  DB_REPLICA_2_PORT: "5432"
+  DB_REPLICA_2_WEIGHT: "20"
+  DB_REPLICA_2_PRIORITY: "2"
+  DB_REPLICA_2_REGION: "ap-southeast-1"
+
+  # Replica 3 - US West (Los Angeles) - Lower priority, closer to primary
+  DB_REPLICA_3_HOST: "postgres-replica-west.functionfly.svc.cluster.local"
+  DB_REPLICA_3_PORT: "5432"
+  DB_REPLICA_3_WEIGHT: "15"
+  DB_REPLICA_3_PRIORITY: "3"
+  DB_REPLICA_3_REGION: "us-west-1"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-replica-eu
+  namespace: functionfly
+  labels:
+    app: postgres
+    role: replica
+    region: eu-west-1
+spec:
+  serviceName: postgres-replica-eu
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+      role: replica
+      region: eu-west-1
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: replica
+        region: eu-west-1
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values:
+                      - eu-west-1
+                      - europe-west1
+                      - eu-central-1
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
+            - name: POSTGRES_DB
+              value: functionfly
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: REPLICA_MODE
+              value: "streaming"
+            - name: PRIMARY_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-replica-config
+                  key: DB_PRIMARY_HOST
+            - name: PRIMARY_PORT
+              value: "5432"
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: replica-config
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: replica-config
+          configMap:
+            name: postgres-replica-init
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-replica-eu
+  namespace: functionfly
+  labels:
+    app: postgres
+    role: replica
+    region: eu-west-1
+spec:
+  selector:
+    app: postgres
+    role: replica
+    region: eu-west-1
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  type: ClusterIP
+---
+# Similar StatefulSet for APAC replica
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-replica-apac
+  namespace: functionfly
+  labels:
+    app: postgres
+    role: replica
+    region: ap-southeast-1
+spec:
+  serviceName: postgres-replica-apac
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+      role: replica
+      region: ap-southeast-1
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: replica
+        region: ap-southeast-1
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/region
+                    operator: In
+                    values:
+                      - ap-southeast-1
+                      - asia-southeast1
+                      - ap-northeast-1
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
+            - name: POSTGRES_DB
+              value: functionfly
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: REPLICA_MODE
+              value: "streaming"
+            - name: PRIMARY_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-replica-config
+                  key: DB_PRIMARY_HOST
+            - name: PRIMARY_PORT
+              value: "5432"
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: replica-config
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: replica-config
+          configMap:
+            name: postgres-replica-init
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-replica-apac
+  namespace: functionfly
+  labels:
+    app: postgres
+    role: replica
+    region: ap-southeast-1
+spec:
+  selector:
+    app: postgres
+    role: replica
+    region: ap-southeast-1
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  type: ClusterIP
+---
+# ConfigMap for replica initialization script
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-replica-init
+  namespace: functionfly
+data:
+  init-replica.sh: |
+    #!/bin/bash
+    set -e
+
+    if [ "$REPLICA_MODE" = "streaming" ]; then
+      echo "Configuring PostgreSQL as streaming replica..."
+
+      # Wait for primary to be available
+      until pg_isready -h "$PRIMARY_HOST" -p "$PRIMARY_PORT" -U postgres; do
+        echo "Waiting for primary at $PRIMARY_HOST:$PRIMARY_PORT..."
+        sleep 2
+      done
+
+      # Stop PostgreSQL to configure replication
+      pg_ctl stop -D "$PGDATA" -m fast || true
+
+      # Clear data directory if not already a replica
+      if [ ! -f "$PGDATA/standby.signal" ]; then
+        rm -rf "$PGDATA"/*
+
+        # Base backup from primary
+        echo "Taking base backup from primary..."
+        PGPASSWORD="$POSTGRES_PASSWORD" pg_basebackup \
+          -h "$PRIMARY_HOST" \
+          -p "$PRIMARY_PORT" \
+          -U "$POSTGRES_USER" \
+          -D "$PGDATA" \
+          -Fp \
+          -Xs \
+          -P \
+          -v \
+          -R \
+          -C \
+          -S "replica_$(hostname)" || {
+            echo "Base backup failed, starting without replication..."
+            exit 0
+          }
+      fi
+
+      # Ensure standby signal exists
+      touch "$PGDATA/standby.signal"
+
+      # Update postgresql.auto.conf for streaming replication
+      cat >> "$PGDATA/postgresql.auto.conf" << EOF
+    primary_conninfo = 'host=$PRIMARY_HOST port=$PRIMARY_PORT user=$POSTGRES_USER password=$POSTGRES_PASSWORD application_name=$(hostname)'
+    restore_command = 'cp /var/lib/postgresql/wal/%f %p'
+    recovery_target_timeline = 'latest'
+    hot_standby = on
+    max_standby_archive_delay = 30s
+    max_standby_streaming_delay = 30s
+    wal_receiver_status_interval = 10s
+    hot_standby_feedback = on
+    EOF
+
+      echo "Replica configuration complete"
+    fi

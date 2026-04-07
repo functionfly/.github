@@ -1,9 +1,9 @@
--- Create platform maintenance table for maintenance windows
--- This is different from platform maintenance mode - this tracks scheduled maintenance windows
+-- Create maintenance windows table for scheduled maintenance
+-- This is different from platform_maintenance (maintenance mode) - this tracks scheduled maintenance windows
 DO $$
 BEGIN
-    IF to_regclass('public.platform_maintenance') IS NULL THEN
-        CREATE TABLE platform_maintenance (
+    IF to_regclass('public.maintenance_windows') IS NULL THEN
+        CREATE TABLE maintenance_windows (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             title VARCHAR(255) NOT NULL,
             description TEXT,
@@ -19,11 +19,11 @@ BEGIN
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
 
-        CREATE INDEX idx_platform_maintenance_status ON platform_maintenance(status);
-        CREATE INDEX idx_platform_maintenance_scheduled_start ON platform_maintenance(scheduled_start);
-        CREATE INDEX idx_platform_maintenance_scheduled_end ON platform_maintenance(scheduled_end);
-        CREATE INDEX idx_platform_maintenance_created_at ON platform_maintenance(created_at DESC);
-        CREATE INDEX idx_platform_maintenance_upcoming ON platform_maintenance(status, scheduled_end)
+        CREATE INDEX idx_maintenance_windows_status ON maintenance_windows(status);
+        CREATE INDEX idx_maintenance_windows_scheduled_start ON maintenance_windows(scheduled_start);
+        CREATE INDEX idx_maintenance_windows_scheduled_end ON maintenance_windows(scheduled_end);
+        CREATE INDEX idx_maintenance_windows_created_at ON maintenance_windows(created_at DESC);
+        CREATE INDEX idx_maintenance_windows_upcoming ON maintenance_windows(status, scheduled_end)
         WHERE status IN ('scheduled', 'in_progress');
     END IF;
 END $$;

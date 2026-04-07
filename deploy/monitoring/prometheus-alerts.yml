@@ -1,0 +1,355 @@
+# FunctionFly Production Backup and Replication Monitoring Alerts
+#
+# This file contains Prometheus alert rules for monitoring:
+# - Function backup health
+# - R2 replication status
+# - Database replication lag
+# - Cache warming status
+# - Cross-region health
+#
+# Installation:
+#   Copy to /etc/prometheus/rules/functionfly-backup.yml
+#   Or use with Prometheus Operator Rule CRD
+
+# Alert group for backup-related alerts
+groups:
+  - name: functionfly_backup
+    interval: 60s
+    rules:
+      # Alert: Function backup job hasn't run recently
+      - alert: FunctionFlyBackupJobStale
+        expr: |
+          time() - max(functionfly_backup_last_success_timestamp{job="function-backup"}) > 25 * 60 * 60
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "FunctionFly function backup hasn't run in 25 hours"
+          description: |
+            The last successful function backup was {{ $value | humanizeDuration }} ago.
+            Expected frequency: daily at 2 AM.
+            Check backup job: `kubectl get cronjobs functionfly-backup`
+
+      # Alert: Function backup job failed
+      - alert: FunctionFlyBackupJobFailed
+        expr: |
+          functionfly_backup_status{status="failed"} == 1
+        for: 0m
+        labels:
+          severity: critical
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "FunctionFly function backup job failed"
+          description: |
+            The function backup job failed. Check logs:
+            `kubectl logs -n functionfly job/functionfly-backup-$(date +%Y%m%d)`
+
+      # Alert: R2 replication lag too high
+      - alert: FunctionFlyR2ReplicationLagHigh
+        expr: |
+          functionfly_r2_replication_lag_seconds > 300
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "R2 cross-region replication lag is high"
+          description: |
+            R2 replication lag is {{ $value }} seconds (threshold: 300s).
+            Region: {{ $labels.region }}
+            This may affect disaster recovery capabilities.
+
+      # Alert: R2 artifact upload failures
+      - alert: FunctionFlyR2UploadFailuresHigh
+        expr: |
+          rate(functionfly_r2_upload_failures_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "R2 artifact upload failure rate is high"
+          description: |
+            R2 upload failure rate is {{ $value | humanizePercentage }} over the last 5 minutes.
+            Artifacts may not be properly archived for disaster recovery.
+
+      # Alert: No recent R2 uploads
+      - alert: FunctionFlyR2NoRecentUploads
+        expr: |
+          increase(functionfly_r2_uploads_total[1h]) == 0
+        for: 30m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "No recent artifact uploads to R2"
+          description: |
+            No artifacts have been uploaded to R2 in the last hour.
+            This may indicate a problem with the archiving system.
+
+  # Alert group for database replication
+  - name: functionfly_database_replication
+    interval: 30s
+    rules:
+      # Alert: Database replication lag too high
+      - alert: FunctionFlyDBReplicationLagHigh
+        expr: |
+          functionfly_db_replica_lag_seconds{role="replica"} > 30
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+          service: functionfly
+        annotations:
+          summary: "Database replication lag is high"
+          description: |
+            Database replication lag is {{ $value }} seconds (threshold: 30s).
+            Replica: {{ $labels.replica }}
+            Primary: {{ $labels.primary }}
+
+      # Alert: Database replica is not healthy
+      - alert: FunctionFlyDBReplicaUnhealthy
+        expr: |
+          functionfly_db_replica_health{role="replica"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: database
+          service: functionfly
+        annotations:
+          summary: "Database replica is unhealthy"
+          description: |
+            Database replica {{ $labels.replica }} is not healthy.
+            Region: {{ $labels.region }}
+            Circuit breaker may be open. Check database connectivity.
+
+      # Alert: All replicas are down (primary only serving traffic)
+      - alert: FunctionFlyDBAllReplicasDown
+        expr: |
+          sum(functionfly_db_replica_health{role="replica"}) == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: database
+          service: functionfly
+        annotations:
+          summary: "All database replicas are down"
+          description: |
+            All database replicas are unhealthy. Primary is serving all traffic.
+            This may cause increased latency and reduced availability.
+            Consider investigating replica health immediately.
+
+      # Alert: Primary database health check failing
+      - alert: FunctionFlyDBPrimaryUnhealthy
+        expr: |
+          functionfly_db_primary_health == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: database
+          service: functionfly
+        annotations:
+          summary: "Primary database is unhealthy - DISASTER SCENARIO"
+          description: |
+            PRIMARY DATABASE IS DOWN. This is a DISASTER scenario.
+            Initiate disaster recovery procedures immediately.
+
+            Runbook: docs/DISASTER_RECOVERY.md#database-failure
+
+  # Alert group for cross-region orchestrator
+  - name: functionfly_multi_region
+    interval: 30s
+    rules:
+      # Alert: Secondary orchestrator is down
+      - alert: FunctionFlySecondaryOrchestratorDown
+        expr: |
+          up{job="functionfly-orchestrator-eu"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Secondary orchestrator (EU) is down"
+          description: |
+            The EU secondary orchestrator is not responding.
+            Failover capability may be compromised.
+            Region: eu-west-1
+
+      # Alert: Secondary orchestrator health check failing
+      - alert: FunctionFlySecondaryOrchestratorUnhealthy
+        expr: |
+          functionfly_health_check_status{region="eu-west-1",role="secondary"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Secondary orchestrator health check failing"
+          description: |
+            EU secondary orchestrator health check is failing.
+            Failover readiness is degraded.
+
+      # Alert: Primary orchestrator down - IMMEDIATE ACTION NEEDED
+      - alert: FunctionFlyPrimaryOrchestratorDown
+        expr: |
+          up{job="functionfly-orchestrator",region="us-east-1"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "PRIMARY orchestrator is DOWN - ACTIVATE FAILOVER"
+          description: |
+            PRIMARY orchestrator is DOWN. IMMEDIATE ACTION REQUIRED.
+
+            1. Activate EU secondary orchestrator:
+               fly scale count 3 --app functionfly-control-eu
+
+            2. Update Cloudflare DNS to point to EU endpoint
+
+            3. Notify on-call engineers
+
+            Runbook: docs/DISASTER_RECOVERY.md#orchestrator-failure
+
+  # Alert group for cache warming
+  - name: functionfly_cache_warming
+    interval: 60s
+    rules:
+      # Alert: Cache warming queue backlog
+      - alert: FunctionFlyCacheWarmingBacklog
+        expr: |
+          functionfly_cache_warming_queue_length > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Cache warming queue backlog detected"
+          description: |
+            Cache warming queue has {{ $value }} pending items.
+            Warming may be behind schedule. Check warmer workers.
+
+      # Alert: Cache warming failures high
+      - alert: FunctionFlyCacheWarmingFailures
+        expr: |
+          rate(functionfly_cache_warming_failures_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Cache warming failure rate is high"
+          description: |
+            Cache warming failure rate is {{ $value | humanizePercentage }}.
+            Functions may not be cached at edge properly.
+
+      # Alert: Region warming unavailable
+      - alert: FunctionFlyRegionWarmingUnhealthy
+        expr: |
+          functionfly_cache_warming_region_health == 0
+        for: 2m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Cache warming region is unhealthy"
+          description: |
+            Cache warming to region {{ $labels.region }} is failing.
+            Cross-region caching may be impacted.
+
+  # Alert group for disaster recovery readiness
+  - name: functionfly_dr_readiness
+    interval: 300s
+    rules:
+      # Alert: RTO exceeds target
+      - alert: FunctionFlyRTOTargetAtRisk
+        expr: |
+          functionfly_measured_rto_seconds > 300
+        for: 0m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Recovery Time Objective (RTO) exceeds target"
+          description: |
+            Measured RTO is {{ $value }} seconds (target: 300s).
+            Disaster recovery procedures may need optimization.
+
+      # Alert: RPO exceeds target
+      - alert: FunctionFlyRPOTargetAtRisk
+        expr: |
+          functionfly_measured_rpo_seconds > 3600
+        for: 0m
+        labels:
+          severity: critical
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Recovery Point Objective (RPO) exceeds target"
+          description: |
+            Measured RPO is {{ $value }} seconds (target: 3600s / 1 hour).
+            Data loss window is too large. Check backup frequency.
+
+      # Alert: DR test hasn't run
+      - alert: FunctionFlyDRTestStale
+        expr: |
+          time() - max(functionfly_dr_last_test_timestamp) > 30 * 24 * 60 * 60
+        for: 1d
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Disaster recovery test hasn't run in 30 days"
+          description: |
+            Last DR test was {{ $value | humanizeDuration }} ago.
+            Run DR test quarterly per policy.
+
+            Test procedure: docs/FUNCTION_BACKUP_STRATEGY.md#testing-procedures
+
+  # Alert group for artifact storage
+  - name: functionfly_artifact_storage
+    interval: 60s
+    rules:
+      # Alert: Artifact storage getting full (Redis)
+      - alert: FunctionFlyRedisStorageHigh
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Redis artifact storage is over 85% full"
+          description: |
+            Redis is {{ $value | humanizePercentage }} full.
+            Consider increasing memory or reducing artifact TTL.
+
+      # Alert: Artifact retrieval errors high
+      - alert: FunctionFlyArtifactRetrievalErrors
+        expr: |
+          rate(functionfly_artifact_retrieval_errors_total[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Artifact retrieval error rate is high"
+          description: |
+            Artifact retrieval error rate is {{ $value | humanizePercentage }}.
+            Function deployments may be failing.

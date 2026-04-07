@@ -1,0 +1,29 @@
+# deploy/datadog/prometheus-remote-write.yml
+# Datadog remote_write configuration for Prometheus
+#
+# INSTRUCTIONS:
+#   1. Copy this file to your Prometheus host at /etc/prometheus/remote_write.yml
+#   2. Create the API key file:
+#      echo -n "your-dd-api-key" | sudo tee /etc/secrets/datadog_api_key
+#      sudo chmod 600 /etc/secrets/datadog_api_key
+#   3. Add the following to your prometheus.yml rule_files section:
+#      - "/etc/prometheus/remote_write.yml"
+#   4. Reload Prometheus: curl -X POST http://localhost:9090/-/reload
+#
+# CLEANUP (after eval):
+#   1. Remove the rule_files entry from prometheus.yml
+#   2. Reload Prometheus
+#   3. Remove the files:
+#      sudo rm /etc/prometheus/remote_write.yml
+#      sudo rm /etc/secrets/datadog_api_key
+
+remote_write:
+  - url: "https://api.datadoghq.com/api/v1/series"
+    # Datadog API key injected as a file secret so it never appears in env vars
+    bearer_token_file: /etc/secrets/datadog_api_key
+    queue_config:
+      capacity: 10000
+      max_shards: 5
+      min_shards: 1
+      batch_send_deadline: 5s
+    timeout: 10s

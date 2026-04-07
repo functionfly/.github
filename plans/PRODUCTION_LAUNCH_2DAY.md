@@ -48,7 +48,7 @@ REDIS_PASSWORD=<upstash-token>
   - `REDIS_PASSWORD` (from Upstash)
   - `BASE_URL=https://api.functionfly.com`
   - `FRONTEND_URL=https://app.functionfly.com`
-  - `CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com`
+  - `CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://auth.functionfly.com,https://admin.functionfly.com`
   - `LOG_LEVEL=info`
   - `DEVELOPMENT=false`
 - [ ] **2.2** Verify secrets are accessible via Infisical CLI
@@ -258,7 +258,7 @@ REDIS_ADDR=<upstash-rest-url>
 REDIS_PASSWORD=<upstash-token>
 BASE_URL=https://api.functionfly.com
 FRONTEND_URL=https://app.functionfly.com
-CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com
+CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://auth.functionfly.com,https://admin.functionfly.com
 LOG_LEVEL=info
 DEVELOPMENT=false
 ```

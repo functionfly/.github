@@ -9,35 +9,47 @@ alerting:
   alertmanagers:
     - static_configs:
         - targets:
-          - alertmanager:9093
+            - alertmanager:9093
 
 scrape_configs:
   # Job names must match status handler: orchestrator-api, health-monitor, postgres, redis
-  - job_name: 'prometheus'
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
 
   # Orchestrator API: host when make dev; orchestrator-api:8080 when full stack in Docker
-  - job_name: 'orchestrator-api'
+  - job_name: "orchestrator-api"
     static_configs:
-      - targets: ['orchestrator-api:8080', 'host.docker.internal:8080']
+      - targets: ["orchestrator-api:8080", "host.docker.internal:8080"]
     scrape_interval: 10s
     metrics_path: /metrics
 
   # Health monitor: only in Docker (no host process)
-  - job_name: 'health-monitor'
+  - job_name: "health-monitor"
     static_configs:
-      - targets: ['health-monitor:8080']
+      - targets: ["health-monitor:8080"]
     scrape_interval: 30s
     metrics_path: /metrics
 
   # Optional: when postgres-exporter / redis-exporter are running (e.g. docker-compose.monitoring)
-  - job_name: 'postgres'
+  - job_name: "postgres"
     static_configs:
-      - targets: ['postgres-exporter:9187']
+      - targets: ["postgres-exporter:9187"]
     scrape_interval: 30s
 
-  - job_name: 'redis'
+  - job_name: "redis"
     static_configs:
-      - targets: ['redis-exporter:9121']
+      - targets: ["redis-exporter:9121"]
     scrape_interval: 30s
+
+# =============================================================================
+# Datadog remote_write (dual-write evaluation)
+# =============================================================================
+remote_write:
+  - url: "https://api.datadoghq.com/api/v1/series"
+    bearer_token_file: /etc/secrets/datadog_api_key
+    queue_config:
+      capacity: 10000
+      max_shards: 5
+      min_shards: 1
+      batch_send_deadline: 5s
