@@ -1,4 +1,6 @@
 // web/auth/src/utility/NetworkCheck.ts
+import { API_ORIGIN } from '../config';
+
 /**
  * Performs a reliable network connectivity check
  *
@@ -11,8 +13,8 @@ export async function checkNetworkConnectivity(timeoutMs = 3000): Promise<boolea
   }
 
   try {
-    const response = await fetch('/api/health', {
-      method: 'HEAD',
+    const response = await fetch(`${API_ORIGIN}/health`, {
+      method: 'GET',
       cache: 'no-cache',
       signal: AbortSignal.timeout(timeoutMs),
     });
