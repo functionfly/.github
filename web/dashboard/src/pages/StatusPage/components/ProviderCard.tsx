@@ -1,19 +1,11 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ChevronDown,
-  Globe,
-  Clock,
-  CheckCircle,
-  Cloud,
-  Zap,
-  Server,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import type { ComponentStatusType, ProviderStatus, RegionStatus } from '@/api/status';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { ProviderStatus, RegionStatus, ComponentStatusType } from '@/api/status';
+import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CheckCircle, ChevronDown, Clock, Cloud, Globe, Server, Zap } from 'lucide-react';
+import { useState } from 'react';
 
 interface ProviderCardProps {
   provider: ProviderStatus;
@@ -50,10 +42,7 @@ function RegionDot({ status, region }: { status: ComponentStatusType; region: st
   const config = statusConfig[status];
 
   return (
-    <div
-      className="group/region relative"
-      title={`${region}: ${config.label}`}
-    >
+    <div className="group/region relative" title={`${region}: ${config.label}`}>
       <span
         className={cn(
           'block h-3 w-3 rounded-full transition-transform duration-200',
@@ -65,7 +54,16 @@ function RegionDot({ status, region }: { status: ComponentStatusType; region: st
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover/region:opacity-100 transition-opacity pointer-events-none z-10">
         <div className="bg-bg-secondary border border-border-subtle rounded-lg px-3 py-1.5 shadow-lg whitespace-nowrap">
           <p className="text-xs font-medium text-text-primary">{region}</p>
-          <p className={cn('text-xs', status === 'operational' ? 'text-emerald-400' : status === 'degraded' ? 'text-amber-400' : 'text-red-400')}>
+          <p
+            className={cn(
+              'text-xs',
+              status === 'operational'
+                ? 'text-emerald-400'
+                : status === 'degraded'
+                  ? 'text-amber-400'
+                  : 'text-red-400'
+            )}
+          >
             {config.label}
           </p>
         </div>
@@ -79,9 +77,7 @@ function RegionRow({ region }: { region: RegionStatus }) {
     <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-bg-tertiary/50 transition-colors">
       <div className="flex items-center gap-3">
         <RegionDot status={region.status} region={region.region} />
-        <span className="text-sm font-medium text-text-primary">
-          {region.region}
-        </span>
+        <span className="text-sm font-medium text-text-primary">{region.region}</span>
       </div>
       <div className="flex items-center gap-4 text-xs text-text-muted">
         <span className="flex items-center gap-1">
@@ -104,9 +100,7 @@ export function ProviderCard({ provider, index = 0 }: ProviderCardProps) {
   const gradientClass = providerColors[provider.id] || 'from-gray-500 to-gray-400';
 
   const regions = Array.isArray(provider.regions) ? provider.regions : [];
-  const operationalRegions = regions.filter(
-    (r) => r.status === 'operational'
-  ).length;
+  const operationalRegions = regions.filter((r) => r.status === 'operational').length;
 
   return (
     <motion.div
@@ -150,10 +144,7 @@ export function ProviderCard({ provider, index = 0 }: ProviderCardProps) {
               className="h-8 w-8 p-0"
               aria-label={isExpanded ? 'Collapse regions' : 'Expand regions'}
             >
-              <motion.div
-                animate={{ rotate: isExpanded ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-              >
+              <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
                 <ChevronDown className="h-4 w-4 text-text-muted" />
               </motion.div>
             </Button>
@@ -165,9 +156,7 @@ export function ProviderCard({ provider, index = 0 }: ProviderCardProps) {
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="rounded-lg bg-bg-tertiary/50 p-3">
               <p className="text-xs text-text-muted">Avg Latency</p>
-              <p className="text-lg font-semibold text-text-primary">
-                {provider.avg_latency_ms}ms
-              </p>
+              <p className="text-lg font-semibold text-text-primary">{provider.avg_latency_ms}ms</p>
             </div>
             <div className="rounded-lg bg-bg-tertiary/50 p-3">
               <p className="text-xs text-text-muted">Success Rate</p>
@@ -187,11 +176,7 @@ export function ProviderCard({ provider, index = 0 }: ProviderCardProps) {
             </div>
             <div className="flex flex-wrap gap-2">
               {regions.map((region) => (
-                <RegionDot
-                  key={region.region}
-                  status={region.status}
-                  region={region.region}
-                />
+                <RegionDot key={region.region} status={region.status} region={region.region} />
               ))}
             </div>
           </div>

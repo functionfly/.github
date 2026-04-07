@@ -69,153 +69,23 @@ const countByCategorySlug = posts.reduce<Record<string, number>>((acc, p) => {
         </header>
 
         {error && (
-          <div class="blog-panel blog-panel--error" role="alert">
-            <p class="blog-panel-title">Couldn’t load posts</p>
-            <p class="blog-panel-text">{error}</p>
-            <p class="blog-panel-hint">
-              Set <code>PUBLIC_BLOG_API_URL</code> in <code>web/site/.env</code> and run the Nest blog API
-              (<code>cmd/blog-api</code>), then rebuild or refresh.
-            </p>
-          </div>
-        )}
-
-        {!error && posts.length === 0 && (
-          <div class="blog-panel blog-panel--empty">
-            <div class="blog-empty-icon" aria-hidden="true">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25">
+          <div class="blog-coming-soon">
+            <div class="blog-coming-soon-icon" aria-hidden="true">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-            </svg>
+                <path d="M12 6v4M12 14h.01" />
+              </svg>
             </div>
-            <p class="blog-empty-title">No posts yet</p>
-            <p class="blog-empty-text">Check back soon for tutorials and product news.</p>
-          </div>
-        )}
-
-        {!error && posts.length > 0 && (
-          <div class="blog-layout">
-            <aside class="blog-sidebar" aria-label="Categories">
-              <h2 class="blog-sidebar-title">Categories</h2>
-              <nav class="blog-sidebar-nav">
-                <a href="/blog" class="blog-sidebar-link" data-cat-filter="all">
-                  All posts
-                  <span class="blog-sidebar-count">{posts.length}</span>
-                </a>
-                {categories.length > 0
-                  ? categories.map((cat) => (
-                      <a
-                        href={`/blog?category=${encodeURIComponent(cat.slug)}`}
-                        class="blog-sidebar-link"
-                        data-cat-filter={cat.slug}
-                      >
-                        {cat.title}
-                        <span class="blog-sidebar-count">{countByCategorySlug[cat.slug] ?? 0}</span>
-                      </a>
-                    ))
-                  : Object.entries(countByCategorySlug)
-                      .sort((a, b) => a[0].localeCompare(b[0]))
-                      .map(([slug, count]) => {
-                        const label =
-                          posts.find((p) => p.category?.slug === slug)?.category?.title || slug;
-                        return (
-                          <a
-                            href={`/blog?category=${encodeURIComponent(slug)}`}
-                            class="blog-sidebar-link"
-                            data-cat-filter={slug}
-                          >
-                            {label}
-                            <span class="blog-sidebar-count">{count}</span>
-                          </a>
-                        );
-                      })}
-              </nav>
-            </aside>
-            <div class="blog-main">
-              <p class="blog-filter-hint" id="blog-filter-hint" hidden></p>
-              <ul class="post-grid" id="blog-post-list">
-                {posts.map((post) => (
-                  <li data-category-slug={post.category?.slug ?? ''}>
-                    <a href={`/blog/${post.slug}`} class="post-card">
-                      <div class="post-card-inner">
-                        <h2 class="post-card-title">{post.title}</h2>
-                        <p class="post-card-desc">{post.description || ''}</p>
-                        <div class="post-card-meta">
-                          {post.publishedAt && (
-                            <time datetime={post.publishedAt}>
-                              {new Date(post.publishedAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                              })}
-                            </time>
-                          )}
-                          {post.author?.name && <span class="post-card-author">{post.author.name}</span>}
-                          {post.category?.title && (
-                            <span class="post-card-cat">{post.category.title}</span>
-                          )}
-                        </div>
-                      </div>
-                    </a>
-                  </li>
-                ))}
-              </ul>
+            <h2 class="blog-coming-soon-title">Blog coming soon</h2>
+            <p class="blog-coming-soon-text">Tutorials, product updates, and edge computing insights are on the way.</p>
+            <div class="blog-coming-soon-pill">
+              <span class="blog-coming-soon-dot"></span>
+              <span>Launching 2026</span>
             </div>
           </div>
         )}
-      </div>
-    </section>
-  </div>
 
-  <script is:inline>
-    function applyBlogCategoryFilter() {
-      var params = new URLSearchParams(window.location.search);
-      var cat = params.get('category');
-      var list = document.getElementById('blog-post-list');
-      var hint = document.getElementById('blog-filter-hint');
-      if (!list) return;
-
-      var items = list.querySelectorAll('li[data-category-slug]');
-      var visible = 0;
-      items.forEach(function (li) {
-        var slug = li.getAttribute('data-category-slug') || '';
-        var show = !cat || slug === cat;
-        if (!show) li.setAttribute('hidden', '');
-        else {
-          li.removeAttribute('hidden');
-          visible++;
-        }
-      });
-
-      document.querySelectorAll('[data-cat-filter]').forEach(function (el) {
-        var filter = el.getAttribute('data-cat-filter');
-        var active = filter === 'all' ? !cat : filter === cat;
-        el.classList.toggle('blog-sidebar-link--active', active);
-        if (active) el.setAttribute('aria-current', 'page');
-        else el.removeAttribute('aria-current');
-      });
-
-      if (hint) {
-        if (cat && visible === 0) {
-          hint.textContent = 'No posts in this category.';
-          hint.hidden = false;
-        } else {
-          hint.textContent = '';
-          hint.hidden = true;
-        }
-      }
-    }
-
-    function initBlogCategoryFilter() {
-      applyBlogCategoryFilter();
-      window.addEventListener('popstate', applyBlogCategoryFilter);
-    }
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initBlogCategoryFilter);
-    } else {
-      initBlogCategoryFilter();
-    }
-  </script>
 </Layout>
 
 <style>
@@ -245,112 +115,9 @@ const countByCategorySlug = posts.reduce<Record<string, number>>((acc, p) => {
     padding: 0 0.25rem;
   }
 
-  .blog-layout {
-    display: grid;
-    grid-template-columns: minmax(200px, 240px) 1fr;
-    gap: 2rem 2.5rem;
-    align-items: start;
-    margin-top: 1.5rem;
-  }
-
-  @media (max-width: 768px) {
-    .blog-layout {
-      grid-template-columns: 1fr;
-      gap: 1.75rem;
-    }
-  }
-
-  .blog-sidebar {
-    position: sticky;
-    top: 5.5rem;
-    border-radius: 12px;
-    border: 1px solid var(--color-border);
-    background: rgba(30, 41, 59, 0.45);
-    padding: 1.25rem 1.1rem;
-    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.35);
-  }
-
-  @media (max-width: 768px) {
-    .blog-sidebar {
-      position: static;
-    }
-  }
-
-  .blog-sidebar-title {
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--color-text-muted);
-    margin: 0 0 0.85rem;
-    padding: 0 0.35rem;
-  }
-
-  .blog-sidebar-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-  }
-
-  .blog-sidebar-link {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.55rem 0.65rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--color-text-muted);
-    text-decoration: none;
-    transition:
-      background 0.15s ease,
-      color 0.15s ease;
-  }
-
-  .blog-sidebar-link:hover {
-    background: rgba(99, 102, 241, 0.12);
-    color: var(--color-text);
-  }
-
-  .blog-sidebar-link--active {
-    background: rgba(16, 185, 129, 0.12);
-    color: var(--color-secondary);
-    border: 1px solid rgba(16, 185, 129, 0.22);
-  }
-
-  .blog-sidebar-count {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--color-text-muted);
-    opacity: 0.85;
-    min-width: 1.5rem;
-    text-align: right;
-  }
-
-  .blog-sidebar-link--active .blog-sidebar-count {
-    color: var(--color-secondary);
-    opacity: 1;
-  }
-
-  .blog-main {
-    min-width: 0;
-  }
-
-  .blog-filter-hint {
-    font-size: 0.9rem;
-    color: var(--color-text-muted);
-    margin: 0 0 1rem;
-    padding: 0.65rem 1rem;
-    border-radius: 8px;
-    border: 1px dashed rgba(239, 68, 68, 0.35);
-    background: rgba(239, 68, 68, 0.06);
-  }
-
   .blog-hero {
     text-align: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 3rem;
   }
 
   .blog-hero-pill {
@@ -392,139 +159,78 @@ const countByCategorySlug = posts.reduce<Record<string, number>>((acc, p) => {
     font-size: 1.125rem;
     line-height: 1.6;
     max-width: 32rem;
-    margin: 0 auto 2.5rem;
-  }
-
-  .blog-panel {
-    border-radius: 12px;
-    padding: 2rem 1.5rem;
-    text-align: center;
-  }
-
-  .blog-panel--error {
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.25);
-  }
-
-  .blog-panel--empty {
-    background: rgba(30, 41, 59, 0.5);
-    border: 1px dashed var(--color-border);
-  }
-
-  .blog-panel-title {
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--color-text);
-  }
-
-  .blog-panel-text {
-    color: var(--color-text-muted);
-    font-size: 0.9375rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .blog-panel-hint {
-    font-size: 0.8125rem;
-    color: var(--color-text-muted);
-    line-height: 1.5;
-    max-width: 28rem;
     margin: 0 auto;
   }
 
-  .blog-panel-hint code {
-    font-family: var(--font-mono);
-    font-size: 0.75em;
-    padding: 0.1em 0.35em;
-    background: var(--color-bg);
-    border-radius: 4px;
-    color: var(--color-text);
-  }
-
-  .blog-empty-icon {
-    color: var(--color-text-muted);
-    opacity: 0.5;
-    margin-bottom: 1rem;
-    display: flex;
-    justify-content: center;
-  }
-
-  .blog-empty-title {
-    font-weight: 600;
-    font-size: 1.125rem;
-    margin-bottom: 0.35rem;
-    color: var(--color-text);
-  }
-
-  .blog-empty-text {
-    color: var(--color-text-muted);
-    font-size: 0.9375rem;
-  }
-
-  .post-grid {
-    list-style: none;
+  .blog-coming-soon {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-  }
-
-  .post-card {
-    display: block;
-    border-radius: 12px;
-    border: 1px solid var(--color-border);
-    background: rgba(30, 41, 59, 0.5);
-    transition:
-      border-color 0.2s ease,
-      box-shadow 0.2s ease,
-      transform 0.2s ease;
-  }
-
-  .post-card:hover {
-    border-color: rgba(99, 102, 241, 0.45);
-    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.6);
-    transform: translateY(-2px);
-  }
-
-  .post-card-inner {
-    padding: 1.5rem 1.5rem 1.35rem;
-  }
-
-  .post-card-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    line-height: 1.35;
-    margin-bottom: 0.5rem;
-    color: var(--color-text);
-  }
-
-  .post-card-desc {
-    color: var(--color-text-muted);
-    font-size: 0.9375rem;
-    line-height: 1.6;
-    margin-bottom: 1rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .post-card-meta {
-    display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem 1rem;
-    font-size: 0.8125rem;
+    justify-content: center;
+    text-align: center;
+    padding: 5rem 1.5rem;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .blog-coming-soon-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 96px;
+    height: 96px;
+    border-radius: 20px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    color: var(--color-primary);
+    margin-bottom: 1.75rem;
+  }
+
+  .blog-coming-soon-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  .blog-coming-soon-text {
+    font-size: 1rem;
     color: var(--color-text-muted);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    max-width: 320px;
   }
 
-  .post-card-author::before,
-  .post-card-cat::before {
-    content: '·';
-    margin-right: 0.75rem;
-    color: var(--color-border);
-  }
-
-  .post-card-cat {
-    color: var(--color-secondary);
+  .blog-coming-soon-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
     font-weight: 500;
+    color: var(--color-primary);
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+  }
+
+  .blog-coming-soon-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  @media (max-width: 768px) {
+    .blog-coming-soon {
+      padding: 3rem 1rem;
+    }
   }
 </style>

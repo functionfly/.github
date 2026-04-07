@@ -22,11 +22,22 @@ const { title, description, contentWidth = 'default' } = Astro.props;
 <style>
   .content-page {
     padding: 4rem 1.5rem 5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .content-page::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.12), transparent 55%);
   }
 
   .content-inner {
     max-width: 720px;
     margin: 0 auto;
+    position: relative;
   }
 
   .content-page--wide .content-inner {
@@ -43,38 +54,47 @@ const { title, description, contentWidth = 'default' } = Astro.props;
   .content-inner :global(h2) {
     font-size: 1.35rem;
     font-weight: 600;
-    margin: 2rem 0 0.75rem;
+    margin: 2.5rem 0 1rem;
     color: var(--color-text);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
   }
 
   .content-inner :global(h3) {
     font-size: 1.1rem;
     font-weight: 600;
-    margin: 1.5rem 0 0.5rem;
+    margin: 1.75rem 0 0.5rem;
     color: var(--color-text);
   }
 
   .content-inner :global(h4) {
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
-    margin: 1rem 0 0.35rem;
+    margin: 1.25rem 0 0.35rem;
     color: var(--color-text);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 
   .content-inner :global(p),
   .content-inner :global(li) {
     color: var(--color-text-muted);
-    line-height: 1.65;
-    margin-bottom: 0.75rem;
+    line-height: 1.75;
+    margin-bottom: 0.85rem;
   }
 
   .content-inner :global(ul) {
-    margin: 0.5rem 0 1rem 1.25rem;
+    margin: 0.75rem 0 1.25rem 1.5rem;
     padding-left: 0.25rem;
   }
 
   .content-inner :global(ul) li {
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.5rem;
+    padding-left: 0.25rem;
+  }
+
+  .content-inner :global(ul li::marker) {
+    color: var(--color-primary);
   }
 
   .content-inner :global(strong) {
@@ -83,9 +103,10 @@ const { title, description, contentWidth = 'default' } = Astro.props;
   }
 
   .content-inner :global(a) {
-    color: var(--color-secondary);
+    color: var(--color-primary);
     text-decoration: underline;
     text-underline-offset: 2px;
+    transition: color 0.2s;
   }
 
   .content-inner :global(a:hover) {
@@ -95,6 +116,7 @@ const { title, description, contentWidth = 'default' } = Astro.props;
   .content-inner :global(.lead) {
     font-size: 1.125rem;
     color: var(--color-text);
+    line-height: 1.7;
     margin-bottom: 1.5rem;
   }
 
@@ -114,11 +136,12 @@ const { title, description, contentWidth = 'default' } = Astro.props;
     color: var(--color-text);
     text-decoration: none;
     font-weight: 500;
+    transition: all 0.2s;
   }
 
   .content-inner :global(.btn-outline:hover) {
-    border-color: var(--color-secondary);
-    color: var(--color-secondary);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
   }
 
   .content-inner :global(.btn-primary) {
@@ -130,23 +153,31 @@ const { title, description, contentWidth = 'default' } = Astro.props;
     color: white !important;
     text-decoration: none;
     font-weight: 500;
+    transition: all 0.2s;
   }
 
   .content-inner :global(.btn-primary:hover) {
     background: var(--color-primary-dark);
+    transform: translateY(-1px);
   }
 
   .content-inner :global(.muted) {
     font-size: 0.875rem;
     color: var(--color-text-muted);
+    font-style: italic;
   }
 
   .content-inner :global(.legal-card) {
-    background: var(--color-bg-light);
+    background: rgba(30, 41, 59, 0.5);
     border: 1px solid var(--color-border);
-    border-radius: 12px;
-    padding: 1.75rem 1.5rem;
+    border-radius: 16px;
+    padding: 2rem;
     margin: 2rem 0;
+    backdrop-filter: blur(8px);
+  }
+
+  .content-inner :global(.legal-card:hover) {
+    border-color: rgba(99, 102, 241, 0.3);
   }
 
   .content-inner :global(.legal-card > h2:first-child),
@@ -156,25 +187,37 @@ const { title, description, contentWidth = 'default' } = Astro.props;
 
   .content-inner :global(.legal-header) {
     text-align: center;
-    padding: 2rem 0 1rem;
-    margin-bottom: 1rem;
+    padding: 2rem 0 2rem;
+    margin-bottom: 1.5rem;
   }
 
   .content-inner :global(.legal-header-icon) {
-    width: 4rem;
-    height: 4rem;
-    margin: 0 auto 1rem;
-    border-radius: 1rem;
-    background: rgba(99, 102, 241, 0.15);
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    width: 5rem;
+    height: 5rem;
+    margin: 0 auto 1.5rem;
+    border-radius: 1.25rem;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.25);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--color-primary);
   }
 
+  .content-inner :global(.legal-header h1) {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .content-inner :global(.cookie-section) {
+    margin: 2rem 0;
+  }
+
   .content-inner :global(.cookie-category) {
-    padding: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.25rem 0;
     border-bottom: 1px solid var(--color-border);
   }
 
@@ -182,36 +225,104 @@ const { title, description, contentWidth = 'default' } = Astro.props;
     border-bottom: none;
   }
 
+  .content-inner :global(.cookie-header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .content-inner :global(.cookie-header strong) {
+    font-size: 1rem;
+  }
+
   .content-inner :global(.badge) {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     font-size: 0.75rem;
     font-weight: 600;
-    padding: 0.2rem 0.6rem;
+    padding: 0.25rem 0.65rem;
     border-radius: 999px;
-    background: rgba(99, 102, 241, 0.2);
+    background: rgba(99, 102, 241, 0.15);
     color: var(--color-primary);
+    border: 1px solid rgba(99, 102, 241, 0.25);
   }
 
   .content-inner :global(.badge-muted) {
-    background: var(--color-border);
+    background: rgba(100, 116, 139, 0.15);
     color: var(--color-text-muted);
+    border: 1px solid rgba(100, 116, 139, 0.25);
+  }
+
+  .content-inner :global(.badge-dot) {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .content-inner :global(.badge-active .badge-dot) {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .content-inner :global(.cookie-desc) {
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  .content-inner :global(.cookie-meta) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  .content-inner :global(.cookie-meta strong) {
+    color: var(--color-text);
+    font-weight: 600;
   }
 
   .content-inner :global(.back-home) {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    margin-top: 2rem;
+    margin-top: 2.5rem;
     padding: 0.65rem 1.25rem;
     border-radius: 8px;
     border: 1px solid var(--color-border);
     color: var(--color-text);
     text-decoration: none;
     font-weight: 500;
+    transition: all 0.2s;
   }
 
   .content-inner :global(.back-home:hover) {
     border-color: var(--color-primary);
     color: var(--color-primary);
+    transform: translateX(-2px);
+  }
+
+  @media (max-width: 640px) {
+    .content-page {
+      padding: 2rem 1rem 3rem;
+    }
+
+    .content-inner :global(.legal-card) {
+      padding: 1.25rem;
+      border-radius: 12px;
+    }
+
+    .content-inner :global(.legal-header h1) {
+      font-size: 1.75rem;
+    }
   }
 </style>

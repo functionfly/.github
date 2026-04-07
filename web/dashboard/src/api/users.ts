@@ -27,6 +27,7 @@ export interface UpdateProfileRequest {
   githubUrl?: string;
   linkedinUrl?: string;
   dateOfBirth?: string | null; // YYYY-MM-DD, null to clear
+  language?: string; // User's preferred language code (e.g., 'en', 'es')
 }
 
 export interface MeResponse {

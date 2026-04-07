@@ -1,4 +1,4 @@
-import { z, ZodError, ZodSchema } from 'zod';
+import { z, ZodError, ZodType } from 'zod';
 import * as schemas from './api-validation';
 
 // Validation result type
@@ -34,9 +34,10 @@ export function setValidationLogger(customLogger: ValidationLogger) {
   logger = customLogger;
 }
 
-// Generic safe parse function with fallback
+// Generic safe parse function with fallback - accepts any Zod schema including effects
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function safeParse<T>(
-  schema: ZodSchema<T>,
+  schema: ZodType<T, any, any>,
   data: unknown,
   fallback?: T,
   context?: string
@@ -66,8 +67,9 @@ export function safeParse<T>(
 }
 
 // Safe parse with default fallback generation
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function safeParseWithDefaults<T>(
-  schema: ZodSchema<T>,
+  schema: ZodType<T, any, any>,
   data: unknown,
   defaultGenerator?: () => T,
   context?: string
@@ -87,8 +89,9 @@ export function safeParseWithDefaults<T>(
 }
 
 // Array validation with individual item validation
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function safeParseArray<T>(
-  schema: ZodSchema<T>,
+  schema: ZodType<T, any, any>,
   data: unknown,
   context?: string
 ): T[] {
@@ -173,8 +176,9 @@ export const validateTableName = (tableName: unknown) =>
   safeParse(schemas.tableNameSchema, tableName, undefined, 'TableName');
 
 // Validation middleware for API responses
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createValidatedApiResponse<T>(
-  schema: ZodSchema<T>,
+  schema: ZodType<T, any, any>,
   fallback?: T
 ) {
   return (data: unknown, context?: string): T | null => {
@@ -184,8 +188,9 @@ export function createValidatedApiResponse<T>(
 }
 
 // Batch validation for multiple items
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function validateBatch<T>(
-  schema: ZodSchema<T>,
+  schema: ZodType<T, any, any>,
   items: unknown[],
   context?: string
 ): { valid: T[], invalid: { index: number, error: string }[] } {
@@ -253,8 +258,9 @@ export class ValidationStats {
 }
 
 // Helper to record validation stats automatically
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function withValidationStats<T>(
-  schema: ZodSchema<T>,
+  schema: ZodType<T, any, any>,
   data: unknown,
   fallback?: T,
   context?: string
@@ -309,8 +315,9 @@ export function reportValidationError(
 }
 
 // Create a validated fetch wrapper
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function validatedFetch<T>(
-  schema: ZodSchema<T>,
+  schema: ZodType<T, any, any>,
   url: string,
   options?: RequestInit,
   fallback?: T,

@@ -47,11 +47,24 @@ interface ApiComponent {
 }
 
 const COMPONENT_TYPE_TO_CATEGORY: Record<string, 'core' | 'provider' | 'infrastructure'> = {
+  // Core services
   api: 'core',
   database: 'core',
   cache: 'core',
   monitoring: 'core',
+  ai: 'core',
+  // Providers
   provider: 'provider',
+  cdn: 'provider',
+  // Infrastructure
+  storage: 'infrastructure',
+  email: 'infrastructure',
+  billing: 'infrastructure',
+  security: 'infrastructure',
+  service: 'infrastructure',
+  worker: 'infrastructure',
+  backup: 'infrastructure',
+  runtime: 'infrastructure',
 };
 const API_STATUS_TO_UI: Record<string, ComponentStatusType> = {
   operational: 'operational',
@@ -191,9 +204,10 @@ export interface MaintenanceWindow {
 // ============================================================================
 
 export interface StatusWebSocketMessage {
-  type: 'status_update' | 'incident_update' | 'maintenance_update' | 'ping';
-  timestamp: string;
-  data: PlatformStatus | Incident | MaintenanceWindow;
+  type: 'status_update' | 'incident_update' | 'maintenance_update' | 'ping' | 'subscribed';
+  timestamp?: string;
+  data?: PlatformStatus | Incident | MaintenanceWindow;
+  channels?: string[];
 }
 
 // ============================================================================

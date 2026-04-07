@@ -107,6 +107,9 @@ export function ConnectProviderStep() {
     setIsConnecting(true);
 
     try {
+      // Strip 'Bearer ' prefix if present before sending to backend
+      const cleanToken = apiToken.startsWith('Bearer ') ? apiToken.slice(7) : apiToken;
+
       // Use backend API for provider validation
       const response = await fetch('/v1/providers/validate', {
         method: 'POST',
@@ -115,7 +118,7 @@ export function ConnectProviderStep() {
         },
         body: JSON.stringify({
           provider: selectedProvider,
-          token: apiToken,
+          token: cleanToken,
         }),
       });
 
@@ -269,11 +272,14 @@ export function ConnectProviderStep() {
 
   const validateCloudflareToken = async (token: string): Promise<ValidationResult> => {
     try {
+      // Strip 'Bearer ' prefix if present (users sometimes paste the full header value)
+      const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
+
       // Cloudflare API token validation
       const response = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${cleanToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -308,11 +314,14 @@ export function ConnectProviderStep() {
 
   const validateVercelToken = async (token: string): Promise<ValidationResult> => {
     try {
+      // Strip 'Bearer ' prefix if present
+      const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
+
       // Vercel API token validation
       const response = await fetch('https://api.vercel.com/v2/user', {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${cleanToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -354,11 +363,14 @@ export function ConnectProviderStep() {
 
   const validateFlyToken = async (token: string): Promise<ValidationResult> => {
     try {
+      // Strip 'Bearer ' prefix if present
+      const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
+
       // Fly.io API token validation
       const response = await fetch('https://api.fly.io/v1/apps', {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${cleanToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -396,10 +408,16 @@ export function ConnectProviderStep() {
     }
 
     // Basic format validation
+    // Strip 'Bearer ' prefix if present for consistent validation
+    const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
+
     const basicValidation = {
-      cloudflare: token.length > 40 && token.startsWith('Bearer '),
-      vercel: token.length > 20 && (token.startsWith('vercel_') || token.startsWith('Bearer ')),
-      fly: token.length > 20 && !token.includes(' ') && /^[A-Za-z0-9_-]+$/.test(token),
+      cloudflare: cleanToken.length > 40 && /^[a-zA-Z0-9_-]+$/.test(cleanToken),
+      vercel:
+        cleanToken.length > 20 &&
+        (cleanToken.startsWith('vercel_') || /^[a-zA-Z0-9_-]+$/.test(cleanToken)),
+      fly:
+        cleanToken.length > 20 && !cleanToken.includes(' ') && /^[A-Za-z0-9_-]+$/.test(cleanToken),
     };
 
     if (!basicValidation[provider as keyof typeof basicValidation]) {
@@ -408,10 +426,10 @@ export function ConnectProviderStep() {
         message: 'Invalid token format',
         suggestion:
           provider === 'cloudflare'
-            ? 'Cloudflare API tokens should be Bearer tokens obtained from your Cloudflare dashboard API section'
+            ? 'Cloudflare API tokens are long alphanumeric strings (40+ characters). Get yours from the Cloudflare dashboard under My Profile > API Tokens.'
             : provider === 'vercel'
-              ? 'Vercel API tokens should start with "vercel_" and can be created in your Vercel dashboard'
-              : 'Fly.io API tokens should be alphanumeric strings without spaces, created in your Fly.io dashboard',
+              ? 'Vercel API tokens start with "vercel_" or are long alphanumeric strings. Create one in your Vercel dashboard under Account Settings > Tokens.'
+              : 'Fly.io API tokens are alphanumeric strings without spaces. Create one using "flyctl tokens create" in your terminal or in the Fly.io dashboard.',
       };
     }
 

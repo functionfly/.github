@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { APP_DASHBOARD_ORIGIN } from '../config';
+import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN } from '../config';
 ---
 
 <Layout
@@ -12,7 +12,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
       <div class="badge">Plans &amp; limits</div>
       <h1>Simple pricing that scales with trust</h1>
       <p class="lead">
-        Start free on the dashboard. Paid tiers add capacity for functions, providers, and traffic—aligned with what you see in product. Agent execution is billed separately so AI workloads can grow on their own curve.
+        Start free. Paid tiers add capacity for functions, providers, and traffic—aligned with what you see in product. Agent execution is billed separately so AI workloads can grow on their own curve.
       </p>
     </div>
   </section>
@@ -38,7 +38,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
             <li><span class="check" aria-hidden="true">✓</span> State Fabric: 0 instances</li>
             <li><span class="check" aria-hidden="true">✓</span> Community support</li>
           </ul>
-          <a class="btn btn-secondary full-width" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Start free</a>
+          <a class="btn btn-secondary full-width" href={`${AUTH_ORIGIN}/signup`}>Start free</a>
         </article>
 
         <article class="price-card">
@@ -56,7 +56,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
             <li><span class="check" aria-hidden="true">✓</span> State Fabric: up to 1 instance</li>
             <li><span class="check" aria-hidden="true">✓</span> Email support &amp; basic analytics</li>
           </ul>
-          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing`}>Choose Starter</a>
+          <a class="btn btn-primary full-width" href={`${AUTH_ORIGIN}/signup?plan=starter`}>Choose Starter</a>
         </article>
 
         <article class="price-card price-card--featured">
@@ -76,7 +76,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
             <li><span class="check" aria-hidden="true">✓</span> 99.9% SLA, priority support</li>
             <li><span class="check" aria-hidden="true">✓</span> Advanced analytics &amp; team collaboration</li>
           </ul>
-          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing`}>Choose Professional</a>
+          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing?tab=functions&plan=professional`}>Choose Professional</a>
         </article>
 
         <article class="price-card">
@@ -96,7 +96,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
         </article>
       </div>
       <p class="footnote">
-        Limits and features match what your workspace shows in the dashboard. Verification, marketplace, and Trust API usage may be billed separately—see <a href="/trust">Trust layer</a> and in-product usage for current rates.
+        Limits and features match what your workspace shows. Verification, marketplace, and Trust API usage may be billed separately—see <a href="/trust">Trust layer</a> and in-product usage for current rates.
       </p>
     </div>
   </section>
@@ -106,7 +106,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
       <div class="section-head">
         <h2 id="state-fabric">State Fabric</h2>
         <p class="muted">
-          Stateful capabilities for serverless. Start with Sandbox and scale up to Enterprise. Optional add-ons are available in the dashboard.
+          Stateful capabilities for serverless. Start with Sandbox and scale up to Enterprise. Optional add-ons can be enabled in your workspace.
         </p>
       </div>
 
@@ -126,7 +126,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
             <li><span class="check" aria-hidden="true">✓</span> 7-day snapshot retention</li>
             <li><span class="check" aria-hidden="true">✓</span> Community support</li>
           </ul>
-          <a class="btn btn-secondary full-width" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Start in dashboard</a>
+          <a class="btn btn-secondary full-width" href={`${AUTH_ORIGIN}/signup`}>Try now — free</a>
         </article>
 
         <article class="price-card">
@@ -145,7 +145,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
             <li><span class="check" aria-hidden="true">✓</span> Basic snapshot scheduling</li>
             <li><span class="check" aria-hidden="true">✓</span> Replay engine (limited)</li>
           </ul>
-          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing`}>Choose Starter</a>
+          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing?tab=state-fabric&plan=sf_starter`}>Choose Starter</a>
         </article>
 
         <article class="price-card price-card--featured">
@@ -166,7 +166,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
             <li><span class="check" aria-hidden="true">✓</span> Fast deterministic replay</li>
             <li><span class="check" aria-hidden="true">✓</span> Replay API + billing analytics</li>
           </ul>
-          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing`}>Choose Pro</a>
+          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing?tab=state-fabric&plan=sf_pro`}>Choose Pro</a>
         </article>
 
         <article class="price-card">
@@ -187,7 +187,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
             <li><span class="check" aria-hidden="true">✓</span> SLA + advanced analytics</li>
             <li><span class="check" aria-hidden="true">✓</span> Event subscription streams</li>
           </ul>
-          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing`}>Choose Business</a>
+          <a class="btn btn-primary full-width" href={`${APP_DASHBOARD_ORIGIN}/pricing?tab=state-fabric&plan=sf_business`}>Choose Business</a>
         </article>
 
         <article class="price-card">
@@ -340,7 +340,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
         </div>
 
         <p class="statefabric-note">
-          Add-on prices can change over time. Always confirm current rates in your dashboard billing page.
+          Add-on prices can change over time. Always confirm current rates in your billing page.
         </p>
       </div>
     </div>
@@ -388,7 +388,7 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
         </table>
       </div>
       <div class="agent-cta">
-        <a class="btn btn-primary" href={`${APP_DASHBOARD_ORIGIN}/pricing`}>Configure in dashboard</a>
+        <a class="btn btn-primary" href={`${AUTH_ORIGIN}/signup`}>Configure</a>
         <a class="btn btn-secondary" href="/for-agents">For AI agents</a>
       </div>
     </div>
@@ -431,9 +431,9 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
   <section class="cta">
     <div class="container">
       <h2>Ready to ship trusted tools?</h2>
-      <p class="muted">Create a workspace, connect providers, and see live limits in the dashboard.</p>
+      <p class="muted">Create a workspace, connect providers, and see live limits.</p>
       <div class="actions">
-        <a class="btn primary" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Open dashboard</a>
+        <a class="btn primary" href={`${AUTH_ORIGIN}/signup`}>Try now</a>
         <a class="btn secondary" href="/contact">Talk to sales</a>
       </div>
     </div>

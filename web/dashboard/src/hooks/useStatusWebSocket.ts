@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import {
-  type PlatformStatus,
   type Incident,
   type MaintenanceWindow,
+  type PlatformStatus,
   type StatusWebSocketMessage,
 } from '@/api/status';
+import { getApiBaseUrl } from '@/lib/constants';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { statusKeys } from './useStatus';
 
 interface UseStatusWebSocketOptions {
@@ -55,11 +56,22 @@ export function useStatusWebSocket(options: UseStatusWebSocketOptions = {}) {
     reconnectAttempt: 0,
   });
 
-  // Get WebSocket URL based on current environment
+  // Get WebSocket URL based on API base URL (not window location)
+  // This ensures WebSocket connects to the API host (e.g., api.functionfly.com)
+  // even when the dashboard is served from a different host (e.g., app.functionfly.com)
   const getWebSocketUrl = useCallback(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    return `${protocol}//${host}/ws/v1/status`;
+    const apiBaseUrl = getApiBaseUrl();
+
+    // If using Vite proxy in dev (/api), fall back to window.location
+    if (apiBaseUrl === '/api') {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      return `${protocol}//${host}/ws/v1/status`;
+    }
+
+    // Convert http/https to ws/wss for the API base URL
+    const wsUrl = apiBaseUrl.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
+    return `${wsUrl}/ws/v1/status`;
   }, []);
 
   // Calculate reconnect delay with exponential backoff
@@ -132,6 +144,11 @@ export function useStatusWebSocket(options: UseStatusWebSocketOptions = {}) {
             wsRef.current?.send(JSON.stringify({ type: 'pong' }));
             break;
           }
+
+          case 'subscribed': {
+            // Subscription confirmed, no action needed
+            break;
+          }
         }
       } catch (error) {
         console.error('Failed to parse WebSocket message:', error);
@@ -142,7 +159,7 @@ export function useStatusWebSocket(options: UseStatusWebSocketOptions = {}) {
 
   // Connect to WebSocket
   const connect = useCallback(() => {
-    if (!enabled || wsRef.current?.readyState === WebSocket.OPEN) {
+    if (!enabled || wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
       return;
     }
 
@@ -160,6 +177,12 @@ export function useStatusWebSocket(options: UseStatusWebSocketOptions = {}) {
           error: null,
           reconnectAttempt: 0,
         });
+
+        // Subscribe to all channels
+        ws.send(JSON.stringify({
+          type: 'subscribe',
+          channels: ['platform', 'providers', 'incidents', 'maintenance']
+        }));
       };
 
       ws.onmessage = handleMessage;

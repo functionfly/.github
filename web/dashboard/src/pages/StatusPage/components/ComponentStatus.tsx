@@ -8,6 +8,14 @@ import {
   HardDrive,
   Layers,
   Activity,
+  Brain,
+  CreditCard,
+  Mail,
+  Lock,
+  Archive,
+  Cpu,
+  Globe,
+  Workflow,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,6 +45,9 @@ const categoryConfig = {
   },
 };
 
+// Order for displaying categories
+const CATEGORY_ORDER = ['core', 'provider', 'infrastructure'];
+
 const statusConfig = {
   operational: {
     dot: 'bg-emerald-500',
@@ -60,12 +71,34 @@ const statusConfig = {
 
 // Map component IDs to icons
 const componentIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  // Core services
+  api: Layers,
   orchestrator: Layers,
-  health_monitor: Activity,
   database: Database,
   cache: Zap,
+  'health-monitor': Activity,
+  health_monitor: Activity,
+  'ai-service': Brain,
+  ai: Brain,
+  embeddings: Brain,
+  recommendations: Brain,
+  // Infrastructure
   caddy: Shield,
-  cloudflare: Cloud,
+  'state-fabric': Server,
+  microvm: Cpu,
+  queue: Workflow,
+  'function-backup': Archive,
+  email: Mail,
+  billing: CreditCard,
+  storage: HardDrive,
+  cdn: Cloud,
+  pgbouncer: Database,
+  verification: Lock,
+  'trust-api': Shield,
+  support: Server,
+  registry: Server,
+  // Providers
+  cloudflare: Globe,
   vercel: Cloud,
   fly: Cloud,
   deno: Cloud,
@@ -208,8 +241,7 @@ export function ComponentStatus({ components, isLoading }: ComponentStatusProps)
   }, {} as Record<string, ComponentHealth[]>);
 
   const categories = Object.keys(groupedComponents).sort((a, b) => {
-    const order = ['core', 'provider', 'infrastructure'];
-    return order.indexOf(a) - order.indexOf(b);
+    return CATEGORY_ORDER.indexOf(a) - CATEGORY_ORDER.indexOf(b);
   });
 
   return (

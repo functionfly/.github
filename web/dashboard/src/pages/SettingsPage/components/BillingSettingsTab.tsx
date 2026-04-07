@@ -12,6 +12,7 @@ import {
   topUpWallet,
   type Invoice,
   type Subscription,
+  type UsageSummary,
 } from '@/api/billing';
 import { EnterpriseSettingsSection } from '@/components/enterprise';
 import { Badge } from '@/components/ui/badge';
@@ -35,11 +36,13 @@ import {
   AlertCircle,
   Building2,
   Calendar,
+  Clock,
   CreditCard,
   Download,
   Loader2,
   Trash2,
   Wallet,
+  Check,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -122,21 +125,42 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
     retry: false,
   });
 
+  // Derived constants must be declared before hooks that depend on them
+  const subscription = subscriptionData as Subscription | null | undefined;
+
   useEffect(() => {
-    const flag = searchParams.get('walletTopUp');
-    if (!flag) return;
-    if (flag === 'success') {
-      toast.success('Payment completed', {
-        description:
-          'Your registry balance updates after Stripe confirms the payment (usually within a few seconds).',
-      });
-      queryClient.invalidateQueries({ queryKey: ['billing-wallet-info'] });
-    } else if (flag === 'cancel') {
-      toast.message('Top-up cancelled');
+    const walletFlag = searchParams.get('walletTopUp');
+    const subscriptionFlag = searchParams.get('subscription');
+
+    if (walletFlag) {
+      if (walletFlag === 'success') {
+        toast.success('Payment completed', {
+          description:
+            'Your registry balance updates after Stripe confirms the payment (usually within a few seconds).',
+        });
+        queryClient.invalidateQueries({ queryKey: ['billing-wallet-info'] });
+      } else if (walletFlag === 'cancel') {
+        toast.message('Top-up cancelled');
+      }
+      const next = new URLSearchParams(searchParams);
+      next.delete('walletTopUp');
+      setSearchParams(next, { replace: true });
     }
-    const next = new URLSearchParams(searchParams);
-    next.delete('walletTopUp');
-    setSearchParams(next, { replace: true });
+
+    if (subscriptionFlag) {
+      if (subscriptionFlag === 'success') {
+        toast.success('Subscription updated', {
+          description: 'Your subscription has been successfully updated.',
+        });
+        queryClient.invalidateQueries({ queryKey: ['billing', 'subscription'] });
+        queryClient.invalidateQueries({ queryKey: ['billing', 'invoices'] });
+      } else if (subscriptionFlag === 'cancel') {
+        toast.message('Checkout cancelled');
+      }
+      const next = new URLSearchParams(searchParams);
+      next.delete('subscription');
+      setSearchParams(next, { replace: true });
+    }
   }, [searchParams, setSearchParams, queryClient]);
 
   const parsedTopUpUsd = parseFloat(topUpAmountInput.replace(/,/g, ''));
@@ -178,7 +202,6 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
     }
   };
 
-  const subscription = subscriptionData as Subscription | null | undefined;
   const invoices = (invoicesData as { invoices: Invoice[] })?.invoices ?? [];
 
   const handleContactSales = async () => {
@@ -280,6 +303,40 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
                 </div>
                 <Badge>Current</Badge>
               </div>
+
+              {/* Trial Period Display */}
+              {subscription.is_trialing && (
+                <div
+                  className={`p-4 rounded-lg border ${
+                    subscription.trial_days_remaining <= 3
+                      ? 'bg-amber-500/10 border-amber-500/20'
+                      : 'bg-blue-500/10 border-blue-500/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-5 h-5 text-text-muted" />
+                    <span className="text-sm font-medium">Trial Period</span>
+                  </div>
+                  <p className="text-sm">
+                    <span
+                      className={
+                        subscription.trial_days_remaining <= 3
+                          ? 'text-amber-400 font-semibold'
+                          : 'text-blue-400'
+                      }
+                    >
+                      {subscription.trial_days_remaining} days remaining
+                    </span>
+                    {subscription.trial_end && <> · Ends {formatDate(subscription.trial_end)}</>}
+                  </p>
+                  {subscription.trial_days_remaining <= 3 && (
+                    <p className="text-xs mt-2 text-amber-400">
+                      Your trial ends soon. Choose a plan to continue using premium features.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {(subscription.current_period_start || subscription.current_period_end) && (
                 <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-bg-secondary border border-border-default">
                   <div className="flex items-center gap-3">
@@ -324,14 +381,83 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
               )}
             </div>
           ) : (
-            <div className="flex items-center justify-between p-4 rounded-lg bg-linear-to-r from-[#6366f1]/10 to-[#8b5cf6]/10 border border-border-default">
-              <div>
-                <h3 className="font-semibold text-text-primary capitalize">{displayPlan} Plan</h3>
-                <p className="text-sm text-text-secondary">
-                  {displayPlan === 'free' ? 'Free forever' : 'Active subscription'}
-                </p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-linear-to-r from-[#6366f1]/10 to-[#8b5cf6]/10 border border-border-default">
+                <div>
+                  <h3 className="font-semibold text-text-primary capitalize">{displayPlan} Plan</h3>
+                  <p className="text-sm text-text-secondary mt-1">
+                    {displayPlan === 'free' || displayPlan.toLowerCase() === 'free' ? (
+                      <>
+                        <Badge variant="secondary" className="mr-2">
+                          Free Forever
+                        </Badge>
+                        Basic features included
+                      </>
+                    ) : (
+                      <>
+                        <Badge variant="secondary" className="mr-2">
+                          {displayPlan}
+                        </Badge>
+                        Active
+                      </>
+                    )}
+                  </p>
+                </div>
+                <Badge>Current</Badge>
               </div>
-              <Badge>Current</Badge>
+
+              {/* Free tier features list */}
+              {(displayPlan === 'free' || displayPlan.toLowerCase() === 'free') && (
+                <>
+                  <div className="p-4 rounded-lg bg-bg-secondary border border-border-default">
+                    <p className="font-medium text-text-primary mb-2">Your Free Plan includes:</p>
+                    <ul className="space-y-1 text-sm text-text-secondary">
+                      <li className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center shrink-0">
+                          <Check className="w-3.5 h-3.5 text-green-400" />
+                        </span>
+                        Basic function deployment
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center shrink-0">
+                          <Check className="w-3.5 h-3.5 text-green-400" />
+                        </span>
+                        Community support
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center shrink-0">
+                          <Check className="w-3.5 h-3.5 text-green-400" />
+                        </span>
+                        Registry access
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center shrink-0">
+                          <Check className="w-3.5 h-3.5 text-green-400" />
+                        </span>
+                        Up to 5 functions
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Upgrade prompt for free users */}
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20">
+                    <p className="text-sm font-medium text-text-primary mb-2">
+                      Ready to unlock more?
+                    </p>
+                    <ul className="space-y-1 text-xs text-text-secondary mb-3">
+                      <li>- Unlimited executions</li>
+                      <li>- Priority support</li>
+                      <li>- Advanced analytics</li>
+                    </ul>
+                    <Button
+                      size="sm"
+                      onClick={() => openPortal(`${window.location.origin}/pricing`)}
+                    >
+                      View Plans & Pricing
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
           <div className="mt-6 flex flex-wrap gap-3">
@@ -637,10 +763,10 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
                     >
                       {invoice.status}
                     </Badge>
-                    {(invoice.invoice_pdf || invoice.hosted_invoice_url) && (
+                    {invoice.invoice_pdf || invoice.hosted_invoice_url ? (
                       <Button variant="ghost" size="sm" asChild>
                         <a
-                          href={invoice.invoice_pdf || invoice.hosted_invoice_url || '#'}
+                          href={invoice.invoice_pdf || invoice.hosted_invoice_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1"
@@ -649,7 +775,14 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
                           Download
                         </a>
                       </Button>
-                    )}
+                    ) : invoice.status === 'paid' ? (
+                      <span
+                        className="text-xs text-text-muted"
+                        title="Invoice PDF will be available shortly"
+                      >
+                        Processing...
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               ))}

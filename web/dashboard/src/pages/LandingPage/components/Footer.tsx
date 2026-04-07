@@ -151,10 +151,12 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                 </li>
                 <li>
                   <a
-                    href="/integrations"
+                    href="https://status.functionfly.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
-                    Integrations
+                    System Status
                   </a>
                 </li>
                 <li>
@@ -247,7 +249,9 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                 </li>
                 <li>
                   <a
-                    href="/status"
+                    href="https://status.functionfly.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
                     System Status

@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { APP_DASHBOARD_ORIGIN } from '../config';
+import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN } from '../config';
 ---
 
 <Layout
@@ -266,7 +266,7 @@ Content-Type: application/json
         Browse trusted functions in the marketplace, or run your own agent trust policy to select tools safely.
       </p>
       <div class="actions">
-        <a class="btn primary" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Get Started Free</a>
+        <a class="btn primary" href={`${AUTH_ORIGIN}/signup`}>Get Started Free</a>
         <a class="btn secondary" href="/pricing">See trust-aligned pricing</a>
       </div>
     </div>

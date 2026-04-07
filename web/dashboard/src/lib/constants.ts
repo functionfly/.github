@@ -54,6 +54,7 @@ export const ROUTES = {
   ENTERPRISE_SECURITY: '/enterprise/security',
   ENTERPRISE_SUPPORT: '/enterprise/support',
   ENTERPRISE_COMPLIANCE: '/enterprise/compliance',
+  PAYOUTS: '/payouts',
 } as const;
 
 /**

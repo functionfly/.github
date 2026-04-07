@@ -18,7 +18,7 @@ import { EnterpriseStatusCard } from '@/components/enterprise';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useOnboardingStore } from '@/stores/onboardingStore';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Activity, Building2, FunctionSquare, Globe, Loader2, Play, X, Zap } from 'lucide-react';
 import { useMemo } from 'react';
@@ -32,6 +32,38 @@ export function DashboardPage() {
     queryKey: ['functions'],
     queryFn: () => functionsApi.list(),
   });
+
+  // Fetch trust scores for all functions
+  const functionTrustQueries = useQueries({
+    queries: (functionsData?.functions ?? []).map((fn) => ({
+      queryKey: ['function-trust', fn.id],
+      queryFn: () => functionsApi.getTrustScore(fn.id),
+      enabled: !!fn.id && fn.status === 'deployed',
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    })),
+  });
+
+  // Compute aggregate trust score from all function trust scores
+  const aggregateTrustScore = useMemo(() => {
+    const trustScores = functionTrustQueries
+      .map((q) => q.data?.trustScore)
+      .filter((score): score is number => typeof score === 'number' && score > 0);
+
+    if (trustScores.length === 0) {
+      // No trust data yet, show 0 (will display as "Insufficient Data")
+      return 0;
+    }
+
+    // Average trust score weighted by function importance (could be execution count in future)
+    const average = trustScores.reduce((sum, score) => sum + score, 0) / trustScores.length;
+    return Math.round(average);
+  }, [functionTrustQueries]);
+
+  // Check if any trust score queries are loading
+  const trustScoresLoading =
+    functionTrustQueries.some((q) => q.isLoading) &&
+    functionsData &&
+    functionsData.functions.length > 0;
 
   const { data: providers, isLoading: providersLoading } = useQuery({
     queryKey: ['providers'],
@@ -327,7 +359,15 @@ export function DashboardPage() {
             <CardTitle className="text-sm font-medium text-text-secondary">Trust score</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <TrustScoreBadge trustScore={85} showScore size="lg" />
+            {functionsLoading || trustScoresLoading ? (
+              <div className="h-8 flex items-center">
+                <Loader2 className="h-5 w-5 animate-spin text-text-muted" />
+              </div>
+            ) : functions.length === 0 ? (
+              <TrustScoreBadge trustScore={0} showScore size="lg" />
+            ) : (
+              <TrustScoreBadge trustScore={aggregateTrustScore} showScore size="lg" />
+            )}
           </CardContent>
         </Card>
       </motion.div>

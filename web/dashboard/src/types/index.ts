@@ -12,6 +12,7 @@ export interface User {
   createdAt: string;
   updatedAt?: string;
   profileNumber?: number; // Sequential number assigned based on registration order (e.g., Member #123)
+  language?: string; // User's preferred language code (e.g., 'en', 'es')
 }
 
 export interface Session {
@@ -426,6 +427,8 @@ export interface FunctionConfig {
   updatedAt: string;
   version: string;
   status: 'draft' | 'deploying' | 'deployed' | 'failed';
+  /** Trust score 0-100, available when function has execution history */
+  trustScore?: number;
 }
 
 export interface CreateFunctionRequest {

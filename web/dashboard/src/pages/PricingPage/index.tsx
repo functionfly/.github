@@ -1,98 +1,176 @@
-import { motion } from "framer-motion";
-import { ArrowLeft, CreditCard, Shield, Zap, Database, Bot } from "lucide-react";
-import { PLANS } from "@/lib/constants";
-import { Link } from "react-router-dom";
-import { Footer } from "@/pages/LandingPage/components";
-import { useState } from "react";
-import { Tooltip } from "react-tooltip";
-import Confetti from "react-confetti";
-import { useWindowSize } from "react-use";
-import toast, { Toaster } from "react-hot-toast";
-import { StateFabricPricingSection } from "./components/StateFabricPricingSection";
-import { FunctionPlanCard } from "./components/FunctionPlanCard";
-import { AgentPricingSection } from "./components/AgentPricingSection";
-import { FunctionsComparisonTable } from "./components/FunctionsComparisonTable";
-import { FAQSection } from "./components/FAQSection";
-import { CTASection } from "./components/CTASection";
-import { MetaTags } from "@/components/seo/MetaTags";
-import { PricingPageStructuredData } from "@/components/seo/StructuredData";
-import { createCheckoutSession, getCheckoutErrorMessage } from "@/api/billing";
-import { useAuthStore } from "@/stores/authStore";
+import { createCheckoutSession, getCheckoutErrorMessage } from '@/api/billing';
+import { MetaTags } from '@/components/seo/MetaTags';
+import { PricingPageStructuredData } from '@/components/seo/StructuredData';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { PLANS, STATE_FABRIC_PLANS } from '@/lib/constants';
+import { Footer } from '@/pages/LandingPage/components';
+import { useAuthStore } from '@/stores/authStore';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Bot, CreditCard, Database, Mail, Shield, Zap } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import Confetti from 'react-confetti';
+import toast, { Toaster } from 'react-hot-toast';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Tooltip } from 'react-tooltip';
+import { useWindowSize } from 'react-use';
+import { AgentPricingSection } from './components/AgentPricingSection';
+import { CTASection } from './components/CTASection';
+import { FAQSection } from './components/FAQSection';
+import { FunctionPlanCard } from './components/FunctionPlanCard';
+import { FunctionsComparisonTable } from './components/FunctionsComparisonTable';
+import { StateFabricPricingSection } from './components/StateFabricPricingSection';
 
-type PricingTab = "functions" | "state-fabric" | "agents";
+type PricingTab = 'functions' | 'state-fabric' | 'agents';
 
 function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
+  return classes.filter(Boolean).join(' ');
 }
 
 const TABS: { id: PricingTab; label: string; icon: typeof Zap }[] = [
-  { id: "functions", label: "Function deployment", icon: Zap },
-  { id: "state-fabric", label: "State Fabric", icon: Database },
-  { id: "agents", label: "Agent execution", icon: Bot },
+  { id: 'functions', label: 'Function deployment', icon: Zap },
+  { id: 'state-fabric', label: 'State Fabric', icon: Database },
+  { id: 'agents', label: 'Agent execution', icon: Bot },
 ];
 
 export function PricingPage() {
   const { width, height } = useWindowSize();
   const [showConfetti, setShowConfetti] = useState(false);
-  const [activeTab, setActiveTab] = useState<PricingTab>("functions");
+  const [activeTab, setActiveTab] = useState<PricingTab>('functions');
+  const [searchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
+  const [checkoutError, setCheckoutError] = useState<{
+    message: string;
+    planId: string;
+    priceId?: string;
+  } | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [checkoutInitiating, setCheckoutInitiating] = useState(false);
+
+  // Auto-trigger checkout from marketing site URL params
+  // e.g. /pricing?tab=functions&plan=starter or /pricing?tab=state-fabric&plan=pro
+  const autoCheckoutTriggered = useRef(false);
+  useEffect(() => {
+    if (autoCheckoutTriggered.current) return;
+    const tabParam = searchParams.get('tab') as PricingTab | null;
+    const planParam = searchParams.get('plan');
+    if (!tabParam || !planParam) return;
+    autoCheckoutTriggered.current = true;
+
+    // Set the correct tab
+    if (tabParam === 'functions' || tabParam === 'state-fabric' || tabParam === 'agents') {
+      setActiveTab(tabParam);
+    }
+
+    // Small delay to let the tab render before triggering checkout
+    const timer = setTimeout(() => {
+      const planMap: Record<string, { planId: string; priceId?: string }> = {
+        // Functions plans
+        starter: { planId: 'starter', priceId: PLANS.STARTER.priceId },
+        professional: { planId: 'professional', priceId: PLANS.PROFESSIONAL.priceId },
+        // State Fabric plans
+        sf_starter: { planId: 'sf_starter', priceId: STATE_FABRIC_PLANS.STARTER.priceId },
+        sf_pro: { planId: 'sf_pro', priceId: STATE_FABRIC_PLANS.PRO.priceId },
+        sf_business: { planId: 'sf_business', priceId: STATE_FABRIC_PLANS.BUSINESS.priceId },
+      };
+      const entry = planMap[planParam];
+      if (entry) {
+        handlePlanSelect(entry.planId, entry.priceId);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [searchParams]);
 
   const handlePlanSelect = async (planId: string, priceId?: string) => {
     // For enterprise, navigate to contact page
-    if (planId === "enterprise") {
-      window.location.href = "/contact";
+    if (planId === 'enterprise') {
+      window.location.href = '/contact';
       return;
     }
 
     // For free plan, just show success and redirect to signup
-    if (planId === "free") {
+    if (planId === 'free') {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 3000);
-      toast.success(
-        "Great choice! You're about to start with the Free Plan.",
-        {
-          duration: 4000,
-          style: {
-            background: '#1a1a1a',
-            color: '#fff',
-            border: '1px solid #6366f1',
-          },
-          icon: '🚀',
-        }
-      );
+      toast.success("Great choice! You're about to start with the Free Plan.", {
+        duration: 4000,
+        style: {
+          background: '#1a1a1a',
+          color: '#fff',
+          border: '1px solid #6366f1',
+        },
+        icon: '🚀',
+      });
       return;
     }
 
     // For paid plans, create checkout session
     if (!priceId) {
-      toast.error("Invalid plan. Please try again.");
+      toast.error('Invalid plan. Please try again.');
       return;
     }
 
+    setCheckoutInitiating(true);
     setShowConfetti(true);
     setTimeout(() => setShowConfetti(false), 3000);
 
     try {
       const base = window.location.origin;
       const successUrl = user?.username
-        ? `${base}/u/${user.username}/settings/billing?success=true`
-        : `${base}/settings?tab=billing&success=true`;
-      const cancelUrl = `${base}/pricing`;
+        ? `${base}/u/${user.username}/settings/billing?subscription=success`
+        : `${base}/settings?tab=billing&subscription=success`;
+      const cancelUrl = `${base}/pricing?subscription=cancel`;
 
       const { url } = await createCheckoutSession(priceId, successUrl, cancelUrl);
 
       // Redirect to Stripe Checkout
       window.location.href = url;
     } catch (error) {
-      toast.error(getCheckoutErrorMessage(error), {
-        duration: 5000,
-        style: {
-          background: '#1a1a1a',
-          color: '#fff',
-          border: '1px solid #ef4444',
-        },
+      setCheckoutError({
+        message: getCheckoutErrorMessage(error),
+        planId,
+        priceId,
       });
+    } finally {
+      setCheckoutInitiating(false);
     }
+  };
+
+  const handleRetryCheckout = async () => {
+    if (!checkoutError?.priceId) return;
+
+    setIsRetrying(true);
+    try {
+      const base = window.location.origin;
+      const successUrl = user?.username
+        ? `${base}/u/${user.username}/settings/billing?subscription=success`
+        : `${base}/settings?tab=billing&subscription=success`;
+      const cancelUrl = `${base}/pricing?subscription=cancel`;
+
+      const { url } = await createCheckoutSession(checkoutError.priceId, successUrl, cancelUrl);
+      window.location.href = url;
+    } catch (error) {
+      setCheckoutError({
+        message: getCheckoutErrorMessage(error),
+        planId: checkoutError.planId,
+        priceId: checkoutError.priceId,
+      });
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  const handleContactSales = () => {
+    setCheckoutError(null);
+    window.location.href = '/contact';
   };
 
   return (
@@ -112,7 +190,14 @@ export function PricingPage() {
       <MetaTags
         title="Pricing | FunctionFly - Serverless Function Deployment Pricing"
         description="Simple, transparent pricing for serverless function deployment. Start free, scale as you grow. 14-day free trial on all paid plans. No hidden fees, no surprise charges."
-        keywords={["serverless pricing", "function deployment pricing", "serverless plans", "function as a service pricing", "cloud function pricing", "serverless hosting pricing"]}
+        keywords={[
+          'serverless pricing',
+          'function deployment pricing',
+          'serverless plans',
+          'function as a service pricing',
+          'cloud function pricing',
+          'serverless hosting pricing',
+        ]}
         url="/pricing"
       />
 
@@ -132,7 +217,10 @@ export function PricingPage() {
           <div className="absolute inset-0 bg-gradient-to-r from-[#6366f1]/5 via-transparent to-[#8b5cf6]/5" />
           <div className="relative max-w-7xl mx-auto px-4 lg:px-6">
             <div className="flex items-center justify-between h-16">
-              <Link to="/" className="flex items-center gap-2 text-white hover:text-[#6366f1] transition-all duration-300 group">
+              <Link
+                to="/"
+                className="flex items-center gap-2 text-white hover:text-[#6366f1] transition-all duration-300 group"
+              >
                 <div className="p-1 rounded-lg bg-white/5 group-hover:bg-[#6366f1]/10 transition-colors">
                   <ArrowLeft className="w-4 h-4" />
                 </div>
@@ -185,7 +273,9 @@ export function PricingPage() {
                   <Shield className="w-3.5 h-3.5 text-green-400" />
                   <span className="font-medium text-green-400">14-day free trial</span>
                 </div>
-                <span className="text-text-secondary">No setup fees · Cancel anytime · Enterprise support</span>
+                <span className="text-text-secondary">
+                  No setup fees · Cancel anytime · Enterprise support
+                </span>
               </div>
             </motion.div>
           </div>
@@ -206,10 +296,10 @@ export function PricingPage() {
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                    'inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                     isActive
-                      ? "bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white shadow-lg shadow-[#6366f1]/25"
-                      : "bg-white/5 border border-white/10 text-text-secondary hover:border-white/20 hover:text-white"
+                      ? 'bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white shadow-lg shadow-[#6366f1]/25'
+                      : 'bg-white/5 border border-white/10 text-text-secondary hover:border-white/20 hover:text-white'
                   )}
                 >
                   <Icon className="w-4 h-4" />
@@ -220,30 +310,32 @@ export function PricingPage() {
           </motion.div>
 
           {/* Functions tab */}
-          {activeTab === "functions" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="relative mb-16"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent blur-3xl -mx-8 rounded-3xl" />
-            <div className="relative grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto pt-6">
-              {Object.values(PLANS).map((plan, index) => (
-                <FunctionPlanCard
-                  key={plan.id}
-                  plan={plan}
-                  index={index}
-                  onPlanSelect={handlePlanSelect}
-                />
-              ))}
-            </div>
-            <FunctionsComparisonTable />
-          </motion.div>
+          {activeTab === 'functions' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="relative mb-16"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent blur-3xl -mx-8 rounded-3xl" />
+              <div className="relative grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto pt-6">
+                {Object.values(PLANS).map((plan, index) => (
+                  <FunctionPlanCard
+                    key={plan.id}
+                    plan={plan}
+                    index={index}
+                    onPlanSelect={handlePlanSelect}
+                    disabled={checkoutInitiating}
+                    isLoading={checkoutInitiating}
+                  />
+                ))}
+              </div>
+              <FunctionsComparisonTable />
+            </motion.div>
           )}
 
           {/* State Fabric tab */}
-          {activeTab === "state-fabric" && (
+          {activeTab === 'state-fabric' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -255,7 +347,7 @@ export function PricingPage() {
           )}
 
           {/* Agents tab */}
-          {activeTab === "agents" && (
+          {activeTab === 'agents' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -280,7 +372,9 @@ export function PricingPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-white text-base md:text-lg">Fast failover</h3>
-                <p className="text-text-secondary text-base mt-1">Sub-ms switching so users never see downtime.</p>
+                <p className="text-text-secondary text-base mt-1">
+                  Sub-ms switching so users never see downtime.
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4 text-center md:text-left">
@@ -288,8 +382,12 @@ export function PricingPage() {
                 <Shield className="w-6 h-6 text-emerald-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-white text-base md:text-lg">Enterprise reliability</h3>
-                <p className="text-text-secondary text-base mt-1">99.99% uptime, monitoring, and recovery.</p>
+                <h3 className="font-semibold text-white text-base md:text-lg">
+                  Enterprise reliability
+                </h3>
+                <p className="text-text-secondary text-base mt-1">
+                  99.99% uptime, monitoring, and recovery.
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4 text-center md:text-left">
@@ -298,7 +396,9 @@ export function PricingPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-white text-base md:text-lg">Developer-first</h3>
-                <p className="text-text-secondary text-base mt-1">Simple setup, clear APIs, no lock-in.</p>
+                <p className="text-text-secondary text-base mt-1">
+                  Simple setup, clear APIs, no lock-in.
+                </p>
               </div>
             </div>
           </motion.section>
@@ -329,6 +429,50 @@ export function PricingPage() {
             },
           }}
         />
+
+        {/* Checkout Error Dialog */}
+        <Dialog open={!!checkoutError} onOpenChange={() => setCheckoutError(null)}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-red-500" />
+                Checkout Unavailable
+              </DialogTitle>
+              <DialogDescription>
+                We couldn't start the checkout process. This might be a temporary issue.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                <p className="text-red-400 text-sm">{checkoutError?.message}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm text-text-muted">What would you like to do?</p>
+                <ul className="text-sm text-text-secondary space-y-1 ml-4 list-disc">
+                  <li>Try again - it might work this time</li>
+                  <li>Contact our sales team for assistance</li>
+                  <li>Try again in a few minutes</li>
+                </ul>
+              </div>
+            </div>
+            <DialogFooter className="flex gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setCheckoutError(null)}>
+                Close
+              </Button>
+              <Button variant="outline" onClick={handleContactSales} className="gap-2">
+                <Mail className="w-4 h-4" />
+                Contact Sales
+              </Button>
+              <Button
+                onClick={handleRetryCheckout}
+                disabled={isRetrying}
+                className="bg-[#6366f1] hover:bg-[#6366f1]/90"
+              >
+                {isRetrying ? 'Retrying...' : 'Try Again'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );

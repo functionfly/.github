@@ -1,6 +1,6 @@
 ---
 import ContentPage from '../layouts/ContentPage.astro';
-import { APP_DASHBOARD_ORIGIN } from '../config';
+import { AUTH_ORIGIN } from '../config';
 ---
 
 <ContentPage
@@ -22,13 +22,39 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
   </div>
 
   <div class="legal-card" id="cookies">
-    <h2>Your cookie preferences</h2>
+    <h2>Cookie preferences</h2>
     <p>
-      On the <strong>FunctionFly dashboard</strong>, you can review and update non-essential cookies using the cookie banner or preference
-      controls in the app. This marketing site is mostly static; essential cookies may still apply where needed for security or preferences.
+      Manage your cookie settings in the dashboard. Essential cookies are always active to keep the site secure and functional.
+      Marketing and analytics cookies are optional — you can toggle them on or off.
     </p>
+    <div class="cookie-section">
+      <div class="cookie-category">
+        <div class="cookie-header">
+          <strong>Necessary cookies</strong>
+          <span class="badge badge-active"><span class="badge-dot"></span>Always active</span>
+        </div>
+        <p class="cookie-desc">Required for the website to function properly. These cannot be disabled.</p>
+        <p class="cookie-meta"><strong>Purpose:</strong> Session management, authentication, security</p>
+      </div>
+      <div class="cookie-category">
+        <div class="cookie-header">
+          <strong>Analytics cookies</strong>
+          <span class="badge badge-muted">Opt-in</span>
+        </div>
+        <p class="cookie-desc">Help us understand how visitors interact with our website by collecting anonymous information.</p>
+        <p class="cookie-meta"><strong>Purpose:</strong> Usage analytics, performance monitoring</p>
+      </div>
+      <div class="cookie-category">
+        <div class="cookie-header">
+          <strong>Marketing cookies</strong>
+          <span class="badge badge-muted">Opt-in</span>
+        </div>
+        <p class="cookie-desc">Used to deliver personalized advertisements and track campaign effectiveness.</p>
+        <p class="cookie-meta"><strong>Purpose:</strong> Targeted advertising, retargeting</p>
+      </div>
+    </div>
     <p>
-      <a href={`${APP_DASHBOARD_ORIGIN}/signup`} class="btn-primary" style="display: inline-flex; margin-top: 0.5rem;">Open dashboard</a>
+      <a href={`${AUTH_ORIGIN}/signup`} class="btn-primary" style="display: inline-flex; margin-top: 1rem;">Try now</a>
     </p>
   </div>
 
@@ -313,25 +339,39 @@ import { APP_DASHBOARD_ORIGIN } from '../config';
       Status below describes typical categories. Exact storage depends on your choices in the app and this site.
     </p>
 
-    <div class="cookie-category">
-      <p><strong>Necessary cookies</strong> <span class="badge">Always active</span></p>
-      <p>Essential cookies required for the website to function properly. These cannot be disabled.</p>
-      <p><strong>Purpose:</strong> Session management, authentication, security features<br /><strong>Duration:</strong> Session / 1 year</p>
-    </div>
-    <div class="cookie-category">
-      <p><strong>Analytics cookies</strong> <span class="badge-muted badge">Opt-in on dashboard</span></p>
-      <p>Help us understand how visitors interact with our website by collecting anonymous information.</p>
-      <p><strong>Purpose:</strong> Usage analytics, performance monitoring, error tracking<br /><strong>Duration:</strong> Up to 2 years</p>
-    </div>
-    <div class="cookie-category">
-      <p><strong>Marketing cookies</strong> <span class="badge-muted badge">Opt-in on dashboard</span></p>
-      <p>Used to deliver personalized advertisements and track campaign effectiveness where enabled.</p>
-      <p><strong>Purpose:</strong> Targeted advertising, retargeting, social media integration<br /><strong>Duration:</strong> Up to 1 year</p>
-    </div>
-    <div class="cookie-category">
-      <p><strong>Functionality cookies</strong> <span class="badge-muted badge">Opt-in on dashboard</span></p>
-      <p>Enable enhanced functionality and personalization features.</p>
-      <p><strong>Purpose:</strong> Language preferences, UI customization, feature preferences<br /><strong>Duration:</strong> Up to 1 year</p>
+    <div class="cookie-section">
+      <div class="cookie-category">
+        <div class="cookie-header">
+          <strong>Necessary cookies</strong>
+          <span class="badge badge-active"><span class="badge-dot"></span>Always active</span>
+        </div>
+        <p class="cookie-desc">Essential cookies required for the website to function properly. These cannot be disabled.</p>
+        <p class="cookie-meta"><strong>Purpose:</strong> Session management, authentication, security features &nbsp;&middot;&nbsp; <strong>Duration:</strong> Session / 1 year</p>
+      </div>
+      <div class="cookie-category">
+        <div class="cookie-header">
+          <strong>Analytics cookies</strong>
+          <span class="badge badge-muted">Opt-in on dashboard</span>
+        </div>
+        <p class="cookie-desc">Help us understand how visitors interact with our website by collecting anonymous information.</p>
+        <p class="cookie-meta"><strong>Purpose:</strong> Usage analytics, performance monitoring &nbsp;&middot;&nbsp; <strong>Duration:</strong> Up to 2 years</p>
+      </div>
+      <div class="cookie-category">
+        <div class="cookie-header">
+          <strong>Marketing cookies</strong>
+          <span class="badge badge-muted">Opt-in on dashboard</span>
+        </div>
+        <p class="cookie-desc">Used to deliver personalized advertisements and track campaign effectiveness where enabled.</p>
+        <p class="cookie-meta"><strong>Purpose:</strong> Targeted advertising, retargeting &nbsp;&middot;&nbsp; <strong>Duration:</strong> Up to 1 year</p>
+      </div>
+      <div class="cookie-category">
+        <div class="cookie-header">
+          <strong>Functionality cookies</strong>
+          <span class="badge badge-muted">Opt-in on dashboard</span>
+        </div>
+        <p class="cookie-desc">Enable enhanced functionality and personalization features.</p>
+        <p class="cookie-meta"><strong>Purpose:</strong> Language preferences, UI customization &nbsp;&middot;&nbsp; <strong>Duration:</strong> Up to 1 year</p>
+      </div>
     </div>
   </div>
 

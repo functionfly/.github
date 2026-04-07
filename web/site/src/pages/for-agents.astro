@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { APP_DASHBOARD_ORIGIN, DOCS_ORIGIN } from '../config';
+import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN, DOCS_ORIGIN } from '../config';
 
 const trustApiUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/trust-api/`;
 const trustProtocolUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/trust-protocol-spec/`;
@@ -19,7 +19,7 @@ const trustProtocolUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/trust-protocol-
         distinguish “callable” from “appropriate to call.”
       </p>
       <div class="actions hero-actions">
-        <a class="btn primary" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Start free</a>
+        <a class="btn primary" href={`${AUTH_ORIGIN}/signup`}>Start free</a>
         <a class="btn secondary" href="/trust">Trust layer</a>
         <a class="btn secondary" href="/pricing">Pricing</a>
       </div>
@@ -238,7 +238,7 @@ const trustProtocolUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/trust-protocol-
         <div class="faq-item">
           <dt>Where do I start?</dt>
           <dd>
-            Open the dashboard to publish or connect functions, then wire the Trust API into your tool-selection path. Use
+            Create your workspace to publish or connect functions, then wire the Trust API into your tool-selection path. Use
             <a class="inline-link" href="/trust">Trust layer</a> for the verification model and
             <a class="inline-link" href="/pricing">Pricing</a> for execution and State Fabric.
           </dd>
@@ -255,7 +255,7 @@ const trustProtocolUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/trust-protocol-
         workloads grow.
       </p>
       <div class="actions">
-        <a class="btn primary" href={`${APP_DASHBOARD_ORIGIN}/signup`}>Start free</a>
+        <a class="btn primary" href={`${AUTH_ORIGIN}/signup`}>Start free</a>
         <a class="btn secondary" href="/contact">Talk to us</a>
       </div>
     </div>

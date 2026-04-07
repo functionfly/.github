@@ -29,6 +29,9 @@ export interface Subscription {
   current_period_end: string | null;
   cancel_at_period_end: boolean;
   canceled_at: string | null;
+  trial_end: string | null;
+  is_trialing: boolean;
+  trial_days_remaining: number;
   created_at: string;
   updated_at: string;
   payment_method?: PaymentMethod | null;
@@ -178,10 +181,26 @@ export async function listInvoices(
  * Get the current user's usage details.
  * Returns usage information for the specified period.
  */
+export interface UsageDataPoint {
+  event_type: string;
+  quantity: number;
+  unit_price_cents: number;
+  total_cost_cents: number;
+  timestamp: string;
+}
+
+export interface UsageSummary {
+  start: string;
+  end: string;
+  total_events: number;
+  total_cost_usd: number;
+  events: UsageDataPoint[];
+}
+
 export async function getUsage(
   startDate?: string,
   endDate?: string
-): Promise<{ usage: unknown; start: string; end: string }> {
+): Promise<UsageSummary> {
   const params = new URLSearchParams();
   if (startDate) params.set('start', startDate);
   if (endDate) params.set('end', endDate);
@@ -189,7 +208,7 @@ export async function getUsage(
   const queryString = params.toString();
   const url = queryString ? `/v1/billing/usage?${queryString}` : '/v1/billing/usage';
 
-  const response = await apiClient.get<{ usage: unknown; start: string; end: string }>(url);
+  const response = await apiClient.get<UsageSummary>(url);
   return response;
 }
 

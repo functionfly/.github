@@ -211,6 +211,8 @@ export const functionConfigSchema = z
     updatedAt: timestampSchema.optional(),
     version: z.string().min(1),
     status: z.enum(['draft', 'deploying', 'deployed', 'failed']),
+    trust_score: z.number().min(0).max(100).optional(),
+    trustScore: z.number().min(0).max(100).optional(),
   })
   .transform((o) => ({
     id: o.id,
@@ -225,6 +227,7 @@ export const functionConfigSchema = z
     updatedAt: (o.updated_at ?? o.updatedAt)!,
     version: o.version,
     status: o.status,
+    trustScore: o.trust_score ?? o.trustScore,
   }));
 
 export const createFunctionRequestSchema = z.object({

@@ -4,6 +4,12 @@ export interface SignupConfigResponse {
   inviteRequired: boolean;
 }
 
+/** Captcha provider configuration for signup. */
+export interface SignupCaptchaPublic {
+  provider: 'turnstile' | 'recaptcha_v3';
+  siteKey?: string;
+}
+
 /** Public endpoint: reflects SIGNUP_REQUIRE_INVITE_CODE on the API. */
 export async function fetchSignupConfig(): Promise<SignupConfigResponse> {
   const base = getApiBaseUrl().replace(/\/$/, '');

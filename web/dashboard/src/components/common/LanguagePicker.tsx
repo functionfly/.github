@@ -126,7 +126,7 @@ export function LanguagePicker({
               {t('language.detected')}
             </span>
             <span className="text-xs text-text-secondary">
-              {getLanguage(detectLanguage)?.name ?? 'English'}
+              {getLanguage(detectedLang)?.name ?? 'English'}
             </span>
           </div>
         )}

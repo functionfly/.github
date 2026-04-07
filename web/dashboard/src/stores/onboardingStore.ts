@@ -112,7 +112,6 @@ export const useOnboardingStore = create<OnboardingState>()(
       skipOnboarding: () => {
         set({
           hasSkippedOnboarding: true,
-          isOnboardingComplete: true,
           lastUpdated: Date.now(),
         });
       },
@@ -134,8 +133,8 @@ export const useOnboardingStore = create<OnboardingState>()(
       },
 
       canResume: () => {
-        const { completedSteps, isOnboardingComplete, hasSkippedOnboarding } = get();
-        return completedSteps.length > 0 && !isOnboardingComplete && !hasSkippedOnboarding;
+        const { completedSteps, isOnboardingComplete } = get();
+        return completedSteps.length > 0 && !isOnboardingComplete;
       },
 
       // New actions for enhanced onboarding

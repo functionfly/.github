@@ -1,5 +1,6 @@
 import type { SignupCaptchaPublic } from '@/api/signup-config';
-import { Turnstile } from '@marsidev/react-turnstile';
+// Stub for missing package - install @marsidev/react-turnstile for production
+import { Turnstile } from '@/lib/stubs/react-turnstile.tsx';
 import { useEffect, useRef } from 'react';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
@@ -57,10 +58,11 @@ export function AuthCaptchaWidgets({
       <div className="flex justify-center py-1 min-h-[65px]">
         <Turnstile
           siteKey={captcha.siteKey}
+          action={action}
           onSuccess={(token) => onToken(token)}
           onExpire={() => onToken(null)}
           onError={() => onToken(null)}
-          options={{ appearance: 'interaction-only', action }}
+          options={{ appearance: 'interaction-only' }}
         />
       </div>
     );

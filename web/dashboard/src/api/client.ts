@@ -1,3 +1,4 @@
+import { auth } from '@/lib/auth';
 import { getApiBaseUrl } from '@/lib/constants';
 import { safeParse, ValidationResult } from '@/lib/validation-utils';
 import { useApiReachableStore } from '@/stores/apiReachableStore';
@@ -7,6 +8,9 @@ import type { ZodTypeAny } from 'zod';
 class ApiClient {
   private client: AxiosInstance;
   private token: string | null = null;
+  /** Prevents concurrent refresh attempts — the API uses token rotation,
+   *  so a second refresh with the old token would 401 and trigger logout. */
+  private refreshPromise: Promise<string | null> | null = null;
 
   constructor() {
     const baseURL = getApiBaseUrl();
@@ -52,31 +56,21 @@ class ApiClient {
           const refreshToken = localStorage.getItem('ff-refresh-token');
           if (refreshToken) {
             try {
-              const apiUrl = getApiBaseUrl();
-              const refreshResponse = await fetch(`${apiUrl}/v1/auth/refresh`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ refresh_token: refreshToken }),
-              });
+              // Prevent concurrent refresh attempts — token rotation means
+              // the second request with the old refresh token would 401.
+              if (!this.refreshPromise) {
+                this.refreshPromise = this._doRefresh(refreshToken);
+              }
+              const newToken = await this.refreshPromise;
+              this.refreshPromise = null;
 
-              if (refreshResponse.ok) {
-                const refreshData = await refreshResponse.json();
-
-                localStorage.setItem('ff-access-token', refreshData.token);
-                localStorage.setItem('ff-refresh-token', refreshData.refresh_token);
-
-                const newToken = refreshData.token;
-                this.token = newToken;
-
-                // Mark so the interceptor does not retry again if this also 401s
+              if (newToken) {
                 originalRequest._retry = true;
                 originalRequest.headers.Authorization = `Bearer ${newToken}`;
-
                 return this.client.request(originalRequest);
               }
             } catch (refreshError) {
+              this.refreshPromise = null;
               console.warn('Token refresh failed:', refreshError);
             }
           }
@@ -120,6 +114,26 @@ class ApiClient {
 
   checkTokenInStorage() {
     return localStorage.getItem('ff-access-token');
+  }
+
+  private async _doRefresh(refreshToken: string): Promise<string | null> {
+    const apiUrl = getApiBaseUrl();
+    const refreshResponse = await fetch(`${apiUrl}/v1/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (refreshResponse.ok) {
+      const refreshData = await refreshResponse.json();
+      localStorage.setItem('ff-access-token', refreshData.token);
+      localStorage.setItem('ff-refresh-token', refreshData.refresh_token);
+      this.token = refreshData.token;
+      return refreshData.token;
+    }
+    return null;
   }
 
   async get<T>(url: string, config?: AxiosRequestConfig) {

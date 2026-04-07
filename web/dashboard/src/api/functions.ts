@@ -191,4 +191,19 @@ export const functionsApi = {
   // Get function analytics/metrics
   getMetrics: (functionId: string, params?: { period?: string; from?: string; to?: string }) =>
     apiClient.get(`/v1/functions/${functionId}/metrics`, { params }),
+
+  // Get function trust score
+  getTrustScore: async (functionId: string): Promise<{ trustScore: number }> => {
+    const response = await apiClient.get(`/v1/functions/${functionId}/trust`);
+    // Trust score from API is 0-100 scale
+    if (
+      response &&
+      typeof response === 'object' &&
+      'trust_score' in response &&
+      typeof (response as any).trust_score === 'number'
+    ) {
+      return { trustScore: (response as any).trust_score };
+    }
+    return { trustScore: 0 };
+  },
 };

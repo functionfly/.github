@@ -1,7 +1,7 @@
 import { MetaTags } from '@/components/seo/MetaTags';
 import { getApiBaseUrl, getMarketingPageUrl } from '@/lib/constants';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import './LaunchPage.css';
 
 const INTERESTS = [
@@ -18,6 +18,16 @@ export function LaunchPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Read query params on mount to pre-fill email from signup flow
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const emailParam = params.get('email');
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+  }, []);
 
   const toggleInterest = useCallback((id: string) => {
     setSelected((prev) => {
@@ -78,7 +88,7 @@ export function LaunchPage() {
     <div className="launch-page">
       {import.meta.env.VITE_VERCEL_ANALYTICS === 'true' && <SpeedInsights />}
       <MetaTags
-        title="FunctionFly — Coming Soon | The Trust Layer for AI Agents"
+        title="FunctionFly | The Trust Layer for AI Agents"
         description="FunctionFly is coming: verified, signed, auditable tools for AI agent execution—backed by trust scores and a zero-knowledge vault."
         keywords={[
           'functionfly',

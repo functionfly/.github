@@ -64,33 +64,54 @@ function PasswordRequirements({ password }: { password: string }) {
 }
 
 // Step indicator
-function StepIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
+function StepIndicator({
+  currentStep,
+  totalSteps,
+  stepsWithRequiredFields,
+}: {
+  currentStep: number;
+  totalSteps: number;
+  stepsWithRequiredFields: number[];
+}) {
   return (
     <div className="flex items-center justify-center gap-2 mb-8">
-      {Array.from({ length: totalSteps }).map((_, index) => (
-        <div key={index} className="flex items-center">
-          <div
-            className={cn(
-              'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors',
-              index + 1 < currentStep
-                ? 'bg-green-500 text-white'
-                : index + 1 === currentStep
-                  ? 'bg-[#6366f1] text-white'
-                  : 'bg-bg-tertiary text-text-muted'
-            )}
-          >
-            {index + 1 < currentStep ? <Check className="w-4 h-4" /> : index + 1}
-          </div>
-          {index < totalSteps - 1 && (
-            <div
-              className={cn(
-                'w-12 h-0.5 mx-1',
-                index + 1 < currentStep ? 'bg-green-500' : 'bg-bg-tertiary'
+      {Array.from({ length: totalSteps }).map((_, index) => {
+        const stepNumber = index + 1;
+        const hasRequiredFields = stepsWithRequiredFields.includes(stepNumber);
+        const isCompleted = stepNumber < currentStep;
+        const isCurrent = stepNumber === currentStep;
+
+        return (
+          <div key={index} className="flex items-center">
+            <div className="relative">
+              <div
+                className={cn(
+                  'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors',
+                  isCompleted
+                    ? 'bg-green-500 text-white'
+                    : isCurrent
+                      ? 'bg-[#6366f1] text-white'
+                      : 'bg-bg-tertiary text-text-muted'
+                )}
+              >
+                {isCompleted ? <Check className="w-4 h-4" /> : stepNumber}
+              </div>
+              {/* Red tick for required fields */}
+              {hasRequiredFields && !isCompleted && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                </span>
               )}
-            />
-          )}
-        </div>
-      ))}
+            </div>
+            {index < totalSteps - 1 && (
+              <div
+                className={cn('w-12 h-0.5 mx-1', isCompleted ? 'bg-green-500' : 'bg-bg-tertiary')}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -206,9 +227,9 @@ function Step2Profile({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="username" className="flex items-center gap-2 text-text-secondary">
+        <Label htmlFor="username" className="flex items-center gap-2">
           <AtSign className="w-4 h-4" />
-          Username <span className="text-text-muted text-xs">(optional)</span>
+          Username <span className="text-error">*</span>
         </Label>
         <Input id="username" type="text" placeholder="johndoe" {...register('username')} />
         {errors.username && <div className="text-xs text-error">{errors.username.message}</div>}
@@ -240,11 +261,21 @@ function Step3Optional({
   errors,
   register,
   inviteRequired,
+  formData,
 }: {
   errors: Record<string, { message?: string }>;
   register: (name: string) => Record<string, unknown>;
   inviteRequired: boolean;
+  formData: Record<string, string>;
 }) {
+  const navigate = useNavigate();
+
+  const handleRequestInvite = () => {
+    // Redirect to launch page with email pre-filled for waitlist signup
+    const email = formData.email || '';
+    navigate(`/?waitlist=true&email=${encodeURIComponent(email)}`);
+  };
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-center">Almost done!</h3>
@@ -282,9 +313,20 @@ function Step3Optional({
           )}
         </Label>
         {inviteRequired && (
-          <p className="text-xs text-text-muted">
-            Private beta — enter the code you received from the team.
-          </p>
+          <div className="space-y-2">
+            <p className="text-xs text-text-muted">
+              Private beta — enter the code you received from the team.
+            </p>
+            <p className="text-xs">
+              <button
+                type="button"
+                onClick={handleRequestInvite}
+                className="text-brand-500 hover:text-brand-400 hover:underline transition-colors"
+              >
+                Don't have an invite? Request access →
+              </button>
+            </p>
+          </div>
         )}
         <Input
           id="inviteCode"
@@ -369,7 +411,7 @@ function SignupWizardInner({ inviteRequired }: { inviteRequired: boolean }) {
     if (currentStep === 1) {
       fieldsToValidate = ['email', 'password', 'confirmPassword'];
     } else if (currentStep === 2) {
-      fieldsToValidate = ['name', 'dateOfBirth'];
+      fieldsToValidate = ['name', 'username', 'dateOfBirth'];
     }
 
     const isStepValid = await trigger(fieldsToValidate);
@@ -426,7 +468,11 @@ function SignupWizardInner({ inviteRequired }: { inviteRequired: boolean }) {
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           {/* Step Indicator */}
-          <StepIndicator currentStep={currentStep} totalSteps={totalSteps} />
+          <StepIndicator
+            currentStep={currentStep}
+            totalSteps={totalSteps}
+            stepsWithRequiredFields={[1, 2, 3]}
+          />
 
           {/* Error Display */}
           {error && <FormError error={error} className="mb-6" />}
@@ -456,6 +502,7 @@ function SignupWizardInner({ inviteRequired }: { inviteRequired: boolean }) {
                     errors={errors}
                     register={register}
                     inviteRequired={inviteRequired}
+                    formData={formData}
                   />
                 )}
               </motion.div>

@@ -5,11 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/authStore';
-import { Users } from 'lucide-react';
+import { useOnboardingStore } from '@/stores/onboardingStore';
+import { Play, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export function AccountSettingsTab() {
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const nameParts = (user?.name || '').split(' ');
   const [firstName, setFirstName] = useState(nameParts[0] || '');
@@ -92,8 +95,38 @@ export function AccountSettingsTab() {
     }
   };
 
+  const { canResume, hasSkippedOnboarding, completedSteps } = useOnboardingStore();
+  const showOnboardingResume = canResume() || (hasSkippedOnboarding && completedSteps.length === 0);
+
+  const handleResumeOnboarding = () => {
+    useOnboardingStore.setState({ hasSkippedOnboarding: false });
+    navigate('/onboarding');
+  };
+
   return (
     <div className="space-y-6">
+      {showOnboardingResume && (
+        <Card className="border-brand-500/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Play className="w-5 h-5 text-brand-500" />
+              Onboarding
+            </CardTitle>
+            <CardDescription className="text-text-secondary">
+              {hasSkippedOnboarding
+                ? 'You skipped the setup wizard. Complete it to unlock multi-provider deployment and automatic failover.'
+                : `You've completed ${completedSteps.length} of 4 onboarding steps. Continue where you left off.`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={handleResumeOnboarding} className="gap-2">
+              <Play className="w-4 h-4" />
+              {completedSteps.length > 0 ? 'Resume Setup' : 'Start Setup'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Profile Information</CardTitle>

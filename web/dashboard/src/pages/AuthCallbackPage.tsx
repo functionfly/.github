@@ -1,30 +1,45 @@
 /**
  * Auth Callback Page
  *
- * Handles the callback from the standalone auth site (@web/auth).
- * The auth site stores tokens in sessionStorage and redirects here.
- * This component extracts the tokens, migrates them to localStorage,
- * and initializes the auth session.
+ * Handles callbacks from:
+ * 1. OAuth provider flow via orchestrator: /auth/oauth/callback?token=xxx&refresh_token=yyy
+ * 2. Standalone auth site (@web/auth): /auth/callback#token=xxx&refresh_token=yyy
+ *
+ * The page reads the token (from query params or fragment), stores it in localStorage,
+ * validates the session, then navigates to the dashboard.
  */
 
+import { buildAuthSiteLoginUrl } from '@/lib/auth-integration';
+import { logger } from '@/lib/logger';
+import { useAuthStore } from '@/stores/authStore';
+import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuthStore } from '@/stores/authStore';
-import {
-  migrateTokensFromSessionStorage,
-  buildAuthSiteLoginUrl,
-} from '@/lib/auth-integration';
-import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
-import { logger } from '@/lib/logger';
 
 /**
- * Auth callback page - receives users returning from auth.functionfly.com
- *
- * Query params:
- * - redirect: Final destination path after successful auth (e.g., "/functions")
- * - error: Error message if auth failed
- * - new_user: "true" if this was a new signup
+ * Extract token from URL — checks query params first, then fragment, then sessionStorage.
+ * URLSearchParams.get() already decodes values — do NOT call decodeURIComponent on them.
  */
+function getToken(key: string): string | null {
+  // 1. Query params (primary — standard OAuth pattern)
+  const url = new URL(window.location.href);
+  const fromQuery = url.searchParams.get(key);
+  if (fromQuery) return fromQuery;
+
+  // 2. Fragment (fallback — older auth site builds)
+  const hash = window.location.hash;
+  if (hash && hash.length > 1) {
+    const hashParams = new URLSearchParams(hash.substring(1));
+    const fromHash = hashParams.get(key);
+    if (fromHash) return fromHash;
+  }
+
+  // 3. sessionStorage (legacy — same-origin flows only)
+  if (key === 'token') return sessionStorage.getItem('ff_token');
+  if (key === 'refresh_token') return sessionStorage.getItem('ff_refresh_token');
+  return null;
+}
+
 export function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -33,58 +48,56 @@ export function AuthCallbackPage() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  // Get query parameters
+  // Extract all callback params
+  const tokenParam = getToken('token');
+  const refreshTokenParam = getToken('refresh_token');
+  const isNewUser = (getToken('new_user') || '') === 'true';
   const redirectPath = searchParams.get('redirect') || '/overview';
   const errorParam = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
-  const isNewUser = searchParams.get('new_user') === 'true';
 
   useEffect(() => {
     const processAuthCallback = async () => {
       try {
-        // Handle errors from auth site
         if (errorParam) {
-          logger.error('Auth callback error:', { error: errorParam, description: errorDescription });
+          logger.error('Auth callback error:', {
+            error: errorParam,
+            description: errorDescription,
+          });
           setStatus('error');
           setErrorMessage(errorDescription || errorParam || 'Authentication failed');
           return;
         }
 
-        // Migrate tokens from sessionStorage (set by auth site) to localStorage
-        const { accessToken, source } = migrateTokensFromSessionStorage();
-
-        if (!accessToken) {
-          logger.error('No access token found in sessionStorage or localStorage');
+        if (tokenParam) {
+          localStorage.setItem('ff-access-token', tokenParam);
+          if (refreshTokenParam) {
+            localStorage.setItem('ff-refresh-token', refreshTokenParam);
+          }
+          logger.info('Got tokens from auth site redirect');
+        } else {
+          logger.error('No access token found in URL fragment or query params');
           setStatus('error');
           setErrorMessage('No authentication token found. Please try logging in again.');
           return;
         }
 
-        logger.info(`Migrated tokens from ${source}, initializing session...`);
-
-        // Initialize the auth store with the new tokens
         await initialize();
-
-        // Check if auth was successful
         const authState = useAuthStore.getState();
 
         if (authState.isAuthenticated) {
           setStatus('success');
 
-          // For new users, redirect to onboarding
           if (isNewUser) {
             logger.info('New user signup detected, redirecting to onboarding');
             navigate('/onboarding', { replace: true });
             return;
           }
 
-          // Navigate to the intended destination
-          // Ensure the path is valid (starts with /)
           const destination = redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`;
           logger.info('Auth successful, redirecting to:', destination);
           navigate(destination, { replace: true });
         } else {
-          // Auth initialization failed
           setStatus('error');
           setErrorMessage('Failed to initialize session. Please try logging in again.');
         }
@@ -96,7 +109,16 @@ export function AuthCallbackPage() {
     };
 
     processAuthCallback();
-  }, [errorParam, errorDescription, redirectPath, isNewUser, initialize, navigate]);
+  }, [
+    errorParam,
+    errorDescription,
+    redirectPath,
+    isNewUser,
+    initialize,
+    navigate,
+    tokenParam,
+    refreshTokenParam,
+  ]);
 
   // Handle "Try Again" click
   const handleTryAgain = () => {
@@ -120,9 +142,7 @@ export function AuthCallbackPage() {
               {isNewUser ? 'Welcome to FunctionFly!' : 'Completing sign in...'}
             </h1>
             <p className="text-text-secondary">
-              {isNewUser
-                ? 'Setting up your new account...'
-                : 'Please wait while we sign you in...'}
+              {isNewUser ? 'Setting up your new account...' : 'Please wait while we sign you in...'}
             </p>
           </>
         )}
@@ -144,9 +164,7 @@ export function AuthCallbackPage() {
             <div className="flex justify-center mb-4">
               <AlertCircle className="h-10 w-10 text-error" />
             </div>
-            <h1 className="text-xl font-semibold text-text-primary mb-2">
-              Authentication failed
-            </h1>
+            <h1 className="text-xl font-semibold text-text-primary mb-2">Authentication failed</h1>
             <p className="text-text-secondary mb-6">{errorMessage}</p>
             <div className="flex flex-col gap-3">
               <button

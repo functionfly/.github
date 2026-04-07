@@ -6,6 +6,7 @@ import { CookieConsentProvider } from '@/components/cookie-consent';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
 import { useNotificationUnreadPolling } from '@/hooks/useNotificationUnreadPolling';
+import { redirectToAuthSite } from '@/lib/auth-integration';
 import {
   COMING_SOON_ONLY,
   getMarketingPageUrl,
@@ -23,10 +24,7 @@ import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { APIKeyDetailPage, APIKeysPage } from '@/pages/api-keys';
 import { AppDetailPage } from '@/pages/AppDetailPage';
 import { AppsPage, CreateAppPage } from '@/pages/AppsPage';
-import { AuthPage } from '@/pages/AuthPage';
-import { OAuthCallback } from '@/pages/AuthPage/OAuthCallback';
-import { PasswordResetPage } from '@/pages/AuthPage/PasswordResetPage';
-import { VerifyEmailPage } from '@/pages/AuthPage/VerifyEmailPage';
+import { AuthCallbackPage } from '@/pages/AuthCallbackPage';
 import { BrowseFunctionsPage } from '@/pages/BrowseFunctionsPage';
 import ChangelogPage from '@/pages/ChangelogPage';
 import { ContactPage } from '@/pages/ContactPage';
@@ -78,8 +76,16 @@ import { useOnboardingStore } from '@/stores/onboardingStore';
 import type { Notification, NotificationCategory } from '@/types/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AlertTriangle, Bell, DollarSign, Loader2, MessageSquare, Shield } from 'lucide-react';
-import { useEffect } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
 
 // Flywheel Network imports
@@ -187,13 +193,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((state) => state.user);
   const isOnboardingComplete = useOnboardingStore((state) => state.isOnboardingComplete);
   const hasSkippedOnboarding = useOnboardingStore((state) => state.hasSkippedOnboarding);
+  const location = useLocation();
 
   if (!authChecked) {
     return <AuthSessionLoading />;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Non-signed-in users on app.functionfly.com redirect to auth.functionfly.com
+    redirectToAuthSite(location.pathname + location.search);
+    return <AuthSessionLoading />;
   }
 
   // Platform admins skip onboarding (matches backend IsAdminRole)
@@ -217,13 +226,16 @@ function OnboardingRoute({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((state) => state.user);
   const isOnboardingComplete = useOnboardingStore((state) => state.isOnboardingComplete);
   const hasSkippedOnboarding = useOnboardingStore((state) => state.hasSkippedOnboarding);
+  const location = useLocation();
 
   if (!authChecked) {
     return <AuthSessionLoading />;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Non-signed-in users on app.functionfly.com redirect to auth.functionfly.com
+    redirectToAuthSite(location.pathname + location.search);
+    return <AuthSessionLoading />;
   }
 
   if (isPlatformAdminRole(user?.role)) {
@@ -241,6 +253,19 @@ function OnboardingRoute({ children }: { children: React.ReactNode }) {
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return !isAuthenticated ? <>{children}</> : <Navigate to="/overview" replace />;
+}
+
+/** Redirects unauthenticated users directly to the standalone auth site (auth.functionfly.com) */
+function RedirectToAuth() {
+  const location = useLocation();
+  const authChecked = useAuthStore((s) => s.authChecked);
+
+  useEffect(() => {
+    if (!authChecked) return;
+    redirectToAuthSite(location.pathname + location.search);
+  }, [authChecked, location]);
+
+  return <AuthSessionLoading />;
 }
 
 /**
@@ -366,20 +391,45 @@ function NotificationsProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Auth-related paths that must work even when COMING_SOON_ONLY is active. */
+const AUTH_BYPASS_PATHS = [
+  '/auth/',
+  '/login',
+  '/signup',
+  '/auth/verify-email',
+  '/auth/reset-password',
+  '/auth/callback',
+  '/auth/oauth/callback',
+];
+
 function AppContent() {
   const initialize = useAuthStore((state) => state.initialize);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authChecked = useAuthStore((s) => s.authChecked);
+  const location = useLocation();
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    if (!hasInitialized) {
+      setHasInitialized(true);
+      initialize();
+    }
+  }, [initialize, hasInitialized]);
 
-  // functionfly.com pre-launch: only the coming-soon page, no other routes
+  // functionfly.com pre-launch: redirect unauthenticated users to auth site.
+  // Signed-in users bypass it and see the full dashboard.
+  // Auth-related paths always bypass so login/callback flows work.
   if (COMING_SOON_ONLY) {
-    return (
-      <Routes>
-        <Route path="*" element={<LaunchPage />} />
-      </Routes>
-    );
+    const isAuthPath = AUTH_BYPASS_PATHS.some((p) => location.pathname.startsWith(p));
+    if (!isAuthPath) {
+      if (!authChecked) return <AuthSessionLoading />;
+      if (!isAuthenticated) {
+        // Redirect non-signed-in users to auth.functionfly.com instead of showing launch page
+        redirectToAuthSite(location.pathname + location.search);
+        return <AuthSessionLoading />;
+      }
+      // authenticated → fall through to full routes
+    }
   }
 
   return (
@@ -423,47 +473,13 @@ function AppContent() {
         <Route path="/run/:appSlug/:functionName" element={<PlaygroundPage />} />
         <Route path="/replay/:execId" element={<ReplayPage />} />
         <Route path="/auth" element={<Navigate to="/login" replace />} />
-        <Route
-          path="/auth/login"
-          element={
-            <PublicRoute>
-              <AuthPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <AuthPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            <PublicRoute>
-              <AuthPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/auth/verify-email"
-          element={
-            <PublicRoute>
-              <VerifyEmailPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/auth/oauth/callback"
-          element={
-            <PublicRoute>
-              <OAuthCallback />
-            </PublicRoute>
-          }
-        />
-        <Route path="/auth/reset-password" element={<PasswordResetPage />} />
+        <Route path="/login" element={<RedirectToAuth />} />
+        <Route path="/auth/login" element={<RedirectToAuth />} />
+        <Route path="/signup" element={<RedirectToAuth />} />
+        <Route path="/auth/verify-email" element={<RedirectToAuth />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="/auth/oauth/callback" element={<AuthCallbackPage />} />
+        <Route path="/auth/reset-password" element={<RedirectToAuth />} />
 
         {/* Onboarding Route */}
         <Route

@@ -1,23 +1,21 @@
-import { useState } from 'react';
+import type { UptimeMetrics } from '@/api/status';
+import { Sparkline } from '@/components/common/Sparkline';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { Calendar, Clock, TrendingDown, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
 import {
-  AreaChart,
   Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
 } from 'recharts';
-import { TrendingUp, TrendingDown, Calendar, Clock } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Sparkline } from '@/components/common/Sparkline';
-import type { UptimeMetrics } from '@/api/status';
 
 interface UptimeChartProps {
   metrics: UptimeMetrics | null;
@@ -58,8 +56,8 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
               data.uptime >= 99.9
                 ? 'text-emerald-400'
                 : data.uptime >= 99
-                ? 'text-amber-400'
-                : 'text-red-400'
+                  ? 'text-amber-400'
+                  : 'text-red-400'
             )}
           >
             {data.uptime.toFixed(3)}%
@@ -101,7 +99,10 @@ function MetricCard({
             >
               {trend === 'up' && <TrendingUp className="h-3 w-3" />}
               {trend === 'down' && <TrendingDown className="h-3 w-3" />}
-              <span>{change > 0 ? '+' : ''}{change}%</span>
+              <span>
+                {change > 0 ? '+' : ''}
+                {change}%
+              </span>
             </div>
           )}
         </div>
@@ -113,15 +114,7 @@ function MetricCard({
   );
 }
 
-function UptimeBar({
-  label,
-  uptime,
-  index,
-}: {
-  label: string;
-  uptime: number;
-  index: number;
-}) {
+function UptimeBar({ label, uptime, index }: { label: string; uptime: number; index: number }) {
   const getColor = (uptime: number) => {
     if (uptime >= 99.9) return 'bg-emerald-500';
     if (uptime >= 99) return 'bg-amber-500';
@@ -194,24 +187,15 @@ export function UptimeChart({ metrics, isLoading }: UptimeChartProps) {
     incidents: day.incidents,
   }));
 
-  const componentUptime = Object.entries(metrics.by_component || {}).sort(
-    ([, a], [, b]) => b - a
-  );
+  const componentUptime = Object.entries(metrics.by_component || {}).sort(([, a], [, b]) => b - a);
 
-  const providerUptime = Object.entries(metrics.by_provider || {}).sort(
-    ([, a], [, b]) => b - a
-  );
+  const providerUptime = Object.entries(metrics.by_provider || {}).sort(([, a], [, b]) => b - a);
 
-  const avgUptime =
-    chartData.reduce((sum, day) => sum + day.uptime, 0) / chartData.length;
+  const avgUptime = chartData.reduce((sum, day) => sum + day.uptime, 0) / chartData.length;
 
-  const bestDay = chartData.reduce((best, day) =>
-    day.uptime > best.uptime ? day : best
-  );
+  const bestDay = chartData.reduce((best, day) => (day.uptime > best.uptime ? day : best));
 
-  const worstDay = chartData.reduce((worst, day) =>
-    day.uptime < worst.uptime ? day : worst
-  );
+  const worstDay = chartData.reduce((worst, day) => (day.uptime < worst.uptime ? day : worst));
 
   const totalIncidents = chartData.reduce((sum, day) => sum + day.incidents, 0);
 
@@ -222,9 +206,7 @@ export function UptimeChart({ metrics, isLoading }: UptimeChartProps) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <CardTitle className="text-xl">Uptime History</CardTitle>
-              <p className="mt-1 text-sm text-text-secondary">
-                Platform availability over time
-              </p>
+              <p className="mt-1 text-sm text-text-secondary">Platform availability over time</p>
             </div>
             <div className="flex gap-2">
               {[30, 90, 365].map((range) => (
@@ -258,20 +240,13 @@ export function UptimeChart({ metrics, isLoading }: UptimeChartProps) {
               value={`${worstDay.uptime.toFixed(3)}%`}
               icon={TrendingDown}
             />
-            <MetricCard
-              title="Total Incidents"
-              value={totalIncidents.toString()}
-              icon={Calendar}
-            />
+            <MetricCard title="Total Incidents" value={totalIncidents.toString()} icon={Calendar} />
           </div>
 
           {/* Uptime chart */}
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={chartData}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
+            <ResponsiveContainer width="100%" height="100%" minWidth={300}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="uptimeGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
@@ -320,17 +295,10 @@ export function UptimeChart({ metrics, isLoading }: UptimeChartProps) {
           {/* Component uptime breakdown */}
           {componentUptime.length > 0 && (
             <div className="mt-8 pt-6 border-t border-border-subtle">
-              <h3 className="text-sm font-medium text-text-primary mb-4">
-                Component Uptime
-              </h3>
+              <h3 className="text-sm font-medium text-text-primary mb-4">Component Uptime</h3>
               <div className="space-y-3">
                 {componentUptime.slice(0, 5).map(([name, uptime], index) => (
-                  <UptimeBar
-                    key={name}
-                    label={name}
-                    uptime={uptime}
-                    index={index}
-                  />
+                  <UptimeBar key={name} label={name} uptime={uptime} index={index} />
                 ))}
               </div>
             </div>
@@ -339,17 +307,10 @@ export function UptimeChart({ metrics, isLoading }: UptimeChartProps) {
           {/* Provider uptime breakdown */}
           {providerUptime.length > 0 && (
             <div className="mt-6">
-              <h3 className="text-sm font-medium text-text-primary mb-4">
-                Provider Uptime
-              </h3>
+              <h3 className="text-sm font-medium text-text-primary mb-4">Provider Uptime</h3>
               <div className="space-y-3">
                 {providerUptime.map(([name, uptime], index) => (
-                  <UptimeBar
-                    key={name}
-                    label={name}
-                    uptime={uptime}
-                    index={index}
-                  />
+                  <UptimeBar key={name} label={name} uptime={uptime} index={index} />
                 ))}
               </div>
             </div>
@@ -361,20 +322,10 @@ export function UptimeChart({ metrics, isLoading }: UptimeChartProps) {
 }
 
 // Compact version for dashboard use
-export function UptimeMiniChart({
-  data,
-  className,
-}: {
-  data: number[];
-  className?: string;
-}) {
+export function UptimeMiniChart({ data, className }: { data: number[]; className?: string }) {
   const avg = data.reduce((a, b) => a + b, 0) / data.length;
   const trend =
-    data.length > 1
-      ? data[data.length - 1] > data[data.length - 2]
-        ? 'up'
-        : 'down'
-      : 'neutral';
+    data.length > 1 ? (data[data.length - 1] > data[data.length - 2] ? 'up' : 'down') : 'neutral';
 
   return (
     <div className={cn('flex items-center gap-3', className)}>
@@ -385,9 +336,7 @@ export function UptimeMiniChart({
         color={avg >= 99.9 ? '#10b981' : avg >= 99 ? '#f59e0b' : '#ef4444'}
       />
       <div className="flex flex-col">
-        <span className="text-lg font-semibold text-text-primary">
-          {avg.toFixed(2)}%
-        </span>
+        <span className="text-lg font-semibold text-text-primary">{avg.toFixed(2)}%</span>
         <span
           className={cn(
             'text-xs',

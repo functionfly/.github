@@ -54,6 +54,22 @@ const authStore = create<AuthState>()(
           return;
         }
 
+        let cleared = false;
+        const clearAuth = () => {
+          if (cleared) return;
+          cleared = true;
+          localStorage.removeItem('ff-access-token');
+          localStorage.removeItem('ff-refresh-token');
+          localStorage.removeItem('ff-last-wallet-agent-id');
+          set({
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            error: null,
+            authChecked: true,
+          });
+        };
+
         try {
           // Check if token is expired locally first
           const payload = JSON.parse(atob(jwtToken.split('.')[1]));
@@ -80,7 +96,7 @@ const authStore = create<AuthState>()(
                 name: userData.user.name || '',
                 avatar: userData.user.avatar || '',
                 tenantId: userData.user.tenant_id || 'default',
-                plan: userData.user.plan ?? 'starter',
+                plan: userData.user.plan || 'starter',
                 role: userData.user.role,
                 createdAt: userData.user.created_at,
                 updatedAt: userData.user.updated_at,
@@ -117,7 +133,7 @@ const authStore = create<AuthState>()(
           if (refreshToken) {
             try {
               const apiUrl = getApiBaseUrl();
-              const refreshResponse = await fetch(`${apiUrl}/auth/refresh`, {
+              const refreshResponse = await fetch(`${apiUrl}/v1/auth/refresh`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -140,9 +156,9 @@ const authStore = create<AuthState>()(
                   companyName: refreshData.user.company_name,
                   name: refreshData.user.name || '',
                   avatar: refreshData.user.avatar || '',
-                  tenantId: refreshData.user.tenant_id || 'default',
-                  plan: refreshData.user.plan ?? 'starter',
-                  role: refreshData.user.role,
+                tenantId: refreshData.user.tenant_id || 'default',
+                plan: refreshData.user.plan || 'starter',
+                role: refreshData.user.role,
                   createdAt: refreshData.user.created_at,
                   updatedAt: refreshData.user.updated_at,
                 };
@@ -181,29 +197,9 @@ const authStore = create<AuthState>()(
             }
           }
 
-          // If we get here, both token validation and refresh failed
-          localStorage.removeItem('ff-access-token');
-          localStorage.removeItem('ff-refresh-token');
-          localStorage.removeItem('ff-last-wallet-agent-id');
-          set({
-            user: null,
-            session: null,
-            isAuthenticated: false,
-            error: null,
-            authChecked: true,
-          });
+          clearAuth();
         } catch {
-          // Network or parse error during validation — clear auth state
-          localStorage.removeItem('ff-access-token');
-          localStorage.removeItem('ff-refresh-token');
-          localStorage.removeItem('ff-last-wallet-agent-id');
-          set({
-            user: null,
-            session: null,
-            isAuthenticated: false,
-            error: null,
-            authChecked: true,
-          });
+          clearAuth();
         }
       },
 
@@ -300,7 +296,7 @@ const authStore = create<AuthState>()(
             name: authData.user.name || '',
             avatar: authData.user.avatar || '',
             tenantId: authData.user.tenant_id || 'default',
-            plan: authData.user.plan ?? 'starter',
+            plan: authData.user.plan || 'starter',
             role: authData.user.role,
             createdAt: authData.user.created_at,
             updatedAt: authData.user.updated_at,
@@ -455,15 +451,7 @@ const authStore = create<AuthState>()(
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ code }),
           });
-
-          if (!response.ok) {
-            const errorData = await response
-              .json()
-              .catch(() => ({ message: 'MFA verification failed' }));
-            throw new Error(errorData.message || 'Invalid code. Please try again.');
-          }
 
           const authData = await response.json();
 
