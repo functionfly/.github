@@ -185,7 +185,7 @@ docker-logs: ## Show docker logs
 
 dev-neon: ## Start API with Neon DB (no local Postgres). Starts FlyMind (ai-service) on :8081 if needed. See AGENTS.md.
 	@( set -a; [ -f .env ] && . ./.env; set +a; \
-	export REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} DEVELOPMENT=true SKIP_MIGRATION_VALIDATION=true VERIFICATION_ENABLED=false; \
+	export REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} DEVELOPMENT=true DEVELOPMENT_ALLOW_NONLOCAL_HOST=true SKIP_MIGRATION_VALIDATION=true VERIFICATION_ENABLED=false; \
 	echo "Starting API (Neon DB, Redis $$REDIS_ADDR) + FlyMind if needed..."; \
 	exec ./scripts/run-orchestrator-with-ai.sh ./bin/orchestrator-api --skip-migrations )
 

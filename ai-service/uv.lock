@@ -28,7 +28,7 @@ wheels = [
 
 [[package]]
 name = "anthropic"
-version = "0.84.0"
+version = "0.89.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -40,9 +40,9 @@ dependencies = [
     { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/04/ea/0869d6df9ef83dcf393aeefc12dd81677d091c6ffc86f783e51cf44062f2/anthropic-0.84.0.tar.gz", hash = "sha256:72f5f90e5aebe62dca316cb013629cfa24996b0f5a4593b8c3d712bc03c43c37", size = 539457, upload-time = "2026-02-25T05:22:38.54Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/60/af/862e216dd6c5e9bc02fb374eeaaa19017c51b90ddfa5692668a3811947bd/anthropic-0.89.0.tar.gz", hash = "sha256:f3d75b8ccef4b35f3702639519e461eba437d4bcdfabb69378c65a02ab7bda66", size = 596758, upload-time = "2026-04-03T18:57:01.348Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/64/ca/218fa25002a332c0aa149ba18ffc0543175998b1f65de63f6d106689a345/anthropic-0.84.0-py3-none-any.whl", hash = "sha256:861c4c50f91ca45f942e091d83b60530ad6d4f98733bfe648065364da05d29e7", size = 455156, upload-time = "2026-02-25T05:22:40.468Z" },
+    { url = "https://files.pythonhosted.org/packages/22/ba/9f973f22abb512d5d17428a76e4ecbc8d49b9dd1b5a1152576d48c24dc1d/anthropic-0.89.0-py3-none-any.whl", hash = "sha256:c6d23854af798f2471ca3bc653cca394d392cc272fe803d3da9d63575b8445f0", size = 478847, upload-time = "2026-04-03T18:56:59.54Z" },
 ]
 
 [[package]]
@@ -458,11 +458,11 @@ dependencies = [
     { name = "grpcio-tools" },
     { name = "httpx" },
     { name = "openai" },
-    { name = "protobuf" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "redis" },
+    { name = "upstash-redis" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -515,15 +515,15 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", specifier = ">=0.84.0" },
+    { name = "anthropic", specifier = ">=0.88.0" },
     { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "detoxify", marker = "extra == 'moderation'", specifier = ">=0.5.2" },
     { name = "fastapi", specifier = ">=0.135.1" },
-    { name = "grpcio", specifier = ">=1.60.0,<1.78.1" },
-    { name = "grpcio-tools", specifier = ">=1.60.0,<1.78.1" },
+    { name = "grpcio", specifier = ">=1.60.0" },
+    { name = "grpcio-tools", specifier = ">=1.60.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8.0" },
-    { name = "openai", specifier = ">=2.26.0" },
+    { name = "openai", specifier = ">=2.30.0" },
     { name = "opentelemetry-api", marker = "extra == 'observability'", specifier = ">=1.28.0" },
     { name = "opentelemetry-api", marker = "extra == 'prod'", specifier = ">=1.28.0" },
     { name = "opentelemetry-exporter-otlp", marker = "extra == 'observability'", specifier = ">=1.28.0" },
@@ -537,7 +537,6 @@ requires-dist = [
     { name = "opentelemetry-sdk", marker = "extra == 'observability'", specifier = ">=1.28.0" },
     { name = "opentelemetry-sdk", marker = "extra == 'prod'", specifier = ">=1.28.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.5.1" },
-    { name = "protobuf", specifier = ">=4.25.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.13.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.2" },
@@ -552,7 +551,8 @@ requires-dist = [
     { name = "structlog", marker = "extra == 'prod'", specifier = ">=24.4.0" },
     { name = "tenacity", marker = "extra == 'prod'", specifier = ">=9.0.0" },
     { name = "tenacity", marker = "extra == 'resilience'", specifier = ">=9.0.0" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.41.0" },
+    { name = "upstash-redis", specifier = ">=1.7.0" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.42.0" },
 ]
 provides-extras = ["dev", "moderation", "observability", "resilience", "errors", "prod"]
 
@@ -1408,7 +1408,7 @@ wheels = [
 
 [[package]]
 name = "openai"
-version = "2.26.0"
+version = "2.30.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1420,9 +1420,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d7/91/2a06c4e9597c338cac1e5e5a8dd6f29e1836fc229c4c523529dca387fda8/openai-2.26.0.tar.gz", hash = "sha256:b41f37c140ae0034a6e92b0c509376d907f3a66109935fba2c1b471a7c05a8fb", size = 666702, upload-time = "2026-03-05T23:17:35.874Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/88/15/52580c8fbc16d0675d516e8749806eda679b16de1e4434ea06fb6feaa610/openai-2.30.0.tar.gz", hash = "sha256:92f7661c990bda4b22a941806c83eabe4896c3094465030dd882a71abe80c885", size = 676084, upload-time = "2026-03-25T22:08:59.96Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/2e/3f73e8ca53718952222cacd0cf7eecc9db439d020f0c1fe7ae717e4e199a/openai-2.26.0-py3-none-any.whl", hash = "sha256:6151bf8f83802f036117f06cc8a57b3a4da60da9926826cc96747888b57f394f", size = 1136409, upload-time = "2026-03-05T23:17:34.072Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/9e/5bfa2270f902d5b92ab7d41ce0475b8630572e71e349b2a4996d14bdda93/openai-2.30.0-py3-none-any.whl", hash = "sha256:9a5ae616888eb2748ec5e0c5b955a51592e0b201a11f4262db920f2a78c5231d", size = 1146656, upload-time = "2026-03-25T22:08:58.2Z" },
 ]
 
 [[package]]
@@ -2510,6 +2510,18 @@ wheels = [
 ]
 
 [[package]]
+name = "upstash-redis"
+version = "1.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bb/ec/a2d5027239be97421f0bb26ca74b7be3f5597e4222431c5bb6ccc7c0f018/upstash_redis-1.7.0.tar.gz", hash = "sha256:19b46dff2d81b89da5cbfb23a38232f7ca3b9ba441b22a1df766c64972d936d1", size = 47336, upload-time = "2026-03-18T14:17:46.874Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/20/00/d4aede377301a66a751c8c240c1d989124afb42ee8a201d7f7406306dde3/upstash_redis-1.7.0-py3-none-any.whl", hash = "sha256:6c17b4cd1f88bd0d34d978b9cf13041032482f7dfb4cdf8e00f6f6277db0006a", size = 49746, upload-time = "2026-03-18T14:17:45.955Z" },
+]
+
+[[package]]
 name = "urllib3"
 version = "2.6.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2520,15 +2532,15 @@ wheels = [
 
 [[package]]
 name = "uvicorn"
-version = "0.41.0"
+version = "0.43.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "h11" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/32/ce/eeb58ae4ac36fe09e3842eb02e0eb676bf2c53ae062b98f1b2531673efdd/uvicorn-0.41.0.tar.gz", hash = "sha256:09d11cf7008da33113824ee5a1c6422d89fbc2ff476540d69a34c87fab8b571a", size = 82633, upload-time = "2026-02-16T23:07:24.1Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/62/f2/368268300fb8af33743508d738ef7bb4d56afdb46c6d9c0fa3dd515df171/uvicorn-0.43.0.tar.gz", hash = "sha256:ab1652d2fb23abf124f36ccc399828558880def222c3cb3d98d24021520dc6e8", size = 85686, upload-time = "2026-04-03T18:37:48.984Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/e4/d04a086285c20886c0daad0e026f250869201013d18f81d9ff5eada73a88/uvicorn-0.41.0-py3-none-any.whl", hash = "sha256:29e35b1d2c36a04b9e180d4007ede3bcb32a85fbdfd6c6aeb3f26839de088187", size = 68783, upload-time = "2026-02-16T23:07:22.357Z" },
+    { url = "https://files.pythonhosted.org/packages/55/df/0cf5b0c451602748fdc7a702d4667f6e209bf96aa6e3160d754234445f2a/uvicorn-0.43.0-py3-none-any.whl", hash = "sha256:46fac64f487fd968cd999e5e49efbbe64bd231b5bd8b4a0b482a23ebce499620", size = 68591, upload-time = "2026-04-03T18:37:47.64Z" },
 ]
 
 [package.optional-dependencies]

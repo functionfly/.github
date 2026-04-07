@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     redis_cache_ttl: int = 3600  # seconds
 
+    # Upstash Redis configuration (alternative to standard Redis)
+    # Get these from https://console.upstash.com
+    upstash_redis_url: Optional[str] = Field(default=None, description="Upstash Redis REST URL")
+    upstash_redis_token: Optional[str] = Field(default=None, description="Upstash Redis REST Token")
+    use_upstash_redis: bool = False
+
     # Database configuration
     database_url: str = "postgresql://postgres:postgres@localhost:5432/functionfly"
 
@@ -128,8 +134,15 @@ class Settings(BaseSettings):
     anomaly_check_interval_seconds: int = 30
 
     # Orchestrator integration
-    orchestrator_url: str = "http://localhost:8080"
-    orchestrator_api_key: Optional[str] = None
+    # In Fly.io production, use internal DNS: http://functionfly-api.internal:8080
+    orchestrator_url: str = Field(
+        default="http://localhost:8080",
+        description="URL for the Go orchestrator API"
+    )
+    orchestrator_api_key: Optional[str] = Field(
+        default=None,
+        description="API key for orchestrator authentication"
+    )
 
     # Content moderation (2026: OpenAI Moderation API recommended when key is set)
     # auto = use OpenAI if key present, else Detoxify, else keyword fallback

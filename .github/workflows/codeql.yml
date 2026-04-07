@@ -43,7 +43,7 @@ jobs:
           cache-dependency-path: web/dashboard/package.json
 
       - name: Install dashboard dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci
         working-directory: web/dashboard
 
       - uses: github/codeql-action/autobuild@v3

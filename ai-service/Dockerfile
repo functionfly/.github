@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project files
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
@@ -40,4 +40,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8081/health || exit 1
 
 # Run the application
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8081"]
+# Use IPv6 (::) for Fly.io internal networking (6PN) support
+# This listens on both IPv4 and IPv6 interfaces
+CMD ["uvicorn", "src.main:app", "--host", "::", "--port", "8081"]
