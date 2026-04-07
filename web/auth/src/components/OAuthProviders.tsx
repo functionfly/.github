@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { API_ORIGIN } from "../config";
 
 const PROVIDER_ICONS: Record<string, React.ReactNode> = {
@@ -45,63 +45,210 @@ interface Props {
   redirectAfterLogin?: string;
 }
 
+interface SignupConfig {
+  invite_required?: boolean;
+  turnstile_required?: boolean;
+  turnstile_site_key?: string;
+}
+
 export default function OAuthProviders({
   inviteCode,
   redirectAfterLogin,
 }: Props) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
-  const [providers, setProviders] = useState<string[]>([]);
+  const [providers, setProviders] = useState<string[]>(["github", "google"]);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [signupConfig, setSignupConfig] = useState<SignupConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [pendingProvider, setPendingProvider] = useState<string | null>(null);
+  const [modalInviteCode, setModalInviteCode] = useState("");
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [isValidatingInvite, setIsValidatingInvite] = useState(false);
 
   useEffect(() => {
     // Fetch providers client-side since API isn't available at build time
     fetch(`${API_ORIGIN}/auth/oauth/providers`, { credentials: "include" })
       .then((res) => res.json())
       .then((data) => {
-        if (data.providers && Array.isArray(data.providers)) {
+        if (
+          data.providers &&
+          Array.isArray(data.providers) &&
+          data.providers.length > 0
+        ) {
           setProviders(data.providers);
         }
       })
       .catch(() => {
-        // Silently fail - OAuth providers are optional
+        // Keep default providers - OAuth providers are optional
+      });
+
+    // Fetch signup config to check if invite is required
+    fetch(`${API_ORIGIN}/auth/signup-config`, { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        setSignupConfig(data);
+        setConfigLoading(false);
+      })
+      .catch(() => {
+        // If config fails to load, assume invite is required (safer default)
+        setSignupConfig({ invite_required: true });
+        setConfigLoading(false);
       });
   }, []);
 
-  if (!providers.length) return null;
+  const isInviteRequired =
+    configLoading || (signupConfig?.invite_required ?? true);
+  const hasInviteCode = Boolean(inviteCode?.trim());
+  const needsInviteModal = isInviteRequired && !hasInviteCode;
 
-  const callbackOrigin =
-    typeof window !== "undefined"
-      ? window.location.origin
-      : "https://auth.functionfly.com";
-
-  const buildOAuthUrl = (provider: string) => {
+  const buildOAuthUrl = (provider: string, code?: string) => {
     const params = new URLSearchParams({ provider });
-    if (inviteCode) params.set("invite_code", inviteCode);
-    if (redirectAfterLogin) params.set("redirect_uri", redirectAfterLogin);
-    else params.set("redirect_uri", `${callbackOrigin}/auth/callback`);
+    const effectiveInviteCode = code || inviteCode;
+    if (effectiveInviteCode) params.set("invite_code", effectiveInviteCode);
+    // NOTE: redirect_uri is only for CLI tools (localhost/127.0.0.1).
+    // The web flow uses the backend's configured RedirectURL; do NOT send
+    // redirect_uri here or the API will reject it with:
+    // "redirect_uri must be http://127.0.0.1 or http://localhost"
     return `${API_ORIGIN}/auth/oauth/url?${params.toString()}`;
   };
 
-  const handleClick = (provider: string) => (e: React.MouseEvent) => {
-    // Don't prevent default - let the link work normally
-    // Just set loading state for visual feedback
-    setLoadingProvider(provider);
+  const validateInviteCode = async (code: string): Promise<boolean> => {
+    try {
+      const res = await fetch(
+        `${API_ORIGIN}/auth/check-invite-code?code=${encodeURIComponent(code)}`,
+        { credentials: "include" },
+      );
+      const data = await res.json();
+      return data.valid === true;
+    } catch {
+      return false;
+    }
   };
+
+  const startOAuth = async (provider: string, code?: string) => {
+    setOauthError(null);
+    setLoadingProvider(provider);
+
+    // Analytics tracking
+    const trackAuth = (event: string, properties: Record<string, any> = {}) => {
+      const eventName = `auth_${event}`;
+      if (typeof window !== "undefined" && ((window as any).plausible || (window as any).posthog)) {
+        if ((window as any).plausible) {
+          (window as any).plausible(eventName, { props: properties });
+        }
+        if ((window as any).posthog) {
+          (window as any).posthog.capture(eventName, properties);
+        }
+      }
+      if (typeof process !== "undefined" && process.env?.NODE_ENV === "development") {
+        console.log(`[Analytics] ${eventName}`, properties);
+      }
+    };
+
+    trackAuth("oauth_start", { provider });
+    try {
+      const res = await fetch(buildOAuthUrl(provider, code), {
+        credentials: "include",
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        url?: string;
+        message?: string;
+      };
+      if (!res.ok) {
+        throw new Error(
+          data.message || res.statusText || "Could not start sign-in",
+        );
+      }
+      if (!data.url) {
+        throw new Error("No OAuth URL returned from the server");
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setLoadingProvider(null);
+      setOauthError(
+        err instanceof Error
+          ? err.message
+          : "Sign-in failed. Please try again.",
+      );
+    }
+  };
+
+  const handleProviderClick = (provider: string) => {
+    // Reset any previous errors
+    setOauthError(null);
+
+    // If we need an invite code, show the modal
+    if (needsInviteModal) {
+      setPendingProvider(provider);
+      setModalInviteCode("");
+      setModalError(null);
+      return;
+    }
+
+    // Otherwise proceed directly
+    void startOAuth(provider);
+  };
+
+  const handleModalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modalInviteCode.trim() || !pendingProvider) return;
+
+    setIsValidatingInvite(true);
+    setModalError(null);
+
+    const isValid = await validateInviteCode(modalInviteCode.trim());
+
+    if (!isValid) {
+      setIsValidatingInvite(false);
+      setModalError("Invalid or expired invite code");
+      return;
+    }
+
+    // Close modal and start OAuth with the invite code
+    const provider = pendingProvider;
+    setPendingProvider(null);
+    setIsValidatingInvite(false);
+    void startOAuth(provider, modalInviteCode.trim());
+  };
+
+  const closeModal = () => {
+    setPendingProvider(null);
+    setModalInviteCode("");
+    setModalError(null);
+  };
+
+  // Close modal on escape key
+  useEffect(() => {
+    if (!pendingProvider) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeModal();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [pendingProvider]);
 
   return (
     <>
       <div className="oauth-divider">
         <span>or continue with</span>
       </div>
+      {oauthError ? (
+        <p className="oauth-error" role="alert">
+          {oauthError}
+        </p>
+      ) : null}
       <div className="oauth-providers">
         {providers.map((p) => (
-          <a
+          <button
             key={p}
-            href={buildOAuthUrl(p)}
+            type="button"
             className={`oauth-btn oauth-btn-${p} ${loadingProvider === p ? "oauth-btn-loading" : ""}`}
             aria-label={`Sign in with ${PROVIDER_NAMES[p] || p}`}
-            onClick={handleClick(p)}
+            disabled={loadingProvider !== null || configLoading}
+            onClick={() => handleProviderClick(p)}
           >
-            {loadingProvider === p ? (
+            {loadingProvider === p ||
+            (configLoading && loadingProvider === null) ? (
               <svg
                 width="18"
                 height="18"
@@ -129,9 +276,80 @@ export default function OAuthProviders({
             <span>
               {PROVIDER_NAMES[p] || p.charAt(0).toUpperCase() + p.slice(1)}
             </span>
-          </a>
+          </button>
         ))}
       </div>
+
+      {/* Invite Code Modal */}
+      {pendingProvider && (
+        <div
+          className="invite-modal-overlay"
+          onClick={closeModal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="invite-modal-title"
+        >
+          <div className="invite-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="invite-modal-header">
+              <h3 id="invite-modal-title">Invite Required</h3>
+              <button
+                type="button"
+                className="invite-modal-close"
+                onClick={closeModal}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleModalSubmit}>
+              <p className="invite-modal-description">
+                Sign-ups are currently invite-only. Please enter your invite
+                code to continue with{" "}
+                {PROVIDER_NAMES[pendingProvider] || pendingProvider}.
+              </p>
+              <div className="invite-modal-input-wrap">
+                <input
+                  type="text"
+                  value={modalInviteCode}
+                  onChange={(e) => setModalInviteCode(e.target.value)}
+                  placeholder="Enter invite code"
+                  className={`invite-modal-input ${modalError ? "invite-modal-input-error" : ""}`}
+                  disabled={isValidatingInvite}
+                  autoFocus
+                />
+                {modalError && (
+                  <p className="invite-modal-error">{modalError}</p>
+                )}
+              </div>
+              <div className="invite-modal-actions">
+                <button
+                  type="button"
+                  className="invite-modal-btn invite-modal-btn-secondary"
+                  onClick={closeModal}
+                  disabled={isValidatingInvite}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="invite-modal-btn invite-modal-btn-primary"
+                  disabled={!modalInviteCode.trim() || isValidatingInvite}
+                >
+                  {isValidatingInvite ? (
+                    <>
+                      <span className="spinner-small" />
+                      Checking...
+                    </>
+                  ) : (
+                    "Continue"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .oauth-divider {
           display: flex;
@@ -141,7 +359,8 @@ export default function OAuthProviders({
           color: #71717a;
           font-size: 0.8125rem;
         }
-        .oauth-divider::before, .oauth-divider::after {
+        .oauth-divider::before,
+        .oauth-divider::after {
           content: "";
           flex: 1;
           height: 1px;
@@ -150,6 +369,15 @@ export default function OAuthProviders({
         .oauth-providers {
           display: flex;
           gap: 0.75rem;
+        }
+        .oauth-error {
+          margin: 0 0 0.75rem;
+          padding: 0.5rem 0.75rem;
+          border-radius: 8px;
+          border: 1px solid #7f1d1d;
+          background: rgba(127, 29, 29, 0.2);
+          color: #fca5a5;
+          font-size: 0.8125rem;
         }
         .oauth-btn {
           flex: 1;
@@ -163,34 +391,191 @@ export default function OAuthProviders({
           background: #09090b;
           color: #e4e4e7;
           text-decoration: none;
+          font: inherit;
           font-size: 0.875rem;
           font-weight: 500;
           transition: all 0.15s ease;
           cursor: pointer;
         }
-        .oauth-btn:hover {
+        .oauth-btn:disabled {
+          cursor: wait;
+          opacity: 0.85;
+        }
+        .oauth-btn:hover:not(:disabled) {
           background: #18181b;
           border-color: #3f3f46;
           transform: translateY(-1px);
         }
-        .oauth-btn:active {
+        .oauth-btn:active:not(:disabled) {
           transform: translateY(0);
         }
         .oauth-btn-loading {
           opacity: 0.7;
           cursor: wait;
         }
-        .oauth-btn-github:hover {
+        .oauth-btn-github:hover:not(:disabled) {
           border-color: #6e7681;
           background: #161b22;
         }
-        .oauth-btn-google:hover {
-          border-color: #4285F4;
+        .oauth-btn-google:hover:not(:disabled) {
+          border-color: #4285f4;
           background: rgba(66, 133, 244, 0.1);
         }
         @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        /* Invite Modal */
+        .invite-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.7);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        .invite-modal {
+          background: #18181b;
+          border: 1px solid #27272a;
+          border-radius: 12px;
+          padding: 1.5rem;
+          width: 90%;
+          max-width: 400px;
+          animation: slideUp 0.2s ease;
+        }
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(16px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .invite-modal-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 1rem;
+        }
+        .invite-modal-header h3 {
+          margin: 0;
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #fafafa;
+        }
+        .invite-modal-close {
+          background: transparent;
+          border: none;
+          color: #71717a;
+          font-size: 1.5rem;
+          line-height: 1;
+          cursor: pointer;
+          padding: 0.25rem;
+          transition: color 0.15s;
+        }
+        .invite-modal-close:hover {
+          color: #e4e4e7;
+        }
+        .invite-modal-description {
+          margin: 0 0 1rem;
+          font-size: 0.875rem;
+          color: #a1a1aa;
+          line-height: 1.5;
+        }
+        .invite-modal-input-wrap {
+          margin-bottom: 1.25rem;
+        }
+        .invite-modal-input {
+          width: 100%;
+          padding: 0.625rem 0.875rem;
+          background: #09090b;
+          border: 1px solid #27272a;
+          border-radius: 8px;
+          color: #e4e4e7;
+          font-size: 0.875rem;
+          transition: border-color 0.15s, box-shadow 0.15s;
+          box-sizing: border-box;
+        }
+        .invite-modal-input:focus {
+          outline: none;
+          border-color: #6366f1;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+        .invite-modal-input-error {
+          border-color: #ef4444;
+        }
+        .invite-modal-input-error:focus {
+          border-color: #ef4444;
+          box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+        }
+        .invite-modal-error {
+          margin: 0.375rem 0 0;
+          font-size: 0.75rem;
+          color: #fca5a5;
+        }
+        .invite-modal-actions {
+          display: flex;
+          gap: 0.75rem;
+          justify-content: flex-end;
+        }
+        .invite-modal-btn {
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.15s;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .invite-modal-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        .invite-modal-btn-secondary {
+          background: transparent;
+          border: 1px solid #27272a;
+          color: #a1a1aa;
+        }
+        .invite-modal-btn-secondary:hover:not(:disabled) {
+          background: #27272a;
+          color: #e4e4e7;
+        }
+        .invite-modal-btn-primary {
+          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+          border: none;
+          color: #fff;
+        }
+        .invite-modal-btn-primary:hover:not(:disabled) {
+          opacity: 0.9;
+          transform: translateY(-1px);
+        }
+        .spinner-small {
+          width: 14px;
+          height: 14px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
         }
       `}</style>
     </>

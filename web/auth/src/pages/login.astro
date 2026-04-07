@@ -3,23 +3,49 @@ import AuthLayout from "../layouts/AuthLayout.astro";
 import FormCard from "../components/FormCard";
 import InputField from "../components/InputField";
 import Button from "../components/Button";
+import Checkbox from "../components/Checkbox";
 import OAuthProviders from "../components/OAuthProviders";
+import { APP_ORIGIN, API_ORIGIN } from "../config";
 
-// At build time, we can't fetch from API - use client-side fetching instead
-// The OAuthProviders component will fetch providers on mount
 const inviteCode = Astro.url.searchParams.get("invite_code") || undefined;
 const redirectTo = Astro.url.searchParams.get("redirect_to") || undefined;
+const magicParam = Astro.url.searchParams.get("magic") || undefined;
+const showMagic = magicParam === "true";
+const resetSuccess = Astro.url.searchParams.get("reset") === "success";
 ---
 
 <AuthLayout title="Sign in — FunctionFly">
   <FormCard
     title="Welcome back"
     subtitle="Sign in to your FunctionFly account"
+    success={resetSuccess ? "Password updated successfully. Please sign in." : undefined}
     client:load
   >
     <OAuthProviders client:load inviteCode={inviteCode} redirectAfterLogin={redirectTo} />
 
-    <form id="login-form" method="POST" action={`${import.meta.env.PUBLIC_API_URL || "http://localhost:8080"}/auth/login`}>
+    <!-- Login Mode Toggle -->
+    <div class="auth-mode-toggle" id="auth-mode-toggle">
+      <button
+        type="button"
+        class={`mode-btn ${!showMagic ? "active" : ""}`}
+        id="mode-password"
+        aria-pressed={!showMagic ? "true" : "false"}
+      >
+        Password
+      </button>
+      <button
+        type="button"
+        class={`mode-btn ${showMagic ? "active" : ""}`}
+        id="mode-magic"
+        aria-pressed={showMagic ? "true" : "false"}
+      >
+        Magic Link
+        <span class="coming-soon-badge">Coming Soon</span>
+      </button>
+    </div>
+
+    <!-- Password Login Form -->
+    <form id="login-form" class={`auth-form ${showMagic ? "hidden" : ""}`} method="POST" action={`${API_ORIGIN}/auth/login`}>
       <input type="hidden" name="redirect_to" value={redirectTo || ""} />
       <InputField
         client:load
@@ -39,10 +65,38 @@ const redirectTo = Astro.url.searchParams.get("redirect_to") || undefined;
         required
         autocomplete="current-password"
       />
+
+      <!-- Remember Me & Forgot Password Row -->
       <div class="form-row">
+        <Checkbox
+          client:load
+          label="Remember me for 30 days"
+          name="remember"
+          id="remember-checkbox"
+        />
         <a href="/forgot-password" class="forgot-link">Forgot password?</a>
       </div>
-      <Button client:load type="submit" fullWidth>Sign in</Button>
+
+      <Button client:load type="submit" fullWidth id="login-btn">Sign in</Button>
+    </form>
+
+    <!-- Magic Link Form -->
+    <form id="magic-form" class={`auth-form ${!showMagic ? "hidden" : ""}`}>
+      <p class="magic-description">
+        We'll send a secure login link to your email. No password needed.
+      </p>
+      <InputField
+        client:load
+        label="Email"
+        name="magic_email"
+        type="email"
+        placeholder="you@example.com"
+        required
+        autocomplete="email"
+      />
+      <Button client:load type="submit" fullWidth variant="secondary" id="magic-btn">
+        Send magic link
+      </Button>
     </form>
 
     <div slot="footer">
@@ -55,43 +109,367 @@ const redirectTo = Astro.url.searchParams.get("redirect_to") || undefined;
 </AuthLayout>
 
 <style>
+  .auth-mode-toggle {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1.5rem 0;
+    padding: 0.25rem;
+    background: #18181b;
+    border-radius: 8px;
+    border: 1px solid #27272a;
+  }
+  .mode-btn {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #a1a1aa;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mode-btn:hover {
+    color: #e4e4e7;
+  }
+  .mode-btn.active {
+    background: #27272a;
+    color: #fafafa;
+  }
+  .coming-soon-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.5rem;
+    padding: 0.125rem 0.5rem;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: #fff;
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 9999px;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+    animation: pulse-badge 2s ease-in-out infinite;
+  }
+  @keyframes pulse-badge {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  .auth-form {
+    animation: fadeIn 0.3s ease;
+  }
+  .auth-form.hidden {
+    display: none;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .magic-description {
+    color: #71717a;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+  }
   .form-row {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .form-row :global(.checkbox-field) {
+    margin-bottom: 0;
   }
   .forgot-link {
     font-size: 0.875rem;
     color: #a1a1aa;
     text-decoration: none;
   }
-  .forgot-link:hover { color: #fafafa; text-decoration: underline; }
+  .forgot-link:hover {
+    color: #fafafa;
+    text-decoration: underline;
+  }
+  .network-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .offline-indicator {
+    color: #f87171;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .offline-indicator.visible {
+    display: block;
+  }
+  .btn-secondary {
+    background: #27272a;
+    border: 1px solid #3f3f46;
+  }
+  .btn-secondary:hover {
+    background: #3f3f46;
+  }
 </style>
 
-<script>
-  const form = document.getElementById("login-form") as HTMLFormElement;
-  form?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const fd = new FormData(form);
-    const body = Object.fromEntries(fd.entries());
+<script define:vars={{ appOrigin: APP_ORIGIN, apiOrigin: API_ORIGIN }}>
+  // Analytics utilities
+  function trackAuth(event, properties = {}) {
+    const eventName = `auth_${event}`;
+    if (typeof window !== "undefined" && (window.plausible || window.posthog)) {
+      if (window.plausible) {
+        window.plausible(eventName, { props: properties });
+      }
+      if (window.posthog) {
+        window.posthog.capture(eventName, properties);
+      }
+    }
+    if (typeof process !== "undefined" && process.env?.NODE_ENV === "development") {
+      console.log(`[Analytics] ${eventName}`, properties);
+    }
+  }
 
-    const res = await fetch(form.action, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      credentials: "include",
+  function createTimer(variable) {
+    const start = performance.now();
+    return () => {
+      const duration = Math.round(performance.now() - start);
+      trackAuth("timing", { category: "auth", variable, value: duration });
+    };
+  }
+
+  // Delay execution to avoid conflicts with React hydration
+  setTimeout(() => {
+    // Initialize analytics
+    const stopTimer = createTimer("login_form_interaction");
+
+    // Track login start
+    trackAuth("login_start");
+
+    // Mode toggle
+    const modePassword = document.getElementById("mode-password");
+    const modeMagic = document.getElementById("mode-magic");
+    const loginForm = document.getElementById("login-form");
+    const magicForm = document.getElementById("magic-form");
+
+    function setMode(mode) {
+      const isPassword = mode === "password";
+      modePassword?.classList.toggle("active", isPassword);
+      modePassword?.setAttribute("aria-pressed", isPassword);
+      modeMagic?.classList.toggle("active", !isPassword);
+      modeMagic?.setAttribute("aria-pressed", !isPassword);
+      loginForm?.classList.toggle("hidden", !isPassword);
+      magicForm?.classList.toggle("hidden", isPassword);
+
+      // Focus first input of visible form
+      const visibleForm = isPassword ? loginForm : magicForm;
+      const firstInput = visibleForm?.querySelector('input[type="email"]');
+      firstInput?.focus();
+    }
+
+    modePassword?.addEventListener("click", () => setMode("password"));
+    modeMagic?.addEventListener("click", () => {
+      setMode("magic");
+      trackAuth("magic_link_requested");
     });
 
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && data.token) {
-      const redirectTo = (body.redirect_to as string) || "/auth/callback";
-      window.location.href = redirectTo + `?token=${data.token}&refresh_token=${data.refresh_token || ""}`;
-    } else {
-      const card = form.closest(".card") as HTMLElement;
-      const errEl = card?.querySelector(".alert-error") || document.createElement("div");
-      errEl.className = "alert alert-error";
-      errEl.textContent = data.message || "Sign in failed. Please try again.";
-      form.before(errEl);
+    // Check network status
+    const offlineIndicator = document.createElement("div");
+    offlineIndicator.className = "offline-indicator";
+    offlineIndicator.textContent = "⚠️ You appear to be offline. Please check your connection.";
+
+    async function updateNetworkStatus() {
+      const forms = document.querySelectorAll(".auth-form");
+      forms.forEach((form) => {
+        if (!form.querySelector(".offline-indicator")) {
+          form.prepend(offlineIndicator.cloneNode(true));
+        }
+      });
+
+      // More reliable network check - try a quick fetch to verify connectivity
+      const { checkNetworkConnectivity } = await import('/src/utils/networkCheck.ts');
+      const isOnline = await checkNetworkConnectivity();
+
+      const indicators = document.querySelectorAll(".offline-indicator");
+      indicators.forEach((ind) => {
+        ind.classList.toggle("visible", !isOnline);
+      });
+
+      const submitBtns = document.querySelectorAll('button[type="submit"]');
+      submitBtns.forEach((btn) => {
+        btn.disabled = !isOnline;
+        btn.title = isOnline ? '' : 'You appear to be offline';
+      });
     }
-  });
+      });
+
+      const indicators = document.querySelectorAll(".offline-indicator");
+      indicators.forEach((ind) => {
+        ind.classList.toggle("visible", !navigator.onLine);
+      });
+
+      const submitBtns = document.querySelectorAll('button[type="submit"]');
+      submitBtns.forEach((btn) => {
+        btn.disabled = !navigator.onLine;
+      });
+    }
+
+    window.addEventListener("online", updateNetworkStatus);
+    window.addEventListener("offline", updateNetworkStatus);
+    updateNetworkStatus();
+
+    // Password form submission
+    const form = document.getElementById("login-form");
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const body = Object.fromEntries(fd.entries());
+
+      // Track attempt
+      trackAuth("login_attempt", { method: "password" });
+
+      const btn = form.querySelector('button[type="submit"]');
+      const originalText = btn?.textContent;
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Signing in…";
+      }
+
+      try {
+        const res = await fetch(form.action, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          credentials: "include",
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.token) {
+          // Track success
+          trackAuth("login_success", { method: "password", remember: !!body.remember });
+          stopTimer();
+
+          // Redirect
+          const params = new URLSearchParams();
+          params.set("token", data.token);
+          if (data.refresh_token) params.set("refresh_token", data.refresh_token);
+          window.location.replace(appOrigin + "/auth/callback?" + params.toString());
+        } else {
+          // Track error
+          trackAuth("login_error", { method: "password", error: data.message || "unknown" });
+
+          // Show error
+          const card = form.closest(".card");
+          const errEl = document.createElement("div");
+          errEl.className = "alert alert-error";
+          errEl.setAttribute("role", "alert");
+          errEl.textContent = data.message || "Sign in failed. Please try again.";
+          form.before(errEl);
+
+          // Reset button
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+          }
+        }
+      } catch (err) {
+        // Network error handling
+        if (!navigator.onLine) {
+          const card = form.closest(".card");
+          const errEl = document.createElement("div");
+          errEl.className = "network-error";
+          errEl.setAttribute("role", "alert");
+          errEl.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            You appear to be offline. Please check your connection.
+          `;
+          form.before(errEl);
+        } else {
+          trackAuth("login_error", { method: "password", error: "network" });
+
+          const card = form.closest(".card");
+          const errEl = document.createElement("div");
+          errEl.className = "alert alert-error";
+          errEl.setAttribute("role", "alert");
+          errEl.textContent = "Network error. Please try again.";
+          form.before(errEl);
+        }
+
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      }
+    });
+
+    // Magic link form submission
+    const magicFormEl = document.getElementById("magic-form");
+    magicFormEl?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(magicFormEl);
+      const email = fd.get("magic_email");
+
+      const btn = magicFormEl.querySelector('button[type="submit"]');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Sending…";
+      }
+
+      try {
+        const res = await fetch(`${apiOrigin}/auth/magic-link`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+          trackAuth("magic_link_sent");
+          const card = magicFormEl.closest(".card");
+          const successEl = document.createElement("div");
+          successEl.className = "alert alert-success";
+          successEl.setAttribute("role", "status");
+          successEl.textContent = data.message || "Check your email for the magic link!";
+          magicFormEl.before(successEl);
+          magicFormEl.reset();
+        } else {
+          trackAuth("magic_link_error", { error: data.message });
+          const card = magicFormEl.closest(".card");
+          const errEl = document.createElement("div");
+          errEl.className = "alert alert-error";
+          errEl.setAttribute("role", "alert");
+          errEl.textContent = data.message || "Failed to send magic link.";
+          magicFormEl.before(errEl);
+        }
+      } catch (err) {
+        if (!navigator.onLine) {
+          const errEl = document.createElement("div");
+          errEl.className = "network-error";
+          errEl.setAttribute("role", "alert");
+          errEl.textContent = "You appear to be offline.";
+          magicFormEl.before(errEl);
+        }
+      }
+
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Send magic link";
+      }
+    });
+  }, 100); // Delay to allow React hydration
 </script>

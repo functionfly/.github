@@ -1,5 +1,5 @@
-import React, { useState } from "react";
 import type { ReactNode } from "react";
+import React from "react";
 
 interface Props {
   title: string;
@@ -10,7 +10,14 @@ interface Props {
   footer?: ReactNode;
 }
 
-export default function FormCard({ title, subtitle, children, error, success, footer }: Props) {
+export default function FormCard({
+  title,
+  subtitle,
+  children,
+  error,
+  success,
+  footer,
+}: Props) {
   return (
     <div className="card">
       <div className="card-header">
@@ -40,6 +47,9 @@ export default function FormCard({ title, subtitle, children, error, success, fo
           border-radius: 12px;
           padding: 2rem;
           width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+          overflow: hidden;
         }
         .card-header { margin-bottom: 1.5rem; }
         .card-title {

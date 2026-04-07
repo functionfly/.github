@@ -1,0 +1,477 @@
+---
+import AuthLayout from "../layouts/AuthLayout.astro";
+import FormCard from "../components/FormCard";
+import Button from "../components/Button";
+import { API_ORIGIN, APP_ORIGIN } from "../config";
+---
+
+<AuthLayout title="Verifying email — FunctionFly" maxWidth="440px">
+  <FormCard
+    title="Verifying your email"
+    subtitle="Please wait while we verify your address"
+    client:load
+  >
+    <div class="verify-container" id="verify-container">
+      <!-- Loading state -->
+      <div class="state state--loading" id="state-loading" role="status" aria-label="Verifying your email address">
+        <div class="spinner-wrap">
+          <div class="spinner" aria-hidden="true"></div>
+        </div>
+        <p class="state-label">Verifying your email…</p>
+      </div>
+
+      <!-- Success state (hidden by default) -->
+      <div class="state state--success" id="state-success" hidden role="status">
+        <div class="state-icon">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" opacity="0.15" fill="#22c55e"/>
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <h2 class="state-title">Email verified</h2>
+        <p class="state-label">Your email has been verified successfully. Redirecting to your dashboard…</p>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+      </div>
+
+      <!-- Error state (hidden by default) -->
+      <div class="state state--error" id="state-error" hidden role="alert">
+        <div class="state-icon">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" opacity="0.15" fill="#ef4444"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+        </div>
+        <h2 class="state-title" id="error-title">Verification failed</h2>
+        <p class="state-label" id="error-message">The verification link may have expired or already been used.</p>
+        <div class="state-actions">
+          <a href="/login" class="action-link">
+            <Button client:load variant="primary" fullWidth>Back to sign in</Button>
+          </a>
+
+          <!-- Inline resend form -->
+          <div class="resend-section">
+            <button class="resend-trigger" id="resend-trigger" type="button">
+              Didn't receive a new link? <span class="resend-trigger__action">Resend verification email</span>
+            </button>
+            <div class="resend-form" id="resend-form" hidden>
+              <div class="resend-form__row">
+                <input
+                  type="email"
+                  id="resend-email"
+                  class="resend-form__input"
+                  placeholder="you@example.com"
+                  autocomplete="email"
+                  required
+                />
+                <button class="resend-form__submit" id="resend-submit" type="button">Send</button>
+              </div>
+              <div class="resend-toast" id="resend-toast" hidden role="status">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                  <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                <span>Check your inbox for a new verification link.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div slot="footer" id="verify-footer">
+      <a href="/login">Back to sign in</a>
+    </div>
+  </FormCard>
+</AuthLayout>
+
+<style>
+  .verify-container {
+    padding: 1.5rem 0;
+  }
+
+  .state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.75rem;
+  }
+
+  /* Loading */
+  .spinner-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.08);
+  }
+  .spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(99, 102, 241, 0.15);
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Shared state styles */
+  .state-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.25rem;
+    animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.7); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .state-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #fafafa;
+    letter-spacing: -0.01em;
+  }
+
+  .state-label {
+    color: #71717a;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    max-width: 320px;
+  }
+
+  /* Success progress bar */
+  .progress-bar {
+    width: 100%;
+    max-width: 280px;
+    height: 3px;
+    background: #27272a;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6366f1, #22c55e);
+    border-radius: 2px;
+    animation: fillProgress 1.5s ease-out forwards;
+  }
+  @keyframes fillProgress {
+    to { width: 100%; }
+  }
+
+  /* Error actions */
+  .state-actions {
+    width: 100%;
+    max-width: 280px;
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .action-link {
+    text-decoration: none;
+    display: block;
+  }
+
+  /* Resend section */
+  .resend-section {
+    width: 100%;
+  }
+  .resend-trigger {
+    background: none;
+    border: none;
+    color: #71717a;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    padding: 0.375rem 0;
+    font-family: inherit;
+    transition: color 0.15s;
+  }
+  .resend-trigger:hover {
+    color: #fafafa;
+  }
+  .resend-trigger__action {
+    color: #a1a1aa;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .resend-trigger:hover .resend-trigger__action {
+    color: #6366f1;
+  }
+
+  /* Inline resend form */
+  .resend-form {
+    margin-top: 0.75rem;
+    animation: fadeInUp 0.25s ease-out;
+  }
+  .resend-form__row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .resend-form__input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.75rem;
+    background: #09090b;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px #27272a inset;
+    color: #fafafa;
+    font-size: 0.875rem;
+    font-family: inherit;
+    outline: none;
+    transition: box-shadow 0.15s;
+    box-sizing: border-box;
+  }
+  .resend-form__input:focus {
+    box-shadow: 0 0 0 1px #6366f1 inset;
+  }
+  .resend-form__input::placeholder {
+    color: #52525b;
+  }
+  .resend-form__submit {
+    padding: 0.5rem 1rem;
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .resend-form__submit:hover:not(:disabled) {
+    background: #4f46e5;
+  }
+  .resend-form__submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Resend toast */
+  .resend-toast {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.625rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(34, 197, 94, 0.06);
+    border: 1px solid rgba(34, 197, 94, 0.15);
+    border-radius: 8px;
+    color: #86efac;
+    font-size: 0.8125rem;
+    animation: fadeInUp 0.3s ease-out;
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+<script is:inline define:vars={{ apiOrigin: API_ORIGIN, appOrigin: APP_ORIGIN }}>
+  (function () {
+    // Utility functions
+    const validators = {
+      email: (value) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!value || value.trim() === "") {
+          return { valid: false, error: "Email is required" };
+        }
+        if (!emailRegex.test(value)) {
+          return { valid: false, error: "Please enter a valid email address" };
+        }
+        return { valid: true };
+      }
+    };
+
+    function trackAuth(event, properties = {}) {
+      const eventName = `auth_${event}`;
+      if (typeof window !== "undefined" && (window.plausible || window.posthog)) {
+        if (window.plausible) {
+          window.plausible(eventName, { props: properties });
+        }
+        if (window.posthog) {
+          window.posthog.capture(eventName, properties);
+        }
+      }
+      if (typeof process !== "undefined" && process.env?.NODE_ENV === "development") {
+        console.log(`[Analytics] ${eventName}`, properties);
+      }
+    }
+
+    trackAuth("email_verification_start");
+
+      var params = new URLSearchParams(window.location.search);
+      var verifyToken = params.get("token");
+
+      var loadingEl = document.getElementById("state-loading");
+      var successEl = document.getElementById("state-success");
+      var errorEl = document.getElementById("state-error");
+      var footerEl = document.getElementById("verify-footer");
+      var errorTitleEl = document.getElementById("error-title");
+      var errorMsgEl = document.getElementById("error-message");
+
+      // Resend elements
+      var resendTrigger = document.getElementById("resend-trigger");
+      var resendForm = document.getElementById("resend-form");
+      var resendEmail = document.getElementById("resend-email");
+      var resendSubmit = document.getElementById("resend-submit");
+      var resendToast = document.getElementById("resend-toast");
+
+      function showState(state) {
+        loadingEl.hidden = state !== "loading";
+        successEl.hidden = state !== "success";
+        errorEl.hidden = state !== "error";
+        if (footerEl) footerEl.style.display = state === "loading" ? "" : "none";
+      }
+
+      // Toggle inline resend form
+      resendTrigger?.addEventListener("click", function () {
+        resendForm.hidden = false;
+        resendTrigger.hidden = true;
+        resendEmail.focus();
+      });
+
+      // Send verification email
+      function doResend() {
+        var email = resendEmail.value.trim();
+
+        // Validate email before sending
+        var validation = validators.email(email);
+        if (!validation.valid) {
+          resendEmail.focus();
+          resendEmail.setAttribute("aria-invalid", "true");
+          return;
+        }
+
+        resendSubmit.disabled = true;
+        resendSubmit.textContent = "Sending…";
+        resendToast.hidden = true;
+
+        trackAuth("resend_verification");
+
+        fetch(apiOrigin + "/auth/resend-verification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email }),
+          credentials: "include",
+        })
+          .then(function (res) {
+            if (res.ok) {
+              resendToast.hidden = false;
+              resendSubmit.textContent = "Sent";
+              setTimeout(function () {
+                resendSubmit.disabled = false;
+                resendSubmit.textContent = "Send";
+              }, 30000);
+            } else {
+              throw new Error("Failed to resend");
+            }
+          })
+          .catch(function (err) {
+            resendSubmit.disabled = false;
+            resendSubmit.textContent = "Send";
+
+            // Show network error in toast
+            resendToast.innerHTML = navigator.onLine
+              ? "<span style='color: #fca5a5'>Failed to send. Please try again.</span>"
+              : "<span style='color: #fca5a5'>You appear to be offline. Please check your connection.</span>";
+            resendToast.hidden = false;
+          });
+      }
+
+      resendSubmit?.addEventListener("click", doResend);
+      resendEmail?.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          doResend();
+        }
+      });
+
+      // --- Verification flow ---
+
+      if (!verifyToken) {
+        if (errorTitleEl) errorTitleEl.textContent = "Missing token";
+        if (errorMsgEl) errorMsgEl.textContent = "No verification token was provided. Please use the link from your email, or request a new one.";
+        showState("error");
+        trackAuth("email_verification_error", { error: "missing_token" });
+        return;
+      }
+
+      // Check if offline first
+      if (!navigator.onLine) {
+        if (errorTitleEl) errorTitleEl.textContent = "You're offline";
+        if (errorMsgEl) errorMsgEl.textContent = "Please check your connection and refresh the page to verify your email.";
+        showState("error");
+        trackAuth("email_verification_error", { error: "offline" });
+        return;
+      }
+
+      // Fetch with timeout to avoid infinite spinner
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function () {
+        controller.abort();
+      }, 15000);
+
+      fetch(apiOrigin + "/auth/verify-email?token=" + encodeURIComponent(verifyToken), {
+        credentials: "include",
+        signal: controller.signal,
+      })
+        .then(function (res) {
+          clearTimeout(timeoutId);
+          return res
+            .json()
+            .catch(function () {
+              return {};
+            })
+            .then(function (data) {
+              return { ok: res.ok, data: data };
+            });
+        })
+        .then(function (result) {
+          if (result.ok) {
+            showState("success");
+            trackAuth("email_verification_success");
+            var token = result.data.token;
+            setTimeout(function () {
+              if (token) {
+                var redirectParams = new URLSearchParams();
+                redirectParams.set("token", token);
+                window.location.replace(appOrigin + "/auth/callback?" + redirectParams.toString());
+              } else {
+                window.location.replace(appOrigin + "/auth/callback");
+              }
+            }, 1800);
+          } else {
+            if (errorTitleEl) errorTitleEl.textContent = "Verification failed";
+            if (errorMsgEl) errorMsgEl.textContent = "The verification link may have expired or already been used. Request a new one below.";
+            showState("error");
+            trackAuth("email_verification_error", { error: result.data.message || "invalid_token" });
+          }
+        })
+        .catch(function (err) {
+          clearTimeout(timeoutId);
+          if (errorTitleEl) errorTitleEl.textContent = "Connection error";
+          if (errorMsgEl) {
+            errorMsgEl.textContent = err.name === "AbortError"
+              ? "The verification request timed out. Please check your connection and try again."
+              : "We couldn't reach our servers. Please check your connection and try again.";
+          }
+          showState("error");
+          trackAuth("email_verification_error", { error: err.name === "AbortError" ? "timeout" : "network" });
+        });
+</script>

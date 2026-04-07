@@ -281,28 +281,31 @@ export default function UsernameField() {
       <p className={getHintClass()}>{getHintText()}</p>
 
       <style>{`
-        .field { display: flex; flex-direction: column; gap: 0.375rem; margin-bottom: 1rem; }
+        .field { display: flex; flex-direction: column; gap: 0.375rem; margin-bottom: 1rem; min-width: 0; }
         .field-label { font-size: 0.875rem; font-weight: 500; color: #e4e4e7; }
-        .field-wrap { position: relative; }
-        .field-wrap--with-icon { display: flex; align-items: center; }
+        .field-wrap { position: relative; min-width: 0; }
+        .field-wrap--with-icon { display: flex; align-items: center; min-width: 0; }
         .field-input {
           width: 100%;
+          max-width: 100%;
           padding: 0.625rem 0.875rem;
           padding-right: 2.5rem;
           background: #09090b;
-          border: 1px solid #27272a;
+          border: none;
           border-radius: 8px;
+          box-shadow: 0 0 0 1px #27272a inset;
           color: #fafafa;
           font-size: 0.9375rem;
           outline: none;
-          transition: border-color 0.15s;
+          transition: box-shadow 0.15s;
           font-family: inherit;
+          box-sizing: border-box;
         }
-        .field-input:focus { border-color: #6366f1; }
-        .field-input--error { border-color: #ef4444; }
-        .field-input--error:focus { border-color: #ef4444; }
-        .field-input--success { border-color: #22c55e; }
-        .field-input--success:focus { border-color: #22c55e; }
+        .field-input:focus { box-shadow: 0 0 0 1px #6366f1 inset; }
+        .field-input--error { box-shadow: 0 0 0 1px #ef4444 inset; }
+        .field-input--error:focus { box-shadow: 0 0 0 1px #ef4444 inset; }
+        .field-input--success { box-shadow: 0 0 0 1px #22c55e inset; }
+        .field-input--success:focus { box-shadow: 0 0 0 1px #22c55e inset; }
         .field-input::placeholder { color: #52525b; }
 
         .status-icon {

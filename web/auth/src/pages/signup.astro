@@ -1,17 +1,59 @@
 ---
+import { createElement, Fragment } from "react";
 import AuthLayout from "../layouts/AuthLayout.astro";
 import FormCard from "../components/FormCard";
 import InputField from "../components/InputField";
 import Button from "../components/Button";
+import Checkbox from "../components/Checkbox";
+import TurnstileWidget from "../components/TurnstileWidget";
 import OAuthProviders from "../components/OAuthProviders";
 import UsernameField from "../components/UsernameField";
+import InviteCodeField from "../components/InviteCodeField";
+import RequestInviteModal from "../components/RequestInviteModal";
+import { API_ORIGIN, MARKETING_ORIGIN } from "../config";
 
 const urlInviteCode = Astro.url.searchParams.get("invite_code") || undefined;
 const redirectAfterLogin = Astro.url.searchParams.get("redirect_uri") || undefined;
 const inviteCode = urlInviteCode || "";
+
+const termsCheckboxLabel = createElement(
+  Fragment,
+  null,
+  "I agree to the ",
+  createElement(
+    "a",
+    { href: `${MARKETING_ORIGIN}/terms`, target: "_blank", rel: "noopener" },
+    "Terms of Service",
+  ),
+  " and ",
+  createElement(
+    "a",
+    { href: `${MARKETING_ORIGIN}/privacy`, target: "_blank", rel: "noopener" },
+    "Privacy Policy",
+  ),
+);
 ---
 
 <AuthLayout title="Create account — FunctionFly">
+  <!-- Invite Request Banner (outside FormCard so modal backdrop is unclipped) -->
+  <div class="invite-request-banner" id="invite-banner">
+    <div class="invite-request-content">
+      <div class="invite-request-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+        </svg>
+      </div>
+      <div class="invite-request-text">
+        <span class="invite-request-title">Don't have an invite code?</span>
+        <span class="invite-request-subtitle">Request early access from our team</span>
+      </div>
+    </div>
+    <button type="button" class="invite-request-btn" id="open-invite-modal">Request invite</button>
+  </div>
+
+  <!-- Request Invite Modal -->
+  <RequestInviteModal client:load />
+
   <FormCard title="Create your account" subtitle="Start building on FunctionFly" client:load>
     <OAuthProviders client:load inviteCode={inviteCode} redirectAfterLogin={redirectAfterLogin} />
 
@@ -21,17 +63,17 @@ const inviteCode = urlInviteCode || "";
     </div>
 
     <!-- Step Indicator -->
-    <div class="step-indicator" id="step-indicator">
-      <div class="step active" data-step="1">
+    <div class="step-indicator" id="step-indicator" aria-label="Signup progress">
+      <div class="step active" data-step="1" aria-current="step">
         <div class="step-number">1</div>
         <span class="step-label">Account</span>
       </div>
-      <div class="step-connector"></div>
+      <div class="step-connector" aria-hidden="true"></div>
       <div class="step" data-step="2">
         <div class="step-number">2</div>
         <span class="step-label">Profile</span>
       </div>
-      <div class="step-connector"></div>
+      <div class="step-connector" aria-hidden="true"></div>
       <div class="step" data-step="3">
         <div class="step-number">3</div>
         <span class="step-label">Finish</span>
@@ -42,8 +84,8 @@ const inviteCode = urlInviteCode || "";
       <!-- Step 1: Account Info (Email, Password) -->
       <div class="step-content active" data-step="1">
         <div class="step-header">
-          <h3 class="step-title">Create your account</h3>
-          <p class="step-description">Start with your email and a secure password</p>
+          <h3 class="step-title" id="step1-title">Create your account</h3>
+          <p class="step-description" id="step1-desc">Start with your email and a secure password</p>
         </div>
 
         <InputField
@@ -55,6 +97,7 @@ const inviteCode = urlInviteCode || "";
           required
           autocomplete="email"
           id="email-field"
+          aria-describedby="step1-desc"
         />
 
         <div class="password-section">
@@ -68,13 +111,14 @@ const inviteCode = urlInviteCode || "";
             minLength={8}
             autocomplete="new-password"
             id="password-field"
+            aria-describedby="password-strength"
           />
-          <div id="password-strength" class="password-strength hidden">
-            <div class="strength-bar">
+          <div id="password-strength" class="password-strength hidden" role="status" aria-live="polite">
+            <div class="strength-bar" aria-hidden="true">
               <div class="strength-fill" id="strength-fill"></div>
             </div>
             <p class="strength-text" id="strength-text"></p>
-            <ul class="password-requirements">
+            <ul class="password-requirements" aria-label="Password requirements">
               <li id="req-length">At least 8 characters</li>
               <li id="req-upper">One uppercase letter</li>
               <li id="req-lower">One lowercase letter</li>
@@ -95,13 +139,18 @@ const inviteCode = urlInviteCode || "";
           autocomplete="new-password"
           id="confirm-password-field"
         />
-        <p id="password-match-error" class="field-error hidden">Passwords do not match</p>
+        <p id="password-match-error" class="field-error hidden" role="alert" aria-live="polite">Passwords do not match</p>
 
         <div class="step-navigation">
           <div></div> <!-- Spacer -->
-          <button type="button" class="btn btn-primary" id="step1-next">
+          <button
+            type="button"
+            class="btn btn-primary"
+            id="step1-next"
+            aria-describedby="step1-desc"
+          >
             Continue
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 6px;" aria-hidden="true">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
           </button>
@@ -109,10 +158,10 @@ const inviteCode = urlInviteCode || "";
       </div>
 
       <!-- Step 2: Profile Info (Name, Username, DOB) -->
-      <div class="step-content" data-step="2">
+      <div class="step-content" data-step="2" aria-labelledby="step2-title">
         <div class="step-header">
-          <h3 class="step-title">Tell us about yourself</h3>
-          <p class="step-description">This helps us personalize your experience</p>
+          <h3 class="step-title" id="step2-title">Tell us about yourself</h3>
+          <p class="step-description" id="step2-desc">This helps us personalize your experience</p>
         </div>
 
         <InputField
@@ -128,81 +177,91 @@ const inviteCode = urlInviteCode || "";
         <UsernameField client:load />
 
         <div class="dob-field">
-          <label class="field-label" for="date_of_birth">Date of birth <span class="required">*</span></label>
+          <label class="field-label" for="date_of_birth">
+            Date of birth <span class="required" aria-label="required">*</span>
+          </label>
           <input
             class="field-input"
             id="date_of_birth"
             name="date_of_birth"
             type="date"
             required
+            aria-describedby="dob-hint"
           />
-          <p class="field-hint">You must be at least 13 years old.</p>
+          <p class="field-hint" id="dob-hint">You must be at least 13 years old.</p>
         </div>
 
         <div class="step-navigation">
           <button type="button" class="btn btn-secondary" id="step2-back">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;" aria-hidden="true">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
             Back
           </button>
           <button type="button" class="btn btn-primary" id="step2-next">
             Continue
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 6px;" aria-hidden="true">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
           </button>
         </div>
       </div>
 
-      <!-- Step 3: Invite Code & Terms -->
-      <div class="step-content" data-step="3">
+      <!-- Step 3: Invite Code, Terms & CAPTCHA -->
+      <div class="step-content" data-step="3" aria-labelledby="step3-title">
         <div class="step-header">
-          <h3 class="step-title">Almost done!</h3>
+          <h3 class="step-title" id="step3-title">Almost done!</h3>
           <p class="step-description" id="invite-description">Enter your invite code to join</p>
         </div>
 
         <div class="invite-section" id="invite-section">
           <p class="invite-message">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="invite-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="invite-icon" aria-hidden="true">
               <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
             </svg>
             Private beta — enter the code you received from the team.
           </p>
-          <InputField
-            client:load
-            label="Invite code *"
-            name="invite_code"
-            type="text"
-            placeholder="Enter your invite code"
+          <InviteCodeField
+            client:only="react"
+            initialValue={inviteCode}
             required={true}
-            autocomplete="off"
-            value={inviteCode}
           />
           <p class="invite-request">
             Don't have one? <a href="/waitlist">Request one now</a>
           </p>
         </div>
-        <input type="hidden" name="invite_code" id="invite-code-hidden" value={inviteCode} />
 
         <!-- Terms Checkbox -->
-        <div class="terms-row">
-          <label class="checkbox-label">
-            <input type="checkbox" name="terms" required />
-            <span>
-              I agree to the <a href="https://functionfly.com/terms" target="_blank" rel="noopener">Terms of Service</a> and <a href="https://functionfly.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>
-            </span>
-          </label>
+        <Checkbox
+          client:load
+          label={termsCheckboxLabel}
+          name="terms"
+          required={true}
+          id="terms-checkbox"
+        />
+
+        <!-- CAPTCHA -->
+        <div class="captcha-section">
+          <TurnstileWidget
+            client:only="react"
+            onVerify={(token) => {
+              const hiddenInput = document.getElementById("turnstile-token");
+              if (hiddenInput) hiddenInput.value = token;
+            }}
+            action="signup"
+            theme="dark"
+          />
+          <input type="hidden" id="turnstile-token" name="turnstile_token" />
         </div>
 
         <div class="step-navigation">
           <button type="button" class="btn btn-secondary" id="step3-back">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;" aria-hidden="true">
               <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
             Back
           </button>
-          <Button type="submit" client:load>Create account</Button>
+          <Button type="submit" client:load id="submit-btn">Create account</Button>
         </div>
       </div>
     </form>
@@ -214,6 +273,71 @@ const inviteCode = urlInviteCode || "";
 </AuthLayout>
 
 <style>
+  /* Invite Request Banner */
+  .invite-request-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 10px;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .invite-request-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .invite-request-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #818cf8;
+  }
+  .invite-request-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+  .invite-request-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #e4e4e7;
+  }
+  .invite-request-subtitle {
+    font-size: 0.75rem;
+    color: #a1a1aa;
+  }
+  .invite-request-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: #6366f1;
+    color: white;
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .invite-request-btn:hover {
+    background: #4f46e5;
+    text-decoration: none;
+  }
+
+  /* Form containment */
+  #signup-form { overflow: hidden; min-width: 0; }
+
   /* Divider */
   .form-divider {
     display: flex;
@@ -294,6 +418,8 @@ const inviteCode = urlInviteCode || "";
   .step-content {
     display: none;
     animation: fadeIn 0.3s ease;
+    min-width: 0;
+    overflow: hidden;
   }
   .step-content.active {
     display: block;
@@ -327,6 +453,8 @@ const inviteCode = urlInviteCode || "";
     margin-top: 1.5rem;
     padding-top: 1rem;
     border-top: 1px solid #27272a;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
   .btn {
     display: inline-flex;
@@ -343,8 +471,12 @@ const inviteCode = urlInviteCode || "";
     background: #6366f1;
     color: white;
   }
-  .btn-primary:hover {
+  .btn-primary:hover:not(:disabled) {
     background: #4f46e5;
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
   .btn-secondary {
     background: transparent;
@@ -359,6 +491,8 @@ const inviteCode = urlInviteCode || "";
   /* Invite Section */
   .invite-section {
     margin-bottom: 1rem;
+    min-width: 0;
+    overflow: hidden;
   }
   .invite-message {
     display: flex;
@@ -395,44 +529,16 @@ const inviteCode = urlInviteCode || "";
     color: #ef4444;
   }
 
-  /* Terms checkbox */
-  .terms-row {
-    margin-bottom: 1.25rem;
-    padding: 0.75rem;
-    background: rgba(39, 39, 42, 0.3);
-    border-radius: 8px;
-    border: 1px solid #27272a;
-  }
-  .checkbox-label {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.625rem;
-    font-size: 0.875rem;
-    color: #a1a1aa;
-    cursor: pointer;
-    line-height: 1.5;
-  }
-  .checkbox-label input {
-    margin-top: 0.15rem;
-    width: 16px;
-    height: 16px;
-    accent-color: #6366f1;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-  .checkbox-label a {
-    color: #818cf8;
-    text-decoration: none;
-    font-weight: 500;
-  }
-  .checkbox-label a:hover {
-    text-decoration: underline;
-    color: #a5b4fc;
+  /* CAPTCHA section */
+  .captcha-section {
+    margin: 1rem 0 1.5rem;
   }
 
   /* Password Strength */
   .password-section {
     margin-bottom: 0.5rem;
+    min-width: 0;
+    overflow: hidden;
   }
   .password-strength {
     margin-top: 0.5rem;
@@ -505,6 +611,7 @@ const inviteCode = urlInviteCode || "";
   /* Date of birth field */
   .dob-field {
     margin-bottom: 1rem;
+    min-width: 0;
   }
   .dob-field .field-label {
     display: block;
@@ -522,11 +629,15 @@ const inviteCode = urlInviteCode || "";
     color: #e4e4e7;
     font-size: 0.9375rem;
     transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
   }
   .dob-field .field-input:focus {
     outline: none;
     border-color: #6366f1;
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+  .dob-field .field-input.error {
+    border-color: #ef4444;
   }
   .dob-field .field-hint {
     margin-top: 0.375rem;
@@ -552,262 +663,448 @@ const inviteCode = urlInviteCode || "";
     text-decoration: underline;
     color: #a5b4fc;
   }
+
+  /* Network error styles */
+  .network-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
 </style>
 
-<script>
-  // Step management
-  let currentStep = 1;
-  const totalSteps = 3;
+<script is:inline define:vars={{ apiBase: API_ORIGIN }}>
+  (function() {
+    // Banner: open invite modal via native dialog API
+    document.getElementById('open-invite-modal')?.addEventListener('click', () => {
+      document.getElementById('invite-modal')?.showModal();
+    });
 
-  const stepIndicator = document.getElementById('step-indicator');
-  const stepContents = document.querySelectorAll('.step-content');
-  const steps = document.querySelectorAll('.step');
-  const connectors = document.querySelectorAll('.step-connector');
-
-  function updateStepIndicator() {
-    steps.forEach((step, index) => {
-      const stepNum = index + 1;
-      step.classList.remove('active', 'completed');
-      if (stepNum === currentStep) {
-        step.classList.add('active');
-      } else if (stepNum < currentStep) {
-        step.classList.add('completed');
+    // Utility functions
+    const validators = {
+      email: (value) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!value || value.trim() === "") {
+          return { valid: false, error: "Email is required" };
+        }
+        if (!emailRegex.test(value)) {
+          return { valid: false, error: "Please enter a valid email address" };
+        }
+        return { valid: true };
+      },
+      password: (value, options = {}) => {
+        const { minLength = 8 } = options;
+        const checks = {
+          length: value.length >= minLength,
+          upper: /[A-Z]/.test(value),
+          lower: /[a-z]/.test(value),
+          number: /[0-9]/.test(value),
+          special: /[!@#$%^&*(),.?":{}|<>]/.test(value),
+        };
+        const score = Object.values(checks).filter(Boolean).length;
+        let strength = "weak";
+        if (score >= 5) strength = "strong";
+        else if (score >= 4) strength = "good";
+        else if (score >= 3) strength = "fair";
+        if (!value || value.length < minLength) {
+          return { valid: false, error: `Password must be at least ${minLength} characters`, strength, checks };
+        }
+        return { valid: true, strength, checks };
+      },
+      passwordMatch: (password, confirm) => {
+        if (confirm && password !== confirm) {
+          return { valid: false, error: "Passwords do not match" };
+        }
+        return { valid: true };
+      },
+      dateOfBirth: (value) => {
+        if (!value) {
+          return { valid: false, error: "Date of birth is required" };
+        }
+        const dob = new Date(value);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const month = today.getMonth() - dob.getMonth();
+        if (month < 0 || (month === 0 && today.getDate() < dob.getDate())) {
+          age--;
+        }
+        if (age < 13) {
+          return { valid: false, error: "You must be at least 13 years old" };
+        }
+        if (dob > today) {
+          return { valid: false, error: "Date of birth cannot be in the future" };
+        }
+        return { valid: true };
       }
-    });
-
-    connectors.forEach((conn, index) => {
-      conn.classList.toggle('completed', index + 1 < currentStep);
-    });
-  }
-
-  function showStep(stepNum: number) {
-    stepContents.forEach((content) => {
-      const contentStep = parseInt(content.getAttribute('data-step') || '1');
-      content.classList.toggle('active', contentStep === stepNum);
-    });
-    currentStep = stepNum;
-    updateStepIndicator();
-  }
-
-  // Validation functions
-  function validateEmail(email: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
-
-  function validateStep1(): boolean {
-    const email = (document.getElementById('email-field') as HTMLInputElement)?.value;
-    const password = (document.getElementById('password-field') as HTMLInputElement)?.value;
-    const confirmPassword = (document.getElementById('confirm-password-field') as HTMLInputElement)?.value;
-
-    let isValid = true;
-
-    if (!email || !validateEmail(email)) {
-      const emailField = document.getElementById('email-field');
-      emailField?.classList.add('error');
-      isValid = false;
-    }
-
-    if (!password || password.length < 8) {
-      isValid = false;
-    }
-
-    if (password !== confirmPassword) {
-      const matchError = document.getElementById('password-match-error');
-      matchError?.classList.remove('hidden');
-      isValid = false;
-    } else {
-      const matchError = document.getElementById('password-match-error');
-      matchError?.classList.add('hidden');
-    }
-
-    return isValid;
-  }
-
-  function validateStep2(): boolean {
-    const dobField = document.getElementById('date_of_birth') as HTMLInputElement;
-    if (!dobField?.value) {
-      dobField?.classList.add('error');
-      return false;
-    }
-
-    // Check age (13+)
-    const dob = new Date(dobField.value);
-    const today = new Date();
-    let age = today.getFullYear() - dob.getFullYear();
-    const monthDiff = today.getMonth() - dob.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-      age--;
-    }
-
-    if (age < 13) {
-      alert('You must be at least 13 years old to sign up.');
-      return false;
-    }
-
-    return true;
-  }
-
-  // Navigation handlers
-  document.getElementById('step1-next')?.addEventListener('click', () => {
-    if (validateStep1()) {
-      showStep(2);
-    }
-  });
-
-  document.getElementById('step2-back')?.addEventListener('click', () => {
-    showStep(1);
-  });
-
-  document.getElementById('step2-next')?.addEventListener('click', () => {
-    if (validateStep2()) {
-      showStep(3);
-    }
-  });
-
-  document.getElementById('step3-back')?.addEventListener('click', () => {
-    showStep(2);
-  });
-
-  // Password strength checker
-  const passwordField = document.getElementById('password-field') as HTMLInputElement;
-  const passwordStrength = document.getElementById('password-strength') as HTMLDivElement;
-  const strengthFill = document.getElementById('strength-fill') as HTMLDivElement;
-  const strengthText = document.getElementById('strength-text') as HTMLParagraphElement;
-
-  const requirements = {
-    length: document.getElementById('req-length') as HTMLLIElement,
-    upper: document.getElementById('req-upper') as HTMLLIElement,
-    lower: document.getElementById('req-lower') as HTMLLIElement,
-    number: document.getElementById('req-number') as HTMLLIElement,
-    special: document.getElementById('req-special') as HTMLLIElement,
-  };
-
-  function checkPasswordStrength(password: string) {
-    const checks = {
-      length: password.length >= 8,
-      upper: /[A-Z]/.test(password),
-      lower: /[a-z]/.test(password),
-      number: /[0-9]/.test(password),
-      special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
     };
 
-    Object.entries(requirements).forEach(([key, el]) => {
-      el.classList.toggle('met', checks[key as keyof typeof checks]);
-    });
+    function validateAll(validations) {
+      const errors = {};
+      for (const { name, result } of validations) {
+        if (!result.valid && result.error) {
+          errors[name] = result.error;
+        }
+      }
+      return { valid: Object.keys(errors).length === 0, errors };
+    }
 
-    const score = Object.values(checks).filter(Boolean).length;
+    function getMaxDateOfBirth() {
+      const maxDate = new Date();
+      maxDate.setFullYear(maxDate.getFullYear() - 13);
+      return maxDate.toISOString().split("T")[0];
+    }
 
-    strengthFill.className = 'strength-fill';
-    strengthText.className = 'strength-text';
-
-    if (password.length === 0) {
-      passwordStrength.classList.add('hidden');
-    } else {
-      passwordStrength.classList.remove('hidden');
-      if (score <= 2) {
-        strengthFill.classList.add('weak');
-        strengthText.classList.add('weak');
-        strengthText.textContent = 'Weak password';
-      } else if (score === 3) {
-        strengthFill.classList.add('fair');
-        strengthText.classList.add('fair');
-        strengthText.textContent = 'Fair password';
-      } else if (score === 4) {
-        strengthFill.classList.add('good');
-        strengthText.classList.add('good');
-        strengthText.textContent = 'Good password';
-      } else {
-        strengthFill.classList.add('strong');
-        strengthText.classList.add('strong');
-        strengthText.textContent = 'Strong password';
+    function trackAuth(event, properties = {}) {
+      const eventName = `auth_${event}`;
+      if (typeof window !== "undefined" && (window.plausible || window.posthog)) {
+        if (window.plausible) {
+          window.plausible(eventName, { props: properties });
+        }
+        if (window.posthog) {
+          window.posthog.capture(eventName, properties);
+        }
+      }
+      if (typeof process !== "undefined" && process.env?.NODE_ENV === "development") {
+        console.log(`[Analytics] ${eventName}`, properties);
       }
     }
-  }
 
-  // Password match check
-  const confirmPasswordField = document.getElementById('confirm-password-field') as HTMLInputElement;
-  const passwordMatchError = document.getElementById('password-match-error') as HTMLParagraphElement;
-
-  function checkPasswordMatch() {
-    const password = passwordField.value;
-    const confirm = confirmPasswordField.value;
-
-    if (confirm && password !== confirm) {
-      passwordMatchError.classList.remove('hidden');
-    } else {
-      passwordMatchError.classList.add('hidden');
-    }
-  }
-
-  passwordField?.addEventListener('input', (e) => {
-    checkPasswordStrength((e.target as HTMLInputElement).value);
-    if (confirmPasswordField.value) checkPasswordMatch();
-  });
-
-  confirmPasswordField?.addEventListener('input', checkPasswordMatch);
-
-  // Date of birth max date (13 years ago)
-  const dobField = document.getElementById('date_of_birth') as HTMLInputElement;
-  if (dobField) {
-    const maxDate = new Date();
-    maxDate.setFullYear(maxDate.getFullYear() - 13);
-    dobField.max = maxDate.toISOString().split('T')[0];
-  }
-
-  // Fetch signup config client-side
-  const inviteSection = document.getElementById('invite-section');
-  const inviteDescription = document.getElementById('invite-description');
-  const inviteCodeHidden = document.getElementById('invite-code-hidden') as HTMLInputElement;
-  const urlParams = new URLSearchParams(window.location.search);
-  const hasInviteCode = urlParams.has('invite_code');
-
-  fetch('/auth/signup-config', { credentials: 'include' })
-    .then(res => res.json())
-    .then(data => {
-      const inviteRequired = data.invite_required || data.InviteRequired || false;
-      if (!inviteRequired && !hasInviteCode) {
-        // Invite not required - hide invite field
-        if (inviteSection) inviteSection.style.display = 'none';
-        if (inviteDescription) inviteDescription.textContent = 'Review and complete your signup';
-      }
-    })
-    .catch(() => {
-      // On error, keep invite field visible (safer)
-    });
-
-  // Form submission
-  const form = document.getElementById('signup-form') as HTMLFormElement;
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const termsCheckbox = form.querySelector('input[name="terms"]') as HTMLInputElement;
-    if (!termsCheckbox?.checked) {
-      alert('Please accept the Terms of Service and Privacy Policy to continue.');
-      return;
+    function trackFormError(formName, errors) {
+      const errorFields = Object.keys(errors);
+      trackAuth("signup_error", {
+        form: formName,
+        fields: errorFields.join(","),
+        error_count: errorFields.length,
+      });
     }
 
-    const fd = new FormData(form);
-    const body: Record<string, string> = {};
-    fd.forEach((v, k) => { body[k] = v as string; });
-    body.terms_accepted = 'true';
-    delete body.terms;
-    delete body.confirm_password;
+    // Initialize analytics and validation
+    if (typeof window !== 'undefined') {
+      const startTime = performance.now();
+      trackAuth("signup_start");
 
-    const res = await fetch('/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      credentials: 'include',
-    });
+        // Step management
+        let currentStep = 1;
 
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
-      window.location.href = `/confirm?email=${encodeURIComponent(body.email)}&sent=${data.email_sent || false}`;
-    } else {
-      const errEl = document.querySelector('.alert-error') || document.createElement('div');
-      errEl.className = 'alert alert-error';
-      errEl.textContent = data.message || 'Sign up failed. Please try again.';
-      form.before(errEl);
+        const stepContents = document.querySelectorAll('.step-content');
+        const steps = document.querySelectorAll('.step');
+        const connectors = document.querySelectorAll('.step-connector');
+
+        function updateStepIndicator() {
+          steps.forEach((step, index) => {
+            const stepNum = index + 1;
+            step.classList.remove('active', 'completed');
+            step.removeAttribute('aria-current');
+            if (stepNum === currentStep) {
+              step.classList.add('active');
+              step.setAttribute('aria-current', 'step');
+            } else if (stepNum < currentStep) {
+              step.classList.add('completed');
+            }
+          });
+          connectors.forEach((conn, index) => {
+            conn.classList.toggle('completed', index + 1 < currentStep);
+          });
+        }
+
+        function showStep(stepNum) {
+          stepContents.forEach((content) => {
+            const contentStep = parseInt(content.getAttribute('data-step') || '1');
+            content.classList.toggle('active', contentStep === stepNum);
+          });
+          currentStep = stepNum;
+          updateStepIndicator();
+
+          // Track step completion
+          if (stepNum === 2) trackAuth("signup_step_1_complete");
+          if (stepNum === 3) trackAuth("signup_step_2_complete");
+
+          // Focus management - focus first input or primary button
+          setTimeout(() => {
+            const activeContent = document.querySelector('.step-content.active');
+            const firstInput = activeContent?.querySelector('input:not([type="hidden"])');
+            const primaryBtn = activeContent?.querySelector('.btn-primary');
+            (firstInput || primaryBtn)?.focus();
+          }, 100);
+        }
+
+        // Validation with shared utilities
+        function validateStep1() {
+          const emailEl = document.getElementById('email-field');
+          const passwordEl = document.getElementById('password-field');
+          const confirmEl = document.getElementById('confirm-password-field');
+
+          const validations = [
+            { name: 'email', result: validators.email(emailEl?.value || '') },
+            { name: 'password', result: validators.password(passwordEl?.value || '') },
+            { name: 'passwordMatch', result: validators.passwordMatch(passwordEl?.value || '', confirmEl?.value || '') },
+          ];
+
+          const { valid, errors } = validateAll(validations);
+
+          // Show errors inline
+          Object.entries(errors).forEach(([field, error]) => {
+            const el = document.getElementById(`${field === 'email' ? 'email' : field === 'passwordMatch' ? 'confirm-password' : 'password'}-field`);
+            if (el) {
+              el.setAttribute('aria-invalid', 'true');
+            }
+          });
+
+          if (!valid) {
+            trackFormError('signup_step_1', errors);
+          }
+
+          return valid;
+        }
+
+        function validateStep2() {
+          const dobEl = document.getElementById('date_of_birth');
+          const result = validators.dateOfBirth(dobEl?.value || '');
+
+          if (!result.valid) {
+            dobEl?.classList.add('error');
+            dobEl?.setAttribute('aria-invalid', 'true');
+            trackFormError('signup_step_2', { dateOfBirth: result.error || 'Invalid' });
+          }
+
+          return result.valid;
+        }
+
+        function validateStep3() {
+          const termsEl = document.getElementById('terms-checkbox');
+          const captchaEl = document.getElementById('turnstile-token');
+
+          const validations = [];
+
+          if (!termsEl?.checked) {
+            validations.push({ name: 'terms', result: { valid: false, error: 'You must agree to the Terms of Service and Privacy Policy' } });
+          }
+
+          if (!captchaEl?.value) {
+            validations.push({ name: 'captcha', result: { valid: false, error: 'Please complete the CAPTCHA verification' } });
+          }
+
+          const { valid, errors } = validateAll(validations);
+
+          if (!valid) {
+            trackFormError('signup_step_3', errors);
+            // Show alert for terms/captcha errors
+            const firstError = Object.values(errors)[0];
+            if (firstError) {
+              alert(firstError);
+            }
+          }
+
+          return valid;
+        }
+
+        // Navigation with focus management
+        document.getElementById('step1-next')?.addEventListener('click', () => {
+          if (validateStep1()) showStep(2);
+        });
+        document.getElementById('step2-back')?.addEventListener('click', () => showStep(1));
+        document.getElementById('step2-next')?.addEventListener('click', () => {
+          if (validateStep2()) showStep(3);
+        });
+        document.getElementById('step3-back')?.addEventListener('click', () => showStep(2));
+
+        // Password strength
+        const passwordField = document.getElementById('password-field');
+        const passwordStrength = document.getElementById('password-strength');
+        const strengthFill = document.getElementById('strength-fill');
+        const strengthText = document.getElementById('strength-text');
+
+        function checkPasswordStrength(password) {
+          const result = validators.password(password);
+          const checks = result.checks;
+
+          // Update requirement indicators
+          document.getElementById('req-length')?.classList.toggle('met', checks.length);
+          document.getElementById('req-upper')?.classList.toggle('met', checks.upper);
+          document.getElementById('req-lower')?.classList.toggle('met', checks.lower);
+          document.getElementById('req-number')?.classList.toggle('met', checks.number);
+          document.getElementById('req-special')?.classList.toggle('met', checks.special);
+
+          if (strengthFill) {
+            strengthFill.className = 'strength-fill';
+            if (password.length > 0) {
+              strengthFill.classList.add(result.strength);
+            }
+          }
+
+          if (strengthText) {
+            strengthText.className = 'strength-text';
+            if (password.length > 0) {
+              strengthText.classList.add(result.strength);
+              const labels = { weak: 'Weak password', fair: 'Fair password', good: 'Good password', strong: 'Strong password' };
+              strengthText.textContent = labels[result.strength];
+            }
+          }
+
+          if (passwordStrength) {
+            passwordStrength.classList.toggle('hidden', password.length === 0);
+          }
+        }
+
+        passwordField?.addEventListener('input', () => {
+          checkPasswordStrength(passwordField.value);
+          checkPasswordMatch();
+        });
+
+        // Password match
+        function checkPasswordMatch() {
+          const confirmField = document.getElementById('confirm-password-field');
+          const errorEl = document.getElementById('password-match-error');
+          const pw = passwordField?.value || '';
+          const confirm = confirmField?.value || '';
+
+          if (confirm && pw !== confirm) {
+            errorEl?.classList.remove('hidden');
+            confirmField?.setAttribute('aria-invalid', 'true');
+          } else {
+            errorEl?.classList.add('hidden');
+            confirmField?.setAttribute('aria-invalid', 'false');
+          }
+        }
+
+        document.getElementById('confirm-password-field')?.addEventListener('input', checkPasswordMatch);
+
+        // Date of birth max
+        const dobField = document.getElementById('date_of_birth');
+        if (dobField) {
+          dobField.max = getMaxDateOfBirth();
+        }
+
+        // Signup config - hide invite section when not required
+        const inviteSection = document.getElementById('invite-section');
+        const inviteDescription = document.getElementById('invite-description');
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasInviteCode = urlParams.has('invite_code');
+
+        fetch(`${apiBase}/auth/signup-config`, { credentials: 'include' })
+          .then(res => res.json())
+          .then(data => {
+            const inviteRequired = data.inviteRequired || data.invite_required || data.InviteRequired || false;
+            if (!inviteRequired && !hasInviteCode) {
+              if (inviteSection) inviteSection.style.display = 'none';
+              if (inviteDescription) inviteDescription.textContent = 'Review and complete your signup';
+            }
+          })
+          .catch(() => {
+            // On error, keep invite field visible
+          });
+
+        // Network status monitoring
+        function updateNetworkStatus() {
+          const submitBtn = document.getElementById('submit-btn');
+          if (submitBtn) {
+            submitBtn.disabled = !navigator.onLine;
+            submitBtn.title = navigator.onLine ? '' : 'You appear to be offline';
+          }
+        }
+
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+        updateNetworkStatus();
+
+        // Form submission with analytics and network error handling
+        const form = document.getElementById('signup-form');
+        form?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          if (!validateStep3()) return;
+
+          const btn = document.getElementById('submit-btn');
+          const originalText = btn?.textContent;
+          if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Creating account…';
+          }
+
+          const fd = new FormData(form);
+          const body = Object.fromEntries(fd.entries());
+
+          // Map snake_case form names to camelCase for Go API
+          const apiBody = {
+            email: body.email,
+            password: body.password,
+            confirmPassword: body.confirm_password,
+            name: body.name,
+            username: body.username,
+            dateOfBirth: body.date_of_birth,
+            inviteCode: body.invite_code,
+            termsAccepted: true,
+            turnstileToken: body.turnstile_token,
+          };
+
+          try {
+            const res = await fetch(`${apiBase}/auth/signup`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(apiBody),
+              credentials: 'include',
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (res.ok) {
+              const duration = Math.round(performance.now() - startTime);
+              trackAuth("signup_complete", { duration, has_invite: !!body.invite_code });
+
+              window.location.href = '/confirm?email=' + encodeURIComponent(apiBody.email) +
+                '&sent=' + (data.emailSent || data.email_sent || false);
+            } else {
+              trackAuth("signup_error", { error: data.message || 'unknown', step: 3 });
+
+              const errEl = document.createElement('div');
+              errEl.className = 'alert alert-error';
+              errEl.setAttribute('role', 'alert');
+              errEl.textContent = data.message || 'Sign up failed. Please try again.';
+              form.before(errEl);
+
+              if (btn) {
+                btn.disabled = false;
+                btn.textContent = originalText;
+              }
+            }
+          } catch (err) {
+            // Network error handling
+            if (!navigator.onLine) {
+              const errEl = document.createElement('div');
+              errEl.className = 'network-error';
+              errEl.setAttribute('role', 'alert');
+              errEl.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                You appear to be offline. Please check your connection and try again.
+              `;
+              form.before(errEl);
+            } else {
+              trackAuth("signup_error", { error: 'network' });
+
+              const errEl = document.createElement('div');
+              errEl.className = 'alert alert-error';
+              errEl.setAttribute('role', 'alert');
+              errEl.textContent = 'Network error. Please try again.';
+              form.before(errEl);
+            }
+
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = originalText;
+            }
+          }
+        });
+      });
     }
-  });
+  })();
 </script>

@@ -2,6 +2,7 @@
 import AuthLayout from "../layouts/AuthLayout.astro";
 import FormCard from "../components/FormCard";
 import Button from "../components/Button";
+import { API_ORIGIN } from "../config";
 
 const email = Astro.url.searchParams.get("email") || "";
 const sent = Astro.url.searchParams.get("sent") === "true";
@@ -41,20 +42,23 @@ const sent = Astro.url.searchParams.get("sent") === "true";
 </style>
 
 {!sent && (
-  <script>
-    const form = document.getElementById("resend-form") as HTMLFormElement;
-    form?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const params = new URLSearchParams(window.location.search);
-      const email = params.get("email") || "";
-      const btn = form.querySelector("button") as HTMLButtonElement;
-      btn.disabled = true; btn.textContent = "Sending…";
-      await fetch("/auth/resend-verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+  <script is:inline define:vars={{ API_ORIGIN }}>
+    (function() {
+      var form = document.getElementById("resend-form");
+      if (!form) return;
+      form.addEventListener("submit", async function(e) {
+        e.preventDefault();
+        var params = new URLSearchParams(window.location.search);
+        var email = params.get("email") || "";
+        var btn = form.querySelector("button");
+        btn.disabled = true; btn.textContent = "Sending…";
+        await fetch(API_ORIGIN + "/auth/resend-verification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email }),
+        });
+        btn.textContent = "Sent!";
       });
-      btn.textContent = "Sent!";
-    });
+    })();
   </script>
 )}

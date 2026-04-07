@@ -2,8 +2,8 @@
 // OAuth callback page — the orchestrator redirects here with token/refresh_token params
 import { APP_ORIGIN } from "../../config";
 
-const token = Astro.url.searchParams.get("token") || "";
-const refreshToken = Astro.url.searchParams.get("refresh_token") || "";
+const token = decodeURIComponent(Astro.url.searchParams.get("token") || "");
+const refreshToken = decodeURIComponent(Astro.url.searchParams.get("refresh_token") || "");
 const error = Astro.url.searchParams.get("error") || "";
 const errorDescription = Astro.url.searchParams.get("error_description") || "";
 const isNewUser = Astro.url.searchParams.get("new_user") === "true";
@@ -28,18 +28,60 @@ const isNewUser = Astro.url.searchParams.get("new_user") === "true";
       <div class="card">
         <h1>Authentication failed</h1>
         <p>{errorDescription || error}. <a href="/login">Try again</a>.</p>
+        <script define:vars={{ error, errorDescription }}>
+          function trackAuth(event, properties = {}) {
+            const eventName = `auth_${event}`;
+            if (typeof window !== "undefined" && (window.plausible || window.posthog)) {
+              if (window.plausible) {
+                window.plausible(eventName, { props: properties });
+              }
+              if (window.posthog) {
+                window.posthog.capture(eventName, properties);
+              }
+            }
+            if (typeof process !== "undefined" && process.env?.NODE_ENV === "development") {
+              console.log(`[Analytics] ${eventName}`, properties);
+            }
+          }
+          trackAuth("oauth_error", { error, description: errorDescription });
+        </script>
       </div>
     ) : (
       <div class="card">
         <h1>{isNewUser ? "Account created!" : "Signed in!"}</h1>
         <p>Redirecting to your dashboard…</p>
-        <script define:vars={{ token, refreshToken, appOrigin: APP_ORIGIN }}>
-          // Store tokens and redirect
-          if (token) {
-            sessionStorage.setItem("ff_token", token);
-            if (refreshToken) sessionStorage.setItem("ff_refresh_token", refreshToken);
+        <script define:vars={{ token, refreshToken, isNewUser, appOrigin: APP_ORIGIN }}>
+          function trackAuth(event, properties = {}) {
+            const eventName = `auth_${event}`;
+            if (typeof window !== "undefined" && (window.plausible || window.posthog)) {
+              if (window.plausible) {
+                window.plausible(eventName, { props: properties });
+              }
+              if (window.posthog) {
+                window.posthog.capture(eventName, properties);
+              }
+            }
+            if (typeof process !== "undefined" && process.env?.NODE_ENV === "development") {
+              console.log(`[Analytics] ${eventName}`, properties);
+            }
           }
-          window.location.href = appOrigin + "/auth/callback";
+          // Track OAuth success
+          trackAuth("oauth_callback", { new_user: isNewUser });
+
+          // Pass tokens via URL fragment — fragments are never sent to servers, not in logs or Referer.
+          // sessionStorage is per-origin so it can't survive cross-origin redirects from auth → app.
+          // JWTs contain = and + characters that break URLs — encode properly.
+          if (token) {
+            const params = new URLSearchParams();
+            params.set("token", token);
+            if (refreshToken) params.set("refresh_token", refreshToken);
+            if (isNewUser) params.set("new_user", "true");
+            // Navigate via location.replace to avoid polluting history
+            window.location.replace(appOrigin + "/auth/callback#" + params.toString());
+          } else {
+            // No token — redirect to login
+            window.location.replace(appOrigin + "/auth/callback");
+          }
         </script>
       </div>
     )}

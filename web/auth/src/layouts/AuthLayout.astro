@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "./BaseLayout.astro";
+import { MARKETING_ORIGIN } from "../config";
 
 interface Props {
   title: string;
@@ -27,7 +28,7 @@ const { title, description, maxWidth = "440px" } = Astro.props;
     </main>
 
     <footer class="auth-footer">
-      <p>By continuing, you agree to our <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.</p>
+      <p>By continuing, you agree to our <a href={`${MARKETING_ORIGIN}/terms`}>Terms</a> and <a href={`${MARKETING_ORIGIN}/privacy`}>Privacy Policy</a>.</p>
     </footer>
   </div>
 </BaseLayout>
@@ -64,6 +65,8 @@ const { title, description, maxWidth = "440px" } = Astro.props;
 
 .auth-card-wrap {
   width: 100%;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .auth-footer {

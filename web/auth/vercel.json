@@ -1,8 +1,16 @@
 {
   "framework": null,
+  "bunVersion": "1.x",
   "buildCommand": "bun run astro build",
   "outputDirectory": "dist",
   "installCommand": "bun install",
+  "env": {
+    "PUBLIC_API_URL": "https://api.functionfly.com",
+    "PUBLIC_AUTH_URL": "https://auth.functionfly.com",
+    "PUBLIC_APP_URL": "https://app.functionfly.com",
+    "PUBLIC_MARKETING_URL": "https://functionfly.com",
+    "PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAC0wUyjn2Lu7EjOU"
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -22,6 +30,10 @@
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=31536000; includeSubDomains; preload"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://challenges.cloudflare.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.functionfly.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests; frame-src https://challenges.cloudflare.com;"
         }
       ]
     },
@@ -99,6 +111,10 @@
     {
       "source": "/auth/callback",
       "destination": "/auth/callback.html"
+    },
+    {
+      "source": "/verify-email",
+      "destination": "/verify-email.html"
     },
     {
       "source": "/auth/saml/sso",
