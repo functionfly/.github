@@ -38,9 +38,10 @@ curl https://api.staging.functionfly.com/healthz
 ```
 
 **That's it!** 🎉 Your staging environment should now be accessible at:
-- **Dashboard**: https://app.staging.functionfly.com
-- **API**: https://api.staging.functionfly.com
-- **Edge**: https://edge.staging.functionfly.com
+
+- **Dashboard**: <https://app.staging.functionfly.com>
+- **API**: <https://api.staging.functionfly.com>
+- **Edge**: <https://edge.staging.functionfly.com>
 
 ---
 
@@ -119,6 +120,7 @@ FRONTEND_URL=https://app.staging.functionfly.com
 ```
 
 **Verification:**
+
 ```bash
 # Check file exists
 ls -la .env.staging
@@ -153,6 +155,7 @@ Use the automated DNS setup script to generate or apply DNS records:
 5. Ensure **Proxy Status** is enabled (orange cloud)
 
 **Verification:**
+
 ```bash
 # Check DNS propagation (may take 1-5 minutes)
 dig staging.functionfly.com +short
@@ -180,6 +183,7 @@ Run the deployment script to start all services:
 ```
 
 **What the script does:**
+
 1. ✅ Validates your `.env.staging` file
 2. ✅ Checks Docker is running
 3. ✅ Builds container images
@@ -188,6 +192,7 @@ Run the deployment script to start all services:
 6. ✅ Performs health checks
 
 **Expected output:**
+
 ```
 ℹ️  Validating environment configuration...
 ✅ Environment file validated
@@ -214,6 +219,7 @@ Run the deployment script to start all services:
 Verify each component is working correctly:
 
 #### 4.1 API Health Check
+
 ```bash
 # Check API health endpoint
 curl https://api.staging.functionfly.com/healthz
@@ -225,6 +231,7 @@ curl https://api.staging.functionfly.com/v1/status
 ```
 
 #### 4.2 Main Staging Domain
+
 ```bash
 # Check main staging entry
 curl https://staging.functionfly.com/health
@@ -232,6 +239,7 @@ curl https://staging.functionfly.com/health
 ```
 
 #### 4.3 Edge Endpoint
+
 ```bash
 # Test edge subdomain
 curl -I https://edge.staging.functionfly.com
@@ -239,6 +247,7 @@ curl -I https://edge.staging.functionfly.com
 ```
 
 #### 4.4 Service Containers
+
 ```bash
 # Check all containers are running
 docker-compose -f docker-compose.staging.yml ps
@@ -252,6 +261,7 @@ docker-compose -f docker-compose.staging.yml ps
 ```
 
 #### 4.5 Dashboard Access
+
 ```bash
 # Test dashboard accessibility
 curl -I https://app.staging.functionfly.com
@@ -370,7 +380,7 @@ RATE_LIMIT_REQUESTS=200
 RATE_LIMIT_WINDOW_SECONDS=60
 
 # CORS origins (include localhost for local development)
-CORS_ALLOWED_ORIGINS=https://staging.functionfly.com,https://app.staging.functionfly.com,https://admin.staging.functionfly.com,https://api.staging.functionfly.com,http://localhost:3000
+CORS_ALLOWED_ORIGINS=https://staging.functionfly.com,https://app.staging.functionfly.com,https://auth.staging.functionfly.com,https://admin.staging.functionfly.com,https://api.staging.functionfly.com,http://localhost:3000
 ```
 
 ### URL Configuration
@@ -422,11 +432,13 @@ FROM_NAME=FunctionFly Staging
 #### Issue: `.env.staging file not found!`
 
 **Symptom:**
+
 ```
 ❌ .env.staging file not found!
 ```
 
 **Solution:**
+
 ```bash
 # Create from template
 cp .env.staging.example .env.staging
@@ -440,11 +452,13 @@ nano .env.staging
 #### Issue: Docker daemon is not running
 
 **Symptom:**
+
 ```
 ❌ Docker daemon is not running!
 ```
 
 **Solution:**
+
 ```bash
 # Start Docker
 sudo systemctl start docker  # Linux
@@ -462,6 +476,7 @@ docker info
 **Symptom:** Services start but health checks timeout.
 
 **Solution:**
+
 ```bash
 # Check container logs
 docker logs functionfly-orchestrator-staging
@@ -482,11 +497,13 @@ curl -v http://localhost:8082/health
 #### Issue: DNS not resolving
 
 **Symptom:**
+
 ```
 curl: (6) Could not resolve host: api.staging.functionfly.com
 ```
 
 **Solution:**
+
 ```bash
 # Check DNS propagation
 dig api.staging.functionfly.com +short
@@ -505,11 +522,13 @@ sudo echo "127.0.0.1 api.staging.functionfly.com" >> /etc/hosts
 #### Issue: Database connection refused
 
 **Symptom:**
+
 ```
 Error: connection refused to Neon database
 ```
 
 **Solution:**
+
 ```bash
 # Verify connection string
 psql "postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST/$DB_NAME?sslmode=require"
@@ -529,11 +548,13 @@ docker-compose -f docker-compose.staging.yml exec orchestrator-api \
 #### Issue: Caddy reverse proxy returning 502
 
 **Symptom:**
+
 ```
 HTTP/2 502 Bad Gateway
 ```
 
 **Solution:**
+
 ```bash
 # Check Caddy logs
 docker logs functionfly-caddy-staging
@@ -553,11 +574,13 @@ docker-compose -f docker-compose.staging.yml exec caddy caddy validate --config 
 #### Issue: Redis connection errors
 
 **Symptom:**
+
 ```
 Error: connection refused to Redis
 ```
 
 **Solution:**
+
 ```bash
 # Check Redis container
 docker-compose -f docker-compose.staging.yml ps redis

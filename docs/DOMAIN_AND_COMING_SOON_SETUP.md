@@ -26,7 +26,7 @@ Point **only one** deployment at `functionfly.com` / `www`. Do not flip DNS betw
 ## What you need to do
 
 - **API (Fly.io)**  
-  Deploy the app, set secrets (including `CORS_ALLOWED_ORIGINS` with marketing, app, and admin origins — e.g. `https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com` — plus `BASE_URL`, `FRONTEND_URL`).  
+  Deploy the app, set secrets (including `CORS_ALLOWED_ORIGINS` with marketing, app, auth, and admin origins — e.g. `https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://auth.functionfly.com,https://admin.functionfly.com` — plus `BASE_URL`, `FRONTEND_URL`).  
   Run: `flyctl certs add api.functionfly.com --app functionfly-control`.  
   In DNS: **CNAME** `api` → `functionfly-control.fly.dev` (and any TXT for Fly ownership if required).
 
@@ -91,7 +91,7 @@ In **Fly Dashboard → functionfly-control → Secrets**, set at least:
 - `DATABASE_URL` (or `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSLMODE`)
 - `REDIS_ADDR`, `REDIS_PASSWORD` (if Redis uses auth)
 - `JWT_SECRET`, `API_SHARED_SECRET`, `DB_MASTER_KEY_PASSWORD`
-- **Browser clients:** `CORS_ALLOWED_ORIGINS` must list every HTTPS origin that calls the API (e.g. marketing, `https://app.functionfly.com`, `https://admin.functionfly.com`). Example: `https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com`. Also set `BASE_URL=https://api.functionfly.com`, `FRONTEND_URL=https://functionfly.com` — without CORS + `FRONTEND_URL`, the waitlist form on functionfly.com cannot POST to `/v1/feedback`.
+- **Browser clients:** `CORS_ALLOWED_ORIGINS` must list every HTTPS origin that calls the API (e.g. marketing, `https://app.functionfly.com`, `https://auth.functionfly.com`, `https://admin.functionfly.com`). Example: `https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://auth.functionfly.com,https://admin.functionfly.com`. Also set `BASE_URL=https://api.functionfly.com`, `FRONTEND_URL=https://functionfly.com` — without CORS + `FRONTEND_URL`, the waitlist form on functionfly.com cannot POST to `/v1/feedback`.
 - `LOG_LEVEL=info`, `DEVELOPMENT=false`
 
 There is no separate “coming soon page secret”; the API uses CORS and the above URLs to allow the coming-soon site to submit to the feedback endpoint.
@@ -296,7 +296,7 @@ The browser blocks requests from `https://www.functionfly.com` (or `https://func
 **Fix:** On the **API** (Fly.io app), set the allowed frontend origins. From repo root:
 
 ```bash
-flyctl secrets set CORS_ALLOWED_ORIGINS="https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com" --app functionfly-control
+flyctl secrets set CORS_ALLOWED_ORIGINS="https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://auth.functionfly.com,https://admin.functionfly.com" --app functionfly-control
 ```
 
 Redeploy or restart the API if needed. Ensure there are no spaces inside the comma-separated list. After this, the preflight `OPTIONS` and the actual `GET`/`POST` (e.g. `/api/auth/get-session`, `/v1/feedback`) will include `Access-Control-Allow-Origin` and the browser will allow the request.

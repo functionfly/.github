@@ -123,7 +123,7 @@ All requests undergo comprehensive input validation and sanitization.
 
 Configure CORS via environment variables:
 
-- `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed origins (default: `*` in development; production must list real HTTPS origins, e.g. `https://admin.functionfly.com` for the admin SPA)
+- `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed origins (default: `*` in development; production must list real HTTPS origins, e.g. `https://admin.functionfly.com` for the admin SPA, `https://auth.functionfly.com` for the auth service)
 - `CORS_ALLOWED_METHODS`: Allowed HTTP methods (default: `GET, POST, PUT, PATCH, DELETE, OPTIONS`)
 - `CORS_ALLOWED_HEADERS`: Allowed headers
 

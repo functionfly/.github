@@ -128,7 +128,7 @@ Otherwise set in **Fly Dashboard → functionfly-control → Secrets** (or via `
 | `REDIS_ADDR` | `host:6379` | Yes (or use Upstash) |
 | `JWT_SECRET` | Random string | Yes |
 | `API_SHARED_SECRET` | Random string | Yes |
-| `CORS_ALLOWED_ORIGINS` | `https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com` | Yes |
+| `CORS_ALLOWED_ORIGINS` | `https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com,https://auth.functionfly.com` | Yes |
 | `BASE_URL` | `https://api.functionfly.com` | Yes |
 | `FRONTEND_URL` | `https://functionfly.com` | Yes |
 
@@ -146,7 +146,7 @@ flyctl secrets set DB_SSLMODE=require --app functionfly-control
 flyctl secrets set REDIS_ADDR=xxx.upstash.io:6379 --app functionfly-control
 flyctl secrets set JWT_SECRET=xxx --app functionfly-control
 flyctl secrets set API_SHARED_SECRET=xxx --app functionfly-control
-flyctl secrets set CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com --app functionfly-control
+flyctl secrets set CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com,https://auth.functionfly.com --app functionfly-control
 flyctl secrets set BASE_URL=https://api.functionfly.com --app functionfly-control
 flyctl secrets set FRONTEND_URL=https://functionfly.com --app functionfly-control
 ```

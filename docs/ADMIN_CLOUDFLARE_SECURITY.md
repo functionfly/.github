@@ -296,7 +296,7 @@ The admin SPA calls `https://api.functionfly.com` from the browser. The orchestr
 Set on the API (Fly secrets, Kubernetes env, or `.env`):
 
 ```bash
-CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com
+CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://auth.functionfly.com,https://admin.functionfly.com
 ```
 
 Include every deployed frontend origin (comma-separated, no spaces). After changing secrets, redeploy or restart the orchestrator. See `docs/FLY_DEPLOYMENT.md` and `.fly/set-secrets-from-neon.sh`.

@@ -63,7 +63,7 @@ Add `https://admin.functionfly.com` to `CORS_ALLOWED_ORIGINS` in your orchestrat
 
 ```bash
 # Example: update in Fly.io secrets
-fly secrets set CORS_ALLOWED_ORIGINS="https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com,https://dashboard.functionfly.com" -a functionfly-control
+fly secrets set CORS_ALLOWED_ORIGINS="https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://auth.functionfly.com,https://admin.functionfly.com,https://dashboard.functionfly.com" -a functionfly-control
 ```
 
 ### 7. Add Environment Variables in Vercel
