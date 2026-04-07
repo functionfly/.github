@@ -1,10 +1,19 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'path'
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import { defineConfig } from 'vite';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  define: {
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(
+      process.env.VITE_API_BASE_URL || 'https://api.functionfly.com'
+    ),
+    'import.meta.env.VITE_ADMIN_API_BASE_URL': JSON.stringify(
+      process.env.VITE_ADMIN_API_BASE_URL || 'https://api.functionfly.com/v1/admin'
+    ),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -22,17 +31,18 @@ export default defineConfig({
     },
   },
   build: {
-    target: 'ES2020',
-    minify: 'terser',
+    target: 'esnext',
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-ui': ['@radix-ui/themes', 'lucide-react', 'recharts'],
-          'vendor-query': ['@tanstack/react-query'],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('react') && !id.includes('@tanstack')) return 'vendor-react';
+          if (id.includes('@radix-ui') || id.includes('lucide-react') || id.includes('recharts'))
+            return 'vendor-ui';
+          if (id.includes('@tanstack')) return 'vendor-query';
         },
       },
     },
   },
-})
+});

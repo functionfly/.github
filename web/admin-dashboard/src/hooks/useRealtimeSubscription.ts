@@ -48,7 +48,7 @@ export function useRealtimeSubscription({
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.functionfly.com';
     const wsBase = baseUrl.replace(/^http/, 'ws');
     const wsUrl = new URL(`${protocol}//${new URL(wsBase).host}/v1/monitoring/realtime`);
     wsUrl.searchParams.set('token', token);

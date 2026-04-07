@@ -96,18 +96,23 @@ function EmailSettingsTab() {
           <p className="mt-1 text-xs text-gray-500">Set via FROM_EMAIL on the server.</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">SMTP host</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Email transport</label>
           <input
             type="text"
-            placeholder="localhost or smtp.example.com"
+            placeholder="Resend (RESEND_API_KEY) or SMTP_HOST"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-gray-50"
             readOnly
             disabled
           />
-          <p className="mt-1 text-xs text-gray-500">Set via SMTP_HOST (and SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD) on the server.</p>
+          <p className="mt-1 text-xs text-gray-500">
+            Production uses <strong className="font-medium">Resend</strong> when <code className="text-xs bg-gray-100 px-1 rounded">RESEND_API_KEY</code> is set; otherwise{' '}
+            <code className="text-xs bg-gray-100 px-1 rounded">SMTP_*</code>. Webhooks:{' '}
+            <code className="text-xs bg-gray-100 px-1 rounded">RESEND_WEBHOOK_SECRET</code> for{' '}
+            <code className="text-xs bg-gray-100 px-1 rounded">/v1/webhooks/resend</code>.
+          </p>
         </div>
         <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
-          <strong>Note:</strong> To change SMTP or from-address, update environment variables on the orchestrator API server and restart. Admin UI controls for these may be added in a future release.
+          <strong>Note:</strong> To change Resend, SMTP, or from-address, update environment variables on the orchestrator API server and restart.
         </div>
       </div>
     </div>

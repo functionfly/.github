@@ -64,19 +64,27 @@ export function isCsrfTokenExpired(): boolean {
 }
 
 /**
- * Fetch a fresh CSRF token from the server.
- * Should be called on app initialization and when token expires.
+ * Refresh CSRF token from the server.
+ * Makes a GET request to /v1/admin/csrf to get a new token.
  */
 export async function refreshCsrfToken(): Promise<string | null> {
   try {
-    const csrfEndpoint = import.meta.env.VITE_CSRF_ENDPOINT || '/api/admin/csrf';
-    const response = await adminApiClient.get<{ token: string }>(csrfEndpoint);
+    // Import adminApiClient dynamically to avoid circular dependencies
+    const { adminApiClient } = await import('@/lib/api/adminClient');
 
-    if (response?.data?.token) {
+    // Make a direct request to the CSRF endpoint (this will include JWT token)
+    // Note: This request will be intercepted and will try to add CSRF token,
+    // but since we're fetching the token, we need to temporarily skip CSRF for this request
+    const response = await adminApiClient.client.get('/csrf', {
+      _skipCsrf: true, // Custom flag to skip CSRF token addition
+    });
+
+    if (response.data?.token) {
       csrfToken = response.data.token;
       csrfTokenExpiry = Date.now() + CSRF_TOKEN_TTL;
       return csrfToken;
     }
+
     return null;
   } catch (error) {
     console.warn('Failed to refresh CSRF token:', error);

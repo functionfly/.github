@@ -35,6 +35,7 @@ export async function loginAdmin(email: string, password: string): Promise<Admin
 export async function bootstrapAdminSession(token: string): Promise<AdminSessionBootstrapResponse> {
   const apiBaseUrl = getApiBaseUrl();
 
+  // First try to get admin session info (new flow)
   const sessionResponse = await fetch(`${apiBaseUrl}/v1/admin/auth/session`, {
     method: 'GET',
     headers: {
@@ -44,6 +45,33 @@ export async function bootstrapAdminSession(token: string): Promise<AdminSession
 
   if (sessionResponse.ok) {
     return sessionResponse.json() as Promise<AdminSessionBootstrapResponse>;
+  }
+
+  // If admin session not found, try to create one by making an admin request
+  // This will trigger admin session creation on the backend
+  try {
+    const createSessionResponse = await fetch(`${apiBaseUrl}/v1/admin/auth/last-login`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (createSessionResponse.ok) {
+      // Now try again to get the session
+      const retrySessionResponse = await fetch(`${apiBaseUrl}/v1/admin/auth/session`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (retrySessionResponse.ok) {
+        return retrySessionResponse.json() as Promise<AdminSessionBootstrapResponse>;
+      }
+    }
+  } catch (error) {
+    // Continue to fallback
   }
 
   // Fallback for older backends where /v1/admin/auth/session is not available.
