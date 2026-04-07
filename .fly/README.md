@@ -70,7 +70,7 @@ fly secrets set DB_MASTER_KEY_PASSWORD=your-secure-master-key --app functionfly-
 
 # Application (required for CORS and coming-soon frontend)
 fly secrets set BASE_URL=https://api.functionfly.com --app functionfly-control
-fly secrets set CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com --app functionfly-control
+fly secrets set CORS_ALLOWED_ORIGINS=https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://auth.functionfly.com,https://admin.functionfly.com,https://status.functionfly.com --app functionfly-control
 fly secrets set FRONTEND_URL=https://functionfly.com --app functionfly-control
 ```
 

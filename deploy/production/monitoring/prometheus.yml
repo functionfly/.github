@@ -71,3 +71,31 @@ scrape_configs:
     static_configs:
       - targets: ["docker-exporter:9323"]
     scrape_interval: 30s
+
+# =============================================================================
+# Datadog remote_write (dual-write evaluation)
+# =============================================================================
+# Forward all scraped metrics to Datadog alongside local Prometheus storage.
+#
+# Setup:
+#   1. Create the API key file on the Prometheus host:
+#      echo -n "your-dd-api-key" | sudo tee /etc/secrets/datadog_api_key
+#      sudo chmod 600 /etc/secrets/datadog_api_key
+#
+#   2. Reload Prometheus:
+#      curl -X POST http://localhost:9090/-/reload
+#
+# Cleanup (remove the block below and reload Prometheus):
+#   1. Remove this block from prometheus.yml
+#   2. curl -X POST http://localhost:9090/-/reload
+#   3. sudo rm /etc/secrets/datadog_api_key
+#
+remote_write:
+  - url: "https://api.datadoghq.com/api/v1/series"
+    bearer_token_file: /etc/secrets/datadog_api_key
+    queue_config:
+      capacity: 10000
+      max_shards: 5
+      min_shards: 1
+      batch_send_deadline: 5s
+    timeout: 10s

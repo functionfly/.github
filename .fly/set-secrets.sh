@@ -52,7 +52,12 @@ DB_SSLMODE="require"
 REDIS_ADDR=""
 REDIS_PASSWORD=""
 
-# Option B: External Redis (e.g., Upstash, Redis Cloud)
+# Option B: Upstash Redis (recommended for serverless)
+# Get these from https://console.upstash.com > your database > REST API
+UPSTASH_REDIS_REST_URL=""
+UPSTASH_REDIS_REST_TOKEN=""
+
+# Option C: External Redis (e.g., Redis Cloud)
 # REDIS_ADDR="your-redis-host:6379"
 # REDIS_PASSWORD="your-redis-password"
 
@@ -63,7 +68,8 @@ DB_MASTER_KEY_PASSWORD=""  # Generate with: openssl rand -hex 32
 
 # Application Configuration (required for coming-soon / CORS)
 BASE_URL="https://api.functionfly.com"
-CORS_ALLOWED_ORIGINS="https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com"
+AUTH_URL="https://auth.functionfly.com"
+CORS_ALLOWED_ORIGINS="https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com,https://auth.functionfly.com,https://status.functionfly.com"
 FRONTEND_URL="https://functionfly.com"
 
 # =============================================================================
@@ -111,6 +117,13 @@ if [ -n "$REDIS_ADDR" ]; then
     [ -n "$REDIS_PASSWORD" ] && fly secrets set REDIS_PASSWORD="$REDIS_PASSWORD" $APP_ARGS
 fi
 
+# Upstash Redis secrets
+if [ -n "$UPSTASH_REDIS_REST_URL" ]; then
+    echo "Setting Upstash Redis secrets..."
+    fly secrets set UPSTASH_REDIS_REST_URL="$UPSTASH_REDIS_REST_URL" $APP_ARGS
+    [ -n "$UPSTASH_REDIS_REST_TOKEN" ] && fly secrets set UPSTASH_REDIS_REST_TOKEN="$UPSTASH_REDIS_REST_TOKEN" $APP_ARGS
+fi
+
 # Authentication & Security
 if [ -n "$JWT_SECRET" ]; then
     echo "Setting JWT_SECRET..."
@@ -130,6 +143,7 @@ fi
 # Application config
 echo "Setting BASE_URL..."
 fly secrets set BASE_URL="$BASE_URL" $APP_ARGS
+[ -n "$AUTH_URL" ] && fly secrets set AUTH_URL="$AUTH_URL" $APP_ARGS
 [ -n "$CORS_ALLOWED_ORIGINS" ] && fly secrets set CORS_ALLOWED_ORIGINS="$CORS_ALLOWED_ORIGINS" $APP_ARGS
 [ -n "$FRONTEND_URL" ] && fly secrets set FRONTEND_URL="$FRONTEND_URL" $APP_ARGS
 

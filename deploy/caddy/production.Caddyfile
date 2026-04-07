@@ -1,0 +1,132 @@
+# FunctionFly Production Caddy Configuration
+# Complete subdomain routing for production environment
+#
+# Subdomains:
+#   - functionfly.com          (Main website - Cloudflare Pages)
+#   - api.functionfly.com      (API endpoint)
+#   - app.functionfly.com      (Dashboard SPA - Cloudflare Pages)
+#   - docs.functionfly.com     (Documentation - Cloudflare Pages)
+#   - status.functionfly.com   (Status page - Cloudflare Pages)
+#   - edge.functionfly.com     (Edge functions)
+
+# Global settings
+{
+    # Enable automatic HTTPS for production subdomains
+    auto_https off
+
+    # Log to stdout for Docker
+    log {
+        output stdout
+        format json
+    }
+
+    # Email for Let's Encrypt (if enabling HTTPS)
+    email ops@functionfly.com
+}
+
+# ============================================
+# Main Domain - functionfly.com
+# ============================================
+functionfly.com {
+    # Redirect to www or serve main site
+    redir https://www.functionfly.com{uri} permanent
+}
+
+# ============================================
+# WWW Domain - www.functionfly.com
+# ============================================
+www.functionfly.com {
+    # Serve static marketing site or redirect to Cloudflare Pages
+    redir https://functionfly.pages.dev{uri} permanent
+}
+
+# ============================================
+# API Subdomain - api.functionfly.com
+# ============================================
+api.functionfly.com {
+    # Stricter rate limiting for API subdomain
+    rate_limit {
+        zone prod_api_subdomain {
+            key {remote_host}
+            window 1m
+            events 1000
+        }
+    }
+
+    # CORS headers for API
+    header {
+        Access-Control-Allow-Origin "https://app.functionfly.com"
+        Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info"
+        Access-Control-Allow-Credentials "true"
+    }
+
+    # Health check endpoint
+    /healthz {
+        respond "OK" 200
+    }
+
+    # All API routes - proxy to orchestrator
+    reverse_proxy orchestrator-api:8080 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+        header_up X-Production-Environment "true"
+    }
+}
+
+# ============================================
+# Dashboard Subdomain - app.functionfly.com
+# ============================================
+app.functionfly.com {
+    # Serve dashboard from Cloudflare Pages
+    redir https://functionfly-dashboard.pages.dev{uri} permanent
+}
+
+# ============================================
+# Documentation Subdomain - docs.functionfly.com
+# ============================================
+docs.functionfly.com {
+    # Serve docs from Cloudflare Pages
+    redir https://functionfly-docs.pages.dev{uri} permanent
+}
+
+# ============================================
+# Status Page Subdomain - status.functionfly.com
+# ============================================
+status.functionfly.com {
+    # Serve status page from Cloudflare Pages
+    redir https://functionfly-status.pages.dev{uri} permanent
+}
+
+# ============================================
+# Edge Subdomain - edge.functionfly.com
+# ============================================
+edge.functionfly.com {
+    # Cache responses for edge functions
+    @cacheable {
+        path /@*/*
+    }
+
+    cache @cacheable {
+        header_regexp Cache-Control "public"
+        default_max_age 60
+    }
+
+    # High rate limits for edge execution
+    rate_limit {
+        zone prod_edge {
+            key {remote_host}
+            window 1m
+            events 10000
+        }
+    }
+
+    reverse_proxy orchestrator-api:8080 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+        header_up X-Production-Environment "true"
+        header_up X-Edge-Request "true"
+    }
+}

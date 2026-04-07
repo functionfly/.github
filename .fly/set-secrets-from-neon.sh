@@ -54,7 +54,7 @@ fi
 
 # Application URLs (required for API, coming-soon CORS, app + admin SPAs)
 BASE_URL="${BASE_URL:-https://api.functionfly.com}"
-CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com}"
+CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-https://functionfly.com,https://www.functionfly.com,https://app.functionfly.com,https://admin.functionfly.com,https://auth.functionfly.com,https://status.functionfly.com}"
 FRONTEND_URL="${FRONTEND_URL:-https://functionfly.com}"
 
 echo "Setting secrets..."
@@ -88,5 +88,5 @@ echo ""
 fly secrets list $APP_ARGS
 echo ""
 echo "=== Done ==="
-echo "CORS_ALLOWED_ORIGINS includes marketing, app, and admin origins; FRONTEND_URL set for coming-soon / feedback."
+echo "CORS_ALLOWED_ORIGINS includes marketing, app, admin, auth, and status origins; FRONTEND_URL set for coming-soon / feedback."
 echo "If you need Redis: fly redis create --name functionfly-control-redis, then set REDIS_ADDR and re-run."

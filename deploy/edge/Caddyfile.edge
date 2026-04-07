@@ -1,8 +1,20 @@
-# Edge TLS termination for edge.functionfly.com (and *.functionfly.com).
-# Install certs to /etc/ssl/functionfly/ and use this Caddyfile.
-# Listens on 443 only (no port 80) so it works when 80 is already in use.
+# Edge TLS termination for edge.functionfly.com
+# Handles HTTP (health checks) AND HTTPS (Cloudflare → origin)
+# Health checks come via HTTP:80, Cloudflare forwards traffic via HTTPS:443
 
-https://edge.functionfly.com {
+{
+    email ops@functionfly.com
+    auto_https off
+}
+
+# HTTP - for health checks from Cloudflare Load Balancer
+http://edge.functionfly.com {
+    respond /healthz 200
+    respond * 401
+}
+
+# HTTPS - Cloudflare forwards traffic to this
+edge.functionfly.com {
     tls /etc/ssl/functionfly/fullchain.pem /etc/ssl/functionfly/privkey.pem
     reverse_proxy localhost:8080 {
         header_up Host {host}

@@ -1,32 +1,78 @@
-FROM golang:1.25-alpine AS builder
+# =============================================================================
+# Stage 1: Build Go orchestrator
+# =============================================================================
+# Note: golang:1.25 (Debian-based) is required because wasmtime-go v19 bundles
+# pre-compiled libwasmtime.a which is glibc-linked. Alpine/musl linking fails.
+FROM golang:1.25 AS builder-go
 
 WORKDIR /app
 
-# Copy go mod files
+RUN apt-get update && apt-get install -y --no-install-recommends git gcc libc6-dev && rm -rf /var/lib/apt/lists/*
+
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy only dirs needed for orchestrator-api (faster than COPY . . and avoids accidental bloat)
 COPY cmd ./cmd
 COPY internal ./internal
 COPY migrations ./migrations
 
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o orchestrator-api ./cmd/orchestrator-api
+ARG CACHE_BUST
+RUN CGO_ENABLED=0 GOOS=linux go build -o orchestrator-api ./cmd/orchestrator-api
 
-FROM alpine:latest
+# =============================================================================
+# Stage 2: Copy pre-built functionfly-local runtime binary
+# The binary in bin/functionfly-local is compiled for GNU/Linux (glibc) which
+# matches the Debian-based runtime image.
+# =============================================================================
+FROM debian:bookworm-slim AS builder-rust
+COPY bin/functionfly-local /functionfly-local
 
-# Install curl for healthcheck and other utilities
-RUN apk --no-cache add ca-certificates curl wget
+# =============================================================================
+# Stage 3: Runtime image
+# =============================================================================
+# Note: Debian-based is required to run the Go binary compiled against glibc.
+FROM debian:bookworm-slim
 
-WORKDIR /root/
+WORKDIR /app
 
-# Copy the binary and migrations (internal/storage/sql/migrations matches DB version format 20260217200000)
-COPY --from=builder /app/orchestrator-api .
-COPY --from=builder /app/internal/storage/sql/migrations ./internal/storage/sql/migrations
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    tzdata \
+    curl \
+    postgresql-client \
+    redis \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user (Debian-compatible)
+RUN groupadd --gid 1000 functionfly && \
+    useradd --uid 1000 --gid functionfly --shell /bin/sh --create-home functionfly
+
+# Copy Go binary
+COPY --from=builder-go /app/orchestrator-api .
+
+# Copy migrations
+COPY --from=builder-go /app/migrations ./migrations
+
+# Copy Rust runtime binary into the path findLocalRuntime() searches:
+# ./runtimes/local/target/release/functionfly-local
+# (findLocalRuntime() uses paths relative to the working directory /app)
+COPY --from=builder-rust /functionfly-local /app/runtimes/local/target/release/functionfly-local
+
+# Set ownership
+RUN chown -R functionfly:functionfly /app
+
+# Switch to non-root user
+USER functionfly
 
 # Expose port
 EXPOSE 8080
 
-# Run with --skip-migrations. Use shell form so Fly's proxy sees the app listening on 0.0.0.0:8080.
-CMD ["./orchestrator-api", "--skip-migrations"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Run the application
+ENTRYPOINT ["./orchestrator-api"]
+CMD ["--skip-migrations"]
