@@ -5,9 +5,8 @@
 //!
 //! - `ResultCache` — string results from function executions (LRU, 1000 entries)
 //! - `BinaryCache`  — raw binary blobs (WASM modules, packages) stored as `Vec<u8>`
-//!                    without hex-encoding (LRU, 256 entries)
+//!   without hex-encoding (LRU, 256 entries)
 
-use anyhow::Result;
 use lru::LruCache;
 use sha2::{Digest, Sha256};
 use std::num::NonZeroUsize;
@@ -29,6 +28,7 @@ pub struct CachedResult {
 }
 
 /// A cached binary blob with metadata
+#[allow(dead_code)]
 pub struct CachedBinary {
     pub data: Vec<u8>,
     pub cached_at: Instant,
@@ -113,7 +113,7 @@ impl ResultCache {
     /// Binary data (WASM bytes) is stored in the dedicated `binary_cache` as
     /// raw `Vec<u8>` — no hex-encoding — to avoid the 2× memory overhead of
     /// the previous implementation.
-
+    #[allow(dead_code)]
     /// Get cached Python WASM module by source hash
     pub fn get_python_wasm(&mut self, source_hash: &str) -> Option<Vec<u8>> {
         let key = format!("python_wasm:{}", source_hash);
@@ -131,10 +131,13 @@ impl ResultCache {
     /// Store Python WASM module in cache
     pub fn set_python_wasm(&mut self, source_hash: &str, wasm_bytes: &[u8]) {
         let key = format!("python_wasm:{}", source_hash);
-        self.binary_cache.put(key, CachedBinary {
-            data: wasm_bytes.to_vec(),
-            cached_at: Instant::now(),
-        });
+        self.binary_cache.put(
+            key,
+            CachedBinary {
+                data: wasm_bytes.to_vec(),
+                cached_at: Instant::now(),
+            },
+        );
         tracing::debug!("Cached Python WASM module for hash: {}", &source_hash[..16]);
     }
 
@@ -149,7 +152,6 @@ impl ResultCache {
     /// Package caching methods for Enterprise tier.
     ///
     /// Package data is stored in the dedicated `binary_cache` as raw `Vec<u8>`.
-
     /// Get cached package data by package name and version
     pub fn get_package(&mut self, package_name: &str, version: &str) -> Option<Vec<u8>> {
         let key = format!("package:{}@{}", package_name, version);
@@ -167,10 +169,13 @@ impl ResultCache {
     /// Store package data in cache
     pub fn set_package(&mut self, package_name: &str, version: &str, package_data: &[u8]) {
         let key = format!("package:{}@{}", package_name, version);
-        self.binary_cache.put(key, CachedBinary {
-            data: package_data.to_vec(),
-            cached_at: Instant::now(),
-        });
+        self.binary_cache.put(
+            key,
+            CachedBinary {
+                data: package_data.to_vec(),
+                cached_at: Instant::now(),
+            },
+        );
         tracing::debug!("Cached package: {}@{}", package_name, version);
     }
 
@@ -179,7 +184,10 @@ impl ResultCache {
         let key = format!("deps:{}", requirements_hash);
         if let Some(cached) = self.cache.get(&key) {
             if cached.cached_at.elapsed() < self.ttl {
-                tracing::debug!("Dependency resolution cache hit for hash: {}", &requirements_hash[..16]);
+                tracing::debug!(
+                    "Dependency resolution cache hit for hash: {}",
+                    &requirements_hash[..16]
+                );
                 return Some(cached.result.clone());
             } else {
                 self.cache.pop(&key);
@@ -189,13 +197,23 @@ impl ResultCache {
     }
 
     /// Store dependency resolution result
-    pub fn set_dependency_resolution(&mut self, requirements_hash: &str, resolution_result: String) {
+    pub fn set_dependency_resolution(
+        &mut self,
+        requirements_hash: &str,
+        resolution_result: String,
+    ) {
         let key = format!("deps:{}", requirements_hash);
-        self.cache.put(key, CachedResult {
-            result: resolution_result,
-            cached_at: Instant::now(),
-        });
-        tracing::debug!("Cached dependency resolution for hash: {}", &requirements_hash[..16]);
+        self.cache.put(
+            key,
+            CachedResult {
+                result: resolution_result,
+                cached_at: Instant::now(),
+            },
+        );
+        tracing::debug!(
+            "Cached dependency resolution for hash: {}",
+            &requirements_hash[..16]
+        );
     }
 
     /// Generate hash for package requirements
@@ -226,10 +244,13 @@ impl ResultCache {
     /// Cache the RustPython/Micropython runtime bytes
     pub fn set_rustpython_runtime(&mut self, wasm_bytes: &[u8]) {
         let key = "rustpython_runtime".to_string();
-        self.binary_cache.put(key, CachedBinary {
-            data: wasm_bytes.to_vec(),
-            cached_at: Instant::now(),
-        });
+        self.binary_cache.put(
+            key,
+            CachedBinary {
+                data: wasm_bytes.to_vec(),
+                cached_at: Instant::now(),
+            },
+        );
         tracing::debug!("Cached RustPython runtime ({} bytes)", wasm_bytes.len());
     }
 }

@@ -2,43 +2,47 @@
 
 use anyhow::Context;
 use clap::Parser;
-use lru::LruCache;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 use wasmtime::*;
 use wasmtime_wasi::p1::WasiP1Ctx;
-use wasmtime_wasi::p2::pipe::MemoryOutputPipe;
 
 use crate::cache::ResultCache;
 use crate::config::Config;
+use crate::errors::RuntimeError;
 use crate::kv::SharedKVStore;
 use crate::logging::StructuredLogger;
-use crate::monitoring::{ExecutionMetrics, ResourceMonitor};
+use crate::monitoring::ResourceMonitor;
 use crate::orchestrator_client::{OrchestratorClient, MicroVMExecutionRequest};
-use crate::pool::InstancePool;
-use crate::python::PythonRuntime;
+use crate::pool::{InstancePool, PoolManager, PooledWasmInstance};
+use crate::python::engine::{PythonEngine, PythonSharedState};
+use crate::python::runtime::PythonRuntime;
+use crate::python_pool::PythonRuntimePool;
 use crate::wasi::{WasiContext, WasiLinker};
-
-/// Thread-safe cache for compiled Wasmtime `Module` objects.
-///
-/// Compiling a WASM module from bytes is expensive (tens–hundreds of ms for
-/// non-trivial modules). Caching the compiled `Module` keyed by a SHA-256 hash
-/// of the WASM bytes avoids recompilation on every invocation.
-///
-/// `Module` is `Clone` and safe to share across threads.
-type ModuleCache = Arc<std::sync::Mutex<LruCache<String, Module>>>;
-
-/// Maximum number of compiled modules to keep in the cache.
-const MODULE_CACHE_CAPACITY: usize = 64;
 
 // serde_json is used in the PythonWasm execution branch to build the augmented
 // input payload that carries the Python source code to the CPython-WASM binary.
 #[allow(unused_imports)]
-use serde_json;
+use serde_json as _;
+
+/// Check if an error message indicates an epoch deadline (timeout) failure.
+/// Wasmtime uses epoch-based interruption for wall-clock timeouts.
+fn is_epoch_deadline_error(msg: &str) -> bool {
+    msg.contains("deadline") || msg.contains("epoch") || msg.contains("interruption")
+}
+
+/// Convert epoch deadline errors to RuntimeError::timeout() for consistent error handling.
+/// This ensures timeout errors are properly categorized as ErrorKind::TimeoutExceeded.
+fn convert_timeout_error(err: anyhow::Error, timeout_ms: u64) -> anyhow::Error {
+    let msg = err.to_string();
+    if is_epoch_deadline_error(&msg) {
+        return anyhow::anyhow!(RuntimeError::timeout(timeout_ms));
+    }
+    err
+}
 
 /// Runtime type for WASM modules
 #[derive(Debug, Clone, PartialEq)]
@@ -94,6 +98,8 @@ pub struct SharedState {
     pub monitor: Arc<ResourceMonitor>,
     /// MicroVM orchestrator client (for Enterprise tier)
     pub orchestrator_client: Option<Arc<OrchestratorClient>>,
+    /// WASM instance pool manager for warm-instance reuse
+    pub wasm_pool: Option<Arc<PoolManager>>,
 }
 
 impl SharedState {
@@ -108,19 +114,43 @@ impl SharedState {
             None
         };
 
-        // Create WASM engine with logger and orchestrator client
+        // Create shared Python state for RustPython fallback execution (before WasmEngine)
+        let python_shared_state = match PythonSharedState::new(config.clone().into()) {
+            Ok(state) => {
+                tracing::info!("Shared Python engine initialized");
+                Some(Arc::new(state))
+            }
+            Err(e) => {
+                tracing::warn!("Failed to create shared Python engine: {}. \
+                    RustPython fallback will create engines per-request.", e);
+                None
+            }
+        };
+
+        // Create WASM engine with logger, orchestrator client, and python shared state
         let engine = match WasmEngine::with_config(
             config.clone(),
             None,
             logger.clone(),
             orchestrator_client.clone(),
             security_monitor,
+            python_shared_state.clone(),
         ) {
             Ok(e) => e,
             Err(e) => {
                 tracing::error!("Failed to create WASM engine: {}", e);
                 panic!("Failed to create WASM engine: {}", e);
             }
+        };
+
+        // Create WASM pool manager if enabled
+        let wasm_pool = if config.wasm_pool_enabled {
+            Some(Arc::new(PoolManager::new(
+                config.wasm_pool_max_concurrent,
+                config.wasm_pool_max_idle,
+            )))
+        } else {
+            None
         };
 
         Self {
@@ -132,6 +162,7 @@ impl SharedState {
             logger: logger.clone(),
             monitor: Arc::new(ResourceMonitor::new(Some(Arc::new(logger)))),
             orchestrator_client,
+            wasm_pool,
         }
     }
 }
@@ -151,15 +182,16 @@ pub struct WasmEngine {
     engine: Engine,
     config: Config,
     wasi_linker: Option<Arc<WasiLinker>>,
+    #[allow(dead_code)]
     kv_store: Option<SharedKVStore>,
+    #[allow(dead_code)]
     logger: StructuredLogger,
     orchestrator_client: Option<Arc<OrchestratorClient>>,
+    #[allow(dead_code)]
     security_monitor: Arc<crate::security::SecurityMonitor>,
+    /// Shared Python engine for RustPython fallback execution
+    python_shared_state: Option<Arc<PythonSharedState>>,
 
-    /// LRU cache of compiled `Module` objects keyed by SHA-256 hash of WASM bytes.
-    /// Avoids recompiling the same module on every invocation (compilation is
-    /// expensive: tens–hundreds of ms for non-trivial modules).
-    module_cache: ModuleCache,
     /// AOT compilation cache: wasm_hash → compiled bytes.
     aot_cache: Arc<std::sync::RwLock<HashMap<String, AotCacheEntry>>>,
     /// Monotonic counter for LRU eviction ordering.
@@ -168,9 +200,10 @@ pub struct WasmEngine {
 
 impl WasmEngine {
     /// Create a new Wasm engine
+    #[allow(dead_code)]
     pub fn new(logger: StructuredLogger, security_monitor: Arc<crate::security::SecurityMonitor>) -> anyhow::Result<Self> {
         let config = Config::parse();
-        Self::with_config(config, None, logger, None, security_monitor)
+        Self::with_config(config, None, logger, None, security_monitor, None)
     }
 
     /// Create engine with explicit config
@@ -180,6 +213,7 @@ impl WasmEngine {
         logger: StructuredLogger,
         orchestrator_client: Option<Arc<OrchestratorClient>>,
         security_monitor: Arc<crate::security::SecurityMonitor>,
+        python_shared_state: Option<Arc<PythonSharedState>>,
     ) -> anyhow::Result<Self> {
         // Configure Wasmtime
         let mut wasm_config = wasmtime::Config::new();
@@ -213,11 +247,6 @@ impl WasmEngine {
             None
         };
 
-        // Create module cache for compiled WASM modules
-        let module_cache = Arc::new(std::sync::Mutex::new(
-            LruCache::new(NonZeroUsize::new(MODULE_CACHE_CAPACITY).unwrap()),
-        ));
-
         Ok(Self {
             engine,
             config,
@@ -226,14 +255,17 @@ impl WasmEngine {
             logger,
             orchestrator_client,
             security_monitor,
-            module_cache,
+            python_shared_state,
             aot_cache: Arc::new(std::sync::RwLock::new(HashMap::new())),
             aot_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         })
     }
 
     /// Compute a SHA-256 hash of WASM bytes for use as a module cache key.
-    fn wasm_hash(wasm_bytes: &[u8]) -> String {
+    ///
+    /// This hash is used for AOT compilation cache keys and module identification.
+    #[allow(dead_code)]
+    pub fn wasm_hash(wasm_bytes: &[u8]) -> String {
         let mut hasher = Sha256::new();
         hasher.update(wasm_bytes);
         hex::encode(hasher.finalize())
@@ -244,10 +276,31 @@ impl WasmEngine {
         &self.engine
     }
 
+    /// Get the WASI linker if available
+    pub fn wasi_linker(&self) -> Option<&Arc<crate::wasi::WasiLinker>> {
+        self.wasi_linker.as_ref()
+    }
+
     /// Execute a function with the given input
-    pub async fn execute(&self, wasm_bytes: &[u8], input: &str, config: &Config) -> anyhow::Result<String> {
+    ///
+    /// If `python_pool` is provided and the runtime is Python, the pooled
+    /// interpreter will be used for efficient reuse.
+    /// Otherwise a fresh interpreter is created per call.
+    ///
+    /// If `micropython_executor` is provided and the runtime is Python with
+    /// MicroPython enabled, the MicroPython executor will be used for WASM-based
+    /// Python execution with module linking support.
+    pub async fn execute(
+        &self,
+        wasm_bytes: &[u8],
+        input: &str,
+        config: &Config,
+        python_pool: Option<Arc<PythonRuntimePool>>,
+        micropython_executor: Option<Arc<crate::micropython::MicroPythonExecutor>>,
+    ) -> anyhow::Result<String> {
         // Detect runtime type
         let runtime_type = self.detect_runtime_type(wasm_bytes);
+        tracing::debug!("Executing function with runtime: {}", runtime_type.display_name());
 
         match runtime_type {
             RuntimeType::Python => {
@@ -255,18 +308,83 @@ impl WasmEngine {
                 let wasm_bytes = wasm_bytes.to_vec();
                 let input = input.to_string();
                 let config = config.clone();
+                let python_pool = python_pool.clone();
+                let micropython_executor = micropython_executor.clone();
 
-                tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
-                    // Create Python runtime directly for synchronous execution
-                    let python_config = crate::python::runtime::PythonConfig::from(config);
-                    let runtime = crate::python::runtime::PythonRuntime::new(python_config)?;
-                    // For Python execution, treat the wasm_bytes as direct Python source code
-                    let python_code = String::from_utf8_lossy(&wasm_bytes);
-                    // Execute synchronously
-                    runtime.execute_sync(&python_code, &input)
-                })
-                .await
-                .context("Failed to execute Python in blocking task")?
+                let timeout_ms = config.timeout_ms;
+                let timeout_duration = std::time::Duration::from_millis(timeout_ms);
+
+                // Try MicroPython executor first if available (uses WASM module linking)
+                if let Some(ref mp_exec) = micropython_executor {
+                    tracing::debug!("Using MicroPython executor for Python execution");
+
+                    let mp_exec_clone = mp_exec.clone();
+                    let blocking_task = tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
+                        let python_code = String::from_utf8_lossy(&wasm_bytes);
+                        mp_exec_clone.execute_with_code(&python_code, &input)
+                    });
+
+                    let timeout_future: tokio::time::Timeout<tokio::task::JoinHandle<anyhow::Result<String>>> = tokio::time::timeout(timeout_duration, blocking_task);
+                    let timeout_result = timeout_future.await;
+
+                    match timeout_result {
+                        Ok(join_result) => {
+                            match join_result {
+                                Ok(Ok(value)) => Ok::<String, anyhow::Error>(value),
+                                Ok(Err(e)) => Err::<String, anyhow::Error>(anyhow::anyhow!("MicroPython execution failed: {}", e)),
+                                Err(e) => Err::<String, anyhow::Error>(anyhow::anyhow!("MicroPython blocking task join error: {}", e)),
+                            }
+                        }
+                        Err(_) => Err::<String, anyhow::Error>(anyhow::anyhow!(RuntimeError::timeout(timeout_ms))),
+                    }
+                } else {
+                    // Fall back to RustPython via pool, shared state, or fresh interpreter
+                    // If pool is available, acquire before spawning blocking task
+                    let pooled_guard = if let Some(ref pool) = python_pool {
+                        match pool.acquire().await {
+                            Ok(guard) => Some(guard),
+                            Err(e) => {
+                                tracing::warn!("Failed to acquire Python runtime from pool: {}", e);
+                                None
+                            }
+                        }
+                    } else {
+                        None
+                    };
+
+                    // Clone shared Python state for use in blocking task
+                    let python_shared_state = self.python_shared_state.clone();
+
+                    let blocking_task = tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
+                        // For Python execution, treat the wasm_bytes as direct Python source code
+                        let python_code = String::from_utf8_lossy(&wasm_bytes);
+
+                        // Use pooled interpreter if available, otherwise use shared state, otherwise create fresh one
+                        if let Some(guard) = pooled_guard {
+                            guard.execute_sync(&python_code, &input)
+                        } else if let Some(ref state) = python_shared_state {
+                            state.execute_sync(&python_code, &input)
+                        } else {
+                            let engine_config = config.clone();
+                            let engine = PythonEngine::new(engine_config)?;
+                            engine.execute_sync(&python_code, &input)
+                        }
+                    });
+
+                    let timeout_future: tokio::time::Timeout<tokio::task::JoinHandle<anyhow::Result<String>>> = tokio::time::timeout(timeout_duration, blocking_task);
+                    let timeout_result = timeout_future.await;
+
+                    match timeout_result {
+                        Ok(join_result) => {
+                            match join_result {
+                                Ok(Ok(value)) => Ok::<String, anyhow::Error>(value),
+                                Ok(Err(e)) => Err::<String, anyhow::Error>(convert_timeout_error(e, timeout_ms)),
+                                Err(e) => Err::<String, anyhow::Error>(anyhow::anyhow!("Python blocking task join error: {}", e)),
+                            }
+                        }
+                        Err(_) => Err::<String, anyhow::Error>(anyhow::anyhow!(RuntimeError::timeout(timeout_ms))),
+                    }
+                }
             }
             RuntimeType::PythonWasm => {
                 // Phase 2: Execute Python via CPython compiled to WASM.
@@ -279,9 +397,13 @@ impl WasmEngine {
                 let wasi_linker = self.wasi_linker.clone();
                 let python_source = wasm_bytes.to_vec();
                 let aot_cache = self.aot_cache.clone();
-                let aot_counter = self.aot_counter.clone();
+                // aot_counter is reserved for tracking AOT compilation counts if needed later
+                let _aot_counter = self.aot_counter.clone();
 
-                tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
+                let timeout_ms = config.timeout_ms;
+                let timeout_duration = std::time::Duration::from_millis(timeout_ms);
+
+                let blocking_task = tokio::task::spawn_blocking(move || -> anyhow::Result<String> {
                     let cpython_bytes = std::fs::read(&cpython_wasm_path)
                         .with_context(|| format!("Failed to read CPython-WASM binary: {}", cpython_wasm_path))?;
 
@@ -296,9 +418,9 @@ impl WasmEngine {
 
                     let precompiled = if config.aot_cache_enabled {
                         if let Ok(cache) = aot_cache.read() {
-                            cache.get(&cpython_hash).map(|e| {
+                            cache.get(&cpython_hash).and_then(|e| {
                                 unsafe { Module::deserialize(&engine, &e.compiled) }.ok()
-                            }).flatten()
+                            })
                         } else {
                             None
                         }
@@ -307,6 +429,10 @@ impl WasmEngine {
                     };
 
                     if let Some(ref linker) = wasi_linker {
+                        // Log linker configuration for debugging/auditing
+                        let function_key = format!("{}@{}", config.function, config.version);
+                        linker.log_configuration(&function_key);
+
                         // Inject Python source as a WASI env var so CPython can find it
                         let python_source_str = String::from_utf8_lossy(&python_source).to_string();
                         let augmented_input = format!(
@@ -318,9 +444,22 @@ impl WasmEngine {
                     } else {
                         Err(anyhow::anyhow!("WASI linker not available for CPython-WASM execution"))
                     }
-                })
-                .await
-                .context("Failed to execute CPython-WASM in blocking task")?
+                });
+
+                let timeout_future: tokio::time::Timeout<tokio::task::JoinHandle<anyhow::Result<String>>> = tokio::time::timeout(timeout_duration, blocking_task);
+                let timeout_result = timeout_future.await;
+                
+                let output: anyhow::Result<String> = match timeout_result {
+                    Ok(join_result) => {
+                        match join_result {
+                            Ok(Ok(value)) => Ok::<String, anyhow::Error>(value),
+                            Ok(Err(e)) => Err::<String, anyhow::Error>(convert_timeout_error(e, timeout_ms)),
+                            Err(e) => Err::<String, anyhow::Error>(anyhow::anyhow!("CPython-WASM blocking task join error: {}", e)),
+                        }
+                    }
+                    Err(_) => Err::<String, anyhow::Error>(anyhow::anyhow!(RuntimeError::timeout(timeout_ms))),
+                };
+                Ok::<anyhow::Result<String>, anyhow::Error>(output).context("Failed to execute CPython-WASM in blocking task")?
             }
             RuntimeType::Wasm => {
                 // Execute standard WASM module in a blocking task to avoid runtime conflicts.
@@ -351,9 +490,9 @@ impl WasmEngine {
                         // Try AOT cache
                         let precompiled = if config.aot_cache_enabled {
                             if let Ok(cache) = aot_cache.read() {
-                                cache.get(&wasm_hash).map(|e| {
+                                cache.get(&wasm_hash).and_then(|e| {
                                     unsafe { Module::deserialize(&engine, &e.compiled) }.ok()
-                                }).flatten()
+                                })
                             } else {
                                 None
                             }
@@ -387,13 +526,20 @@ impl WasmEngine {
                     }
                 });
 
-                tokio::time::timeout(timeout_duration, blocking_task)
-                    .await
-                    .map_err(|_| anyhow::anyhow!(
-                        "WASM execution timed out after {}ms (wall-clock)",
-                        timeout_ms
-                    ))?
-                    .context("Failed to execute WASM in blocking task")?
+                let timeout_future: tokio::time::Timeout<tokio::task::JoinHandle<anyhow::Result<String>>> = tokio::time::timeout(timeout_duration, blocking_task);
+                let timeout_result = timeout_future.await;
+                
+                let output: anyhow::Result<String> = match timeout_result {
+                    Ok(join_result) => {
+                        match join_result {
+                            Ok(Ok(value)) => Ok::<String, anyhow::Error>(value),
+                            Ok(Err(e)) => Err::<String, anyhow::Error>(convert_timeout_error(e, timeout_ms)),
+                            Err(e) => Err::<String, anyhow::Error>(anyhow::anyhow!("WASM blocking task join error: {}", e)),
+                        }
+                    }
+                    Err(_) => Err::<String, anyhow::Error>(anyhow::anyhow!(RuntimeError::timeout(timeout_ms))),
+                };
+                Ok::<anyhow::Result<String>, anyhow::Error>(output).context("Failed to execute WASM in blocking task")?
             }
             RuntimeType::PythonMicroVM => {
                 // Execute in MicroVM using the orchestrator
@@ -412,13 +558,16 @@ impl WasmEngine {
                                 "MicroVM orchestrator is not available, falling back to RustPython \
                                  (microvm_fallback_allowed=true)"
                             );
-                            let python_config = crate::python::runtime::PythonConfig::from(config.clone());
-                            let runtime = crate::python::runtime::PythonRuntime::new(python_config)?;
-                            let python_code = String::from_utf8_lossy(&wasm_bytes);
-                            runtime.execute_sync(&python_code, input)
+                            let python_code = String::from_utf8_lossy(wasm_bytes);
+                            if let Some(ref state) = self.python_shared_state {
+                                state.execute_sync(&python_code, input)
+                            } else {
+                                let engine = PythonEngine::new(config.clone())?;
+                                engine.execute_sync(&python_code, input)
+                            }
                         } else {
                             // Execute using MicroVM orchestrator with tier-based resource allocation
-                            let (memory_mb, vcpus) = Self::get_tier_resources(&config);
+                            let (memory_mb, vcpus) = Self::get_tier_resources(config);
                             // Deduplicate packages and whitelist entries before forwarding.
                             let packages: Vec<String> = {
                                 let mut seen = std::collections::HashSet::new();
@@ -435,7 +584,7 @@ impl WasmEngine {
                                     .collect()
                             };
                             let request = MicroVMExecutionRequest {
-                                code: String::from_utf8_lossy(&wasm_bytes).to_string(),
+                                code: String::from_utf8_lossy(wasm_bytes).to_string(),
                                 input: input.to_string(),
                                 handler: "handler".to_string(),
                                 packages,
@@ -476,10 +625,13 @@ impl WasmEngine {
                                          (microvm_fallback_allowed=true): {}",
                                         e
                                     );
-                                    let python_config = crate::python::runtime::PythonConfig::from(config.clone());
-                                    let runtime = crate::python::runtime::PythonRuntime::new(python_config)?;
-                                    let python_code = String::from_utf8_lossy(&wasm_bytes);
-                                    runtime.execute_sync(&python_code, input)
+                                    let python_code = String::from_utf8_lossy(wasm_bytes);
+                                    if let Some(ref state) = self.python_shared_state {
+                                        state.execute_sync(&python_code, input)
+                                    } else {
+                                        let engine = PythonEngine::new(config.clone())?;
+                                        engine.execute_sync(&python_code, input)
+                                    }
                                 }
                             }
                         }
@@ -496,10 +648,13 @@ impl WasmEngine {
                             "MicroVM runtime requested but orchestrator not configured, \
                              falling back to RustPython (microvm_fallback_allowed=true)"
                         );
-                        let python_config = crate::python::runtime::PythonConfig::from(config.clone());
-                        let runtime = crate::python::runtime::PythonRuntime::new(python_config)?;
-                        let python_code = String::from_utf8_lossy(&wasm_bytes);
-                        runtime.execute_sync(&python_code, input)
+                        let python_code = String::from_utf8_lossy(wasm_bytes);
+                        if let Some(ref state) = self.python_shared_state {
+                            state.execute_sync(&python_code, input)
+                        } else {
+                            let engine = PythonEngine::new(config.clone())?;
+                            engine.execute_sync(&python_code, input)
+                        }
                     }
                 }
             }
@@ -510,9 +665,18 @@ impl WasmEngine {
     pub fn detect_runtime_type(&self, wasm_bytes: &[u8]) -> RuntimeType {
         // Check if it's a Python WASM module
         if PythonRuntime::is_python_code(wasm_bytes) {
-            // Explicit manifest/runtime selection (Enterprise MicroVM)
-            if self.config.runtime == "python-microvm" && self.orchestrator_client.is_some() {
-                return RuntimeType::PythonMicroVM;
+            // Use RuntimeType::from_str for explicit runtime selection from config
+            if let Some(runtime) = RuntimeType::from_str(&self.config.runtime) {
+                // Explicit manifest/runtime selection from config
+                if runtime.requires_microvm() && self.orchestrator_client.is_some() {
+                    return runtime;
+                }
+                if runtime == RuntimeType::PythonWasm && self.config.supports_cpython_wasm() {
+                    return runtime;
+                }
+                if runtime == RuntimeType::Python {
+                    return runtime;
+                }
             }
             // For Python code, check if we should use MicroVM based on tier
             if self.config.supports_microvm() && self.orchestrator_client.is_some() {
@@ -673,13 +837,64 @@ impl WasmEngine {
         let tier = config.get_budget_tier();
         let specs = NodeSpecs::for_tier(&tier);
 
-        // Allocate resources based on tier
+        // Allocate resources based on tier using NodeSpecs
         match tier {
-            BudgetTier::UltraLow => (256, 1), // Minimal resources for ultra-low tier
-            BudgetTier::Low => (512, 1),      // Basic resources for low tier
-            BudgetTier::Medium => (1024, 2),  // Better resources for medium tier
-            BudgetTier::High => (2048, 4),    // Full resources for high tier
+            BudgetTier::UltraLow => (specs.max_memory_per_fn_mb as u32, 1),
+            BudgetTier::Low => (specs.max_memory_per_fn_mb as u32, 1),
+            BudgetTier::Medium => (specs.max_memory_per_fn_mb as u32, specs.vcpu as u32),
+            BudgetTier::High => (specs.max_memory_per_fn_mb as u32, specs.vcpu as u32),
         }
+    }
+
+    /// Create a `PooledWasmInstance` from a compiled module and WASI context.
+    ///
+    /// This is used to pre-warm the pool with compiled instances.
+    pub fn create_pooled_instance(
+        &self,
+        module: Module,
+        wasi_ctx: WasiP1Ctx,
+        function_key: String,
+    ) -> PooledWasmInstance {
+        let pipe_capacity = if self.config.max_output_bytes > 0 {
+            self.config.max_output_bytes
+        } else {
+            1024 * 1024
+        };
+        PooledWasmInstance::new(module, wasi_ctx, function_key, pipe_capacity)
+    }
+
+    /// Compile module and create a pooled instance for pre-warming.
+    ///
+    /// Returns the compiled module (for reuse) and the pooled instance.
+    #[allow(dead_code)]
+    pub fn compile_and_create_pooled_instance(
+        &self,
+        wasm_bytes: &[u8],
+        function_key: String,
+    ) -> anyhow::Result<(Module, PooledWasmInstance)> {
+        let module = self.get_or_compile_module(wasm_bytes)?;
+
+        // Create WASI context for the pooled instance
+        let wasi_ctx = WasiContext::new_with_input(&self.config, function_key.clone(), "")?;
+        let pooled = self.create_pooled_instance(
+            module.clone(),
+            wasi_ctx.ctx,
+            function_key,
+        );
+
+        Ok((module, pooled))
+    }
+
+    /// Get a WASI context for the given function key.
+    ///
+    /// This creates a fresh WASI context. For pooled execution, use the
+    /// pool's `PooledWasmInstanceGuard` instead.
+    pub fn create_wasi_context(
+        &self,
+        function_key: &str,
+        input: &str,
+    ) -> anyhow::Result<WasiContext> {
+        WasiContext::new_with_input(&self.config, function_key.to_string(), input)
     }
 }
 
@@ -712,7 +927,7 @@ impl wasmtime::ResourceLimiter for FunctionMemoryLimiter {
         _current: usize,
         desired: usize,
         _maximum: Option<usize>,
-    ) -> anyhow::Result<bool> {
+    ) -> wasmtime::Result<bool> {
         if desired > self.max_bytes {
             tracing::warn!(
                 "FunctionMemoryLimiter: denied memory growth to {} bytes (limit {} bytes)",
@@ -729,17 +944,16 @@ impl wasmtime::ResourceLimiter for FunctionMemoryLimiter {
         _current: usize,
         _desired: usize,
         _maximum: Option<usize>,
-    ) -> anyhow::Result<bool> {
+    ) -> wasmtime::Result<bool> {
         Ok(true)
     }
 }
-
-/// Thread-local storage for the per-execution memory limiter.
-///
-/// Because `Store<WasiP1Ctx>` uses an opaque data type that we cannot extend,
-/// we store the limiter in a thread-local and hand out `&mut` references to it
-/// through `store.limiter()`.  Each `spawn_blocking` task gets its own OS
-/// thread, so this is safe for concurrent execution.
+// Thread-local storage for the per-execution memory limiter.
+//
+// Because `Store<WasiP1Ctx>` uses an opaque data type that we cannot extend,
+// we store the limiter in a thread-local and hand out `&mut` references to it
+// through `store.limiter()`.  Each `spawn_blocking` task gets its own OS
+// thread, so this is safe for concurrent execution.
 std::thread_local! {
     static MEMORY_LIMITER: std::cell::RefCell<Option<FunctionMemoryLimiter>> =
         const { std::cell::RefCell::new(None) };
@@ -827,12 +1041,12 @@ fn execute_wasi_sync_inner(
         m
     } else {
         Module::new(engine, wasm_bytes)
-            .map_err(|e| anyhow::anyhow!("Failed to compile Wasm module: {}", e))?
+            .map_err(|e| anyhow::anyhow!(RuntimeError::wasm_compilation(e.to_string())))?
     };
 
     // Instantiate module with WASI
     let instance = linker.linker().instantiate(&mut store, &module)
-        .map_err(|e| anyhow::anyhow!("Failed to instantiate Wasm module with WASI: {}", e))?;
+        .map_err(|e| anyhow::anyhow!(RuntimeError::wasm_instantiation(e.to_string())))?;
 
     // Execute the function. Prefer handler when we have input so Python WASM (and other
     // handler-based modules) receive input and can return a value via memory; otherwise try _start/main.
@@ -844,7 +1058,7 @@ fn execute_wasi_sync_inner(
             let input_len = input.len() as i32;
 
             let result_ptr = func.call(&mut store, (input_ptr, input_len)).map_err(|e| {
-                anyhow::anyhow!("Failed to execute handler function: {}", e)
+                anyhow::anyhow!(RuntimeError::wasm_execution(format!("Handler function failed: {}", e)))
             })?;
             tracing::info!("Handler function returned: {}", result_ptr);
             Some(result_ptr)
@@ -852,13 +1066,13 @@ fn execute_wasi_sync_inner(
             return Err(anyhow::anyhow!("No memory export found for handler function"));
         }
     } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut store, "_start") {
-        func.call(&mut store, ()).map_err(|e| anyhow::anyhow!("Failed to execute _start function: {}", e))?;
+        func.call(&mut store, ()).map_err(|e| anyhow::anyhow!(RuntimeError::wasm_execution(format!("_start function failed: {}", e))))?;
         None
     } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut store, "main") {
-        func.call(&mut store, ()).map_err(|e| anyhow::anyhow!("Failed to execute main function: {}", e))?;
+        func.call(&mut store, ()).map_err(|e| anyhow::anyhow!(RuntimeError::wasm_execution(format!("main function failed: {}", e))))?;
         None
     } else {
-        return Err(anyhow::anyhow!("No _start, main, or handler function found in WASM module"));
+        return Err(anyhow::anyhow!(RuntimeError::function_not_found("handler, _start, or main")));
     };
 
     // Log execution time
@@ -900,7 +1114,7 @@ fn execute_wasi_sync_inner(
     let stderr = stderr_pipe.contents();
 
     drop(store);
-    drop(instance);
+    let _ = instance;
     drop(module);
 
     let pipe_capacity = if config.max_output_bytes > 0 {
@@ -974,214 +1188,6 @@ fn read_handler_result(memory: &wasmtime::Memory, store: &impl wasmtime::AsConte
     memory::read_string(memory, store, result_ptr)
 }
 
-impl WasmEngine {
-    /// Execute function with WASI support and monitoring (legacy async method)
-    async fn execute_with_wasi(&self, wasm_bytes: &[u8], input: &str, monitor: Option<&Arc<ResourceMonitor>>, function_name: &str, function_version: &str) -> anyhow::Result<String> {
-        let execution_start = std::time::Instant::now();
-
-        let linker = self.wasi_linker.as_ref()
-            .context("WASI linker not available")?;
-
-        // Create WASI context
-        let function_key = format!("{}@{}", function_name, function_version);
-        let wasi_ctx = WasiContext::new(&self.config, function_key)?;
-        let stdout_pipe = wasi_ctx.stdout_pipe.clone();
-        let stderr_pipe = wasi_ctx.stderr_pipe.clone();
-
-        // Create store with WASI context
-        let mut store = Store::new(&self.engine, wasi_ctx.ctx);
-
-        // Set fuel limit for execution (configurable CPU control)
-        let fuel_limit = if self.config.cpu_fuel_limit > 0 {
-            self.config.cpu_fuel_limit
-        } else {
-            1_000_000 // Default fallback
-        };
-        let initial_fuel = store.get_fuel().unwrap_or(0);
-        store.set_fuel(fuel_limit)?;
-
-        // Enable epoch interruption for CPU time limits
-        if self.config.enable_monitoring {
-            store.set_epoch_deadline(1); // Set initial deadline
-        }
-
-        // Compile module
-        let module = Module::new(&self.engine, wasm_bytes)
-            .map_err(|e| anyhow::anyhow!("Failed to compile Wasm module: {}", e))?;
-
-        // Instantiate module with WASI
-        let instance = linker.linker().instantiate(&mut store, &module)
-            .map_err(|e| anyhow::anyhow!("Failed to instantiate Wasm module with WASI: {}", e))?;
-
-        // Track initial memory before execution
-        let initial_memory_mb = self.estimate_memory_usage(&mut store, &instance);
-
-        // Execute the function
-        let result = self.execute_wasi_instance(&mut store, &instance, &stdout_pipe, &stderr_pipe);
-
-        // Track final memory and use it as peak (conservative estimate)
-        let final_memory_mb = self.estimate_memory_usage(&mut store, &instance);
-        let peak_memory_mb = final_memory_mb.max(initial_memory_mb);
-
-        // Calculate resource usage
-        let execution_time = execution_start.elapsed();
-        let fuel_used = initial_fuel - store.get_fuel().unwrap_or(0);
-        let memory_used = self.estimate_memory_usage(&mut store, &instance);
-
-        // Record monitoring metrics if enabled
-        if let Some(monitor) = monitor {
-            if self.config.enable_monitoring {
-                let metrics = crate::monitoring::ExecutionMetrics {
-                    function_name: function_name.to_string(),
-                    function_version: function_version.to_string(),
-                    execution_time_ms: execution_time.as_millis() as u64,
-                    cpu_fuel_used: fuel_used,
-                    memory_used_mb: memory_used,
-                    peak_memory_mb: peak_memory_mb,
-                    cache_hit: false, // Will be set by caller
-                    cold_start: true, // Will be set by caller
-                    error_occurred: result.is_err(),
-                    timestamp: std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs(),
-                };
-
-                let monitor_clone = Arc::clone(monitor);
-                tokio::spawn(async move {
-                    monitor_clone.record_execution(metrics).await;
-                });
-            }
-        }
-
-        result
-    }
-
-    /// Execute WASI instance and capture output
-    fn execute_wasi_instance(&self, store: &mut Store<WasiP1Ctx>, instance: &Instance, stdout_pipe: &MemoryOutputPipe, stderr_pipe: &MemoryOutputPipe) -> anyhow::Result<String> {
-        // Try to call the main function or _start
-        if let Ok(func) = instance.get_typed_func::<(), ()>(&mut *store, "_start") {
-            // WASI command module - call _start
-            func.call(&mut *store, ()).map_err(|e| anyhow::anyhow!("Failed to execute _start function: {}", e))?;
-        } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut *store, "main") {
-            // Simple main function
-            func.call(&mut *store, ()).map_err(|e| anyhow::anyhow!("Failed to execute main function: {}", e))?;
-        } else {
-            // No entry point found, try to read from memory
-            return self.read_memory_output(&mut *store, instance);
-        }
-
-        // Capture and return stdout/stderr output
-        Self::capture_wasi_output(stdout_pipe, stderr_pipe)
-    }
-
-    /// Estimate memory usage of a WASM instance
-    fn estimate_memory_usage(&self, store: &mut Store<WasiP1Ctx>, instance: &Instance) -> f64 {
-        if let Some(memory) = instance.get_memory(&mut *store, "memory") {
-            let pages = memory.size(store);
-            let bytes = pages * 65536; // WebAssembly page size is 64KB
-            bytes as f64 / (1024.0 * 1024.0) // Convert to MB
-        } else {
-            0.0
-        }
-    }
-
-    /// Capture stdout and stderr output from WASI pipes
-    pub fn capture_wasi_output(stdout_pipe: &MemoryOutputPipe, stderr_pipe: &MemoryOutputPipe) -> anyhow::Result<String> {
-        let mut output = String::new();
-
-        // Read from stdout pipe
-        let stdout_data = stdout_pipe.contents();
-        let stdout_bytes = stdout_data.as_ref();
-        if !stdout_bytes.is_empty() {
-            output.push_str(&String::from_utf8_lossy(stdout_bytes));
-        }
-
-        // Read from stderr pipe
-        let stderr_data = stderr_pipe.contents();
-        let stderr_bytes = stderr_data.as_ref();
-        if !stderr_bytes.is_empty() {
-            if !output.is_empty() {
-                output.push('\n');
-            }
-            output.push_str(&String::from_utf8_lossy(stderr_bytes));
-        }
-
-        Ok(output)
-    }
-
-    /// Execute function without WASI (legacy mode)
-    pub fn execute_without_wasi(&self, wasm_bytes: &[u8], input: &str) -> anyhow::Result<String> {
-        // Compile module
-        let module = Module::new(&self.engine, wasm_bytes)
-            .map_err(|e| anyhow::anyhow!("Failed to compile Wasm module: {}", e))?;
-
-        // Create store with fuel
-        let mut store = Store::new(&self.engine, ());
-        store.set_fuel(1_000_000)?; // 1M fuel units
-
-        // Link module
-          let instance = Instance::new(&mut store, &module, &[])
-            .map_err(|e| anyhow::anyhow!("Failed to instantiate Wasm module: {}", e))?;
-
-        // Get the _start function (or main)
-        let _func = instance
-            .get_typed_func::<(), ()>(&mut store, "_start")
-            .or_else(|_| instance.get_typed_func::<(), ()>(&mut store, "main"))
-            .map_err(|e| anyhow::anyhow!("Failed to find function entry point: {}", e))?;
-
-        // Call the function
-        _func.call(&mut store, ()).map_err(|e| anyhow::anyhow!("Failed to execute function: {}", e))?;
-
-        // Try to read result from memory
-        self.read_memory_output(&mut store, &instance)
-    }
-
-    /// Read output from WebAssembly memory
-    pub fn read_memory_output<T>(&self, store: &mut Store<T>, instance: &Instance) -> anyhow::Result<String> {
-        // Try to read result from memory - look for common output patterns
-        if let Some(memory) = instance.get_memory(&mut *store, "memory") {
-            let data = memory.data(&*store);
-
-            if data.len() > 0 {
-                // Try to find null-terminated string from the beginning
-                let mut end = 0;
-                while end < data.len() && data[end] != 0 {
-                    end += 1;
-                }
-
-                if end > 0 {
-                    return Ok(String::from_utf8_lossy(&data[0..end]).to_string());
-                }
-
-                // Try to find a result at a common location (end of memory)
-                let start = data.len().saturating_sub(1024).max(0);
-                let result_data = &data[start..];
-
-                if let Some(null_pos) = result_data.iter().position(|&b| b == 0) {
-                    if null_pos > 0 {
-                        return Ok(String::from_utf8_lossy(&result_data[0..null_pos]).to_string());
-                    }
-                }
-            }
-        }
-
-        // Fallback - return empty string
-        Ok(String::new())
-    }
-
-    /// Execute with resource limits
-    #[allow(dead_code)]
-    pub async fn execute_with_limits(&self, wasm_bytes: &[u8], input: &str) -> anyhow::Result<String> {
-        // Use tokio timeout to limit execution time
-        let timeout_duration = std::time::Duration::from_millis(self.config.timeout_ms);
-
-        tokio::time::timeout(timeout_duration, self.execute(wasm_bytes, input, &self.config))
-            .await
-            .map_err(|_| anyhow::anyhow!("Execution timeout exceeded"))?
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1191,7 +1197,7 @@ mod tests {
     fn make_engine(config: Config) -> WasmEngine {
         let logger = crate::logging::init_structured_logging(false);
         let security_monitor = Arc::new(crate::security::SecurityMonitor::new());
-        WasmEngine::with_config(config, None, logger, None, security_monitor).unwrap()
+        WasmEngine::with_config(config, None, logger, None, security_monitor, None).unwrap()
     }
 
     #[test]
@@ -1229,7 +1235,7 @@ mod tests {
             "#).unwrap();
 
             let engine = make_engine(config.clone());
-            let result = engine.execute(&wasm_bytes, "test", &config).await;
+            let result = engine.execute(&wasm_bytes, "test", &config, None, None).await;
             assert!(result.is_ok());
         });
     }
@@ -1257,7 +1263,7 @@ mod tests {
 
             let engine = make_engine(config.clone());
             let test_input = "hello world";
-            let result = engine.execute(&wasm_bytes, test_input, &config).await;
+            let result = engine.execute(&wasm_bytes, test_input, &config, None, None).await;
             assert!(result.is_ok());
         });
     }

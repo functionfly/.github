@@ -3,8 +3,8 @@
 //! This module provides the high-level interface for executing Python code
 //! using the linked MicroPython WASM runtime.
 
-use super::errors::{MicroPythonError, Result};
-use super::loader::{LinkedInstance, MicroPythonLoader};
+use super::errors::{ExecutionErrorCode, MicroPythonError, Result};
+use super::loader::MicroPythonLoader;
 use super::memory::{HostState, MemoryLayout};
 use super::wrapper::{WrapperConfig, WrapperGenerator};
 use once_cell::sync::Lazy;
@@ -104,6 +104,7 @@ impl MicroPythonExecutor {
     }
 
     /// Create executor with explicit engine and pre-loaded loader.
+    #[allow(dead_code)]
     pub fn with_loader(engine: Engine, loader: Arc<MicroPythonLoader>, config: ExecutorConfig) -> Self {
         let memory_layout = MemoryLayout::with_heap_size(config.heap_size_kb);
         let wrapper_config = WrapperConfig {
@@ -130,6 +131,11 @@ impl MicroPythonExecutor {
     /// # Returns
     /// The output from the Python execution as a string.
     pub async fn execute(&self, python_code: &str, input: &str) -> Result<String> {
+        self.execute_with_wrapper(python_code, input).await
+    }
+
+    /// Internal execution with full wrapper generation and error handling.
+    async fn execute_with_wrapper(&self, python_code: &str, input: &str) -> Result<String> {
         // Generate wrapper module with embedded Python code
         let wrapper_wasm = self.wrapper_gen.generate(python_code)?;
         let wrapper_module = Module::new(&self.engine, &wrapper_wasm).map_err(|e| {
@@ -142,7 +148,7 @@ impl MicroPythonExecutor {
 
         // Set fuel limit for execution (prevents infinite loops)
         let fuel_limit = self.config.timeout_ms * 1000; // Convert ms to fuel units
-        store.set_fuel(fuel_limit).map_err(|e| {
+        store.set_fuel(fuel_limit).map_err(|_e| {
             MicroPythonError::ExecutionError(-1)
         })?;
 
@@ -155,11 +161,13 @@ impl MicroPythonExecutor {
             .map_err(|e| MicroPythonError::LinkError(format!("mp_js_init not found: {}", e)))?;
 
         let heap_size = (self.config.heap_size_kb * 1024) as i32;
-        let init_result = init_func.call(&mut store, heap_size).map_err(|e| {
+        let init_result = init_func.call(&mut store, heap_size).map_err(|_e| {
             MicroPythonError::ExecutionError(-1)
         })?;
 
         if init_result != 0 {
+            let code = ExecutionErrorCode::from_i32(init_result);
+            tracing::error!(error_code = ?code, description = code.description(), "MicroPython init failed");
             return Err(MicroPythonError::ExecutionError(init_result));
         }
 
@@ -174,9 +182,19 @@ impl MicroPythonExecutor {
 
         let exec_result = exec_func
             .call(&mut store, (code_base as i32, code_len))
-            .map_err(|e| MicroPythonError::ExecutionError(-1))?;
+            .map_err(|e| {
+                let err_str = e.to_string();
+                if err_str.contains("fuel") || err_str.contains("out of fuel") || err_str.contains("fuel was not consumed") {
+                    tracing::error!("MicroPython execution timed out (fuel exhausted)");
+                    MicroPythonError::TimeoutError
+                } else {
+                    MicroPythonError::ExecutionError(-1)
+                }
+            })?;
 
         if exec_result != 0 {
+            let code = ExecutionErrorCode::from_i32(exec_result);
+            tracing::error!(error_code = ?code, description = code.description(), "MicroPython execution failed");
             return Err(MicroPythonError::ExecutionError(exec_result));
         }
 
@@ -208,6 +226,7 @@ impl MicroPythonExecutor {
     ///
     /// This is useful for testing and blocking contexts. Uses a shared runtime
     /// so a new Tokio runtime is not created on every call.
+    #[allow(dead_code)]
     pub fn execute_sync(&self, python_code: &str, input: &str) -> Result<String> {
         EXECUTOR_RUNTIME.block_on(self.execute(python_code, input))
     }
@@ -218,8 +237,30 @@ impl MicroPythonExecutor {
     }
 
     /// Update the executor configuration.
+    #[allow(dead_code)]
     pub fn set_config(&mut self, config: ExecutorConfig) {
         self.config = config;
+    }
+
+    /// Get the loader reference
+    #[allow(dead_code)]
+    pub fn loader(&self) -> &Arc<MicroPythonLoader> {
+        &self.loader
+    }
+
+    pub fn is_ready(&self) -> bool {
+        true
+    }
+}
+
+impl MicroPythonExecutor {
+    /// Execute with a specific Python code string.
+    /// This is the primary method for executing MicroPython code.
+    pub fn execute_with_code(&self, python_code: &str, input: &str) -> anyhow::Result<String> {
+        let runtime = tokio::runtime::Runtime::new()
+            .map_err(|e| anyhow::anyhow!("Failed to create runtime: {}", e))?;
+        runtime.block_on(self.execute(python_code, input))
+            .map_err(|e| anyhow::anyhow!("MicroPython execution failed: {}", e))
     }
 }
 

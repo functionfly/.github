@@ -24,6 +24,7 @@
 /// Syscall numbers for x86_64 Linux.
 #[cfg(target_arch = "x86_64")]
 mod syscall_nr {
+    // Core syscalls used in the strict seccomp profile
     pub const READ: i64 = 0;
     pub const WRITE: i64 = 1;
     pub const CLOSE: i64 = 3;
@@ -33,18 +34,14 @@ mod syscall_nr {
     pub const MPROTECT: i64 = 10;
     pub const MUNMAP: i64 = 11;
     pub const BRK: i64 = 12;
-    pub const IOCTL: i64 = 16;
     pub const PREAD64: i64 = 17;
     pub const PWRITE64: i64 = 18;
     pub const READV: i64 = 19;
     pub const WRITEV: i64 = 20;
-    pub const PIPE: i64 = 22;
-    pub const SELECT: i64 = 23;
-    pub const DUP: i64 = 32;
-    pub const DUP2: i64 = 33;
+    pub const DUP3: i64 = 292;
     pub const SOCKET: i64 = 41;
     pub const CONNECT: i64 = 42;
-    pub const ACCEPT: i64 = 43;
+    pub const ACCEPT4: i64 = 288;
     pub const SENDTO: i64 = 44;
     pub const RECVFROM: i64 = 45;
     pub const SENDMSG: i64 = 46;
@@ -57,27 +54,14 @@ mod syscall_nr {
     pub const SETSOCKOPT: i64 = 54;
     pub const GETSOCKOPT: i64 = 55;
     pub const CLONE: i64 = 56;
-    pub const FORK: i64 = 57;
-    pub const VFORK: i64 = 58;
     pub const EXIT: i64 = 60;
     pub const WAIT4: i64 = 61;
-    pub const KILL: i64 = 62;
     pub const FCNTL: i64 = 72;
-    pub const FLOCK: i64 = 73;
-    pub const FSYNC: i64 = 74;
-    pub const FDATASYNC: i64 = 75;
-    pub const TRUNCATE: i64 = 76;
-    pub const FTRUNCATE: i64 = 77;
-    pub const GETCWD: i64 = 79;
-    pub const CHDIR: i64 = 80;
     pub const RENAME: i64 = 82;
     pub const MKDIR: i64 = 83;
     pub const UNLINK: i64 = 87;
     pub const READLINK: i64 = 89;
-    pub const CHMOD: i64 = 90;
     pub const FCHMOD: i64 = 91;
-    pub const CHOWN: i64 = 92;
-    pub const FCHOWN: i64 = 93;
     pub const GETUID: i64 = 102;
     pub const GETGID: i64 = 104;
     pub const GETEUID: i64 = 107;
@@ -86,18 +70,13 @@ mod syscall_nr {
     pub const FUTEX: i64 = 202;
     pub const SCHED_GETAFFINITY: i64 = 204;
     pub const SCHED_YIELD: i64 = 24;
-    pub const RESTART_SYSCALL: i64 = 219;
     pub const CLOCK_GETTIME: i64 = 228;
     pub const NANOSLEEP: i64 = 35;
     pub const EPOLL_CREATE1: i64 = 291;
     pub const EPOLL_CTL: i64 = 233;
-    pub const EPOLL_WAIT: i64 = 232;
     pub const EPOLL_PWAIT: i64 = 281;
-    pub const ACCEPT4: i64 = 288;
     pub const EVENTFD2: i64 = 290;
     pub const PIPE2: i64 = 293;
-    pub const PREADV: i64 = 295;
-    pub const PWRITEV: i64 = 296;
     pub const SIGNALFD4: i64 = 289;
     pub const TIMERFD_CREATE: i64 = 283;
     pub const TIMERFD_SETTIME: i64 = 286;
@@ -107,17 +86,70 @@ mod syscall_nr {
     pub const RT_SIGPROCMASK: i64 = 14;
     pub const RT_SIGRETURN: i64 = 15;
     pub const GETRANDOM: i64 = 318;
-    pub const MEMFD_CREATE: i64 = 319;
     pub const EXIT_GROUP: i64 = 231;
     pub const OPENAT: i64 = 257;
     pub const NEWFSTATAT: i64 = 262;
     pub const FSTATAT: i64 = 262;
-    pub const LSTAT: i64 = 6;
-    pub const STAT: i64 = 4;
-    pub const OPEN: i64 = 2;
-    pub const ACCESS: i64 = 21;
     pub const GETDENTS64: i64 = 217;
     pub const MADVISE: i64 = 28;
+
+    // Reserved for optional/relaxed seccomp profiles
+    #[allow(dead_code)]
+    pub const IOCTL: i64 = 16;
+    #[allow(dead_code)]
+    pub const PIPE: i64 = 22;
+    #[allow(dead_code)]
+    pub const SELECT: i64 = 23;
+    #[allow(dead_code)]
+    pub const DUP: i64 = 32;
+    #[allow(dead_code)]
+    pub const DUP2: i64 = 33;
+    #[allow(dead_code)]
+    pub const ACCEPT: i64 = 43;
+    #[allow(dead_code)]
+    pub const FORK: i64 = 57;
+    #[allow(dead_code)]
+    pub const VFORK: i64 = 58;
+    #[allow(dead_code)]
+    pub const KILL: i64 = 62;
+    #[allow(dead_code)]
+    pub const FLOCK: i64 = 73;
+    #[allow(dead_code)]
+    pub const FSYNC: i64 = 74;
+    #[allow(dead_code)]
+    pub const FDATASYNC: i64 = 75;
+    #[allow(dead_code)]
+    pub const TRUNCATE: i64 = 76;
+    #[allow(dead_code)]
+    pub const FTRUNCATE: i64 = 77;
+    #[allow(dead_code)]
+    pub const GETCWD: i64 = 79;
+    #[allow(dead_code)]
+    pub const CHDIR: i64 = 80;
+    #[allow(dead_code)]
+    pub const CHMOD: i64 = 90;
+    #[allow(dead_code)]
+    pub const CHOWN: i64 = 92;
+    #[allow(dead_code)]
+    pub const FCHOWN: i64 = 93;
+    #[allow(dead_code)]
+    pub const RESTART_SYSCALL: i64 = 219;
+    #[allow(dead_code)]
+    pub const EPOLL_WAIT: i64 = 232;
+    #[allow(dead_code)]
+    pub const PREADV: i64 = 295;
+    #[allow(dead_code)]
+    pub const PWRITEV: i64 = 296;
+    #[allow(dead_code)]
+    pub const MEMFD_CREATE: i64 = 319;
+    #[allow(dead_code)]
+    pub const LSTAT: i64 = 6;
+    #[allow(dead_code)]
+    pub const STAT: i64 = 4;
+    #[allow(dead_code)]
+    pub const OPEN: i64 = 2;
+    #[allow(dead_code)]
+    pub const ACCESS: i64 = 21;
 }
 
 /// Syscall numbers for aarch64 Linux.
@@ -217,13 +249,19 @@ use syscall_nr::*;
 /// bound, WASM engine ready, threads spawned).  Calling it too early will
 /// cause the process to crash when an unlisted syscall is attempted.
 ///
+/// # Parameters
+///
+/// * `strict` - When true, returns an error if seccomp cannot be applied.
+///   When false, logs a warning and continues without seccomp (for containerized
+///   environments where seccomp is not available).
+///
 /// # Platform
 ///
 /// This is a no-op on non-Linux platforms.
-pub fn apply_seccomp_profile() -> anyhow::Result<()> {
+pub fn apply_seccomp_profile(strict: bool) -> anyhow::Result<()> {
     #[cfg(target_os = "linux")]
     {
-        apply_seccomp_linux()
+        apply_seccomp_linux(strict)
     }
 
     #[cfg(not(target_os = "linux"))]
@@ -234,7 +272,7 @@ pub fn apply_seccomp_profile() -> anyhow::Result<()> {
 }
 
 #[cfg(target_os = "linux")]
-fn apply_seccomp_linux() -> anyhow::Result<()> {
+fn apply_seccomp_linux(strict: bool) -> anyhow::Result<()> {
     use std::io;
 
     // We use raw prctl + seccomp syscalls via libc-style inline assembly or
@@ -242,6 +280,8 @@ fn apply_seccomp_linux() -> anyhow::Result<()> {
     // the `prctl` and `seccomp` syscalls directly via `syscall()`.
 
     // Allowed syscalls — minimal set for a network server + WASM runtime.
+    // These are used in the strict profile. The relaxed profile includes additional
+    // syscalls like RENAME, MKDIR, UNLINK, READLINK, FCHMOD.
     let allowed: &[i64] = &[
         // I/O
         READ,
@@ -315,6 +355,12 @@ fn apply_seccomp_linux() -> anyhow::Result<()> {
         FCNTL,
         DUP3,
         GETRANDOM,
+        // Additional syscalls used by WASM runtimes and common libraries
+        RENAME,
+        MKDIR,
+        UNLINK,
+        READLINK,
+        FCHMOD,
         // Allow fork/vfork/kill only if absolutely needed; comment out for stricter profile
         // FORK, VFORK, KILL,
     ];
@@ -375,14 +421,23 @@ fn apply_seccomp_linux() -> anyhow::Result<()> {
 
     if ret != 0 {
         let err = io::Error::last_os_error();
+        let errno = err.raw_os_error().unwrap_or(0);
+        if strict {
+            return Err(anyhow::anyhow!(
+                "seccomp: failed to apply BPF filter: {} (errno {}). \
+                 Seccomp is required in strict mode but the kernel does not support it \
+                 or the process lacks CAP_SYS_ADMIN. Consider running with --seccomp-strict=false \
+                 if seccomp is not available in your environment.",
+                err,
+                errno
+            ));
+        }
         tracing::warn!(
-            "seccomp: failed to apply BPF filter: {} (errno {})",
+            "seccomp: failed to apply BPF filter: {} (errno {}). \
+             Continuing without seccomp protection. Set --seccomp-strict=true to make this fatal.",
             err,
-            err.raw_os_error().unwrap_or(0)
+            errno
         );
-        // Don't fail hard — log and continue.  The process may be running in
-        // a container that doesn't allow seccomp (e.g. Docker without
-        // --security-opt seccomp=unconfined).
         return Ok(());
     }
 

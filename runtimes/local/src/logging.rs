@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{span, Level};
+use tracing::Level;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Global logger instance for managing correlation IDs and structured logging
@@ -31,6 +31,39 @@ pub struct LogEntry {
     pub correlation_id: Option<CorrelationId>,
     pub fields: HashMap<String, serde_json::Value>,
     pub timestamp: chrono::DateTime<chrono::Utc>,
+}
+
+impl LogEntry {
+    /// Create a new log entry with a correlation ID
+    pub fn with_correlation_id(mut self, correlation_id: CorrelationId) -> Self {
+        self.correlation_id = Some(correlation_id);
+        self
+    }
+
+    /// Get the correlation ID as a string, or "none" if not present
+    pub fn correlation_id_str(&self) -> String {
+        self.correlation_id.as_ref().map(|c| c.to_string()).unwrap_or_else(|| "none".to_string())
+    }
+
+    /// Add multiple fields to the log entry
+    pub fn with_fields(mut self, fields: HashMap<String, serde_json::Value>) -> Self {
+        self.fields = fields;
+        self
+    }
+
+    /// Emit this log entry to the tracing system
+    pub fn emit(&self) {
+        let span = tracing::info_span!(
+            "log_entry",
+            correlation_id = %self.correlation_id_str(),
+            message = %self.message,
+            level = ?self.level,
+            timestamp = %self.timestamp,
+        );
+        let _enter = span.enter();
+        let fields_json = serde_json::json!({ "fields": self.fields });
+        tracing::info!(fields = ?fields_json);
+    }
 }
 
 /// Log level enum
@@ -61,7 +94,15 @@ impl CorrelationId {
         Self(id)
     }
 
-    /// Generate a new unique correlation ID
+    /// Get the string representation
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[cfg(test)]
+impl CorrelationId {
+    /// Generate a new unique correlation ID (test-only)
     pub fn generate() -> Self {
         use std::time::{SystemTime, UNIX_EPOCH};
         let timestamp = SystemTime::now()
@@ -70,11 +111,6 @@ impl CorrelationId {
             .as_nanos();
 
         Self(format!("req_{:016x}", timestamp))
-    }
-
-    /// Get the string representation
-    pub fn as_str(&self) -> &str {
-        &self.0
     }
 }
 
@@ -148,6 +184,27 @@ impl StructuredLogger {
             LogLevel::Warn => tracing::warn!(message, correlation_id, log_type = "structured"),
             LogLevel::Error => tracing::error!(message, correlation_id, log_type = "structured"),
         }
+    }
+
+    /// Create a LogEntry with correlation ID and fields, then emit it
+    pub fn log_entry_with_fields(
+        &self,
+        level: LogLevel,
+        message: impl Into<String>,
+        correlation_id: &CorrelationId,
+        fields: HashMap<String, serde_json::Value>,
+    ) -> LogEntry {
+        let entry = LogEntry {
+            level,
+            message: message.into(),
+            correlation_id: None,
+            fields: HashMap::new(),
+            timestamp: chrono::Utc::now(),
+        }
+        .with_correlation_id(correlation_id.clone())
+        .with_fields(fields);
+        entry.emit();
+        entry
     }
 
     /// Log function execution with timing
@@ -315,7 +372,6 @@ pub fn init_structured_logging(verbose: bool) -> StructuredLogger {
 /// Request context for carrying correlation ID through request lifecycle
 #[derive(Clone)]
 pub struct RequestContext {
-    pub correlation_id: CorrelationId,
     pub start_time: std::time::Instant,
     pub function_name: Option<String>,
     pub function_version: Option<String>,
@@ -323,9 +379,8 @@ pub struct RequestContext {
 
 impl RequestContext {
     /// Create new request context
-    pub fn new(correlation_id: CorrelationId) -> Self {
+    pub fn new() -> Self {
         Self {
-            correlation_id,
             start_time: std::time::Instant::now(),
             function_name: None,
             function_version: None,
@@ -380,11 +435,9 @@ mod tests {
 
     #[test]
     fn test_request_context() {
-        let correlation_id = CorrelationId::generate();
-        let context = RequestContext::new(correlation_id.clone())
+        let context = RequestContext::new()
             .with_function("test-function", "1.0.0");
 
-        assert_eq!(context.correlation_id, correlation_id);
         assert_eq!(context.function_name, Some("test-function".to_string()));
         assert_eq!(context.function_version, Some("1.0.0".to_string()));
 

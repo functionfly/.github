@@ -9,6 +9,9 @@ use tokio::time::{timeout, Instant};
 use crate::errors::{RuntimeError, RuntimeResult};
 use crate::logging::{CorrelationId, StructuredLogger};
 
+type CleanupTask = Box<dyn FnOnce() -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync>;
+type CleanupFn = Box<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>>>> + Send + Sync>;
+
 /// Shutdown coordinator for managing graceful shutdown
 pub struct ShutdownCoordinator {
     /// Shutdown signal sender
@@ -47,6 +50,11 @@ impl ShutdownCoordinator {
     /// Get a shutdown signal receiver for components
     pub fn subscribe(&self) -> broadcast::Receiver<()> {
         self.shutdown_tx.subscribe()
+    }
+
+    /// Check if shutdown has been signaled using the stored receiver
+    pub fn is_shutdown_signaled(&self) -> bool {
+        !self.shutdown_rx.is_empty()
     }
 
     /// Initiate graceful shutdown
@@ -118,7 +126,7 @@ pub struct ComponentShutdown {
     name: String,
     shutdown_rx: broadcast::Receiver<()>,
     logger: Arc<StructuredLogger>,
-    cleanup_tasks: Vec<Box<dyn FnOnce() -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync>>,
+    cleanup_tasks: Vec<CleanupTask>,
 }
 
 impl ComponentShutdown {
@@ -223,21 +231,26 @@ impl ResourceManager {
 
         let mut resources = self.resources.write().await;
         let resource_count = resources.len();
+        let mut success_count = 0;
+        let mut failure_count = 0;
 
-        for (i, resource) in resources.drain(..).enumerate() {
+        for resource in resources.drain(..) {
             let start_time = Instant::now();
+            let resource_name = resource.name.clone();
 
-            if let Err(e) = resource.cleanup().await {
+            if let Err(e) = resource.cleanup() {
+                failure_count += 1;
                 self.logger.log_with_correlation(
                     crate::logging::LogLevel::Warn,
-                    format!("Failed to cleanup resource {}: {}", i + 1, e),
+                    format!("Failed to cleanup resource '{}': {}", resource_name, e),
                     &correlation_id,
                 );
             } else {
+                success_count += 1;
                 let elapsed = start_time.elapsed();
                 self.logger.log_with_correlation(
                     crate::logging::LogLevel::Debug,
-                    format!("Cleaned up resource {} in {:.2}ms", i + 1, elapsed.as_millis()),
+                    format!("Cleaned up resource '{}' in {:.2}ms", resource_name, elapsed.as_millis()),
                     &correlation_id,
                 );
             }
@@ -245,7 +258,7 @@ impl ResourceManager {
 
         self.logger.log_with_correlation(
             crate::logging::LogLevel::Info,
-            format!("Resource cleanup completed: {} resources cleaned up", resource_count),
+            format!("Resource cleanup completed: {} total, {} success, {} failed", resource_count, success_count, failure_count),
             &correlation_id,
         );
 
@@ -262,7 +275,7 @@ impl ResourceManager {
 /// Managed resource that can be cleaned up
 pub struct ManagedResource {
     name: String,
-    cleanup_fn: Box<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>>>> + Send + Sync>,
+    cleanup_fn: CleanupFn,
 }
 
 impl ManagedResource {
@@ -282,8 +295,11 @@ impl ManagedResource {
     }
 
     /// Execute cleanup
-    async fn cleanup(self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        (self.cleanup_fn)().await
+    fn cleanup(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // Use block_on to execute the async cleanup function
+        // This allows the cleanup_fn to be async while cleanup() remains synchronous
+        let runtime = tokio::runtime::Handle::current();
+        runtime.block_on(async { (self.cleanup_fn)().await })
     }
 }
 

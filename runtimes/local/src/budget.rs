@@ -136,7 +136,8 @@ impl BudgetOptimizer {
         let memory_based_limit = (memory_capacity / memory_per_function) as usize;
 
         // CPU-based limit (rough estimate: 10ms execution time = 100 concurrent)
-        let cpu_based_limit = ((self.node_specs.vcpu as f64 * 100.0) / (profile.avg_execution_time_ms as f64 / 10.0)) as usize;
+        let cpu_based_limit = ((self.node_specs.vcpu as f64 * 100.0)
+            / (profile.avg_execution_time_ms as f64 / 10.0)) as usize;
 
         memory_based_limit.min(cpu_based_limit).max(1)
     }
@@ -144,10 +145,11 @@ impl BudgetOptimizer {
     /// Calculate optimal instance pool size
     pub fn optimal_pool_size(&self, profile: &FunctionProfile, function_count: usize) -> usize {
         let max_concurrent = self.max_concurrent_functions(profile);
-        let pool_per_function = (max_concurrent / function_count).max(1).min(5); // 1-5 instances per function
+        let pool_per_function = (max_concurrent / function_count).clamp(1, 5); // 1-5 instances per function
 
         // Consider cold start impact
-        let cold_start_penalty = profile.cold_start_time_ms as f64 / profile.avg_execution_time_ms as f64;
+        let cold_start_penalty =
+            profile.cold_start_time_ms as f64 / profile.avg_execution_time_ms as f64;
         let adjusted_pool = (pool_per_function as f64 * (1.0 + cold_start_penalty * 0.1)) as usize;
 
         adjusted_pool.min(max_concurrent)
@@ -220,7 +222,7 @@ impl BudgetOptimizer {
         let memory_overhead = profile.avg_memory_mb * 0.3; // 30% overhead
         let effective_memory_per_function = profile.avg_memory_mb + memory_overhead;
 
-        let max_functions = (available_memory / effective_memory_per_function) as f64;
+        let max_functions = available_memory / effective_memory_per_function;
         let efficiency = (profile.requests_per_minute / max_functions).min(1.0) * 100.0;
 
         efficiency.min(100.0)
@@ -229,14 +231,20 @@ impl BudgetOptimizer {
     /// Calculate CPU efficiency percentage
     fn calculate_cpu_efficiency(&self, profile: &FunctionProfile) -> f64 {
         let cpu_capacity_milliseconds = self.node_specs.vcpu as f64 * 1000.0; // 1000ms per second per vCPU
-        let function_cpu_time = profile.avg_execution_time_ms as f64 * profile.requests_per_minute * 60.0; // per minute
+        let function_cpu_time =
+            profile.avg_execution_time_ms as f64 * profile.requests_per_minute * 60.0; // per minute
 
         let utilization = function_cpu_time / cpu_capacity_milliseconds;
         (utilization * 100.0).min(100.0)
     }
 
     /// Generate optimization suggestions
-    fn generate_suggestions(&self, profile: &FunctionProfile, memory_eff: f64, cpu_eff: f64) -> Vec<String> {
+    fn generate_suggestions(
+        &self,
+        profile: &FunctionProfile,
+        memory_eff: f64,
+        cpu_eff: f64,
+    ) -> Vec<String> {
         let mut suggestions = Vec::new();
 
         if memory_eff > 80.0 {
@@ -248,7 +256,10 @@ impl BudgetOptimizer {
         }
 
         if profile.cache_hit_rate < 0.5 {
-            suggestions.push("Low cache hit rate detected - enable deterministic caching for better performance".to_string());
+            suggestions.push(
+                "Low cache hit rate detected - enable deterministic caching for better performance"
+                    .to_string(),
+            );
         }
 
         if profile.avg_memory_mb > 64.0 {
@@ -256,7 +267,10 @@ impl BudgetOptimizer {
         }
 
         if profile.avg_execution_time_ms > 500 {
-            suggestions.push("Slow function execution detected - optimize code or consider different runtime".to_string());
+            suggestions.push(
+                "Slow function execution detected - optimize code or consider different runtime"
+                    .to_string(),
+            );
         }
 
         if suggestions.is_empty() {

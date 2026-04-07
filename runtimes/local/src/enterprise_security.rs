@@ -3,18 +3,18 @@
 //! This module provides advanced security features for enterprise deployments,
 //! including enhanced input validation, sandboxing improvements, and security best practices.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use regex::Regex;
 
-use crate::config::Config;
 use crate::logging::StructuredLogger;
 
 /// Enterprise security configuration
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct EnterpriseSecurityConfig {
     /// Enable advanced input validation
     pub enable_input_validation: bool,
@@ -69,6 +69,7 @@ pub struct EnterpriseSecurityEnforcer {
     /// Security patterns for detection
     security_patterns: Arc<RwLock<HashMap<String, SecurityPattern>>>,
     /// Logger
+    #[allow(dead_code)]
     logger: Arc<StructuredLogger>,
     /// Audit log entries
     audit_log: Arc<RwLock<Vec<AuditEntry>>>,
@@ -150,16 +151,42 @@ impl EnterpriseSecurityEnforcer {
 
         // Check for suspicious patterns
         let patterns = self.security_patterns.read().await;
-        let mut suspicious_patterns = Vec::new();
+        let mut suspicious_patterns: Vec<(&String, &SecurityPattern)> = Vec::new();
 
         for (pattern_name, pattern) in patterns.iter() {
             if pattern.pattern.is_match(input) {
-                suspicious_patterns.push(pattern_name.clone());
+                suspicious_patterns.push((pattern_name, pattern));
             }
         }
 
         if suspicious_patterns.len() >= self.config.suspicious_pattern_threshold {
-            let reason = format!("Multiple suspicious patterns detected: {:?}", suspicious_patterns);
+            // Build detailed report using violation_type and severity from matched patterns
+            let pattern_details: Vec<String> = suspicious_patterns.iter()
+                .map(|(name, pat)| format!("{} ({}/{})", name, pat.violation_type, pat.severity))
+                .collect();
+            let reason = format!("Multiple suspicious patterns detected: {}", pattern_details.join(", "));
+
+            // Log with severity information
+            let highest_severity = suspicious_patterns.iter()
+                .map(|(_, pat)| pat.severity.as_str())
+                .max_by(|a, b| {
+                    let order = |s: &str| match s {
+                        "critical" => 4,
+                        "high" => 3,
+                        "medium" => 2,
+                        _ => 1,
+                    };
+                    order(a).cmp(&order(b))
+                })
+                .unwrap_or("medium");
+
+            tracing::warn!(
+                "Suspicious input detected for {}: {} patterns matched, highest severity: {}",
+                function_key,
+                suspicious_patterns.len(),
+                highest_severity
+            );
+
             self.log_audit_entry(function_key, "input_validation", "suspicious", &reason, None, None).await;
             return ValidationResult::Suspicious(reason);
         }
@@ -177,9 +204,29 @@ impl EnterpriseSecurityEnforcer {
             last_cleanup: now,
         });
 
-        // Clean up old requests outside the window
-        let window_start = now - Duration::from_secs(self.config.rate_limit_window_secs);
-        data.requests.retain(|&time| time > window_start);
+        // Perform cleanup if the cleanup interval has passed
+        let cleanup_interval = Duration::from_secs(self.config.rate_limit_window_secs);
+        if data.last_cleanup.elapsed() > cleanup_interval {
+            // Clean up old requests outside the window
+            let window_start = now - Duration::from_secs(self.config.rate_limit_window_secs);
+            let before_count = data.requests.len();
+            data.requests.retain(|&time| time > window_start);
+            let cleaned_count = before_count - data.requests.len();
+
+            // Update last cleanup time
+            data.last_cleanup = now;
+
+            if cleaned_count > 0 {
+                tracing::debug!(
+                    "Rate limit cleanup for {}: removed {} stale requests, {} remaining",
+                    identifier, cleaned_count, data.requests.len()
+                );
+            }
+        } else {
+            // Just clean up old requests outside the window
+            let window_start = now - Duration::from_secs(self.config.rate_limit_window_secs);
+            data.requests.retain(|&time| time > window_start);
+        }
 
         // Check if under limit
         if data.requests.len() >= self.config.max_requests_per_window {
@@ -192,19 +239,52 @@ impl EnterpriseSecurityEnforcer {
         true
     }
 
-    /// Enhanced sandboxing validation
+    /// Enhanced sandboxing validation for production workloads
     pub async fn validate_sandboxing(&self, function_key: &str, capabilities: &[String]) -> ValidationResult {
-        // Check for dangerous capability combinations
+        use crate::capability::validate_capabilities;
+
+        // First, validate that all capabilities are in the allowed list
+        let caps = crate::capability::Capabilities::from_vec(capabilities.to_vec());
+        if let Err(e) = validate_capabilities(&caps) {
+            let violation_reason = format!("Invalid capability: {}", e);
+            self.log_audit_entry(function_key, "sandboxing", "blocked", &violation_reason, None, None).await;
+            return ValidationResult::Invalid(violation_reason);
+        }
+
+        // Check for dangerous capability combinations that could indicate compromise
         let dangerous_combinations = vec![
-            (vec!["fetch", "storage"], "Network and storage access together"),
-            (vec!["crypto", "external_api"], "Crypto and external API access together"),
+            // Network + storage + secrets = potential data exfiltration vector
+            (vec!["fetch:read", "fetch:write", "storage", "secret"],
+             "Excessive capabilities: network + storage + secrets"),
+            // External API + crypto = potential C2 beacon
+            (vec!["external_api", "crypto"],
+             "Dangerous: external API access with crypto capabilities"),
+            // Unrestricted email + storage = spam/phishing potential
+            (vec!["email", "storage"],
+             "Potential abuse: email + storage access"),
         ];
 
         for (combo, reason) in dangerous_combinations {
-            if combo.iter().all(|cap| capabilities.contains(&cap.to_string())) {
+            let combo_set: HashSet<&str> = combo.iter().cloned().collect();
+            let caps_set: HashSet<&str> = capabilities.iter().map(|s| s.as_str()).collect();
+
+            // Only flag if ALL dangerous capabilities are present
+            if combo_set.iter().all(|cap| caps_set.contains(cap)) {
                 let violation_reason = format!("Dangerous capability combination: {}", reason);
                 self.log_audit_entry(function_key, "sandboxing", "blocked", &violation_reason, None, None).await;
+
+                // In production, you might want to allow this with additional approval
+                // For now, we block but log for monitoring
                 return ValidationResult::Invalid(violation_reason);
+            }
+        }
+
+        // Check for overly broad capabilities that should require approval
+        let broad_capabilities = vec!["fetch:write", "external_api", "storage"];
+        for cap in broad_capabilities {
+            if capabilities.contains(&cap.to_string()) {
+                // Log but don't block - these might be legitimate
+                self.log_audit_entry(function_key, "sandboxing", "warning", &format!("Broad capability requested: {}", cap), None, None).await;
             }
         }
 
@@ -246,7 +326,14 @@ impl EnterpriseSecurityEnforcer {
             audit_log.drain(0..100);
         }
 
-        // Log to structured logger
+        // Log to structured logger using the stored logger field
+        let logger = Arc::clone(&self.logger);
+        let correlation_id = logger.generate_correlation_id().await;
+        logger.log_with_correlation(
+            crate::logging::LogLevel::Info,
+            format!("Security audit: {} / {} / {} [{}]", action, result, details, function_key),
+            &correlation_id,
+        );
         tracing::info!(
             function_key = %function_key,
             action = %action,
@@ -291,7 +378,16 @@ impl EnterpriseSecurityEnforcer {
         let cutoff = now - Duration::from_secs(self.config.rate_limit_window_secs * 2);
 
         rate_limits.retain(|_, data| {
+            // Clean up requests outside the window
             data.requests.retain(|&time| time > cutoff);
+
+            // Also clean up if last_cleanup is too old (stale entries)
+            if data.last_cleanup < cutoff {
+                // Reset if no recent activity but don't delete yet if there are pending requests
+                if data.requests.is_empty() {
+                    return false; // Remove this entry
+                }
+            }
             !data.requests.is_empty()
         });
     }

@@ -28,13 +28,18 @@ pub enum QuotaType {
 }
 
 /// Resource quota definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceQuota {
     pub quota_type: QuotaType,
     pub limit: f64,
     pub window_seconds: u64,
     pub current_usage: f64,
+    #[serde(skip, default = "instant_now")]
     pub last_reset: Instant,
+}
+
+fn instant_now() -> Instant {
+    Instant::now()
 }
 
 /// Enterprise resource enforcer
@@ -45,7 +50,8 @@ pub struct ResourceEnforcer {
     global_limits: Arc<RwLock<GlobalResourceLimits>>,
     /// Resource monitor reference
     monitor: Arc<ResourceMonitor>,
-    /// Configuration
+    /// Configuration (stored for future use)
+    #[allow(dead_code)]
     config: Config,
     /// Enforcement policies
     policies: Arc<RwLock<HashMap<String, EnforcementPolicy>>>,
@@ -141,6 +147,21 @@ impl ResourceEnforcer {
         }
     }
 
+    /// Get the configuration
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
+    /// Get all enforcement policies
+    pub async fn policies(&self) -> HashMap<String, EnforcementPolicy> {
+        self.policies.read().await.clone()
+    }
+
+    /// Get a specific policy by name
+    pub async fn get_policy(&self, name: &str) -> Option<EnforcementPolicy> {
+        self.policies.read().await.get(name).cloned()
+    }
+
     /// Check if a function execution should be allowed
     pub async fn check_execution_allowed(&self, function_key: &str) -> EnforcementDecision {
         // Check global resource limits first
@@ -153,12 +174,67 @@ impl ResourceEnforcer {
             return EnforcementDecision::Throttle(throttle_duration);
         }
 
-        // Check predictive throttling
+        // Check predictive throttling using policy-based thresholds
+        if let Some(throttle_duration) = self.check_predictive_throttling_with_policy(function_key).await {
+            return EnforcementDecision::Throttle(throttle_duration);
+        }
+
+        // Fallback: check simple predictive throttling if policy-based didn't trigger
         if let Some(throttle_duration) = self.check_predictive_throttling(function_key).await {
             return EnforcementDecision::Throttle(throttle_duration);
         }
 
         EnforcementDecision::Allow
+    }
+
+    /// Check predictive throttling with policy-based thresholds
+    async fn check_predictive_throttling_with_policy(&self, function_key: &str) -> Option<Duration> {
+        let policies = self.policies.read().await;
+
+        // Get the applicable policy (use default if no specific policy)
+        let policy = policies.get("default").cloned().unwrap_or(EnforcementPolicy {
+            name: "default".to_string(),
+            throttle_threshold_percent: 70.0,
+            block_threshold_percent: 90.0,
+            predictive_scaling: false,
+            priority: 100,
+        });
+
+        // Only throttle if predictive scaling is enabled
+        if !policy.predictive_scaling {
+            return None;
+        }
+
+        // Simple predictive throttling based on recent trends
+        let recent_metrics = self.monitor.get_recent_metrics(10).await;
+
+        if recent_metrics.len() < 5 {
+            return None; // Not enough data for prediction
+        }
+
+        // Check if execution times are trending up
+        let avg_execution_time = recent_metrics.iter()
+            .map(|m| m.execution_time_ms as f64)
+            .sum::<f64>() / recent_metrics.len() as f64;
+
+        let recent_avg = recent_metrics.iter()
+            .rev()
+            .take(3)
+            .map(|m| m.execution_time_ms as f64)
+            .sum::<f64>() / 3.0;
+
+        let threshold = policy.throttle_threshold_percent;
+
+        // If recent executions are slower than threshold, throttle
+        if recent_avg > avg_execution_time * (1.0 + threshold / 100.0) {
+            tracing::debug!(
+                "Predictive throttle: recent_avg={:.2}ms > avg={:.2}ms * threshold={:.1}% for {}",
+                recent_avg, avg_execution_time, threshold, function_key
+            );
+            return Some(Duration::from_secs(2));
+        }
+
+        None
     }
 
     /// Record resource usage after execution
@@ -267,7 +343,8 @@ impl ResourceEnforcer {
     }
 
     /// Check predictive throttling based on usage patterns
-    async fn check_predictive_throttling(&self, function_key: &str) -> Option<Duration> {
+    /// Note: function_key reserved for per-function throttling policies
+    async fn check_predictive_throttling(&self, _function_key: &str) -> Option<Duration> {
         // Simple predictive throttling based on recent trends
         // In a real implementation, this would use ML models or time-series analysis
 
@@ -330,6 +407,7 @@ impl ResourceEnforcer {
 #[derive(Debug, Clone)]
 pub struct ResourceUsageReport {
     pub global_limits: GlobalResourceLimits,
+    #[allow(dead_code)]
     pub function_quotas: HashMap<String, Vec<ResourceQuota>>,
     pub current_stats: crate::monitoring::ResourceStats,
     pub timestamp: u64,

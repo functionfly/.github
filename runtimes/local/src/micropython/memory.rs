@@ -15,6 +15,7 @@ use tokio::sync::RwLock;
 /// 0xF0000+: Dynamic allocation area
 /// ```
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct MemoryLayout {
     /// Base address of wrapper static data
     pub wrapper_data_base: u32,
@@ -84,7 +85,7 @@ impl MemoryLayout {
     pub fn total_initial_size(&self) -> u32 {
         // Round up to nearest 64KB (WASM page size)
         let total = self.dynamic_base + 0x10000; // Add some padding
-        ((total + 0xFFFF) / 0x10000) * 0x10000
+        total.div_ceil(0x10000) * 0x10000
     }
 
     /// Get the number of WASM pages (64KB each) needed.
@@ -93,12 +94,14 @@ impl MemoryLayout {
     }
 
     /// Check if an address is within the code buffer.
+    #[allow(dead_code)]
     pub fn is_code_buffer(&self, addr: u32) -> bool {
         addr >= self.code_buffer_base
             && addr < self.code_buffer_base + self.code_buffer_size
     }
 
     /// Check if an address is within the output buffer.
+    #[allow(dead_code)]
     pub fn is_output_buffer(&self, addr: u32) -> bool {
         addr >= self.output_buffer_base
             && addr < self.output_buffer_base + self.output_buffer_size
@@ -107,7 +110,9 @@ impl MemoryLayout {
 
 /// Memory manager for shared linear memory.
 pub struct MemoryManager {
+    #[allow(dead_code)]
     layout: MemoryLayout,
+    #[allow(dead_code)]
     alloc_ptr: Arc<RwLock<u32>>,
 }
 
@@ -122,12 +127,14 @@ impl MemoryManager {
     }
 
     /// Get the memory layout.
+    #[allow(dead_code)]
     pub fn layout(&self) -> &MemoryLayout {
         &self.layout
     }
 
     /// Allocate memory from the dynamic area (bump allocator).
     /// For production use, this should be replaced with a real allocator.
+    #[allow(dead_code)]
     pub async fn allocate(&self, size: u32) -> Option<u32> {
         let mut ptr = self.alloc_ptr.write().await;
         let aligned_size = (size + 7) & !7; // Align to 8 bytes
@@ -137,21 +144,25 @@ impl MemoryManager {
     }
 
     /// Get the base address for user code.
+    #[allow(dead_code)]
     pub fn code_base(&self) -> u32 {
         self.layout.code_buffer_base
     }
 
     /// Get the maximum size for user code.
+    #[allow(dead_code)]
     pub fn code_size(&self) -> u32 {
         self.layout.code_buffer_size
     }
 
     /// Get the base address for output.
+    #[allow(dead_code)]
     pub fn output_base(&self) -> u32 {
         self.layout.output_buffer_base
     }
 
     /// Get the maximum size for output.
+    #[allow(dead_code)]
     pub fn output_size(&self) -> u32 {
         self.layout.output_buffer_size
     }
@@ -170,6 +181,7 @@ pub struct HostState {
     /// Output data (captured from execution)
     pub output: Arc<RwLock<String>>,
     /// Memory manager
+    #[allow(dead_code)]
     pub memory: MemoryManager,
     /// Execution logs
     pub logs: Arc<RwLock<Vec<String>>>,
@@ -187,11 +199,13 @@ impl HostState {
     }
 
     /// Log a message.
+    #[allow(dead_code)]
     pub async fn log(&self, message: String) {
         self.logs.write().await.push(message);
     }
 
     /// Set the output.
+    #[allow(dead_code)]
     pub async fn set_output(&self, output: String) {
         *self.output.write().await = output;
     }

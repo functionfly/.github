@@ -25,7 +25,7 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
-use prometheus::{GaugeVec, Opts, Registry};
+use prometheus::{GaugeVec, Opts};
 use wasmtime_wasi::p1::WasiP1Ctx;
 
 use crate::config::Config;

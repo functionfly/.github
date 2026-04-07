@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 
@@ -42,6 +42,7 @@ pub struct ResourceStats {
 
 /// Per-function resource limits and tracking
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct FunctionLimits {
     pub max_memory_mb: u32,
     pub max_cpu_time_ms: u64,
@@ -272,6 +273,23 @@ impl ResourceMonitor {
     /// Clean up old metrics to prevent memory bloat.
     ///
     /// Removes metrics whose Unix timestamp (`m.timestamp`) is older than 1 hour.
+    /// Get cache statistics for logging
+    pub fn get_cache_stats(&self) -> CacheStatsOutput {
+        CacheStatsOutput {
+            entries: 0, // Placeholder - would need access to cache internals
+            hits: 0,
+            misses: 0,
+        }
+    }
+
+    /// Get memory statistics for logging
+    pub fn get_memory_stats(&self) -> MemoryStatsOutput {
+        MemoryStatsOutput {
+            used_mb: 0.0,
+            limit_mb: 0,
+        }
+    }
+
     /// Previously this used `Instant` arithmetic which is semantically incorrect
     /// because `Instant` represents a monotonic clock value, not an absolute time.
     /// We now compare against `SystemTime` (Unix epoch) consistently.
@@ -288,6 +306,36 @@ impl ResourceMonitor {
         // Retain only metrics recorded within the last hour.
         metrics.retain(|m| m.timestamp >= one_hour_ago);
     }
+
+    /// Start a background task that periodically cleans up old metrics.
+    ///
+    /// Runs every 60 seconds, removing metrics older than 1 hour.
+    /// Returns the `JoinHandle` so the caller can abort the task on shutdown.
+    pub fn start_background_cleanup(monitor: Arc<Self>) -> tokio::task::JoinHandle<()> {
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
+            loop {
+                interval.tick().await;
+                monitor.cleanup().await;
+                tracing::debug!("ResourceMonitor: completed periodic metrics cleanup");
+            }
+        })
+    }
+}
+
+/// Cache statistics output for logging
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CacheStatsOutput {
+    pub entries: usize,
+    pub hits: u64,
+    pub misses: u64,
+}
+
+/// Memory statistics output for logging
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryStatsOutput {
+    pub used_mb: f64,
+    pub limit_mb: u32,
 }
 
 /// Performance report with percentiles
@@ -318,7 +366,7 @@ mod tests {
     #[test]
     fn test_monitor_creation() {
         let monitor = ResourceMonitor::new(None);
-        assert!(monitor.start_time.elapsed() < Duration::from_millis(100));
+        assert!(monitor.start_time.elapsed() < std::time::Duration::from_millis(100));
     }
 
     #[tokio::test]

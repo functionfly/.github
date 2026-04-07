@@ -126,11 +126,6 @@ impl KVStore {
         true // Always return true for compatibility with some KV APIs
     }
 
-    /// Check if a key exists and is not expired
-    pub fn exists(&mut self, key: &str) -> bool {
-        self.get(key).is_some()
-    }
-
     /// Get all keys (for debugging/admin purposes)
     pub fn keys(&self) -> Vec<String> {
         self.store.keys().cloned().collect()
@@ -266,19 +261,6 @@ mod tests {
 
         store.delete("delete_key");
         assert_eq!(store.get("delete_key"), None);
-    }
-
-    #[test]
-    fn test_kv_exists() {
-        let mut store = KVStore::new(100);
-
-        assert!(!store.exists("exists_key"));
-
-        store.set("exists_key".to_string(), "exists_value".to_string(), None).unwrap();
-        assert!(store.exists("exists_key"));
-
-        store.delete("exists_key");
-        assert!(!store.exists("exists_key"));
     }
 
     #[test]

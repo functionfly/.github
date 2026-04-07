@@ -94,8 +94,13 @@ pub struct Config {
     pub wasi_allow_network: bool,
 
     /// Allow system time access in WASI
-    #[arg(long, default_value = "true")]
+    /// Default: false (opt-in for security-sensitive environments)
+    #[arg(long, default_value = "false")]
     pub wasi_allow_time: bool,
+
+    /// Shutdown timeout in seconds (for graceful shutdown)
+    #[arg(long, default_value = "30")]
+    pub shutdown_timeout_secs: u64,
 
     /// Python runtime version (for Python functions)
     #[arg(long, default_value = "rustpython-0.4")]
@@ -130,6 +135,10 @@ pub struct Config {
     /// SMTP password for email capability
     #[arg(long)]
     pub smtp_password: Option<String>,
+
+    /// SMTP use TLS (for port 465 or explicit TLS)
+    #[arg(long, default_value = "false")]
+    pub smtp_use_tls: bool,
 
     /// Storage base directory for file operations
     #[arg(long, default_value = "./storage")]
@@ -298,6 +307,14 @@ pub struct Config {
     #[arg(long, default_value = "false")]
     pub enable_seccomp: bool,
 
+    /// When seccomp is enabled, fail hard if seccomp filter cannot be applied.
+    /// In containerized environments where seccomp is not available (e.g., Docker
+    /// without --security-opt), seccomp will silently not be applied. Set this to
+    /// true to make that situation fatal instead.
+    /// Default: false for backward compatibility; recommended true for production.
+    #[arg(long, default_value = "false")]
+    pub seccomp_strict: bool,
+
     /// Enable Linux network namespace isolation.
     /// When true, the runtime process is moved to a new network namespace with
     /// only the loopback interface available. Egress must be explicitly allowed
@@ -305,6 +322,35 @@ pub struct Config {
     /// Default: false (opt-in; requires CAP_NET_ADMIN).
     #[arg(long, default_value = "false")]
     pub enable_net_ns: bool,
+
+    /// When network namespace isolation is enabled, fail hard if it cannot be applied.
+    /// Requires CAP_NET_ADMIN capability. Set to true for production environments
+    /// where network isolation is mandatory.
+    /// Default: false for backward compatibility; recommended true for production.
+    #[arg(long, default_value = "false")]
+    pub netns_strict: bool,
+
+    /// Enable WASM instance pooling for warm-instance reuse.
+    /// When enabled, compiled modules and WASI contexts are pooled per function,
+    /// reducing per-execution overhead (~1ms savings per invocation).
+    /// Default: true for production.
+    #[arg(long, default_value = "true")]
+    pub wasm_pool_enabled: bool,
+
+    /// Maximum concurrent WASM executions per function when pooling is enabled.
+    /// Each concurrent execution holds a slot in the pool's semaphore.
+    #[arg(long, default_value = "10")]
+    pub wasm_pool_max_concurrent: usize,
+
+    /// Maximum idle WASM instances to keep warm per function.
+    /// Idle instances consume memory but enable sub-millisecond cold-start.
+    #[arg(long, default_value = "4")]
+    pub wasm_pool_max_idle: usize,
+
+    /// Number of instances to pre-warm per function on startup.
+    /// Set to 0 to disable pre-warming.
+    #[arg(long, default_value = "2")]
+    pub wasm_pool_prewarm_count: usize,
 }
 
 impl Config {
@@ -406,7 +452,8 @@ impl Default for Config {
             wasi_env: Vec::new(),
             wasi_args: Vec::new(),
             wasi_allow_network: false,
-            wasi_allow_time: true,
+            wasi_allow_time: false,
+            shutdown_timeout_secs: 30,
             python_runtime: "rustpython-0.4".to_string(),
             capabilities: "".to_string(),
             python_packages: Vec::new(),
@@ -415,6 +462,7 @@ impl Default for Config {
             smtp_port: 587,
             smtp_username: None,
             smtp_password: None,
+            smtp_use_tls: false,
             storage_base_dir: "./storage".to_string(),
             ai_models_dir: "./models".to_string(),
             external_api_rate_limit: 60,
@@ -451,6 +499,14 @@ impl Default for Config {
             secrets_file: None,
             queue_max_len: 1000,
             queue_max_queues: 16,
+            enable_seccomp: false,
+            seccomp_strict: false,
+            enable_net_ns: false,
+            netns_strict: false,
+            wasm_pool_enabled: true,
+            wasm_pool_max_concurrent: 10,
+            wasm_pool_max_idle: 4,
+            wasm_pool_prewarm_count: 2,
         }
     }
 }

@@ -43,11 +43,7 @@ pub mod memory;
 pub mod wrapper;
 
 // Re-export main types for convenience
-pub use errors::{MicroPythonError, Result};
 pub use executor::{ExecutorConfig, MicroPythonExecutor};
-pub use loader::{LinkedInstance, MicroPythonLoader};
-pub use memory::{HostState, MemoryLayout, MemoryManager};
-pub use wrapper::{WrapperConfig, WrapperGenerator};
 
 /// Version of the MicroPython runtime interface.
 pub const MP_INTERFACE_VERSION: &str = "1.0.0";

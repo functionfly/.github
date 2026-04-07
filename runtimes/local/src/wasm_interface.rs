@@ -5,7 +5,7 @@
 //! This ensures consistent execution across different runtimes.
 
 use serde::{Deserialize, Serialize};
-use wasmtime::{Store, Instance};
+use wasmtime::{Instance, Store};
 
 /// Standardized function metadata embedded in WASM modules
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,32 +100,10 @@ impl ExecutionResult {
             // Return the current number of pages * page size (64KB per page)
             // This gives us the total allocated memory in bytes
             const WASM_PAGE_SIZE: u64 = 64 * 1024; // 64KB per page
-            (memory.size(&mut *store) as u64) * WASM_PAGE_SIZE
+            memory.size(&mut *store) * WASM_PAGE_SIZE
         } else {
             0
         }
-    }
-}
-
-/// Standard WASM module exports that all function modules must provide
-pub trait FunctionModule {
-    /// Initialize the function module (called once on cold start)
-    /// This allows runtime-specific initialization (e.g., setting up Python interpreter)
-    fn init(&self) -> anyhow::Result<()>;
-
-    /// Execute the function with the given input
-    /// Returns the function output as a string (JSON or plain text)
-    fn execute(&self, input: &str) -> anyhow::Result<String>;
-
-    /// Get function metadata (optional)
-    /// Returns JSON string containing function metadata
-    fn metadata(&self) -> anyhow::Result<String> {
-        Ok("{}".to_string())
-    }
-
-    /// Check if the module is ready for execution
-    fn is_ready(&self) -> bool {
-        true
     }
 }
 
@@ -134,9 +112,16 @@ pub mod memory {
     use wasmtime::Memory;
 
     /// Read a null-terminated UTF-8 string from WASM memory
-    pub fn read_string(memory: &Memory, store: &impl wasmtime::AsContext, ptr: i32) -> anyhow::Result<String> {
+    pub fn read_string(
+        memory: &Memory,
+        store: &impl wasmtime::AsContext,
+        ptr: i32,
+    ) -> anyhow::Result<String> {
         if ptr < 0 {
-            return Err(anyhow::anyhow!("Invalid memory pointer (negative): {}", ptr));
+            return Err(anyhow::anyhow!(
+                "Invalid memory pointer (negative): {}",
+                ptr
+            ));
         }
         let memory_data = memory.data(store);
         let start = ptr as usize;
@@ -161,7 +146,11 @@ pub mod memory {
     }
 
     /// Write a string to WASM memory and return the pointer
-    pub fn write_string(memory: &Memory, store: &mut impl wasmtime::AsContextMut, data: &str) -> anyhow::Result<i32> {
+    pub fn write_string(
+        memory: &Memory,
+        store: &mut impl wasmtime::AsContextMut,
+        data: &str,
+    ) -> anyhow::Result<i32> {
         let bytes = data.as_bytes();
         let len = bytes.len() + 1; // +1 for null terminator
 
@@ -179,13 +168,18 @@ pub mod memory {
     }
 
     /// Allocate memory in WASM module using proper memory management
-    pub fn allocate(memory: &Memory, store: &mut impl wasmtime::AsContextMut, size: usize) -> anyhow::Result<i32> {
+    pub fn allocate(
+        memory: &Memory,
+        store: &mut impl wasmtime::AsContextMut,
+        size: usize,
+    ) -> anyhow::Result<i32> {
         use std::sync::atomic::{AtomicUsize, Ordering};
 
         // Thread-safe bump allocator using atomic operations
         // Production-ready: Reserve space for code/data sections and stack
         static NEXT_PTR: AtomicUsize = AtomicUsize::new(0);
-        static INITIALIZED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        static INITIALIZED: std::sync::atomic::AtomicBool =
+            std::sync::atomic::AtomicBool::new(false);
 
         // Initialize heap start address on first allocation
         if !INITIALIZED.load(Ordering::SeqCst) {
@@ -208,13 +202,13 @@ pub mod memory {
 
         // If we need more memory, grow it
         if required_end > current_memory_size {
-            let current_pages = (current_memory_size + 65535) / 65536;
-            let required_pages = (required_end + 65535) / 65536;
+            let current_pages = current_memory_size.div_ceil(65536);
+            let required_pages = required_end.div_ceil(65536);
             let additional_pages = required_pages - current_pages;
 
             if additional_pages > 0 {
                 // Check WebAssembly memory limits (4GB max)
-                let new_total_pages = (memory.size(&mut *store) as u64) + additional_pages as u64;
+                let new_total_pages = memory.size(&mut *store) + additional_pages as u64;
                 const MAX_WASM_PAGES: u64 = 65536; // 4GB = 65536 pages
 
                 if new_total_pages > MAX_WASM_PAGES {
@@ -228,16 +222,15 @@ pub mod memory {
             }
         }
 
-        // Now check bounds after potential memory growth
-        let final_memory_size = memory.data_size(&mut *store);
-        let stack_reserve = if final_memory_size > 1024 * 1024 {
-            1024 * 1024 // 1MB for large memories
-        } else {
-            8 * 1024 // 8KB minimum stack reserve
-        };
-        let max_heap_end = final_memory_size.saturating_sub(stack_reserve);
+        // Use calculate_max_heap_end to get the safe heap boundary
+        let max_heap_end = calculate_max_heap_end(memory, store);
 
         if required_end > max_heap_end {
+            let stack_reserve = if memory.data_size(&mut *store) > 1024 * 1024 {
+                1024 * 1024 // 1MB for large memories
+            } else {
+                8 * 1024 // 8KB minimum stack reserve
+            };
             return Err(anyhow::anyhow!(
                 "Allocation would exceed heap bounds: required {} bytes, max heap end at {} (stack reserve: {} bytes)",
                 required_end, max_heap_end, stack_reserve
@@ -251,34 +244,37 @@ pub mod memory {
         Ok(allocated_ptr as i32)
     }
 
-/// Calculate the safe starting address for heap allocation
-/// Reserves space for code and data sections
-fn calculate_heap_start(memory: &Memory, store: &mut impl wasmtime::AsContextMut) -> usize {
-    const HEAP_START_OFFSET: usize = 64 * 1024; // 64KB - safe offset for code/data sections
+    /// Calculate the safe starting address for heap allocation
+    /// Reserves space for code and data sections
+    fn calculate_heap_start(memory: &Memory, store: &mut impl wasmtime::AsContextMut) -> usize {
+        const HEAP_START_OFFSET: usize = 64 * 1024; // 64KB - safe offset for code/data sections
 
-    // Ensure we have at least the minimum initial memory
-    let current_size = memory.data_size(store);
-    if current_size < HEAP_START_OFFSET {
-        // If memory is too small, start at 1KB offset as minimum safe space
-        return 1024;
+        // Ensure we have at least the minimum initial memory
+        let current_size = memory.data_size(store);
+        if current_size < HEAP_START_OFFSET {
+            // If memory is too small, start at 1KB offset as minimum safe space
+            return 1024;
+        }
+
+        HEAP_START_OFFSET
     }
 
-    HEAP_START_OFFSET
-}
+    /// Calculate the maximum address for heap allocation (reserving stack space)
+    pub fn calculate_max_heap_end(
+        memory: &Memory,
+        store: &mut impl wasmtime::AsContextMut,
+    ) -> usize {
+        let memory_size = memory.data_size(store);
 
-/// Calculate the maximum address for heap allocation (reserving stack space)
-fn calculate_max_heap_end(memory: &Memory, store: &mut impl wasmtime::AsContextMut) -> usize {
-    let memory_size = memory.data_size(store);
+        // Reserve stack space (minimum 8KB, up to 1MB for larger memories)
+        let stack_reserve = if memory_size > 1024 * 1024 {
+            1024 * 1024 // 1MB for large memories
+        } else {
+            8 * 1024 // 8KB minimum stack reserve
+        };
 
-    // Reserve stack space (minimum 8KB, up to 1MB for larger memories)
-    let stack_reserve = if memory_size > 1024 * 1024 {
-        1024 * 1024 // 1MB for large memories
-    } else {
-        8 * 1024 // 8KB minimum stack reserve
-    };
-
-    memory_size.saturating_sub(stack_reserve)
-}
+        memory_size.saturating_sub(stack_reserve)
+    }
 }
 
 #[cfg(test)]
@@ -324,11 +320,15 @@ mod tests {
         let mut store = wasmtime::Store::new(&engine, ());
 
         // Create a minimal module without memory export
-        let module = wasmtime::Module::new(&engine, r#"
+        let module = wasmtime::Module::new(
+            &engine,
+            r#"
             (module
                 (func (export "test"))
             )
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let instance = wasmtime::Instance::new(&mut store, &module, &[]).unwrap();
 
@@ -343,12 +343,16 @@ mod tests {
         let mut store = wasmtime::Store::new(&engine, ());
 
         // Create a module with 2 pages of memory (128KB)
-        let module = wasmtime::Module::new(&engine, r#"
+        let module = wasmtime::Module::new(
+            &engine,
+            r#"
             (module
                 (memory (export "memory") 2)  ;; 2 pages = 128KB
                 (func (export "test"))
             )
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let instance = wasmtime::Instance::new(&mut store, &module, &[]).unwrap();
 
@@ -364,12 +368,16 @@ mod tests {
         let mut store = wasmtime::Store::new(&engine, ());
 
         // Create a module with initial memory
-        let module = wasmtime::Module::new(&engine, r#"
+        let module = wasmtime::Module::new(
+            &engine,
+            r#"
             (module
                 (memory (export "memory") 1)  ;; 1 page = 64KB
                 (func (export "test"))
             )
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let instance = wasmtime::Instance::new(&mut store, &module, &[]).unwrap();
         let memory = instance.get_memory(&mut store, "memory").unwrap();
@@ -394,12 +402,16 @@ mod tests {
         let mut store = wasmtime::Store::new(&engine, ());
 
         // Create a small module with limited memory (1 page = 64KB)
-        let module = wasmtime::Module::new(&engine, r#"
+        let module = wasmtime::Module::new(
+            &engine,
+            r#"
             (module
                 (memory (export "memory") 1)  ;; 1 page = 64KB
                 (func (export "test"))
             )
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let instance = wasmtime::Instance::new(&mut store, &module, &[]).unwrap();
         let memory = instance.get_memory(&mut store, "memory").unwrap();
@@ -428,12 +440,16 @@ mod tests {
         let mut store = wasmtime::Store::new(&engine, ());
 
         // Create a module with memory
-        let module = wasmtime::Module::new(&engine, r#"
+        let module = wasmtime::Module::new(
+            &engine,
+            r#"
             (module
                 (memory (export "memory") 1)  ;; 1 page = 64KB
                 (func (export "test"))
             )
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let instance = wasmtime::Instance::new(&mut store, &module, &[]).unwrap();
         let memory = instance.get_memory(&mut store, "memory").unwrap();
@@ -448,7 +464,7 @@ mod tests {
 
         // Test empty string
         let empty_ptr = memory::write_string(&memory, &mut store, "").unwrap();
-        let read_empty = memory::read_string(&memory, &store, empty_ptr).unwrap();
+        let read_empty = memory::read_string(&memory, &mut store, empty_ptr).unwrap();
         assert_eq!(read_empty, "");
     }
 }

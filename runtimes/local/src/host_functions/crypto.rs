@@ -34,9 +34,7 @@ pub fn add_crypto_functions(linker: &mut wasmtime::Linker<WasiP1Ctx>) -> anyhow:
     add_hmac_function(linker)?;
     add_hash_function(linker)?;
     add_random_function(linker)?;
-    tracing::debug!(
-        "Added functionfly.crypto_hmac, crypto_hash, crypto_random host functions"
-    );
+    tracing::debug!("Added functionfly.crypto_hmac, crypto_hash, crypto_random host functions");
     Ok(())
 }
 
@@ -56,22 +54,21 @@ fn add_hmac_function(linker: &mut wasmtime::Linker<WasiP1Ctx>) -> anyhow::Result
               msg_ptr: i32,
               msg_len: i32,
               out_ptr: i32,
-              out_len_ptr: i32| -> i32 {
-            let algo =
-                match memory_utils::read_string_from_memory(&mut caller, algo_ptr, algo_len) {
-                    Ok(a) => a,
-                    Err(_) => return -1,
-                };
-            let key =
-                match memory_utils::read_bytes_from_memory(&mut caller, key_ptr, key_len) {
-                    Ok(k) => k,
-                    Err(_) => return -2,
-                };
-            let msg =
-                match memory_utils::read_bytes_from_memory(&mut caller, msg_ptr, msg_len) {
-                    Ok(m) => m,
-                    Err(_) => return -3,
-                };
+              out_len_ptr: i32|
+              -> i32 {
+            let algo = match memory_utils::read_string_from_memory(&mut caller, algo_ptr, algo_len)
+            {
+                Ok(a) => a,
+                Err(_) => return -1,
+            };
+            let key = match memory_utils::read_bytes_from_memory(&mut caller, key_ptr, key_len) {
+                Ok(k) => k,
+                Err(_) => return -2,
+            };
+            let msg = match memory_utils::read_bytes_from_memory(&mut caller, msg_ptr, msg_len) {
+                Ok(m) => m,
+                Err(_) => return -3,
+            };
 
             let hex_output = match compute_hmac(&algo, &key, &msg) {
                 Ok(h) => h,
@@ -106,17 +103,17 @@ fn add_hash_function(linker: &mut wasmtime::Linker<WasiP1Ctx>) -> anyhow::Result
               data_ptr: i32,
               data_len: i32,
               out_ptr: i32,
-              out_len_ptr: i32| -> i32 {
-            let algo =
-                match memory_utils::read_string_from_memory(&mut caller, algo_ptr, algo_len) {
-                    Ok(a) => a,
-                    Err(_) => return -1,
-                };
-            let data =
-                match memory_utils::read_bytes_from_memory(&mut caller, data_ptr, data_len) {
-                    Ok(d) => d,
-                    Err(_) => return -2,
-                };
+              out_len_ptr: i32|
+              -> i32 {
+            let algo = match memory_utils::read_string_from_memory(&mut caller, algo_ptr, algo_len)
+            {
+                Ok(a) => a,
+                Err(_) => return -1,
+            };
+            let data = match memory_utils::read_bytes_from_memory(&mut caller, data_ptr, data_len) {
+                Ok(d) => d,
+                Err(_) => return -2,
+            };
 
             let hex_output = match compute_hash(&algo, &data) {
                 Ok(h) => h,
@@ -148,7 +145,8 @@ fn add_random_function(linker: &mut wasmtime::Linker<WasiP1Ctx>) -> anyhow::Resu
         move |mut caller: wasmtime::Caller<WasiP1Ctx>,
               out_ptr: i32,
               out_len_ptr: i32,
-              n_bytes: i32| -> i32 {
+              n_bytes: i32|
+              -> i32 {
             if n_bytes <= 0 || n_bytes > 4096 {
                 return -1;
             }
@@ -159,12 +157,8 @@ fn add_random_function(linker: &mut wasmtime::Linker<WasiP1Ctx>) -> anyhow::Resu
             };
 
             let hex_str = hex::encode(&bytes);
-            match memory_utils::write_string_to_memory(
-                &mut caller,
-                &hex_str,
-                out_ptr,
-                out_len_ptr,
-            ) {
+            match memory_utils::write_string_to_memory(&mut caller, &hex_str, out_ptr, out_len_ptr)
+            {
                 Ok(_) => 0,
                 Err(_) => -3,
             }
@@ -222,7 +216,7 @@ pub fn read_random_bytes(n: usize) -> anyhow::Result<Vec<u8>> {
         let mut buf = vec![0u8; n];
         f.read_exact(&mut buf)
             .map_err(|e| anyhow::anyhow!("read /dev/urandom: {}", e))?;
-        return Ok(buf);
+        Ok(buf)
     }
 
     #[cfg(not(unix))]
@@ -247,7 +241,11 @@ mod tests {
     #[test]
     fn test_hmac_sha256_known_vector() {
         let result = compute_hmac("sha256", b"key", b"message").unwrap();
-        assert_eq!(result.len(), 64, "HMAC-SHA256 must produce 32-byte (64 hex char) output");
+        assert_eq!(
+            result.len(),
+            64,
+            "HMAC-SHA256 must produce 32-byte (64 hex char) output"
+        );
     }
 
     #[test]

@@ -21,6 +21,7 @@ pub struct RuntimeError {
 }
 
 /// Error categorization for better handling
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum ErrorKind {
     // Execution errors
@@ -72,6 +73,7 @@ pub enum ErrorKind {
 
 /// Additional context for errors
 #[derive(Debug, Clone, Default)]
+#[allow(dead_code)]
 pub struct ErrorContext {
     pub function_name: Option<String>,
     pub function_version: Option<String>,
@@ -82,6 +84,7 @@ pub struct ErrorContext {
     pub request_id: Option<String>,
 }
 
+#[allow(dead_code)]
 impl RuntimeError {
     /// Create a new runtime error
     pub fn new(kind: ErrorKind, message: impl Into<String>) -> Self {
@@ -236,6 +239,95 @@ impl RuntimeError {
     pub fn resource_limit(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::ResourceLimitExceeded, message)
     }
+
+    /// Create a WASM instantiation error
+    pub fn wasm_instantiation(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::WasmInstantiation, message)
+    }
+
+    /// Create a function not found error
+    pub fn function_not_found(function_name: &str) -> Self {
+        Self::new(
+            ErrorKind::FunctionNotFound,
+            format!("Function '{}' not found in WASM module", function_name),
+        )
+    }
+
+    /// Create a rate limit exceeded error
+    pub fn rate_limit_exceeded() -> Self {
+        Self::new(
+            ErrorKind::RateLimitExceeded,
+            "Rate limit exceeded",
+        )
+    }
+
+    /// Create a cache corruption error
+    pub fn cache_corruption(description: impl Into<String>) -> Self {
+        Self::new(ErrorKind::CacheCorruption, description)
+    }
+
+    /// Create a pool capacity exceeded error
+    pub fn pool_capacity_exceeded() -> Self {
+        Self::new(
+            ErrorKind::PoolCapacityExceeded,
+            "Pool capacity exceeded",
+        )
+    }
+
+    /// Create a WASI not supported error
+    pub fn wasi_not_supported(feature: impl Into<String>) -> Self {
+        Self::new(ErrorKind::WasiNotSupported, feature)
+    }
+
+    /// Create a WASI syscall failed error
+    pub fn wasi_syscall_failed(syscall: impl Into<String>, message: impl Into<String>) -> Self {
+        Self::new(
+            ErrorKind::WasiSyscallFailed,
+            format!("WASI syscall '{}' failed: {}", syscall.into(), message.into()),
+        )
+    }
+
+    /// Create a Python engine unavailable error
+    pub fn python_engine_unavailable(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::PythonEngineUnavailable, message)
+    }
+
+    /// Create a Python module not found error
+    pub fn python_module_not_found(module_name: impl Into<String>) -> Self {
+        Self::new(
+            ErrorKind::PythonModuleNotFound,
+            format!("Python module '{}' not found", module_name.into()),
+        )
+    }
+
+    /// Create a pool pruning failed error
+    pub fn pool_pruning_failed(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::PoolPruningFailed, message)
+    }
+
+    /// Create a cache size exceeded error
+    pub fn cache_size_exceeded(max_size: usize) -> Self {
+        Self::new(
+            ErrorKind::CacheSizeExceeded,
+            format!("Cache size exceeded maximum of {} bytes", max_size),
+        )
+    }
+
+    /// Create a fuel limit exceeded error
+    pub fn fuel_limit_exceeded() -> Self {
+        Self::new(
+            ErrorKind::FuelLimitExceeded,
+            "CPU fuel limit exceeded",
+        )
+    }
+
+    /// Create a wasm file corrupt error
+    pub fn wasm_file_corrupt(path: impl Into<String>) -> Self {
+        Self::new(
+            ErrorKind::WasmFileCorrupt,
+            format!("WASM file is corrupt: {}", path.into()),
+        )
+    }
 }
 
 impl fmt::Display for RuntimeError {
@@ -268,8 +360,6 @@ pub enum RecoveryStrategy {
     FailFast,
     /// Custom recovery logic
     Custom { description: String },
-    /// Fail over to alternative system
-    FailOver { description: String },
 }
 
 impl RecoveryStrategy {
@@ -327,7 +417,7 @@ impl ErrorRecovery {
                 RecoveryStrategy::degrade("Using direct execution without pooling".to_string())
             }
             ErrorKind::MemoryLimitExceeded => {
-                RecoveryStrategy::FailOver { description: "Switching to memory-efficient execution mode".to_string() }
+                Self::failover("Switching to memory-efficient execution mode")
             }
             ErrorKind::PythonEngineUnavailable => {
                 RecoveryStrategy::fallback("wasm".to_string())
@@ -375,12 +465,6 @@ impl ErrorRecovery {
                 Err(RuntimeError::new(
                     ErrorKind::Unknown,
                     format!("Custom recovery required: {}", description),
-                ))
-            }
-            RecoveryStrategy::FailOver { description } => {
-                Err(RuntimeError::new(
-                    ErrorKind::Unknown,
-                    format!("Failover required: {}", description),
                 ))
             }
         }

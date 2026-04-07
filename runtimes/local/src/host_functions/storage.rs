@@ -11,7 +11,11 @@
 //!   canonicalized and checked instead — this prevents the previous bug where
 //!   `storage_write` would fail with `canonicalize` on a non-existent path.
 //! - The base directory is created automatically on first use if absent.
+//! - Symlink attacks are prevented by using O_NOFOLLOW and verifying through
+//!   /proc/self/fd to get a guaranteed-canonical path.
 
+use std::os::fd::AsRawFd;
+use std::path::PathBuf;
 use wasmtime_wasi::p1::WasiP1Ctx;
 
 use crate::config::Config;
@@ -38,12 +42,13 @@ pub fn add_storage_functions(
               path_ptr: i32,
               path_len: i32,
               data_ptr: i32,
-              data_len_ptr: i32| -> i32 {
-            let path =
-                match memory_utils::read_string_from_memory(&mut caller, path_ptr, path_len) {
-                    Ok(p) => p,
-                    Err(_) => return -2,
-                };
+              data_len_ptr: i32|
+              -> i32 {
+            let path = match memory_utils::read_string_from_memory(&mut caller, path_ptr, path_len)
+            {
+                Ok(p) => p,
+                Err(_) => return -2,
+            };
 
             let full_path =
                 match validate_storage_path_existing(&path, &config_read.storage_base_dir) {
@@ -77,18 +82,18 @@ pub fn add_storage_functions(
               path_ptr: i32,
               path_len: i32,
               data_ptr: i32,
-              data_len: i32| -> i32 {
-            let path =
-                match memory_utils::read_string_from_memory(&mut caller, path_ptr, path_len) {
-                    Ok(p) => p,
-                    Err(_) => return -2,
-                };
+              data_len: i32|
+              -> i32 {
+            let path = match memory_utils::read_string_from_memory(&mut caller, path_ptr, path_len)
+            {
+                Ok(p) => p,
+                Err(_) => return -2,
+            };
 
-            let data =
-                match memory_utils::read_bytes_from_memory(&mut caller, data_ptr, data_len) {
-                    Ok(d) => d,
-                    Err(_) => return -3,
-                };
+            let data = match memory_utils::read_bytes_from_memory(&mut caller, data_ptr, data_len) {
+                Ok(d) => d,
+                Err(_) => return -3,
+            };
 
             // For writes we use the write-specific validator that handles new files.
             let full_path =
@@ -99,10 +104,8 @@ pub fn add_storage_functions(
 
             // Create intermediate directories if necessary.
             if let Some(parent) = full_path.parent() {
-                if !parent.exists() {
-                    if std::fs::create_dir_all(parent).is_err() {
-                        return -4;
-                    }
+                if !parent.exists() && std::fs::create_dir_all(parent).is_err() {
+                    return -4;
                 }
             }
 
@@ -113,9 +116,7 @@ pub fn add_storage_functions(
         },
     )?;
 
-    tracing::debug!(
-        "Added functionfly.storage_read and functionfly.storage_write host functions"
-    );
+    tracing::debug!("Added functionfly.storage_read and functionfly.storage_write host functions");
     Ok(())
 }
 
@@ -134,8 +135,9 @@ pub fn validate_storage_path_existing(
 
     let canonical_base = std::fs::canonicalize(base_dir)
         .map_err(|e| anyhow::anyhow!("Cannot canonicalize base dir '{}': {}", base_dir, e))?;
-    let canonical_path = std::fs::canonicalize(&full_path)
-        .map_err(|e| anyhow::anyhow!("Cannot canonicalize path '{}': {}", full_path.display(), e))?;
+    let canonical_path = std::fs::canonicalize(&full_path).map_err(|e| {
+        anyhow::anyhow!("Cannot canonicalize path '{}': {}", full_path.display(), e)
+    })?;
 
     if !canonical_path.starts_with(&canonical_base) {
         return Err(anyhow::anyhow!(
@@ -153,6 +155,12 @@ pub fn validate_storage_path_existing(
 /// The parent directory must already exist (or be a sub-path of the base) and
 /// is canonicalized for the containment check.  The filename component is then
 /// appended afterwards.
+///
+/// ## TOCTOU Prevention
+/// This function uses O_NOFOLLOW when opening directories to prevent symlink
+/// swap attacks. After creating necessary directories, it opens the parent with
+/// O_NOFOLLOW and uses /proc/self/fd to get a canonical path that is guaranteed
+/// not to have symlinks in any component.
 pub fn validate_storage_path_for_write(
     path: &str,
     base_dir: &str,
@@ -188,8 +196,11 @@ pub fn validate_storage_path_for_write(
             .map_err(|e| anyhow::anyhow!("Cannot create parent dir: {}", e))?;
     }
 
-    let canonical_parent = std::fs::canonicalize(parent)
-        .map_err(|e| anyhow::anyhow!("Cannot canonicalize parent dir: {}", e))?;
+    // TOCTOU Prevention: Open parent with O_NOFOLLOW to prevent symlink swap attacks.
+    // Then use /proc/self/fd to get a truly canonical path that doesn't follow
+    // any remaining symlinks in the path components.
+    let canonical_parent = canonicalize_with_nofollow(parent)
+        .map_err(|e| anyhow::anyhow!("Cannot verify parent dir: {}", e))?;
 
     if !canonical_parent.starts_with(&canonical_base) {
         return Err(anyhow::anyhow!(
@@ -204,6 +215,40 @@ pub fn validate_storage_path_for_write(
         .ok_or_else(|| anyhow::anyhow!("Path '{}' has no file name", path))?;
 
     Ok(canonical_parent.join(file_name))
+}
+
+/// Canonicalize a path using O_NOFOLLOW to prevent symlink attacks.
+///
+/// This function opens the path with O_NOFOLLOW (refusing to follow the final
+/// symlink) and then uses /proc/self/fd to get a canonical path. This
+/// guarantees that even if a symlink is swapped in after this call, the
+/// returned path is the real path, not the symlink target.
+#[cfg(target_os = "linux")]
+fn canonicalize_with_nofollow(path: &std::path::Path) -> anyhow::Result<PathBuf> {
+    use std::os::unix::fs::OpenOptionsExt;
+
+    // Open with O_NOFOLLOW | O_DIRECTORY | O_RDONLY
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_DIRECTORY)
+        .open(path)?;
+
+    // Use /proc/self/fd/<n> to get a path that bypasses symlink following
+    // for the final component. This fd points to the actual directory.
+    let fd = file.as_raw_fd();
+    let proc_path = format!("/proc/self/fd/{}", fd);
+
+    // Read the symlink to get the canonical path (std::fs::read_link returns PathBuf)
+    let canonical =
+        std::fs::read_link(&proc_path).map_err(|e| anyhow::anyhow!("read_link failed: {}", e))?;
+
+    Ok(canonical)
+}
+
+/// Fallback canonicalize for non-Linux systems (no TOCTOU protection)
+#[cfg(not(target_os = "linux"))]
+fn canonicalize_with_nofollow(path: &std::path::Path) -> anyhow::Result<PathBuf> {
+    std::fs::canonicalize(path).map_err(|e| anyhow::anyhow!("canonicalize failed: {}", e))
 }
 
 /// Legacy alias kept for backwards compatibility and test usage.

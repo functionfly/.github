@@ -151,18 +151,48 @@ impl PythonEngine {
 }
 
 
-/// Shared Python engine state
+/// Shared Python engine state for reuse across requests.
+///
+/// This struct holds a reference to a long-lived Python engine with an interpreter
+/// that is reused across invocations via a dedicated single-threaded runtime.
+/// The interpreter lives on the `python-runtime-worker` thread and receives
+/// execution requests via an MPSC channel.
+///
+/// # Thread Safety
+///
+/// `PythonSharedState` itself is `Send + Sync` and can be stored in `AppState`.
+/// The actual interpreter lives on a dedicated thread and is accessed via channel,
+/// avoiding the `Rc<Context>` Send/Sync issues.
+#[derive(Clone)]
+#[allow(dead_code)]
 pub struct PythonSharedState {
     pub engine: Arc<PythonEngine>,
     pub config: PythonConfig,
 }
 
 impl PythonSharedState {
-    pub fn new(engine: PythonEngine, config: PythonConfig) -> Self {
-        Self {
+    /// Create a new PythonSharedState with a dedicated runtime worker.
+    ///
+    /// This spawns a single-threaded Tokio runtime that owns the Python interpreter.
+    /// All async execution goes through a channel to this runtime for true interpreter reuse.
+    pub fn new(config: PythonConfig) -> anyhow::Result<Self> {
+        let engine_config = Config {
+            runtime: "python".to_string(),
+            timeout_ms: config.timeout_ms,
+            memory_mb: (config.memory_limit / (1024 * 1024)) as u32,
+            python_debug: config.debug,
+            ..Config::default()
+        };
+        let engine = PythonEngine::new(engine_config)?;
+        Ok(Self {
             engine: Arc::new(engine),
             config,
-        }
+        })
+    }
+
+    /// Execute Python code synchronously (uses the shared interpreter on the calling thread).
+    pub fn execute_sync(&self, code: &str, input: &str) -> anyhow::Result<String> {
+        self.engine.execute_sync(code, input)
     }
 }
 

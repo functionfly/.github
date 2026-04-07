@@ -71,7 +71,6 @@ fn apply_net_namespace_linux() -> anyhow::Result<()> {
 
 #[cfg(target_os = "linux")]
 fn bring_up_lo() -> anyhow::Result<()> {
-    use std::io;
     use std::process::Command;
 
     // Use `ip link set lo up` — available on most modern Linux systems.

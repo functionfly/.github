@@ -4,10 +4,9 @@
 //! including dependency resolution caching, package download caching, and bytecode caching.
 
 use anyhow::Context;
-use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -17,13 +16,13 @@ use crate::cache::ResultCache;
 use crate::host_functions::fetch;
 
 /// Max size for a single package download (100 MiB)
-const MAX_PACKAGE_DOWNLOAD_BYTES: usize = 100 * 1024 * 1024;
+pub const MAX_PACKAGE_DOWNLOAD_BYTES: usize = 100 * 1024 * 1024;
 /// Timeout for package HTTP download
-const PACKAGE_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(60);
+pub const PACKAGE_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Parse the package name from a requirement string (e.g. "requests>=2.28" -> "requests").
 /// Strips version specifiers (==, !=, >=, <=, ~=, <, >).
-fn parse_requirement_name(requirement: &str) -> &str {
+pub fn parse_requirement_name(requirement: &str) -> String {
     let s = requirement.trim();
     let specifiers = ["~=", "==", "!=", ">=", "<=", "<", ">"];
     let mut min_idx = s.len();
@@ -32,10 +31,11 @@ fn parse_requirement_name(requirement: &str) -> &str {
             min_idx = min_idx.min(idx);
         }
     }
-    s[..min_idx].trim()
+    s[..min_idx].trim().to_string()
 }
 
 /// Enterprise package manager with caching
+#[allow(dead_code)]
 pub struct PackageManager {
     /// Package cache
     cache: Arc<RwLock<ResultCache>>,
@@ -92,6 +92,7 @@ impl PackageManager {
     }
 
     /// Download and cache a package
+    #[allow(dead_code)]
     pub async fn download_package(&self, package_name: &str, version: &str, download_url: &str) -> anyhow::Result<Vec<u8>> {
         // Check cache first
         let mut cache = self.cache.write().await;
@@ -120,6 +121,7 @@ impl PackageManager {
     }
 
     /// Resolve dependencies and cache the result
+    #[allow(dead_code)]
     pub async fn resolve_dependencies(&self, requirements: &[String]) -> anyhow::Result<HashMap<String, String>> {
         let requirements_hash = ResultCache::hash_requirements(requirements);
 
@@ -147,12 +149,14 @@ impl PackageManager {
     }
 
     /// Get cached bytecode for Python source
+    #[allow(dead_code)]
     pub async fn get_cached_bytecode(&self, source_hash: &str) -> Option<Vec<u8>> {
         let mut cache = self.cache.write().await;
         cache.get_python_wasm(source_hash)
     }
 
     /// Cache Python bytecode
+    #[allow(dead_code)]
     pub async fn set_cached_bytecode(&self, source_hash: &str, bytecode: &[u8]) {
         let mut cache = self.cache.write().await;
         cache.set_python_wasm(source_hash, bytecode);

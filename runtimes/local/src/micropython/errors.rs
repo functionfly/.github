@@ -18,6 +18,7 @@ pub enum MicroPythonError {
     MemoryError(String),
 
     /// Execution timeout
+    #[allow(dead_code)]
     TimeoutError,
 
     /// Invalid Python code

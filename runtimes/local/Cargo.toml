@@ -29,6 +29,7 @@ lru = "0.16.3"
 futures = "0.3.31"
 rustpython-vm = "0.4.0"
 lettre = { version = "0.11.14", features = ["tokio1", "tokio1-native-tls"] }
+native-tls = "0.2"  # For secure SMTP TLS connections
 tract-onnx = "0.22.0"
 once_cell = "1.21.3"
 governor = "0.10.4"  # For rate limiting external API calls
@@ -37,6 +38,7 @@ regex = "1.12.3"  # For security pattern matching
 tempfile = "3.25.0"  # For temporary directory creation in tests
 wat = "1.245.1"  # WAT to WASM compilation (wrapper generator)
 prometheus = { version = "0.14.0", features = ["process"] }  # Prometheus metrics export
+base64 = "0.22"  # For Python cache endpoint base64 encoding
 quinn-proto = "0.11.14"  # Pin patched version (CVE: unauthenticated remote DoS)
 aws-lc-sys = "0.38.0"    # Pin patched version (CVE: PKCS7_verify cert chain validation bypass)
 libc = "0.2"             # For raw seccomp syscalls (Linux only)

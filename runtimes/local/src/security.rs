@@ -86,6 +86,19 @@ pub enum AttackPatternType {
     ResourceStarvation,
 }
 
+impl AttackPatternType {
+    /// Get a human-readable name for the pattern type
+    pub fn debug_name(&self) -> &'static str {
+        match self {
+            AttackPatternType::SyscallFlood => "SyscallFlood",
+            AttackPatternType::MemoryExhaustion => "MemoryExhaustion",
+            AttackPatternType::PathTraversal => "PathTraversal",
+            AttackPatternType::CommandInjection => "CommandInjection",
+            AttackPatternType::ResourceStarvation => "ResourceStarvation",
+        }
+    }
+}
+
 impl SecurityMonitor {
     /// Create a new security monitor
     pub fn new() -> Self {
@@ -219,8 +232,7 @@ impl SecurityMonitor {
 
             // Check wildcard patterns (*.domain.com)
             for pattern in whitelist {
-                if pattern.starts_with("*.") {
-                    let domain_suffix = &pattern[2..]; // Remove *.
+                if let Some(domain_suffix) = pattern.strip_prefix("*.") {
                     if host.ends_with(domain_suffix) {
                         return true;
                     }
@@ -291,9 +303,15 @@ impl SecurityMonitor {
                 pattern.occurrences += 1;
                 pattern.last_seen = violation.timestamp;
 
-                // Alert on high occurrence patterns
+                // Alert on high occurrence patterns - use debug_name for readable output
                 if pattern.occurrences > 10 {
-                    tracing::error!("Attack pattern detected: {:?}", pattern);
+                    tracing::error!(
+                        "Attack pattern detected: type={}, function={}, occurrences={}, first_seen={}",
+                        pattern.pattern_type.debug_name(),
+                        pattern.function_name,
+                        pattern.occurrences,
+                        pattern.first_seen
+                    );
                 }
                 return;
             }
@@ -351,6 +369,75 @@ impl SecurityMonitor {
 
         // Block if more than 5 critical violations in the last hour
         recent_critical > 5
+    }
+
+    /// Get the security profile for a function
+    pub async fn get_profile(&self, function_key: &str) -> SecurityProfile {
+        let profiles = self.profiles.read().await;
+        profiles.get(function_key).cloned().unwrap_or_else(Self::create_standard_profile)
+    }
+
+    /// Check if filesystem access is allowed for a function
+    pub async fn is_filesystem_allowed(&self, function_key: &str) -> bool {
+        let profile = self.get_profile(function_key).await;
+        profile.allow_filesystem
+    }
+
+    /// Check if the number of open file descriptors is within limits
+    pub async fn check_file_descriptor_limit(&self, function_key: &str, current_count: usize) -> bool {
+        let profile = self.get_profile(function_key).await;
+        if current_count >= profile.max_file_descriptors {
+            tracing::warn!(
+                "File descriptor limit exceeded for {}: {} >= {}",
+                function_key, current_count, profile.max_file_descriptors
+            );
+            return false;
+        }
+        true
+    }
+
+    /// Check if the number of environment variables is within limits
+    pub async fn check_env_vars_limit(&self, function_key: &str, env_var_count: usize) -> bool {
+        let profile = self.get_profile(function_key).await;
+        if env_var_count > profile.max_env_vars {
+            tracing::warn!(
+                "Environment variable limit exceeded for {}: {} > {}",
+                function_key, env_var_count, profile.max_env_vars
+            );
+            return false;
+        }
+        true
+    }
+
+    /// Get all attack patterns for a function
+    pub async fn get_attack_patterns(&self, function_name: &str) -> Vec<AttackPattern> {
+        let patterns = self.attack_patterns.read().await;
+        patterns.iter()
+            .filter(|p| p.function_name == function_name)
+            .cloned()
+            .collect()
+    }
+
+    /// Get attack pattern with first_seen timestamp for forensics
+    pub async fn get_attack_pattern_with_history(&self, function_name: &str, pattern_type: AttackPatternType) -> Option<AttackPattern> {
+        let patterns = self.attack_patterns.read().await;
+        patterns.iter()
+            .filter(|p| p.function_name == function_name && p.pattern_type == pattern_type)
+            .cloned()
+            .inspect(|p| {
+                // Use first_seen to calculate pattern age
+                let age_seconds = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs()
+                    .saturating_sub(p.first_seen);
+                tracing::debug!(
+                    "Attack pattern '{}' for {} first seen {} seconds ago, {} occurrences",
+                    p.pattern_type.debug_name(), p.function_name, age_seconds, p.occurrences
+                );
+            })
+            .collect::<Vec<_>>()
+            .into_iter().next()
     }
 }
 

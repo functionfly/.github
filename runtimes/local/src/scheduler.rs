@@ -313,7 +313,7 @@ impl BinPackingScheduler {
 }
 
 /// Scheduler statistics.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SchedulerStats {
     pub total_nodes: usize,
     pub healthy_nodes: usize,

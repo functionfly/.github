@@ -35,9 +35,8 @@ impl MicroPythonLoader {
 
     /// Load MicroPython from a file path.
     pub fn from_file(engine: &Engine, path: &str) -> Result<Self> {
-        let wasm_bytes = std::fs::read(path).map_err(|e| {
-            MicroPythonError::LoadError(format!("Failed to read {}: {}", path, e))
-        })?;
+        let wasm_bytes = std::fs::read(path)
+            .map_err(|e| MicroPythonError::LoadError(format!("Failed to read {}: {}", path, e)))?;
         Self::new(engine, &wasm_bytes)
     }
 
@@ -90,71 +89,97 @@ impl MicroPythonLoader {
     fn define_host_functions(linker: &mut Linker<HostState>) -> Result<()> {
         // host_log(ptr, len) - Log a message from the WASM module
         linker
-            .func_wrap("host", "log", |mut caller: wasmtime::Caller<'_, HostState>, ptr: i32, len: i32| {
-                let memory = caller.get_export("memory").and_then(|e| e.into_memory());
-                if let Some(memory) = memory {
-                    let mut buffer = vec![0u8; len as usize];
-                    if memory.read(&caller, ptr as usize, &mut buffer).is_ok() {
-                        if let Ok(message) = String::from_utf8(buffer) {
-                            tracing::debug!("MicroPython: {}", message);
-                            // Store in host state for later retrieval
-                            let state = caller.data_mut();
-                            // Use block_on for synchronous context
-                            if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                                let _ = handle.enter();
+            .func_wrap(
+                "host",
+                "log",
+                |mut caller: wasmtime::Caller<'_, HostState>, ptr: i32, len: i32| {
+                    let memory = caller.get_export("memory").and_then(|e| e.into_memory());
+                    if let Some(memory) = memory {
+                        let mut buffer = vec![0u8; len as usize];
+                        if memory.read(&caller, ptr as usize, &mut buffer).is_ok() {
+                            if let Ok(message) = String::from_utf8(buffer) {
+                                tracing::debug!("MicroPython: {}", message);
+                                // Store log message in HostState synchronously via the logs Arc
+                                let state = caller.data_mut();
+                                if let Ok(mut logs) = state.logs.try_write() {
+                                    logs.push(message.clone());
+                                    // Keep only last 1000 logs
+                                    if logs.len() > 1000 {
+                                        logs.drain(0..100);
+                                    }
+                                }
+                                // Also emit to tracing for real-time visibility
+                                tracing::info!(target: "micropython", "{}", message);
                             }
                         }
                     }
-                }
-            })
-            .map_err(|e| MicroPythonError::LinkError(format!("Failed to define host_log: {}", e)))?;
+                },
+            )
+            .map_err(|e| {
+                MicroPythonError::LinkError(format!("Failed to define host_log: {}", e))
+            })?;
 
         // host_get_input(ptr, max_len) -> actual_len - Get input data
         linker
-            .func_wrap("host", "get_input", |mut caller: wasmtime::Caller<'_, HostState>, ptr: i32, max_len: i32| -> i32 {
-                let input = caller.data().input.clone();
-                let input_bytes = input.as_bytes();
-                let len = input_bytes.len().min(max_len as usize);
+            .func_wrap(
+                "host",
+                "get_input",
+                |mut caller: wasmtime::Caller<'_, HostState>, ptr: i32, max_len: i32| -> i32 {
+                    let input = caller.data().input.clone();
+                    let input_bytes = input.as_bytes();
+                    let len = input_bytes.len().min(max_len as usize);
 
-                let memory = caller.get_export("memory").and_then(|e| e.into_memory());
-                if let Some(memory) = memory {
-                    let _ = memory.write(&mut caller, ptr as usize, &input_bytes[..len]);
-                }
+                    let memory = caller.get_export("memory").and_then(|e| e.into_memory());
+                    if let Some(memory) = memory {
+                        let _ = memory.write(&mut caller, ptr as usize, &input_bytes[..len]);
+                    }
 
-                len as i32
-            })
-            .map_err(|e| MicroPythonError::LinkError(format!("Failed to define host_get_input: {}", e)))?;
+                    len as i32
+                },
+            )
+            .map_err(|e| {
+                MicroPythonError::LinkError(format!("Failed to define host_get_input: {}", e))
+            })?;
 
         // host_set_output(ptr, len) - Set output data
         linker
-            .func_wrap("host", "set_output", |mut caller: wasmtime::Caller<'_, HostState>, ptr: i32, len: i32| {
-                let memory = caller.get_export("memory").and_then(|e| e.into_memory());
-                if let Some(memory) = memory {
-                    let mut buffer = vec![0u8; len as usize];
-                    if memory.read(&caller, ptr as usize, &mut buffer).is_ok() {
-                        if let Ok(output) = String::from_utf8(buffer) {
-                            let state = caller.data_mut();
-                            // Use block_on for synchronous context
-                            if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                                let _ = handle.enter();
+            .func_wrap(
+                "host",
+                "set_output",
+                |mut caller: wasmtime::Caller<'_, HostState>, ptr: i32, len: i32| {
+                    let memory = caller.get_export("memory").and_then(|e| e.into_memory());
+                    if let Some(memory) = memory {
+                        let mut buffer = vec![0u8; len as usize];
+                        if memory.read(&caller, ptr as usize, &mut buffer).is_ok() {
+                            if let Ok(output) = String::from_utf8(buffer.clone()) {
+                                let state = caller.data_mut();
+                                // Store output in HostState synchronously via the output Arc
+                                if let Ok(mut state_output) = state.output.try_write() {
+                                    *state_output = output.clone();
+                                }
+                                tracing::debug!("MicroPython output set: {} bytes", len);
+                                // Emit to tracing for visibility
+                                tracing::info!(target: "micropython_output", "{}", output);
                             }
-                            // Store output synchronously for now
-                            // In async context, we'd use a channel or shared state
                         }
                     }
-                }
-            })
-            .map_err(|e| MicroPythonError::LinkError(format!("Failed to define host_set_output: {}", e)))?;
+                },
+            )
+            .map_err(|e| {
+                MicroPythonError::LinkError(format!("Failed to define host_set_output: {}", e))
+            })?;
 
         Ok(())
     }
 
     /// Get a reference to the compiled MicroPython module.
+    #[allow(dead_code)]
     pub fn module(&self) -> &Module {
         &self.mp_module
     }
 
     /// Get a clone of the Arc-wrapped module.
+    #[allow(dead_code)]
     pub fn module_arc(&self) -> Arc<Module> {
         self.mp_module.clone()
     }
@@ -172,6 +197,7 @@ pub struct LinkedInstance {
 
 impl LinkedInstance {
     /// Get a reference to the WASM instance.
+    #[allow(dead_code)]
     pub fn instance(&self) -> &Instance {
         &self.instance
     }
@@ -191,12 +217,13 @@ impl LinkedInstance {
         Params: wasmtime::WasmParams,
         Results: wasmtime::WasmResults,
     {
-        self.instance
-            .get_typed_func(store, name)
-            .map_err(|e| MicroPythonError::LinkError(format!("Function '{}' not found: {}", name, e)).into())
+        self.instance.get_typed_func(store, name).map_err(|e| {
+            MicroPythonError::LinkError(format!("Function '{}' not found: {}", name, e))
+        })
     }
 
     /// Read a string from WASM memory.
+    #[allow(dead_code)]
     pub fn read_string(&self, store: &mut Store<HostState>, ptr: i32, len: i32) -> Result<String> {
         let mut buffer = vec![0u8; len as usize];
         self.memory
@@ -204,14 +231,15 @@ impl LinkedInstance {
             .map_err(|e| MicroPythonError::MemoryError(format!("Failed to read memory: {}", e)))?;
 
         String::from_utf8(buffer)
-            .map_err(|e| MicroPythonError::MemoryError(format!("Invalid UTF-8: {}", e)).into())
+            .map_err(|e| MicroPythonError::MemoryError(format!("Invalid UTF-8: {}", e)))
     }
 
     /// Write a string to WASM memory.
+    #[allow(dead_code)]
     pub fn write_string(&self, store: &mut Store<HostState>, ptr: i32, s: &str) -> Result<()> {
         self.memory
             .write(store, ptr as usize, s.as_bytes())
-            .map_err(|e| MicroPythonError::MemoryError(format!("Failed to write memory: {}", e)).into())
+            .map_err(|e| MicroPythonError::MemoryError(format!("Failed to write memory: {}", e)))
     }
 }
 

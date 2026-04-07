@@ -106,7 +106,10 @@ pub fn add_queue_functions(
                     })
                 });
 
-                result.unwrap_or_else(|code| code)
+                match result {
+                    Ok(()) => 0,
+                    Err(code) => code,
+                }
             },
         )?;
     }

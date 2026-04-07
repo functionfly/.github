@@ -49,6 +49,7 @@ impl PooledPythonRuntime {
     }
 
     /// Mark this runtime as dirty so it is discarded instead of returned.
+    #[allow(dead_code)]
     pub fn mark_dirty(&mut self) {
         self.discard = true;
     }

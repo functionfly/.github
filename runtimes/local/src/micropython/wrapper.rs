@@ -12,8 +12,10 @@ pub struct WrapperConfig {
     /// Memory layout configuration
     pub memory: MemoryLayout,
     /// Enable debug logging
+    #[allow(dead_code)]
     pub debug: bool,
     /// Maximum output size
+    #[allow(dead_code)]
     pub max_output_size: usize,
 }
 
@@ -200,7 +202,7 @@ impl Default for WrapperGenerator {
 
 /// Escape a string for embedding in WAT data section.
 /// Handles special characters that would break WAT parsing.
-fn escape_wat_string(s: &str) -> String {
+pub fn escape_wat_string(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
     for c in s.chars() {
         match c {
