@@ -90,7 +90,13 @@ func (r *FunctionRepository) GetFunctionByID(ctx context.Context, functionID uui
 func (r *FunctionRepository) ListFunctionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*FunctionConfig, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, tenant_id, app_id, name, providers, region, code, env_vars, version, status, created_at, updated_at
-		FROM functions WHERE tenant_id = $1 ORDER BY created_at DESC`, tenantID)
+		FROM functions 
+		WHERE tenant_id = $1 
+		  AND name NOT ILIKE '%demo%' 
+		  AND name NOT ILIKE '%test%' 
+		  AND name NOT ILIKE 'my-demo%'
+		  AND name NOT ILIKE 'my_demo%'
+		ORDER BY created_at DESC`, tenantID)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to list functions: %w", err)
@@ -124,7 +130,8 @@ func (r *FunctionRepository) ListFunctionsByTenant(ctx context.Context, tenantID
 // ListAllFunctions retrieves all functions across tenants for admin (with optional filters, limit, offset)
 func (r *FunctionRepository) ListAllFunctions(ctx context.Context, limit, offset int, tenantID *uuid.UUID, status *string) ([]*FunctionConfig, int, error) {
 	// Count total matching
-	countQuery := `SELECT COUNT(*) FROM functions WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM functions WHERE 1=1 
+		  AND (name NOT ILIKE '%demo%' AND name NOT ILIKE '%test%' AND name NOT ILIKE 'my-demo%' AND name NOT ILIKE 'my_demo%')`
 	countArgs := []interface{}{}
 	argIdx := 1
 	if tenantID != nil {
@@ -144,7 +151,8 @@ func (r *FunctionRepository) ListAllFunctions(ctx context.Context, limit, offset
 
 	// List with limit/offset
 	query := `SELECT id, tenant_id, app_id, name, providers, region, code, env_vars, version, status, created_at, updated_at
-		FROM functions WHERE 1=1`
+		FROM functions WHERE 1=1 
+		  AND (name NOT ILIKE '%demo%' AND name NOT ILIKE '%test%' AND name NOT ILIKE 'my-demo%' AND name NOT ILIKE 'my_demo%')`
 	args := []interface{}{}
 	argIdx = 1
 	if tenantID != nil {

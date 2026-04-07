@@ -53,6 +53,7 @@ const (
 // Plan type constants
 // NOTE: "professional" must match frontend plan-utils.ts PlanTier type
 const (
+	PlanFree       = "free" // Default plan for new signups
 	PlanStarter    = "starter"
 	PlanPro        = "professional" // Was "pro" - changed for consistency with frontend
 	PlanEnterprise = "enterprise"

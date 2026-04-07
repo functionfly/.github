@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v83"
 	"github.com/stripe/stripe-go/v83/billingportal/session"
 	"github.com/stripe/stripe-go/v83/customer"

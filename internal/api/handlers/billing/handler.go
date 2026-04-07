@@ -52,6 +52,9 @@ type SubscriptionResponse struct {
 	CurrentPeriodEnd     *time.Time         `json:"current_period_end,omitempty"`
 	CancelAtPeriodEnd    bool               `json:"cancel_at_period_end"`
 	CanceledAt           *time.Time         `json:"canceled_at,omitempty"`
+	TrialEnd             *time.Time         `json:"trial_end,omitempty"`
+	IsTrialing           bool               `json:"is_trialing"`
+	TrialDaysRemaining   int                `json:"trial_days_remaining"`
 	CreatedAt            time.Time          `json:"created_at"`
 	UpdatedAt            time.Time          `json:"updated_at"`
 	PaymentMethod        *PaymentMethodInfo `json:"payment_method,omitempty"`
@@ -123,6 +126,7 @@ func (h *Handler) HandleCreatePortalSession(w http.ResponseWriter, r *http.Reque
 	if returnURL == "" {
 		returnURL = "/settings"
 	}
+
 	// Stripe requires a full URL; build from request if path-only
 	if strings.HasPrefix(returnURL, "/") {
 		scheme := "https"
@@ -134,6 +138,13 @@ func (h *Handler) HandleCreatePortalSession(w http.ResponseWriter, r *http.Reque
 		}
 		returnURL = scheme + "://" + r.Host + returnURL
 	}
+
+	// Validate return URL for security (prevent open redirect)
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "http://localhost:3000"
+	}
+	returnURL = payment.SanitizeReturnURL(returnURL, appURL+"/settings")
 
 	name := user.Name
 	if name == "" && user.ProviderData != nil {
@@ -296,16 +307,37 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 	if subscription.PricingTier != nil {
 		plan = subscription.PricingTier.Name
 	}
+
+	// Compute trial status
+	var isTrialing bool = false
+	var daysRemaining int = 0
+	if subscription.TrialEnd != nil {
+		now := time.Now()
+		isTrialing = now.Before(*subscription.TrialEnd)
+		diff := subscription.TrialEnd.Sub(now)
+		daysRemaining = int(diff.Hours() / 24)
+		if daysRemaining < 0 {
+			daysRemaining = 0
+		}
+	} else if !isTrialing && subscription.Status == "trialing" {
+		// If status says trialing but no trial_end, assume active
+		isTrialing = true
+		daysRemaining = 14 // Default fallback
+	}
+
 	response := SubscriptionResponse{
 		ID:                   subscription.ID,
 		TenantID:             subscription.TenantID,
 		Plan:                 plan,
 		Status:               subscription.Status,
-		StripeSubscriptionID: subscription.ID.String(), // Use subscription ID as reference
+		StripeSubscriptionID: subscription.ID.String(),
 		CurrentPeriodStart:   &subscription.CurrentPeriodStart,
 		CurrentPeriodEnd:     &subscription.CurrentPeriodEnd,
 		CancelAtPeriodEnd:    subscription.CancelAtPeriodEnd,
 		CanceledAt:           subscription.CanceledAt,
+		TrialEnd:             subscription.TrialEnd,
+		IsTrialing:           isTrialing,
+		TrialDaysRemaining:   daysRemaining,
 		CreatedAt:            subscription.CreatedAt,
 		UpdatedAt:            subscription.UpdatedAt,
 		PaymentMethod:        paymentMethod,
@@ -530,12 +562,12 @@ func (h *Handler) HandleSubscriptionWebhook(w http.ResponseWriter, r *http.Reque
 	}
 
 	var req struct {
-		TenantID     uuid.UUID `json:"tenant_id"`
-		OldPlan      string    `json:"old_plan"`
-		NewPlan      string    `json:"new_plan"`
-		UserID       uuid.UUID `json:"user_id"`
-		UpgradedBy   uuid.UUID `json:"upgraded_by"`
-		UpgradedAt   time.Time `json:"upgraded_at"`
+		TenantID   uuid.UUID `json:"tenant_id"`
+		OldPlan    string    `json:"old_plan"`
+		NewPlan    string    `json:"new_plan"`
+		UserID     uuid.UUID `json:"user_id"`
+		UpgradedBy uuid.UUID `json:"upgraded_by"`
+		UpgradedAt time.Time `json:"upgraded_at"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage/registry"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/lib/pq"
@@ -34,31 +35,32 @@ type ReadReplicaConnection struct {
 
 // PostgresDB wraps sql.DB and provides repository pattern implementation with read replica support
 type PostgresDB struct {
-	skipPreparedStatements bool     // For migrations, skip prepared statements
-	*sql.DB                         // Primary write connection
-	GORM                   *gorm.DB // GORM instance for ORM operations
-	userRepository         *UserRepository
-	tenantRepository       *TenantRepository
-	billingRepository      *BillingRepository
-	revenueRepository      *RevenueRepository
-	auditRepository        *AuditRepository
-	appRepository          *AppRepository
-	backendRepository      *BackendRepository
-	deploymentRepository   *DeploymentRepository
-	contentRepository      *ContentRepository
-	feedbackRepository     *FeedbackRepository
-	monitoringRepository   *MonitoringRepository
-	sessionRepository       *SessionRepository
-	refreshTokenRepository  *RefreshTokenRepository
-	loginAttemptRepository  *LoginAttemptRepository
-	authEventRepository     *AuthEventRepository
-	localRuntimeRepository  *LocalRuntimeRepository
-	functionRepository     *FunctionRepository
-	registryRepository     *registry.RegistryRepository
+	skipPreparedStatements   bool     // For migrations, skip prepared statements
+	*sql.DB                           // Primary write connection
+	GORM                     *gorm.DB // GORM instance for ORM operations
+	userRepository           *UserRepository
+	tenantRepository         *TenantRepository
+	billingRepository        *BillingRepository
+	revenueRepository        *RevenueRepository
+	auditRepository          *AuditRepository
+	appRepository            *AppRepository
+	backendRepository        *BackendRepository
+	deploymentRepository     *DeploymentRepository
+	contentRepository        *ContentRepository
+	feedbackRepository       *FeedbackRepository
+	monitoringRepository     *MonitoringRepository
+	sessionRepository        *SessionRepository
+	refreshTokenRepository   *RefreshTokenRepository
+	loginAttemptRepository   *LoginAttemptRepository
+	authEventRepository      *AuthEventRepository
+	localRuntimeRepository   *LocalRuntimeRepository
+	functionRepository       *FunctionRepository
+	registryRepository       *registry.RegistryRepository
 	incidentRepository       *IncidentRepository
 	featureMeasureRepository *FeatureMeasureRepository
 	teamRepository           *TeamRepository
 	followRepository         *FollowRepository
+	adminSessionRepository   *AdminSessionRepository
 	encryptionManager        *DatabaseEncryptionManager
 
 	// Read replica connections
@@ -225,7 +227,7 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 	postgresDB := &PostgresDB{
 		DB:                     db,
 		GORM:                   gormDB,
-		skipPreparedStatements:  skipPreparedStatements,
+		skipPreparedStatements: skipPreparedStatements,
 		config:                 config,
 		readReplicaEnabled:     config.ReadReplicaEnabled,
 		preparedStatements:     make(map[string]*sql.Stmt),
@@ -269,6 +271,7 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 	postgresDB.featureMeasureRepository = NewFeatureMeasureRepository(postgresDB.DB)
 	postgresDB.teamRepository = NewTeamRepository(postgresDB.GORM)
 	postgresDB.followRepository = NewFollowRepository(postgresDB)
+	postgresDB.adminSessionRepository = NewAdminSessionRepository(postgresDB)
 
 	// Initialize encryption manager
 	encryptionManager, err := NewDatabaseEncryptionManager(postgresDB)
@@ -312,6 +315,11 @@ func (db *PostgresDB) RegistryRepository() *registry.RegistryRepository {
 	return db.registryRepository
 }
 
+// LoginAttemptRepository accessor
+func (db *PostgresDB) LoginAttemptRepository() *LoginAttemptRepository {
+	return db.loginAttemptRepository
+}
+
 func (db *PostgresDB) IsEncryptionEnabled() bool {
 	return db.encryptionManager.IsEncryptionEnabled()
 }
@@ -322,4 +330,33 @@ func (db *PostgresDB) EncryptField(value string) (string, error) {
 
 func (db *PostgresDB) DecryptField(value string) (string, error) {
 	return db.encryptionManager.DecryptField(value)
+}
+
+// AdminSessionRepository accessors
+func (db *PostgresDB) CreateAdminSession(userID uuid.UUID, token string, ipAddress, userAgent, deviceFingerprint string, expiresAt time.Time) (*AdminSessionModel, error) {
+	return db.adminSessionRepository.CreateAdminSession(userID, token, ipAddress, userAgent, deviceFingerprint, expiresAt)
+}
+
+func (db *PostgresDB) GetAdminSessionByToken(token string) (*AdminSessionModel, error) {
+	return db.adminSessionRepository.GetAdminSessionByToken(token)
+}
+
+func (db *PostgresDB) UpdateAdminSessionLastActivity(sessionID uuid.UUID) error {
+	return db.adminSessionRepository.UpdateAdminSessionLastActivity(sessionID)
+}
+
+func (db *PostgresDB) RevokeAdminSession(sessionID uuid.UUID) error {
+	return db.adminSessionRepository.RevokeAdminSession(sessionID)
+}
+
+func (db *PostgresDB) RevokeAllAdminUserSessions(userID uuid.UUID) error {
+	return db.adminSessionRepository.RevokeAllAdminUserSessions(userID)
+}
+
+func (db *PostgresDB) ListAdminUserSessions(userID uuid.UUID) ([]*AdminSessionModel, error) {
+	return db.adminSessionRepository.ListAdminUserSessions(userID)
+}
+
+func (db *PostgresDB) DeleteExpiredAdminSessions() (int64, error) {
+	return db.adminSessionRepository.DeleteExpiredAdminSessions()
 }

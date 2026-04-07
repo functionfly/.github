@@ -498,7 +498,7 @@ func TestRepository_GetMaintenanceByID(t *testing.T) {
 	endTime := startTime.Add(2 * time.Hour)
 
 	t.Run("existing maintenance", func(t *testing.T) {
-		mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM platform_maintenance WHERE id = \$1`).
+		mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM maintenance_windows WHERE id = \$1`).
 			WithArgs(maintenanceID).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "scheduled_start", "scheduled_end", "actual_start", "actual_end", "status", "affected_components", "affected_providers", "created_at", "updated_at"}).
 				AddRow(maintenanceID, "Maintenance Window", "System update", startTime, endTime, nil, nil, "scheduled", []string{"api"}, []string{"fly"}, now, now))
@@ -516,7 +516,7 @@ func TestRepository_GetMaintenanceByID(t *testing.T) {
 	t.Run("maintenance not found", func(t *testing.T) {
 		notFoundID := uuid.MustParse("660e8400-e29b-41d4-a716-446655440001")
 
-		mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM platform_maintenance WHERE id = \$1`).
+		mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM maintenance_windows WHERE id = \$1`).
 			WithArgs(notFoundID).
 			WillReturnError(sql.ErrNoRows)
 
@@ -539,7 +539,7 @@ func TestRepository_ListMaintenance(t *testing.T) {
 	now := time.Now()
 
 	t.Run("list all maintenance", func(t *testing.T) {
-		mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM platform_maintenance ORDER BY scheduled_start DESC LIMIT \$1`).
+		mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM maintenance_windows ORDER BY scheduled_start DESC LIMIT \$1`).
 			WithArgs(20).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "scheduled_start", "scheduled_end", "actual_start", "actual_end", "status", "affected_components", "affected_providers", "created_at", "updated_at"}).
 				AddRow(uuid.New(), "Maintenance 1", "Desc 1", now.Add(24*time.Hour), now.Add(26*time.Hour), nil, nil, "scheduled", []string{"api"}, []string{"fly"}, now, now).
@@ -554,7 +554,7 @@ func TestRepository_ListMaintenance(t *testing.T) {
 	})
 
 	t.Run("filter by status", func(t *testing.T) {
-		mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM platform_maintenance WHERE status = \$1 ORDER BY scheduled_start DESC LIMIT \$2`).
+		mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM maintenance_windows WHERE status = \$1 ORDER BY scheduled_start DESC LIMIT \$2`).
 			WithArgs("in_progress", 20).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "scheduled_start", "scheduled_end", "actual_start", "actual_end", "status", "affected_components", "affected_providers", "created_at", "updated_at"}).
 				AddRow(uuid.New(), "Ongoing Maintenance", "Desc", now.Add(-1*time.Hour), now.Add(time.Hour), now.Add(-1*time.Hour), nil, "in_progress", []string{"api"}, []string{"fly"}, now, now))
@@ -569,7 +569,7 @@ func TestRepository_ListMaintenance(t *testing.T) {
 	})
 
 	t.Run("upcoming maintenance", func(t *testing.T) {
-		mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM platform_maintenance WHERE status IN \('scheduled', 'in_progress'\) AND scheduled_end > \$1 ORDER BY scheduled_start DESC LIMIT \$2`).
+		mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM maintenance_windows WHERE status IN \('scheduled', 'in_progress'\) AND scheduled_end > \$1 ORDER BY scheduled_start DESC LIMIT \$2`).
 			WithArgs(sqlmock.AnyArg(), 10).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "scheduled_start", "scheduled_end", "actual_start", "actual_end", "status", "affected_components", "affected_providers", "created_at", "updated_at"}).
 				AddRow(uuid.New(), "Upcoming", "Desc", now.Add(24*time.Hour), now.Add(26*time.Hour), nil, nil, "scheduled", []string{"api"}, []string{"fly"}, now, now))
@@ -606,12 +606,12 @@ func TestRepository_CreateMaintenance(t *testing.T) {
 	}
 
 	// Insert maintenance
-	mock.ExpectExec(`INSERT INTO platform_maintenance \(id, title, description, scheduled_start, scheduled_end, status, affected_components, affected_providers, created_by, created_at, updated_at\) VALUES \(\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11\)`).
+	mock.ExpectExec(`INSERT INTO maintenance_windows \(id, title, description, scheduled_start, scheduled_end, status, affected_components, affected_providers, created_by, created_at, updated_at\) VALUES \(\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11\)`).
 		WithArgs(sqlmock.AnyArg(), req.Title, req.Description, req.ScheduledStart, req.ScheduledEnd, "scheduled", req.AffectedComponents, req.AffectedProviders, createdBy, sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	// Get maintenance by ID
-	mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM platform_maintenance WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM maintenance_windows WHERE id = \$1`).
 		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "scheduled_start", "scheduled_end", "actual_start", "actual_end", "status", "affected_components", "affected_providers", "created_at", "updated_at"}).
 			AddRow(maintenanceID, req.Title, req.Description, req.ScheduledStart, req.ScheduledEnd, nil, nil, "scheduled", req.AffectedComponents, req.AffectedProviders, now, now))
@@ -635,7 +635,7 @@ func TestRepository_GetUpcomingMaintenance(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 
-	mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM platform_maintenance WHERE status IN \('scheduled', 'in_progress'\) AND scheduled_end > \$1 ORDER BY scheduled_start DESC LIMIT \$2`).
+	mock.ExpectQuery(`SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end, status, affected_components, affected_providers, created_at, updated_at FROM maintenance_windows WHERE status IN \('scheduled', 'in_progress'\) AND scheduled_end > \$1 ORDER BY scheduled_start DESC LIMIT \$2`).
 		WithArgs(sqlmock.AnyArg(), 10).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "scheduled_start", "scheduled_end", "actual_start", "actual_end", "status", "affected_components", "affected_providers", "created_at", "updated_at"}).
 			AddRow(uuid.New(), "Upcoming", "Desc", now.Add(24*time.Hour), now.Add(26*time.Hour), nil, nil, "scheduled", []string{"api"}, []string{"fly"}, now, now))

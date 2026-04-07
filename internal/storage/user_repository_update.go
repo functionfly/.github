@@ -121,6 +121,46 @@ func (r *UserRepository) UpdateUser(ctx context.Context, userID uuid.UUID, updat
 		argIndex++
 	}
 
+	if passwordHash, ok := updates["password_hash"].(string); ok {
+		setParts = append(setParts, fmt.Sprintf("password_hash = $%d", argIndex))
+		args = append(args, passwordHash)
+		argIndex++
+	}
+
+	if verificationToken, ok := updates["verification_token"]; ok {
+		setParts = append(setParts, fmt.Sprintf("verification_token = $%d", argIndex))
+		args = append(args, verificationToken) // nil clears it
+		argIndex++
+	}
+
+	if verificationExpiresAt, ok := updates["verification_expires_at"]; ok {
+		setParts = append(setParts, fmt.Sprintf("verification_expires_at = $%d", argIndex))
+		args = append(args, verificationExpiresAt) // nil clears it
+		argIndex++
+	}
+
+	if provider, ok := updates["provider"].(*string); ok {
+		setParts = append(setParts, fmt.Sprintf("provider = $%d", argIndex))
+		args = append(args, provider)
+		argIndex++
+	}
+
+	if providerID, ok := updates["provider_id"].(*string); ok {
+		setParts = append(setParts, fmt.Sprintf("provider_id = $%d", argIndex))
+		args = append(args, providerID)
+		argIndex++
+	}
+
+	if providerData, ok := updates["provider_data"].(map[string]interface{}); ok {
+		dataJSON, err := json.Marshal(providerData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal provider data: %w", err)
+		}
+		setParts = append(setParts, fmt.Sprintf("provider_data = $%d", argIndex))
+		args = append(args, dataJSON)
+		argIndex++
+	}
+
 	if len(setParts) == 0 {
 		return current, nil // No updates
 	}

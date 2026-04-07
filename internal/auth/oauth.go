@@ -280,35 +280,20 @@ func (a *AuthService) HandleOAuthCallback(provider, code, state string) (*OAuthC
 				oauthInviteReserved = id
 			}
 
-			tenants, err := a.repo.ListTenants()
+			// Create a new tenant for each OAuth user (don't reuse existing tenants)
+			// This ensures each user gets their own tenant with the correct plan
+			tenant, err := a.repo.CreateTenant(context.Background(), "Default Tenant")
 			if err != nil {
 				if oauthInviteReserved != uuid.Nil {
 					_ = a.repo.ReleaseSignupInviteReservation(context.Background(), oauthInviteReserved)
 				}
 				return nil, &OAuthError{
-					Type:        "database_error",
-					Message:     "Database error occurred",
-					Description: "A database error occurred while creating your account. Please try again.",
+					Type:        "tenant_creation_failed",
+					Message:     "Failed to create tenant",
+					Description: "Could not create a tenant for your account. Please contact support.",
 				}
 			}
-
-			var tenantID uuid.UUID
-			if len(tenants) > 0 {
-				tenantID = tenants[0].ID
-			} else {
-				tenant, err := a.repo.CreateTenant(context.Background(), "Default Tenant")
-				if err != nil {
-					if oauthInviteReserved != uuid.Nil {
-						_ = a.repo.ReleaseSignupInviteReservation(context.Background(), oauthInviteReserved)
-					}
-					return nil, &OAuthError{
-						Type:        "tenant_creation_failed",
-						Message:     "Failed to create tenant",
-						Description: "Could not create a tenant for your account. Please contact support.",
-					}
-				}
-				tenantID = tenant.ID
-			}
+			tenantID := tenant.ID
 
 			user, err = a.repo.CreateUserWithSocialAuth(userInfo.Email, tenantID, provider, userInfo.ID, map[string]interface{}{
 				"name":           userInfo.Name,

@@ -63,6 +63,26 @@ func (m *mockWSRepository) GetProviderStatus(ctx context.Context) ([]ProviderSta
 	return m.providerStatus, nil
 }
 
+func (m *mockWSRepository) GetComponentHealthHistory(ctx context.Context, componentName string, since time.Time) ([]StatusHistoryPoint, error) {
+	return []StatusHistoryPoint{}, nil
+}
+
+func (m *mockWSRepository) CalculateComponentUptime(ctx context.Context, componentName string, duration time.Duration) (float64, error) {
+	return 99.9, nil
+}
+
+func (m *mockWSRepository) GetLatestComponentResponseTime(ctx context.Context, componentName string) (int, error) {
+	return 50, nil
+}
+
+func (m *mockWSRepository) GetProviderRegions(ctx context.Context, provider string) ([]RegionStatus, error) {
+	return []RegionStatus{}, nil
+}
+
+func (m *mockWSRepository) GetProviderBackends(ctx context.Context, provider, region string) ([]BackendStatus, error) {
+	return []BackendStatus{}, nil
+}
+
 func (m *mockWSRepository) AddIncident(incident Incident) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

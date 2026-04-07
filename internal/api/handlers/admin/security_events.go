@@ -300,6 +300,110 @@ func (h *SecurityEventHandler) HandleReviewSecurityEvent(w http.ResponseWriter, 
 	})
 }
 
+// HandleCreateSecurityEvents creates multiple security events from client-side tracking
+// POST /v1/admin/security/events
+func (h *SecurityEventHandler) HandleCreateSecurityEvents(w http.ResponseWriter, r *http.Request) {
+	// Check permission
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if !auth.IsAdminRole(claims.Role) {
+		http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		return
+	}
+
+	var requestBody struct {
+		Events []struct {
+			EventType         string                 `json:"event_type"`
+			Timestamp         string                 `json:"timestamp"`
+			IPAddress         string                 `json:"ip_address,omitempty"`
+			UserAgent         string                 `json:"user_agent,omitempty"`
+			DeviceFingerprint string                 `json:"device_fingerprint,omitempty"`
+			SessionID         string                 `json:"session_id,omitempty"`
+			Metadata          map[string]interface{} `json:"metadata,omitempty"`
+		} `json:"events"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(requestBody.Events) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"created": 0,
+		})
+		return
+	}
+
+	ctx := r.Context()
+	createdCount := 0
+
+	for _, event := range requestBody.Events {
+		// Parse timestamp
+		eventTime, err := time.Parse(time.RFC3339, event.Timestamp)
+		if err != nil {
+			eventTime = time.Now()
+		}
+
+		// Build metadata JSON including device fingerprint if provided
+		metadata := event.Metadata
+		if metadata == nil {
+			metadata = make(map[string]interface{})
+		}
+		if event.DeviceFingerprint != "" {
+			metadata["device_fingerprint"] = event.DeviceFingerprint
+		}
+		metadataJSON, _ := json.Marshal(metadata)
+
+		// session_id column is UUID — skip non-UUID values (e.g. "jwt-..." synthetic IDs)
+		var sessionID interface{}
+		if event.SessionID != "" {
+			if _, err := uuid.Parse(event.SessionID); err == nil {
+				sessionID = event.SessionID
+			}
+		}
+
+		// Insert into auth_events table
+		// Note: success column is NOT NULL, default to true for security events
+		query := `
+			INSERT INTO auth_events (id, event_type, success, ip_address, user_agent, session_id, metadata, created_at)
+			VALUES ($1, $2, TRUE, $3, $4, $5, $6, $7)`
+
+		_, err = h.db.ExecContext(ctx, query,
+			uuid.New(),
+			event.EventType,
+			nullString(event.IPAddress),
+			nullString(event.UserAgent),
+			sessionID,
+			metadataJSON,
+			eventTime,
+		)
+		if err != nil {
+			logrus.WithError(err).WithField("event_type", event.EventType).Warn("Failed to create security event")
+			continue
+		}
+		createdCount++
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"created": createdCount,
+	})
+}
+
+// nullString returns a sql.NullString for optional string fields
+func nullString(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
 // HandleGetSecurityEventStats returns security event statistics
 // GET /v1/admin/security-events/stats
 func (h *SecurityEventHandler) HandleGetSecurityEventStats(w http.ResponseWriter, r *http.Request) {

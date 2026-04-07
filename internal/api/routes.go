@@ -97,7 +97,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	deploymentsHandler := deployments.NewHandler(s.repo, s.deploySvc)
 	functionsHandler := functions.NewHandler(s.repo, s.deploySvc)
 	unifiedAnalyticsSvc := unified.NewService(s.postgresDB.GORM, s.usageMetricsAgg)
-	adminHandler := admin.NewHandler(s.repo, s.authSvc, unifiedAnalyticsSvc, sfAddonRepo)
+	adminHandler := admin.NewHandler(s.repo, s.postgresDB.LoginAttemptRepository(), s.authSvc, unifiedAnalyticsSvc, sfAddonRepo)
 	adminBackendsHandler := admin.NewBackendsHandler(s.repo, s.authSvc)
 	adminProvidersHandler := admin.NewProvidersHandler(s.repo, s.authSvc)
 	securityHandler := security.NewHandler(s.repo, s.authSvc)
@@ -501,7 +501,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	)
 
 	// Initialize admin security middleware
-	csrfMiddleware := middleware.NewCSRFMiddleware(s.redisClient, s.authSvc)
+	csrfMiddleware := middleware.NewCSRFMiddleware(s.upstashRedis, s.authSvc)
 	adminRateLimiter := middleware.NewAdminRateLimiter(s.redisClient)
 	adminSessionMiddleware := middleware.NewAdminSessionMiddleware(s.postgresDB.DB, s.authSvc)
 	ipAllowlistMiddleware := middleware.NewIPAllowlistMiddleware(s.postgresDB.DB, s.redisClient)

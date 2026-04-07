@@ -501,13 +501,15 @@ func (g *GDPRChecker) CheckCompliance(ctx context.Context) []ComplianceIssue {
 						return true // Non-compliant - email service misconfigured
 					}
 				} else {
-					// Fallback to environment variable checks
-					if os.Getenv("SMTP_HOST") == "" || os.Getenv("SMTP_PORT") == "" {
-						return true // Non-compliant - email service not configured
+					// Fallback to environment variable checks (Resend or SMTP)
+					resendOK := strings.TrimSpace(os.Getenv("RESEND_API_KEY")) != ""
+					smtpOK := strings.TrimSpace(os.Getenv("SMTP_HOST")) != "" && strings.TrimSpace(os.Getenv("SMTP_PORT")) != ""
+					if !resendOK && !smtpOK {
+						return true // Non-compliant - email transport not configured
 					}
 
-					// Check if from email is configured for breach notifications
-					if os.Getenv("FROM_EMAIL") == "" {
+					fromOK := strings.TrimSpace(os.Getenv("FROM_EMAIL")) != "" || strings.TrimSpace(os.Getenv("SMTP_FROM_EMAIL")) != ""
+					if !fromOK {
 						return true // Non-compliant - no sender email configured
 					}
 				}

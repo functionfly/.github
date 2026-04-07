@@ -219,6 +219,20 @@ func (m *mockRepository) CalculateComponentUptime(ctx context.Context, component
 	return 99.9, nil
 }
 
+func (m *mockRepository) GetLatestComponentResponseTime(ctx context.Context, componentName string) (int, error) {
+	// Return mock response times based on component type
+	switch componentName {
+	case "api":
+		return 45, nil
+	case "database":
+		return 12, nil
+	case "cache":
+		return 5, nil
+	default:
+		return 50, nil
+	}
+}
+
 func (m *mockRepository) GetProviderStatus(ctx context.Context) ([]ProviderStatus, error) {
 	return m.providerStatus, nil
 }

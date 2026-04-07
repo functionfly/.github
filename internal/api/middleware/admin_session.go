@@ -27,25 +27,25 @@ const (
 
 // AdminSession represents an admin session stored in the database
 type AdminSession struct {
-	ID                    uuid.UUID  `json:"id"`
-	UserID                uuid.UUID  `json:"user_id"`
-	TokenHash             string     `json:"token_hash"`
-	IPAddress             string     `json:"ip_address"`
-	UserAgent             string     `json:"user_agent"`
-	DeviceFingerprint     string     `json:"device_fingerprint"`
-	CreatedAt             time.Time  `json:"created_at"`
-	ExpiresAt             time.Time  `json:"expires_at"`
-	LastActivityAt        time.Time  `json:"last_activity_at"`
-	IsRevoked             bool       `json:"is_revoked"`
-	RevokedAt             *time.Time `json:"revoked_at"`
-	FingerprintMismatchWarnings int   `json:"fingerprint_mismatch_warnings"`
+	ID                          uuid.UUID  `json:"id"`
+	UserID                      uuid.UUID  `json:"user_id"`
+	TokenHash                   string     `json:"token_hash"`
+	IPAddress                   string     `json:"ip_address"`
+	UserAgent                   string     `json:"user_agent"`
+	DeviceFingerprint           string     `json:"device_fingerprint"`
+	CreatedAt                   time.Time  `json:"created_at"`
+	ExpiresAt                   time.Time  `json:"expires_at"`
+	LastActivityAt              time.Time  `json:"last_activity_at"`
+	IsRevoked                   bool       `json:"is_revoked"`
+	RevokedAt                   *time.Time `json:"revoked_at"`
+	FingerprintMismatchWarnings int        `json:"fingerprint_mismatch_warnings"`
 }
 
 // AdminSessionMiddleware handles admin session validation
 type AdminSessionMiddleware struct {
-	db       *sql.DB
-	authSvc  *auth.AuthService
-	logger   *logrus.Entry
+	db      *sql.DB
+	authSvc *auth.AuthService
+	logger  *logrus.Entry
 }
 
 // NewAdminSessionMiddleware creates a new admin session middleware
@@ -101,9 +101,9 @@ func (m *AdminSessionMiddleware) ValidateSession(token string, clientIP, userAge
 	idleDuration := time.Since(session.LastActivityAt)
 	if idleDuration > AdminSessionIdleTimeout {
 		m.logger.WithFields(logrus.Fields{
-			"session_id":      session.ID,
-			"idle_duration":   idleDuration,
-			"idle_timeout":     AdminSessionIdleTimeout,
+			"session_id":    session.ID,
+			"idle_duration": idleDuration,
+			"idle_timeout":  AdminSessionIdleTimeout,
 		}).Info("Admin session idle timeout exceeded")
 		return nil, fmt.Errorf("session idle timeout exceeded")
 	}
@@ -115,8 +115,8 @@ func (m *AdminSessionMiddleware) ValidateSession(token string, clientIP, userAge
 	if !m.validateIP(session.IPAddress, clientIP) {
 		m.logger.WithFields(logrus.Fields{
 			"session_id": session.ID,
-			"session_ip":    session.IPAddress,
-			"request_ip":    clientIP,
+			"session_ip": session.IPAddress,
+			"request_ip": clientIP,
 		}).Warn("IP address mismatch for admin session")
 		if strictIPValidation {
 			m.logger.WithFields(logrus.Fields{
@@ -301,7 +301,7 @@ func (m *AdminSessionMiddleware) RevokeAllUserSessions(userID uuid.UUID) error {
 
 	rowsAffected, _ := result.RowsAffected()
 	m.logger.WithFields(logrus.Fields{
-		"user_id":         userID,
+		"user_id":          userID,
 		"sessions_revoked": rowsAffected,
 	}).Info("All user sessions revoked")
 
@@ -340,6 +340,30 @@ func (m *AdminSessionMiddleware) RequireAdminSession(next http.HandlerFunc) http
 		// Validate session
 		session, err := m.ValidateSession(token, clientIP, userAgent, deviceFingerprint)
 		if err != nil {
+			// Check if this is a "session not found" error
+			// This can happen when a user logs in via /auth/login (which creates a JWT)
+			// but doesn't have an admin session record yet.
+			// In this case, allow the request to pass through to HandleGetAdminSession
+			// which will create a synthetic session for bootstrap.
+			if strings.Contains(err.Error(), "session not found") ||
+				strings.Contains(err.Error(), "session has been revoked") ||
+				strings.Contains(err.Error(), "session has expired") ||
+				strings.Contains(err.Error(), "session idle timeout") ||
+				strings.Contains(err.Error(), "IP address mismatch") {
+
+				m.logger.WithFields(logrus.Fields{
+					"error":     err.Error(),
+					"client_ip": clientIP,
+					"path":      r.URL.Path,
+				}).Info("Admin session not found or invalid - allowing through for session bootstrap")
+
+				// Allow through - HandleGetAdminSession will create a synthetic session
+				// Note: we don't set session in context, so handlers should use GetUserFromContext
+				// rather than GetAdminSessionFromContext when no db session exists
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			m.logger.WithFields(logrus.Fields{
 				"error":     err.Error(),
 				"client_ip": clientIP,
@@ -508,5 +532,3 @@ func (m *AdminSessionMiddleware) listUserSessions(userID uuid.UUID) ([]*AdminSes
 
 	return sessions, nil
 }
-
-

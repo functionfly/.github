@@ -23,16 +23,25 @@ func (r *UserRepository) CreateUser(email, passwordHash string, tenantID uuid.UU
 		UpdatedAt:     time.Now(),
 	}
 
-	// Serialize ProviderData and MFABackupCodes to JSON for SQL
-	providerDataJSON, _ := json.Marshal(user.ProviderData)
-	mfaBackupCodesJSON, _ := json.Marshal(user.MFABackupCodes)
+	// Serialize ProviderData and MFABackupCodes to JSON for SQL.
+	// Use nil (SQL NULL) instead of the JSON literal "null" when the Go value is nil,
+	// so PostgreSQL jsonb columns receive a proper NULL.
+	var providerDataParam, mfaBackupCodesParam interface{}
+	if user.ProviderData != nil {
+		b, _ := json.Marshal(user.ProviderData)
+		providerDataParam = b
+	}
+	if user.MFABackupCodes != nil {
+		b, _ := json.Marshal(user.MFABackupCodes)
+		mfaBackupCodesParam = b
+	}
 
 	var profileNumber int
 	err := r.db.QueryRow(`
-		INSERT INTO users (id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at, provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used, created_at, updated_at, profile_number)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, nextval('users_profile_number_seq'))
+		INSERT INTO users (id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at, provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used, created_at, updated_at, token_version, profile_number)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 0, nextval('users_profile_number_seq'))
 		RETURNING profile_number`,
-		user.ID, user.TenantID, user.Username, user.Email, user.PasswordHash, user.Role, user.EmailVerified, user.CompanyName, user.VerificationToken, user.VerificationExpiresAt, user.Provider, user.ProviderID, providerDataJSON, user.MFASecret, user.MFAEnabled, mfaBackupCodesJSON, user.MFALastUsed, user.CreatedAt, user.UpdatedAt).Scan(&profileNumber)
+		user.ID, user.TenantID, user.Username, user.Email, user.PasswordHash, user.Role, user.EmailVerified, user.CompanyName, user.VerificationToken, user.VerificationExpiresAt, user.Provider, user.ProviderID, providerDataParam, user.MFASecret, user.MFAEnabled, mfaBackupCodesParam, user.MFALastUsed, user.CreatedAt, user.UpdatedAt).Scan(&profileNumber)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
@@ -57,16 +66,25 @@ func (r *UserRepository) CreateUserWithSocialAuth(email string, tenantID uuid.UU
 		UpdatedAt:     time.Now(),
 	}
 
-	// Serialize ProviderData and MFABackupCodes to JSON for SQL
-	providerDataJSON, _ := json.Marshal(user.ProviderData)
-	mfaBackupCodesJSON, _ := json.Marshal(user.MFABackupCodes)
+	// Serialize ProviderData and MFABackupCodes to JSON for SQL.
+	// Use nil (SQL NULL) instead of the JSON literal "null" when the Go value is nil,
+	// so PostgreSQL jsonb columns receive a proper NULL.
+	var providerDataParam, mfaBackupCodesParam interface{}
+	if user.ProviderData != nil {
+		b, _ := json.Marshal(user.ProviderData)
+		providerDataParam = b
+	}
+	if user.MFABackupCodes != nil {
+		b, _ := json.Marshal(user.MFABackupCodes)
+		mfaBackupCodesParam = b
+	}
 
 	var profileNumber int
 	err := r.db.QueryRow(`
-		INSERT INTO users (id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at, provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used, created_at, updated_at, profile_number)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, nextval('users_profile_number_seq'))
+		INSERT INTO users (id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at, provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used, created_at, updated_at, token_version, profile_number)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 0, nextval('users_profile_number_seq'))
 		RETURNING profile_number`,
-		user.ID, user.TenantID, user.Username, user.Email, nil, user.Role, user.EmailVerified, user.CompanyName, user.VerificationToken, user.VerificationExpiresAt, user.Provider, user.ProviderID, providerDataJSON, user.MFASecret, user.MFAEnabled, mfaBackupCodesJSON, user.MFALastUsed, user.CreatedAt, user.UpdatedAt).Scan(&profileNumber)
+		user.ID, user.TenantID, user.Username, user.Email, nil, user.Role, user.EmailVerified, user.CompanyName, user.VerificationToken, user.VerificationExpiresAt, user.Provider, user.ProviderID, providerDataParam, user.MFASecret, user.MFAEnabled, mfaBackupCodesParam, user.MFALastUsed, user.CreatedAt, user.UpdatedAt).Scan(&profileNumber)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user with social auth: %w", err)
@@ -80,8 +98,8 @@ func (r *UserRepository) CreateUserWithSocialAuth(email string, tenantID uuid.UU
 // EmailVerified is taken from the user struct so admins can be created pre-verified and log in immediately.
 func (r *UserRepository) CreateUserWithRole(ctx context.Context, user *User) (*User, error) {
 	query := `
-		INSERT INTO users (id, tenant_id, username, email, password_hash, role, email_verified, company_name, created_at, updated_at, profile_number)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW(), nextval('users_profile_number_seq'))
+		INSERT INTO users (id, tenant_id, username, email, password_hash, role, email_verified, company_name, created_at, updated_at, token_version, profile_number)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW(), 0, nextval('users_profile_number_seq'))
 		RETURNING id, tenant_id, username, email, password_hash, role, company_name, created_at, updated_at, profile_number`
 
 	var username sql.NullString

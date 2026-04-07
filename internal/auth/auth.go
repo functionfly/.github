@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"os"
 	"time"
 
@@ -27,6 +26,7 @@ type AuthService struct {
 	jwtDuration    time.Duration
 	oauthProviders map[string]*OAuthProvider
 	baseURL        string
+	authURL        string
 	mfaSvc         *MFAService
 }
 
@@ -43,26 +43,14 @@ func NewAuthService(repo storage.Repository, jwtSecret string) *AuthService {
 		BaseURL:      "http://localhost:8080",
 	}
 
-	// In production, require real SMTP configuration
+	// In production, require Resend or SMTP (mock is not allowed)
 	var emailSvc email.Service
 	if os.Getenv("PRODUCTION_ENV") == "true" {
-		smtpHost := os.Getenv("SMTP_HOST")
-		if smtpHost == "" {
-			panic("PRODUCTION_ENV=true requires SMTP_HOST to be set. Mock email service is not allowed in production.")
+		svc, ok := email.NewServiceFromEnv()
+		if !ok {
+			panic("PRODUCTION_ENV=true requires RESEND_API_KEY or SMTP_HOST. Mock email service is not allowed in production.")
 		}
-		emailConfig.SMTPHost = smtpHost
-		emailConfig.SMTPUsername = os.Getenv("SMTP_USERNAME")
-		emailConfig.SMTPPassword = os.Getenv("SMTP_PASSWORD")
-		emailConfig.FromEmail = os.Getenv("FROM_EMAIL")
-		emailConfig.FromName = os.Getenv("FROM_NAME")
-		emailConfig.BaseURL = os.Getenv("BASE_URL")
-		if p := os.Getenv("SMTP_PORT"); p != "" {
-			var port int
-			if _, err := fmt.Sscanf(p, "%d", &port); err == nil && port > 0 {
-				emailConfig.SMTPPort = port
-			}
-		}
-		emailSvc = email.NewSMTPService(emailConfig)
+		emailSvc = svc
 	} else {
 		emailSvc = email.NewMockService(emailConfig)
 	}
@@ -74,6 +62,7 @@ func NewAuthService(repo storage.Repository, jwtSecret string) *AuthService {
 		jwtDuration:    30 * time.Minute, // 30 minutes - short lived access tokens
 		oauthProviders: make(map[string]*OAuthProvider),
 		baseURL:        "http://localhost:8080", // Default, can be overridden
+		authURL:        "http://localhost:4321", // Auth frontend URL for waitlist/emails
 	}
 
 	// Initialize MFA service
@@ -108,6 +97,21 @@ func (a *AuthService) SetNotificationService(n WelcomeNotifier) {
 // Repo returns the repository interface
 func (a *AuthService) Repo() storage.Repository {
 	return a.repo
+}
+
+// EmailService returns the email service
+func (a *AuthService) EmailService() email.Service {
+	return a.emailSvc
+}
+
+// AuthURL returns the auth frontend base URL used for email links.
+func (a *AuthService) AuthURL() string {
+	return a.authURL
+}
+
+// SetAuthURL sets the auth frontend base URL.
+func (a *AuthService) SetAuthURL(url string) {
+	a.authURL = url
 }
 
 // MFA methods

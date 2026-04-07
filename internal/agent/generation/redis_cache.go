@@ -2,10 +2,12 @@ package generation
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -69,10 +71,16 @@ func NewRedisGenerationCacheFromConfig(config *RedisCacheConfig) (*RedisGenerati
 		config = NewRedisCacheConfig()
 	}
 
+	var tlsCfg *tls.Config
+	if strings.Contains(config.Addr, "upstash.io") {
+		tlsCfg = &tls.Config{}
+	}
+
 	client := redis.NewClient(&redis.Options{
-		Addr:     config.Addr,
-		Password: config.Password,
-		DB:       config.DB,
+		Addr:      config.Addr,
+		Password:  config.Password,
+		DB:        config.DB,
+		TLSConfig: tlsCfg,
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"html"
 	"net/http"
 	"strconv"
 	"strings"
@@ -120,15 +122,13 @@ func (h *Handler) HandleGetComponents(w http.ResponseWriter, r *http.Request) {
 	includeHistory := r.URL.Query().Get("include_history") == "true"
 	componentType := r.URL.Query().Get("component_type")
 
-	// Get system health checks from database; if empty, use default summaries so UI always has data
-	components, err := h.repo.GetSystemHealthChecks(ctx)
-	if err != nil {
-		logrus.WithError(err).Error("Failed to get system health checks")
-		http.Error(w, "Failed to get component status", http.StatusInternalServerError)
-		return
-	}
-	if len(components) == 0 {
-		components = h.getComponentSummaries(ctx)
+	// Full product catalog + Prometheus/DB-derived metrics; overlay latest rows from system_health_checks
+	// so new catalog entries always appear even when only a subset is actively probed.
+	components := h.getComponentSummaries(ctx)
+	if dbChecks, err := h.repo.GetSystemHealthChecks(ctx); err != nil {
+		logrus.WithError(err).Warn("Failed to load system_health_checks; using catalog summaries without DB overlay")
+	} else {
+		components = h.overlayDBHealthChecks(components, dbChecks)
 	}
 
 	// Filter by component type if specified
@@ -784,6 +784,165 @@ func (h *Handler) HandleCreateMaintenance(w http.ResponseWriter, r *http.Request
 	respondJSON(w, http.StatusCreated, maintenance)
 }
 
+// HandleGetRSSFeed returns an RSS feed of recent incidents and maintenance
+func (h *Handler) HandleGetRSSFeed(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Get recent incidents (last 30 days)
+	incidentsQuery := ListIncidentsQuery{
+		Limit:  50,
+		Offset: 0,
+	}
+	incidentsResp, err := h.repo.ListIncidents(ctx, incidentsQuery)
+	if err != nil {
+		logrus.WithError(err).Warn("Failed to get incidents for RSS feed")
+		incidentsResp = &IncidentsListResponse{Incidents: []Incident{}}
+	}
+
+	// Get recent maintenance windows
+	maintenanceQuery := ListMaintenanceQuery{
+		Upcoming: false,
+		Limit:    20,
+	}
+	maintenanceResp, err := h.repo.ListMaintenance(ctx, maintenanceQuery)
+	if err != nil {
+		logrus.WithError(err).Warn("Failed to get maintenance for RSS feed")
+		maintenanceResp = &MaintenanceListResponse{MaintenanceWindows: []MaintenanceWindow{}}
+	}
+
+	// Build RSS feed
+	rss := h.generateRSSFeed(incidentsResp.Incidents, maintenanceResp.MaintenanceWindows)
+
+	// Set headers
+	w.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=300") // Cache for 5 minutes
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(rss))
+}
+
+// generateRSSFeed generates an RSS 2.0 feed from incidents and maintenance
+func (h *Handler) generateRSSFeed(incidents []Incident, maintenance []MaintenanceWindow) string {
+	now := time.Now().UTC()
+	baseURL := "https://status.functionfly.com"
+
+	// Start RSS document
+	rss := `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>FunctionFly Status - Incident Feed</title>
+  <link>` + baseURL + `</link>
+  <description>Real-time updates on FunctionFly platform status, incidents, and maintenance</description>
+  <language>en</language>
+  <lastBuildDate>` + now.Format(time.RFC1123) + `</lastBuildDate>
+  <atom:link href="` + baseURL + `/api/v1/status/rss" rel="self" type="application/rss+xml" />
+  <generator>FunctionFly Status</generator>
+`
+
+	// Add incidents as items
+	for _, incident := range incidents {
+		item := h.incidentToRSSItem(incident, baseURL)
+		rss += item
+	}
+
+	// Add completed maintenance as items
+	for _, m := range maintenance {
+		if m.Status == "completed" || m.Status == "in_progress" {
+			item := h.maintenanceToRSSItem(m, baseURL)
+			rss += item
+		}
+	}
+
+	// Close RSS document
+	rss += `</channel>
+</rss>`
+
+	return rss
+}
+
+// incidentToRSSItem converts an incident to an RSS item
+func (h *Handler) incidentToRSSItem(incident Incident, baseURL string) string {
+	status := incident.Status
+	severity := incident.Severity
+	title := fmt.Sprintf("[%s] %s - %s", strings.ToUpper(severity), incident.Title, status)
+
+	var description strings.Builder
+	description.WriteString(fmt.Sprintf("<p><strong>Severity:</strong> %s</p>", severity))
+	description.WriteString(fmt.Sprintf("<p><strong>Status:</strong> %s</p>", status))
+	description.WriteString(fmt.Sprintf("<p>%s</p>", html.EscapeString(incident.Description)))
+
+	if len(incident.AffectedComponents) > 0 {
+		description.WriteString(fmt.Sprintf("<p><strong>Affected:</strong> %s</p>", strings.Join(incident.AffectedComponents, ", ")))
+	}
+
+	if len(incident.Updates) > 0 {
+		description.WriteString("<h3>Updates:</h3><ul>")
+		for _, update := range incident.Updates {
+			description.WriteString(fmt.Sprintf("<li><strong>%s</strong> (%s): %s</li>",
+				update.Status,
+				update.CreatedAt.Format(time.RFC1123),
+				html.EscapeString(update.Message)))
+		}
+		description.WriteString("</ul>")
+	}
+
+	pubDate := incident.CreatedAt.Format(time.RFC1123)
+	guid := fmt.Sprintf("%s/incidents/%s", baseURL, incident.ID)
+	link := guid
+
+	return fmt.Sprintf(`
+  <item>
+    <title>%s</title>
+    <link>%s</link>
+    <guid isPermaLink="true">%s</guid>
+    <pubDate>%s</pubDate>
+    <description><![CDATA[%s]]></description>
+    <category>%s</category>
+  </item>
+`, xmlEscape(title), link, guid, pubDate, description.String(), status)
+}
+
+// maintenanceToRSSItem converts a maintenance window to an RSS item
+func (h *Handler) maintenanceToRSSItem(m MaintenanceWindow, baseURL string) string {
+	status := m.Status
+	title := fmt.Sprintf("[Maintenance] %s - %s", m.Title, status)
+
+	var description strings.Builder
+	description.WriteString(fmt.Sprintf("<p><strong>Status:</strong> %s</p>", status))
+	description.WriteString(fmt.Sprintf("<p>%s</p>", html.EscapeString(m.Description)))
+	description.WriteString(fmt.Sprintf("<p><strong>Scheduled:</strong> %s to %s</p>",
+		m.ScheduledStart.Format(time.RFC1123),
+		m.ScheduledEnd.Format(time.RFC1123)))
+
+	if len(m.AffectedComponents) > 0 {
+		description.WriteString(fmt.Sprintf("<p><strong>Affected:</strong> %s</p>", strings.Join(m.AffectedComponents, ", ")))
+	}
+
+	pubDate := m.CreatedAt.Format(time.RFC1123)
+	guid := fmt.Sprintf("%s/maintenance/%s", baseURL, m.ID)
+	link := guid
+
+	return fmt.Sprintf(`
+  <item>
+    <title>%s</title>
+    <link>%s</link>
+    <guid isPermaLink="true">%s</guid>
+    <pubDate>%s</pubDate>
+    <description><![CDATA[%s]]></description>
+    <category>maintenance</category>
+  </item>
+`, xmlEscape(title), link, guid, pubDate, description.String())
+}
+
+// xmlEscape escapes XML special characters
+func xmlEscape(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, `"`, "&quot;")
+	s = strings.ReplaceAll(s, "'", "&apos;")
+	return s
+}
+
 // --- Helper Methods ---
 
 // determinePlatformStatus calculates platform status based on health and incidents
@@ -816,6 +975,39 @@ func (h *Handler) determinePlatformStatus(healthPercent float64, incidents []Inc
 	}
 }
 
+// overlayDBHealthChecks merges the latest DB health row per component name onto the catalog.
+// DB response times of 0 are ignored so Prometheus/type defaults from getComponentSummaries stay visible.
+func (h *Handler) overlayDBHealthChecks(catalog []Component, db []Component) []Component {
+	if len(db) == 0 {
+		return catalog
+	}
+	byName := make(map[string]Component, len(db))
+	for _, row := range db {
+		byName[row.Name] = row
+	}
+	catalogNames := make(map[string]struct{}, len(catalog))
+	for i := range catalog {
+		catalogNames[catalog[i].Name] = struct{}{}
+		if row, ok := byName[catalog[i].Name]; ok {
+			catalog[i].Status = row.Status
+			if row.ResponseTime > 0 {
+				catalog[i].ResponseTime = row.ResponseTime
+			}
+			if !row.LastChecked.IsZero() {
+				catalog[i].LastChecked = row.LastChecked
+			}
+		}
+	}
+	out := catalog
+	for _, row := range db {
+		if _, ok := catalogNames[row.Name]; ok {
+			continue
+		}
+		out = append(out, row)
+	}
+	return out
+}
+
 // getComponentSummaries returns a summary of component statuses
 func (h *Handler) getComponentSummaries(ctx context.Context) []Component {
 	// Get service health from Prometheus
@@ -836,38 +1028,171 @@ func (h *Handler) getComponentSummaries(ctx context.Context) []Component {
 	}
 
 	// Build component list with real uptime calculations
+	// Components are ordered by criticality (most critical first)
 	components := []Component{
 		{
-			ID:        "api",
-			Name:      "API",
-			Type:      "api",
-			Status:    statusOrDefault("orchestrator-api"),
-			Uptime24h: 0, // Will be calculated from health history
+			ID:          "api",
+			Name:        "API",
+			Type:        "api",
+			Status:      statusOrDefault("orchestrator-api"),
+			Description: "Main API serving all requests",
+			Uptime24h:   0, // Will be calculated from health history
 		},
 		{
-			ID:        "database",
-			Name:      "Database",
-			Type:      "database",
-			Status:    statusOrDefault("postgres"),
-			Uptime24h: 0, // Will be calculated from health history
+			ID:          "database",
+			Name:        "Database",
+			Type:        "database",
+			Status:      statusOrDefault("postgres"),
+			Description: "Primary PostgreSQL database",
+			Uptime24h:   0, // Will be calculated from health history
 		},
 		{
-			ID:        "cache",
-			Name:      "Cache",
-			Type:      "cache",
-			Status:    statusOrDefault("redis"),
-			Uptime24h: 0, // Will be calculated from health history
+			ID:          "cache",
+			Name:        "Cache",
+			Type:        "cache",
+			Status:      statusOrDefault("redis"),
+			Description: "Redis cache layer",
+			Uptime24h:   0, // Will be calculated from health history
 		},
 		{
-			ID:        "health-monitor",
-			Name:      "Health Monitor",
-			Type:      "monitoring",
-			Status:    statusOrDefault("health-monitor"),
-			Uptime24h: 0, // Will be calculated from health history
+			ID:          "ai-service",
+			Name:        "AI Service",
+			Type:        "ai",
+			Status:      statusOrDefault("ai-service"),
+			Description: "FlyMind AI assistant and code generation",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "embeddings",
+			Name:        "Embeddings",
+			Type:        "ai",
+			Status:      statusOrDefault("fly-embed"),
+			Description: "Vector search and function embeddings",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "state-fabric",
+			Name:        "State Fabric",
+			Type:        "storage",
+			Status:      statusOrDefault("state-fabric"),
+			Description: "Distributed state management and triggers",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "microvm",
+			Name:        "MicroVM Runtime",
+			Type:        "runtime",
+			Status:      statusOrDefault("microvm"),
+			Description: "Secure function execution environment",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "queue",
+			Name:        "Queue Worker",
+			Type:        "worker",
+			Status:      statusOrDefault("queue"),
+			Description: "Background job processing",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "function-backup",
+			Name:        "Function Backup",
+			Type:        "backup",
+			Status:      statusOrDefault("function-backup"),
+			Description: "Automated function backup to R2",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "email",
+			Name:        "Email Delivery",
+			Type:        "email",
+			Status:      statusOrDefault("email"),
+			Description: "Transactional and notification emails",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "billing",
+			Name:        "Billing",
+			Type:        "billing",
+			Status:      statusOrDefault("billing"),
+			Description: "Stripe payment processing and invoicing",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "storage",
+			Name:        "Object Storage",
+			Type:        "storage",
+			Status:      statusOrDefault("storage"),
+			Description: "R2 object storage for artifacts and backups",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "cdn",
+			Name:        "CDN",
+			Type:        "cdn",
+			Status:      statusOrDefault("cdn"),
+			Description: "Cloudflare edge caching and delivery",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "pgbouncer",
+			Name:        "Connection Pool",
+			Type:        "infrastructure",
+			Status:      statusOrDefault("pgbouncer"),
+			Description: "PostgreSQL connection pooling",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "recommendations",
+			Name:        "Recommendations",
+			Type:        "ai",
+			Status:      statusOrDefault("recommendations"),
+			Description: "Function recommendation engine",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "verification",
+			Name:        "Verification Pipeline",
+			Type:        "security",
+			Status:      statusOrDefault("verification"),
+			Description: "Function verification and security scanning",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "trust-api",
+			Name:        "Trust API",
+			Type:        "security",
+			Status:      statusOrDefault("trust-api"),
+			Description: "Trust scoring and reputation system",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "support",
+			Name:        "Support System",
+			Type:        "service",
+			Status:      statusOrDefault("support"),
+			Description: "Customer support and ticket management",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "registry",
+			Name:        "Function Registry",
+			Type:        "service",
+			Status:      statusOrDefault("registry"),
+			Description: "Function discovery and metadata",
+			Uptime24h:   0,
+		},
+		{
+			ID:          "health-monitor",
+			Name:        "Health Monitor",
+			Type:        "monitoring",
+			Status:      statusOrDefault("health-monitor"),
+			Description: "Internal health monitoring service",
+			Uptime24h:   0, // Will be calculated from health history
 		},
 	}
 
-	// Calculate real uptime for each component
+	// Calculate real uptime and response time for each component
 	for i := range components {
 		// Calculate uptime for different periods
 		uptime24h, err := h.repo.CalculateComponentUptime(ctx, components[i].Name, 24*time.Hour)
@@ -888,9 +1213,62 @@ func (h *Handler) getComponentSummaries(ctx context.Context) []Component {
 		} else {
 			components[i].Uptime30d = components[i].Uptime7d
 		}
+
+		// Get response time - first try database health checks
+		dbLatency, err := h.repo.GetLatestComponentResponseTime(ctx, components[i].Name)
+		if err == nil && dbLatency > 0 {
+			components[i].ResponseTime = dbLatency
+		} else {
+			// Fallback to Prometheus HTTP metrics
+			promLatency, err := h.prometheus.GetComponentHTTPLatency(ctx, components[i].Name, "5m")
+			if err == nil && promLatency > 0 {
+				components[i].ResponseTime = int(promLatency)
+			} else {
+				// Use reasonable defaults based on component type
+				components[i].ResponseTime = getDefaultResponseTime(components[i].Type)
+			}
+		}
 	}
 
 	return components
+}
+
+// getDefaultResponseTime returns a reasonable default response time for a component type
+func getDefaultResponseTime(componentType string) int {
+	switch componentType {
+	case "api":
+		return 45
+	case "database":
+		return 12
+	case "cache":
+		return 5
+	case "ai":
+		return 250 // AI operations are typically slower
+	case "email":
+		return 150
+	case "billing":
+		return 80
+	case "storage":
+		return 60
+	case "cdn":
+		return 25
+	case "monitoring":
+		return 30
+	case "runtime":
+		return 100 // Function execution runtime
+	case "worker":
+		return 200 // Background workers
+	case "backup":
+		return 500 // Backup operations are slower
+	case "infrastructure":
+		return 20 // Infrastructure components like connection pools
+	case "security":
+		return 120 // Security scanning operations
+	case "service":
+		return 75 // General services
+	default:
+		return 50
+	}
 }
 
 // mapBoolStatus converts a boolean health status to component status

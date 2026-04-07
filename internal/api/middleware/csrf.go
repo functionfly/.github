@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/gorilla/mux"
-	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
 
@@ -46,13 +46,13 @@ type CSRFToken struct {
 
 // CSRFMiddleware handles CSRF token generation and validation for admin routes
 type CSRFMiddleware struct {
-	redisClient *redis.Client
+	redisClient *cache.UpstashRedisClient
 	authSvc     *auth.AuthService
 	logger      *logrus.Entry
 }
 
 // NewCSRFMiddleware creates a new CSRF middleware instance
-func NewCSRFMiddleware(redisClient *redis.Client, authSvc *auth.AuthService) *CSRFMiddleware {
+func NewCSRFMiddleware(redisClient *cache.UpstashRedisClient, authSvc *auth.AuthService) *CSRFMiddleware {
 	return &CSRFMiddleware{
 		redisClient: redisClient,
 		authSvc:     authSvc,
@@ -89,7 +89,7 @@ func (m *CSRFMiddleware) GenerateToken(sessionID string) (*CSRFToken, error) {
 			return nil, fmt.Errorf("failed to store CSRF token: %w", err)
 		}
 
-		if err := m.redisClient.Set(ctx, key, tokenData, CSRFTokenTTL).Err(); err != nil {
+		if err := m.redisClient.Set(ctx, key, tokenData, CSRFTokenTTL); err != nil {
 			m.logger.WithError(err).Error("Failed to store CSRF token in Redis")
 			return nil, fmt.Errorf("failed to store CSRF token: %w", err)
 		}
@@ -118,9 +118,9 @@ func (m *CSRFMiddleware) ValidateToken(sessionID, token string) error {
 	}
 
 	key := m.getRedisKey(sessionID)
-	tokenData, err := m.redisClient.Get(ctx, key).Bytes()
+	tokenData, err := m.redisClient.GetBytes(ctx, key)
 	if err != nil {
-		if err == redis.Nil {
+		if err.Error() == "key not found" || err.Error() == "redis: nil" {
 			m.logger.WithFields(logrus.Fields{
 				"session_id": sessionID,
 			}).Warn("CSRF token not found or expired")
@@ -166,7 +166,7 @@ func (m *CSRFMiddleware) InvalidateToken(sessionID string) error {
 	}
 
 	key := m.getRedisKey(sessionID)
-	if err := m.redisClient.Del(ctx, key).Err(); err != nil {
+	if _, err := m.redisClient.Del(ctx, key); err != nil {
 		m.logger.WithError(err).WithField("session_id", sessionID).Error("Failed to invalidate CSRF token")
 		return fmt.Errorf("failed to invalidate CSRF token: %w", err)
 	}
@@ -198,6 +198,32 @@ func (m *CSRFMiddleware) HandleGetCSRFToken(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+// csrfExemptPaths are paths where CSRF is not required.
+// Auth endpoints are JWT-protected and used to bootstrap/renew sessions before a CSRF token exists.
+// Security events is fire-and-forget telemetry — not a mutating action on data.
+// Signup invite revoke is HMAC-protected and intended for programmatic/API access.
+var csrfExemptPaths = map[string]bool{
+	"/v1/admin/auth/session":             true,
+	"/v1/admin/auth/last-login":          true,
+	"/v1/admin/auth/logout-all-sessions": true,
+	"/v1/admin/security/events":          true, // client telemetry, fire-and-forget
+}
+
+// isCSRFExempt checks if a path is exempt from CSRF validation
+func isCSRFExempt(path string) bool {
+	// Check exact matches
+	if csrfExemptPaths[path] {
+		return true
+	}
+
+	// Check pattern matches
+	if strings.HasPrefix(path, "/v1/admin/signup-invites/") && strings.HasSuffix(path, "/revoke") {
+		return true
+	}
+
+	return false
+}
+
 // RequireCSRF is middleware that validates CSRF tokens on mutating requests
 func (m *CSRFMiddleware) RequireCSRF(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -209,10 +235,18 @@ func (m *CSRFMiddleware) RequireCSRF(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		// Exempt auth session endpoints — they're JWT-protected and used to
+		// bootstrap/renew sessions before a CSRF token exists.
+		if isCSRFExempt(r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Get session from context
 		claims := GetUserFromContext(r)
 		if claims == nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			// Unauthenticated — CSRF doesn't apply (no session to hijack)
+			next.ServeHTTP(w, r)
 			return
 		}
 
@@ -270,7 +304,8 @@ func (m *CSRFMiddleware) refreshTokenTTL(sessionID string) error {
 	}
 
 	key := m.getRedisKey(sessionID)
-	return m.redisClient.Expire(ctx, key, CSRFTokenTTL).Err()
+	_, err := m.redisClient.Expire(ctx, key, CSRFTokenTTL)
+	return err
 }
 
 // getRedisKey returns the Redis key for a CSRF token
@@ -283,9 +318,9 @@ func writeCSRFError(w http.ResponseWriter, message, requiredHeader string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusForbidden)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"error":            "csrf_token_invalid",
-		"message":          message,
-		"required_header":  requiredHeader,
+		"error":           "csrf_token_invalid",
+		"message":         message,
+		"required_header": requiredHeader,
 	})
 }
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/google/uuid"
 )
 
@@ -174,22 +175,23 @@ func (r *TenantRepository) UpdateTenant(ctx context.Context, tenantID uuid.UUID,
 	return updated, nil
 }
 
-// CreateTenant creates a new tenant
+// CreateTenant creates a new tenant with the free plan by default
 func (r *TenantRepository) CreateTenant(ctx context.Context, name string) (*Tenant, error) {
 	tenant := &Tenant{
 		ID:     uuid.New(),
 		Name:   name,
+		Plan:   plans.PlanFree, // Default new signups to free tier
 		Status: "active",
 	}
 
 	query := `
-		INSERT INTO tenants (id, name, status, created_at, updated_at)
-		VALUES ($1, $2, $3, NOW(), NOW())
+		INSERT INTO tenants (id, name, plan, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NOW(), NOW())
 		RETURNING id, name, plan, status, stripe_customer_id, created_at, updated_at`
 
 	var plan sql.NullString
 	var stripeCustomerID sql.NullString
-	err := r.db.QueryRow(query, tenant.ID, tenant.Name, tenant.Status).Scan(
+	err := r.db.QueryRow(query, tenant.ID, tenant.Name, tenant.Plan, tenant.Status).Scan(
 		&tenant.ID, &tenant.Name, &plan, &tenant.Status, &stripeCustomerID, &tenant.CreatedAt, &tenant.UpdatedAt)
 
 	if err != nil {

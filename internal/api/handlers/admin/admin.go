@@ -28,26 +28,29 @@ import (
 
 // Handler contains admin handlers
 type Handler struct {
-	repo             storage.Repository
-	authSvc          *auth.AuthService
-	unifiedAnalytics *unified.Service
-	sfAddons         *statefabricaddons.Repository
-	membershipSvc    *membership.Service
+	repo               storage.Repository
+	loginAttemptRepo   *storage.LoginAttemptRepository
+	authSvc            *auth.AuthService
+	unifiedAnalytics   *unified.Service
+	sfAddons           *statefabricaddons.Repository
+	membershipSvc      *membership.Service
 }
 
 // NewHandler creates a new admin handler. unifiedAnalytics may be nil (tenant metrics will be placeholders).
 func NewHandler(
 	repo storage.Repository,
+	loginAttemptRepo *storage.LoginAttemptRepository,
 	authSvc *auth.AuthService,
 	unifiedAnalytics *unified.Service,
 	sfAddons *statefabricaddons.Repository,
 ) *Handler {
 	return &Handler{
-		repo:             repo,
-		authSvc:          authSvc,
-		unifiedAnalytics: unifiedAnalytics,
-		sfAddons:         sfAddons,
-		membershipSvc:    membership.NewService(repo),
+		repo:               repo,
+		loginAttemptRepo:   loginAttemptRepo,
+		authSvc:            authSvc,
+		unifiedAnalytics:   unifiedAnalytics,
+		sfAddons:           sfAddons,
+		membershipSvc:      membership.NewService(repo),
 	}
 }
 
@@ -979,6 +982,45 @@ func (h *Handler) HandleGetAdminSession(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"session": session,
 		"user":    respUser,
+	})
+}
+
+// HandleGetAdminLastLogin returns the most recent successful login for the authenticated admin user.
+// The response shape matches what the admin SPA's login page expects: ip_address, device_name, timestamp, suspicious.
+func (h *Handler) HandleGetAdminLastLogin(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	lastAttempt, err := h.loginAttemptRepo.GetLastSuccessfulLogin(claims.UserID)
+	if err != nil {
+		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("Failed to fetch last login")
+		http.Error(w, "Failed to retrieve last login", http.StatusInternalServerError)
+		return
+	}
+
+	if lastAttempt == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{"last_login": nil})
+		return
+	}
+
+	// Determine if the login is "suspicious" — flag if the IP or user-agent differs from the current request.
+	currentIP := extractClientIP(r)
+	currentUA := r.UserAgent()
+	suspicious := lastAttempt.IPAddress != currentIP || lastAttempt.UserAgent != currentUA
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"last_login": map[string]interface{}{
+			"ip_address":  lastAttempt.IPAddress,
+			"device_name": lastAttempt.UserAgent,
+			"timestamp":   lastAttempt.AttemptedAt.Format(time.RFC3339),
+			"suspicious":  suspicious,
+		},
 	})
 }
 

@@ -247,6 +247,36 @@ func (c *PrometheusClient) GetLatencyRange(ctx context.Context, provider string,
 	return c.queryRange(ctx, query, start, end, step)
 }
 
+// GetComponentHTTPLatency returns the average HTTP request latency for a component in milliseconds
+func (c *PrometheusClient) GetComponentHTTPLatency(ctx context.Context, component string, duration string) (float64, error) {
+	// Map component names to Prometheus job names or use a generic query
+	var query string
+	switch component {
+	case "api", "API":
+		query = fmt.Sprintf(`avg(rate(functionfly_http_request_duration_seconds_sum[%s]) / rate(functionfly_http_request_duration_seconds_count[%s])) * 1000`, duration, duration)
+	case "database", "Database":
+		query = fmt.Sprintf(`avg(rate(functionfly_db_query_duration_seconds_sum[%s]) / rate(functionfly_db_query_duration_seconds_count[%s])) * 1000`, duration, duration)
+	case "cache", "Cache":
+		query = fmt.Sprintf(`avg(rate(functionfly_cache_operation_duration_seconds_sum[%s]) / rate(functionfly_cache_operation_duration_seconds_count[%s])) * 1000`, duration, duration)
+	default:
+		// Generic HTTP latency
+		query = fmt.Sprintf(`avg(rate(functionfly_http_request_duration_seconds_sum[%s]) / rate(functionfly_http_request_duration_seconds_count[%s])) * 1000`, duration, duration)
+	}
+
+	resp, err := c.query(ctx, query)
+	if err != nil {
+		return 0, err
+	}
+
+	if resp.Data != nil && len(resp.Data.Result) > 0 {
+		if len(resp.Data.Result[0].Value) >= 2 {
+			return parseValue(resp.Data.Result[0].Value[1]), nil
+		}
+	}
+
+	return 0, nil // No data available
+}
+
 // GetErrorRate returns error rates by backend/provider
 func (c *PrometheusClient) GetErrorRate(ctx context.Context, provider string) (*PrometheusResponse, error) {
 	query := `sum(rate(functionfly_request_error_rate[10m])) by (backend, provider)`

@@ -68,9 +68,16 @@ func (m *AuthMiddleware) OptionalAuth(next http.Handler) http.Handler {
 	})
 }
 
-// requireAuth middleware validates JWT token and adds user context
+// RequireAuth middleware validates JWT token and adds user context.
+// It skips authentication for OPTIONS preflight requests so CORS works.
 func (m *AuthMiddleware) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Skip auth for CORS preflight requests
+		if r.Method == "OPTIONS" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		claims, err := m.extractUserFromToken(r)
 		if err != nil {
 			logrus.WithError(err).Warn("Authentication failed")

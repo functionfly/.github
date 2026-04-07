@@ -25,6 +25,7 @@ type RepositoryInterface interface {
 	GetSystemHealthChecks(ctx context.Context) ([]Component, error)
 	GetComponentHealthHistory(ctx context.Context, componentName string, since time.Time) ([]StatusHistoryPoint, error)
 	CalculateComponentUptime(ctx context.Context, componentName string, duration time.Duration) (float64, error)
+	GetLatestComponentResponseTime(ctx context.Context, componentName string) (int, error)
 	GetProviderStatus(ctx context.Context) ([]ProviderStatus, error)
 	GetProviderRegions(ctx context.Context, provider string) ([]RegionStatus, error)
 	GetProviderBackends(ctx context.Context, provider, region string) ([]BackendStatus, error)
@@ -411,7 +412,7 @@ func (r *Repository) GetMaintenanceByID(ctx context.Context, id interface{}) (*M
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end,
 		       status, affected_components, affected_providers, created_at, updated_at
-		FROM platform_maintenance WHERE id = $1`, maintenanceID).Scan(
+		FROM maintenance_windows WHERE id = $1`, maintenanceID).Scan(
 		&dbMaint.ID, &dbMaint.Title, &dbMaint.Description,
 		&dbMaint.ScheduledStart, &dbMaint.ScheduledEnd, &dbMaint.ActualStart, &dbMaint.ActualEnd,
 		&dbMaint.Status, &dbMaint.AffectedComponents, &dbMaint.AffectedProviders,
@@ -459,7 +460,7 @@ func (r *Repository) ListMaintenance(ctx context.Context, query ListMaintenanceQ
 	queryStr := fmt.Sprintf(`
 		SELECT id, title, description, scheduled_start, scheduled_end, actual_start, actual_end,
 		       status, affected_components, affected_providers, created_at, updated_at
-		FROM platform_maintenance
+		FROM maintenance_windows
 		%s
 		ORDER BY scheduled_start DESC
 		LIMIT $%d`, whereClause, argIndex)
@@ -500,7 +501,7 @@ func (r *Repository) CreateMaintenance(ctx context.Context, req *CreateMaintenan
 	now := time.Now()
 
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO platform_maintenance (id, title, description, scheduled_start, scheduled_end,
+		INSERT INTO maintenance_windows (id, title, description, scheduled_start, scheduled_end,
 		                                  status, affected_components, affected_providers, created_by, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 		id, req.Title, req.Description, req.ScheduledStart, req.ScheduledEnd,
@@ -684,6 +685,30 @@ func (r *Repository) dbHealthCheckToComponent(db *DatabaseHealthCheck) *Componen
 	}
 
 	return component
+}
+
+// GetLatestComponentResponseTime retrieves the most recent response time for a component from health checks
+func (r *Repository) GetLatestComponentResponseTime(ctx context.Context, componentName string) (int, error) {
+	var responseTimeMs sql.NullInt32
+	err := r.db.QueryRowContext(ctx, `
+		SELECT response_time_ms
+		FROM system_health_checks
+		WHERE component_name = $1 AND response_time_ms IS NOT NULL
+		ORDER BY checked_at DESC
+		LIMIT 1`,
+		componentName).Scan(&responseTimeMs)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil // No data yet, return 0
+		}
+		return 0, fmt.Errorf("failed to get latest response time: %w", err)
+	}
+
+	if responseTimeMs.Valid {
+		return int(responseTimeMs.Int32), nil
+	}
+	return 0, nil
 }
 
 // --- Alerts Methods ---

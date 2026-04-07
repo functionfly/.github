@@ -92,32 +92,36 @@ func loadDatabaseConfig() (*DatabaseConfig, error) {
 		dbName = getEnvOrDefault("DB_NAME", "functionfly")
 		dbSSLMode = getEnvOrDefault("DB_SSLMODE", "require")
 	} else {
-		// Production: fail if required env vars are not set
-		dbHost = os.Getenv("DB_HOST")
-		dbUser = os.Getenv("DB_USER")
-		dbPassword = os.Getenv("DB_PASSWORD")
-		dbName = os.Getenv("DB_NAME")
-		dbSSLMode = os.Getenv("DB_SSLMODE")
-		if dbSSLMode == "" {
-			dbSSLMode = "require" // Default to require for security
-		}
+		// Production: if DATABASE_URL is set, individual DB_* vars are optional
+		if os.Getenv("DATABASE_URL") == "" {
+			// No DATABASE_URL — require individual DB_* vars
+			dbHost = os.Getenv("DB_HOST")
+			dbUser = os.Getenv("DB_USER")
+			dbPassword = os.Getenv("DB_PASSWORD")
+			dbName = os.Getenv("DB_NAME")
+			dbSSLMode = os.Getenv("DB_SSLMODE")
+			if dbSSLMode == "" {
+				dbSSLMode = "require" // Default to require for security
+			}
 
-		missingVars := []string{}
-		if dbHost == "" {
-			missingVars = append(missingVars, "DB_HOST")
+			missingVars := []string{}
+			if dbHost == "" {
+				missingVars = append(missingVars, "DB_HOST")
+			}
+			if dbUser == "" {
+				missingVars = append(missingVars, "DB_USER")
+			}
+			if dbPassword == "" {
+				missingVars = append(missingVars, "DB_PASSWORD")
+			}
+			if dbName == "" {
+				missingVars = append(missingVars, "DB_NAME")
+			}
+			if len(missingVars) > 0 {
+				return nil, fmt.Errorf("production database configuration missing required environment variables: %s", strings.Join(missingVars, ", "))
+			}
 		}
-		if dbUser == "" {
-			missingVars = append(missingVars, "DB_USER")
-		}
-		if dbPassword == "" {
-			missingVars = append(missingVars, "DB_PASSWORD")
-		}
-		if dbName == "" {
-			missingVars = append(missingVars, "DB_NAME")
-		}
-		if len(missingVars) > 0 {
-			return nil, fmt.Errorf("production database configuration missing required environment variables: %s", strings.Join(missingVars, ", "))
-		}
+		// Otherwise DATABASE_URL is set — individual vars are not required
 	}
 
 	cfg := &DatabaseConfig{

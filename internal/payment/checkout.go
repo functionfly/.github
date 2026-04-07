@@ -3,6 +3,7 @@ package payment
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -33,8 +34,39 @@ type CreateCheckoutSessionResponse struct {
 	URL       string `json:"url"`
 }
 
+// IsValidReturnURL validates that a return URL is safe to use.
+func IsValidReturnURL(returnURL string) bool {
+	if returnURL == "" {
+		return false
+	}
+
+	parsed, err := url.Parse(returnURL)
+	if err != nil {
+		return false
+	}
+
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "http://localhost:3000"
+	}
+
+	allowedURL, err := url.Parse(appURL)
+	if err != nil {
+		return false
+	}
+
+	return parsed.Host == allowedURL.Host
+}
+
+// SanitizeReturnURL ensures the return URL is valid and safe.
+func SanitizeReturnURL(returnURL, defaultURL string) string {
+	if IsValidReturnURL(returnURL) {
+		return returnURL
+	}
+	return defaultURL
+}
+
 // CreateCheckoutSession creates a Stripe Checkout session for subscription checkout.
-// It creates or retrieves the Stripe customer, then creates a checkout session with the given price ID.
 func CreateCheckoutSession(
 	ctx context.Context,
 	repo storage.Repository,
@@ -50,29 +82,29 @@ func CreateCheckoutSession(
 		return nil, fmt.Errorf("price_id is required")
 	}
 
-	// Get or create Stripe customer
 	customerID, err := CreateOrGetStripeCustomer(ctx, repo, tenantID, email, name)
 	if err != nil {
 		return nil, fmt.Errorf("create or get stripe customer: %w", err)
 	}
 
-	// Build success and cancel URLs
-	successURL := req.SuccessURL
-	cancelURL := req.CancelURL
-	if successURL == "" {
-		successURL = os.Getenv("APP_URL")
-		if successURL == "" {
-			successURL = "http://localhost:3000/settings?tab=billing&success=true"
-		}
-	}
-	if cancelURL == "" {
-		cancelURL = os.Getenv("APP_URL")
-		if cancelURL == "" {
-			cancelURL = "http://localhost:3000/pricing"
-		}
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "http://localhost:3000"
 	}
 
-	// Create checkout session
+	successURL := req.SuccessURL
+	cancelURL := req.CancelURL
+
+	if successURL == "" {
+		successURL = appURL + "/settings?tab=billing&subscription=success"
+	}
+	if cancelURL == "" {
+		cancelURL = appURL + "/pricing?subscription=cancel"
+	}
+
+	successURL = SanitizeReturnURL(successURL, appURL+"/settings?tab=billing&subscription=success")
+	cancelURL = SanitizeReturnURL(cancelURL, appURL+"/pricing?subscription=cancel")
+
 	params := &stripe.CheckoutSessionParams{
 		Customer:   stripe.String(customerID),
 		Mode:       stripe.String(string(stripe.CheckoutSessionModeSubscription)),
@@ -130,20 +162,22 @@ func CreateStateFabricAddonCheckoutSession(
 		return nil, fmt.Errorf("create or get stripe customer: %w", err)
 	}
 
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "http://localhost:3000"
+	}
+
 	successURL := req.SuccessURL
 	cancelURL := req.CancelURL
 	if successURL == "" {
-		successURL = os.Getenv("APP_URL")
-		if successURL == "" {
-			successURL = "http://localhost:3000/pricing?stateFabricAddOn=success"
-		}
+		successURL = appURL + "/pricing?stateFabricAddOn=success"
 	}
 	if cancelURL == "" {
-		cancelURL = os.Getenv("APP_URL")
-		if cancelURL == "" {
-			cancelURL = "http://localhost:3000/pricing?stateFabricAddOn=cancel"
-		}
+		cancelURL = appURL + "/pricing?stateFabricAddOn=cancel"
 	}
+
+	successURL = SanitizeReturnURL(successURL, appURL+"/pricing?stateFabricAddOn=success")
+	cancelURL = SanitizeReturnURL(cancelURL, appURL+"/pricing?stateFabricAddOn=cancel")
 
 	params := &stripe.CheckoutSessionParams{
 		Customer:   stripe.String(customerID),

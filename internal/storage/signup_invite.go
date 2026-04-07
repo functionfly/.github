@@ -26,6 +26,8 @@ var (
 
 const signupInviteAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
+const inviteCodePrefix = "FF"
+
 // SignupInviteNormalize trims and uppercases invite input for case-insensitive matching.
 func SignupInviteNormalize(s string) string {
 	return strings.ToUpper(strings.TrimSpace(s))
@@ -36,15 +38,15 @@ func signupInviteFingerprint(normalized string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// GenerateSignupInvitePlainCode returns a random human-enterable code (default length 16).
-func GenerateSignupInvitePlainCode(length int) (string, error) {
-	if length < 8 {
-		length = 8
-	}
+// GenerateSignupInvitePlainCode returns a short, unique invite code in the format "FF-XXXXX-XXXXX".
+// The random part uses 10 characters from an unambiguous alphabet (~50 bits entropy).
+func GenerateSignupInvitePlainCode(_ int) (string, error) {
 	n := len(signupInviteAlphabet)
-	buf := make([]byte, length)
+	groupLen := 5
+	groups := 2
+	buf := make([]byte, groups*groupLen)
 	max := 256 - (256 % n)
-	for i := 0; i < length; {
+	for i := 0; i < len(buf); {
 		b := make([]byte, 1)
 		if _, err := rand.Read(b); err != nil {
 			return "", err
@@ -55,12 +57,13 @@ func GenerateSignupInvitePlainCode(length int) (string, error) {
 		buf[i] = signupInviteAlphabet[int(b[0])%n]
 		i++
 	}
-	return string(buf), nil
+	norm := inviteCodePrefix + "-" + string(buf[:groupLen]) + "-" + string(buf[groupLen:])
+	return norm, nil
 }
 
 // CreateSignupInvite inserts a new invite; returns the row id and plaintext code (show once to admin).
 func (db *PostgresDB) CreateSignupInvite(ctx context.Context, label string, maxUses *int, expiresAt *time.Time, createdBy *uuid.UUID) (id uuid.UUID, plainCode string, err error) {
-	plainCode, err = GenerateSignupInvitePlainCode(16)
+	plainCode, err = GenerateSignupInvitePlainCode(0)
 	if err != nil {
 		return uuid.Nil, "", err
 	}

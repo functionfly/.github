@@ -29,51 +29,51 @@ type AdvancedSecurityMiddleware struct {
 
 	// DDoS protection
 	requestFingerprinting *RequestFingerprinting
-	botDetection         *BotDetection
-	trafficAnalyzer      *TrafficAnalyzer
+	botDetection          *BotDetection
+	trafficAnalyzer       *TrafficAnalyzer
 
 	// Traffic management
-	circuitBreaker       *CircuitBreaker
-	requestQueue         *RequestQueue
+	circuitBreaker *CircuitBreaker
+	requestQueue   *RequestQueue
 
 	// Geo-blocking and reputation
-	ipReputation         *IPReputationChecker
-	geoBlocker           *GeoBlocker
+	ipReputation *IPReputationChecker
+	geoBlocker   *GeoBlocker
 
 	// Advanced filtering
-	sqlInjectionFilter   *SQLInjectionFilter
+	sqlInjectionFilter  *SQLInjectionFilter
 	xssFilter           *XSSFilter
 	pathTraversalFilter *PathTraversalFilter
 
 	// Configuration
-	config              *AdvancedSecurityConfig
-	allowedIPs          map[string]bool
+	config     *AdvancedSecurityConfig
+	allowedIPs map[string]bool
 
-	logger              *logrus.Logger
+	logger *logrus.Logger
 }
 
 // NewAdvancedSecurityMiddleware creates a new advanced security middleware
 func NewAdvancedSecurityMiddleware(securityMiddleware SecurityMiddlewareInterface, db storage.Repository) *AdvancedSecurityMiddleware {
 	config := &AdvancedSecurityConfig{
-		SlidingWindowLimit:       getEnvInt("ADVANCED_SECURITY_SLIDING_WINDOW_LIMIT", 100),
-		SlidingWindowWindow:      time.Duration(getEnvInt("ADVANCED_SECURITY_SLIDING_WINDOW_MINUTES", 1)) * time.Minute,
-		TokenBucketRate:         getEnvFloat("ADVANCED_SECURITY_TOKEN_BUCKET_RATE", 10.0),
-		TokenBucketBurst:        getEnvInt("ADVANCED_SECURITY_TOKEN_BUCKET_BURST", 20),
-		EnableBotDetection:      getEnvBool("ADVANCED_SECURITY_ENABLE_BOT_DETECTION", true),
-		EnableTrafficAnalysis:   getEnvBool("ADVANCED_SECURITY_ENABLE_TRAFFIC_ANALYSIS", true),
-		SuspiciousThreshold:     getEnvInt("ADVANCED_SECURITY_SUSPICIOUS_THRESHOLD", 10),
-		BlockDuration:           time.Duration(getEnvInt("ADVANCED_SECURITY_BLOCK_MINUTES", 15)) * time.Minute,
-		CircuitBreakerThreshold: getEnvFloat("ADVANCED_SECURITY_CIRCUIT_BREAKER_THRESHOLD", 0.5),
-		CircuitBreakerTimeout:   time.Duration(getEnvInt("ADVANCED_SECURITY_CIRCUIT_BREAKER_MINUTES", 1)) * time.Minute,
-		QueueSize:               getEnvInt("ADVANCED_SECURITY_QUEUE_SIZE", 1000),
-		QueueTimeout:            time.Duration(getEnvInt("ADVANCED_SECURITY_QUEUE_SECONDS", 30)) * time.Second,
-		BlockedCountries:        getEnvStringSlice("ADVANCED_SECURITY_BLOCKED_COUNTRIES", ""),
-		BlockedIPs:             getEnvStringSlice("ADVANCED_SECURITY_BLOCKED_IPS", ""),
-		AllowedIPs:             getEnvStringSlice("ADVANCED_SECURITY_ALLOWED_IPS", ""),
-		EnableSQLInjectionFilter: getEnvBool("ADVANCED_SECURITY_ENABLE_SQL_INJECTION_FILTER", true),
-		EnableXSSFilter:         getEnvBool("ADVANCED_SECURITY_ENABLE_XSS_FILTER", true),
+		SlidingWindowLimit:        getEnvInt("ADVANCED_SECURITY_SLIDING_WINDOW_LIMIT", 100),
+		SlidingWindowWindow:       time.Duration(getEnvInt("ADVANCED_SECURITY_SLIDING_WINDOW_MINUTES", 1)) * time.Minute,
+		TokenBucketRate:           getEnvFloat("ADVANCED_SECURITY_TOKEN_BUCKET_RATE", 10.0),
+		TokenBucketBurst:          getEnvInt("ADVANCED_SECURITY_TOKEN_BUCKET_BURST", 20),
+		EnableBotDetection:        getEnvBool("ADVANCED_SECURITY_ENABLE_BOT_DETECTION", true),
+		EnableTrafficAnalysis:     getEnvBool("ADVANCED_SECURITY_ENABLE_TRAFFIC_ANALYSIS", true),
+		SuspiciousThreshold:       getEnvInt("ADVANCED_SECURITY_SUSPICIOUS_THRESHOLD", 10),
+		BlockDuration:             time.Duration(getEnvInt("ADVANCED_SECURITY_BLOCK_MINUTES", 15)) * time.Minute,
+		CircuitBreakerThreshold:   getEnvFloat("ADVANCED_SECURITY_CIRCUIT_BREAKER_THRESHOLD", 0.5),
+		CircuitBreakerTimeout:     time.Duration(getEnvInt("ADVANCED_SECURITY_CIRCUIT_BREAKER_MINUTES", 1)) * time.Minute,
+		QueueSize:                 getEnvInt("ADVANCED_SECURITY_QUEUE_SIZE", 1000),
+		QueueTimeout:              time.Duration(getEnvInt("ADVANCED_SECURITY_QUEUE_SECONDS", 30)) * time.Second,
+		BlockedCountries:          getEnvStringSlice("ADVANCED_SECURITY_BLOCKED_COUNTRIES", ""),
+		BlockedIPs:                getEnvStringSlice("ADVANCED_SECURITY_BLOCKED_IPS", ""),
+		AllowedIPs:                getEnvStringSlice("ADVANCED_SECURITY_ALLOWED_IPS", ""),
+		EnableSQLInjectionFilter:  getEnvBool("ADVANCED_SECURITY_ENABLE_SQL_INJECTION_FILTER", true),
+		EnableXSSFilter:           getEnvBool("ADVANCED_SECURITY_ENABLE_XSS_FILTER", true),
 		EnablePathTraversalFilter: getEnvBool("ADVANCED_SECURITY_ENABLE_PATH_TRAVERSAL_FILTER", true),
-		MetricsEnabled:         getEnvBool("ADVANCED_SECURITY_METRICS_ENABLED", true),
+		MetricsEnabled:            getEnvBool("ADVANCED_SECURITY_METRICS_ENABLED", true),
 	}
 
 	// Initialize allowed IPs map
@@ -84,9 +84,9 @@ func NewAdvancedSecurityMiddleware(securityMiddleware SecurityMiddlewareInterfac
 
 	asm := &AdvancedSecurityMiddleware{
 		securityMiddleware: securityMiddleware,
-		config:            config,
-		allowedIPs:        allowedIPs,
-		logger:            logrus.New(),
+		config:             config,
+		allowedIPs:         allowedIPs,
+		logger:             logrus.New(),
 	}
 
 	// Initialize rate limiters
@@ -114,6 +114,9 @@ func NewAdvancedSecurityMiddleware(securityMiddleware SecurityMiddlewareInterfac
 		botSignatures:  make(map[string]bool),
 		suspiciousIPs:  make(map[string]*BotActivity),
 		detectionRules: asm.initBotDetectionRules(),
+		rateWindows:    make(map[string][]time.Time),
+		rateLimit:      50,               // Allow 50 requests per window
+		rateWindow:     10 * time.Second, // 10-second window
 	}
 
 	asm.trafficAnalyzer = &TrafficAnalyzer{
@@ -124,12 +127,12 @@ func NewAdvancedSecurityMiddleware(securityMiddleware SecurityMiddlewareInterfac
 
 	// Initialize traffic management
 	asm.circuitBreaker = &CircuitBreaker{
-		state:                "closed",
-		failureCount:         0,
-		successCount:         0,
-		threshold:            config.CircuitBreakerThreshold,
-		timeout:              config.CircuitBreakerTimeout,
-		halfOpenMaxRequests:  3,
+		state:               "closed",
+		failureCount:        0,
+		successCount:        0,
+		threshold:           config.CircuitBreakerThreshold,
+		timeout:             config.CircuitBreakerTimeout,
+		halfOpenMaxRequests: 3,
 	}
 
 	asm.requestQueue = &RequestQueue{
@@ -147,7 +150,7 @@ func NewAdvancedSecurityMiddleware(securityMiddleware SecurityMiddlewareInterfac
 	asm.geoBlocker = &GeoBlocker{
 		blockedCountries: make(map[string]bool),
 		blockedIPs:       make(map[string]bool),
-		allowedIPs:       make(map[string]bool),
+		allowedIPs:       allowedIPs, // propagate from config
 	}
 
 	// Initialize filters
@@ -167,8 +170,19 @@ func NewAdvancedSecurityMiddleware(securityMiddleware SecurityMiddlewareInterfac
 	go asm.cleanupRoutine()
 	go asm.requestQueue.processQueue()
 	go asm.trafficAnalyzer.monitorTraffic()
+	go asm.botDetectionCleanupRoutine()
 
 	return asm
+}
+
+// botDetectionCleanupRoutine periodically cleans up stale bot detection data
+func (asm *AdvancedSecurityMiddleware) botDetectionCleanupRoutine() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		asm.botDetection.CleanupOldData()
+	}
 }
 
 // AdvancedRateLimit applies multiple rate limiting strategies.
@@ -330,7 +344,7 @@ func (asm *AdvancedSecurityMiddleware) DDoSProtection(next http.HandlerFunc) htt
 		// Check if IP is blocked due to suspicious activity
 		if asm.isIPBlocked(clientIP) {
 			asm.logger.WithFields(logrus.Fields{
-				"ip": clientIP,
+				"ip":     clientIP,
 				"reason": "blocked_due_to_suspicious_activity",
 			}).Warn("Blocked request from suspicious IP")
 			http.Error(w, "Access denied", http.StatusForbidden)
@@ -340,11 +354,11 @@ func (asm *AdvancedSecurityMiddleware) DDoSProtection(next http.HandlerFunc) htt
 		// Fingerprint request for pattern analysis
 		asm.requestFingerprinting.AnalyzeRequest(r)
 
-		// Bot detection
-		if asm.config.EnableBotDetection {
+		// Bot detection (skip for allowed IPs to avoid false positives on dev/CI machines)
+		if asm.config.EnableBotDetection && !asm.allowedIPs[clientIP] {
 			if isBot, reason := asm.botDetection.DetectBot(r); isBot {
 				asm.logger.WithFields(logrus.Fields{
-					"ip": clientIP,
+					"ip":         clientIP,
 					"bot_reason": reason,
 				}).Warn("Bot detected and blocked")
 				asm.blockIP(clientIP, reason)
@@ -353,11 +367,11 @@ func (asm *AdvancedSecurityMiddleware) DDoSProtection(next http.HandlerFunc) htt
 			}
 		}
 
-		// Traffic analysis
-		if asm.config.EnableTrafficAnalysis {
+		// Traffic analysis (skip for allowed IPs to avoid false positives on dev/CI machines)
+		if asm.config.EnableTrafficAnalysis && !asm.allowedIPs[clientIP] {
 			if isAttack, attackType := asm.trafficAnalyzer.DetectAttack(clientIP); isAttack {
 				asm.logger.WithFields(logrus.Fields{
-					"ip": clientIP,
+					"ip":          clientIP,
 					"attack_type": attackType,
 				}).Warn("Attack pattern detected")
 				asm.blockIP(clientIP, attackType)
@@ -392,9 +406,9 @@ func (asm *AdvancedSecurityMiddleware) TrafficManagement(next http.HandlerFunc) 
 		rw := &responseWriterTracker{
 			ResponseWriter: w,
 			statusCode:     http.StatusOK,
-			asm:           asm,
-			startTime:     time.Now(),
-			clientIP:      clientIP,
+			asm:            asm,
+			startTime:      time.Now(),
+			clientIP:       clientIP,
 		}
 
 		next.ServeHTTP(rw, r)
@@ -421,7 +435,7 @@ func (asm *AdvancedSecurityMiddleware) GeoBlocking(next http.HandlerFunc) http.H
 		// Check IP allowlist/blocklist
 		if !asm.geoBlocker.IsAllowed(clientIP) {
 			asm.logger.WithFields(logrus.Fields{
-				"ip": clientIP,
+				"ip":     clientIP,
 				"reason": "ip_blocked",
 			}).Warn("Request blocked by geo-blocking rules")
 			http.Error(w, "Access denied", http.StatusForbidden)
@@ -431,7 +445,7 @@ func (asm *AdvancedSecurityMiddleware) GeoBlocking(next http.HandlerFunc) http.H
 		// Check IP reputation
 		if reputation := asm.ipReputation.GetReputation(clientIP); reputation < -50 {
 			asm.logger.WithFields(logrus.Fields{
-				"ip": clientIP,
+				"ip":         clientIP,
 				"reputation": reputation,
 			}).Warn("Request blocked due to poor IP reputation")
 			http.Error(w, "Access denied", http.StatusForbidden)
@@ -455,7 +469,7 @@ func (asm *AdvancedSecurityMiddleware) AdvancedInputValidation(next http.Handler
 		if asm.config.EnableSQLInjectionFilter {
 			if asm.sqlInjectionFilter.Detect(r) {
 				asm.logger.WithFields(logrus.Fields{
-					"ip": getClientIP(r),
+					"ip":          getClientIP(r),
 					"attack_type": "sql_injection",
 				}).Warn("SQL injection attempt detected")
 				http.Error(w, "Bad request", http.StatusBadRequest)
@@ -467,7 +481,7 @@ func (asm *AdvancedSecurityMiddleware) AdvancedInputValidation(next http.Handler
 		if asm.config.EnableXSSFilter {
 			if asm.xssFilter.Detect(r) {
 				asm.logger.WithFields(logrus.Fields{
-					"ip": getClientIP(r),
+					"ip":          getClientIP(r),
 					"attack_type": "xss",
 				}).Warn("XSS attempt detected")
 				http.Error(w, "Bad request", http.StatusBadRequest)
@@ -479,7 +493,7 @@ func (asm *AdvancedSecurityMiddleware) AdvancedInputValidation(next http.Handler
 		if asm.config.EnablePathTraversalFilter {
 			if asm.pathTraversalFilter.Detect(r) {
 				asm.logger.WithFields(logrus.Fields{
-					"ip": getClientIP(r),
+					"ip":          getClientIP(r),
 					"attack_type": "path_traversal",
 				}).Warn("Path traversal attempt detected")
 				http.Error(w, "Bad request", http.StatusBadRequest)
@@ -502,16 +516,11 @@ func (asm *AdvancedSecurityMiddleware) initBotDetectionRules() []BotDetectionRul
 		},
 		{
 			name:        "suspicious_user_agent",
-			pattern:     regexp.MustCompile(`(?i)(bot|crawler|spider|scanner|python|curl|wget)`),
+			pattern:     regexp.MustCompile(`(?i)(bot|crawler|spider|scanner|python|wget)`),
 			score:       15,
 			description: "suspicious_user_agent",
 		},
-		{
-			name:        "rapid_requests",
-			pattern:     regexp.MustCompile(`.*`),
-			score:       10,
-			description: "rapid_requests",
-		},
+		// Note: rapid_requests detection is now handled by rate-based logic in DetectBotWithRateLimit
 	}
 }
 
@@ -527,7 +536,8 @@ func (asm *AdvancedSecurityMiddleware) initXSSPatterns() []*regexp.Regexp {
 	return []*regexp.Regexp{
 		regexp.MustCompile(`(?i)(<script|<iframe|<object|<embed)`),
 		regexp.MustCompile(`(?i)(javascript:|vbscript:|data:)`),
-		regexp.MustCompile(`(?i)(on\w+\s*=)`),
+		// Word boundary so "component=all" does not match as on+ent= (event-handler XSS).
+		regexp.MustCompile(`(?i)\bon\w+\s*=`),
 	}
 }
 
@@ -580,10 +590,10 @@ func (asm *AdvancedSecurityMiddleware) blockIP(ip, reason string) {
 
 func (asm *AdvancedSecurityMiddleware) logRateLimit(ip, limiterType string, r *http.Request) {
 	asm.logger.WithFields(logrus.Fields{
-		"ip": ip,
+		"ip":      ip,
 		"limiter": limiterType,
-		"method": r.Method,
-		"path": r.URL.Path,
+		"method":  r.Method,
+		"path":    r.URL.Path,
 	}).Warn("Rate limit exceeded")
 }
 
@@ -658,7 +668,12 @@ func (rwt *responseWriterTracker) WriteHeader(code int) {
 
 		// Record traffic statistics
 		responseTime := time.Since(rwt.startTime)
-		isError := code >= 400
+		// Exclude client-error codes that are normal during auth flows:
+		//   401 = unauthenticated (session bootstrap, CSRF check, last-login with no session)
+		//   404 = resource not found (endpoint not deployed, SPA catch-all fallback)
+		// These are NOT indicators of an attack and would otherwise inflate error rates
+		// to trigger false-positive "high_error_rate" blocks on legitimate browser clients.
+		isError := code >= 400 && code != http.StatusUnauthorized && code != http.StatusNotFound
 		rwt.asm.trafficAnalyzer.RecordRequest(rwt.clientIP, responseTime, isError)
 
 		rwt.ResponseWriter.WriteHeader(code)

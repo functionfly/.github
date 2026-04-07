@@ -22,6 +22,9 @@ type BotDetection struct {
 	botSignatures  map[string]bool
 	suspiciousIPs  map[string]*BotActivity
 	detectionRules []BotDetectionRule
+	rateWindows    map[string][]time.Time // Track request timestamps for rate detection
+	rateLimit      int                    // Max requests allowed in the rate window
+	rateWindow     time.Duration          // Time window for rate detection
 }
 
 // TrafficAnalyzer monitors traffic patterns
@@ -82,13 +85,25 @@ func (bd *BotDetection) DetectBot(r *http.Request) (bool, string) {
 		return true, "known_bot_signature"
 	}
 
-	// Check suspicious IP activity
-	if activity, exists := bd.suspiciousIPs[ip]; exists && activity.score > 50 {
-		return true, activity.detectionReason
+	// Check suspicious IP activity (with score decay)
+	if activity, exists := bd.suspiciousIPs[ip]; exists {
+		// Apply score decay based on time since last activity
+		if time.Since(activity.lastActivity) > 5*time.Minute {
+			activity.score = activity.score / 2 // Reduce score by half after 5 minutes
+		}
+		activity.lastActivity = time.Now()
+
+		if activity.score > 50 {
+			return true, activity.detectionReason
+		}
 	}
 
-	// Apply detection rules
+	// Apply detection rules (excluding the broken rapid_requests rule)
 	for _, rule := range bd.detectionRules {
+		// Skip rules with catch-all patterns - they're handled by rate detection
+		if rule.pattern.String() == ".*" {
+			continue
+		}
 		if rule.pattern.MatchString(userAgent) || rule.pattern.MatchString(r.URL.Path) {
 			bd.markSuspiciousIP(ip, rule.score, rule.description)
 			if activity := bd.suspiciousIPs[ip]; activity.score > 50 {
@@ -97,7 +112,77 @@ func (bd *BotDetection) DetectBot(r *http.Request) (bool, string) {
 		}
 	}
 
+	// Check rate-based bot detection
+	if bd.isRateExceeded(ip) {
+		bd.markSuspiciousIP(ip, 15, "rapid_requests_rate_exceeded")
+		if activity := bd.suspiciousIPs[ip]; activity.score > 50 {
+			return true, "rapid_requests_rate_exceeded"
+		}
+	}
+
 	return false, ""
+}
+
+// isRateExceeded checks if an IP has exceeded the rate limit
+func (bd *BotDetection) isRateExceeded(ip string) bool {
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
+	now := time.Now()
+	windowStart := now.Add(-bd.rateWindow)
+
+	// Get or create rate window for this IP
+	timestamps, exists := bd.rateWindows[ip]
+	if !exists {
+		bd.rateWindows[ip] = []time.Time{now}
+		return false
+	}
+
+	// Filter out old timestamps outside the window
+	validTimestamps := make([]time.Time, 0)
+	for _, ts := range timestamps {
+		if ts.After(windowStart) {
+			validTimestamps = append(validTimestamps, ts)
+		}
+	}
+
+	// Add current request
+	validTimestamps = append(validTimestamps, now)
+	bd.rateWindows[ip] = validTimestamps
+
+	// Check if rate limit exceeded
+	return len(validTimestamps) > bd.rateLimit
+}
+
+// CleanupOldData removes stale rate tracking data to prevent memory leaks
+func (bd *BotDetection) CleanupOldData() {
+	bd.mu.Lock()
+	defer bd.mu.Unlock()
+
+	now := time.Now()
+	cutoff := now.Add(-10 * time.Minute)
+
+	// Clean old rate windows
+	for ip, timestamps := range bd.rateWindows {
+		validTimestamps := make([]time.Time, 0)
+		for _, ts := range timestamps {
+			if ts.After(cutoff) {
+				validTimestamps = append(validTimestamps, ts)
+			}
+		}
+		if len(validTimestamps) == 0 {
+			delete(bd.rateWindows, ip)
+		} else {
+			bd.rateWindows[ip] = validTimestamps
+		}
+	}
+
+	// Clean old suspicious IPs with no recent activity and low scores
+	for ip, activity := range bd.suspiciousIPs {
+		if time.Since(activity.lastActivity) > 30*time.Minute && activity.score < 30 {
+			delete(bd.suspiciousIPs, ip)
+		}
+	}
 }
 
 func (bd *BotDetection) markSuspiciousIP(ip string, score int, reason string) {

@@ -70,7 +70,7 @@ func (h *StatusWebSocketHub) Run() {
 			h.clients[client] = true
 			h.logger.WithField("client_id", client.ID).Debug("Status WebSocket client registered")
 
-			// Send initial status to client
+			// Send initial status to client immediately
 			go h.sendInitialStatus(client)
 
 		case client := <-h.unregister:
@@ -118,57 +118,51 @@ func (h *StatusWebSocketHub) broadcastToSubscribers(message *StatusUpdateMessage
 func (h *StatusWebSocketHub) sendInitialStatus(client *StatusWebSocketClient) {
 	ctx := context.Background()
 
-	// Send platform status
-	if client.Channels["platform"] || client.Channels["all"] {
-		status, err := h.getCurrentPlatformStatus()
-		if err == nil {
-			msg := &StatusUpdateMessage{
-				Type:      "status_update",
-				Channel:   "platform",
-				Timestamp: time.Now(),
-				Data:      status,
-			}
-			data, _ := json.Marshal(msg)
-			select {
-			case client.Send <- data:
-			default:
-			}
+	// Send platform status (always send initial status)
+	status, err := h.getCurrentPlatformStatus()
+	if err == nil {
+		msg := &StatusUpdateMessage{
+			Type:      "status_update",
+			Channel:   "platform",
+			Timestamp: time.Now(),
+			Data:      status,
+		}
+		data, _ := json.Marshal(msg)
+		select {
+		case client.Send <- data:
+		default:
 		}
 	}
 
-	// Send provider status
-	if client.Channels["providers"] || client.Channels["all"] {
-		providers, err := h.getCurrentProviderStatus(ctx)
-		if err == nil {
-			msg := &StatusUpdateMessage{
-				Type:      "status_update",
-				Channel:   "providers",
-				Timestamp: time.Now(),
-				Data:      providers,
-			}
-			data, _ := json.Marshal(msg)
-			select {
-			case client.Send <- data:
-			default:
-			}
+	// Send provider status (always send initial status)
+	providers, err := h.getCurrentProviderStatus(ctx)
+	if err == nil {
+		msg := &StatusUpdateMessage{
+			Type:      "status_update",
+			Channel:   "providers",
+			Timestamp: time.Now(),
+			Data:      providers,
+		}
+		data, _ := json.Marshal(msg)
+		select {
+		case client.Send <- data:
+		default:
 		}
 	}
 
-	// Send active incidents
-	if client.Channels["incidents"] || client.Channels["all"] {
-		incidents, err := h.handler.repo.GetActiveIncidents(ctx)
-		if err == nil {
-			msg := &StatusUpdateMessage{
-				Type:      "status_update",
-				Channel:   "incidents",
-				Timestamp: time.Now(),
-				Data:      incidents,
-			}
-			data, _ := json.Marshal(msg)
-			select {
-			case client.Send <- data:
-			default:
-			}
+	// Send active incidents (always send initial status)
+	incidents, err := h.handler.repo.GetActiveIncidents(ctx)
+	if err == nil {
+		msg := &StatusUpdateMessage{
+			Type:      "status_update",
+			Channel:   "incidents",
+			Timestamp: time.Now(),
+			Data:      incidents,
+		}
+		data, _ := json.Marshal(msg)
+		select {
+		case client.Send <- data:
+		default:
 		}
 	}
 }

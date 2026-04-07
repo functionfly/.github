@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	regexec "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/deployment"
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/health"
@@ -56,6 +58,7 @@ type Server struct {
 	authEventCleanup    *storage.AuthEventCleanupService
 	healthMonitor       *health.Monitor
 	redisClient         *redis.Client
+	upstashRedis        *cache.UpstashRedisClient
 	httpServer          *http.Server
 	shutdownTimeout     time.Duration
 
@@ -123,6 +126,13 @@ func NewServer(db *storage.PostgresDB) *Server {
 		redisClient = nil
 	}
 
+	// Initialize Upstash Redis client (used by CSRF and other middleware when Upstash is configured)
+	upstashRedis, err := initializeUpstashRedis()
+	if err != nil {
+		logrus.WithError(err).Warn("Failed to initialize Upstash Redis client, CSRF and other features may not work")
+		upstashRedis = nil
+	}
+
 	// Initialize artifact store (Redis for production, fallback to memory for development)
 	artifactStore, err := initializeArtifactStore()
 	if err != nil {
@@ -153,22 +163,8 @@ func NewServer(db *storage.PostgresDB) *Server {
 		BaseURL:      "http://localhost:8080",
 	}
 	var emailSvc email.Service = email.NewMockService(emailConfig) // Default to mock service with config
-	if smtpHost := os.Getenv("SMTP_HOST"); smtpHost != "" {
-		emailConfig := email.Config{
-			SMTPHost:     smtpHost,
-			SMTPPort:     587, // Default SMTP port
-			SMTPUsername: os.Getenv("SMTP_USERNAME"),
-			SMTPPassword: os.Getenv("SMTP_PASSWORD"),
-			FromEmail:    os.Getenv("FROM_EMAIL"),
-			FromName:     os.Getenv("FROM_NAME"),
-			BaseURL:      os.Getenv("BASE_URL"),
-		}
-		if portStr := os.Getenv("SMTP_PORT"); portStr != "" {
-			if port, err := strconv.Atoi(portStr); err == nil && port > 0 {
-				emailConfig.SMTPPort = port
-			}
-		}
-		emailSvc = email.NewSMTPService(emailConfig)
+	if svc, ok := email.NewServiceFromEnv(); ok {
+		emailSvc = svc
 	}
 
 	authSvc := auth.NewAuthService(repo, jwtSecret)
@@ -261,6 +257,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 		stateCleanup:        stateCleanup,
 		healthMonitor:       healthMonitor,
 		redisClient:         redisClient,
+		upstashRedis:        upstashRedis,
 		shutdownTimeout:     shutdownTimeout,
 		notificationSvc:     notificationSvc,
 		notificationRepo:    notificationRepo,
@@ -337,14 +334,14 @@ func localhostCORSWrapper(next http.Handler) http.Handler {
 
 		// Handle preflight first so the browser always gets CORS headers on OPTIONS.
 		if r.Method == "OPTIONS" {
-			if isLocalhost {
+			if origin != "" {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Access-Control-Max-Age", "86400")
 			}
-			w.WriteHeader(http.StatusNoContent)
+			w.WriteHeader(http.StatusOK)
 			return
 		}
 
@@ -586,24 +583,31 @@ func (s *Server) GetNotificationRepository() notification.Repository {
 	return s.notificationRepo
 }
 
+// redisTLSConfig returns a *tls.Config if the address is an Upstash host (requires TLS).
+// Returns nil for plain-text local Redis.
+func redisTLSConfig(addr string) *tls.Config {
+	if strings.Contains(addr, "upstash.io") {
+		return &tls.Config{}
+	}
+	return nil
+}
+
 // initializeArtifactStore initializes the artifact store based on environment configuration
 func initializeArtifactStore() (deployment.ArtifactStore, error) {
-	// Check if Redis is configured
 	redisAddr := os.Getenv("REDIS_ADDR")
 	if redisAddr == "" {
-		redisAddr = "localhost:6379" // Default Redis address
+		redisAddr = "localhost:6379"
 	}
 
 	redisPassword := os.Getenv("REDIS_PASSWORD")
 
-	redisDB := 0 // Default database
+	redisDB := 0
 	if dbStr := os.Getenv("REDIS_DB"); dbStr != "" {
 		if parsed, err := strconv.Atoi(dbStr); err == nil && parsed >= 0 {
 			redisDB = parsed
 		}
 	}
 
-	// Configure artifact TTL (default: 7 days)
 	artifactTTL := 7 * 24 * time.Hour
 	if ttlStr := os.Getenv("ARTIFACT_TTL"); ttlStr != "" {
 		if parsed, err := time.ParseDuration(ttlStr); err == nil {
@@ -611,14 +615,14 @@ func initializeArtifactStore() (deployment.ArtifactStore, error) {
 		}
 	}
 
-	// Create Redis client
+	// Create Redis client (TLS auto-detected for Upstash hosts)
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     redisAddr,
-		Password: redisPassword,
-		DB:       redisDB,
+		Addr:      redisAddr,
+		Password:  redisPassword,
+		DB:        redisDB,
+		TLSConfig: redisTLSConfig(redisAddr),
 	})
 
-	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -635,12 +639,21 @@ func initializeArtifactStore() (deployment.ArtifactStore, error) {
 	return deployment.NewRedisArtifactStoreFromClient(rdb, artifactTTL), nil
 }
 
-// initializeRedisClient creates a Redis client for caching
+// initializeRedisClient creates a Redis client for caching.
+// If UPSTASH_REDIS_REST_URL/TOKEN are set, returns nil (callers use Upstash HTTP client instead).
 func initializeRedisClient() (*redis.Client, error) {
-	// Get Redis configuration from environment variables
+	upstashURL := os.Getenv("UPSTASH_REDIS_REST_URL")
+	upstashToken := os.Getenv("UPSTASH_REDIS_REST_TOKEN")
+
+	if upstashURL != "" && upstashToken != "" {
+		logrus.Info("Using Upstash Redis REST API for caching (go-redis client not needed)")
+		return nil, nil
+	}
+
+	// Direct Redis client (with TLS for Upstash)
 	redisAddr := os.Getenv("REDIS_ADDR")
 	if redisAddr == "" {
-		redisAddr = "localhost:6379" // Default Redis address
+		redisAddr = "localhost:6379"
 	}
 
 	redisPassword := os.Getenv("REDIS_PASSWORD")
@@ -652,14 +665,14 @@ func initializeRedisClient() (*redis.Client, error) {
 		}
 	}
 
-	// Create Redis client
+	// Create Redis client (TLS auto-detected for Upstash hosts)
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     redisAddr,
-		Password: redisPassword,
-		DB:       redisDB,
+		Addr:      redisAddr,
+		Password:  redisPassword,
+		DB:        redisDB,
+		TLSConfig: redisTLSConfig(redisAddr),
 	})
 
-	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -673,6 +686,37 @@ func initializeRedisClient() (*redis.Client, error) {
 	}).Info("Initialized Redis client for caching")
 
 	return rdb, nil
+}
+
+// initializeUpstashRedis creates an Upstash Redis client
+func initializeUpstashRedis() (*cache.UpstashRedisClient, error) {
+	upstashURL := os.Getenv("UPSTASH_REDIS_REST_URL")
+	upstashToken := os.Getenv("UPSTASH_REDIS_REST_TOKEN")
+
+	if upstashURL == "" || upstashToken == "" {
+		return nil, nil // Not configured for Upstash
+	}
+
+	config := &cache.UpstashConfig{
+		URL:      upstashURL,
+		Token:    upstashToken,
+		IsUpstash: true,
+	}
+
+	client := cache.NewUpstashRedisClient(config)
+	if client == nil {
+		return nil, fmt.Errorf("failed to create Upstash Redis client")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := client.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("failed to connect to Upstash Redis: %w", err)
+	}
+
+	logrus.Info("Initialized Upstash Redis client")
+	return client, nil
 }
 
 // serveSPAIndex serves the React SPA index.html for playground routes

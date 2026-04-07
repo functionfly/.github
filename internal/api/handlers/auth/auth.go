@@ -31,6 +31,13 @@ func NewHandler(authSvc *auth.AuthService) *Handler {
 	}
 }
 
+// writeJSON writes a JSON response with the given status code.
+func writeJSON(w http.ResponseWriter, status int, body interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(body)
+}
+
 // writeJSONError writes a JSON error body and status code so the frontend can parse it
 func writeJSONError(w http.ResponseWriter, status int, message string) {
 	writeJSONErrorDetail(w, status, message, "")
@@ -207,6 +214,24 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create admin session for admin users
+	if user.Role == "super_admin" || user.Role == "admin" || user.Role == "support" || user.Role == "billing_admin" || user.Role == "developer_admin" {
+		deviceFingerprint := r.Header.Get("X-Device-Fingerprint")
+		expiresAt := time.Now().Add(24 * time.Hour)
+
+		// Access PostgresDB directly to create admin session
+		if postgresDB, ok := h.authSvc.Repo().(*storage.PostgresDB); ok {
+			_, sessionErr := postgresDB.CreateAdminSession(user.ID, response.Token, ipAddress, userAgent, deviceFingerprint, expiresAt)
+			if sessionErr != nil {
+				logrus.WithError(sessionErr).WithField("user_id", user.ID).Warn("Failed to create admin session")
+			} else {
+				logrus.WithField("user_id", user.ID).Info("Admin session created")
+			}
+		} else {
+			logrus.Warn("Repository is not PostgresDB, skipping admin session creation")
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(response)
 }
@@ -288,6 +313,100 @@ func (h *Handler) HandleSignupConfig(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleWaitlist handles POST /waitlist (public — no auth required).
+func (h *Handler) HandleWaitlist(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	var req struct {
+		Email   string `json:"email"`
+		Name    string `json:"name"`
+		Company string `json:"company"`
+		UseCase string `json:"useCase"`
+		Source  string `json:"source"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	if req.Email == "" || !strings.Contains(req.Email, "@") {
+		writeJSONError(w, http.StatusBadRequest, "A valid email address is required")
+		return
+	}
+
+	ipAddr := r.RemoteAddr
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		ipAddr = host
+	}
+
+	entry, err := h.authSvc.Repo().CreateWaitlistEntry(r.Context(), req.Email, req.Name, req.Company, req.UseCase, req.Source, ipAddr, r.Header.Get("User-Agent"))
+	if err != nil {
+		if err == storage.ErrWaitlistEntryExists {
+			writeJSONError(w, http.StatusConflict, "This email is already on the waitlist")
+			return
+		}
+		logrus.WithError(err).Error("HandleWaitlist: CreateWaitlistEntry failed")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to join waitlist")
+		return
+	}
+
+	// Send confirmation email
+	_ = h.authSvc.EmailService().SendWaitlistConfirmationEmail(entry.Email)
+
+	writeJSON(w, http.StatusCreated, map[string]string{
+		"message": "Successfully joined the waitlist",
+	})
+}
+
+// HandleCheckInviteCode validates an invite code without consuming a use.
+func (h *Handler) HandleCheckInviteCode(w http.ResponseWriter, r *http.Request) {
+	code := strings.TrimSpace(r.URL.Query().Get("code"))
+
+	if auth.SignupInviteRequired() && code == "" {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"valid": false,
+			"error": "invite code is required",
+		})
+		return
+	}
+
+	// If invite codes are not required and none was provided, that's fine
+	if !auth.SignupInviteRequired() && code == "" {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"valid": true,
+		})
+		return
+	}
+
+	err := h.authSvc.Repo().ValidateSignupInviteReadOnly(r.Context(), code)
+	if err == nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"valid": true,
+		})
+		return
+	}
+
+	// Map storage errors to user-friendly messages
+	var msg string
+	switch {
+	case errors.Is(err, storage.ErrSignupInviteInvalid):
+		msg = "invalid or expired invite code"
+	case errors.Is(err, storage.ErrSignupInviteExhausted):
+		msg = "this invite code has no uses remaining"
+	case errors.Is(err, storage.ErrSignupInviteRevoked):
+		msg = "this invite code is no longer valid"
+	default:
+		msg = "could not validate invite code"
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"valid": false,
+		"error": msg,
+	})
+}
+
 // HandleVerifyEmail handles email verification
 func (h *Handler) HandleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 	// Get token from query parameter
@@ -297,6 +416,12 @@ func (h *Handler) HandleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Look up user before verification (VerifyEmail clears the token)
+	user, userErr := h.authSvc.Repo().GetUserByVerificationToken(token)
+	if userErr != nil {
+		logrus.WithError(userErr).Warn("Failed to look up user by verification token")
+	}
+
 	err := h.authSvc.VerifyEmail(token)
 	if err != nil {
 		logrus.WithError(err).Warn("Email verification failed")
@@ -304,8 +429,17 @@ func (h *Handler) HandleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := map[string]string{
+	// Generate a JWT so the frontend can auto-login after verification
+	var accessToken string
+	if user != nil {
+		if t, err := h.authSvc.GenerateToken(user); err == nil {
+			accessToken = t
+		}
+	}
+
+	response := map[string]interface{}{
 		"message": "Email verified successfully! You can now log in to your account.",
+		"token":   accessToken,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

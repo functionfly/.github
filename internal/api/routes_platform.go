@@ -86,16 +86,16 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/monitoring/dashboard", authMiddleware.RequireAuth(monitoringHandler.HandleGetDashboardConfig)).Methods("GET")
 
 	// ── Security Metrics (public) ─────────────────────────────────────────────
-	api.HandleFunc("/metrics/security", securityHandler.HandleGetSecurityMetrics).Methods("GET")
-	api.HandleFunc("/metrics/security/services", securityHandler.HandleGetServiceStatus).Methods("GET")
-	api.HandleFunc("/metrics/security/certificates", securityHandler.HandleGetSSLCertificates).Methods("GET")
-	api.HandleFunc("/metrics/security/incidents", securityHandler.HandleGetRecentIncidents).Methods("GET")
-	api.HandleFunc("/metrics/security/compliance", securityHandler.HandleGetComplianceFrameworks).Methods("GET")
-	api.HandleFunc("/metrics/security/measures", securityHandler.HandleGetSecurityMeasures).Methods("GET")
-	api.HandleFunc("/metrics/security/incident-response", securityHandler.HandleGetIncidentResponse).Methods("GET")
-	api.HandleFunc("/metrics/security/faq", securityHandler.HandleGetSecurityFAQ).Methods("GET")
-	api.HandleFunc("/metrics/security/resources", securityHandler.HandleGetSecurityResources).Methods("GET")
-	api.HandleFunc("/metrics/security/contacts", securityHandler.HandleGetContactInfo).Methods("GET")
+	api.HandleFunc("/metrics/security", securityHandler.HandleGetSecurityMetrics).Methods("GET", "OPTIONS")
+	api.HandleFunc("/metrics/security/services", securityHandler.HandleGetServiceStatus).Methods("GET", "OPTIONS")
+	api.HandleFunc("/metrics/security/certificates", securityHandler.HandleGetSSLCertificates).Methods("GET", "OPTIONS")
+	api.HandleFunc("/metrics/security/incidents", securityHandler.HandleGetRecentIncidents).Methods("GET", "OPTIONS")
+	api.HandleFunc("/metrics/security/compliance", securityHandler.HandleGetComplianceFrameworks).Methods("GET", "OPTIONS")
+	api.HandleFunc("/metrics/security/measures", securityHandler.HandleGetSecurityMeasures).Methods("GET", "OPTIONS")
+	api.HandleFunc("/metrics/security/incident-response", securityHandler.HandleGetIncidentResponse).Methods("GET", "OPTIONS")
+	api.HandleFunc("/metrics/security/faq", securityHandler.HandleGetSecurityFAQ).Methods("GET", "OPTIONS")
+	api.HandleFunc("/metrics/security/resources", securityHandler.HandleGetSecurityResources).Methods("GET", "OPTIONS")
+	api.HandleFunc("/metrics/security/contacts", securityHandler.HandleGetContactInfo).Methods("GET", "OPTIONS")
 
 	// ── Status Page (public read, admin write) ────────────────────────────────
 	api.HandleFunc("/status", statusHandler.HandleGetPlatformStatus).Methods("GET", "OPTIONS")
@@ -111,6 +111,9 @@ func registerPlatformRoutes(
 	api.HandleFunc("/maintenance", statusHandler.HandleListMaintenance).Methods("GET", "OPTIONS")
 	api.HandleFunc("/maintenance", authMiddleware.RequireAuth(statusHandler.HandleCreateMaintenance)).Methods("POST", "OPTIONS")
 	s.router.HandleFunc("/maintenance/status", maintenanceHandler.HandleGetPublicStatus).Methods("GET", "OPTIONS")
+
+	// ── Status RSS Feed (public) ──────────────────────────────────────────────
+	api.HandleFunc("/status/rss", statusHandler.HandleGetRSSFeed).Methods("GET", "OPTIONS")
 
 	// ── API Version Management (public read, admin write) ─────────────────────
 	api.HandleFunc("/api/versions", versionHandler.HandleListVersions).Methods("GET", "OPTIONS")
@@ -190,22 +193,22 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/teams/invites", authMiddleware.RequireAuth(providersHandler.HandleCreateTeamInvite)).Methods("POST")
 
 	// ── Apps (protected) ──────────────────────────────────────────────────────
-	protected.HandleFunc("/apps", authMiddleware.RequireAuth(appsHandler.HandleListApps)).Methods("GET")
-	protected.HandleFunc("/apps", authMiddleware.RequireAuth(appsHandler.HandleCreateApp)).Methods("POST")
-	protected.HandleFunc("/apps/{appId}", authMiddleware.RequireAuth(appsHandler.HandleGetApp)).Methods("GET")
-	protected.HandleFunc("/apps/{appId}/status", authMiddleware.RequireAuth(appsHandler.HandleGetAppStatus)).Methods("GET")
+	protected.HandleFunc("/apps", authMiddleware.RequireAuth(appsHandler.HandleListApps)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/apps", authMiddleware.RequireAuth(appsHandler.HandleCreateApp)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/apps/{appId}", authMiddleware.RequireAuth(appsHandler.HandleGetApp)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/apps/{appId}/status", authMiddleware.RequireAuth(appsHandler.HandleGetAppStatus)).Methods("GET", "OPTIONS")
 
 	// ── Functions (protected) ─────────────────────────────────────────────────
-	protected.HandleFunc("/functions", authMiddleware.RequireAuth(functionsHandler.HandleListFunctions)).Methods("GET")
-	protected.HandleFunc("/functions", authMiddleware.RequireAuth(functionsHandler.HandleCreateFunction)).Methods("POST")
-	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleGetFunction)).Methods("GET")
-	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleUpdateFunction)).Methods("PUT")
-	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleDeleteFunction)).Methods("DELETE")
-	protected.HandleFunc("/functions/{id}/logs", authMiddleware.RequireAuth(functionsHandler.HandleGetFunctionLogs)).Methods("GET")
-	protected.HandleFunc("/functions/{id}/deployments", authMiddleware.RequireAuth(functionsHandler.HandleGetFunctionDeployments)).Methods("GET")
-	protected.HandleFunc("/functions/deployments/{deploymentId}", authMiddleware.RequireAuth(functionsHandler.HandleGetFunctionDeployment)).Methods("GET")
-	protected.HandleFunc("/functions/deploy", authMiddleware.RequireAuth(functionsHandler.HandleDeployFunction)).Methods("POST")
-	protected.HandleFunc("/functions/test", authMiddleware.RequireAuth(functionsHandler.HandleTestFunction)).Methods("POST")
+	protected.HandleFunc("/functions", authMiddleware.RequireAuth(functionsHandler.HandleListFunctions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/functions", authMiddleware.RequireAuth(functionsHandler.HandleCreateFunction)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleGetFunction)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleUpdateFunction)).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/functions/{id}", authMiddleware.RequireAuth(functionsHandler.HandleDeleteFunction)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/functions/{id}/logs", authMiddleware.RequireAuth(functionsHandler.HandleGetFunctionLogs)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/functions/{id}/deployments", authMiddleware.RequireAuth(functionsHandler.HandleGetFunctionDeployments)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/functions/deployments/{deploymentId}", authMiddleware.RequireAuth(functionsHandler.HandleGetFunctionDeployment)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/functions/deploy", authMiddleware.RequireAuth(functionsHandler.HandleDeployFunction)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/functions/test", authMiddleware.RequireAuth(functionsHandler.HandleTestFunction)).Methods("POST", "OPTIONS")
 
 	// ── Dashboard (protected, tenant-scoped) ──────────────────────────────────
 	protected.HandleFunc("/dashboard/usage", authMiddleware.RequireAuth(dashboardHandler.HandleGetUsage)).Methods("GET", "OPTIONS")

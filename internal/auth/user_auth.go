@@ -482,24 +482,13 @@ func (a *AuthService) Signup(req SignupRequest) (*SignupResponse, error) {
 	}
 	expiresAt := time.Now().Add(24 * time.Hour) // 24 hours
 
-	// Get or create default tenant
-	tenants, err := a.repo.ListTenants()
+	// Create a new tenant for each user (don't reuse existing tenants)
+	// This ensures each user gets their own tenant with the correct plan
+	tenant, err := a.repo.CreateTenant(context.Background(), "Default Tenant")
 	if err != nil {
-		return nil, fmt.Errorf("failed to list tenants: %w", err)
+		return nil, fmt.Errorf("failed to create default tenant: %w", err)
 	}
-
-	var tenantID uuid.UUID
-	if len(tenants) > 0 {
-		// Use the first tenant as default
-		tenantID = tenants[0].ID
-	} else {
-		// Create a default tenant
-		tenant, err := a.repo.CreateTenant(context.Background(), "Default Tenant")
-		if err != nil {
-			return nil, fmt.Errorf("failed to create default tenant: %w", err)
-		}
-		tenantID = tenant.ID
-	}
+	tenantID := tenant.ID
 
 	dob, err := parseDateOfBirthForSignup(req.DateOfBirth)
 	if err != nil {

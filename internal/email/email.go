@@ -17,6 +17,7 @@ type Service interface {
 	SendVerificationEmail(user *storage.User, verificationToken string) error
 	SendPasswordResetEmail(user *storage.User, resetToken string) error
 	SendBreachNotification(recipients []string, breachDetails map[string]interface{}) error
+	SendWaitlistConfirmationEmail(email string) error
 	SendEmail(to, subject, textBody, htmlBody string) error
 	ValidateConfiguration() error
 }
@@ -32,6 +33,7 @@ type Config struct {
 	FromEmail    string
 	FromName     string
 	BaseURL      string
+	AuthURL      string // Auth frontend URL (e.g. https://auth.functionfly.com) for verification/reset links
 	ReplyToEmail string
 }
 
@@ -39,10 +41,11 @@ type Config struct {
 func NewService(config Config) Service {
 	if config.Provider == "resend" && config.ResendAPIKey != "" {
 		return NewResendService(ResendConfig{
-			APIKey:      config.ResendAPIKey,
-			FromEmail:   config.FromEmail,
-			FromName:    config.FromName,
-			BaseURL:     config.BaseURL,
+			APIKey:       config.ResendAPIKey,
+			FromEmail:    config.FromEmail,
+			FromName:     config.FromName,
+			BaseURL:      config.BaseURL,
+			AuthURL:      config.AuthURL,
 			ReplyToEmail: config.ReplyToEmail,
 		})
 	}
@@ -55,6 +58,7 @@ func NewService(config Config) Service {
 		FromEmail:    config.FromEmail,
 		FromName:     config.FromName,
 		BaseURL:      config.BaseURL,
+		AuthURL:      config.AuthURL,
 	})
 }
 
@@ -77,46 +81,102 @@ func (s *SMTPService) SendVerificationEmail(user *storage.User, verificationToke
 	}
 
 	subject := "Verify Your Email Address - FunctionFly"
-	verificationURL := fmt.Sprintf("%s/auth/verify-email?token=%s", s.config.BaseURL, *user.VerificationToken)
+	verifyBase := s.config.AuthURL
+	if verifyBase == "" {
+		verifyBase = s.config.BaseURL
+	}
+	verificationURL := fmt.Sprintf("%s/verify-email?token=%s", verifyBase, *user.VerificationToken)
 
-	// HTML email template
-	htmlBody := fmt.Sprintf(`
-<!DOCTYPE html>
-<html>
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <meta charset="UTF-8">
-    <title>Verify Your Email</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #4F46E5; color: white; padding: 20px; text-align: center; }
-        .content { padding: 30px 20px; background-color: #f9f9f9; }
-        .button { display: inline-block; background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
-        .footer { text-align: center; font-size: 12px; color: #666; padding: 20px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Verify your email — FunctionFly</title>
+  <!--[if mso]><style>table,td{font-family:Arial,sans-serif!important}</style><![endif]-->
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>FunctionFly</h1>
-        </div>
-        <div class="content">
-            <h2>Welcome to FunctionFly!</h2>
-            <p>Thank you for signing up. Please verify your email address to complete your registration.</p>
-            <p>Click the button below to verify your email:</p>
-            <a href="%s" class="button">Verify Email Address</a>
-            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-            <p><a href="%s">%s</a></p>
-            <p>This verification link will expire in 24 hours.</p>
-            <p>If you didn't create an account, please ignore this email.</p>
-        </div>
-        <div class="footer">
-            %s
-        </div>
-    </div>
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <!-- Card -->
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;">
+        <!-- Logo -->
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#0F172A;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#6366F1;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <!-- Main card -->
+        <tr><td>
+          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <!-- Header -->
+            <tr><td style="padding:40px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="width:56px;height:56px;background:rgba(99,102,241,0.1);border-radius:50%%;text-align:center;vertical-align:middle;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                      <tr><td style="text-align:center;">
+                        <div style="font-size:24px;line-height:56px;">&#9993;</div>
+                      </td></tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+            <!-- Body -->
+            <tr><td style="padding:24px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">Verify your email</h1>
+              <p style="margin:0 0 8px;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                Thanks for signing up for FunctionFly. Click the button below to verify your email address and activate your account.
+              </p>
+            </td></tr>
+            <!-- CTA button -->
+            <tr><td style="padding:28px 40px;">
+              <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="%s" style="height:48px;v-text-anchor:middle;width:260px;" arcsize="17%%" stroke="f" fillcolor="#6366F1"><center style="color:#fff;font-size:15px;font-weight:600;">Verify email address</center></v:roundrect><![endif]-->
+              <!--[if !mso]><!-->
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#6366F1;border-radius:8px;">
+                <a href="%s" target="_blank" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;font-family:inherit;">Verify email address</a>
+              </td></tr></table>
+              <!--<![endif]-->
+            </td></tr>
+            <!-- Expiry note -->
+            <tr><td style="padding:0 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:16px 20px;">
+                  <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                    This link expires in <strong style="color:#a1a1aa;">24 hours</strong>. If you didn't create an account, you can safely ignore this email.
+                  </p>
+                </td></tr>
+              </table>
+            </td></tr>
+            <!-- Fallback link -->
+            <tr><td style="padding:24px 40px 40px;">
+              <p style="margin:0;font-size:12px;color:#52525b;line-height:1.5;">
+                Having trouble with the button? Copy and paste this link into your browser:<br>
+                <a href="%s" style="color:#6366F1;text-decoration:none;word-break:break-all;">%s</a>
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
 </body>
-</html>
-`, verificationURL, verificationURL, verificationURL, TransactionalEmailCopyrightHTML())
+</html>`, verificationURL, verificationURL, verificationURL, verificationURL, TransactionalEmailCopyrightHTML())
 
 	// Plain text version
 	textBody := fmt.Sprintf(`Welcome to FunctionFly!
@@ -143,26 +203,96 @@ func (s *SMTPService) SendPasswordResetEmail(user *storage.User, resetToken stri
 	}
 
 	subject := "Reset Your Password - FunctionFly"
-	resetURL := fmt.Sprintf("%s/auth/reset-password?token=%s", s.config.BaseURL, resetToken)
+	resetBase := s.config.AuthURL
+	if resetBase == "" {
+		resetBase = s.config.BaseURL
+	}
+	resetURL := fmt.Sprintf("%s/reset-password?token=%s", resetBase, resetToken)
 
 	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Reset Your Password</title>
-<style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background-color:#4F46E5;color:white;padding:20px;text-align:center}.content{padding:30px 20px;background-color:#f9f9f9}.button{display:inline-block;background-color:#4F46E5;color:white;padding:12px 24px;text-decoration:none;border-radius:4px;margin:20px 0}.footer{text-align:center;font-size:12px;color:#666;padding:20px}</style>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Reset your password — FunctionFly</title>
+  <!--[if mso]><style>table,td{font-family:Arial,sans-serif!important}</style><![endif]-->
 </head>
-<body><div class="container">
-<div class="header"><h1>FunctionFly</h1></div>
-<div class="content">
-<h2>Reset Your Password</h2>
-<p>We received a request to reset the password for your account.</p>
-<p>Click the button below to reset your password. This link expires in 1 hour.</p>
-<a href="%s" class="button">Reset Password</a>
-<p>If you didn't request a password reset, you can safely ignore this email.</p>
-</div>
-<div class="footer">%s</div>
-</div></body></html>`, resetURL, TransactionalEmailCopyrightHTML())
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%%%;">
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#0F172A;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#6366F1;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%%%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <tr><td style="padding:40px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr><td style="width:56px;height:56px;background:rgba(239,68,68,0.1);border-radius:50%%%%;text-align:center;vertical-align:middle;">
+                  <div style="font-size:24px;line-height:56px;">&#128274;</div>
+                </td></tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">Reset your password</h1>
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                We received a request to reset your password. Click the button below to choose a new one.
+              </p>
+            </td></tr>
+            <tr><td style="padding:28px 40px;">
+              <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="%s" style="height:48px;v-text-anchor:middle;width:220px;" arcsize="17%%%%" stroke="f" fillcolor="#6366F1"><center style="color:#fff;font-size:15px;font-weight:600;">Reset password</center></v:roundrect><![endif]-->
+              <!--[if !mso]><!-->
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#6366F1;border-radius:8px;">
+                <a href="%s" target="_blank" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;font-family:inherit;">Reset password</a>
+              </td></tr></table>
+              <!--<![endif]-->
+            </td></tr>
+            <tr><td style="padding:0 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:16px 20px;">
+                  <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                    This link expires in <strong style="color:#a1a1aa;">1 hour</strong>. If you didn't request a password reset, you can safely ignore this email.
+                  </p>
+                </td></tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:24px 40px 40px;">
+              <p style="margin:0;font-size:12px;color:#52525b;line-height:1.5;">
+                Having trouble with the button? Copy and paste this link into your browser:<br>
+                <a href="%s" style="color:#6366F1;text-decoration:none;word-break:break-all;">%s</a>
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`, resetURL, resetURL, resetURL, resetURL, TransactionalEmailCopyrightHTML())
 
-	textBody := fmt.Sprintf("Reset your FunctionFly password by visiting: %s\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email.", resetURL)
+	textBody := fmt.Sprintf(`Reset your password
+
+We received a request to reset your FunctionFly password. Click this link to choose a new one:
+
+%s
+
+This link expires in 1 hour. If you didn't request this, ignore this email.
+`, resetURL)
 
 	return s.sendEmail(user.Email, subject, textBody, htmlBody)
 }
@@ -339,6 +469,77 @@ func (s *SMTPService) SendEmail(to, subject, textBody, htmlBody string) error {
 	return s.sendEmail(to, subject, textBody, htmlBody)
 }
 
+// SendWaitlistConfirmationEmail sends a waitlist confirmation email
+func (s *SMTPService) SendWaitlistConfirmationEmail(email string) error {
+	subject := "You're on the list — FunctionFly"
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You're on the list — FunctionFly</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;">
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#0F172A;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#6366F1;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <tr><td style="padding:40px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">You're on the list!</h1>
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                Thanks for requesting early access to FunctionFly. We've received your request and will review it shortly.
+              </p>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                We'll send you an invite code as soon as we're ready for more users. Hang tight!
+              </p>
+            </td></tr>
+            <tr><td style="padding:0 40px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:16px 20px;">
+                  <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                    We're rolling out access gradually to ensure the best experience for everyone. You'll be among the first to know when your spot is ready.
+                  </p>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`, TransactionalEmailCopyrightHTML())
+	textBody := fmt.Sprintf(`You're on the list — FunctionFly
+
+Thanks for requesting early access to FunctionFly. We've received your request and will review it shortly.
+
+We'll send you an invite code as soon as we're ready for more users. Hang tight!
+
+We're rolling out access gradually to ensure the best experience for everyone. You'll be among the first to know when your spot is ready.
+`, TransactionalEmailCopyrightPlain())
+	return s.sendEmail(email, subject, textBody, htmlBody)
+}
+
 // ValidateConfiguration checks if the email service is properly configured
 func (s *SMTPService) ValidateConfiguration() error {
 	if s.config.SMTPHost == "" {
@@ -451,69 +652,103 @@ func (m *MockService) SendVerificationEmail(user *storage.User, verificationToke
 	}
 
 	subject := "[TEST] Verify Your Email Address - FunctionFly"
-	verificationURL := fmt.Sprintf("%s/auth/verify-email?token=%s", m.config.BaseURL, *user.VerificationToken)
+	verifyBase := m.config.AuthURL
+	if verifyBase == "" {
+		verifyBase = m.config.BaseURL
+	}
+	verificationURL := fmt.Sprintf("%s/verify-email?token=%s", verifyBase, *user.VerificationToken)
 
-	// HTML email template
-	htmlBody := fmt.Sprintf(`
-<!DOCTYPE html>
-<html>
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <meta charset="UTF-8">
-    <title>Verify Your Email</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #4F46E5; color: white; padding: 20px; text-align: center; }
-        .test-notice { background-color: #f39c12; color: white; padding: 10px; text-align: center; font-weight: bold; }
-        .content { padding: 30px 20px; background-color: #f9f9f9; }
-        .button { display: inline-block; background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
-        .footer { text-align: center; font-size: 12px; color: #666; padding: 20px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify your email — FunctionFly</title>
 </head>
-<body>
-    <div class="container">
-        <div class="test-notice">
-            ⚠️ TEST EMAIL - FunctionFly Development Environment
-        </div>
-        <div class="header">
-            <h1>FunctionFly</h1>
-        </div>
-        <div class="content">
-            <h2>Welcome to FunctionFly!</h2>
-            <p>Thank you for signing up. Please verify your email address to complete your registration.</p>
-            <p>Click the button below to verify your email:</p>
-            <a href="%s" class="button">Verify Email Address</a>
-            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-            <p><a href="%s">%s</a></p>
-            <p>This verification link will expire in 24 hours.</p>
-            <p>If you didn't create an account, please ignore this email.</p>
-        </div>
-        <div class="footer">
-            %s
-            <p><em>This is a test email from the development environment.</em></p>
-        </div>
-    </div>
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <!-- Test banner -->
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%%%;">
+        <tr><td style="background:#92400e;padding:10px 20px;text-align:center;font-size:13px;font-weight:600;color:#fef3c7;">
+          ⚠️ TEST EMAIL — FunctionFly Development Environment
+        </td></tr>
+      </table>
+    </td></tr>
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%%%;">
+        <!-- Logo -->
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#0F172A;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#6366F1;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <!-- Main card -->
+        <tr><td>
+          <table role="presentation" width="100%%%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <tr><td style="padding:40px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr><td style="width:56px;height:56px;background:rgba(99,102,241,0.1);border-radius:50%%%%;text-align:center;vertical-align:middle;">
+                  <div style="font-size:24px;line-height:56px;">&#9993;</div>
+                </td></tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">Verify your email</h1>
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                Thanks for signing up for FunctionFly. Click the button below to verify your email address and activate your account.
+              </p>
+            </td></tr>
+            <tr><td style="padding:28px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#6366F1;border-radius:8px;">
+                <a href="%s" target="_blank" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Verify email address</a>
+              </td></tr></table>
+            </td></tr>
+            <tr><td style="padding:0 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:16px 20px;">
+                  <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                    This link expires in <strong style="color:#a1a1aa;">24 hours</strong>. If you didn't create an account, you can safely ignore this email.
+                  </p>
+                </td></tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:24px 40px 40px;">
+              <p style="margin:0;font-size:12px;color:#52525b;line-height:1.5;">
+                Having trouble with the button? Copy and paste this link into your browser:<br>
+                <a href="%s" style="color:#6366F1;text-decoration:none;word-break:break-all;">%s</a>
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+          <p style="margin:8px 0 0;font-size:11px;color:#3f3f46;">This is a test email from the development environment.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
 </body>
-</html>
-`, verificationURL, verificationURL, verificationURL, TransactionalEmailCopyrightHTML())
+</html>`, verificationURL, verificationURL, verificationURL, TransactionalEmailCopyrightHTML())
 
-	// Plain text version
 	textBody := fmt.Sprintf(`[TEST EMAIL - FunctionFly Development Environment]
 
-Welcome to FunctionFly!
+Verify your email
 
-Thank you for signing up. Please verify your email address to complete your registration.
+Thanks for signing up for FunctionFly. Click this link to verify your email and activate your account:
 
-Click this link to verify your email: %s
+%s
 
-This verification link will expire in 24 hours.
-
-If you didn't create an account, please ignore this email.
-
---
-FunctionFly Team
-
-* This is a test email from the development environment.
+This link expires in 24 hours. If you didn't create an account, ignore this email.
 `, verificationURL)
 
 	return m.sendEmail(user.Email, subject, textBody, htmlBody)
@@ -526,10 +761,101 @@ func (m *MockService) SendPasswordResetEmail(user *storage.User, resetToken stri
 	}
 
 	subject := "[TEST] Reset Your Password - FunctionFly"
-	resetURL := fmt.Sprintf("%s/auth/reset-password?token=%s", m.config.BaseURL, resetToken)
+	resetURL := fmt.Sprintf("%s/reset-password?token=%s", m.config.AuthURL, resetToken)
+	if m.config.AuthURL == "" {
+		resetURL = fmt.Sprintf("%s/auth/reset-password?token=%s", m.config.BaseURL, resetToken)
+	}
 
-	htmlBody := fmt.Sprintf(`<html><body><p>[TEST] Reset your password: <a href="%s">%s</a></p><p>Expires in 1 hour.</p></body></html>`, resetURL, resetURL)
-	textBody := fmt.Sprintf("[TEST] Reset your FunctionFly password: %s\nExpires in 1 hour.", resetURL)
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset your password — FunctionFly</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <!-- Test banner -->
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%%%;">
+        <tr><td style="background:#92400e;padding:10px 20px;text-align:center;font-size:13px;font-weight:600;color:#fef3c7;">
+          ⚠️ TEST EMAIL — FunctionFly Development Environment
+        </td></tr>
+      </table>
+    </td></tr>
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%%%;">
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#0F172A;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#6366F1;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%%%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <tr><td style="padding:40px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr><td style="width:56px;height:56px;background:rgba(239,68,68,0.1);border-radius:50%%%%;text-align:center;vertical-align:middle;">
+                  <div style="font-size:24px;line-height:56px;">&#128274;</div>
+                </td></tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">Reset your password</h1>
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                We received a request to reset your password. Click the button below to choose a new one.
+              </p>
+            </td></tr>
+            <tr><td style="padding:28px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#6366F1;border-radius:8px;">
+                <a href="%s" target="_blank" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Reset password</a>
+              </td></tr></table>
+            </td></tr>
+            <tr><td style="padding:0 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:16px 20px;">
+                  <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                    This link expires in <strong style="color:#a1a1aa;">1 hour</strong>. If you didn't request a password reset, you can safely ignore this email.
+                  </p>
+                </td></tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:24px 40px 40px;">
+              <p style="margin:0;font-size:12px;color:#52525b;line-height:1.5;">
+                Having trouble with the button? Copy and paste this link into your browser:<br>
+                <a href="%s" style="color:#6366F1;text-decoration:none;word-break:break-all;">%s</a>
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+          <p style="margin:8px 0 0;font-size:11px;color:#3f3f46;">This is a test email from the development environment.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`, resetURL, resetURL, resetURL, TransactionalEmailCopyrightHTML())
+
+	textBody := fmt.Sprintf(`[TEST EMAIL - FunctionFly Development Environment]
+
+Reset your password
+
+We received a request to reset your FunctionFly password. Click this link to choose a new one:
+
+%s
+
+This link expires in 1 hour. If you didn't request this, ignore this email.
+`, resetURL)
 
 	return m.sendEmail(user.Email, subject, textBody, htmlBody)
 }
@@ -655,6 +981,77 @@ This notification is sent in compliance with GDPR Article 33.
 // SendEmail sends a generic email with the given subject and body
 func (m *MockService) SendEmail(to, subject, textBody, htmlBody string) error {
 	return m.sendEmail(to, subject, textBody, htmlBody)
+}
+
+// SendWaitlistConfirmationEmail sends a waitlist confirmation email (uses SMTP like real sends)
+func (m *MockService) SendWaitlistConfirmationEmail(email string) error {
+	subject := "You're on the list — FunctionFly"
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You're on the list — FunctionFly</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;">
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#0F172A;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#6366F1;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <tr><td style="padding:40px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">You're on the list!</h1>
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                Thanks for requesting early access to FunctionFly. We've received your request and will review it shortly.
+              </p>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                We'll send you an invite code as soon as we're ready for more users. Hang tight!
+              </p>
+            </td></tr>
+            <tr><td style="padding:0 40px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:16px 20px;">
+                  <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                    We're rolling out access gradually to ensure the best experience for everyone. You'll be among the first to know when your spot is ready.
+                  </p>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`, TransactionalEmailCopyrightHTML())
+	textBody := fmt.Sprintf(`You're on the list — FunctionFly
+
+Thanks for requesting early access to FunctionFly. We've received your request and will review it shortly.
+
+We'll send you an invite code as soon as we're ready for more users. Hang tight!
+
+We're rolling out access gradually to ensure the best experience for everyone. You'll be among the first to know when your spot is ready.
+`, TransactionalEmailCopyrightPlain())
+	return m.sendEmail(email, subject, textBody, htmlBody)
 }
 
 // sendEmail sends an email using SMTP for the mock service

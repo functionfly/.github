@@ -462,6 +462,8 @@ type Repository interface {
 	GetEmailEventStats(ctx context.Context, filters map[string]interface{}) (map[string]interface{}, error)
 
 	// Waitlist operations
+	CreateWaitlistEntry(ctx context.Context, email, name, company, useCase, source, ip, userAgent string) (*WaitlistEntry, error)
+	GetWaitlistEntryByEmail(ctx context.Context, email string) (*WaitlistEntry, error)
 	ListWaitlistEntries(ctx context.Context, status string, limit, offset int) ([]WaitlistEntryAdminList, int64, error)
 	GetWaitlistStats(ctx context.Context) (*WaitlistStats, error)
 	UpdateWaitlistEntryStatus(ctx context.Context, id uuid.UUID, status, notes string) error

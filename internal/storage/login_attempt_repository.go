@@ -120,3 +120,28 @@ func (r *LoginAttemptRepository) DeleteOldLoginAttempts(before time.Time) (int64
 
 	return rowsAffected, nil
 }
+
+// GetLastSuccessfulLogin returns the most recent successful login attempt for a user.
+// Returns nil if no successful login is found.
+func (r *LoginAttemptRepository) GetLastSuccessfulLogin(userID uuid.UUID) (*LoginAttempt, error) {
+	var attempt LoginAttempt
+	err := r.db.QueryRow(`
+		SELECT id, user_id, ip_address, user_agent, successful, attempted_at, lockout_until, created_at
+		FROM login_attempts
+		WHERE user_id = $1 AND successful = true
+		ORDER BY attempted_at DESC
+		LIMIT 1`,
+		userID).Scan(
+		&attempt.ID, &attempt.UserID, &attempt.IPAddress, &attempt.UserAgent,
+		&attempt.Successful, &attempt.AttemptedAt, &attempt.LockoutUntil, &attempt.CreatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get last successful login: %w", err)
+	}
+
+	return &attempt, nil
+}

@@ -49,8 +49,27 @@ func registerAdminRoutes(
 	adminRoutes := api.PathPrefix("/admin").Subrouter()
 
 	// ── Admin middleware wiring ──────────────────────────────────────────────────
-	// Order: IP Allowlist → Session Validation → Security Alert (rate limit) → CSRF
+	// Order: CORS Preflight → IP Allowlist → Session Validation → Security Alert (rate limit) → CSRF
 	//
+	// 0. CORS preflight: must be first so OPTIONS requests get proper headers without auth
+	adminRoutes.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == "OPTIONS" {
+				origin := r.Header.Get("Origin")
+				if origin != "" && middleware.IsOriginAllowedForRequest(r) {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+					w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint")
+					w.Header().Set("Access-Control-Allow-Credentials", "true")
+					w.Header().Set("Access-Control-Max-Age", "86400")
+				}
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+
 	// 1. IP Allowlist check (skips internal IPs automatically)
 	adminRoutes.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(ipAllowlistMiddleware.RequireIPAllowlist(http.HandlerFunc(next.ServeHTTP)))
@@ -77,6 +96,7 @@ func registerAdminRoutes(
 	// Note: MFA middleware is applied per-route after auth middleware to ensure claims are available
 	adminRoutes.HandleFunc("/auth/session", authMiddleware.RequireAuth(adminHandler.HandleGetAdminSession)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/auth/session", authMiddleware.RequireAuth(adminHandler.HandleExtendAdminSession)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/auth/last-login", authMiddleware.RequireAuth(adminHandler.HandleGetAdminLastLogin)).Methods("GET", "OPTIONS")
 
 	// Tenant management
 	adminRoutes.HandleFunc("/tenants", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleListTenants)).Methods("GET", "OPTIONS")
@@ -119,6 +139,8 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/security-events", authMiddleware.RequirePermission(auth.PermSystemRead)(securityEventHandler.HandleListSecurityEvents)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/security-events/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(securityEventHandler.HandleGetSecurityEventStats)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/security-events/{id}/review", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(securityEventHandler.HandleReviewSecurityEvent))).Methods("POST", "OPTIONS")
+	// Client-side tracked security events (login attempts, suspicious activity, etc.)
+	adminRoutes.HandleFunc("/security/events", authMiddleware.RequirePermission(auth.PermSystemWrite)(securityEventHandler.HandleCreateSecurityEvents)).Methods("POST", "OPTIONS")
 
 	// Security Alert Rules
 	adminRoutes.HandleFunc("/security-alerts", authMiddleware.RequirePermission(auth.PermSystemRead)(alertHandler.HandleListSecurityAlerts)).Methods("GET", "OPTIONS")
