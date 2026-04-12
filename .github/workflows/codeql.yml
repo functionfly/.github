@@ -3,12 +3,15 @@ name: CodeQL
 on:
   push:
     branches: [master, main, develop]
+  pull_request:
+    branches: [master, main, develop]
   schedule:
     - cron: "32 5 * * 1"
 
 permissions:
   contents: read
   security-events: write
+  actions: read
 
 jobs:
   analyze-go:
@@ -17,13 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: go
+          build-mode: autobuild
 
-      - uses: github/codeql-action/autobuild@v3
-
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
 
   analyze-js:
     name: Analyze JavaScript/TypeScript
@@ -31,14 +33,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: javascript
           source-root: web/dashboard
+          build-mode: autobuild
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: web/dashboard/package.json
 
@@ -46,6 +49,4 @@ jobs:
         run: npm ci
         working-directory: web/dashboard
 
-      - uses: github/codeql-action/autobuild@v3
-
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4

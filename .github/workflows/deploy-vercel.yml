@@ -2,40 +2,95 @@ name: Deploy to Vercel
 
 on:
   push:
-    branches: [main, master]
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
 
 permissions:
   contents: read
 
-# Requires the following GitHub secrets to be configured in repository settings:
-#   VERCEL_TOKEN        - Vercel API token (shared)
-#   VERCEL_ORG_ID       - Vercel organization ID (shared)
-#   VERCEL_PROJECT_ID_SITE  - Vercel project ID for the marketing site (web/site)
-#   VERCEL_PROJECT_ID_ADMIN - Vercel project ID for the admin dashboard (web/admin-dashboard)
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
 
 jobs:
   deploy-site:
     name: Deploy Marketing Site
     runs-on: ubuntu-latest
+    env:
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_SITE }}
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_SITE }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          working-directory: ./web/site
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Determine Environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "environment=preview" >> $GITHUB_OUTPUT
+            echo "deploy_flags=" >> $GITHUB_OUTPUT
+          elif [ "${{ inputs.environment }}" = "production" ]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "deploy_flags=--prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=preview" >> $GITHUB_OUTPUT
+            echo "deploy_flags=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Pull Vercel Environment Information
+        working-directory: ./web/site
+        run: vercel pull --yes --environment=${{ steps.env.outputs.environment }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        working-directory: ./web/site
+        run: vercel build ${{ steps.env.outputs.deploy_flags }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Project Artifacts to Vercel
+        working-directory: ./web/site
+        run: vercel deploy --prebuilt ${{ steps.env.outputs.deploy_flags }} --token=${{ secrets.VERCEL_TOKEN }}
 
   deploy-admin:
     name: Deploy Admin Dashboard
     runs-on: ubuntu-latest
+    env:
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          working-directory: ./web/admin-dashboard
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Determine Environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "environment=preview" >> $GITHUB_OUTPUT
+            echo "deploy_flags=" >> $GITHUB_OUTPUT
+          elif [ "${{ inputs.environment }}" = "production" ]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "deploy_flags=--prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=preview" >> $GITHUB_OUTPUT
+            echo "deploy_flags=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Pull Vercel Environment Information
+        working-directory: ./web/admin-dashboard
+        run: vercel pull --yes --environment=${{ steps.env.outputs.environment }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        working-directory: ./web/admin-dashboard
+        run: vercel build ${{ steps.env.outputs.deploy_flags }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Project Artifacts to Vercel
+        working-directory: ./web/admin-dashboard
+        run: vercel deploy --prebuilt ${{ steps.env.outputs.deploy_flags }} --token=${{ secrets.VERCEL_TOKEN }}
