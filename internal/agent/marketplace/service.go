@@ -89,7 +89,7 @@ func (s *Service) ListingAgent(ctx context.Context, req *CreateAgentListingReque
 // CreateAgentListingRequest represents a request to create an agent listing
 type CreateAgentListingRequest struct {
 	AgentID                string   `json:"agent_id"`
-	ListingType            string   `json:"listing_type"` // worker | manager | infrastructure
+	ListingType            string   `json:"listing_type"`  // worker | manager | infrastructure
 	PricingModel           string   `json:"pricing_model"` // free | per_call | subscription | revenue_share
 	PricePerCall           *float64 `json:"price_per_call,omitempty"`
 	SubscriptionMonthlyUSD *float64 `json:"subscription_monthly_usd,omitempty"`
@@ -422,4 +422,39 @@ func (s *Service) DeactivateListing(ctx context.Context, listingType string, own
 			Update("is_active", false).Error
 	}
 	return fmt.Errorf("unsupported listing type: %s", listingType)
+}
+
+// GetFunctionListingByURI retrieves a function listing by its author/name URI
+func (s *Service) GetFunctionListingByURI(ctx context.Context, author, name string) (*identity.FunctionListing, error) {
+	// First find the function in registry
+	var function identity.Function
+	if err := s.db.WithContext(ctx).
+		Where("author = ? AND name = ?", author, name).
+		First(&function).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("function not found: %s/%s", author, name)
+		}
+		return nil, fmt.Errorf("failed to find function: %w", err)
+	}
+
+	// Then find the marketplace listing for this function
+	var listing identity.FunctionListing
+	err := s.db.WithContext(ctx).
+		Where("function_id = ? AND is_active = ?", function.ID, true).
+		First(&listing).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// No active listing found, return a default listing based on function data
+			return &identity.FunctionListing{
+				FunctionID:   uuid.MustParse(function.ID),
+				PricingModel: "per_call",
+				PricePerCall: &function.PricePerCall,
+				IsActive:     function.PricePerCall > 0,
+			}, nil
+		}
+		return nil, fmt.Errorf("failed to find listing: %w", err)
+	}
+
+	return &listing, nil
 }

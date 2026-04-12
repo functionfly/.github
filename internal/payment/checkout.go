@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -17,6 +18,41 @@ type CreateCheckoutSessionRequest struct {
 	PriceID    string `json:"price_id"`
 	SuccessURL string `json:"success_url"`
 	CancelURL  string `json:"cancel_url"`
+}
+
+// IsValidStripePriceID validates that the ID is a valid Stripe price ID (starts with "price_").
+// This prevents common errors like using product IDs (prod_*) or subscription IDs (sub_*) instead of price IDs.
+func IsValidStripePriceID(priceID string) bool {
+	if priceID == "" {
+		return false
+	}
+	// Stripe price IDs must start with "price_"
+	return strings.HasPrefix(priceID, "price_")
+}
+
+// ValidatePriceID returns an error if the price ID is not a valid Stripe price ID.
+// The error message includes helpful details if a product ID or other invalid ID is detected.
+func ValidatePriceID(priceID string) error {
+	if priceID == "" {
+		return fmt.Errorf("price_id is required")
+	}
+
+	// Check for common mistakes
+	if strings.HasPrefix(priceID, "prod_") {
+		return fmt.Errorf("invalid price_id: received product ID (%s) instead of price ID. Product IDs (prod_*) cannot be used for checkout - use the associated price ID (price_*) from Stripe Dashboard", priceID)
+	}
+	if strings.HasPrefix(priceID, "sub_") {
+		return fmt.Errorf("invalid price_id: received subscription ID (%s) instead of price ID. Subscription IDs (sub_*) cannot be used for checkout", priceID)
+	}
+	if strings.HasPrefix(priceID, "plan_") {
+		return fmt.Errorf("invalid price_id: received plan ID (%s) instead of price ID. Plan IDs (plan_*) are deprecated, use price IDs (price_*) instead", priceID)
+	}
+
+	if !strings.HasPrefix(priceID, "price_") {
+		return fmt.Errorf("invalid price_id: must start with 'price_', got: %s", priceID)
+	}
+
+	return nil
 }
 
 // CreateAddonCheckoutSessionRequest creates a subscription checkout for a State Fabric add-on.
@@ -78,8 +114,9 @@ func CreateCheckoutSession(
 		return nil, fmt.Errorf("STRIPE_SECRET_KEY is not set")
 	}
 
-	if req.PriceID == "" {
-		return nil, fmt.Errorf("price_id is required")
+	// Validate the price ID to prevent common mistakes
+	if err := ValidatePriceID(req.PriceID); err != nil {
+		return nil, err
 	}
 
 	customerID, err := CreateOrGetStripeCustomer(ctx, repo, tenantID, email, name)
@@ -150,8 +187,9 @@ func CreateStateFabricAddonCheckoutSession(
 	if stripeKey() == "" {
 		return nil, fmt.Errorf("STRIPE_SECRET_KEY is not set")
 	}
-	if req.PriceID == "" {
-		return nil, fmt.Errorf("price_id is required")
+	// Validate the price ID to prevent common mistakes
+	if err := ValidatePriceID(req.PriceID); err != nil {
+		return nil, err
 	}
 	if req.AddonID == "" {
 		return nil, fmt.Errorf("addon_id is required")

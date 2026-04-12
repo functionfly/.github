@@ -153,6 +153,25 @@ func (s *Service) SendWalletTopUp(ctx context.Context, userID uuid.UUID, agentID
 	return err
 }
 
+// SendRegistryWalletTopUp notifies a user after credits are added to their registry wallet.
+func (s *Service) SendRegistryWalletTopUp(ctx context.Context, userID uuid.UUID, amountUSD, newBalanceUSD float64) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     TypeBillingWalletToppedUp,
+		Category: CategoryBilling,
+		Title:    "Registry Wallet Top-Up Successful",
+		Body:     fmt.Sprintf("Your registry wallet was topped up by $%.2f. New balance: $%.2f.", amountUSD, newBalanceUSD),
+		Data: JSONMap{
+			"amount_usd":      amountUSD,
+			"new_balance_usd": newBalanceUSD,
+			"wallet_type":     "registry",
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityNormal,
+	})
+	return err
+}
+
 // SendWalletLowBalance notifies a user when wallet balance drops below threshold.
 func (s *Service) SendWalletLowBalance(ctx context.Context, userID uuid.UUID, agentID string, balanceUSD, thresholdUSD float64) error {
 	_, err := s.Send(ctx, SendRequest{
@@ -172,6 +191,51 @@ func (s *Service) SendWalletLowBalance(ctx context.Context, userID uuid.UUID, ag
 		},
 		Channels: []string{ChannelInApp, ChannelEmail},
 		Priority: PriorityHigh,
+	})
+	return err
+}
+
+// SendBillingAlert sends a billing-related alert notification (e.g., payment failed, invoice overdue).
+func (s *Service) SendBillingAlert(ctx context.Context, userEmail string, alertType string, data map[string]interface{}) error {
+	// First, look up the user by email to get their ID
+	user, err := s.db.GetUserByEmail(userEmail)
+	if err != nil {
+		return fmt.Errorf("failed to find user by email: %w", err)
+	}
+	if user == nil {
+		return fmt.Errorf("user not found for email: %s", userEmail)
+	}
+
+	var title, body string
+	priority := PriorityHigh
+
+	switch alertType {
+	case "payment_failed":
+		amountDue, _ := data["amount_due"].(float64)
+		currency, _ := data["currency"].(string)
+		attemptCount, _ := data["attempt_count"].(int64)
+		title = "Payment Failed"
+		body = fmt.Sprintf("Your payment of %.2f %s failed (attempt %d). Please update your payment method to avoid service interruption.", amountDue, currency, attemptCount)
+	case "invoice_overdue":
+		title = "Invoice Overdue"
+		body = "You have an overdue invoice. Please make a payment to avoid service suspension."
+	case "subscription_cancelled":
+		title = "Subscription Cancelled"
+		body = "Your subscription has been cancelled. You will be downgraded to the free plan at the end of your billing period."
+	default:
+		title = "Billing Alert"
+		body = "There is an issue with your billing account. Please review your payment settings."
+	}
+
+	_, err = s.Send(ctx, SendRequest{
+		UserID:   user.ID,
+		Type:     TypeBillingAlert,
+		Category: CategoryBilling,
+		Title:    title,
+		Body:     body,
+		Data:     data,
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: priority,
 	})
 	return err
 }
@@ -530,4 +594,341 @@ func (d *Dispatcher) Dispatch(ctx context.Context, n *Notification) error {
 // strPtr is a helper to create a string pointer
 func strPtr(s string) *string {
 	return &s
+}
+
+// SendLowBalance sends a low balance alert to a user via email
+func (s *Service) SendLowBalance(ctx context.Context, userEmail string, data map[string]interface{}) error {
+	// Look up the user by email to get their ID
+	user, err := s.db.GetUserByEmail(userEmail)
+	if err != nil {
+		return fmt.Errorf("failed to find user by email: %w", err)
+	}
+	if user == nil {
+		return fmt.Errorf("user not found for email: %s", userEmail)
+	}
+
+	balanceUSD, _ := data["balance_usd"].(float64)
+	thresholdUSD, _ := data["threshold_usd"].(float64)
+	severity, _ := data["severity"].(string)
+	autoTopupEnabled, _ := data["auto_topup_enabled"].(bool)
+
+	title := "Low Wallet Balance"
+	body := fmt.Sprintf("Your wallet balance is low ($%.2f USD). It is now at or below your alert threshold of $%.2f USD.", balanceUSD, thresholdUSD)
+
+	if severity == "critical" {
+		title = "Critical: Very Low Wallet Balance"
+		body = fmt.Sprintf("URGENT: Your wallet balance is critically low ($%.2f USD). Add funds immediately to avoid service interruption.", balanceUSD)
+	}
+
+	_, err = s.Send(ctx, SendRequest{
+		UserID:   user.ID,
+		Type:     TypeBillingWalletLowBalance,
+		Category: CategoryBilling,
+		Title:    title,
+		Body:     body,
+		Data: JSONMap{
+			"balance_usd":        balanceUSD,
+			"threshold_usd":      thresholdUSD,
+			"severity":           severity,
+			"auto_topup_enabled": autoTopupEnabled,
+			"currency":           data["currency"],
+			"balance_local":      data["balance_local"],
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityHigh,
+	})
+	return err
+}
+
+// SendLowBalanceNotification sends an in-app low balance notification
+func (s *Service) SendLowBalanceNotification(ctx context.Context, userID interface{}, data map[string]interface{}) error {
+	uid, ok := userID.(uuid.UUID)
+	if !ok {
+		if idStr, ok := userID.(string); ok {
+			parsed, err := uuid.Parse(idStr)
+			if err != nil {
+				return fmt.Errorf("invalid user ID format: %w", err)
+			}
+			uid = parsed
+		} else {
+			return fmt.Errorf("userID must be uuid.UUID or string")
+		}
+	}
+
+	balanceUSD, _ := data["balance_usd"].(float64)
+	thresholdUSD, _ := data["threshold_usd"].(float64)
+	severity, _ := data["severity"].(string)
+
+	title := "Low Wallet Balance"
+	body := fmt.Sprintf("Your wallet balance ($%.2f) is below the threshold ($%.2f).", balanceUSD, thresholdUSD)
+
+	if severity == "critical" {
+		title = "Critical: Low Balance"
+		body = fmt.Sprintf("URGENT: Your balance ($%.2f) is critically low. Add funds now.", balanceUSD)
+	}
+
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   uid,
+		Type:     TypeBillingWalletLowBalance,
+		Category: CategoryBilling,
+		Title:    title,
+		Body:     body,
+		Data:     data,
+		Channels: []string{ChannelInApp},
+		Priority: PriorityHigh,
+	})
+	return err
+}
+
+// SendAutoTopupApproaching sends a notification that auto-topup threshold is approaching
+func (s *Service) SendAutoTopupApproaching(ctx context.Context, userID interface{}, data map[string]interface{}) error {
+	uid, ok := userID.(uuid.UUID)
+	if !ok {
+		if idStr, ok := userID.(string); ok {
+			parsed, err := uuid.Parse(idStr)
+			if err != nil {
+				return fmt.Errorf("invalid user ID format: %w", err)
+			}
+			uid = parsed
+		} else {
+			return fmt.Errorf("userID must be uuid.UUID or string")
+		}
+	}
+
+	balanceUSD, _ := data["balance_usd"].(float64)
+	autoTopupThreshold, _ := data["auto_topup_threshold"].(float64)
+
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   uid,
+		Type:     TypeBillingWalletLowBalance,
+		Category: CategoryBilling,
+		Title:    "Auto-Topup Approaching",
+		Body:     fmt.Sprintf("Your balance ($%.2f) is approaching your auto-topup threshold ($%.2f). Funds will be added automatically soon.", balanceUSD, autoTopupThreshold),
+		Data:     data,
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityNormal,
+	})
+	return err
+}
+
+// SendFounderModeThresholdWarning notifies a user they're approaching a founder mode threshold
+func (s *Service) SendFounderModeThresholdWarning(ctx context.Context, userID uuid.UUID, bundleName string, progressPercent float64, threshold string, current int) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     TypeFounderModeThresholdWarning,
+		Category: CategoryBilling,
+		Title:    fmt.Sprintf("🚀 %s: You're Building Momentum!", bundleName),
+		Body:     fmt.Sprintf("You're at %d%% of the %s threshold for your %s bundle (%s). Great progress! Consider converting to paid to keep all features.", int(progressPercent), threshold, bundleName, formatMetric(threshold, current)),
+		Data: JSONMap{
+			"bundle_name":      bundleName,
+			"progress_percent": progressPercent,
+			"threshold_type":   threshold,
+			"current_value":    current,
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityNormal,
+	})
+	return err
+}
+
+// SendFounderModeThresholdReached notifies a user they've hit a founder mode threshold and grace period has started
+func (s *Service) SendFounderModeThresholdReached(ctx context.Context, userID uuid.UUID, bundleName string, threshold string, gracePeriodDays int) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     TypeFounderModeThresholdReached,
+		Category: CategoryBilling,
+		Title:    fmt.Sprintf("🎉 %s Threshold Reached!", bundleName),
+		Body:     fmt.Sprintf("Congratulations! You've hit the %s threshold for your %s bundle. You have %d days to convert to a paid subscription before the grace period ends.", threshold, bundleName, gracePeriodDays),
+		Data: JSONMap{
+			"bundle_name":       bundleName,
+			"threshold_type":    threshold,
+			"grace_period_days": gracePeriodDays,
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityHigh,
+	})
+	return err
+}
+
+// SendFounderModeGracePeriodEnding warns that grace period is ending soon
+func (s *Service) SendFounderModeGracePeriodEnding(ctx context.Context, userID uuid.UUID, bundleName string, daysLeft int) error {
+	urgency := "soon"
+	priority := PriorityNormal
+	if daysLeft <= 1 {
+		urgency = "within 24 hours"
+		priority = PriorityUrgent
+	} else if daysLeft <= 3 {
+		urgency = fmt.Sprintf("in %d days", daysLeft)
+		priority = PriorityHigh
+	}
+
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     TypeFounderModeGracePeriodEnding,
+		Category: CategoryBilling,
+		Title:    fmt.Sprintf("⚠️ %s: Grace Period Ending %s", bundleName, urgency),
+		Body:     fmt.Sprintf("Your %s grace period ends %s. Please convert to a paid subscription to keep all bundle features and data access.", bundleName, urgency),
+		Data: JSONMap{
+			"bundle_name": bundleName,
+			"days_left":   daysLeft,
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: priority,
+	})
+	return err
+}
+
+// SendFounderModeConverted confirms successful conversion from founder mode to paid
+func (s *Service) SendFounderModeConverted(ctx context.Context, userID uuid.UUID, bundleName string, priceUSD float64) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     TypeFounderModeConverted,
+		Category: CategoryBilling,
+		Title:    fmt.Sprintf("✅ %s Subscription Active", bundleName),
+		Body:     fmt.Sprintf("Your %s bundle has been successfully converted to a paid subscription at $%.2f/month. You now have full access to all features!", bundleName, priceUSD),
+		Data: JSONMap{
+			"bundle_name": bundleName,
+			"price_usd":   priceUSD,
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityNormal,
+	})
+	return err
+}
+
+// formatMetric formats a metric for display
+func formatMetric(thresholdType string, value int) string {
+	switch thresholdType {
+	case "user_count":
+		return fmt.Sprintf("%d users", value)
+	case "mrr_cents", "revenue_cents":
+		return fmt.Sprintf("$%.2f MRR", float64(value)/100)
+	case "api_calls":
+		return fmt.Sprintf("%d API calls", value)
+	case "days_elapsed":
+		return fmt.Sprintf("%d days", value)
+	default:
+		return fmt.Sprintf("%d", value)
+	}
+}
+
+// Team Notifications
+
+// SendTeamCreated notifies a user when they successfully create a team
+func (s *Service) SendTeamCreated(ctx context.Context, userID uuid.UUID, teamID uuid.UUID, teamName string) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     TypeTeamCreated,
+		Category: CategoryTeam,
+		Title:    fmt.Sprintf("Team '%s' Created", teamName),
+		Body:     fmt.Sprintf("You have successfully created the team '%s'. You can now invite members and manage team resources.", teamName),
+		Data: JSONMap{
+			"team_id":   teamID.String(),
+			"team_name": teamName,
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityNormal,
+	})
+	return err
+}
+
+// SendTeamDeleted notifies team members when a team is deleted
+func (s *Service) SendTeamDeleted(ctx context.Context, userIDs []uuid.UUID, teamName string, deletedByName string) error {
+	for _, userID := range userIDs {
+		_, err := s.Send(ctx, SendRequest{
+			UserID:   userID,
+			Type:     TypeTeamDeleted,
+			Category: CategoryTeam,
+			Title:    fmt.Sprintf("Team '%s' Deleted", teamName),
+			Body:     fmt.Sprintf("The team '%s' has been deleted by %s. All team resources and access have been removed.", teamName, deletedByName),
+			Data: JSONMap{
+				"team_name":       teamName,
+				"deleted_by_name": deletedByName,
+			},
+			Channels: []string{ChannelInApp, ChannelEmail},
+			Priority: PriorityHigh,
+		})
+		if err != nil {
+			s.logger.WithError(err).WithField("user_id", userID).Error("Failed to send team deletion notification")
+		}
+	}
+	return nil
+}
+
+// SendTeamInviteSent notifies a user when they are invited to join a team
+func (s *Service) SendTeamInviteSent(ctx context.Context, inviteeUserID uuid.UUID, teamID uuid.UUID, teamName string, invitedByName string, role string) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   inviteeUserID,
+		Type:     TypeTeamInviteSent,
+		Category: CategoryTeam,
+		Title:    fmt.Sprintf("Invitation to Join '%s'", teamName),
+		Body:     fmt.Sprintf("%s has invited you to join the team '%s' with the role: %s. Accept or decline in your notifications.", invitedByName, teamName, role),
+		Data: JSONMap{
+			"team_id":         teamID.String(),
+			"team_name":       teamName,
+			"invited_by_name": invitedByName,
+			"role":            role,
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityNormal,
+	})
+	return err
+}
+
+// SendTeamInviteAccepted notifies the inviter when their invitation is accepted
+func (s *Service) SendTeamInviteAccepted(ctx context.Context, inviterUserID uuid.UUID, teamID uuid.UUID, teamName string, inviteeName string) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   inviterUserID,
+		Type:     TypeTeamInviteAccepted,
+		Category: CategoryTeam,
+		Title:    fmt.Sprintf("%s Joined '%s'", inviteeName, teamName),
+		Body:     fmt.Sprintf("%s has accepted your invitation and is now a member of the team '%s'.", inviteeName, teamName),
+		Data: JSONMap{
+			"team_id":      teamID.String(),
+			"team_name":    teamName,
+			"invitee_name": inviteeName,
+		},
+		Channels: []string{ChannelInApp},
+		Priority: PriorityNormal,
+	})
+	return err
+}
+
+// SendTeamMemberAdded notifies a user when they are added to a team (direct add, not invite)
+func (s *Service) SendTeamMemberAdded(ctx context.Context, userID uuid.UUID, teamID uuid.UUID, teamName string, addedByName string, role string) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     TypeTeamMemberAdded,
+		Category: CategoryTeam,
+		Title:    fmt.Sprintf("Added to Team '%s'", teamName),
+		Body:     fmt.Sprintf("%s has added you to the team '%s' with the role: %s. You now have access to team resources.", addedByName, teamName, role),
+		Data: JSONMap{
+			"team_id":       teamID.String(),
+			"team_name":     teamName,
+			"added_by_name": addedByName,
+			"role":          role,
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityNormal,
+	})
+	return err
+}
+
+// SendTeamMemberRemoved notifies a user when they are removed from a team
+func (s *Service) SendTeamMemberRemoved(ctx context.Context, userID uuid.UUID, teamID uuid.UUID, teamName string, removedByName string) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     TypeTeamMemberRemoved,
+		Category: CategoryTeam,
+		Title:    fmt.Sprintf("Removed from Team '%s'", teamName),
+		Body:     fmt.Sprintf("You have been removed from the team '%s' by %s. You no longer have access to team resources.", teamName, removedByName),
+		Data: JSONMap{
+			"team_id":         teamID.String(),
+			"team_name":       teamName,
+			"removed_by_name": removedByName,
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityHigh,
+	})
+	return err
 }

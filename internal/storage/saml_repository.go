@@ -30,14 +30,14 @@ type SAMLConfig struct {
 
 // SAMLSession represents an active SAML session
 type SAMLSession struct {
-	ID           uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TenantID     uuid.UUID              `json:"tenant_id" gorm:"type:uuid;not null"`
-	UserID       uuid.UUID              `json:"user_id" gorm:"type:uuid;not null"`
-	SAMLNameID   string                 `json:"saml_name_id" gorm:"size:255"`
-	SessionIndex string                 `json:"session_index" gorm:"size:255"`
-	NotOnOrAfter time.Time              `json:"not_on_or_after" gorm:"not null"`
-	Attributes   map[string]interface{} `json:"attributes" gorm:"type:jsonb;default:'{}'"`
-	CreatedAt    time.Time              `json:"created_at" gorm:"autoCreateTime"`
+	ID           uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TenantID     uuid.UUID `json:"tenant_id" gorm:"type:uuid;not null"`
+	UserID       uuid.UUID `json:"user_id" gorm:"type:uuid;not null"`
+	SAMLNameID   string    `json:"saml_name_id" gorm:"size:255"`
+	SessionIndex string    `json:"session_index" gorm:"size:255"`
+	NotOnOrAfter time.Time `json:"not_on_or_after" gorm:"not null"`
+	Attributes   JSONMap   `json:"attributes" gorm:"type:jsonb;default:'{}'"`
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 
 // SAMLConfigRepository handles SAML configuration database operations

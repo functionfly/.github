@@ -86,6 +86,24 @@ func (db *PostgresDB) UpdateProviderStatus(providerID string, status string) err
 	return db.GORM.Model(&Provider{}).Where("id = ?", providerID).Update("status", status).Error
 }
 
+// UpdateProviderLastUsed updates the last_used_at timestamp for a provider
+func (db *PostgresDB) UpdateProviderLastUsed(ctx context.Context, providerID string) error {
+	now := time.Now()
+	return db.GORM.WithContext(ctx).
+		Model(&Provider{}).
+		Where("id = ?", providerID).
+		Update("last_used_at", now).Error
+}
+
+// GetStaleProviders returns providers that haven't been used since the given time
+func (db *PostgresDB) GetStaleProviders(ctx context.Context, since time.Time) ([]*Provider, error) {
+	var providers []*Provider
+	err := db.GORM.WithContext(ctx).
+		Where("status = ? AND (last_used_at IS NULL OR last_used_at < ?)", "active", since).
+		Find(&providers).Error
+	return providers, err
+}
+
 func (db *PostgresDB) DeleteProvider(ctx context.Context, providerID string, userID uuid.UUID) error {
 	result := db.GORM.WithContext(ctx).
 		Where("id = ? AND user_id = ?", providerID, userID).

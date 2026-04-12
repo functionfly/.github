@@ -36,20 +36,31 @@ type StripeConnectAccount struct {
 
 // PayoutRequest represents a user-initiated withdrawal request.
 type PayoutRequest struct {
-	ID               uuid.UUID  `json:"id"`
-	UserID           uuid.UUID  `json:"user_id"`
-	ConnectAccountID uuid.UUID  `json:"connect_account_id"`
-	AmountCents      int        `json:"amount_cents"`
-	Currency         string     `json:"currency"`
-	Status           string     `json:"status"` // pending, processing, completed, failed, cancelled
-	StripeTransferID *string    `json:"stripe_transfer_id,omitempty"`
-	StripePayoutID   *string    `json:"stripe_payout_id,omitempty"`
-	IdempotencyKey   string     `json:"idempotency_key"`
-	FailureReason    *string    `json:"failure_reason,omitempty"`
-	ReviewedBy       *uuid.UUID `json:"reviewed_by,omitempty"`
-	ReviewedAt       *time.Time `json:"reviewed_at,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
+	ID                    uuid.UUID  `json:"id"`
+	UserID                uuid.UUID  `json:"user_id"`
+	ConnectAccountID      uuid.UUID  `json:"connect_account_id"`
+	AmountCents           int        `json:"amount_cents"`
+	Currency              string     `json:"currency"`
+	Status                string     `json:"status"` // pending, processing, completed, failed, cancelled
+	StripeTransferID      *string    `json:"stripe_transfer_id,omitempty"`
+	StripePayoutID        *string    `json:"stripe_payout_id,omitempty"`
+	IdempotencyKey        string     `json:"idempotency_key"`
+	FailureReason         *string    `json:"failure_reason,omitempty"`
+	ReviewedBy            *uuid.UUID `json:"reviewed_by,omitempty"`
+	ReviewedAt            *time.Time `json:"reviewed_at,omitempty"`
+	// Approval workflow fields
+	RequiresApproval      bool       `json:"requires_approval,omitempty"`
+	ApprovalThresholdUSD  *float64   `json:"approval_threshold_usd,omitempty"`
+	ApprovedBy            *uuid.UUID `json:"approved_by,omitempty"`
+	ApprovedAt            *time.Time `json:"approved_at,omitempty"`
+	ApprovalNotes         *string    `json:"approval_notes,omitempty"`
+	SecondApprovalBy      *uuid.UUID `json:"second_approval_by,omitempty"`
+	SecondApprovalAt      *time.Time `json:"second_approval_at,omitempty"`
+	RejectedBy            *uuid.UUID `json:"rejected_by,omitempty"`
+	RejectedAt            *time.Time `json:"rejected_at,omitempty"`
+	RejectionReason       *string    `json:"rejection_reason,omitempty"`
+	CreatedAt             time.Time  `json:"created_at"`
+	UpdatedAt             time.Time  `json:"updated_at"`
 }
 
 // PayoutLedgerEntry is an immutable audit record for all payout-related fund movements.

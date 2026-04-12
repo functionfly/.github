@@ -4,6 +4,59 @@
 // This file contains the WASM3 IoT runtime implementation for constrained environments
 package wasm
 
+/*
+#cgo CFLAGS: -I/home/micro/.local/include
+#cgo LDFLAGS: -L/home/micro/.local/lib -lwasm3
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <wasm3.h>
+
+// Helper bridge functions to simplify Go/C interface
+static inline void* wasm3_new_env() {
+    return (void*)m3_NewEnvironment();
+}
+static inline void wasm3_free_env(void* env) {
+    m3_FreeEnvironment((IM3Environment)env);
+}
+static inline void* wasm3_new_runtime(void* env, uint32_t stackSize) {
+    // Note: m3_NewRuntime takes 3 args: env, stack size, and optional userdata
+    // We're using 64KB stack for IoT
+    return (void*)m3_NewRuntime((IM3Environment)env, stackSize, NULL);
+}
+static inline void wasm3_free_runtime(void* rt) {
+    m3_FreeRuntime((IM3Runtime)rt);
+}
+static inline int wasm3_parse_module(void* env, void** module, const uint8_t* wasm, uint32_t size) {
+    M3Result r = m3_ParseModule((IM3Environment)env, (IM3Module*)module, wasm, size);
+    return r != NULL; // Return non-zero on error
+}
+static inline void wasm3_free_module(void* mod) {
+    m3_FreeModule((IM3Module)mod);
+}
+static inline int wasm3_load_module(void* rt, void* mod) {
+    M3Result r = m3_LoadModule((IM3Runtime)rt, (IM3Module)mod);
+    return r != NULL;
+}
+static inline int wasm3_find_function(void** func, void* rt, const char* name) {
+    M3Result r = m3_FindFunction((IM3Function*)func, (IM3Runtime)rt, name);
+    return r != NULL;
+}
+static inline int wasm3_call_argv(void* func, int argc, const char* argv[]) {
+    M3Result r = m3_CallArgv((IM3Function)func, argc, argv);
+    return r != NULL;
+}
+static inline uint8_t* wasm3_get_memory(void* rt, uint32_t* size, uint32_t idx) {
+    return m3_GetMemory((IM3Runtime)rt, size, idx);
+}
+static inline const char* wasm3_get_error(void* rt) {
+    M3ErrorInfo info;
+    m3_GetErrorInfo((IM3Runtime)rt, &info);
+    return info.message ? info.message : "unknown error";
+}
+*/
+import "C"
+
 import (
 	"context"
 	"fmt"
@@ -11,6 +64,7 @@ import (
 	"log"
 	"sync"
 	"time"
+	"unsafe"
 )
 
 // IoTConfig contains WASM3-specific IoT configuration
@@ -37,7 +91,7 @@ type IoTConfig struct {
 // DefaultIoTConfig returns the default IoT configuration optimized for ~500ms latency
 func DefaultIoTConfig() *IoTConfig {
 	return &IoTConfig{
-		TargetLatency:    500, // 500ms target
+		TargetLatency:    500,       // 500ms target
 		MaxMemoryKB:      16 * 1024, // 16MB
 		EnableOTAUpdate:  false,
 		BatteryOptimized: true,
@@ -67,11 +121,11 @@ type IoTInstance struct {
 
 // IoTInstancePool manages a pool of IoT instances
 type IoTInstancePool struct {
-	mu       sync.RWMutex
+	mu        sync.RWMutex
 	instances chan *IoTInstance
-	maxSize  int
-	active   int
-	config   *IoTConfig
+	maxSize   int
+	active    int
+	config    *IoTConfig
 }
 
 // NewIoTInstancePool creates a new IoT instance pool
@@ -81,8 +135,8 @@ func NewIoTInstancePool(config *IoTConfig) *IoTInstancePool {
 	}
 	pool := &IoTInstancePool{
 		instances: make(chan *IoTInstance, config.MaxInstances),
-		maxSize:  config.MaxInstances,
-		config:   config,
+		maxSize:   config.MaxInstances,
+		config:    config,
 	}
 
 	// Pre-populate with idle instances
@@ -222,27 +276,112 @@ func (r *WASM3IoTRuntime) ExecuteWithConfig(ctx context.Context, input []byte, c
 	}
 }
 
-// executeInstance executes the WASM code on a single instance
+// executeInstance executes the WASM code on a single instance using WASM3 C library
 func (r *WASM3IoTRuntime) executeInstance(ctx context.Context, inst *IoTInstance, input []byte) ([]byte, error) {
-	// For IoT WASM3, we simulate lightweight execution
-	// In production, this would use the actual WASM3 C library via CGO
+	return r.executeWASM3CGO(inst, input)
+}
 
-	// Simple processing: echo with IoT prefix and timestamp
-	// Real implementation would execute actual WASM bytecode
+// executeWASM3CGO executes WASM using the actual WASM3 C library via CGO
+// This implementation uses C helper functions to bridge the Go/C interface
+func (r *WASM3IoTRuntime) executeWASM3CGO(inst *IoTInstance, input []byte) ([]byte, error) {
+	// Create WASM3 environment
+	env := C.wasm3_new_env()
+	if env == nil {
+		return nil, fmt.Errorf("failed to create WASM3 environment")
+	}
+	defer C.wasm3_free_env(env)
 
-	output := make([]byte, 0, len(input)+32)
-	output = append(output, []byte("[WASM3-IoT]")...)
+	// Create runtime with configured memory (64KB stack for IoT)
+	stackSize := C.uint32_t(64 * 1024)
+	wasmRuntime := C.wasm3_new_runtime(env, stackSize)
+	if wasmRuntime == nil {
+		return nil, fmt.Errorf("failed to create WASM3 runtime")
+	}
+	defer C.wasm3_free_runtime(wasmRuntime)
 
-	// Add timestamp
-	ts := time.Now().UnixMilli()
-	output = append(output, []byte(fmt.Sprintf("%d:", ts))...)
+	// Check if we have pre-loaded code
+	if inst.Code == nil || len(inst.Code) < 8 {
+		return nil, fmt.Errorf("no WASM module loaded for instance")
+	}
 
-	// Echo input (in real impl, this would be WASM execution)
-	output = append(output, input...)
+	// Parse the WASM module
+	var module unsafe.Pointer
+	codePtr := (*C.uint8_t)(unsafe.Pointer(&inst.Code[0]))
+	codeSize := C.uint32_t(len(inst.Code))
 
-	// Simulate minimal processing delay for lightweight execution
-	// Real WASM3 has ~50-100ms cold start vs wasmtime's ~500ms
-	time.Sleep(5 * time.Millisecond) // Simulated minimal overhead
+	if ret := C.wasm3_parse_module(env, &module, codePtr, codeSize); ret != 0 {
+		errMsg := C.GoString(C.wasm3_get_error(wasmRuntime))
+		return nil, fmt.Errorf("failed to parse WASM module: %s", errMsg)
+	}
+	defer C.wasm3_free_module(module)
+
+	// Load module into runtime
+	if ret := C.wasm3_load_module(wasmRuntime, module); ret != 0 {
+		errMsg := C.GoString(C.wasm3_get_error(wasmRuntime))
+		return nil, fmt.Errorf("failed to load WASM module: %s", errMsg)
+	}
+
+	// Find the main/handler function
+	var funcPtr unsafe.Pointer
+	funcName := C.CString("handler")
+	defer C.free(unsafe.Pointer(funcName))
+
+	if ret := C.wasm3_find_function(&funcPtr, wasmRuntime, funcName); ret != 0 {
+		// Try "main" as fallback
+		funcName = C.CString("main")
+		defer C.free(unsafe.Pointer(funcName))
+		if ret := C.wasm3_find_function(&funcPtr, wasmRuntime, funcName); ret != 0 {
+			errMsg := C.GoString(C.wasm3_get_error(wasmRuntime))
+			return nil, fmt.Errorf("failed to find handler function: %s", errMsg)
+		}
+	}
+
+	// Copy input to WASM memory
+	var memSize C.uint32_t
+	memPtr := C.wasm3_get_memory(wasmRuntime, &memSize, 0)
+	if memPtr == nil {
+		return nil, fmt.Errorf("failed to get WASM memory")
+	}
+
+	// Write input length at offset 0, input data at offset 4
+	if len(input)+4 > int(memSize) {
+		return nil, fmt.Errorf("input too large for WASM memory: %d > %d", len(input), memSize-4)
+	}
+
+	// Write input size as little-endian 32-bit
+	memBytes := (*[1 << 30]byte)(unsafe.Pointer(memPtr))
+	memBytes[0] = byte(len(input))
+	memBytes[1] = byte(len(input) >> 8)
+	memBytes[2] = byte(len(input) >> 16)
+	memBytes[3] = byte(len(input) >> 24)
+
+	// Copy input
+	copy(memBytes[4:], input)
+
+	// Call the handler function with input offset and length
+	inputOffset := C.CString("0")
+	inputLen := C.CString(fmt.Sprintf("%d", len(input)))
+	defer C.free(unsafe.Pointer(inputOffset))
+	defer C.free(unsafe.Pointer(inputLen))
+
+	// Build argv array for C call
+	argv := make([]*C.char, 2)
+	argv[0] = inputOffset
+	argv[1] = inputLen
+	if ret := C.wasm3_call_argv(funcPtr, 2, (**C.char)(unsafe.Pointer(&argv[0]))); ret != 0 {
+		errMsg := C.GoString(C.wasm3_get_error(wasmRuntime))
+		return nil, fmt.Errorf("WASM execution failed: %s", errMsg)
+	}
+
+	// Read output length from memory (written by handler at offset 0)
+	outputLen := int(memBytes[0]) | int(memBytes[1])<<8 | int(memBytes[2])<<16 | int(memBytes[3])<<24
+	if outputLen < 0 || outputLen > int(memSize)-4 {
+		return nil, fmt.Errorf("invalid output length from WASM: %d", outputLen)
+	}
+
+	// Read output data
+	output := make([]byte, outputLen)
+	copy(output, memBytes[4:4+outputLen])
 
 	return output, nil
 }

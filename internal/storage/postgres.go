@@ -61,7 +61,11 @@ type PostgresDB struct {
 	teamRepository           *TeamRepository
 	followRepository         *FollowRepository
 	adminSessionRepository   *AdminSessionRepository
+	analyticsRepository      *AnalyticsRepository
+	usageAlertRepository     *UsageAlertRepository
 	encryptionManager        *DatabaseEncryptionManager
+	exportRepository         *ExportRepository
+	teamMemoryRepository     TeamMemoryRepository
 
 	// Read replica connections
 	readReplicas       []ReadReplicaConnection
@@ -272,6 +276,10 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 	postgresDB.teamRepository = NewTeamRepository(postgresDB.GORM)
 	postgresDB.followRepository = NewFollowRepository(postgresDB)
 	postgresDB.adminSessionRepository = NewAdminSessionRepository(postgresDB)
+	postgresDB.analyticsRepository = NewAnalyticsRepository(postgresDB)
+	postgresDB.usageAlertRepository = NewUsageAlertRepository(postgresDB.DB)
+	postgresDB.exportRepository = NewExportRepository(postgresDB.DB)
+	postgresDB.teamMemoryRepository = NewTeamMemoryRepository(postgresDB.GORM, nil)
 
 	// Initialize encryption manager
 	encryptionManager, err := NewDatabaseEncryptionManager(postgresDB)
@@ -303,6 +311,11 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 // Repository interface implementation
 func (db *PostgresDB) Repository() Repository {
 	return db
+}
+
+// ExportRepository accessor
+func (db *PostgresDB) ExportRepository() *ExportRepository {
+	return db.exportRepository
 }
 
 // Encryption methods
@@ -359,4 +372,242 @@ func (db *PostgresDB) ListAdminUserSessions(userID uuid.UUID) ([]*AdminSessionMo
 
 func (db *PostgresDB) DeleteExpiredAdminSessions() (int64, error) {
 	return db.adminSessionRepository.DeleteExpiredAdminSessions()
+}
+
+func (db *PostgresDB) AnalyticsRepository() *AnalyticsRepository {
+	return db.analyticsRepository
+}
+
+// InitializeTenantAnalytics creates default analytics tracking for a tenant
+func (db *PostgresDB) InitializeTenantAnalytics(tenantID uuid.UUID) error {
+	return db.analyticsRepository.InitializeTenantAnalytics(tenantID)
+}
+
+// Usage Export operations - delegate to exportRepository
+func (db *PostgresDB) CreateUsageExportConfiguration(ctx context.Context, config *UsageExportConfiguration) error {
+	return db.exportRepository.CreateUsageExportConfiguration(ctx, config)
+}
+
+func (db *PostgresDB) GetUsageExportConfiguration(ctx context.Context, id uuid.UUID) (*UsageExportConfiguration, error) {
+	return db.exportRepository.GetUsageExportConfiguration(ctx, id)
+}
+
+func (db *PostgresDB) UpdateUsageExportConfiguration(ctx context.Context, config *UsageExportConfiguration) error {
+	return db.exportRepository.UpdateUsageExportConfiguration(ctx, config)
+}
+
+func (db *PostgresDB) DeleteUsageExportConfiguration(ctx context.Context, id uuid.UUID) error {
+	return db.exportRepository.DeleteUsageExportConfiguration(ctx, id)
+}
+
+func (db *PostgresDB) ListUsageExportConfigurations(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*UsageExportConfiguration, error) {
+	return db.exportRepository.ListUsageExportConfigurations(ctx, tenantID, limit, offset)
+}
+
+func (db *PostgresDB) CreateUsageExportJob(ctx context.Context, job *UsageExportJob) error {
+	return db.exportRepository.CreateUsageExportJob(ctx, job)
+}
+
+func (db *PostgresDB) GetUsageExportJob(ctx context.Context, id uuid.UUID) (*UsageExportJob, error) {
+	return db.exportRepository.GetUsageExportJob(ctx, id)
+}
+
+func (db *PostgresDB) UpdateUsageExportJobStatus(ctx context.Context, id uuid.UUID, status UsageExportStatus, errorMessage string) error {
+	return db.exportRepository.UpdateUsageExportJobStatus(ctx, id, status, errorMessage)
+}
+
+func (db *PostgresDB) CompleteUsageExportJob(ctx context.Context, id uuid.UUID, storagePath, storageURL, checksum string, recordCount, fileSize int64) error {
+	return db.exportRepository.CompleteUsageExportJob(ctx, id, storagePath, storageURL, checksum, recordCount, fileSize)
+}
+
+func (db *PostgresDB) UpdateDeliveryStatus(ctx context.Context, jobID uuid.UUID, status, errorMessage string) error {
+	return db.exportRepository.UpdateDeliveryStatus(ctx, jobID, status, errorMessage)
+}
+
+func (db *PostgresDB) UpdateLastExecution(ctx context.Context, configID, jobID uuid.UUID, executedAt time.Time) error {
+	return db.exportRepository.UpdateLastExecution(ctx, configID, jobID, executedAt)
+}
+
+func (db *PostgresDB) ListUsageExportJobs(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*UsageExportJob, error) {
+	return db.exportRepository.ListUsageExportJobs(ctx, tenantID, limit, offset)
+}
+
+func (db *PostgresDB) GetPendingScheduledConfigs(ctx context.Context, now time.Time) ([]*UsageExportConfiguration, error) {
+	return db.exportRepository.GetPendingScheduledConfigs(ctx, now)
+}
+
+func (db *PostgresDB) CreateExternalBillingSystem(ctx context.Context, system *ExternalBillingSystem) error {
+	return db.exportRepository.CreateExternalBillingSystem(ctx, system)
+}
+
+func (db *PostgresDB) GetExternalBillingSystem(ctx context.Context, id uuid.UUID) (*ExternalBillingSystem, error) {
+	return db.exportRepository.GetExternalBillingSystem(ctx, id)
+}
+
+func (db *PostgresDB) UpdateExternalBillingSystem(ctx context.Context, system *ExternalBillingSystem) error {
+	return db.exportRepository.UpdateExternalBillingSystem(ctx, system)
+}
+
+func (db *PostgresDB) DeleteExternalBillingSystem(ctx context.Context, id uuid.UUID) error {
+	return db.exportRepository.DeleteExternalBillingSystem(ctx, id)
+}
+
+func (db *PostgresDB) ListExternalBillingSystems(ctx context.Context, tenantID uuid.UUID, limit, offset int, activeOnly bool) ([]*ExternalBillingSystem, error) {
+	return db.exportRepository.ListExternalBillingSystems(ctx, tenantID, limit, offset, activeOnly)
+}
+
+func (db *PostgresDB) CreateBillingIntegrationSync(ctx context.Context, sync *BillingIntegrationSync) error {
+	return db.exportRepository.CreateBillingIntegrationSync(ctx, sync)
+}
+
+func (db *PostgresDB) GetBillingIntegrationSync(ctx context.Context, id uuid.UUID) (*BillingIntegrationSync, error) {
+	return db.exportRepository.GetBillingIntegrationSync(ctx, id)
+}
+
+func (db *PostgresDB) ListBillingIntegrationSyncs(ctx context.Context, tenantID uuid.UUID, systemID *uuid.UUID, status string, limit, offset int) ([]*BillingIntegrationSync, error) {
+	return db.exportRepository.ListBillingIntegrationSyncs(ctx, tenantID, systemID, status, limit, offset)
+}
+
+func (db *PostgresDB) CreateUsageExportTemplate(ctx context.Context, template *UsageExportTemplate) error {
+	// TODO: Implement CreateUsageExportTemplate
+	return nil
+}
+
+func (db *PostgresDB) GetUsageExportTemplate(ctx context.Context, id uuid.UUID) (*UsageExportTemplate, error) {
+	return db.exportRepository.GetUsageExportTemplate(ctx, id)
+}
+
+func (db *PostgresDB) ListUsageExportTemplates(ctx context.Context, category string) ([]*UsageExportTemplate, error) {
+	return db.exportRepository.ListUsageExportTemplates(ctx, category)
+}
+
+// ============================================
+// Team Memory Repository Methods (Shared Brain)
+// ============================================
+
+func (db *PostgresDB) CreateTeamMemory(ctx context.Context, memory *TeamMemory) (*TeamMemory, error) {
+	return db.teamMemoryRepository.Create(ctx, memory)
+}
+
+func (db *PostgresDB) GetTeamMemoryByID(ctx context.Context, tenantID, teamID, memoryID uuid.UUID) (*TeamMemory, error) {
+	return db.teamMemoryRepository.GetByID(ctx, tenantID, teamID, memoryID)
+}
+
+func (db *PostgresDB) UpdateTeamMemory(ctx context.Context, memory *TeamMemory) (*TeamMemory, error) {
+	return db.teamMemoryRepository.Update(ctx, memory)
+}
+
+func (db *PostgresDB) DeleteTeamMemory(ctx context.Context, tenantID, teamID, memoryID uuid.UUID) error {
+	return db.teamMemoryRepository.Delete(ctx, tenantID, teamID, memoryID)
+}
+
+func (db *PostgresDB) ListTeamMemories(ctx context.Context, tenantID, teamID uuid.UUID, filter TeamMemoryFilter) ([]*TeamMemory, int64, error) {
+	return db.teamMemoryRepository.ListByTeam(ctx, tenantID, teamID, filter)
+}
+
+func (db *PostgresDB) ListTeamMemoriesByType(ctx context.Context, tenantID, teamID uuid.UUID, memoryType string, limit, offset int) ([]*TeamMemory, error) {
+	return db.teamMemoryRepository.ListByType(ctx, tenantID, teamID, memoryType, limit, offset)
+}
+
+func (db *PostgresDB) SearchTeamMemories(ctx context.Context, tenantID, teamID uuid.UUID, query string, limit int) ([]*TeamMemorySearchResult, error) {
+	return db.teamMemoryRepository.SearchByText(ctx, tenantID, teamID, query, limit)
+}
+
+func (db *PostgresDB) SearchTeamMemoriesByVector(ctx context.Context, tenantID, teamID uuid.UUID, embedding []float32, limit int) ([]*TeamMemorySearchResult, error) {
+	return db.teamMemoryRepository.SearchSimilar(ctx, tenantID, teamID, embedding, limit)
+}
+
+func (db *PostgresDB) ValidateTeamMemory(ctx context.Context, memoryID uuid.UUID, validatedBy uuid.UUID) error {
+	return db.teamMemoryRepository.ValidateMemory(ctx, memoryID, validatedBy)
+}
+
+func (db *PostgresDB) MarkTeamMemoryAsAccessed(ctx context.Context, memoryID uuid.UUID) error {
+	return db.teamMemoryRepository.MarkAsAccessed(ctx, memoryID)
+}
+
+func (db *PostgresDB) CreateEncryptedTeamMemory(ctx context.Context, memory *TeamMemory, encryptedContent, iv, tag []byte) (*TeamMemory, error) {
+	return db.teamMemoryRepository.CreateEncryptedMemory(ctx, memory, encryptedContent, iv, tag)
+}
+
+func (db *PostgresDB) GetTeamMemoryDecryptionPayload(ctx context.Context, memoryID uuid.UUID) (encryptedContent, iv, tag []byte, err error) {
+	return db.teamMemoryRepository.GetDecryptionPayload(ctx, memoryID)
+}
+
+func (db *PostgresDB) CreateMemoryExtraction(ctx context.Context, extraction *MemoryExtraction) (*MemoryExtraction, error) {
+	return db.teamMemoryRepository.CreateExtraction(ctx, extraction)
+}
+
+func (db *PostgresDB) GetMemoryExtractionsByTeam(ctx context.Context, teamID uuid.UUID, status string, limit int) ([]*MemoryExtraction, error) {
+	return db.teamMemoryRepository.GetExtractionsByTeam(ctx, teamID, status, limit)
+}
+
+func (db *PostgresDB) ApproveMemoryExtraction(ctx context.Context, extractionID uuid.UUID, reviewedBy uuid.UUID) (*TeamMemory, error) {
+	return db.teamMemoryRepository.ApproveExtraction(ctx, extractionID, reviewedBy)
+}
+
+func (db *PostgresDB) RejectMemoryExtraction(ctx context.Context, extractionID uuid.UUID, reviewedBy uuid.UUID, reason string) error {
+	return db.teamMemoryRepository.RejectExtraction(ctx, extractionID, reviewedBy, reason)
+}
+
+func (db *PostgresDB) ProcessAutoApplyExtractions(ctx context.Context, batchSize int) (int, error) {
+	return db.teamMemoryRepository.ProcessAutoApplyExtractions(ctx, batchSize)
+}
+
+// Memory sharing methods (cross-team collaboration)
+func (db *PostgresDB) CreateMemoryShare(ctx context.Context, share *MemoryShare) error {
+	return db.GORM.WithContext(ctx).Create(share).Error
+}
+
+func (db *PostgresDB) GetMemoryShareByID(ctx context.Context, shareID uuid.UUID) (*MemoryShare, error) {
+	var share MemoryShare
+	err := db.GORM.WithContext(ctx).First(&share, "id = ?", shareID).Error
+	if err != nil {
+		return nil, err
+	}
+	return &share, nil
+}
+
+func (db *PostgresDB) GetMemoryShareBetweenTeams(ctx context.Context, memoryID, sourceTeamID, targetTeamID uuid.UUID) (*MemoryShare, error) {
+	var share MemoryShare
+	err := db.GORM.WithContext(ctx).
+		Where("memory_id = ? AND source_team_id = ? AND target_team_id = ?", memoryID, sourceTeamID, targetTeamID).
+		First(&share).Error
+	if err != nil {
+		return nil, err
+	}
+	return &share, nil
+}
+
+func (db *PostgresDB) UpdateMemoryShare(ctx context.Context, share *MemoryShare) error {
+	return db.GORM.WithContext(ctx).Save(share).Error
+}
+
+func (db *PostgresDB) ListMemorySharesByTargetTeam(ctx context.Context, teamID uuid.UUID, status string, limit, offset int) ([]*MemoryShare, error) {
+	var shares []*MemoryShare
+	query := db.GORM.WithContext(ctx).Where("target_team_id = ?", teamID)
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	err := query.Limit(limit).Offset(offset).Find(&shares).Error
+	return shares, err
+}
+
+func (db *PostgresDB) ListMemorySharesBySourceTeam(ctx context.Context, teamID uuid.UUID, status string, limit, offset int) ([]*MemoryShare, error) {
+	var shares []*MemoryShare
+	query := db.GORM.WithContext(ctx).Where("source_team_id = ?", teamID)
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	err := query.Limit(limit).Offset(offset).Find(&shares).Error
+	return shares, err
+}
+
+func (db *PostgresDB) ListMemorySharesByMemoryID(ctx context.Context, memoryID uuid.UUID, status string) ([]*MemoryShare, error) {
+	var shares []*MemoryShare
+	query := db.GORM.WithContext(ctx).Where("memory_id = ?", memoryID)
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	err := query.Find(&shares).Error
+	return shares, err
 }

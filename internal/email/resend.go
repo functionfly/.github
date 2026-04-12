@@ -543,3 +543,114 @@ func (s *ResendService) ValidateConfiguration() error {
 
 	return nil
 }
+
+func (s *ResendService) SendNewsletterSubscriptionConfirmation(email, name string) error {
+	subject := "You're subscribed — FunctionFly"
+
+	greeting := "Thanks for subscribing"
+	if name != "" {
+		greeting = "Hi " + name
+	}
+
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>You're subscribed — FunctionFly</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;">
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#0F172A;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#6366F1;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <tr><td style="padding:40px 40px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr><td style="width:56px;height:56px;background:rgba(99,102,241,0.1);border-radius:50%%;text-align:center;vertical-align:middle;">
+                  <div style="font-size:24px;line-height:56px;">&#128227;</div>
+                </td></tr>
+              </table>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">You're subscribed!</h1>
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                %s! You've successfully subscribed to the FunctionFly newsletter.
+              </p>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                Get ready for product updates, feature announcements, and more. We promise to only send you things worth reading.
+              </p>
+            </td></tr>
+            <tr><td style="padding:0 40px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:16px 20px;">
+                  <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                    You can unsubscribe at any time using the link in our emails.
+                  </p>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`, greeting, TransactionalEmailCopyrightHTML())
+
+	textBody := fmt.Sprintf(`You're subscribed — FunctionFly
+
+%s! You've successfully subscribed to the FunctionFly newsletter.
+
+Get ready for product updates, feature announcements, and more. We promise to only send you things worth reading.
+
+You can unsubscribe at any time using the link in our emails.
+
+--
+%s`, greeting, TransactionalEmailCopyrightPlain())
+
+	return s.SendEmail(email, subject, textBody, htmlBody)
+}
+
+func (s *ResendService) SendNewsletterCampaign(to []string, subject, previewText, htmlContent string) error {
+	if len(to) == 0 {
+		return fmt.Errorf("no recipients specified for newsletter campaign")
+	}
+
+	params := &resend.SendEmailRequest{
+		From:    s.config.FromName + " <" + s.config.FromEmail + ">",
+		To:      to,
+		Subject: subject,
+		Html:    htmlContent,
+		Text:    previewText,
+	}
+
+	if s.config.ReplyToEmail != "" {
+		params.ReplyTo = s.config.ReplyToEmail
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	return s.sendWithRetry(ctx, params)
+}

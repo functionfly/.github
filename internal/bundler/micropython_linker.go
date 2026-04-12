@@ -3,8 +3,6 @@ package bundler
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"runtime"
 
 	"github.com/functionfly/functionfly/internal/manifest"
 )
@@ -26,45 +24,6 @@ func NewProductionMicroPythonLinker(userCode string, m *manifest.Manifest) *Prod
 	}
 }
 
-// findMicropythonRuntimePath locates the micropython.wasm file
-func findMicropythonRuntimePath() string {
-	// Get the directory of this source file for reliable path resolution
-	_, filename, _, _ := runtime.Caller(0)
-	sourceDir := filepath.Dir(filename)
-
-	// Try multiple possible paths, including full and core variants
-	paths := []string{
-		// Paths relative to source file (most reliable)
-		filepath.Join(sourceDir, "python", "micropython.wasm"),
-		filepath.Join(sourceDir, "python", "micropython-full.wasm"),
-		// Relative paths from working directory
-		"internal/bundler/python/micropython.wasm",
-		"internal/bundler/python/micropython-full.wasm",
-		"bundler/python/micropython.wasm",
-		"bundler/python/micropython-full.wasm",
-		"../../internal/bundler/python/micropython.wasm",
-		"../../internal/bundler/python/micropython-full.wasm",
-		"./internal/bundler/python/micropython.wasm",
-		"./internal/bundler/python/micropython-full.wasm",
-	}
-	for _, p := range paths {
-		if abs, err := filepath.Abs(p); err == nil {
-			if info, err := os.Stat(abs); err == nil && !info.IsDir() {
-				// Validate it's a real WASM file (>100KB, not a stub)
-				if info.Size() > 100000 {
-					return abs
-				}
-			}
-		}
-		if info, err := os.Stat(p); err == nil && !info.IsDir() {
-			// Validate it's a real WASM file (>100KB, not a stub)
-			if info.Size() > 100000 {
-				return p
-			}
-		}
-	}
-	return ""
-}
 
 // Link returns the micropython.wasm directly - user code is loaded at runtime via mp_js_do_exec
 // This is the correct approach: micropython is an interpreter that receives code at runtime

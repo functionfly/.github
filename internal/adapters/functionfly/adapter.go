@@ -40,7 +40,16 @@ type FunctionFlyAdapter struct {
 
 // NewFunctionFlyAdapter creates a new FunctionFly Edge adapter with default HTTP client.
 func NewFunctionFlyAdapter() *FunctionFlyAdapter {
-	return NewFunctionFlyAdapterWithClient(&http.Client{Timeout: RequestTimeout})
+	transport := &http.Transport{
+		MaxIdleConns:        10,
+		IdleConnTimeout:     30 * time.Second,
+		DisableKeepAlives:   false,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
+	return NewFunctionFlyAdapterWithClient(&http.Client{
+		Timeout:   RequestTimeout,
+		Transport: transport,
+	})
 }
 
 // NewFunctionFlyAdapterWithClient creates a new FunctionFly Edge adapter with a custom HTTP client (e.g. for tests or custom TLS).
@@ -119,13 +128,40 @@ func (a *FunctionFlyAdapter) HealthCheck(ctx context.Context, backend *storage.B
 			ErrorMessage: fmt.Sprintf("failed to sign request: %v", err),
 		}, nil
 	}
-	resp, err := a.client.Do(req)
-	latencyMs := int(time.Since(start).Milliseconds())
-	if err != nil {
+
+	// Retry logic for transient connection errors (EOF, connection reset)
+	var resp *http.Response
+	var doErr error
+	var latencyMs int
+	for attempt := 0; attempt < 2; attempt++ {
+		attemptStart := time.Now()
+		resp, doErr = a.client.Do(req)
+		latencyMs = int(time.Since(attemptStart).Milliseconds())
+		if doErr == nil {
+			break
+		}
+		// Retry on EOF or connection reset errors
+		errStr := doErr.Error()
+		if attempt == 0 && (strings.Contains(errStr, "EOF") || strings.Contains(errStr, "connection reset") || strings.Contains(errStr, "broken pipe")) {
+			time.Sleep(100 * time.Millisecond)
+			// Recreate request for retry (body is nil for GET, so safe to reuse)
+			req, _ = http.NewRequestWithContext(ctx, http.MethodGet, healthURL, nil)
+			if signErr := a.SignRequest(req, backend, time.Now()); signErr != nil {
+				return &common.HealthCheckResult{
+					OK:           false,
+					ErrorMessage: fmt.Sprintf("failed to sign retry request: %v", signErr),
+				}, nil
+			}
+			continue
+		}
+		break
+	}
+
+	if doErr != nil {
 		return &common.HealthCheckResult{
 			OK:           false,
 			LatencyMs:    latencyMs,
-			ErrorMessage: fmt.Sprintf("health check failed: %v", err),
+			ErrorMessage: fmt.Sprintf("health check failed: %v", doErr),
 		}, nil
 	}
 	defer resp.Body.Close()

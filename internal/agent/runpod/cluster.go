@@ -11,35 +11,35 @@ import (
 
 // Cluster represents a regional GPU cluster
 type Cluster struct {
-	ID            string                   // Unique cluster identifier
-	Name          string                   // Human-readable cluster name
-	Region        string                   // Geographic region (e.g., "us-east-1")
-	GPUType       string                   // GPU type (e.g., "NVIDIA A100")
-	Pool          *InstancePool            // Instance pool for this cluster
-	Config        *RegionConfig            // Region-specific configuration
-	HealthStatus  ClusterHealth            // Current health status
-	TotalRequests int64                    // Total requests handled
-	AvgLatencyMs  float64                  // Average request latency in ms
+	ID            string        // Unique cluster identifier
+	Name          string        // Human-readable cluster name
+	Region        string        // Geographic region (e.g., "us-east-1")
+	GPUType       string        // GPU type (e.g., "NVIDIA A100")
+	Pool          *InstancePool // Instance pool for this cluster
+	Config        *RegionConfig // Region-specific configuration
+	HealthStatus  ClusterHealth // Current health status
+	TotalRequests int64         // Total requests handled
+	AvgLatencyMs  float64       // Average request latency in ms
 	mu            sync.RWMutex
 }
 
 // ClusterHealth represents the health status of a cluster
 type ClusterHealth struct {
-	Status      string    // "healthy", "degraded", "unhealthy"
-	LastCheck   time.Time // Last health check timestamp
-	LatencyMs   float64   // Current estimated latency
-	ErrorRate   float64   // Current error rate (0-1)
-	HealthyInstances int   // Number of healthy instances
-	TotalInstances int    // Total instances
+	Status           string    // "healthy", "degraded", "unhealthy"
+	LastCheck        time.Time // Last health check timestamp
+	LatencyMs        float64   // Current estimated latency
+	ErrorRate        float64   // Current error rate (0-1)
+	HealthyInstances int       // Number of healthy instances
+	TotalInstances   int       // Total instances
 }
 
 // ClusterManager manages multiple regional GPU clusters
 type ClusterManager struct {
-	config     *Config              // Global configuration
-	clusters   map[string]*Cluster  // clusters by ID
-	clients    map[string]*RunPodClient // clients by region
-	mu         sync.RWMutex
-	selector   *ClusterSelector     // Load balancing strategy
+	config   *Config                  // Global configuration
+	clusters map[string]*Cluster      // clusters by ID
+	clients  map[string]*RunPodClient // clients by region
+	mu       sync.RWMutex
+	selector *ClusterSelector // Load balancing strategy
 }
 
 // ClusterSelector handles load balancing across clusters
@@ -351,12 +351,12 @@ func (cm *ClusterManager) GetClusterStats() ClusterStats {
 	stats := ClusterStats{
 		TotalClusters:    len(cm.clusters),
 		HealthyClusters:  0,
-		TotalInstances:    0,
-		RunningInstances:  0,
-		IdleInstances:     0,
-		FailedInstances:   0,
+		TotalInstances:   0,
+		RunningInstances: 0,
+		IdleInstances:    0,
+		FailedInstances:  0,
 		TotalRequests:    0,
-		RegionStats:       make(map[string]RegionStats),
+		RegionStats:      make(map[string]RegionStats),
 	}
 
 	for _, cluster := range cm.clusters {
@@ -387,13 +387,13 @@ func (cm *ClusterManager) GetClusterStats() ClusterStats {
 
 // ClusterStats holds aggregated cluster statistics
 type ClusterStats struct {
-	TotalClusters    int              // Total number of clusters
-	HealthyClusters  int              // Number of healthy clusters
-	TotalInstances   int              // Total number of instances across all clusters
-	RunningInstances int              // Number of running instances
-	IdleInstances    int              // Number of idle instances
-	FailedInstances  int              // Number of failed instances
-	TotalRequests    int64            // Total requests handled
+	TotalClusters    int                    // Total number of clusters
+	HealthyClusters  int                    // Number of healthy clusters
+	TotalInstances   int                    // Total number of instances across all clusters
+	RunningInstances int                    // Number of running instances
+	IdleInstances    int                    // Number of idle instances
+	FailedInstances  int                    // Number of failed instances
+	TotalRequests    int64                  // Total requests handled
 	RegionStats      map[string]RegionStats // Per-region statistics
 }
 
@@ -439,35 +439,71 @@ func (cm *ClusterManager) checkClustersHealth(ctx context.Context) {
 	}
 }
 
-// performHealthCheck checks the health of a single cluster
+// performHealthCheck checks the health of a single cluster via actual health pings
 func (cm *ClusterManager) performHealthCheck(ctx context.Context, cluster *Cluster) ClusterHealth {
 	health := ClusterHealth{
 		LastCheck: time.Now(),
 	}
 
-	total, running, _, failed := cluster.Pool.GetStats()
+	instances := cluster.Pool.ListInstances()
+	var total, running, failed int
+	var totalLatencyMs float64
+	var healthyPings int
+
+	client, ok := cm.GetClient(cluster.Region)
+	if !ok {
+		client = NewRunPodClient(cm.config.RunPodAPIKey, cm.config.RunPodAPIBaseURL)
+	}
+
+	for _, inst := range instances {
+		total++
+
+		inst.mu.RLock()
+		state := inst.State
+		endpoint := inst.Endpoint
+		inst.mu.RUnlock()
+
+		switch state {
+		case InstanceStateRunning:
+			// Perform actual health check ping
+			latencyMs, healthy, err := client.PingHealthEndpoint(ctx, endpoint, cm.config.HealthCheckPath)
+			if healthy {
+				running++
+				totalLatencyMs += latencyMs
+				healthyPings++
+			} else {
+				failed++
+				log.Printf("Health check failed for instance %s in cluster %s: %v", inst.ID, cluster.ID, err)
+			}
+		case InstanceStateFailed:
+			failed++
+		}
+	}
+
 	health.TotalInstances = total
 	health.HealthyInstances = running
 
 	if failed > 0 && running == 0 {
 		health.Status = "unhealthy"
 		health.ErrorRate = 1.0
-	} else if failed > 0 || running < total/2 {
+	} else if failed > 0 || (total > 0 && running < total/2) {
 		health.Status = "degraded"
 		if total > 0 {
 			health.ErrorRate = float64(failed) / float64(total)
 		}
-	} else {
+	} else if running > 0 {
 		health.Status = "healthy"
+		health.ErrorRate = float64(failed) / float64(total)
+	} else {
+		health.Status = "unknown"
 		health.ErrorRate = 0
 	}
 
-	// Estimate latency based on instance state
-	// In production, this would be based on actual health check pings
-	if running > 0 {
-		health.LatencyMs = 50 + float64(failed)*20 // Simplified estimation
-	} else {
-		health.LatencyMs = 5000 // High latency if no running instances
+	// Calculate actual average latency from health pings
+	if healthyPings > 0 {
+		health.LatencyMs = totalLatencyMs / float64(healthyPings)
+	} else if running == 0 {
+		health.LatencyMs = 5000 // High latency if no healthy instances
 	}
 
 	return health

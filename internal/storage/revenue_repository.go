@@ -128,15 +128,40 @@ func (r *RevenueRepository) GetFunctionVerificationPaymentByID(id uuid.UUID) (*F
 	return payment, nil
 }
 
+// GetFunctionVerificationPaymentByCheckoutSessionID retrieves a verification payment by Stripe checkout session ID
+func (r *RevenueRepository) GetFunctionVerificationPaymentByCheckoutSessionID(ctx context.Context, sessionID string) (*FunctionVerificationPayment, error) {
+	query := `
+		SELECT id, function_id, verification_level, amount_cents, currency, status,
+		       stripe_payment_intent_id, stripe_checkout_session_id, tenant_id, paid_by,
+		       verification_job_id, paid_at, created_at, updated_at
+		FROM function_verification_payments
+		WHERE stripe_checkout_session_id = $1`
+
+	payment := &FunctionVerificationPayment{}
+	err := r.db.QueryRowContext(ctx, query, sessionID).Scan(
+		&payment.ID, &payment.FunctionID, &payment.VerificationLevel, &payment.AmountCents,
+		&payment.Currency, &payment.Status, &payment.StripePaymentIntentID,
+		&payment.StripeCheckoutSessionID, &payment.TenantID, &payment.PaidBy,
+		&payment.VerificationJobID, &payment.PaidAt, &payment.CreatedAt, &payment.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return payment, nil
+}
+
 // UpdateFunctionVerificationPaymentStatus updates the status of a verification payment
-func (r *RevenueRepository) UpdateFunctionVerificationPaymentStatus(ctx context.Context, id uuid.UUID, status string, stripePIID *string) error {
+func (r *RevenueRepository) UpdateFunctionVerificationPaymentStatus(ctx context.Context, id uuid.UUID, status string, stripePIID, stripeCheckoutSessionID *string) error {
 	query := `
 		UPDATE function_verification_payments
-		SET status = $2, stripe_payment_intent_id = COALESCE($3, stripe_payment_intent_id),
-		    updated_at = NOW(), paid_at = CASE WHEN $2 = 'paid' THEN NOW() ELSE paid_at END
+		SET status = $2,
+		    stripe_payment_intent_id = COALESCE($3, stripe_payment_intent_id),
+		    stripe_checkout_session_id = COALESCE($4, stripe_checkout_session_id),
+		    updated_at = NOW(),
+		    paid_at = CASE WHEN $2 = 'paid' THEN NOW() ELSE paid_at END
 		WHERE id = $1`
 
-	_, err := r.db.ExecContext(ctx, query, id, status, stripePIID)
+	_, err := r.db.ExecContext(ctx, query, id, status, stripePIID, stripeCheckoutSessionID)
 	return err
 }
 

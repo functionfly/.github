@@ -457,6 +457,215 @@ var (
 			Help: "Edge uptime ratio (0.0 to 1.0) from recent probes",
 		},
 	)
+
+	// Billing and payment metrics
+	billingCheckoutCreatedTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_billing_checkout_created_total",
+			Help: "Total number of checkout sessions created",
+		},
+		[]string{"checkout_type"}, // subscription, wallet_topup, addon, agent_credits
+	)
+
+	billingCheckoutCompletedTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_billing_checkout_completed_total",
+			Help: "Total number of successful checkout completions",
+		},
+		[]string{"checkout_type"},
+	)
+
+	billingCheckoutFailedTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_billing_checkout_failed_total",
+			Help: "Total number of failed checkout attempts",
+		},
+		[]string{"checkout_type", "failure_reason"},
+	)
+
+	billingCheckoutDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_billing_checkout_duration_seconds",
+			Help:    "Time from checkout creation to completion",
+			Buckets: []float64{60, 300, 600, 1800, 3600, 7200}, // 1min to 2hrs
+		},
+		[]string{"checkout_type"},
+	)
+
+	billingWebhookReceivedTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_billing_webhook_received_total",
+			Help: "Total number of webhooks received from Stripe",
+		},
+		[]string{"event_type", "status"}, // status: success, error, ignored
+	)
+
+	billingWebhookProcessingDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_billing_webhook_processing_duration_seconds",
+			Help:    "Time to process a webhook event",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5},
+		},
+		[]string{"event_type"},
+	)
+
+	billingPaymentFailedTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_billing_payment_failed_total",
+			Help: "Total number of failed payments",
+		},
+		[]string{"failure_type", "decline_code"},
+	)
+
+	billingSubscriptionStatusChangesTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_billing_subscription_status_changes_total",
+			Help: "Total number of subscription status changes",
+		},
+		[]string{"from_status", "to_status"},
+	)
+
+	billingWalletBalance = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_billing_wallet_balance_usd",
+			Help: "Current wallet balance in USD",
+		},
+		[]string{"user_id", "tenant_id"},
+	)
+
+	billingPortalSessionsCreatedTotal = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "functionfly_billing_portal_sessions_created_total",
+			Help: "Total number of customer portal sessions created",
+		},
+	)
+
+	// Execution log retention metrics
+	executionLogCleanupRecordsDeleted = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_execution_log_cleanup_records_deleted_total",
+			Help: "Total number of execution log records deleted by cleanup",
+		},
+		[]string{"table_name"},
+	)
+
+	executionLogCleanupDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_execution_log_cleanup_duration_seconds",
+			Help:    "Duration of execution log cleanup operations",
+			Buckets: []float64{1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0},
+		},
+		[]string{"result"}, // success, error
+	)
+
+	executionLogCleanupErrors = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_execution_log_cleanup_errors_total",
+			Help: "Total number of execution log cleanup errors",
+		},
+		[]string{"table_name", "error_type"},
+	)
+
+	executionLogRetentionAge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_execution_log_retention_age_days",
+			Help: "Configured retention age in days for each table",
+		},
+		[]string{"table_name"},
+	)
+
+	executionLogTableRecords = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_execution_log_table_records",
+			Help: "Number of records in execution log tables (from stats queries)",
+		},
+		[]string{"table_name", "age_range"}, // age_range: total, older_than_30d, older_than_90d, older_than_365d
+	)
+
+	// Team Memory metrics (memory extraction and agent context)
+	teamMemoryExtractionsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_team_memory_extractions_total",
+			Help: "Total number of memory extraction attempts from conversations",
+		},
+		[]string{"team_id", "memory_type", "status"}, // status: success, failed, rejected
+	)
+
+	teamMemoryExtractionDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_team_memory_extraction_duration_seconds",
+			Help:    "Time spent extracting memories from a conversation",
+			Buckets: []float64{0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0},
+		},
+		[]string{"team_id", "source"}, // source: ai_service, fallback, manual
+	)
+
+	teamMemoryExtractionConfidence = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_team_memory_extraction_confidence",
+			Help:    "Confidence score distribution for extracted memories",
+			Buckets: []float64{0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1.0},
+		},
+		[]string{"team_id", "memory_type"},
+	)
+
+	teamMemoriesCreatedTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_team_memories_created_total",
+			Help: "Total number of team memories created",
+		},
+		[]string{"team_id", "memory_type", "source"}, // source: auto_extraction, manual, template
+	)
+
+	teamMemoryContextInjectionsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_team_memory_context_injections_total",
+			Help: "Total number of times team memory context was injected into agent prompts",
+		},
+		[]string{"team_id"},
+	)
+
+	teamMemoryContextInjectionDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_team_memory_context_injection_duration_seconds",
+			Help:    "Time spent building and injecting team memory context",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0},
+		},
+		[]string{"team_id"},
+	)
+
+	teamMemorySearchDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_team_memory_search_duration_seconds",
+			Help:    "Time spent searching team memories (vector similarity)",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5},
+		},
+		[]string{"team_id", "search_type"}, // search_type: vector, text, hybrid
+	)
+
+	teamMemoriesActiveGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_team_memories_active",
+			Help: "Current number of active (non-expired) team memories",
+		},
+		[]string{"team_id", "memory_type", "validated"}, // validated: true, false
+	)
+
+	teamMemoryCacheHitsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_team_memory_cache_hits_total",
+			Help: "Total number of team memory context cache hits",
+		},
+		[]string{"team_id"},
+	)
+
+	teamMemoryCacheMissesTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_team_memory_cache_misses_total",
+			Help: "Total number of team memory context cache misses",
+		},
+		[]string{"team_id"},
+	)
 )
 
 // Metric recording functions
@@ -794,4 +1003,140 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+// Billing metrics recording functions
+
+// RecordBillingCheckoutCreated records when a checkout session is created
+func RecordBillingCheckoutCreated(checkoutType string) {
+	billingCheckoutCreatedTotal.WithLabelValues(checkoutType).Inc()
+}
+
+// RecordBillingCheckoutCompleted records when a checkout session is completed
+func RecordBillingCheckoutCompleted(checkoutType string) {
+	billingCheckoutCompletedTotal.WithLabelValues(checkoutType).Inc()
+}
+
+// RecordBillingCheckoutFailed records when a checkout fails
+func RecordBillingCheckoutFailed(checkoutType, failureReason string) {
+	billingCheckoutFailedTotal.WithLabelValues(checkoutType, failureReason).Inc()
+}
+
+// RecordBillingCheckoutDuration records the duration from checkout creation to completion
+func RecordBillingCheckoutDuration(checkoutType string, duration time.Duration) {
+	billingCheckoutDuration.WithLabelValues(checkoutType).Observe(duration.Seconds())
+}
+
+// RecordBillingWebhookReceived records when a webhook is received
+func RecordBillingWebhookReceived(eventType, status string) {
+	billingWebhookReceivedTotal.WithLabelValues(eventType, status).Inc()
+}
+
+// RecordBillingWebhookProcessingDuration records webhook processing time
+func RecordBillingWebhookProcessingDuration(eventType string, duration time.Duration) {
+	billingWebhookProcessingDuration.WithLabelValues(eventType).Observe(duration.Seconds())
+}
+
+// RecordBillingPaymentFailed records a failed payment
+func RecordBillingPaymentFailed(failureType, declineCode string) {
+	billingPaymentFailedTotal.WithLabelValues(failureType, declineCode).Inc()
+}
+
+// RecordBillingSubscriptionStatusChange records a subscription status change
+func RecordBillingSubscriptionStatusChange(fromStatus, toStatus string) {
+	billingSubscriptionStatusChangesTotal.WithLabelValues(fromStatus, toStatus).Inc()
+}
+
+// UpdateBillingWalletBalance updates the wallet balance gauge
+func UpdateBillingWalletBalance(userID, tenantID string, balanceUSD float64) {
+	billingWalletBalance.WithLabelValues(userID, tenantID).Set(balanceUSD)
+}
+
+// RecordBillingPortalSessionCreated records when a portal session is created
+func RecordBillingPortalSessionCreated() {
+	billingPortalSessionsCreatedTotal.Inc()
+}
+
+// RecordStripeEventProcessed records when a Stripe event is successfully processed
+func RecordStripeEventProcessed(eventType string) {
+	billingWebhookReceivedTotal.WithLabelValues(eventType, "processed").Inc()
+}
+
+// Execution log retention metrics recording functions
+
+// RecordExecutionLogCleanupDeleted records the number of records deleted during cleanup
+func RecordExecutionLogCleanupDeleted(tableName string, count int64) {
+	executionLogCleanupRecordsDeleted.WithLabelValues(tableName).Add(float64(count))
+}
+
+// RecordExecutionLogCleanupDuration records the duration of cleanup operations
+func RecordExecutionLogCleanupDuration(result string, duration time.Duration) {
+	executionLogCleanupDuration.WithLabelValues(result).Observe(duration.Seconds())
+}
+
+// RecordExecutionLogCleanupError records errors during cleanup
+func RecordExecutionLogCleanupError(tableName, errorType string) {
+	executionLogCleanupErrors.WithLabelValues(tableName, errorType).Inc()
+}
+
+// UpdateExecutionLogRetentionAge updates the configured retention age metric
+func UpdateExecutionLogRetentionAge(tableName string, days int) {
+	executionLogRetentionAge.WithLabelValues(tableName).Set(float64(days))
+}
+
+// UpdateExecutionLogTableRecords updates the record count metrics for a table
+func UpdateExecutionLogTableRecords(tableName, ageRange string, count int64) {
+	executionLogTableRecords.WithLabelValues(tableName, ageRange).Set(float64(count))
+}
+
+// Team Memory metrics recording functions
+
+// RecordTeamMemoryExtraction records a memory extraction attempt
+func RecordTeamMemoryExtraction(teamID, memoryType, status string) {
+	teamMemoryExtractionsTotal.WithLabelValues(teamID, memoryType, status).Inc()
+}
+
+// RecordTeamMemoryExtractionDuration records the time spent extracting memories
+func RecordTeamMemoryExtractionDuration(teamID, source string, duration time.Duration) {
+	teamMemoryExtractionDuration.WithLabelValues(teamID, source).Observe(duration.Seconds())
+}
+
+// RecordTeamMemoryExtractionConfidence records the confidence score of an extraction
+func RecordTeamMemoryExtractionConfidence(teamID, memoryType string, confidence float64) {
+	teamMemoryExtractionConfidence.WithLabelValues(teamID, memoryType).Observe(confidence)
+}
+
+// RecordTeamMemoryCreated records when a team memory is created
+func RecordTeamMemoryCreated(teamID, memoryType, source string) {
+	teamMemoriesCreatedTotal.WithLabelValues(teamID, memoryType, source).Inc()
+}
+
+// RecordTeamMemoryContextInjection records a context injection to an agent
+func RecordTeamMemoryContextInjection(teamID string) {
+	teamMemoryContextInjectionsTotal.WithLabelValues(teamID).Inc()
+}
+
+// RecordTeamMemoryContextInjectionDuration records the duration of building/injecting context
+func RecordTeamMemoryContextInjectionDuration(teamID string, duration time.Duration) {
+	teamMemoryContextInjectionDuration.WithLabelValues(teamID).Observe(duration.Seconds())
+}
+
+// RecordTeamMemorySearchDuration records the duration of memory search operations
+func RecordTeamMemorySearchDuration(teamID, searchType string, duration time.Duration) {
+	teamMemorySearchDuration.WithLabelValues(teamID, searchType).Observe(duration.Seconds())
+}
+
+// UpdateTeamMemoriesActiveGauge updates the count of active memories
+func UpdateTeamMemoriesActiveGauge(teamID, memoryType, validated string, count int) {
+	teamMemoriesActiveGauge.WithLabelValues(teamID, memoryType, validated).Set(float64(count))
+}
+
+// RecordTeamMemoryCacheHit records a cache hit for team memory context
+func RecordTeamMemoryCacheHit(teamID string) {
+	teamMemoryCacheHitsTotal.WithLabelValues(teamID).Inc()
+}
+
+// RecordTeamMemoryCacheMiss records a cache miss for team memory context
+func RecordTeamMemoryCacheMiss(teamID string) {
+	teamMemoryCacheMissesTotal.WithLabelValues(teamID).Inc()
 }

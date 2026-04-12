@@ -78,6 +78,16 @@ const (
 	TypeBillingSubscriptionExpiring = "billing.subscription_expiring"
 	TypeBillingWalletToppedUp       = "billing.wallet_topped_up"
 	TypeBillingWalletLowBalance     = "billing.wallet_low_balance"
+	TypeBillingAlert                = "billing.alert"
+	TypeBillingSpendCapWarning      = "billing.spend_cap_warning"
+	TypeBillingForecastExceeded     = "billing.forecast_exceeded"
+	TypeBillingUsageSpike           = "billing.usage_spike"
+
+	// Founder Mode (Backend-in-a-Box) notifications
+	TypeFounderModeThresholdWarning  = "founder_mode.threshold_warning"
+	TypeFounderModeThresholdReached  = "founder_mode.threshold_reached"
+	TypeFounderModeGracePeriodEnding = "founder_mode.grace_period_ending"
+	TypeFounderModeConverted         = "founder_mode.converted"
 
 	// Security notifications
 	TypeSecurityPasswordChanged    = "security.password_changed"
@@ -86,11 +96,15 @@ const (
 	TypeSecuritySuspiciousActivity = "security.suspicious_activity"
 
 	// Team notifications
-	TypeTeamInvitation    = "team.invitation"
-	TypeTeamMemberAdded   = "team.member_added"
-	TypeTeamMemberRemoved = "team.member_removed"
-	TypeTeamRoleChanged   = "team.role_changed"
-	TypeTeamDirectMessage = "team.direct_message"
+	TypeTeamInvitation     = "team.invitation"
+	TypeTeamMemberAdded    = "team.member_added"
+	TypeTeamMemberRemoved  = "team.member_removed"
+	TypeTeamRoleChanged    = "team.role_changed"
+	TypeTeamDirectMessage  = "team.direct_message"
+	TypeTeamCreated        = "team.created"
+	TypeTeamDeleted        = "team.deleted"
+	TypeTeamInviteSent     = "team.invite_sent"
+	TypeTeamInviteAccepted = "team.invite_accepted"
 
 	// System notifications
 	TypeSystemMaintenance     = "system.maintenance"

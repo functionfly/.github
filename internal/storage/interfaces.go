@@ -65,9 +65,11 @@ type Repository interface {
 	// Tenant operations
 	CreateTenant(ctx context.Context, name string) (*Tenant, error)
 	GetTenantByID(tenantID uuid.UUID) (*Tenant, error)
+	GetTenantByStripeCustomerID(stripeCustomerID string) (*Tenant, error)
 	ListTenants() ([]*Tenant, error)
 	UpdateTenant(ctx context.Context, tenantID uuid.UUID, updates map[string]interface{}) (*Tenant, error)
 	DeleteTenant(ctx context.Context, tenantID uuid.UUID) error
+	CountUsersByTenant(ctx context.Context, tenantID uuid.UUID) (int, error)
 	CountRoutingEventsForTenantSince(tenantID uuid.UUID, since time.Time) (int, error)
 
 	// Team operations
@@ -104,6 +106,7 @@ type Repository interface {
 
 	CreateSubscription(ctx context.Context, sub *Subscription) (*Subscription, error)
 	GetSubscriptionByTenantID(tenantID uuid.UUID) (*Subscription, error)
+	GetSubscriptionByStripeID(ctx context.Context, stripeSubscriptionID string) (*Subscription, error)
 	ListAllSubscriptions(limit, offset int) ([]*Subscription, error)
 	UpdateSubscription(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*Subscription, error)
 	CancelSubscription(ctx context.Context, id uuid.UUID) error
@@ -133,7 +136,8 @@ type Repository interface {
 	// Function Verification Payments
 	CreateFunctionVerificationPayment(ctx context.Context, payment *FunctionVerificationPayment) error
 	GetFunctionVerificationPaymentByID(id uuid.UUID) (*FunctionVerificationPayment, error)
-	UpdateFunctionVerificationPaymentStatus(ctx context.Context, id uuid.UUID, status string, stripePIID *string) error
+	GetFunctionVerificationPaymentByCheckoutSessionID(ctx context.Context, sessionID string) (*FunctionVerificationPayment, error)
+	UpdateFunctionVerificationPaymentStatus(ctx context.Context, id uuid.UUID, status string, stripePIID, stripeCheckoutSessionID *string) error
 	GetFunctionVerificationPaymentsByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*FunctionVerificationPayment, error)
 
 	// Publisher Earnings
@@ -161,6 +165,37 @@ type Repository interface {
 	// Pricing Tiers Extended (with Moat fields)
 	ListPricingTiersExtended() ([]*PricingTierExtended, error)
 	GetPricingTierExtendedByID(id uuid.UUID) (*PricingTierExtended, error)
+
+	// Billing Usage Aggregation (registry execution → usage events → rollups)
+	AggregateExecutionsForBilling(ctx context.Context, start, end time.Time) ([]*AggregatedBillingUsage, error)
+	CreateOrUpdateUsageRollup(ctx context.Context, rollup *UsageRollup) error
+	GetInvoiceByPeriod(ctx context.Context, tenantID uuid.UUID, periodStart, periodEnd time.Time) (*Invoice, error)
+	GetLastAggregationTimestamp(ctx context.Context) (time.Time, error)
+	SetLastAggregationTimestamp(ctx context.Context, timestamp time.Time) error
+	GetLastRollupDate(ctx context.Context) (time.Time, error)
+	SetLastRollupDate(ctx context.Context, date time.Time) error
+
+	// Backend-in-a-Box Pricing Bundles
+	CreatePricingBundle(ctx context.Context, bundle *PricingBundle) (*PricingBundle, error)
+	ListPricingBundles(ctx context.Context, activeOnly bool) ([]*PricingBundle, error)
+	GetPricingBundleBySlug(ctx context.Context, slug string) (*PricingBundle, error)
+	GetPricingBundleByID(ctx context.Context, id uuid.UUID) (*PricingBundle, error)
+
+	// Founder Mode (viral pricing - deferred billing)
+	CreateFounderModeRegistration(ctx context.Context, reg *FounderModeRegistration) error
+	GetActiveFounderMode(ctx context.Context, tenantID, bundleID uuid.UUID) (*FounderModeRegistration, error)
+	ListFounderModesByTenant(ctx context.Context, tenantID uuid.UUID) ([]*FounderModeRegistration, error)
+	ListActiveFounderModesByTenant(ctx context.Context, tenantID uuid.UUID) ([]*FounderModeRegistration, error)
+	UpdateFounderModeStatus(ctx context.Context, id uuid.UUID, status string) error
+	UpdateFounderModeProgress(ctx context.Context, id uuid.UUID, users, mrrCents, apiCalls int) error
+	ListAllActiveFounderModes(ctx context.Context) ([]*FounderModeRegistration, error)
+	StartGracePeriod(ctx context.Context, id uuid.UUID, gracePeriodDays int) error
+	GetDeferredBillingConfig(ctx context.Context, bundleID uuid.UUID) (*DeferredBillingConfig, error)
+
+	// Bundle Subscriptions
+	CreateBundleSubscription(ctx context.Context, sub *BundleSubscription) error
+	GetBundleSubscriptionByTenant(ctx context.Context, tenantID uuid.UUID) (*BundleSubscription, error)
+	ListBundleSubscriptionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*BundleSubscription, error)
 
 	// App operations
 	CreateApp(name, slug string, tenantID uuid.UUID) (*App, error)
@@ -393,6 +428,8 @@ type Repository interface {
 	ListAllProviders(ctx context.Context) ([]*Provider, error)
 	UpdateProviderStatus(providerID string, status string) error
 	UpdateProvider(ctx context.Context, providerID string, updates map[string]interface{}) (*Provider, error)
+	UpdateProviderLastUsed(ctx context.Context, providerID string) error
+	GetStaleProviders(ctx context.Context, since time.Time) ([]*Provider, error)
 	ShareProviderWithTeam(providerID string, teamID string) error
 	DeleteProvider(ctx context.Context, providerID string, userID uuid.UUID) error
 
@@ -453,6 +490,8 @@ type Repository interface {
 	GetUserPopularFunctions(userID uuid.UUID, limit int) ([]map[string]interface{}, error)
 	GetUserGeographicStats(userID uuid.UUID) (map[string]interface{}, error)
 	GetUserDeviceStats(userID uuid.UUID) (map[string]interface{}, error)
+	// InitializeTenantAnalytics creates default analytics tracking for a newly provisioned tenant
+	InitializeTenantAnalytics(tenantID uuid.UUID) error
 
 	// Email event operations
 	CreateEmailEvent(ctx context.Context, event *EmailEvent) error
@@ -469,4 +508,127 @@ type Repository interface {
 	UpdateWaitlistEntryStatus(ctx context.Context, id uuid.UUID, status, notes string) error
 	IssueInviteToWaitlistEntry(ctx context.Context, entryID, inviteCodeID uuid.UUID) error
 	DeleteWaitlistEntry(ctx context.Context, id uuid.UUID) error
+
+	// Newsletter operations
+	CreateNewsletterSubscriber(ctx context.Context, email, name, source, ipAddress, userAgent string) (*NewsletterSubscriber, error)
+	GetNewsletterSubscriberByEmail(ctx context.Context, email string) (*NewsletterSubscriber, error)
+	GetNewsletterSubscriberByID(ctx context.Context, id uuid.UUID) (*NewsletterSubscriber, error)
+	ListNewsletterSubscribers(ctx context.Context, status string, limit, offset int) ([]NewsletterSubscriber, int64, error)
+	GetActiveNewsletterSubscribers(ctx context.Context) ([]NewsletterSubscriber, error)
+	UnsubscribeNewsletterSubscriber(ctx context.Context, email string) error
+	DeleteNewsletterSubscriber(ctx context.Context, id uuid.UUID) error
+	GetNewsletterStats(ctx context.Context) (map[string]interface{}, error)
+	CreateNewsletterCampaign(ctx context.Context, campaign *NewsletterCampaign) (*NewsletterCampaign, error)
+	GetNewsletterCampaignByID(ctx context.Context, id uuid.UUID) (*NewsletterCampaign, error)
+	ListNewsletterCampaigns(ctx context.Context, status string, limit, offset int) ([]NewsletterCampaign, int64, error)
+	UpdateNewsletterCampaign(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*NewsletterCampaign, error)
+	CreateNewsletterCampaignEmail(ctx context.Context, campaignEmail *NewsletterCampaignEmail) error
+	UpdateNewsletterCampaignEmailStatus(ctx context.Context, id uuid.UUID, status string, emailID string) error
+	GetNewsletterCampaignEmailsByCampaign(ctx context.Context, campaignID uuid.UUID) ([]NewsletterCampaignEmail, error)
+	UpdateCampaignStats(ctx context.Context, campaignID uuid.UUID) error
+
+	// Usage Forecasting and Alerting operations
+	CreateUsageAlert(ctx context.Context, alert *UsageAlert) error
+	GetUsageAlertByID(ctx context.Context, id uuid.UUID) (*UsageAlert, error)
+	ListUsageAlertsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*UsageAlert, error)
+	UpdateUsageAlert(ctx context.Context, alert *UsageAlert) error
+	DeleteUsageAlert(ctx context.Context, id uuid.UUID) error
+	RecordAlertTrigger(ctx context.Context, history *UsageAlertHistory) error
+	GetAlertHistoryByTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]*UsageAlertHistory, error)
+
+	CreateOrUpdateSpendCap(ctx context.Context, cap *SpendCap) error
+	GetSpendCapByTenant(ctx context.Context, tenantID uuid.UUID, periodStart time.Time) (*SpendCap, error)
+	UpdateCurrentSpend(ctx context.Context, capID uuid.UUID, spendCents int) error
+
+	SaveUsageForecast(ctx context.Context, forecast *UsageForecast) error
+	GetLatestForecast(ctx context.Context, tenantID uuid.UUID, forecastType string) (*UsageForecast, error)
+	GetDailyUsageHistory(ctx context.Context, tenantID uuid.UUID, eventType string, days int) ([]*DailyUsagePoint, error)
+	GetDailySpendHistory(ctx context.Context, tenantID uuid.UUID, days int) ([]*DailyUsagePoint, error)
+	GetCurrentPeriodUsage(ctx context.Context, tenantID uuid.UUID, periodStart, periodEnd time.Time) (*UsageSummary, error)
+
+	// Cost Allocation operations for detailed cost tracking
+	RecordCostAllocationEntry(ctx context.Context, entry *CostAllocationEntry) error
+	GetCostAllocationByFunction(ctx context.Context, tenantID uuid.UUID, start, end time.Time) ([]*CostAllocationSummary, error)
+	GetCostAllocationDailyBreakdown(ctx context.Context, tenantID uuid.UUID, start, end time.Time) ([]*DailyCostBreakdown, error)
+	GetTenantCostSummary(ctx context.Context, tenantID uuid.UUID, start, end time.Time) (*TenantCostSummary, error)
+	GetAllTenantsCostSummary(ctx context.Context, start, end time.Time) ([]*TenantCostSummary, error)
+	GetCostAllocationEntries(ctx context.Context, filter *CostAllocationFilter, limit, offset int) ([]*CostAllocationEntry, int, error)
+	GetCostAllocationReport(ctx context.Context, start, end time.Time) (*CostAllocationReport, error)
+	GetCostAllocationByRegion(ctx context.Context, tenantID uuid.UUID, start, end time.Time) (map[string]*CostAllocationSummary, error)
+	DeleteOldCostAllocationEntries(ctx context.Context, before time.Time) (int64, error)
+
+	// Execution log retention operations
+	DeleteOldExecutions(ctx context.Context, cutoff time.Time, batchSize int) (int64, error)
+	DeleteOldPublicExecutions(ctx context.Context, cutoff time.Time, batchSize int) (int64, error)
+	DeleteOldResourceUsage(ctx context.Context, cutoff time.Time, batchSize int) (int64, error)
+	DeleteOldMEGRecords(ctx context.Context, cutoff time.Time, batchSize int) (int64, error)
+	DeleteOldDriftReports(ctx context.Context, cutoff time.Time, batchSize int) (int64, error)
+	DeleteOldExecutionCertificates(ctx context.Context, cutoff time.Time, batchSize int) (int64, error)
+	GetExecutionRetentionStats(ctx context.Context) (map[string]interface{}, error)
+
+	// Execution retention settings operations
+	GetExecutionRetentionSettings(ctx context.Context) (*ExecutionRetentionSettings, error)
+	UpdateExecutionRetentionSettings(ctx context.Context, updates *ExecutionRetentionSettingsUpdate) (*ExecutionRetentionSettings, error)
+	GetOrCreateExecutionRetentionSettings(ctx context.Context) (*ExecutionRetentionSettings, error)
+	ResetExecutionRetentionSettingsToDefaults(ctx context.Context, updatedBy *uuid.UUID) (*ExecutionRetentionSettings, error)
+
+	// Usage Export operations
+	CreateUsageExportConfiguration(ctx context.Context, config *UsageExportConfiguration) error
+	GetUsageExportConfiguration(ctx context.Context, id uuid.UUID) (*UsageExportConfiguration, error)
+	UpdateUsageExportConfiguration(ctx context.Context, config *UsageExportConfiguration) error
+	DeleteUsageExportConfiguration(ctx context.Context, id uuid.UUID) error
+	ListUsageExportConfigurations(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*UsageExportConfiguration, error)
+
+	CreateUsageExportJob(ctx context.Context, job *UsageExportJob) error
+	GetUsageExportJob(ctx context.Context, id uuid.UUID) (*UsageExportJob, error)
+	UpdateUsageExportJobStatus(ctx context.Context, id uuid.UUID, status UsageExportStatus, errorMessage string) error
+	CompleteUsageExportJob(ctx context.Context, id uuid.UUID, storagePath, storageURL, checksum string, recordCount, fileSize int64) error
+	UpdateDeliveryStatus(ctx context.Context, jobID uuid.UUID, status, errorMessage string) error
+	UpdateLastExecution(ctx context.Context, configID, jobID uuid.UUID, executedAt time.Time) error
+	ListUsageExportJobs(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*UsageExportJob, error)
+	GetPendingScheduledConfigs(ctx context.Context, now time.Time) ([]*UsageExportConfiguration, error)
+
+	CreateExternalBillingSystem(ctx context.Context, system *ExternalBillingSystem) error
+	GetExternalBillingSystem(ctx context.Context, id uuid.UUID) (*ExternalBillingSystem, error)
+	UpdateExternalBillingSystem(ctx context.Context, system *ExternalBillingSystem) error
+	DeleteExternalBillingSystem(ctx context.Context, id uuid.UUID) error
+	ListExternalBillingSystems(ctx context.Context, tenantID uuid.UUID, limit, offset int, activeOnly bool) ([]*ExternalBillingSystem, error)
+
+	CreateBillingIntegrationSync(ctx context.Context, sync *BillingIntegrationSync) error
+	GetBillingIntegrationSync(ctx context.Context, id uuid.UUID) (*BillingIntegrationSync, error)
+	ListBillingIntegrationSyncs(ctx context.Context, tenantID uuid.UUID, systemID *uuid.UUID, status string, limit, offset int) ([]*BillingIntegrationSync, error)
+
+	CreateUsageExportTemplate(ctx context.Context, template *UsageExportTemplate) error
+	GetUsageExportTemplate(ctx context.Context, id uuid.UUID) (*UsageExportTemplate, error)
+	ListUsageExportTemplates(ctx context.Context, category string) ([]*UsageExportTemplate, error)
+
+	// Team Memory operations (Team Memory Engine - Shared Brain)
+	CreateTeamMemory(ctx context.Context, memory *TeamMemory) (*TeamMemory, error)
+	GetTeamMemoryByID(ctx context.Context, tenantID, teamID, memoryID uuid.UUID) (*TeamMemory, error)
+	UpdateTeamMemory(ctx context.Context, memory *TeamMemory) (*TeamMemory, error)
+	DeleteTeamMemory(ctx context.Context, tenantID, teamID, memoryID uuid.UUID) error
+	ListTeamMemories(ctx context.Context, tenantID, teamID uuid.UUID, filter TeamMemoryFilter) ([]*TeamMemory, int64, error)
+	ListTeamMemoriesByType(ctx context.Context, tenantID, teamID uuid.UUID, memoryType string, limit, offset int) ([]*TeamMemory, error)
+	SearchTeamMemories(ctx context.Context, tenantID, teamID uuid.UUID, query string, limit int) ([]*TeamMemorySearchResult, error)
+	SearchTeamMemoriesByVector(ctx context.Context, tenantID, teamID uuid.UUID, embedding []float32, limit int) ([]*TeamMemorySearchResult, error)
+	ValidateTeamMemory(ctx context.Context, memoryID uuid.UUID, validatedBy uuid.UUID) error
+	MarkTeamMemoryAsAccessed(ctx context.Context, memoryID uuid.UUID) error
+	CreateEncryptedTeamMemory(ctx context.Context, memory *TeamMemory, encryptedContent, iv, tag []byte) (*TeamMemory, error)
+	GetTeamMemoryDecryptionPayload(ctx context.Context, memoryID uuid.UUID) (encryptedContent, iv, tag []byte, err error)
+
+	// Memory extraction queue (auto-update pipeline)
+	CreateMemoryExtraction(ctx context.Context, extraction *MemoryExtraction) (*MemoryExtraction, error)
+	GetMemoryExtractionsByTeam(ctx context.Context, teamID uuid.UUID, status string, limit int) ([]*MemoryExtraction, error)
+	ApproveMemoryExtraction(ctx context.Context, extractionID uuid.UUID, reviewedBy uuid.UUID) (*TeamMemory, error)
+	RejectMemoryExtraction(ctx context.Context, extractionID uuid.UUID, reviewedBy uuid.UUID, reason string) error
+	ProcessAutoApplyExtractions(ctx context.Context, batchSize int) (int, error)
+
+	// Memory sharing (cross-team collaboration)
+	CreateMemoryShare(ctx context.Context, share *MemoryShare) error
+	GetMemoryShareByID(ctx context.Context, shareID uuid.UUID) (*MemoryShare, error)
+	GetMemoryShareBetweenTeams(ctx context.Context, memoryID, sourceTeamID, targetTeamID uuid.UUID) (*MemoryShare, error)
+	UpdateMemoryShare(ctx context.Context, share *MemoryShare) error
+	ListMemorySharesByTargetTeam(ctx context.Context, teamID uuid.UUID, status string, limit, offset int) ([]*MemoryShare, error)
+	ListMemorySharesBySourceTeam(ctx context.Context, teamID uuid.UUID, status string, limit, offset int) ([]*MemoryShare, error)
+	ListMemorySharesByMemoryID(ctx context.Context, memoryID uuid.UUID, status string) ([]*MemoryShare, error)
 }

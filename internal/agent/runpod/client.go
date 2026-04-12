@@ -370,3 +370,36 @@ func (c *RunPodClient) WaitForPodReady(ctx context.Context, podID string, timeou
 		}
 	}
 }
+
+// PingHealthEndpoint pings a pod's health endpoint and returns latency
+func (c *RunPodClient) PingHealthEndpoint(ctx context.Context, podURL string, healthPath string) (latencyMs float64, healthy bool, err error) {
+	if podURL == "" {
+		return 0, false, fmt.Errorf("pod URL is empty")
+	}
+
+	url := fmt.Sprintf("%s%s", podURL, healthPath)
+	if healthPath == "" {
+		url = fmt.Sprintf("%s/health", podURL)
+	}
+
+	start := time.Now()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return 0, false, fmt.Errorf("failed to create health check request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	latencyMs = float64(time.Since(start).Milliseconds())
+
+	if err != nil {
+		return latencyMs, false, fmt.Errorf("health check failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		return latencyMs, true, nil
+	}
+
+	return latencyMs, false, fmt.Errorf("health check returned status %d", resp.StatusCode)
+}

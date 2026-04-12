@@ -6,22 +6,23 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // Node represents a function in the composition graph
 type Node struct {
-	ID            uuid.UUID   `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	FunctionID    string      `json:"function_id" gorm:"uniqueIndex;not null"`
-	Name          string      `json:"name" gorm:"not null"`
-	Category      string      `json:"category" gorm:"index"`
-	InputSchema   string      `json:"input_schema" gorm:"type:jsonb"`
-	OutputSchema  string      `json:"output_schema" gorm:"type:jsonb"`
-	Metadata      string      `json:"metadata" gorm:"type:jsonb"`
-	IsActive      bool        `json:"is_active" gorm:"not null;default:true"`
-	CreatedAt     time.Time   `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt     time.Time   `json:"updated_at" gorm:"autoUpdateTime"`
+	ID           uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID   string    `json:"function_id" gorm:"uniqueIndex;not null"`
+	Name         string    `json:"name" gorm:"not null"`
+	Category     string    `json:"category" gorm:"index"`
+	InputSchema  string    `json:"input_schema" gorm:"type:jsonb"`
+	OutputSchema string    `json:"output_schema" gorm:"type:jsonb"`
+	Metadata     string    `json:"metadata" gorm:"type:jsonb"`
+	IsActive     bool      `json:"is_active" gorm:"not null;default:true"`
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // TableName returns the GORM table name
@@ -29,15 +30,15 @@ func (Node) TableName() string { return "graph_nodes" }
 
 // Edge represents a directed edge (dependency) in the composition graph
 type Edge struct {
-	ID           uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	SourceNodeID uuid.UUID  `json:"source_node_id" gorm:"type:uuid;not null;index"`
-	TargetNodeID uuid.UUID  `json:"target_node_id" gorm:"type:uuid;not null;index"`
-	SourceNode   *Node      `json:"source_node,omitempty" gorm:"foreignKey:SourceNodeID;references:ID"`
-	TargetNode   *Node      `json:"target_node,omitempty" gorm:"foreignKey:TargetNodeID;references:ID"`
-	EdgeType     string     `json:"edge_type" gorm:"not null;default:'dataflow'"` // dataflow | trigger | dependency
-	Mapping      string     `json:"mapping" gorm:"type:jsonb"` // How output maps to input
-	Metadata     string     `json:"metadata" gorm:"type:jsonb"`
-	CreatedAt    time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	ID           uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	SourceNodeID uuid.UUID `json:"source_node_id" gorm:"type:uuid;not null;index"`
+	TargetNodeID uuid.UUID `json:"target_node_id" gorm:"type:uuid;not null;index"`
+	SourceNode   *Node     `json:"source_node,omitempty" gorm:"foreignKey:SourceNodeID;references:ID"`
+	TargetNode   *Node     `json:"target_node,omitempty" gorm:"foreignKey:TargetNodeID;references:ID"`
+	EdgeType     string    `json:"edge_type" gorm:"not null;default:'dataflow'"` // dataflow | trigger | dependency
+	Mapping      string    `json:"mapping" gorm:"type:jsonb"`                    // How output maps to input
+	Metadata     string    `json:"metadata" gorm:"type:jsonb"`
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 
 // TableName returns the GORM table name
@@ -45,16 +46,16 @@ func (Edge) TableName() string { return "graph_edges" }
 
 // Execution represents a graph execution instance
 type Execution struct {
-	ID             uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	GraphID        uuid.UUID  `json:"graph_id" gorm:"type:uuid;not null;index"`
-	Graph          *Graph     `json:"graph,omitempty" gorm:"foreignKey:GraphID;references:ID"`
-	Status         string     `json:"status" gorm:"not null;default:'pending'"` // pending | running | completed | failed
-	InputData      string     `json:"input_data" gorm:"type:jsonb"`
-	OutputData     string     `json:"output_data" gorm:"type:jsonb"`
-	ErrorMessage   *string    `json:"error_message" gorm:"type:text"`
-	StartedAt      *time.Time `json:"started_at"`
-	CompletedAt    *time.Time `json:"completed_at"`
-	CreatedAt      time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	ID           uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	GraphID      uuid.UUID  `json:"graph_id" gorm:"type:uuid;not null;index"`
+	Graph        *Graph     `json:"graph,omitempty" gorm:"foreignKey:GraphID;references:ID"`
+	Status       string     `json:"status" gorm:"not null;default:'pending'"` // pending | running | completed | failed
+	InputData    string     `json:"input_data" gorm:"type:jsonb"`
+	OutputData   string     `json:"output_data" gorm:"type:jsonb"`
+	ErrorMessage *string    `json:"error_message" gorm:"type:text"`
+	StartedAt    *time.Time `json:"started_at"`
+	CompletedAt  *time.Time `json:"completed_at"`
+	CreatedAt    time.Time  `json:"created_at" gorm:"autoCreateTime"`
 }
 
 // TableName returns the GORM table name
@@ -62,7 +63,7 @@ func (Execution) TableName() string { return "graph_executions" }
 
 // Graph represents a composition of functions
 type Graph struct {
-	ID          uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ID          uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Name        string    `json:"name" gorm:"not null"`
 	Description string    `json:"description" gorm:"type:text"`
 	OwnerID     string    `json:"owner_id" gorm:"not null;index"`
@@ -78,8 +79,8 @@ func (Graph) TableName() string { return "graphs" }
 
 // Service handles function composition graph operations
 type Service struct {
-	db         *gorm.DB
-	executor   *ExecutionService
+	db       *gorm.DB
+	executor *ExecutionService
 }
 
 // NewService creates a new graph service
@@ -124,7 +125,7 @@ func (s *Service) AddNode(ctx context.Context, graphID uuid.UUID, functionID str
 		InputSchema:  string(inputJSON),
 		OutputSchema: string(outputJSON),
 		Metadata:     "{}",
-		IsActive:    true,
+		IsActive:     true,
 	}
 	if err := s.db.WithContext(ctx).Create(node).Error; err != nil {
 		return nil, fmt.Errorf("failed to create node: %w", err)
@@ -271,14 +272,29 @@ func (s *Service) GetExecution(ctx context.Context, executionID uuid.UUID) (*Exe
 	return &execution, nil
 }
 
+// Executor interface for function execution
+type Executor interface {
+	Execute(ctx context.Context, tenantID, functionID uuid.UUID, runtimeType string, input json.RawMessage) (*execution.ExecuteResult, error)
+}
+
 // ExecutionService handles running graph executions
 type ExecutionService struct {
-	db *gorm.DB
+	db       *gorm.DB
+	graph    *Service
+	executor Executor
 }
 
 // NewExecutionService creates a new execution service
 func NewExecutionService(db *gorm.DB) *ExecutionService {
-	return &ExecutionService{db: db}
+	return &ExecutionService{
+		db:    db,
+		graph: NewService(db),
+	}
+}
+
+// SetExecutor sets the function executor for graph node execution
+func (s *ExecutionService) SetExecutor(executor Executor) {
+	s.executor = executor
 }
 
 // Run executes a graph
@@ -310,7 +326,7 @@ func (s *ExecutionService) Run(ctx context.Context, executionID uuid.UUID) {
 	json.Unmarshal([]byte(execution.InputData), &currentData)
 
 	for _, node := range nodes {
-		output, err := s.executeNode(ctx, &node, currentData)
+		output, err := s.executeNode(ctx, &node, &execution, currentData)
 		if err != nil {
 			msg := err.Error()
 			execution.Status = "failed"
@@ -332,18 +348,50 @@ func (s *ExecutionService) Run(ctx context.Context, executionID uuid.UUID) {
 }
 
 func (s *ExecutionService) getExecutionOrder(graphID uuid.UUID) ([]Node, error) {
-	// Simplified - in production would use the graph service's topological sort
-	var nodes []Node
-	if err := s.db.Find(&nodes).Error; err != nil {
-		return nil, err
-	}
-	return nodes, nil
+	return s.graph.GetExecutionOrder(context.Background(), graphID)
 }
 
-func (s *ExecutionService) executeNode(ctx context.Context, node *Node, input map[string]any) (map[string]any, error) {
-	// In production, this would call the actual function runtime
-	// For now, return the input as output (passthrough)
-	return input, nil
+func (s *ExecutionService) executeNode(ctx context.Context, node *Node, execution *Execution, input map[string]any) (map[string]any, error) {
+	if s.executor == nil {
+		return nil, fmt.Errorf("no executor configured for graph execution")
+	}
+
+	inputJSON, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal input: %w", err)
+	}
+
+	// Parse function ID from node
+	funcID, err := uuid.Parse(node.FunctionID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid function ID %s: %w", node.FunctionID, err)
+	}
+
+	// Load graph to get owner (tenant) ID
+	var graph Graph
+	if err := s.db.WithContext(ctx).First(&graph, execution.GraphID).Error; err != nil {
+		return nil, fmt.Errorf("failed to load graph %s: %w", execution.GraphID, err)
+	}
+	tenantID, err := uuid.Parse(graph.OwnerID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid graph owner ID %s: %w", graph.OwnerID, err)
+	}
+
+	result, err := s.executor.Execute(ctx, tenantID, funcID, "wasm", inputJSON)
+	if err != nil {
+		return nil, fmt.Errorf("function execution failed: %w", err)
+	}
+
+	if result.Status != "success" {
+		return nil, fmt.Errorf("function returned error: %s", result.ErrorMessage)
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(result.Output, &output); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal output: %w", err)
+	}
+
+	return output, nil
 }
 
 func mustMarshal(v any) string {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/functionfly/functionfly/internal/manifest"
 )
@@ -24,6 +25,68 @@ func NewMicropythonLinker(userCode string, manifest *manifest.Manifest) *Micropy
 		userCode:    userCode,
 		manifest:    manifest,
 	}
+}
+
+// findMicropythonRuntimePath locates the micropython.wasm file using the source file location
+// This works regardless of the current working directory
+func findMicropythonRuntimePath() string {
+	// Get the directory of this source file for reliable path resolution
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		// Fallback to relative paths if runtime.Caller fails
+		return findMicropythonRuntimePathFallback()
+	}
+	sourceDir := filepath.Dir(filename)
+
+	// Try paths relative to source file (most reliable)
+	paths := []string{
+		filepath.Join(sourceDir, "python", "micropython.wasm"),
+		filepath.Join(sourceDir, "python", "micropython-full.wasm"),
+	}
+
+	for _, p := range paths {
+		if info, err := os.Stat(p); err == nil && !info.IsDir() {
+			// Validate it's a real WASM file (>100KB, not a stub)
+			if info.Size() > 100000 {
+				return p
+			}
+		}
+	}
+
+	// Fallback to relative paths
+	return findMicropythonRuntimePathFallback()
+}
+
+// findMicropythonRuntimePathFallback provides fallback path resolution
+func findMicropythonRuntimePathFallback() string {
+	// Try multiple possible paths, including full and core variants
+	paths := []string{
+		"internal/bundler/python/micropython.wasm",
+		"internal/bundler/python/micropython-full.wasm",
+		"bundler/python/micropython.wasm",
+		"bundler/python/micropython-full.wasm",
+		"../../internal/bundler/python/micropython.wasm",
+		"../../internal/bundler/python/micropython-full.wasm",
+		"./internal/bundler/python/micropython.wasm",
+		"./internal/bundler/python/micropython-full.wasm",
+	}
+	for _, p := range paths {
+		if abs, err := filepath.Abs(p); err == nil {
+			if info, err := os.Stat(abs); err == nil && !info.IsDir() {
+				// Validate it's a real WASM file (>100KB, not a stub)
+				if info.Size() > 100000 {
+					return abs
+				}
+			}
+		}
+		if info, err := os.Stat(p); err == nil && !info.IsDir() {
+			// Validate it's a real WASM file (>100KB, not a stub)
+			if info.Size() > 100000 {
+				return p
+			}
+		}
+	}
+	return ""
 }
 
 // Link creates a WASM module with embedded user Python code

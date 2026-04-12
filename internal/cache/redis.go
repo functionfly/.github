@@ -140,6 +140,9 @@ func NewRegistryRedisCache(client *redis.Client, defaultTTL time.Duration) *Regi
 
 // Get retrieves data from cache by key
 func (c *RegistryRedisCache) Get(ctx context.Context, key string) ([]byte, error) {
+	if c.client == nil {
+		return nil, ErrNotFound
+	}
 	data, err := c.client.Get(ctx, key).Bytes()
 	if err == redis.Nil {
 		RecordRedisCacheMiss()
@@ -169,11 +172,17 @@ func (c *RegistryRedisCache) GetJSON(ctx context.Context, key string, dest inter
 
 // Set stores data in cache with default TTL
 func (c *RegistryRedisCache) Set(ctx context.Context, key string, data []byte) error {
+	if c.client == nil {
+		return nil
+	}
 	return c.SetWithTTL(ctx, key, data, c.ttl)
 }
 
 // SetWithTTL stores data in cache with specified TTL
 func (c *RegistryRedisCache) SetWithTTL(ctx context.Context, key string, data []byte, ttl time.Duration) error {
+	if c.client == nil {
+		return nil
+	}
 	if err := c.client.Set(ctx, key, data, ttl).Err(); err != nil {
 		RecordRedisCacheError("set")
 		return fmt.Errorf("failed to set registry cache: %w", err)
@@ -197,6 +206,9 @@ func (c *RegistryRedisCache) SetJSONWithTTL(ctx context.Context, key string, dat
 
 // Delete removes data from cache
 func (c *RegistryRedisCache) Delete(ctx context.Context, key string) error {
+	if c.client == nil {
+		return nil
+	}
 	if err := c.client.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("failed to delete from registry cache: %w", err)
 	}
@@ -205,6 +217,9 @@ func (c *RegistryRedisCache) Delete(ctx context.Context, key string) error {
 
 // DeleteByPattern removes all keys matching a pattern
 func (c *RegistryRedisCache) DeleteByPattern(ctx context.Context, pattern string) error {
+	if c.client == nil {
+		return nil
+	}
 	iter := c.client.Scan(ctx, 0, pattern, 0).Iterator()
 	var keys []string
 	for iter.Next(ctx) {
@@ -276,12 +291,18 @@ func (c *RegistryRedisCache) InvalidateListResults(ctx context.Context) error {
 
 // Clear clears all registry cache entries
 func (c *RegistryRedisCache) Clear(ctx context.Context) error {
+	if c.client == nil {
+		return nil
+	}
 	pattern := "registry:*"
 	return c.DeleteByPattern(ctx, pattern)
 }
 
 // GetStats returns cache statistics
 func (c *RegistryRedisCache) GetStats(ctx context.Context) (*RegistryCacheStats, error) {
+	if c.client == nil {
+		return &RegistryCacheStats{}, nil
+	}
 	// Count registry keys
 	iter := c.client.Scan(ctx, 0, "registry:*", 0).Iterator()
 	var count int64

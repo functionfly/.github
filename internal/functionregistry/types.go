@@ -7,13 +7,13 @@ import (
 
 // Supported runtimes
 const (
-	RuntimeNode18         = "node18"
-	RuntimeNode20         = "node20"
-	RuntimePython311      = "python3.11"
-	RuntimePython312      = "python3.12"
-	RuntimeGo121          = "go1.21"
-	RuntimeRust175        = "rust1.75"
-	RuntimeTypeScriptWASM = "typescript-wasm"
+	RuntimeNode18            = "node18"
+	RuntimeNode20            = "node20"
+	RuntimePython311         = "python3.11"
+	RuntimePython312         = "python3.12"
+	RuntimeGo121             = "go1.21"
+	RuntimeRust175           = "rust1.75"
+	RuntimeTypeScriptWASM    = "typescript-wasm"
 	RuntimeBrowserNativeWASM = "browser-wasm" // Browser Native WebAssembly (0ms cold start)
 )
 
@@ -320,6 +320,7 @@ type PublishResponse struct {
 
 // FunctionInfo represents public function information
 type FunctionInfo struct {
+	ID            string          `json:"id"`
 	Author        string          `json:"author"`
 	Name          string          `json:"name"`
 	Version       string          `json:"version"`
@@ -349,6 +350,12 @@ type FunctionInfo struct {
 	ConsumerDiversity float64 `json:"consumer_diversity"`
 	TenantDiversity   int     `json:"tenant_diversity"`
 	UserDiversity     int     `json:"user_diversity"`
+	// Gallery-specific fields
+	PopularityScore int    `json:"popularity_score"`
+	RemixCount      int    `json:"remix_count"`
+	LikeCount       int    `json:"like_count"`
+	CreatedAt       string `json:"created_at"`
+	UpdatedAt       string `json:"updated_at"`
 	// Additional version metadata
 	Capabilities     []string `json:"capabilities,omitempty"`
 	TimeoutMs        int      `json:"timeout_ms,omitempty"`

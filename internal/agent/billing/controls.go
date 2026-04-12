@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
@@ -182,11 +183,13 @@ func (c *Controller) ConsumeCredits(ctx context.Context, agentID string, amount 
 // AddCredits adds to the agent's credit balance (after purchase).
 // If no billing controls record exists yet for the agent, one is created with this
 // amount as the initial balance so that a first-ever top-up always succeeds.
+// This also updates the agent_wallets table to keep the two balance stores in sync.
 func (c *Controller) AddCredits(ctx context.Context, agentID string, amount float64) error {
 	if amount <= 0 {
 		return fmt.Errorf("credit amount must be positive")
 	}
 
+	// Update billing controls
 	result := c.db.WithContext(ctx).Model(&AgentBillingControls{}).
 		Where("agent_id = ?", agentID).
 		Update("credit_balance_usd", gorm.Expr("credit_balance_usd + ?", amount))
@@ -206,6 +209,39 @@ func (c *Controller) AddCredits(ctx context.Context, agentID string, amount floa
 		if err := c.db.WithContext(ctx).Create(&controls).Error; err != nil {
 			return fmt.Errorf("failed to create billing controls with initial credits: %w", err)
 		}
+	}
+
+	// Sync to agent_wallets table (used by economy service for escrow/revenue)
+	// Use a transaction to ensure consistency
+	err := c.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var wallet identity.AgentWallet
+		walletResult := tx.Where("agent_id = ?", agentID).First(&wallet)
+
+		if walletResult.Error == gorm.ErrRecordNotFound {
+			// Create new wallet
+			wallet = identity.AgentWallet{
+				ID:         uuid.New(),
+				AgentID:    agentID,
+				BalanceUSD: amount,
+			}
+			if err := tx.Create(&wallet).Error; err != nil {
+				return fmt.Errorf("failed to create agent wallet: %w", err)
+			}
+		} else if walletResult.Error != nil {
+			return fmt.Errorf("failed to get agent wallet: %w", walletResult.Error)
+		} else {
+			// Update existing wallet
+			if err := tx.Model(&identity.AgentWallet{}).
+				Where("agent_id = ?", agentID).
+				Update("balance_usd", gorm.Expr("balance_usd + ?", amount)).Error; err != nil {
+				return fmt.Errorf("failed to update agent wallet balance: %w", err)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to sync credits to agent_wallets: %w", err)
 	}
 
 	return nil

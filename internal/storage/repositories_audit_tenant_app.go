@@ -35,6 +35,10 @@ func (db *PostgresDB) GetTenantByID(tenantID uuid.UUID) (*Tenant, error) {
 	return db.tenantRepository.GetTenantByID(tenantID)
 }
 
+func (db *PostgresDB) GetTenantByStripeCustomerID(stripeCustomerID string) (*Tenant, error) {
+	return db.tenantRepository.GetTenantByStripeCustomerID(stripeCustomerID)
+}
+
 func (db *PostgresDB) ListTenants() ([]*Tenant, error) {
 	return db.tenantRepository.ListTenants()
 }
@@ -45,6 +49,10 @@ func (db *PostgresDB) UpdateTenant(ctx context.Context, tenantID uuid.UUID, upda
 
 func (db *PostgresDB) DeleteTenant(ctx context.Context, tenantID uuid.UUID) error {
 	return db.tenantRepository.DeleteTenant(ctx, tenantID)
+}
+
+func (db *PostgresDB) CountUsersByTenant(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	return db.tenantRepository.CountUsersByTenant(ctx, tenantID)
 }
 
 // App operations

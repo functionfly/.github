@@ -81,14 +81,14 @@ func (s *Service) GetThread(ctx context.Context, id uuid.UUID) (*Thread, error) 
 		return nil, err
 	}
 
-	// Increment view count asynchronously
-	go func() {
+	// Increment view count asynchronously (use background context, not request context)
+	go func(threadID uuid.UUID) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := s.repo.IncrementThreadViewCount(ctx, id); err != nil {
+		if err := s.repo.IncrementThreadViewCount(ctx, threadID); err != nil {
 			s.logger.WithError(err).Warn("Failed to increment thread view count")
 		}
-	}()
+	}(id)
 
 	return thread, nil
 }

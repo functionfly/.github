@@ -237,3 +237,23 @@ func defaultQuotaForPlan(agentID, planTier string) *AgentQuotaConfig {
 	quota.MaxCostPerExecution = 0.01
 	return quota
 }
+
+// CreateAgentHiring creates a new agent hiring record
+func (r *Repository) CreateAgentHiring(ctx context.Context, hiring *AgentHiring) error {
+	if hiring.ID == uuid.Nil {
+		hiring.ID = uuid.New()
+	}
+	hiring.CreatedAt = time.Now()
+	hiring.UpdatedAt = time.Now()
+	return r.db.WithContext(ctx).Create(hiring).Error
+}
+
+// CreateFunctionPurchase creates a new function purchase record
+func (r *Repository) CreateFunctionPurchase(ctx context.Context, purchase *FunctionPurchase) error {
+	if purchase.ID == uuid.Nil {
+		purchase.ID = uuid.New()
+	}
+	purchase.CreatedAt = time.Now()
+	purchase.UpdatedAt = time.Now()
+	return r.db.WithContext(ctx).Create(purchase).Error
+}

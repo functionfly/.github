@@ -3,6 +3,7 @@ package payment
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 
@@ -66,7 +67,7 @@ func CreateRegistryWalletCheckoutSession(
 		cancelURL = strings.TrimSuffix(cancelURL, "/") + "/settings?walletTopUp=cancel"
 	}
 
-	amountCents := int64(amountUSD * 100)
+	amountCents := int64(math.Round(amountUSD * 100))
 	if amountCents < 100 {
 		amountCents = 100
 	}

@@ -52,6 +52,41 @@ func (r *TenantRepository) GetTenantByID(tenantID uuid.UUID) (*Tenant, error) {
 	return tenant, nil
 }
 
+// GetTenantByStripeCustomerID retrieves a tenant by Stripe customer ID
+func (r *TenantRepository) GetTenantByStripeCustomerID(stripeCustomerID string) (*Tenant, error) {
+	if stripeCustomerID == "" {
+		return nil, nil
+	}
+
+	tenant := &Tenant{}
+	var plan sql.NullString
+	var stripeCID sql.NullString
+	err := r.db.QueryRow(`
+		SELECT id, name, plan, status, stripe_customer_id, created_at, updated_at
+		FROM tenants WHERE stripe_customer_id = $1`, stripeCustomerID).Scan(
+		&tenant.ID, &tenant.Name, &plan, &tenant.Status,
+		&stripeCID, &tenant.CreatedAt, &tenant.UpdatedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tenant by stripe customer id: %w", err)
+	}
+
+	if plan.Valid {
+		tenant.Plan = plan.String
+	}
+	if stripeCID.Valid && stripeCID.String != "" {
+		tenant.StripeCustomerID = &stripeCID.String
+	}
+	if tenant.Status == "" {
+		tenant.Status = "active"
+	}
+
+	return tenant, nil
+}
+
 // CountRoutingEventsForTenantSince counts routing events for a tenant since a given time
 func (r *TenantRepository) CountRoutingEventsForTenantSince(tenantID uuid.UUID, since time.Time) (int, error) {
 	var count int
@@ -237,4 +272,14 @@ func (r *TenantRepository) DeleteTenant(ctx context.Context, tenantID uuid.UUID)
 	}
 
 	return nil
+}
+
+// CountUsersByTenant returns the number of users in a tenant
+func (r *TenantRepository) CountUsersByTenant(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE tenant_id = $1", tenantID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count tenant users: %w", err)
+	}
+	return count, nil
 }

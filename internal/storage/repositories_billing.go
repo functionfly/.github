@@ -46,6 +46,10 @@ func (db *PostgresDB) GetSubscriptionByTenantID(tenantID uuid.UUID) (*Subscripti
 	return db.billingRepository.GetSubscriptionByTenantID(tenantID)
 }
 
+func (db *PostgresDB) GetSubscriptionByStripeID(ctx context.Context, stripeSubscriptionID string) (*Subscription, error) {
+	return db.billingRepository.GetSubscriptionByStripeID(ctx, stripeSubscriptionID)
+}
+
 func (db *PostgresDB) UpdateSubscription(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*Subscription, error) {
 	return db.billingRepository.UpdateSubscription(ctx, id, updates)
 }
@@ -122,8 +126,12 @@ func (db *PostgresDB) GetFunctionVerificationPaymentByID(id uuid.UUID) (*Functio
 	return db.revenueRepository.GetFunctionVerificationPaymentByID(id)
 }
 
-func (db *PostgresDB) UpdateFunctionVerificationPaymentStatus(ctx context.Context, id uuid.UUID, status string, stripePIID *string) error {
-	return db.revenueRepository.UpdateFunctionVerificationPaymentStatus(ctx, id, status, stripePIID)
+func (db *PostgresDB) GetFunctionVerificationPaymentByCheckoutSessionID(ctx context.Context, sessionID string) (*FunctionVerificationPayment, error) {
+	return db.revenueRepository.GetFunctionVerificationPaymentByCheckoutSessionID(ctx, sessionID)
+}
+
+func (db *PostgresDB) UpdateFunctionVerificationPaymentStatus(ctx context.Context, id uuid.UUID, status string, stripePIID, stripeCheckoutSessionID *string) error {
+	return db.revenueRepository.UpdateFunctionVerificationPaymentStatus(ctx, id, status, stripePIID, stripeCheckoutSessionID)
 }
 
 func (db *PostgresDB) GetFunctionVerificationPaymentsByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*FunctionVerificationPayment, error) {
@@ -197,4 +205,204 @@ func (db *PostgresDB) ListPricingTiersExtended() ([]*PricingTierExtended, error)
 
 func (db *PostgresDB) GetPricingTierExtendedByID(id uuid.UUID) (*PricingTierExtended, error) {
 	return db.revenueRepository.GetPricingTierExtendedByID(id)
+}
+
+// AggregateExecutionsForBilling aggregates function executions for billing over a time period
+func (db *PostgresDB) AggregateExecutionsForBilling(ctx context.Context, start, end time.Time) ([]*AggregatedBillingUsage, error) {
+	return db.billingRepository.AggregateExecutionsForBilling(ctx, start, end)
+}
+
+// CreateOrUpdateUsageRollup creates or updates a usage rollup for a tenant/event_type/date
+func (db *PostgresDB) CreateOrUpdateUsageRollup(ctx context.Context, rollup *UsageRollup) error {
+	return db.billingRepository.CreateOrUpdateUsageRollup(ctx, rollup)
+}
+
+// GetInvoiceByPeriod retrieves an invoice by tenant and period
+func (db *PostgresDB) GetInvoiceByPeriod(ctx context.Context, tenantID uuid.UUID, periodStart, periodEnd time.Time) (*Invoice, error) {
+	return db.billingRepository.GetInvoiceByPeriod(ctx, tenantID, periodStart, periodEnd)
+}
+
+// GetLastAggregationTimestamp gets the last timestamp that was aggregated
+func (db *PostgresDB) GetLastAggregationTimestamp(ctx context.Context) (time.Time, error) {
+	return db.billingRepository.GetLastAggregationTimestamp(ctx)
+}
+
+// SetLastAggregationTimestamp updates the last aggregation timestamp
+func (db *PostgresDB) SetLastAggregationTimestamp(ctx context.Context, timestamp time.Time) error {
+	return db.billingRepository.SetLastAggregationTimestamp(ctx, timestamp)
+}
+
+// GetLastRollupDate gets the last date that was rolled up
+func (db *PostgresDB) GetLastRollupDate(ctx context.Context) (time.Time, error) {
+	return db.billingRepository.GetLastRollupDate(ctx)
+}
+
+// SetLastRollupDate updates the last rollup date
+func (db *PostgresDB) SetLastRollupDate(ctx context.Context, date time.Time) error {
+	return db.billingRepository.SetLastRollupDate(ctx, date)
+}
+
+// Usage Forecasting and Alerting operations - delegated to UsageAlertRepository
+func (db *PostgresDB) CreateUsageAlert(ctx context.Context, alert *UsageAlert) error {
+	return db.usageAlertRepository.CreateUsageAlert(ctx, alert)
+}
+
+func (db *PostgresDB) GetUsageAlertByID(ctx context.Context, id uuid.UUID) (*UsageAlert, error) {
+	return db.usageAlertRepository.GetUsageAlertByID(ctx, id)
+}
+
+func (db *PostgresDB) ListUsageAlertsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*UsageAlert, error) {
+	return db.usageAlertRepository.ListUsageAlertsByTenant(ctx, tenantID)
+}
+
+func (db *PostgresDB) UpdateUsageAlert(ctx context.Context, alert *UsageAlert) error {
+	return db.usageAlertRepository.UpdateUsageAlert(ctx, alert)
+}
+
+func (db *PostgresDB) DeleteUsageAlert(ctx context.Context, id uuid.UUID) error {
+	return db.usageAlertRepository.DeleteUsageAlert(ctx, id)
+}
+
+func (db *PostgresDB) RecordAlertTrigger(ctx context.Context, history *UsageAlertHistory) error {
+	return db.usageAlertRepository.RecordAlertTrigger(ctx, history)
+}
+
+func (db *PostgresDB) GetAlertHistoryByTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]*UsageAlertHistory, error) {
+	return db.usageAlertRepository.GetAlertHistoryByTenant(ctx, tenantID, limit)
+}
+
+func (db *PostgresDB) CreateOrUpdateSpendCap(ctx context.Context, cap *SpendCap) error {
+	return db.usageAlertRepository.CreateOrUpdateSpendCap(ctx, cap)
+}
+
+func (db *PostgresDB) GetSpendCapByTenant(ctx context.Context, tenantID uuid.UUID, periodStart time.Time) (*SpendCap, error) {
+	return db.usageAlertRepository.GetSpendCapByTenant(ctx, tenantID, periodStart)
+}
+
+func (db *PostgresDB) UpdateCurrentSpend(ctx context.Context, capID uuid.UUID, spendCents int) error {
+	return db.usageAlertRepository.UpdateCurrentSpend(ctx, capID, spendCents)
+}
+
+func (db *PostgresDB) SaveUsageForecast(ctx context.Context, forecast *UsageForecast) error {
+	return db.usageAlertRepository.SaveUsageForecast(ctx, forecast)
+}
+
+func (db *PostgresDB) GetLatestForecast(ctx context.Context, tenantID uuid.UUID, forecastType string) (*UsageForecast, error) {
+	return db.usageAlertRepository.GetLatestForecast(ctx, tenantID, forecastType)
+}
+
+func (db *PostgresDB) GetDailyUsageHistory(ctx context.Context, tenantID uuid.UUID, eventType string, days int) ([]*DailyUsagePoint, error) {
+	return db.usageAlertRepository.GetDailyUsageHistory(ctx, tenantID, eventType, days)
+}
+
+func (db *PostgresDB) GetDailySpendHistory(ctx context.Context, tenantID uuid.UUID, days int) ([]*DailyUsagePoint, error) {
+	return db.usageAlertRepository.GetDailySpendHistory(ctx, tenantID, days)
+}
+
+func (db *PostgresDB) GetCurrentPeriodUsage(ctx context.Context, tenantID uuid.UUID, periodStart, periodEnd time.Time) (*UsageSummary, error) {
+	return db.usageAlertRepository.GetCurrentPeriodUsage(ctx, tenantID, periodStart, periodEnd)
+}
+
+// Cost Allocation Operations - delegated to BillingRepository
+func (db *PostgresDB) RecordCostAllocationEntry(ctx context.Context, entry *CostAllocationEntry) error {
+	return db.billingRepository.RecordCostAllocationEntry(ctx, entry)
+}
+
+func (db *PostgresDB) GetCostAllocationByFunction(ctx context.Context, tenantID uuid.UUID, start, end time.Time) ([]*CostAllocationSummary, error) {
+	return db.billingRepository.GetCostAllocationByFunction(ctx, tenantID, start, end)
+}
+
+func (db *PostgresDB) GetCostAllocationDailyBreakdown(ctx context.Context, tenantID uuid.UUID, start, end time.Time) ([]*DailyCostBreakdown, error) {
+	return db.billingRepository.GetCostAllocationDailyBreakdown(ctx, tenantID, start, end)
+}
+
+func (db *PostgresDB) GetTenantCostSummary(ctx context.Context, tenantID uuid.UUID, start, end time.Time) (*TenantCostSummary, error) {
+	return db.billingRepository.GetTenantCostSummary(ctx, tenantID, start, end)
+}
+
+func (db *PostgresDB) GetAllTenantsCostSummary(ctx context.Context, start, end time.Time) ([]*TenantCostSummary, error) {
+	return db.billingRepository.GetAllTenantsCostSummary(ctx, start, end)
+}
+
+func (db *PostgresDB) GetCostAllocationEntries(ctx context.Context, filter *CostAllocationFilter, limit, offset int) ([]*CostAllocationEntry, int, error) {
+	return db.billingRepository.GetCostAllocationEntries(ctx, filter, limit, offset)
+}
+
+func (db *PostgresDB) GetCostAllocationReport(ctx context.Context, start, end time.Time) (*CostAllocationReport, error) {
+	return db.billingRepository.GetCostAllocationReport(ctx, start, end)
+}
+
+func (db *PostgresDB) GetCostAllocationByRegion(ctx context.Context, tenantID uuid.UUID, start, end time.Time) (map[string]*CostAllocationSummary, error) {
+	return db.billingRepository.GetCostAllocationByRegion(ctx, tenantID, start, end)
+}
+
+func (db *PostgresDB) DeleteOldCostAllocationEntries(ctx context.Context, before time.Time) (int64, error) {
+	return db.billingRepository.DeleteOldCostAllocationEntries(ctx, before)
+}
+
+// Backend-in-a-Box Pricing Bundles - delegated to BillingRepository
+func (db *PostgresDB) CreatePricingBundle(ctx context.Context, bundle *PricingBundle) (*PricingBundle, error) {
+	return db.billingRepository.CreatePricingBundle(ctx, bundle)
+}
+
+func (db *PostgresDB) ListPricingBundles(ctx context.Context, activeOnly bool) ([]*PricingBundle, error) {
+	return db.billingRepository.ListPricingBundles(ctx, activeOnly)
+}
+
+func (db *PostgresDB) GetPricingBundleBySlug(ctx context.Context, slug string) (*PricingBundle, error) {
+	return db.billingRepository.GetPricingBundleBySlug(ctx, slug)
+}
+
+func (db *PostgresDB) GetPricingBundleByID(ctx context.Context, id uuid.UUID) (*PricingBundle, error) {
+	return db.billingRepository.GetPricingBundleByID(ctx, id)
+}
+
+// Founder Mode (viral pricing - deferred billing) - delegated to BillingRepository
+func (db *PostgresDB) CreateFounderModeRegistration(ctx context.Context, reg *FounderModeRegistration) error {
+	return db.billingRepository.CreateFounderModeRegistration(ctx, reg)
+}
+
+func (db *PostgresDB) GetActiveFounderMode(ctx context.Context, tenantID, bundleID uuid.UUID) (*FounderModeRegistration, error) {
+	return db.billingRepository.GetActiveFounderMode(ctx, tenantID, bundleID)
+}
+
+func (db *PostgresDB) ListFounderModesByTenant(ctx context.Context, tenantID uuid.UUID) ([]*FounderModeRegistration, error) {
+	return db.billingRepository.ListFounderModesByTenant(ctx, tenantID)
+}
+
+func (db *PostgresDB) ListActiveFounderModesByTenant(ctx context.Context, tenantID uuid.UUID) ([]*FounderModeRegistration, error) {
+	return db.billingRepository.ListActiveFounderModesByTenant(ctx, tenantID)
+}
+
+func (db *PostgresDB) UpdateFounderModeStatus(ctx context.Context, id uuid.UUID, status string) error {
+	return db.billingRepository.UpdateFounderModeStatus(ctx, id, status)
+}
+
+func (db *PostgresDB) UpdateFounderModeProgress(ctx context.Context, id uuid.UUID, users, mrrCents, apiCalls int) error {
+	return db.billingRepository.UpdateFounderModeProgress(ctx, id, users, mrrCents, apiCalls)
+}
+
+func (db *PostgresDB) ListAllActiveFounderModes(ctx context.Context) ([]*FounderModeRegistration, error) {
+	return db.billingRepository.ListAllActiveFounderModes(ctx)
+}
+
+func (db *PostgresDB) StartGracePeriod(ctx context.Context, id uuid.UUID, gracePeriodDays int) error {
+	return db.billingRepository.StartGracePeriod(ctx, id, gracePeriodDays)
+}
+
+func (db *PostgresDB) GetDeferredBillingConfig(ctx context.Context, bundleID uuid.UUID) (*DeferredBillingConfig, error) {
+	return db.billingRepository.GetDeferredBillingConfig(ctx, bundleID)
+}
+
+// Bundle Subscriptions - delegated to BillingRepository
+func (db *PostgresDB) CreateBundleSubscription(ctx context.Context, sub *BundleSubscription) error {
+	return db.billingRepository.CreateBundleSubscription(ctx, sub)
+}
+
+func (db *PostgresDB) GetBundleSubscriptionByTenant(ctx context.Context, tenantID uuid.UUID) (*BundleSubscription, error) {
+	return db.billingRepository.GetBundleSubscriptionByTenant(ctx, tenantID)
+}
+
+func (db *PostgresDB) ListBundleSubscriptionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*BundleSubscription, error) {
+	return db.billingRepository.ListBundleSubscriptionsByTenant(ctx, tenantID)
 }

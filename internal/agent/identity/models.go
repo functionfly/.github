@@ -240,31 +240,31 @@ type AgentListing struct {
 	ID                     uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	AgentID                string         `json:"agent_id" gorm:"uniqueIndex;not null"`
 	Agent                  *AgentIdentity `json:"agent,omitempty" gorm:"foreignKey:AgentID;references:AgentID"`
-	ListingType            string         `json:"listing_type" gorm:"not null;default:'worker'"` // worker | manager | infrastructure
+	ListingType            string         `json:"listing_type" gorm:"not null;default:'worker'"`    // worker | manager | infrastructure
 	PricingModel           string         `json:"pricing_model" gorm:"not null;default:'per_call'"` // free | per_call | subscription | revenue_share | tiered | dynamic | auction
 	PricePerCall           *float64       `json:"price_per_call" gorm:"type:decimal(10,4)"`
-	SubscriptionMonthlyUSD  *float64       `json:"subscription_monthly_usd" gorm:"type:decimal(10,2)"`
+	SubscriptionMonthlyUSD *float64       `json:"subscription_monthly_usd" gorm:"type:decimal(10,2)"`
 	RevenueSharePercent    *float64       `json:"revenue_share_percent" gorm:"type:decimal(5,2)"`
 	// Tiered pricing
-	Tiers                  []PricingTier  `json:"tiers" gorm:"-"`
-	TiersJSON              string         `json:"-" gorm:"column:tiers;type:jsonb"`
+	Tiers     []PricingTier `json:"tiers" gorm:"-"`
+	TiersJSON string        `json:"-" gorm:"column:tiers;type:jsonb"`
 	// Dynamic pricing
-	DynamicMinPrice        *float64       `json:"dynamic_min_price" gorm:"type:decimal(10,4)"`
-	DynamicMaxPrice        *float64       `json:"dynamic_max_price" gorm:"type:decimal(10,4)"`
-	DynamicDemandFactor    *float64       `json:"dynamic_demand_factor" gorm:"type:decimal(5,2)"`
+	DynamicMinPrice     *float64 `json:"dynamic_min_price" gorm:"type:decimal(10,4)"`
+	DynamicMaxPrice     *float64 `json:"dynamic_max_price" gorm:"type:decimal(10,4)"`
+	DynamicDemandFactor *float64 `json:"dynamic_demand_factor" gorm:"type:decimal(5,2)"`
 	// Auction pricing
-	AuctionStartPrice      *float64       `json:"auction_start_price" gorm:"type:decimal(10,4)"`
-	AuctionReservePrice    *float64       `json:"auction_reserve_price" gorm:"type:decimal(10,4)"`
-	AuctionEndTime         *time.Time     `json:"auction_end_time"`
-	AuctionCurrentBid      *float64       `json:"auction_current_bid" gorm:"type:decimal(10,4)"`
-	AuctionBidCount        int            `json:"auction_bid_count" gorm:"default:0"`
+	AuctionStartPrice   *float64   `json:"auction_start_price" gorm:"type:decimal(10,4)"`
+	AuctionReservePrice *float64   `json:"auction_reserve_price" gorm:"type:decimal(10,4)"`
+	AuctionEndTime      *time.Time `json:"auction_end_time"`
+	AuctionCurrentBid   *float64   `json:"auction_current_bid" gorm:"type:decimal(10,4)"`
+	AuctionBidCount     int        `json:"auction_bid_count" gorm:"default:0"`
 	//
-	RatingScore            float64        `json:"rating_score" gorm:"type:decimal(3,2);default:0"`
-	TotalCalls             int            `json:"total_calls" gorm:"not null;default:0"`
-	ROIScore               float64        `json:"roi_score" gorm:"type:decimal(5,2);default:0"`
-	IsActive               bool           `json:"is_active" gorm:"not null;default:true"`
-	ListedAt               time.Time      `json:"listed_at" gorm:"autoCreateTime"`
-	UpdatedAt              time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
+	RatingScore float64   `json:"rating_score" gorm:"type:decimal(3,2);default:0"`
+	TotalCalls  int       `json:"total_calls" gorm:"not null;default:0"`
+	ROIScore    float64   `json:"roi_score" gorm:"type:decimal(5,2);default:0"`
+	IsActive    bool      `json:"is_active" gorm:"not null;default:true"`
+	ListedAt    time.Time `json:"listed_at" gorm:"autoCreateTime"`
+	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // PricingTier represents a volume-based pricing tier
@@ -285,28 +285,28 @@ type FunctionListing struct {
 	FunctionID             uuid.UUID `json:"function_id" gorm:"not null"`
 	PricingModel           string    `json:"pricing_model" gorm:"not null;default:'per_call'"` // free | per_call | subscription | revenue_share | tiered | dynamic | auction
 	PricePerCall           *float64  `json:"price_per_call" gorm:"type:decimal(10,4)"`
-	SubscriptionMonthlyUSD  *float64  `json:"subscription_monthly_usd" gorm:"type:decimal(10,2)"`
-	RevenueSharePercent     *float64  `json:"revenue_share_percent" gorm:"type:decimal(5,2)"`
+	SubscriptionMonthlyUSD *float64  `json:"subscription_monthly_usd" gorm:"type:decimal(10,2)"`
+	RevenueSharePercent    *float64  `json:"revenue_share_percent" gorm:"type:decimal(5,2)"`
 	// Tiered pricing
-	Tiers                  []PricingTier `json:"tiers" gorm:"-"`
-	TiersJSON              string        `json:"-" gorm:"column:tiers;type:jsonb"`
+	Tiers     []PricingTier `json:"tiers" gorm:"-"`
+	TiersJSON string        `json:"-" gorm:"column:tiers;type:jsonb"`
 	// Dynamic pricing
-	DynamicMinPrice        *float64      `json:"dynamic_min_price" gorm:"type:decimal(10,4)"`
-	DynamicMaxPrice        *float64      `json:"dynamic_max_price" gorm:"type:decimal(10,4)"`
-	DynamicDemandFactor    *float64      `json:"dynamic_demand_factor" gorm:"type:decimal(5,2)"`
+	DynamicMinPrice     *float64 `json:"dynamic_min_price" gorm:"type:decimal(10,4)"`
+	DynamicMaxPrice     *float64 `json:"dynamic_max_price" gorm:"type:decimal(10,4)"`
+	DynamicDemandFactor *float64 `json:"dynamic_demand_factor" gorm:"type:decimal(5,2)"`
 	// Auction pricing
-	AuctionStartPrice      *float64      `json:"auction_start_price" gorm:"type:decimal(10,4)"`
-	AuctionReservePrice    *float64      `json:"auction_reserve_price" gorm:"type:decimal(10,4)"`
-	AuctionEndTime         *time.Time    `json:"auction_end_time"`
-	AuctionCurrentBid      *float64      `json:"auction_current_bid" gorm:"type:decimal(10,4)"`
-	AuctionBidCount        int           `json:"auction_bid_count" gorm:"default:0"`
+	AuctionStartPrice   *float64   `json:"auction_start_price" gorm:"type:decimal(10,4)"`
+	AuctionReservePrice *float64   `json:"auction_reserve_price" gorm:"type:decimal(10,4)"`
+	AuctionEndTime      *time.Time `json:"auction_end_time"`
+	AuctionCurrentBid   *float64   `json:"auction_current_bid" gorm:"type:decimal(10,4)"`
+	AuctionBidCount     int        `json:"auction_bid_count" gorm:"default:0"`
 	//
-	IsActive               bool         `json:"is_active" gorm:"not null;default:true"`
-	RatingScore            float64      `json:"rating_score" gorm:"type:decimal(3,2);default:0"`
-	CallVolume             int          `json:"call_volume" gorm:"not null;default:0"`
-	DeterministicVerified  bool         `json:"deterministic_verified" gorm:"not null;default:false"`
-	ListedAt               time.Time    `json:"listed_at" gorm:"autoCreateTime"`
-	UpdatedAt              time.Time    `json:"updated_at" gorm:"autoUpdateTime"`
+	IsActive              bool      `json:"is_active" gorm:"not null;default:true"`
+	RatingScore           float64   `json:"rating_score" gorm:"type:decimal(3,2);default:0"`
+	CallVolume            int       `json:"call_volume" gorm:"not null;default:0"`
+	DeterministicVerified bool      `json:"deterministic_verified" gorm:"not null;default:false"`
+	ListedAt              time.Time `json:"listed_at" gorm:"autoCreateTime"`
+	UpdatedAt             time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // TableName returns the GORM table name
@@ -418,4 +418,46 @@ type Function struct {
 // TableName returns the GORM table name
 func (Function) TableName() string {
 	return "registry_functions"
+}
+
+// AgentHiring represents a hiring record when one agent/user hires another agent
+// Note: This is stored in a separate table via migration
+// Migration: CREATE TABLE IF NOT EXISTS agent_hirings (...)
+type AgentHiring struct {
+	ID          uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AgentID     string         `json:"agent_id" gorm:"not null;index"`
+	HirerID     string         `json:"hirer_id" gorm:"not null;index"`
+	TenantID    string         `json:"tenant_id" gorm:"not null"`
+	TaskType    string         `json:"task_type" gorm:"not null"`
+	TaskPayload map[string]any `json:"task_payload" gorm:"type:jsonb;default:'{}'"`
+	BudgetUSD   float64        `json:"budget_usd" gorm:"type:decimal(12,2);default:0"`
+	Status      string         `json:"status" gorm:"not null;default:'pending'"` // pending | active | completed | cancelled
+	CreatedAt   time.Time      `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt   time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
+	CompletedAt *time.Time     `json:"completed_at"`
+}
+
+// TableName returns the GORM table name
+func (AgentHiring) TableName() string {
+	return "agent_hirings"
+}
+
+// FunctionPurchase represents a purchase record when an agent buys a function
+// Note: This is stored in a separate table via migration
+// Migration: CREATE TABLE IF NOT EXISTS function_purchases (...)
+type FunctionPurchase struct {
+	ID             uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AgentID        string    `json:"agent_id" gorm:"not null;index"`
+	FunctionAuthor string    `json:"function_author" gorm:"not null"`
+	FunctionName   string    `json:"function_name" gorm:"not null"`
+	PublishedID    uuid.UUID `json:"published_id" gorm:"type:uuid;not null"`
+	PricePaidUSD   float64   `json:"price_paid_usd" gorm:"type:decimal(12,2);default:0"`
+	Status         string    `json:"status" gorm:"not null;default:'completed'"` // completed | refunded | disputed
+	CreatedAt      time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt      time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+// TableName returns the GORM table name
+func (FunctionPurchase) TableName() string {
+	return "function_purchases"
 }

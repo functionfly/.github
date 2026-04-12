@@ -17,7 +17,8 @@ func (r *UserRepository) CreateUser(email, passwordHash string, tenantID uuid.UU
 		TenantID:      tenantID,
 		Email:         email,
 		PasswordHash:  passwordHash,
-		EmailVerified: true, // Auto-verify for setup
+		Role:          "user", // Default role for new users
+		EmailVerified: true,   // Auto-verify for setup
 		MFAEnabled:    false,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
@@ -57,7 +58,8 @@ func (r *UserRepository) CreateUserWithSocialAuth(email string, tenantID uuid.UU
 		ID:            uuid.New(),
 		TenantID:      tenantID,
 		Email:         email,
-		EmailVerified: true, // Social auth users are pre-verified
+		Role:          "user", // Default role for new users
+		EmailVerified: true,   // Social auth users are pre-verified
 		Provider:      &provider,
 		ProviderID:    &providerID,
 		ProviderData:  providerData,

@@ -18,13 +18,15 @@ type Service interface {
 	SendPasswordResetEmail(user *storage.User, resetToken string) error
 	SendBreachNotification(recipients []string, breachDetails map[string]interface{}) error
 	SendWaitlistConfirmationEmail(email string) error
+	SendNewsletterSubscriptionConfirmation(email, name string) error
+	SendNewsletterCampaign(to []string, subject, previewText, htmlContent string) error
 	SendEmail(to, subject, textBody, htmlBody string) error
 	ValidateConfiguration() error
 }
 
 // Config holds email service configuration
 type Config struct {
-	Provider      string // "resend" or "smtp"
+	Provider     string // "resend" or "smtp"
 	SMTPHost     string
 	SMTPPort     int
 	SMTPUsername string
@@ -346,6 +348,93 @@ func (s *SMTPService) sendEmail(to, subject, textBody, htmlBody string) error {
 	return nil
 }
 
+func (s *SMTPService) SendNewsletterSubscriptionConfirmation(email, name string) error {
+	subject := "You're subscribed — FunctionFly"
+
+	greeting := "Thanks for subscribing"
+	if name != "" {
+		greeting = "Hi " + name
+	}
+
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You're subscribed — FunctionFly</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;">
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#0F172A;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#6366F1;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <tr><td style="padding:40px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">You're subscribed!</h1>
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                %s! You've successfully subscribed to the FunctionFly newsletter.
+              </p>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                Get ready for product updates, feature announcements, and more. We promise to only send you things worth reading.
+              </p>
+            </td></tr>
+            <tr><td style="padding:0 40px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:16px 20px;">
+                  <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                    You can unsubscribe at any time using the link in our emails.
+                  </p>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`, greeting, TransactionalEmailCopyrightHTML())
+
+	textBody := fmt.Sprintf(`You're subscribed — FunctionFly
+
+%s! You've successfully subscribed to the FunctionFly newsletter.
+
+Get ready for product updates, feature announcements, and more. We promise to only send you things worth reading.
+
+You can unsubscribe at any time using the link in our emails.
+
+--
+%s`, greeting, TransactionalEmailCopyrightPlain())
+
+	return s.sendEmail(email, subject, textBody, htmlBody)
+}
+
+func (s *SMTPService) SendNewsletterCampaign(to []string, subject, previewText, htmlContent string) error {
+	if len(to) == 0 {
+		return fmt.Errorf("no recipients specified for newsletter campaign")
+	}
+	return s.sendEmailToMultiple(to, subject, previewText, htmlContent)
+}
+
 // MockService implements the Service interface using SMTP (for testing with real email sending)
 type MockService struct {
 	config Config
@@ -358,6 +447,102 @@ func NewMockService(config Config) *MockService {
 	}
 }
 
+// sendEmailToMultiple sends an email to multiple recipients
+func (s *SMTPService) sendEmailToMultiple(to []string, subject, textBody, htmlBody string) error {
+	// Create message
+	var message bytes.Buffer
+
+	// Headers
+	message.WriteString(fmt.Sprintf("From: %s <%s>\r\n", s.config.FromName, s.config.FromEmail))
+	message.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(to, ",")))
+	message.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
+	message.WriteString("MIME-Version: 1.0\r\n")
+	message.WriteString("Content-Type: multipart/alternative; boundary=boundary123\r\n")
+	message.WriteString("\r\n")
+
+	// Plain text part
+	message.WriteString("--boundary123\r\n")
+	message.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
+	message.WriteString("\r\n")
+	message.WriteString(textBody)
+	message.WriteString("\r\n\r\n")
+
+	// HTML part
+	message.WriteString("--boundary123\r\n")
+	message.WriteString("Content-Type: text/html; charset=utf-8\r\n")
+	message.WriteString("\r\n")
+	message.WriteString(htmlBody)
+	message.WriteString("\r\n\r\n")
+
+	message.WriteString("--boundary123--\r\n")
+
+	// SMTP server address
+	addr := fmt.Sprintf("%s:%d", s.config.SMTPHost, s.config.SMTPPort)
+
+	// Send email (with or without authentication)
+	var err error
+	if s.config.SMTPUsername != "" || s.config.SMTPPassword != "" {
+		// Use authentication when credentials are provided
+		auth := smtp.PlainAuth("", s.config.SMTPUsername, s.config.SMTPPassword, s.config.SMTPHost)
+		err = smtp.SendMail(addr, auth, s.config.FromEmail, to, message.Bytes())
+	} else {
+		// Send without authentication (for Mailpit and other local/dev servers)
+		err = smtp.SendMail(addr, nil, s.config.FromEmail, to, message.Bytes())
+	}
+	if err != nil {
+		return fmt.Errorf("failed to send breach notification email: %w", err)
+	}
+
+	return nil
+}
+
+// ValidateConfiguration checks if the email service is properly configured
+func (s *SMTPService) ValidateConfiguration() error {
+	if s.config.SMTPHost == "" {
+		return fmt.Errorf("SMTP host not configured")
+	}
+	if s.config.SMTPPort == 0 {
+		return fmt.Errorf("SMTP port not configured")
+	}
+	if s.config.FromEmail == "" {
+		return fmt.Errorf("from email not configured")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	addr := fmt.Sprintf("%s:%d", s.config.SMTPHost, s.config.SMTPPort)
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
+	conn, err := dialer.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return fmt.Errorf("SMTP server unreachable: %w", err)
+	}
+	conn.Close()
+
+	client, err := smtp.Dial(addr)
+	if err != nil {
+		return fmt.Errorf("SMTP connection failed: %w", err)
+	}
+	defer client.Close()
+
+	if err := client.Hello("functionfly-validation"); err != nil {
+		return fmt.Errorf("SMTP hello failed: %w", err)
+	}
+
+	if s.config.SMTPUsername != "" && s.config.SMTPPassword != "" {
+		auth := smtp.PlainAuth("", s.config.SMTPUsername, s.config.SMTPPassword, s.config.SMTPHost)
+		if err := client.Auth(auth); err != nil {
+			return fmt.Errorf("SMTP authentication failed: %w", err)
+		}
+	}
+
+	if err := client.Quit(); err != nil {
+		fmt.Printf("Warning: SMTP QUIT failed: %v\n", err)
+	}
+
+	return nil
+}
+
 // SendBreachNotification sends a GDPR breach notification email
 func (s *SMTPService) SendBreachNotification(recipients []string, breachDetails map[string]interface{}) error {
 	if len(recipients) == 0 {
@@ -366,7 +551,6 @@ func (s *SMTPService) SendBreachNotification(recipients []string, breachDetails 
 
 	subject := "URGENT: Data Breach Notification - GDPR Article 33 Compliance"
 
-	// Extract breach details with defaults
 	breachType := breachDetails["type"].(string)
 	if breachType == "" {
 		breachType = "Data Breach"
@@ -538,111 +722,6 @@ We'll send you an invite code as soon as we're ready for more users. Hang tight!
 We're rolling out access gradually to ensure the best experience for everyone. You'll be among the first to know when your spot is ready.
 `, TransactionalEmailCopyrightPlain())
 	return s.sendEmail(email, subject, textBody, htmlBody)
-}
-
-// ValidateConfiguration checks if the email service is properly configured
-func (s *SMTPService) ValidateConfiguration() error {
-	if s.config.SMTPHost == "" {
-		return fmt.Errorf("SMTP host not configured")
-	}
-	if s.config.SMTPPort == 0 {
-		return fmt.Errorf("SMTP port not configured")
-	}
-	if s.config.FromEmail == "" {
-		return fmt.Errorf("from email not configured")
-	}
-
-	// Test SMTP connection with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Construct SMTP server address
-	addr := fmt.Sprintf("%s:%d", s.config.SMTPHost, s.config.SMTPPort)
-
-	// Test basic TCP connection first
-	dialer := &net.Dialer{Timeout: 5 * time.Second}
-	conn, err := dialer.DialContext(ctx, "tcp", addr)
-	if err != nil {
-		return fmt.Errorf("SMTP server unreachable: %w", err)
-	}
-	conn.Close()
-
-	// Test SMTP handshake
-	client, err := smtp.Dial(addr)
-	if err != nil {
-		return fmt.Errorf("SMTP connection failed: %w", err)
-	}
-	defer client.Close()
-
-	// Get server greeting
-	if err := client.Hello("functionfly-validation"); err != nil {
-		return fmt.Errorf("SMTP hello failed: %w", err)
-	}
-
-	// Test authentication if credentials are provided
-	if s.config.SMTPUsername != "" && s.config.SMTPPassword != "" {
-		auth := smtp.PlainAuth("", s.config.SMTPUsername, s.config.SMTPPassword, s.config.SMTPHost)
-		if err := client.Auth(auth); err != nil {
-			return fmt.Errorf("SMTP authentication failed: %w", err)
-		}
-	}
-
-	// Send QUIT to gracefully close connection
-	if err := client.Quit(); err != nil {
-		// This is not a critical error, just log it
-		fmt.Printf("Warning: SMTP QUIT failed: %v\n", err)
-	}
-
-	return nil
-}
-
-// sendEmailToMultiple sends an email to multiple recipients
-func (s *SMTPService) sendEmailToMultiple(to []string, subject, textBody, htmlBody string) error {
-	// Create message
-	var message bytes.Buffer
-
-	// Headers
-	message.WriteString(fmt.Sprintf("From: %s <%s>\r\n", s.config.FromName, s.config.FromEmail))
-	message.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(to, ",")))
-	message.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
-	message.WriteString("MIME-Version: 1.0\r\n")
-	message.WriteString("Content-Type: multipart/alternative; boundary=boundary123\r\n")
-	message.WriteString("\r\n")
-
-	// Plain text part
-	message.WriteString("--boundary123\r\n")
-	message.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
-	message.WriteString("\r\n")
-	message.WriteString(textBody)
-	message.WriteString("\r\n\r\n")
-
-	// HTML part
-	message.WriteString("--boundary123\r\n")
-	message.WriteString("Content-Type: text/html; charset=utf-8\r\n")
-	message.WriteString("\r\n")
-	message.WriteString(htmlBody)
-	message.WriteString("\r\n\r\n")
-
-	message.WriteString("--boundary123--\r\n")
-
-	// SMTP server address
-	addr := fmt.Sprintf("%s:%d", s.config.SMTPHost, s.config.SMTPPort)
-
-	// Send email (with or without authentication)
-	var err error
-	if s.config.SMTPUsername != "" || s.config.SMTPPassword != "" {
-		// Use authentication when credentials are provided
-		auth := smtp.PlainAuth("", s.config.SMTPUsername, s.config.SMTPPassword, s.config.SMTPHost)
-		err = smtp.SendMail(addr, auth, s.config.FromEmail, to, message.Bytes())
-	} else {
-		// Send without authentication (for Mailpit and other local/dev servers)
-		err = smtp.SendMail(addr, nil, s.config.FromEmail, to, message.Bytes())
-	}
-	if err != nil {
-		return fmt.Errorf("failed to send breach notification email: %w", err)
-	}
-
-	return nil
 }
 
 // SendVerificationEmail sends an email verification email to a user (with real SMTP for testing)
@@ -1052,6 +1131,93 @@ We'll send you an invite code as soon as we're ready for more users. Hang tight!
 We're rolling out access gradually to ensure the best experience for everyone. You'll be among the first to know when your spot is ready.
 `, TransactionalEmailCopyrightPlain())
 	return m.sendEmail(email, subject, textBody, htmlBody)
+}
+
+func (m *MockService) SendNewsletterSubscriptionConfirmation(email, name string) error {
+	subject := "You're subscribed — FunctionFly"
+
+	greeting := "Thanks for subscribing"
+	if name != "" {
+		greeting = "Hi " + name
+	}
+
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You're subscribed — FunctionFly</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;">
+        <tr><td align="center" style="padding-bottom:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:10px;vertical-align:middle;">
+                <table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0">
+                  <tr><td style="background:#0F172A;border-radius:6px;width:32px;height:32px;text-align:center;vertical-align:middle;">
+                    <div style="width:14px;height:14px;background:#6366F1;transform:rotate(45deg);margin:0 auto;"></div>
+                  </td></tr>
+                </table>
+              </td>
+              <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">FunctionFly</td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+            <tr><td style="padding:40px 40px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#fafafa;letter-spacing:-0.02em;">You're subscribed!</h1>
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                %s! You've successfully subscribed to the FunctionFly newsletter.
+              </p>
+            </td></tr>
+            <tr><td style="padding:24px 40px 0;">
+              <p style="margin:0;font-size:15px;color:#a1a1aa;line-height:1.6;">
+                Get ready for product updates, feature announcements, and more. We promise to only send you things worth reading.
+              </p>
+            </td></tr>
+            <tr><td style="padding:0 40px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%%">
+                <tr><td style="background:#111113;border:1px solid #27272a;border-radius:8px;padding:16px 20px;">
+                  <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+                    You can unsubscribe at any time using the link in our emails.
+                  </p>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 16px;text-align:center;">
+          <div style="margin:0;font-size:12px;color:#52525b;line-height:1.6;">%s</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`, greeting, TransactionalEmailCopyrightHTML())
+
+	textBody := fmt.Sprintf(`You're subscribed — FunctionFly
+
+%s! You've successfully subscribed to the FunctionFly newsletter.
+
+Get ready for product updates, feature announcements, and more. We promise to only send you things worth reading.
+
+You can unsubscribe at any time using the link in our emails.
+
+--
+%s`, greeting, TransactionalEmailCopyrightPlain())
+
+	return m.sendEmail(email, subject, textBody, htmlBody)
+}
+
+func (m *MockService) SendNewsletterCampaign(to []string, subject, previewText, htmlContent string) error {
+	if len(to) == 0 {
+		return fmt.Errorf("no recipients specified for newsletter campaign")
+	}
+	return m.sendEmailToMultiple(to, subject, previewText, htmlContent)
 }
 
 // sendEmail sends an email using SMTP for the mock service

@@ -16,8 +16,10 @@ import (
 // UpstashRedisClient is a wrapper around upstash-go that provides
 // a compatible interface with go-redis/v9 for use throughout the codebase.
 type UpstashRedisClient struct {
-	client  *upstash.Upstash
-	isNil   bool
+	client      *upstash.Upstash
+	stdRedis    *redis.Client // Standard go-redis client (used when Upstash isn't configured)
+	isNil       bool
+	useStdRedis bool // Flag to indicate we're using standard Redis
 }
 
 // UpstashConfig holds configuration for Upstash Redis connection
@@ -80,15 +82,44 @@ func NewUpstashRedisClientFromEnv() *UpstashRedisClient {
 	return NewUpstashRedisClient(config)
 }
 
+// NewUpstashRedisClientFromStandardRedis creates an UpstashRedisClient wrapper
+// around a standard go-redis client. This is used for local development when
+// Upstash is not configured but we still need the Upstash-compatible interface.
+func NewUpstashRedisClientFromStandardRedis(rdb *redis.Client) *UpstashRedisClient {
+	if rdb == nil {
+		return &UpstashRedisClient{isNil: true}
+	}
+	return &UpstashRedisClient{
+		stdRedis:    rdb,
+		isNil:       false,
+		useStdRedis: true,
+	}
+}
+
 // isInitialized checks if the client is properly initialized
 func (c *UpstashRedisClient) isInitialized() bool {
-	return c != nil && !c.isNil && c.client != nil
+	if c == nil || c.isNil {
+		return false
+	}
+	return c.client != nil || c.useStdRedis
 }
 
 // Get retrieves a value by key
 func (c *UpstashRedisClient) Get(ctx context.Context, key string) ([]byte, error) {
 	if !c.isInitialized() {
 		return nil, redis.Nil
+	}
+
+	// Use standard Redis client if configured
+	if c.useStdRedis && c.stdRedis != nil {
+		val, err := c.stdRedis.Get(ctx, key).Result()
+		if err != nil {
+			if err == redis.Nil {
+				return nil, redis.Nil
+			}
+			return nil, err
+		}
+		return []byte(val), nil
 	}
 
 	val, err := c.client.Get(ctx, key)
@@ -121,6 +152,11 @@ func (c *UpstashRedisClient) Set(ctx context.Context, key string, value interfac
 		data = string(jsonData)
 	}
 
+	// Use standard Redis client if configured
+	if c.useStdRedis && c.stdRedis != nil {
+		return c.stdRedis.Set(ctx, key, data, expiration).Err()
+	}
+
 	if expiration > 0 {
 		return c.client.SetEX(ctx, key, int(expiration.Seconds()), data)
 	}
@@ -140,6 +176,11 @@ func (c *UpstashRedisClient) SetJSON(ctx context.Context, key string, value inte
 func (c *UpstashRedisClient) Del(ctx context.Context, keys ...string) (int64, error) {
 	if !c.isInitialized() {
 		return 0, nil
+	}
+
+	// Use standard Redis client if configured
+	if c.useStdRedis && c.stdRedis != nil {
+		return c.stdRedis.Del(ctx, keys...).Result()
 	}
 
 	count, err := c.client.Del(ctx, keys...)
@@ -198,6 +239,11 @@ func (c *UpstashRedisClient) ZRemRangeByScore(ctx context.Context, key, min, max
 func (c *UpstashRedisClient) Expire(ctx context.Context, key string, expiration time.Duration) (bool, error) {
 	if !c.isInitialized() {
 		return false, nil
+	}
+
+	// Use standard Redis client if configured
+	if c.useStdRedis && c.stdRedis != nil {
+		return c.stdRedis.Expire(ctx, key, expiration).Result()
 	}
 
 	result, err := c.client.Expire(ctx, key, int(expiration.Seconds()))
