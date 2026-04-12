@@ -19,10 +19,11 @@ export default () => {
       expiresIn: process.env.JWT_EXPIRES_IN || "7d",
     },
     cors: {
-    origin: mergeCorsOrigins(process.env.CORS_ORIGIN),
-  },
-  rateLimit: {
-    ttl: parseInt(process.env.RATE_LIMIT_TTL || "60000", 10),
-    limit: parseInt(process.env.RATE_LIMIT_LIMIT || "100", 10),
-  },
-});
+      origin: mergeCorsOrigins(process.env.CORS_ORIGIN),
+    },
+    rateLimit: {
+      ttl: parseInt(process.env.RATE_LIMIT_TTL || "60000", 10),
+      limit: parseInt(process.env.RATE_LIMIT_LIMIT || "100", 10),
+    },
+  };
+};

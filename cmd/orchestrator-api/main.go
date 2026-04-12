@@ -9,10 +9,17 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
+	// Load .env file if present (for local development)
+	if err := godotenv.Load(); err != nil {
+		// Only warn, don't fail - production uses actual env vars
+		logrus.WithError(err).Debug("No .env file loaded (using environment variables)")
+	}
+
 	// Parse command line flags
 	port := flag.Int("port", 8080, "Port to listen on")
 	skipMigrations := flag.Bool("skip-migrations", false, "Skip database migrations")

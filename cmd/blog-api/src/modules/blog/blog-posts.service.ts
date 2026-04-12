@@ -9,7 +9,7 @@ export class BlogPostsService {
   constructor(private databaseService: DatabaseService) {}
 
   async findAll(query: BlogPostQueryDto) {
-    const { page = 1, limit = 10, status, category, author, search } = query;
+    const { page = 1, limit = 10, status, category, author, search, tag } = query;
     const offset = (page - 1) * limit;
 
     // Build conditions
@@ -26,8 +26,50 @@ export class BlogPostsService {
       ));
     }
 
+    // Category filter by slug
     if (category) {
-      // Join with categories - would need a subquery
+      const categoryResult = await this.databaseService.getDatabase()
+        .select({ id: categories.id })
+        .from(categories)
+        .where(eq(categories.slug, category))
+        .limit(1);
+
+      if (categoryResult.length > 0) {
+        conditions.push(eq(blogPosts.categoryId, categoryResult[0].id));
+      }
+    }
+
+    // Author filter by slug
+    if (author) {
+      const authorResult = await this.databaseService.getDatabase()
+        .select({ id: authors.id })
+        .from(authors)
+        .where(eq(authors.slug, author))
+        .limit(1);
+
+      if (authorResult.length > 0) {
+        conditions.push(eq(blogPosts.authorId, authorResult[0].id));
+      }
+    }
+
+    // Tag filter
+    if (tag) {
+      conditions.push(
+        like(blogPosts.tags, `%${tag}%`)
+      );
+    }
+
+    // Search functionality
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      conditions.push(
+        or(
+          like(blogPosts.title, searchTerm),
+          like(blogPosts.description, searchTerm),
+          like(blogPosts.body, searchTerm),
+          like(blogPosts.tags, searchTerm)
+        )
+      );
     }
 
     // Get total count
@@ -86,6 +128,7 @@ export class BlogPostsService {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+        ...(search && { search }),
       },
     };
   }

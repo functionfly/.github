@@ -238,5 +238,10 @@ export class BlogPostQueryDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  tag?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   search?: string;
 }

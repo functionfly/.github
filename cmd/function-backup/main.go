@@ -22,6 +22,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -44,35 +45,35 @@ import (
 
 // BackupConfig holds configuration for the backup operation
 type BackupConfig struct {
-	RetentionDays    int
-	CompressLevel    int
-	Encrypt          bool
-	DryRun           bool
-	Tables           []string
-	BackupBucket     string
-	R2AccountID      string
-	R2AccessKeyID    string
-	R2SecretKey      string
-	DatabaseURL      string
-	GPGKeyID         string
-	ParallelWorkers  int
-	VerifyUpload     bool
+	RetentionDays   int
+	CompressLevel   int
+	Encrypt         bool
+	DryRun          bool
+	Tables          []string
+	BackupBucket    string
+	R2AccountID     string
+	R2AccessKeyID   string
+	R2SecretKey     string
+	DatabaseURL     string
+	GPGKeyID        string
+	ParallelWorkers int
+	VerifyUpload    bool
 }
 
 // BackupMetadata contains metadata about a backup
 type BackupMetadata struct {
-	Timestamp       string   `json:"timestamp"`
-	DatePath        string   `json:"date_path"`
-	R2Key           string   `json:"r2_key"`
-	R2Bucket        string   `json:"r2_bucket"`
-	Checksum        string   `json:"checksum"`
-	CompressedSize  int64    `json:"compressed_size"`
-	UncompressedSize int64 `json:"uncompressed_size"`
-	CompressionRatio float64 `json:"compression_ratio"`
-	RetentionDays   int      `json:"retention_days"`
-	TablesBackedUp []string `json:"tables_backed_up"`
-	Duration        string   `json:"duration"`
-	Encrypted       bool     `json:"encrypted"`
+	Timestamp        string   `json:"timestamp"`
+	DatePath         string   `json:"date_path"`
+	R2Key            string   `json:"r2_key"`
+	R2Bucket         string   `json:"r2_bucket"`
+	Checksum         string   `json:"checksum"`
+	CompressedSize   int64    `json:"compressed_size"`
+	UncompressedSize int64    `json:"uncompressed_size"`
+	CompressionRatio float64  `json:"compression_ratio"`
+	RetentionDays    int      `json:"retention_days"`
+	TablesBackedUp   []string `json:"tables_backed_up"`
+	Duration         string   `json:"duration"`
+	Encrypted        bool     `json:"encrypted"`
 }
 
 // Default tables to backup (in dependency order)
@@ -327,13 +328,13 @@ func runBackup(ctx context.Context, client *s3.Client, config *BackupConfig) err
 		ContentType: &contentType,
 		ACL:         awsTypes.ObjectCannedACLPrivate,
 		Metadata: map[string]string{
-			"backup-timestamp":    timestampStr,
-			"content-checksum":    checksumHex,
-			"uncompressed-size":   fmt.Sprintf("%d", uncompressedSize),
-			"compressed-size":     fmt.Sprintf("%d", compressedSize),
-			"compression-ratio":   fmt.Sprintf("%.2f", compressionRatio),
-			"retention-days":      fmt.Sprintf("%d", config.RetentionDays),
-			"backup-type":         "function-data",
+			"backup-timestamp":  timestampStr,
+			"content-checksum":  checksumHex,
+			"uncompressed-size": fmt.Sprintf("%d", uncompressedSize),
+			"compressed-size":   fmt.Sprintf("%d", compressedSize),
+			"compression-ratio": fmt.Sprintf("%.2f", compressionRatio),
+			"retention-days":    fmt.Sprintf("%d", config.RetentionDays),
+			"backup-type":       "function-data",
 			"tables":            strings.Join(config.Tables, ","),
 		},
 	})
@@ -369,18 +370,18 @@ func runBackup(ctx context.Context, client *s3.Client, config *BackupConfig) err
 
 	// Upload metadata
 	metadata := &BackupMetadata{
-		Timestamp:          timestampStr,
-		DatePath:           datePath,
-		R2Key:              r2Key,
-		R2Bucket:           config.BackupBucket,
-		Checksum:           checksumHex,
-		CompressedSize:     compressedSize,
-		UncompressedSize:   uncompressedSize,
-		CompressionRatio:   compressionRatio,
-		RetentionDays:      config.RetentionDays,
-		TablesBackedUp:     config.Tables,
-		Duration:           "", // Will be set later
-		Encrypted:          config.Encrypt,
+		Timestamp:        timestampStr,
+		DatePath:         datePath,
+		R2Key:            r2Key,
+		R2Bucket:         config.BackupBucket,
+		Checksum:         checksumHex,
+		CompressedSize:   compressedSize,
+		UncompressedSize: uncompressedSize,
+		CompressionRatio: compressionRatio,
+		RetentionDays:    config.RetentionDays,
+		TablesBackedUp:   config.Tables,
+		Duration:         "", // Will be set later
+		Encrypted:        config.Encrypt,
 	}
 
 	metaKey := r2Key + ".meta.json"
@@ -405,37 +406,136 @@ func runBackup(ctx context.Context, client *s3.Client, config *BackupConfig) err
 }
 
 func dumpFunctionsData(config *BackupConfig) ([]byte, error) {
-	// For simplicity, this creates a SQL dump using pg_dump
-	// In production, you might want to use a Go PostgreSQL driver
-
-	// Check if pg_dump is available
-	pgDumpPath, err := findPgDump()
+	// Use Go PostgreSQL driver for database backup
+	db, err := sql.Open("postgres", config.DatabaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("pg_dump not found: %w", err)
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Build pg_dump command
-	args := []string{
-		"--data-only",
-		"--no-owner",
-		"--no-privileges",
-		"--disable-triggers",
-		config.DatabaseURL,
-	}
+	var buf bytes.Buffer
 
-	// Add table filters
+	// Write SQL header
+	buf.WriteString(fmt.Sprintf("-- FunctionFly Backup\n"))
+	buf.WriteString(fmt.Sprintf("-- Generated: %s\n", time.Now().UTC().Format(time.RFC3339)))
+	buf.WriteString(fmt.Sprintf("-- Tables: %s\n\n", strings.Join(config.Tables, ", ")))
+
+	// Disable triggers for data-only restore
+	buf.WriteString("SET session_replication_role = replica;\n\n")
+
 	for _, table := range config.Tables {
-		args = append(args, "--table="+table)
+		if err := dumpTable(db, table, &buf); err != nil {
+			return nil, fmt.Errorf("failed to dump table %s: %w", table, err)
+		}
 	}
 
-	// Execute pg_dump
-	cmd := execCommand(pgDumpPath, args...)
-	output, err := cmd.CombinedOutput()
+	buf.WriteString("\nSET session_replication_role = DEFAULT;\n")
+
+	return buf.Bytes(), nil
+}
+
+func dumpTable(db *sql.DB, table string, buf *bytes.Buffer) error {
+	// Get column names
+	rows, err := db.Query(fmt.Sprintf(
+		"SELECT column_name FROM information_schema.columns WHERE table_name = $1 ORDER BY ordinal_position",
+	), table)
 	if err != nil {
-		return nil, fmt.Errorf("pg_dump failed: %w\nOutput: %s", err, string(output))
+		return fmt.Errorf("failed to get columns: %w", err)
+	}
+	defer rows.Close()
+
+	var columns []string
+	for rows.Next() {
+		var col string
+		if err := rows.Scan(&col); err != nil {
+			return err
+		}
+		columns = append(columns, col)
+	}
+	rows.Close()
+
+	if len(columns) == 0 {
+		return fmt.Errorf("table %s not found or has no columns", table)
 	}
 
-	return output, nil
+	// Build and execute COPY query for efficient export
+	colList := strings.Join(columns, ", ")
+	query := fmt.Sprintf("SELECT %s FROM %s", colList, table)
+
+	dataRows, err := db.Query(query)
+	if err != nil {
+		return fmt.Errorf("failed to query data: %w", err)
+	}
+	defer dataRows.Close()
+
+	columnTypes, err := dataRows.ColumnTypes()
+	if err != nil {
+		return fmt.Errorf("failed to get column types: %w", err)
+	}
+
+	// Write COPY statement header
+	buf.WriteString(fmt.Sprintf("COPY %s (%s) FROM stdin;\n", table, colList))
+
+	values := make([]interface{}, len(columns))
+	valuePtrs := make([]interface{}, len(columns))
+	for i := range values {
+		valuePtrs[i] = &values[i]
+	}
+
+	rowCount := 0
+	for dataRows.Next() {
+		if err := dataRows.Scan(valuePtrs...); err != nil {
+			return fmt.Errorf("failed to scan row: %w", err)
+		}
+
+		// Format values for COPY format (tab-delimited, newline-terminated)
+		var formatted []string
+		for i, v := range values {
+			formatted = append(formatted, formatCopyValue(v, columnTypes[i]))
+		}
+		buf.WriteString(strings.Join(formatted, "\t") + "\n")
+		rowCount++
+	}
+
+	if err := dataRows.Err(); err != nil {
+		return fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	buf.WriteString("\\.\n\n")
+	log.Printf("  Table %s: %d rows exported", table, rowCount)
+
+	return nil
+}
+
+func formatCopyValue(v interface{}, ct *sql.ColumnType) string {
+	if v == nil {
+		return "\\N"
+	}
+
+	switch val := v.(type) {
+	case []byte:
+		// Escape special characters for COPY format
+		s := string(val)
+		s = strings.ReplaceAll(s, "\\", "\\\\")
+		s = strings.ReplaceAll(s, "\t", "\\t")
+		s = strings.ReplaceAll(s, "\n", "\\n")
+		s = strings.ReplaceAll(s, "\r", "\\r")
+		return s
+	case string:
+		val = strings.ReplaceAll(val, "\\", "\\\\")
+		val = strings.ReplaceAll(val, "\t", "\\t")
+		val = strings.ReplaceAll(val, "\n", "\\n")
+		val = strings.ReplaceAll(val, "\r", "\\r")
+		return val
+	case time.Time:
+		return val.Format("2006-01-02 15:04:05.999999")
+	default:
+		return fmt.Sprintf("%v", val)
+	}
 }
 
 func findPgDump() (string, error) {
