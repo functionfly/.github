@@ -1,0 +1,47 @@
+# Prometheus + Health Monitoring for FunctionFly on Fly.io
+# Deploys Prometheus to scrape metrics from the orchestrator and other services
+
+app = "functionfly-prometheus"
+primary_region = "ord"
+
+[build]
+  dockerfile = "deploy/monitoring/Dockerfile.prometheus"
+
+[env]
+  # Basic Prometheus config
+  PROMETHEUS_STORAGE_PATH = "/prometheus/data"
+  PROMETHEUS_RETENTION_TIME = "15d"
+  PROMETHEUS_RETENTION_SIZE = "5GB"
+
+# Prometheus UI and API
+[http_service]
+  internal_port = 9090
+  force_https = true
+  auto_stop_machines = false  # Keep running for continuous monitoring
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/-/healthy"
+    protocol = "http"
+
+# VM configuration - minimal since Prometheus is lightweight for our use case
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
+
+# Persistent volume for metrics data
+[[mounts]]
+  source = "prometheus_data"
+  destination = "/prometheus/data"
+  initial_size = "10gb"
+
+[deploy]
+  strategy = "rolling"
+  max_unavailable = 1
+  wait_timeout = "2m0s"

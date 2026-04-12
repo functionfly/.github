@@ -1,0 +1,35 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+rule_files:
+  - "alert_rules.yml"
+
+# No alertmanager in minimal config - can add later
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#             - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # FunctionFly Control API (use Fly.io public HTTPS on port 443)
+  - job_name: "functionfly-control"
+    static_configs:
+      - targets: ["functionfly-control.fly.dev:443"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+    scheme: https
+
+  # FunctionFly AI Service (Python/FastAPI)
+  - job_name: "functionfly-ai-service"
+    static_configs:
+      - targets: ["functionfly-ai-service.fly.dev:443"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+    scheme: https

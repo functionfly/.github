@@ -9,8 +9,8 @@
 
 # Global settings
 {
-    # Enable automatic HTTPS
-    auto_https disable_redirects
+    # Enable automatic HTTPS with HTTP to HTTPS redirects
+    auto_https on
     # Log to stdout for Docker
     log {
         output stdout
@@ -176,7 +176,7 @@ app.functionfly.com {
         X-XSS-Protection "1; mode=block"
         Referrer-Policy "strict-origin-when-cross-origin"
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:; form-action 'self' https://api.functionfly.com https://api.staging.functionfly.com;"
     }
 
     reverse_proxy dashboard:3000 {
@@ -195,7 +195,7 @@ admin.functionfly.com {
         X-XSS-Protection "1; mode=block"
         Referrer-Policy "strict-origin-when-cross-origin"
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:; form-action 'self' https://api.functionfly.com https://api.staging.functionfly.com;"
     }
 
     reverse_proxy dashboard:3000 {
@@ -262,6 +262,47 @@ registry.functionfly.com {
     }
 }
 
+# API subdomain - api.functionfly.com
+api.functionfly.com {
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'self'; connect-src 'self' https: wss:;"
+    }
+
+    # Stricter rate limiting for API
+    rate_limit {
+        zone api_subdomain {
+            key {remote_host}
+            window 1m
+            events 1000
+        }
+    }
+
+    # CORS headers for API
+    header {
+        Access-Control-Allow-Origin "https://app.functionfly.com"
+        Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info"
+        Access-Control-Allow-Credentials "true"
+    }
+
+    # Health check endpoint
+    /healthz {
+        respond "OK" 200
+    }
+
+    reverse_proxy orchestrator-api:8080 {
+        header_up X-Forwarded-Host {host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
 # Documentation subdomain - docs.functionfly.com
 docs.functionfly.com {
     # Security headers
@@ -289,7 +330,7 @@ auth.functionfly.com {
         X-XSS-Protection "1; mode=block"
         Referrer-Policy "strict-origin-when-cross-origin"
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.functionfly.com wss:;"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.functionfly.com wss:; form-action 'self' https://api.functionfly.com https://api.staging.functionfly.com;"
     }
 
     # Serve static auth site

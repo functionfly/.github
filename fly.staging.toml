@@ -1,0 +1,108 @@
+# FunctionFly Registry Staging Configuration
+# Fly.io deployment for staging environment (Neon-based)
+
+app = "functionfly-orchestrator-staging"
+primary_region = "iad"
+
+[build]
+  dockerfile = "deploy/docker/Dockerfile.orchestrator"
+
+[env]
+  APP_ENV = "staging"
+  APP_LOG_LEVEL = "debug"
+  PRODUCTION_ENV = "false"
+  DEVELOPMENT = "false"
+  APP_PORT = "8080"
+
+  # Database - Neon (same production instance, separate schema or database)
+  DB_SSLMODE = "require"
+  DB_MAX_OPEN_CONNS = "10"
+  DB_MAX_IDLE_CONNS = "3"
+  DB_CONN_MAX_LIFETIME = "10m"
+
+  # Disable read replicas in staging
+  DB_READ_REPLICA_ENABLED = "false"
+
+  # Redis/Upstash
+  REDIS_MAX_CONNECTIONS = "20"
+  REDIS_MAX_IDLE_CONNECTIONS = "5"
+  ARTIFACT_TTL = "24h"
+
+  # Security - relaxed for testing
+  VERIFICATION_ENABLED = "true"
+  MINIMUM_TRUST_LEVEL = "community"
+
+  # R2 Storage - staging bucket
+  R2_BUCKET = "functionfly-staging"
+
+  # AI Service - staging instance
+  AI_SERVICE_URL = "http://localhost:8081"
+  AI_SUPPORT_ENABLED = "true"
+  AI_SUPPORT_MODEL = "gpt-4o-mini"
+
+  # Monitoring
+  METRICS_PORT = "9090"
+  METRICS_ENABLED = "true"
+  TRACING_ENABLED = "true"
+  TRACING_SAMPLE_RATE = "0.5"
+
+  # Registry Settings
+  REGISTRY_CACHE_TTL = "300"
+  CACHE_DEFAULT_TTL = "1800"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+    protocol = "http"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 1024
+
+[[metrics]]
+  port = 9090
+  path = "/metrics"
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+# Staging uses ephemeral storage (smaller, auto-cleanup)
+[mounts]
+  source = "functionfly_staging_data"
+  destination = "/data"
+  initial_size = "5gb"
+
+[deploy]
+  strategy = "rolling"
+  max_unavailable = 1
+  wait_timeout = "3m0s"
+
+# Staging secrets (set via `fly secrets set --app functionfly-orchestrator-staging`)
+# Required:
+# - DATABASE_URL (Neon staging database)
+# - REDIS_URL (Upstash staging)
+# - R2_ACCESS_KEY_ID
+# - R2_SECRET_ACCESS_KEY
+# - R2_ENDPOINT
+# - JWT_SECRET

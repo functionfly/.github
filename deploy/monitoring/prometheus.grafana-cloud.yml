@@ -1,0 +1,50 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+# Scrape configs - targets are internal Fly.io services
+scrape_configs:
+  # Prometheus itself
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # FunctionFly Orchestrator API (on Fly.io)
+  - job_name: "functionfly-orchestrator"
+    static_configs:
+      - targets: ["functionfly-orchestrator.internal:9090"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # FunctionFly Control API
+  - job_name: "functionfly-control"
+    static_configs:
+      - targets: ["functionfly-control.internal:9090"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # FunctionFly AI Service
+  - job_name: "functionfly-ai-service"
+    static_configs:
+      - targets: ["functionfly-ai-service.internal:9090"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+# Remote write to Grafana Cloud
+# Credentials come from environment variables set via fly secrets
+remote_write:
+  - url: ${GRAFANA_CLOUD_URL}
+    basic_auth:
+      username: ${GRAFANA_CLOUD_USER}
+      password: ${GRAFANA_CLOUD_API_KEY}
+    queue_config:
+      capacity: 10000
+      max_shards: 5
+      min_shards: 1
+      batch_send_deadline: 5s
+    write_relabel_configs:
+      # Add job label for identification
+      - source_labels: [__name__]
+        target_label: job
+        regex: (.+)
+        replacement: ${1}

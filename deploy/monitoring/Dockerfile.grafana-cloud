@@ -1,0 +1,28 @@
+FROM prom/prometheus:latest
+
+# Copy custom Prometheus configuration
+COPY deploy/monitoring/prometheus.grafana-cloud.yml /etc/prometheus/prometheus.yml
+
+# Create directories for data
+RUN mkdir -p /prometheus/data && \
+    chown -R nobody:nobody /prometheus
+
+# Use environment variables for Grafana Cloud credentials
+# These should be set via `fly secrets set`
+ENV GRAFANA_CLOUD_URL=""
+ENV GRAFANA_CLOUD_USER=""
+ENV GRAFANA_CLOUD_API_KEY=""
+
+# Expose Prometheus port (for local scraping and debugging)
+EXPOSE 9090
+
+# Run Prometheus with environment variable expansion
+ENTRYPOINT ["/bin/prometheus"]
+CMD ["--config.file=/etc/prometheus/prometheus.yml", \
+     "--storage.tsdb.path=/prometheus/data", \
+     "--storage.tsdb.retention.time=2d", \
+     "--storage.tsdb.retention.size=500MB", \
+     "--web.console.libraries=/usr/share/prometheus/console_libraries", \
+     "--web.console.templates=/usr/share/prometheus/consoles", \
+     "--web.enable-lifecycle", \
+     "--config.expand-env=true"]

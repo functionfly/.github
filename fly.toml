@@ -1,71 +1,109 @@
-# Fly.io configuration for FunctionFly Orchestrator API
-# Deploy with: fly deploy
+# FunctionFly Registry Production Configuration
+# Fly.io deployment for production environment - COST OPTIMIZED
+# Uses Google Cloud Storage (GCS) with $300 free credits instead of R2
 
-app = "functionfly-api"
-primary_region = "ord"
+app = "functionfly-orchestrator"
+primary_region = "iad"
 
 [build]
-  dockerfile = "deploy/docker/Dockerfile.orchestrator"
+  dockerfile = "deploy/production/Dockerfile.orchestrator"
+
+[env]
+  APP_ENV = "production"
+  APP_LOG_LEVEL = "info"
+  PRODUCTION_ENV = "true"
+  APP_PORT = "8080"
+
+  # Database - Neon with PgBouncer
+  DB_SSLMODE = "require"
+  DB_MAX_OPEN_CONNS = "10"
+  DB_MAX_IDLE_CONNS = "3"
+  DB_CONN_MAX_LIFETIME = "10m"
+
+  # Read replica - disabled for cost savings (can enable later)
+  DB_READ_REPLICA_ENABLED = "false"
+
+  # Use Fly.io Redis (cheaper than Upstash) or disable if not needed
+  # Set REDIS_URL via fly secrets to use Fly.io Redis or external service
+  REDIS_MAX_CONNECTIONS = "20"
+  REDIS_MAX_IDLE_CONNECTIONS = "5"
+  ARTIFACT_TTL = "168h"
+
+  # Security
+  VERIFICATION_ENABLED = "true"
+  MINIMUM_TRUST_LEVEL = "standard"
+
+  # Storage: Use GCS with $300 free credits instead of R2
+  # Set STORAGE_PROVIDER=gcs via fly secrets to use Google Cloud Storage
+  # Or STORAGE_PROVIDER=r2 for Cloudflare R2
+  STORAGE_PROVIDER = "gcs"
+  GCS_BUCKET = "functionfly-prod"
+  R2_BUCKET = "functionfly-prod"
+
+  # AI Service - can disable in minimal config
+  AI_SERVICE_URL = "http://localhost:8081"
+  AI_SUPPORT_ENABLED = "true"
+  AI_SUPPORT_MODEL = "gpt-4o-mini"
+
+  # Monitoring - keep minimal
+  METRICS_PORT = "9090"
+  METRICS_ENABLED = "true"
+  TRACING_ENABLED = "false"
+  TRACING_SAMPLE_RATE = "0.1"
+
+  # Registry Settings
+  REGISTRY_CACHE_TTL = "300"
+  CACHE_DEFAULT_TTL = "1800"
+
+  # Backup
+  BACKUP_RETENTION_DAYS = "14"
+  BACKUP_SCHEDULE = "0 2 * * *"
 
 [http_service]
-  port = 8080
+  internal_port = 8080
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = true
   auto_start_machines = true
-  min_machines_running = 1
-  processes = ["app"]
+  min_machines_running = 0
 
-  # Health check configuration
-  [http_service.health_check]
-    path = "/health"
-    interval = 30
-    timeout = 10
-    grace_period = 5
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
     method = "GET"
+    path = "/health"
+    protocol = "http"
 
-# Machine configuration for the API
+# Cost-optimized: shared-cpu-1x (1 CPU, 1GB RAM) = ~$15/month vs ~$30 for 2x
 [[vm]]
-  size = "shared-cpu-2x"
-  memory = "512"
   cpu_kind = "shared"
-  cpus = 2
+  cpus = 1
+  memory_mb = 1024
 
-# Environment variables (non-sensitive)
-# Note: Secrets should be set via: fly secrets set KEY=value
-[env]
-  PORT = "8080"
-  LOG_LEVEL = "info"
-  DEVELOPMENT = "false"
+# Metrics disabled by default to save resources, enable via fly secrets if needed
+# [[metrics]]
+#   port = 9090
+#   path = "/metrics"
 
-# Runtime secrets - set these via fly CLI:
-#
-# Database (Neon PostgreSQL) - Option 1: DATABASE_URL (recommended)
-# fly secrets set DATABASE_URL="postgresql://user:pass@ep-xxx-pooler.us-east-1.aws.neon.tech/functionfly?sslmode=require"
-#
-# Database - Option 2: Individual DB_* variables
-# fly secrets set DB_HOST=ep-xxx-pooler.us-east-1.aws.neon.tech DB_PORT=5432 DB_USER=user DB_PASSWORD=pass DB_NAME=functionfly DB_SSLMODE=require
-#
-# Redis
-# fly secrets set REDIS_ADDR=your-redis-host:6379 REDIS_PASSWORD=your-redis-password
-#
-# Authentication & Security
-# fly secrets set JWT_SECRET=your-jwt-secret-min-32-chars API_SHARED_SECRET=your-secret BASE_URL=https://api.functionfly.com
-# fly secrets set DB_MASTER_KEY_PASSWORD=your-master-key
-#
-# See .fly/secrets.example for full list
+# Use ephemeral machine storage instead of persistent volume for cost savings
+# Data persists in Neon Postgres, GCS for backups/artifacts
+# [mounts]
+#   source = "functionfly_data"
+#   destination = "/data"
+#   initial_size = "10gb"
 
-# No [processes] override: Fly uses the image CMD (./orchestrator-api --skip-migrations) so the app binds to 0.0.0.0:8080.
-
-# Deployments configuration
 [deploy]
-  release_command = ""
-  wait_timeout = "60s"
+  strategy = "rolling"
+  max_unavailable = 1
+  wait_timeout = "5m0s"
 
-# Acme / TLS configuration (optional - Fly.io handles this automatically)
-# [[tls]]
-#   hosts = ["api.functionfly.com"]
-#   dns_validation = true
-
-# Experimental features
-[experimental]
-  auto_rollback = true
+# Cost-optimized estimated monthly costs with $300 GCP credits:
+# - Orchestrator (1x shared-cpu-1x, auto-stop): ~$15
+# - Neon Postgres (free tier or minimal): ~$0-19
+# - GCS Storage (covered by $300 free credits): ~$0 for 12-18 months
+# - Total: ~$15-35/month (vs ~$188 originally)
+#
+# GCP Credits Usage Estimate:
+# - GCS Standard: $0.020/GB/month
+# - 500GB = $10/month = ~30 months covered by $300
+# - Or 1TB = $20/month = ~15 months covered

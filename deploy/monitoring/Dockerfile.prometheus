@@ -1,0 +1,22 @@
+FROM prom/prometheus:latest
+
+# Copy custom Prometheus configuration
+COPY deploy/monitoring/prometheus.fly.yml /etc/prometheus/prometheus.yml
+COPY deploy/monitoring/alert_rules.yml /etc/prometheus/alert_rules.yml
+
+# Create directories for data
+RUN mkdir -p /prometheus/data && \
+    chown -R nobody:nobody /prometheus
+
+# Expose Prometheus port
+EXPOSE 9090
+
+# Run Prometheus with custom config
+CMD ["--config.file=/etc/prometheus/prometheus.yml", \
+     "--storage.tsdb.path=/prometheus/data", \
+     "--storage.tsdb.retention.time=15d", \
+     "--storage.tsdb.retention.size=5GB", \
+     "--web.console.libraries=/usr/share/prometheus/console_libraries", \
+     "--web.console.templates=/usr/share/prometheus/consoles", \
+     "--web.enable-lifecycle", \
+     "--web.enable-admin-api"]
