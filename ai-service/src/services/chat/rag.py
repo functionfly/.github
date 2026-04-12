@@ -140,6 +140,37 @@ class RagIndex:
             chunks.append("\n\n".join(buf).strip())
         return chunks
 
+    def _validate_chunk_content(self, chunk: str, source: str) -> tuple[bool, Optional[str]]:
+        """Validate chunk content before indexing.
+
+        Returns:
+            (is_valid, error_message)
+        """
+        # Skip files outside docs directory (path traversal protection)
+        if ".." in source or source.startswith("/") or source.startswith("\\"):
+            return False, "Invalid source path"
+
+        # Skip binary/sensitive file patterns
+        blocked_patterns = settings.rag_blocked_file_patterns
+        source_lower = source.lower()
+        for pattern in blocked_patterns:
+            if pattern.lower() in source_lower:
+                return False, f"Sensitive file pattern detected: {pattern}"
+
+        # Check for suspicious content patterns that might indicate injection
+        suspicious_patterns = [
+            r'<\|im_start\|>',  # ChatML injection
+            r'<\|im_end\|>',
+            r'\n\s*system\s*:',  # System prompt injection
+            r'\n\s*assistant\s*:',  # Assistant role injection
+            r'\n\s*user\s*:',  # User role injection
+        ]
+        for pattern in suspicious_patterns:
+            if re.search(pattern, chunk, re.IGNORECASE):
+                return False, "Suspicious content pattern detected"
+
+        return True, None
+
     def load(self) -> None:
         if self._loaded:
             return
@@ -177,6 +208,14 @@ class RagIndex:
             for idx, chunk in enumerate(self._chunk_markdown(raw, max_chars=max_chars)):
                 if len(chunk) < int(settings.rag_chunk_min_chars):
                     continue
+
+                # Validate content if enabled
+                if settings.rag_validate_content:
+                    is_valid, error = self._validate_chunk_content(chunk, source)
+                    if not is_valid:
+                        logger.warning(f"Skipping chunk from {source}: {error}")
+                        continue
+
                 toks = tuple(_tokenize(chunk))
                 if not toks:
                     continue
@@ -272,15 +311,57 @@ class RagIndex:
             # Use the already lexically-scored candidates.
             return [(ch, float(self._lexical_score(q_tokens, ch.tokens))) for ch in candidates[:k]]
 
-    async def build_context_block(self, query: str) -> str:
+    def _sanitize_context(self, text: str) -> str:
+        """Sanitize context before sending to LLM.
+
+        Prevents prompt injection through RAG documents.
+        """
+        # Remove potential prompt injection markers
+        dangerous_patterns = [
+            (r'\n\s*system\s*:', '[REDACTED-SYSTEM]'),  # System prompt injection
+            (r'\n\s*assistant\s*:', '[REDACTED-ASSISTANT]'),  # Assistant role injection
+            (r'\n\s*user\s*:', '[REDACTED-USER]'),  # User role injection
+            (r'<\|im_start\|>', '[REDACTED-IMSTART]'),  # ChatML injection
+            (r'<\|im_end\|>', '[REDACTED-IMEND]'),
+            (r'-----BEGIN\s+(?:RSA\s+)?(?:DSA\s+)?(?:EC\s+)?PRIVATE\s+KEY-----', '[REDACTED-PRIVATEKEY]'),
+            (r'\b(?:api[_-]?key|apikey|api_secret)[=:][A-Za-z0-9_\-]{16,}', '[REDACTED-APIKEY]'),
+        ]
+
+        sanitized = text
+        for pattern, replacement in dangerous_patterns:
+            sanitized = re.sub(pattern, replacement, sanitized, flags=re.IGNORECASE)
+
+        return sanitized
+
+    async def build_context_block(self, query: str, api_key_info: Optional[Any] = None) -> str:
         hits = await self.retrieve(query)
         if not hits:
             return ""
 
+        # Log RAG retrieval for audit
+        from ...security.audit import get_audit_logger
+        audit_logger = get_audit_logger()
+
+        tenant_id = getattr(api_key_info, 'tenant_id', 'default') if api_key_info else 'default'
+        api_key_id = getattr(api_key_info, 'key_id', 'unknown') if api_key_info else 'unknown'
+
+        audit_logger.log_rag_event(
+            tenant_id=tenant_id,
+            api_key_id=api_key_id,
+            query=query,
+            chunks_retrieved=len(hits),
+            sources=[ch.source for ch, _ in hits],
+            latency_ms=0.0,  # Would need timing from retrieve()
+            cache_hit=False,
+            success=True,
+            status="success",
+        )
+
         lines: List[str] = []
         lines.append("Relevant documentation excerpts (use these as ground truth when applicable):")
         for i, (ch, score) in enumerate(hits, start=1):
-            excerpt = ch.text.strip()
+            # Sanitize excerpt to prevent prompt injection
+            excerpt = self._sanitize_context(ch.text.strip())
             lines.append(f"\n[{i}] {ch.title} — {ch.source} (score={score:.3f})")
             lines.append(excerpt)
         return "\n".join(lines).strip()

@@ -125,11 +125,11 @@ class MetricsCollector:
         self._search_queries = 0
 
         # Initialize Prometheus metrics if available
+        self._prom_metrics = {}
         if PROMETHEUS_AVAILABLE:
             self._init_prometheus_metrics()
         else:
             self._logger.warning("Prometheus client not available, using in-memory metrics")
-            self._prom_metrics = {}
 
     def _init_prometheus_metrics(self) -> None:
         """Initialize Prometheus metrics."""
@@ -222,6 +222,43 @@ class MetricsCollector:
         self._prom_metrics["active_requests"] = Gauge(
             f"{self._service_name}_active_requests",
             "Number of active requests"
+        )
+
+        # Security metrics
+        self._prom_metrics["embedding_auth_failures"] = Counter(
+            f"{self._service_name}_embedding_auth_failures_total",
+            "Total embedding authentication failures",
+            ["tenant_id"]
+        )
+
+        self._prom_metrics["embedding_pii_blocked"] = Counter(
+            f"{self._service_name}_embedding_pii_blocked_total",
+            "Total PII blocked in embeddings",
+            ["violation_type"]
+        )
+
+        self._prom_metrics["embedding_rate_limited"] = Counter(
+            f"{self._service_name}_embedding_rate_limited_total",
+            "Total embedding rate limited requests",
+            ["tenant_id"]
+        )
+
+        self._prom_metrics["embedding_cost_dollars"] = Gauge(
+            f"{self._service_name}_embedding_cost_dollars",
+            "Current embedding cost",
+            ["tenant_id", "period"]
+        )
+
+        self._prom_metrics["rag_cache_hit_rate"] = Gauge(
+            f"{self._service_name}_rag_cache_hit_rate",
+            "RAG cache hit rate",
+            ["tenant_id"]
+        )
+
+        self._prom_metrics["security_alerts"] = Counter(
+            f"{self._service_name}_security_alerts_total",
+            "Total security alerts",
+            ["alert_type", "severity"]
         )
 
     def record_request(self, metrics: RequestMetrics) -> None:
@@ -422,6 +459,78 @@ class MetricsCollector:
                 severity=severity
             ).inc()
 
+    def record_embedding_auth_failure(self, tenant_id: str) -> None:
+        """Record an embedding authentication failure.
+
+        Args:
+            tenant_id: Tenant ID
+        """
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["embedding_auth_failures"].labels(
+                tenant_id=tenant_id
+            ).inc()
+
+    def record_embedding_pii_blocked(self, violation_type: str) -> None:
+        """Record a PII detection/block in embeddings.
+
+        Args:
+            violation_type: Type of PII violation detected
+        """
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["embedding_pii_blocked"].labels(
+                violation_type=violation_type
+            ).inc()
+
+    def record_embedding_rate_limited(self, tenant_id: str) -> None:
+        """Record an embedding rate limit hit.
+
+        Args:
+            tenant_id: Tenant ID
+        """
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["embedding_rate_limited"].labels(
+                tenant_id=tenant_id
+            ).inc()
+
+    def set_embedding_cost(self, tenant_id: str, period: str, cost: float) -> None:
+        """Set current embedding cost gauge.
+
+        Args:
+            tenant_id: Tenant ID
+            period: Time period (hour, day, month)
+            cost: Cost in USD
+        """
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["embedding_cost_dollars"].labels(
+                tenant_id=tenant_id,
+                period=period
+            ).set(cost)
+
+    def set_rag_cache_hit_rate(self, tenant_id: str, hit_rate: float) -> None:
+        """Set RAG cache hit rate gauge.
+
+        Args:
+            tenant_id: Tenant ID
+            hit_rate: Cache hit rate (0.0 to 1.0)
+        """
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["rag_cache_hit_rate"].labels(
+                tenant_id=tenant_id
+            ).set(hit_rate)
+
+    def record_security_alert(self, alert_type: str, severity: str) -> None:
+        """Record a security alert.
+
+        Args:
+            alert_type: Type of alert (auth_failure, pii_violation, etc.)
+            severity: Alert severity (critical, high, medium, low)
+        """
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["security_alerts"].labels(
+                alert_type=alert_type,
+                severity=severity
+            ).inc()
+
     def increment_active_requests(self) -> None:
         """Increment active request counter."""
         if PROMETHEUS_AVAILABLE:
@@ -532,14 +641,27 @@ class MetricsCollector:
             Metrics in Prometheus format
         """
         if PROMETHEUS_AVAILABLE:
-            return generate_latest().decode("utf-8")
+            try:
+                from prometheus_client import REGISTRY
+                return generate_latest(REGISTRY).decode("utf-8")
+            except Exception as e:
+                self._logger.error(f"Error generating Prometheus metrics: {e}")
+                # Fallback on error
+                pass
 
         # Fallback to simple text format
         lines = [
-            "# Fallback metrics (Prometheus not available)",
+            "# HELP flymind_ai_cache_hits_total Total cache hits",
+            "# TYPE flymind_ai_cache_hits_total counter",
             f"flymind_ai_cache_hits_total {self._cache_hits}",
+            "# HELP flymind_ai_cache_misses_total Total cache misses",
+            "# TYPE flymind_ai_cache_misses_total counter",
             f"flymind_ai_cache_misses_total {self._cache_misses}",
+            "# HELP flymind_ai_chat_sessions_total Total chat sessions",
+            "# TYPE flymind_ai_chat_sessions_total counter",
             f"flymind_ai_chat_sessions_total {self._chat_sessions}",
+            "# HELP flymind_ai_search_queries_total Total search queries",
+            "# TYPE flymind_ai_search_queries_total counter",
             f"flymind_ai_search_queries_total {self._search_queries}",
         ]
         return "\n".join(lines)

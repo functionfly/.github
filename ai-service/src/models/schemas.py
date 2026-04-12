@@ -16,6 +16,19 @@ class ProviderType(str, Enum):
     ANTHROPIC = "anthropic"
     OLLAMA = "ollama"
     OPENROUTER = "openrouter"
+    FIREWORKS = "fireworks"
+    GROQ = "groq"
+    DEEPINFRA = "deepinfra"
+    TOGETHER = "together"
+
+
+class TrafficType(str, Enum):
+    """Traffic types for provider routing."""
+    REALTIME = "realtime"  # Low-latency agent function calls
+    STRUCTURED = "structured"  # Structured output / tool use / JSON mode
+    BACKGROUND = "background"  # Embeddings, batch processing
+    FUNCTION_CALLING = "function_calling"  # Function calling optimized
+    GENERAL = "general"  # Default routing
 
 
 class MessageRole(str, Enum):
@@ -570,3 +583,296 @@ class TripleEmbeddingBatchResponse(BaseModel):
     results: List[TripleEmbeddingResult]
     total_count: int
     latency_ms: float = 0.0
+
+
+# =============================================================================
+# Phase 4: AI Composer - Function Generation Models
+# =============================================================================
+
+class FunctionGenerationRequest(BaseModel):
+    """Request to generate a function using AI."""
+    description: str = Field(..., min_length=10, max_length=2000, description="Natural language description of what the function should do")
+    runtime: str = Field(default="python", description="Target runtime (python, nodejs, go, etc.)")
+    inputs: Optional[List[Dict[str, Any]]] = Field(default=None, description="Optional input schema hints")
+    outputs: Optional[List[Dict[str, Any]]] = Field(default=None, description="Optional output schema hints")
+    constraints: Optional[str] = Field(default=None, description="Optional constraints or requirements")
+    examples: Optional[List[str]] = Field(default=None, description="Optional example inputs/outputs")
+
+
+class FunctionManifest(BaseModel):
+    """Function I/O manifest schema."""
+    name: str
+    description: str
+    version: str = "1.0.0"
+    inputs: List[Dict[str, Any]] = Field(default_factory=list)
+    outputs: List[Dict[str, Any]] = Field(default_factory=list)
+    runtime: str
+    timeout_seconds: int = 30
+    memory_mb: int = 256
+    capabilities: List[str] = Field(default_factory=list)
+
+
+class FunctionGenerationResult(BaseModel):
+    """Generated function result."""
+    code: str
+    runtime: str
+    manifest: FunctionManifest
+    explanation: str
+    suggested_tests: List[str] = Field(default_factory=list)
+    estimated_complexity: str  # simple, moderate, complex
+
+
+class FunctionGenerationResponse(BaseModel):
+    """Response for AI function generation."""
+    success: bool
+    result: Optional[FunctionGenerationResult] = None
+    error: Optional[str] = None
+    generation_id: str
+    latency_ms: float = 0.0
+    tokens_used: Dict[str, int] = Field(default_factory=lambda: {"prompt": 0, "completion": 0, "total": 0})
+
+
+class GallerySearchRequest(BaseModel):
+    """Request to search the function gallery."""
+    query: str = Field(..., min_length=1, max_length=500)
+    category: Optional[str] = None
+    runtime: Optional[str] = None
+    sort_by: str = Field(default="popular", description="popular, recent, rating, name")
+    limit: int = Field(default=20, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
+
+
+class GalleryFunctionInfo(BaseModel):
+    """Function info for gallery display."""
+    id: str
+    author: str
+    name: str
+    title: str
+    description: str
+    category: Optional[str] = None
+    runtime: str
+    trust_score: float = Field(ge=0.0, le=100.0)
+    popularity_score: int = 0
+    remix_count: int = 0
+    like_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+
+class GallerySearchResponse(BaseModel):
+    """Response for gallery search."""
+    query: str
+    results: List[GalleryFunctionInfo]
+    total_count: int
+    limit: int
+    offset: int
+
+
+class RemixRequest(BaseModel):
+    """Request to remix/fork a gallery function."""
+    source_author: str
+    source_name: str
+    target_tenant_id: str
+    new_name: Optional[str] = None
+    customizations: Optional[str] = Field(default=None, description="Optional customization instructions")
+
+
+class RemixResponse(BaseModel):
+    """Response for function remix."""
+    success: bool
+    new_function_id: Optional[str] = None
+    message: str
+    remix_id: str
+
+
+# =============================================================================
+# Phase 1: AI Graph Composition - Backend as a Graph
+# =============================================================================
+
+class GraphNodeInput(BaseModel):
+    """Input schema for a graph node."""
+    name: str
+    type: str  # string, number, boolean, object, array
+    description: str
+    required: bool = True
+    default: Optional[Any] = None
+
+
+class GraphNodeOutput(BaseModel):
+    """Output schema for a graph node."""
+    name: str
+    type: str
+    description: str
+
+
+class GraphNodeRef(BaseModel):
+    """Reference to a function node in a graph."""
+    node_id: str = Field(..., description="Unique identifier within the graph (e.g., 'node-1', 'auth-node')")
+    author: str = Field(..., description="Function author (namespace)")
+    name: str = Field(..., description="Function name")
+    version: str = Field(default="latest", description="Function version or 'latest'")
+    config: Dict[str, Any] = Field(default_factory=dict, description="Node-specific configuration")
+    description: Optional[str] = None
+
+
+class GraphEdgeMapping(BaseModel):
+    """Data mapping between nodes."""
+    source_path: Optional[str] = Field(default=None, description="JSONPath in source output (e.g., '$.user.id', or '*' for all)")
+    target_path: Optional[str] = Field(default=None, description="JSONPath in target input (e.g., '$.userId')")
+    transform: Optional[str] = Field(default=None, description="Transformation: 'map', 'filter', 'reduce', 'flat', or custom script")
+    script: Optional[str] = Field(default=None, description="Custom transformation script if transform is 'custom'")
+
+
+class GraphEdgeCondition(BaseModel):
+    """Conditional routing for edges."""
+    operator: str = Field(..., description="Operator: 'eq', 'ne', 'gt', 'lt', 'contains', 'regex', 'exists'")
+    field: str = Field(..., description="JSONPath to field in output")
+    value: Any = Field(..., description="Comparison value")
+
+
+class GraphEdge(BaseModel):
+    """Edge connecting two nodes in the graph."""
+    id: str = Field(..., description="Unique edge identifier")
+    source_node_id: str
+    target_node_id: str
+    mapping: GraphEdgeMapping = Field(default_factory=lambda: GraphEdgeMapping())
+    condition: Optional[GraphEdgeCondition] = None
+    type: str = Field(default="sync", description="Edge type: 'sync', 'async', 'stream'")
+    fallback_node_id: Optional[str] = None
+
+
+class GraphTriggerConfig(BaseModel):
+    """Configuration for what triggers graph execution."""
+    type: str = Field(..., description="Trigger type: 'webhook', 'schedule', 'state_trigger', 'manual'")
+    config: Dict[str, Any] = Field(default_factory=dict, description="Trigger-specific config")
+    # Examples:
+    # webhook: { "path": "/webhook/signup", "method": "POST" }
+    # schedule: { "cron": "0 9 * * *", "timezone": "UTC" }
+    # state_trigger: { "table": "users", "event": "INSERT" }
+    # manual: {}
+
+
+class GraphDefinition(BaseModel):
+    """Complete graph definition for AI composition."""
+    name: str = Field(..., description="Graph name (URL-friendly)")
+    description: str
+    execution_mode: str = Field(default="sync", description="sync, async, streaming, event_driven")
+    nodes: List[GraphNodeRef] = Field(default_factory=list)
+    edges: List[GraphEdge] = Field(default_factory=list)
+    input_schema: Optional[Dict[str, Any]] = None
+    output_schema: Optional[Dict[str, Any]] = None
+    trigger_config: Optional[GraphTriggerConfig] = None
+    visibility: str = Field(default="public", description="public, unlisted, private")
+    estimated_cost_usd: Optional[float] = None
+    estimated_latency_ms: Optional[int] = None
+
+
+class GraphCompositionRequest(BaseModel):
+    """Request to generate a graph using AI composition.
+
+    Example prompts:
+    - "Create a SaaS signup flow with auth, Stripe billing, and welcome email"
+    - "Build an e-commerce checkout: validate cart, process payment, send receipt"
+    - "API backend for blog: CRUD posts, auth, caching"
+    """
+    prompt: str = Field(..., min_length=10, max_length=2000, description="Natural language description of the backend workflow")
+    requirements: List[str] = Field(default_factory=list, description="Requirements: 'low_latency', 'cost_optimized', 'high_availability'")
+    preferred_runtime: str = Field(default="python", description="Preferred function runtime")
+    tenant_id: Optional[str] = None
+
+
+class GraphCompositionExplanation(BaseModel):
+    """Explanation of the composed graph."""
+    summary: str
+    node_purposes: Dict[str, str] = Field(default_factory=dict, description="What each node does")
+    data_flow_description: str
+    trigger_explanation: str
+    suggested_tests: List[str] = Field(default_factory=list)
+    estimated_monthly_cost_usd: Optional[float] = None
+
+
+class GraphCompositionResponse(BaseModel):
+    """Response for AI graph composition."""
+    success: bool
+    graph: Optional[GraphDefinition] = None
+    explanation: Optional[GraphCompositionExplanation] = None
+    confidence: float = Field(ge=0.0, le=1.0, description="AI confidence score")
+    generation_id: str
+    latency_ms: float
+    tokens_used: Dict[str, int] = Field(default_factory=lambda: {"prompt": 0, "completion": 0, "total": 0})
+    error: Optional[str] = None
+    suggestions: List[str] = Field(default_factory=list, description="Follow-up suggestions or improvements")
+
+
+class TemplateCategory(str, Enum):
+    """Categories for prebuilt graph templates."""
+    SAAS_STARTER = "saas_starter"
+    MARKETPLACE = "marketplace"
+    API_BACKEND = "api_backend"
+    AUTHENTICATION = "authentication"
+    PAYMENTS = "payments"
+    WEBHOOK_PROCESSOR = "webhook_processor"
+    DATA_PIPELINE = "data_pipeline"
+    AI_WORKFLOW = "ai_workflow"
+
+
+class GraphTemplateInfo(BaseModel):
+    """Information about a prebuilt graph template."""
+    id: str
+    name: str
+    description: str
+    category: TemplateCategory
+    tags: List[str] = Field(default_factory=list)
+    node_count: int
+    complexity: str  # simple, moderate, complex
+    estimated_setup_time_minutes: int
+    popular_use_cases: List[str] = Field(default_factory=list)
+
+
+class GraphTemplateListResponse(BaseModel):
+    """Response listing available templates."""
+    templates: List[GraphTemplateInfo]
+    total_count: int
+
+
+class GraphTemplateRequest(BaseModel):
+    """Request to instantiate a template."""
+    template_id: str
+    customization_prompt: Optional[str] = None
+    tenant_id: Optional[str] = None
+
+
+# ============================================================================
+# Team Memory Extraction Schemas
+# ============================================================================
+
+class MemoryContent(BaseModel):
+    """Structured content for a memory (type-specific)."""
+    pass
+
+
+class ExtractedMemory(BaseModel):
+    """A single extracted memory from conversation analysis."""
+    type: str = Field(..., description="Memory type: decision, preference, process, client_context")
+    category: Optional[str] = Field(None, description="Optional category like 'client:acme-corp'")
+    summary: str = Field(..., description="Human-readable summary (max 100 chars)")
+    content: Dict[str, Any] = Field(default_factory=dict, description="Structured content object")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Extraction confidence score")
+    rationale: str = Field(..., description="Why this memory is important")
+
+
+class MemoryExtractionRequest(BaseModel):
+    """Request to extract memories from a conversation."""
+    transcript: str = Field(..., min_length=10, max_length=50000, description="Conversation transcript to analyze")
+    team_id: Optional[str] = Field(None, description="Team ID for context")
+    conversation_id: Optional[str] = Field(None, description="Conversation ID")
+    context: Optional[Dict[str, Any]] = Field(None, description="Additional context")
+
+
+class MemoryExtractionResponse(BaseModel):
+    """Response with extracted memories."""
+    memories: List[ExtractedMemory] = Field(default_factory=list, description="Extracted memories")
+    confidence: float = Field(0.0, description="Average confidence score")
+    tokens_used: int = Field(0, description="Tokens consumed")
+    model: str = Field("unknown", description="Model used for extraction")
+    latency_ms: float = Field(0.0, description="Processing time in milliseconds")

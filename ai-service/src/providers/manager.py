@@ -11,6 +11,11 @@ from .openai import OpenAIProvider
 from .anthropic import AnthropicProvider
 from .ollama import OllamaProvider
 from .openrouter import OpenRouterProvider
+from .fireworks import FireworksProvider
+from .groq import GroqProvider
+from .deepinfra import DeepInfraProvider
+from .together import TogetherProvider
+from .router import ProviderRouter, init_provider_router
 from ..config import settings
 from ..models.schemas import ProviderType, ProviderInfo
 
@@ -62,6 +67,46 @@ class ProviderManager:
             logger.info(f"Initialized OpenRouter provider (available: {openrouter.available})")
         except Exception as e:
             logger.warning(f"Failed to initialize OpenRouter provider: {e}")
+
+        # Initialize Fireworks AI (primary for function calling)
+        try:
+            fireworks = FireworksProvider()
+            self._providers[ProviderType.FIREWORKS.value] = fireworks
+            logger.info(f"Initialized Fireworks AI provider (available: {fireworks.available})")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Fireworks AI provider: {e}")
+
+        # Initialize Groq (low-latency real-time)
+        try:
+            groq = GroqProvider()
+            self._providers[ProviderType.GROQ.value] = groq
+            logger.info(f"Initialized Groq provider (available: {groq.available})")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Groq provider: {e}")
+
+        # Initialize DeepInfra (cost-effective background/batch)
+        try:
+            deepinfra = DeepInfraProvider()
+            self._providers[ProviderType.DEEPINFRA.value] = deepinfra
+            logger.info(f"Initialized DeepInfra provider (available: {deepinfra.available})")
+        except Exception as e:
+            logger.warning(f"Failed to initialize DeepInfra provider: {e}")
+
+        # Initialize Together AI (alternative/batch)
+        try:
+            together = TogetherProvider()
+            self._providers[ProviderType.TOGETHER.value] = together
+            logger.info(f"Initialized Together AI provider (available: {together.available})")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Together AI provider: {e}")
+
+        # Initialize traffic-based provider router
+        if settings.enable_traffic_based_routing:
+            try:
+                init_provider_router(self._providers)
+                logger.info("Initialized traffic-based provider router")
+            except Exception as e:
+                logger.warning(f"Failed to initialize provider router: {e}")
 
     def get_provider(self, name: Optional[str] = None) -> BaseProvider:
         """Get a provider by name.
@@ -197,6 +242,39 @@ class ProviderManager:
     def default_embedding_provider(self) -> str:
         """Get the default embedding provider name."""
         return self._default_embedding_provider
+
+    def get_provider_router(self) -> Optional[ProviderRouter]:
+        """Get the traffic-based provider router if available.
+
+        Returns:
+            ProviderRouter instance or None if not initialized
+        """
+        try:
+            from .router import get_provider_router
+            return get_provider_router()
+        except RuntimeError:
+            return None
+
+    def get_functionfly_recommendations(self) -> list[dict]:
+        """Get FunctionFly-specific provider recommendations.
+
+        Returns:
+            List of recommendations for different use cases
+        """
+        try:
+            router = self.get_provider_router()
+            if router:
+                return router.get_recommendations()
+        except Exception as e:
+            logger.debug(f"Could not get recommendations: {e}")
+
+        # Fallback recommendations
+        return [
+            {"use_case": "Real-time agent calls", "provider": "groq", "reason": "Lowest latency"},
+            {"use_case": "Function calling / JSON", "provider": "fireworks", "reason": "FireAttention optimized"},
+            {"use_case": "Background/batch work", "provider": "deepinfra", "reason": "Cost-effective"},
+            {"use_case": "Multi-model routing", "provider": "openrouter", "reason": "Agnostic routing"},
+        ]
 
 
 # Global provider manager instance

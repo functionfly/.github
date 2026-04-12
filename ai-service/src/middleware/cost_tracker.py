@@ -334,6 +334,85 @@ class CostTracker:
 _cost_tracker: Optional[CostTracker] = None
 
 
+class TokenBudget:
+    """Token budget tracking for a tenant."""
+    
+    def __init__(self, tokens_per_minute: int = 100000, tokens_per_hour: int = 1000000):
+        self.tokens_per_minute = tokens_per_minute
+        self.tokens_per_hour = tokens_per_hour
+        self.minute_used = 0
+        self.hour_used = 0
+        self.last_reset = time.time()
+    
+    def check_budget(self, requested_tokens: int) -> bool:
+        """Check if requested tokens are within budget."""
+        now = time.time()
+        elapsed = now - self.last_reset
+        
+        # Reset minute counter every 60 seconds
+        if elapsed >= 60:
+            self.minute_used = 0
+            self.last_reset = now
+        
+        # Reset hour counter every hour (approximate)
+        if elapsed >= 3600:
+            self.hour_used = 0
+        
+        # Check if adding these tokens would exceed budget
+        if self.minute_used + requested_tokens > self.tokens_per_minute:
+            return False
+        if self.hour_used + requested_tokens > self.tokens_per_hour:
+            return False
+        
+        return True
+    
+    def consume_tokens(self, tokens: int) -> None:
+        """Consume tokens from the budget."""
+        self.minute_used += tokens
+        self.hour_used += tokens
+
+
+class TokenBudgetManager:
+    """Manages token budgets for all tenants."""
+    
+    def __init__(self):
+        self._budgets: Dict[str, TokenBudget] = {}
+        self._lock = threading.Lock()
+    
+    def get_budget(self, tenant_id: str) -> TokenBudget:
+        """Get or create token budget for tenant."""
+        with self._lock:
+            if tenant_id not in self._budgets:
+                self._budgets[tenant_id] = TokenBudget()
+            return self._budgets[tenant_id]
+    
+    def check_token_budget(self, tenant_id: str, requested_tokens: int) -> bool:
+        """Check if tenant has sufficient token budget."""
+        budget = self.get_budget(tenant_id)
+        return budget.check_budget(requested_tokens)
+    
+    def consume_tokens(self, tenant_id: str, tokens: int) -> None:
+        """Consume tokens from tenant's budget."""
+        budget = self.get_budget(tenant_id)
+        budget.consume_tokens(tokens)
+
+
+# Global token budget manager
+_token_budget_manager: Optional[TokenBudgetManager] = None
+
+
+def get_token_budget_manager() -> TokenBudgetManager:
+    """Get the global token budget manager.
+    
+    Returns:
+        TokenBudgetManager instance
+    """
+    global _token_budget_manager
+    if _token_budget_manager is None:
+        _token_budget_manager = TokenBudgetManager()
+    return _token_budget_manager
+
+
 def get_cost_tracker() -> CostTracker:
     """Get the global cost tracker.
 

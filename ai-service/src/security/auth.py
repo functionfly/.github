@@ -13,7 +13,13 @@ from typing import Dict, List, Optional
 import threading
 import logging
 
+from fastapi import Header, HTTPException, Depends, status
+from fastapi.security import APIKeyHeader
+
 logger = logging.getLogger(__name__)
+
+# FastAPI security scheme
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 class KeyStatus(str, Enum):
@@ -30,6 +36,14 @@ class KeyScope(str, Enum):
     WRITE = "write"
     ADMIN = "admin"
     FULL = "full"
+    # Embedding-specific scopes
+    EMBED_READ = "embed:read"  # Query embeddings, search
+    EMBED_WRITE = "embed:write"  # Generate new embeddings
+    EMBED_ADMIN = "embed:admin"  # Batch operations, indexing
+    RAG_READ = "rag:read"  # RAG retrieval access
+    # Chat/composer-specific scopes
+    CHAT_WRITE = "chat:write"  # Chat and AI generation operations
+    CHAT_READ = "chat:read"   # Read chat history and sessions
 
 
 @dataclass
@@ -55,6 +69,15 @@ class APIKeyInfo:
             return False
 
         return True
+
+    def has_scope(self, scope: KeyScope) -> bool:
+        """Check if the key has a specific scope.
+
+        FULL scope grants access to everything.
+        """
+        if KeyScope.FULL in self.scopes:
+            return True
+        return scope in self.scopes
 
 
 class APIKeyValidator:
@@ -268,3 +291,83 @@ def get_api_key_validator() -> APIKeyValidator:
         _api_key_validator._init_default_keys()
 
     return _api_key_validator
+
+
+# FastAPI dependency functions
+async def require_api_key(
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+) -> APIKeyInfo:
+    """FastAPI dependency to require and validate an API key.
+
+    Args:
+        x_api_key: The API key from the X-API-Key header
+
+    Returns:
+        APIKeyInfo if valid
+
+    Raises:
+        HTTPException: 401 if key is missing or invalid
+    """
+    if not x_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key required. Provide X-API-Key header.",
+            headers={"WWW-Authenticate": "ApiKey"},
+        )
+
+    validator = get_api_key_validator()
+    info = validator.validate_key(x_api_key)
+
+    if not info:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired API key",
+            headers={"WWW-Authenticate": "ApiKey"},
+        )
+
+    return info
+
+
+def require_api_key_with_scope(scope: KeyScope):
+    """Create a FastAPI dependency that requires a specific scope.
+
+    Usage:
+        @router.post("/api/embed")
+        async def embed(request: EmbeddingRequest, api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.EMBED_WRITE))):
+            ...
+
+    Args:
+        scope: Required scope
+
+    Returns:
+        Dependency function
+    """
+    async def dependency(
+        x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    ) -> APIKeyInfo:
+        if not x_api_key:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="API key required. Provide X-API-Key header.",
+                headers={"WWW-Authenticate": "ApiKey"},
+            )
+
+        validator = get_api_key_validator()
+        info = validator.validate_key(x_api_key)
+
+        if not info:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired API key",
+                headers={"WWW-Authenticate": "ApiKey"},
+            )
+
+        if not info.has_scope(scope):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permissions. Required scope: {scope.value}",
+            )
+
+        return info
+
+    return dependency

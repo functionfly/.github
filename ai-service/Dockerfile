@@ -37,9 +37,8 @@ EXPOSE 8081
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8081/health || exit 1
+    CMD curl -f http://0.0.0.0:8081/health || exit 1
 
 # Run the application
-# Use IPv6 (::) for Fly.io internal networking (6PN) support
-# This listens on both IPv4 and IPv6 interfaces
-CMD ["uvicorn", "src.main:app", "--host", "::", "--port", "8081"]
+# Listen on 0.0.0.0 for Fly.io http_service compatibility
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8081"]

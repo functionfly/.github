@@ -503,6 +503,64 @@ class ContentScanner:
 
         return violations
 
+    async def sanitize_for_embedding(
+        self,
+        text: str,
+        mode: str = "block"
+    ) -> Tuple[str, List[Violation]]:
+        """Sanitize text before embedding to remove PII and sensitive content.
+
+        Args:
+            text: Input text to be embedded
+            mode: One of "block" (reject if PII found), "redact" (mask PII),
+                  or "warn" (allow but log)
+
+        Returns:
+            Tuple of (sanitized_text, violations)
+
+        Raises:
+            ValueError: If mode is invalid
+        """
+        if mode not in ("block", "redact", "warn"):
+            raise ValueError(f"Invalid mode: {mode}. Must be 'block', 'redact', or 'warn'")
+
+        violations = []
+        sanitized = text
+
+        # Scan for PII
+        pii_violations = self._scan_pii(text)
+        violations.extend(pii_violations)
+
+        # Scan for secrets
+        secret_violations = self._scan_secrets(text)
+        violations.extend(secret_violations)
+
+        # Sort violations by location (end position descending for replacement)
+        violations.sort(key=lambda v: v.location_end, reverse=True)
+
+        if mode == "block" and violations:
+            # In block mode, we don't modify the text - just report violations
+            return text, violations
+
+        if mode == "redact" and violations:
+            # In redact mode, replace PII with placeholders
+            for violation in violations:
+                start = violation.location_start
+                end = violation.location_end
+
+                # Create replacement based on violation type
+                if violation.category == ModerationCategory.PII:
+                    replacement = f"[PII:{violation.matched_pattern}]"
+                elif violation.category == ModerationCategory.SECRETS:
+                    replacement = f"[SECRET:{violation.matched_pattern}]"
+                else:
+                    replacement = "[REDACTED]"
+
+                sanitized = sanitized[:start] + replacement + sanitized[end:]
+
+        # Mode "warn" returns original text with violations logged
+        return sanitized, violations
+
     def _scan_secrets(self, content: str) -> List[Violation]:
         """Scan for secrets and API keys in content.
 

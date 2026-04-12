@@ -48,6 +48,9 @@ class RateLimitConfig:
     requests_per_day: int = 10000
     burst_size: int = 10
     enabled: bool = True
+    # NEW: Embedding-specific limits
+    embed_tokens_per_minute: int = 100000  # Token budget for embeddings
+    embed_cost_per_day: float = 50.0  # USD budget for embeddings
 
 
 @dataclass
@@ -61,6 +64,12 @@ class RateLimitState:
     minute_reset: float = 0
     hour_reset: float = 0
     day_reset: float = 0
+    # NEW: Embedding token tracking
+    embed_tokens_minute: int = 0
+    embed_tokens_hour: int = 0
+    embed_tokens_day: int = 0
+    embed_token_reset: float = 0
+    embed_cost_day: float = 0.0
 
 
 class RateLimiter:
@@ -216,6 +225,92 @@ class RateLimiter:
             state.hour_count += 1
             state.day_count += 1
 
+            return True
+
+    def check_embed_limits(
+        self,
+        tenant_id: str,
+        tokens: int,
+        cost_usd: float = 0.0,
+    ) -> bool:
+        """Check if embedding operation is within token and cost limits.
+        
+        Args:
+            tenant_id: Tenant ID
+            tokens: Number of tokens to be consumed
+            cost_usd: Cost in USD
+            
+        Returns:
+            True if within limits
+            
+        Raises:
+            RateLimitExceeded: If limit exceeded
+        """
+        with self._lock:
+            config = self.get_config(tenant_id)
+            
+            if not config.enabled:
+                return True
+            
+            # Get or create state
+            if tenant_id not in self._states:
+                now = time.time()
+                self._states[tenant_id] = RateLimitState(
+                    tokens=float(config.burst_size),
+                    last_refill=now,
+                    minute_reset=now + 60,
+                    hour_reset=now + 3600,
+                    day_reset=now + 86400,
+                    embed_token_reset=now + 60,
+                )
+            
+            state = self._states[tenant_id]
+            now = time.time()
+            
+            # Reset token counters if minute has passed
+            if now >= state.embed_token_reset:
+                state.embed_tokens_minute = 0
+                state.embed_tokens_hour = 0
+                state.embed_token_reset = now + 60
+                
+                # Reset hourly counter every hour
+                if now >= state.hour_reset:
+                    state.embed_tokens_hour = 0
+                    state.hour_reset = now + 3600
+                    
+                # Reset daily cost counter
+                if now >= state.day_reset:
+                    state.embed_cost_day = 0.0
+                    state.day_reset = now + 86400
+            
+            # Check per-minute token limit
+            if state.embed_tokens_minute + tokens > config.embed_tokens_per_minute:
+                self._total_rejected += 1
+                raise RateLimitExceeded(
+                    f"Embedding token limit exceeded: {config.embed_tokens_per_minute} tokens per minute",
+                    tenant_id=tenant_id,
+                    limit=config.embed_tokens_per_minute,
+                    window_seconds=60,
+                    retry_after=60,
+                )
+            
+            # Check daily cost limit
+            if state.embed_cost_day + cost_usd > config.embed_cost_per_day:
+                self._total_rejected += 1
+                raise RateLimitExceeded(
+                    f"Embedding cost limit exceeded: ${config.embed_cost_per_day:.2f} per day",
+                    tenant_id=tenant_id,
+                    limit=int(config.embed_cost_per_day),
+                    window_seconds=86400,
+                    retry_after=int(state.day_reset - now),
+                )
+            
+            # Consume tokens and cost
+            state.embed_tokens_minute += tokens
+            state.embed_tokens_hour += tokens
+            state.embed_tokens_day += tokens
+            state.embed_cost_day += cost_usd
+            
             return True
 
     def _refill_tokens(

@@ -38,6 +38,25 @@ async def lifespan(app: FastAPI):
     try:
         provider_manager = get_provider_manager()
         logger.info(f"Initialized providers: {list(provider_manager._providers.keys())}")
+
+        # Update model router with provider availability
+        try:
+            from .services.generation import get_model_router
+            from .models.schemas import ProviderType
+
+            router = get_model_router()
+            availability = {}
+            for name, provider in provider_manager._providers.items():
+                try:
+                    provider_type = ProviderType(name)
+                    availability[provider_type] = getattr(provider, 'available', False)
+                except ValueError:
+                    pass
+            router.update_provider_availability(availability)
+            logger.info(f"Model router initialized with provider availability: {[f'{k.value}: {v}' for k, v in availability.items()]}")
+        except Exception as e:
+            logger.warning(f"Could not initialize model router: {e}")
+
     except Exception as e:
         logger.error(f"Failed to initialize providers: {e}")
 
@@ -97,6 +116,21 @@ async def root():
         "status": "running",
         "docs": "/docs",
     })
+
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    """Prometheus metrics endpoint.
+
+    Returns:
+        Prometheus-formatted metrics text
+    """
+    from .observability.metrics import get_metrics_collector
+    from fastapi.responses import PlainTextResponse
+
+    collector = get_metrics_collector()
+    metrics_text = collector.get_metrics_text()
+    return PlainTextResponse(content=metrics_text, media_type="text/plain")
 
 
 if __name__ == "__main__":

@@ -7,9 +7,20 @@ primary_region = "ord"
 [build]
   dockerfile = "Dockerfile"
 
-# Internal networking only - no public HTTP service
-# The orchestrator accesses this via Fly's private network (.internal)
-internal_port = 8081
+# Public HTTP service for health checks and metrics scraping
+[http_service]
+  internal_port = 8081
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "10s"
+    grace_period = "10s"
+    method = "get"
+    path = "/health"
 
 [[vm]]
   size = "shared-cpu-4x"
@@ -23,13 +34,13 @@ internal_port = 8081
   LOG_LEVEL = "info"
   SERVICE_NAME = "flymind-ai-service"
   SERVICE_VERSION = "1.0.0"
-  
+
   # Production settings
   DEBUG = "false"
   ENABLE_STREAMING = "true"
   ENABLE_CACHING = "true"
   ENABLE_COST_TRACKING = "true"
-  
+
   # Orchestrator integration (internal Fly.io DNS)
   ORCHESTRATOR_URL = "http://functionfly-api.internal:8080"
 
