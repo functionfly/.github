@@ -138,7 +138,7 @@ export function AdminLoginPage() {
           <path d="M16 9.5L22.5 16L16 22.5L9.5 16L16 9.5Z" fill="white" />
           <path d="M16 12.5L19.5 16L16 19.5L12.5 16L16 12.5Z" fill="#6366F1" />
         </svg>
-        <span className="text-xl font-bold text-gray-900">FunctionFly</span>
+        <span className="text-xl font-bold text-gray-900">FunctionFly™</span>
       </div>
 
       {/* Single card: title + form */}

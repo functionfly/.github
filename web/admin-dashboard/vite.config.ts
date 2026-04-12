@@ -6,14 +6,6 @@ import { defineConfig } from 'vite';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  define: {
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(
-      process.env.VITE_API_BASE_URL || 'https://api.functionfly.com'
-    ),
-    'import.meta.env.VITE_ADMIN_API_BASE_URL': JSON.stringify(
-      process.env.VITE_ADMIN_API_BASE_URL || 'https://api.functionfly.com/v1/admin'
-    ),
-  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

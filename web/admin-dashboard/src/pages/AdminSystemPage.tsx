@@ -18,6 +18,7 @@ import {
   BarChart3,
   Sliders,
 } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 
 interface SystemMetrics {
   status: 'healthy' | 'degraded' | 'down';
@@ -71,15 +72,8 @@ function Switch({
   );
 }
 
-type TabId = 'health' | 'settings';
-
-const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
-  { id: 'health', label: 'Health & configuration', icon: BarChart3 },
-  { id: 'settings', label: 'Platform settings', icon: Sliders },
-];
-
 export function AdminSystemPage() {
-  const [activeTab, setActiveTab] = useState<TabId>('health');
+  // Default tab is now managed by the Tabs component
   const [platformSettings, setPlatformSettings] = useState<PlatformSettingsState>({
     maintenanceMode: false,
     signupsEnabled: true,
@@ -134,56 +128,25 @@ export function AdminSystemPage() {
 
   return (
     <div className="min-h-full flex flex-col">
-      {/* Page header + tabs */}
+      {/* Page header + modern tabs */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-admin-900 tracking-tight">System</h1>
         <p className="mt-1 text-admin-600 text-sm">
           Health, configuration, and platform-wide settings
         </p>
-        {/* Tab bar */}
-        <div
-          className="mt-6 border-b border-admin-200"
-          role="tablist"
-          aria-label="System sections"
-        >
-          <div className="flex gap-1">
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.id;
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls={`panel-${tab.id}`}
-                  id={`tab-${tab.id}`}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors
-                    ${isActive
-                      ? 'border-admin-700 text-admin-900'
-                      : 'border-transparent text-admin-600 hover:text-admin-800 hover:border-admin-300'}
-                  `}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
 
-      {/* Tab panels – full width */}
-      <div className="flex-1 min-h-0">
-        {activeTab === 'health' && (
-          <div
-            id="panel-health"
-            role="tabpanel"
-            aria-labelledby="tab-health"
-            className="space-y-8"
-          >
+        <Tabs defaultTab="health" className="mt-6">
+          <TabsList variant="segmented" className="w-fit">
+            <TabsTrigger value="health" icon={BarChart3} variant="segmented">
+              Health & Usage
+            </TabsTrigger>
+            <TabsTrigger value="settings" icon={Sliders} variant="segmented">
+              Platform Settings
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="mt-6 flex-1 min-h-0">
+            <TabsContent value="health" className="space-y-8">
             {/* System Health */}
             <section className="rounded-xl border border-admin-200 bg-white shadow-sm overflow-hidden">
               <div className="border-l-4 border-admin-600 bg-admin-50/60 px-5 py-3">
@@ -327,16 +290,9 @@ export function AdminSystemPage() {
                 </dl>
               </div>
             </section>
-          </div>
-        )}
+            </TabsContent>
 
-        {activeTab === 'settings' && (
-          <div
-            id="panel-settings"
-            role="tabpanel"
-            aria-labelledby="tab-settings"
-            className="max-w-3xl"
-          >
+            <TabsContent value="settings" className="max-w-3xl">
             <section className="rounded-xl border border-admin-200 bg-white shadow-sm overflow-hidden">
               <div className="border-l-4 border-admin-700 bg-admin-100/80 px-5 py-3 flex items-center gap-2">
                 <Settings2 className="w-4 h-4 text-admin-700" />
@@ -466,8 +422,9 @@ export function AdminSystemPage() {
                 </div>
               </div>
             </section>
+            </TabsContent>
           </div>
-        )}
+        </Tabs>
       </div>
     </div>
   );

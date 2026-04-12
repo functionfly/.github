@@ -4,6 +4,9 @@
 
 @import 'tailwindcss';
 
+/* ─── Dark mode variant for Tailwind v4 ─────────────────────────── */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─── Tailwind v4 theme ─────────────────────────────────────────── */
 @theme {
   /* Custom admin palette */

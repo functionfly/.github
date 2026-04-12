@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApiClient } from '@/lib/api/adminClient';
+import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import {
   Settings,
   BarChart3,
@@ -24,6 +25,7 @@ interface BlogPost {
   title: string;
   slug: string;
   content: string;
+  body?: unknown;
   excerpt: string;
   author: string;
   tags: string[];
@@ -188,7 +190,7 @@ function BlogPostsTab() {
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const { data: listData, isLoading } = useQuery({
+  const { data: listData, isLoading, error: queryError } = useQuery({
     queryKey: ['admin-blog-posts'],
     queryFn: async () => {
       const res = await adminApiClient.get<{ posts: BlogPost[]; limit: number; offset: number }>('/content/blog');
@@ -207,8 +209,43 @@ function BlogPostsTab() {
 
   const posts = listData?.posts ?? [];
 
+  // Handle loading state after all hooks are called (React Rules of Hooks)
   if (isLoading) {
     return <div className="text-gray-500">Loading posts…</div>;
+  }
+
+  // Handle error state gracefully without crashing
+  if (queryError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-900">Blog posts</h2>
+          <button
+            type="button"
+            onClick={() => { setEditingPost(null); setShowForm(true); }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="w-4 h-4" />
+            New post
+          </button>
+        </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
+          <p className="font-medium">Unable to load posts</p>
+          <p className="text-sm mt-1">Please try refreshing the page or check your connection.</p>
+        </div>
+        {showForm && (
+          <PostForm
+            post={editingPost ?? undefined}
+            onClose={() => { setShowForm(false); setEditingPost(null); }}
+            onSaved={() => {
+              queryClient.invalidateQueries({ queryKey: ['admin-blog-posts'] });
+              setShowForm(false);
+              setEditingPost(null);
+            }}
+          />
+        )}
+      </div>
+    );
   }
 
   return (
@@ -337,7 +374,19 @@ function PostForm({
     if (post) {
       setTitle(post.title);
       setSlug(post.slug);
-      setContent(post.content);
+      // Prefer body (TipTap JSON) over content (plain text)
+      if (post.body && typeof post.body === 'object') {
+        setContent(JSON.stringify(post.body));
+      } else if (post.content) {
+        // Convert legacy content to TipTap format
+        const paragraphs = post.content.split('\n\n').filter(p => p.trim()).map(p => ({
+          type: 'paragraph',
+          content: [{ type: 'text', text: p.trim() }]
+        }));
+        setContent(JSON.stringify({ type: 'doc', content: paragraphs }));
+      } else {
+        setContent('{"type":"doc","content":[]}');
+      }
       setExcerpt(post.excerpt);
       setAuthor(post.author);
       setTagsStr(Array.isArray(post.tags) ? post.tags.join(', ') : '');
@@ -346,7 +395,6 @@ function PostForm({
     }
   }, [post]);
 
-  const queryClient = useQueryClient();
   const createMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) => adminApiClient.post('/content/blog', payload),
     onSuccess: () => {
@@ -362,10 +410,39 @@ function PostForm({
   });
 
   const tags = tagsStr.split(',').map((t) => t.trim()).filter(Boolean);
+  
+  // Parse content as TipTap JSON or fallback to plain text in content field
+  let bodyContent: unknown;
+  try {
+    bodyContent = JSON.parse(content);
+  } catch {
+    // If not valid JSON, wrap as plain text paragraphs
+    bodyContent = {
+      type: 'doc',
+      content: content.split('\n\n').filter(p => p.trim()).map(p => ({
+        type: 'paragraph',
+        content: [{ type: 'text', text: p.trim() }]
+      }))
+    };
+  }
+  
+  // Helper to extract plain text from TipTap JSON
+  const extractPlainText = (body: unknown): string => {
+    if (typeof body !== 'object' || body === null) return String(body || '');
+    const doc = body as { content?: Array<{ content?: Array<{ text?: string }> }> };
+    if (!doc.content) return '';
+    return doc.content
+      .map((p) => p.content?.map((c) => c.text).join(' ') || '')
+      .join('\n\n');
+  };
+
   const payload = {
     title,
     slug: slug || title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-    content,
+    content: typeof bodyContent === 'object' && bodyContent !== null 
+      ? extractPlainText(bodyContent)
+      : content,
+    body: bodyContent,
     excerpt,
     author,
     tags,
@@ -433,14 +510,16 @@ function PostForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Content *</label>
-          <textarea
-            rows={8}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          <label className="block text-sm font-medium text-gray-700 mb-2">Content *</label>
+          <RichTextEditor
+            content={content || '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Start writing your post..."}]}]}'}
+            onChange={setContent}
+            placeholder="Start writing your blog post..."
+            minHeight="400px"
           />
+          <p className="mt-1 text-xs text-gray-500">
+            Use the toolbar to format text, add headings, lists, links, and code blocks.
+          </p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
@@ -495,7 +574,7 @@ function BlogCategoriesTab() {
   const [editing, setEditing] = useState<BlogCategory | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const { data: categories = [], isLoading } = useQuery({
+  const { data: categories = [], isLoading, error: queryError } = useQuery({
     queryKey: ['admin-blog-categories'],
     queryFn: async () => {
       const res = await adminApiClient.get<BlogCategory[]>('/content/categories');
@@ -512,8 +591,43 @@ function BlogCategoriesTab() {
     },
   });
 
+  // Handle loading state after all hooks are called (React Rules of Hooks)
   if (isLoading) {
     return <div className="text-gray-500">Loading categories…</div>;
+  }
+
+  // Handle error state gracefully without crashing
+  if (queryError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-900">Categories</h2>
+          <button
+            type="button"
+            onClick={() => { setEditing(null); setShowAdd(true); }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="w-4 h-4" />
+            Add category
+          </button>
+        </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
+          <p className="font-medium">Unable to load categories</p>
+          <p className="text-sm mt-1">Please try refreshing the page or check your connection.</p>
+        </div>
+        {(showAdd || editing) && (
+          <CategoryForm
+            category={editing ?? undefined}
+            onClose={() => { setShowAdd(false); setEditing(null); }}
+            onSaved={() => {
+              queryClient.invalidateQueries({ queryKey: ['admin-blog-categories'] });
+              setShowAdd(false);
+              setEditing(null);
+            }}
+          />
+        )}
+      </div>
+    );
   }
 
   return (

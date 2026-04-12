@@ -1,9 +1,10 @@
 /**
- * Admin Sidebar Component
+ * Admin Sidebar Component - Production Ready
+ * Organized sections, search, keyboard shortcuts, collapsible groups
  */
 
 import { ROUTES } from '@/lib/constants';
-import clsx from 'clsx';
+import { cn } from '@/lib/utils';
 import {
   Activity,
   AlertTriangle,
@@ -12,17 +13,21 @@ import {
   Boxes,
   Building2,
   Calendar,
+  ChevronDown,
   CircleDot,
   Cloud,
+  Command,
   CreditCard,
   Factory,
   FileText,
+  Home,
   Landmark,
   LayoutDashboard,
   Mail,
   MessageSquare,
   PanelTop,
   RotateCcw,
+  Search,
   Settings,
   Shield,
   TrendingUp,
@@ -30,241 +35,679 @@ import {
   Wrench,
   X,
   Zap,
+  type LucideIcon,
 } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+
+// CSS-based transitions instead of framer-motion
 
 interface AdminSidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const NAV_ITEMS = [
+interface NavItem {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: 'new' | 'beta' | number;
+  shortcut?: string;
+  description?: string;
+}
+
+interface NavSection {
+  id: string;
+  title: string;
+  icon: LucideIcon;
+  items: NavItem[];
+  collapsible?: boolean;
+}
+
+// Organized navigation with logical grouping
+const navigationSections: NavSection[] = [
   {
-    label: 'Dashboard',
-    path: ROUTES.ADMIN_DASHBOARD,
+    id: 'dashboard',
+    title: 'Dashboard',
     icon: LayoutDashboard,
+    collapsible: false,
+    items: [
+      {
+        path: ROUTES.ADMIN_DASHBOARD,
+        label: 'Overview',
+        icon: Home,
+        shortcut: 'H',
+        description: 'Admin dashboard overview',
+      },
+      {
+        path: ROUTES.ADMIN_AUDIT,
+        label: 'Audit Log',
+        icon: FileText,
+        description: 'System audit logs',
+      },
+    ],
   },
   {
-    label: 'Tenants',
-    path: ROUTES.ADMIN_TENANTS,
+    id: 'platform',
+    title: 'Platform',
     icon: Building2,
+    collapsible: true,
+    items: [
+      {
+        path: ROUTES.ADMIN_TENANTS,
+        label: 'Tenants',
+        icon: Building2,
+        shortcut: 'T',
+        description: 'Manage tenants',
+      },
+      {
+        path: ROUTES.ADMIN_USERS,
+        label: 'Users',
+        icon: Users,
+        shortcut: 'U',
+        description: 'User management',
+      },
+      {
+        path: ROUTES.ADMIN_SIGNUP_INVITES,
+        label: 'Invites',
+        icon: Shield,
+        description: 'Signup invitations',
+      },
+      {
+        path: ROUTES.ADMIN_BILLING,
+        label: 'Billing',
+        icon: CreditCard,
+        description: 'Billing management',
+      },
+    ],
   },
   {
-    label: 'Users',
-    path: ROUTES.ADMIN_USERS,
-    icon: Users,
-  },
-  {
-    label: 'Signup Invites',
-    path: ROUTES.ADMIN_SIGNUP_INVITES,
-    icon: Shield,
-  },
-  {
-    label: 'Billing',
-    path: ROUTES.ADMIN_BILLING,
-    icon: CreditCard,
-  },
-  {
-    label: 'Audit Log',
-    path: ROUTES.ADMIN_AUDIT,
-    icon: FileText,
-  },
-  {
-    label: 'System',
-    path: ROUTES.ADMIN_SYSTEM,
-    icon: Settings,
-  },
-  {
-    label: 'Backends',
-    path: ROUTES.ADMIN_BACKENDS,
+    id: 'infrastructure',
+    title: 'Infrastructure',
     icon: Boxes,
+    collapsible: true,
+    items: [
+      {
+        path: ROUTES.ADMIN_BACKENDS,
+        label: 'Backends',
+        icon: Boxes,
+        description: 'Backend services',
+      },
+      {
+        path: ROUTES.ADMIN_PROVIDERS,
+        label: 'Providers',
+        icon: Zap,
+        description: 'Cloud providers',
+      },
+      {
+        path: ROUTES.ADMIN_SYSTEM,
+        label: 'System',
+        icon: Settings,
+        description: 'System settings',
+      },
+      {
+        path: ROUTES.ADMIN_CACHE,
+        label: 'Cache',
+        icon: CircleDot,
+        description: 'Cache management',
+      },
+      {
+        path: ROUTES.ADMIN_MONITORING,
+        label: 'Monitoring',
+        icon: Activity,
+        description: 'System monitoring',
+      },
+      {
+        path: ROUTES.ADMIN_MAINTENANCE,
+        label: 'Maintenance',
+        icon: Wrench,
+        description: 'Maintenance mode',
+      },
+    ],
   },
   {
-    label: 'Providers',
-    path: ROUTES.ADMIN_PROVIDERS,
-    icon: Zap,
-  },
-  {
-    label: 'Content',
-    path: ROUTES.ADMIN_CONTENT,
+    id: 'content',
+    title: 'Content',
     icon: PanelTop,
+    collapsible: true,
+    items: [
+      { path: ROUTES.ADMIN_CONTENT, label: 'Pages', icon: PanelTop, description: 'Content pages' },
+      {
+        path: ROUTES.ADMIN_BLOG,
+        label: 'Blog',
+        icon: BookOpen,
+        shortcut: 'B',
+        description: 'Blog management',
+      },
+      {
+        path: ROUTES.ADMIN_CONTENT_CALENDAR,
+        label: 'Calendar',
+        icon: Calendar,
+        description: 'Content calendar',
+      },
+      {
+        path: ROUTES.ADMIN_REDIRECTS,
+        label: 'Redirects',
+        icon: RotateCcw,
+        description: 'URL redirects',
+      },
+    ],
   },
   {
-    label: 'Blog',
-    path: ROUTES.ADMIN_BLOG,
-    icon: BookOpen,
-  },
-  {
-    label: 'Functions',
-    path: ROUTES.ADMIN_FUNCTIONS,
+    id: 'functions',
+    title: 'Functions',
     icon: BarChart3,
+    collapsible: true,
+    items: [
+      {
+        path: ROUTES.ADMIN_FUNCTIONS,
+        label: 'Functions',
+        icon: BarChart3,
+        description: 'Function management',
+      },
+      {
+        path: ROUTES.ADMIN_REGISTRY,
+        label: 'Registry',
+        icon: FileText,
+        description: 'Function registry',
+      },
+      {
+        path: ROUTES.ADMIN_STATE_FABRIC,
+        label: 'State Fabric',
+        icon: CircleDot,
+        badge: 'beta',
+        description: 'Distributed state',
+      },
+      {
+        path: ROUTES.ADMIN_FACTORY,
+        label: 'Factory',
+        icon: Factory,
+        badge: 'new',
+        description: 'Function factory',
+      },
+    ],
   },
   {
-    label: 'Registry',
-    path: ROUTES.ADMIN_REGISTRY,
-    icon: FileText,
+    id: 'trust',
+    title: 'Trust & Safety',
+    icon: Shield,
+    collapsible: true,
+    items: [
+      {
+        path: ROUTES.ADMIN_TRUST_DASHBOARD,
+        label: 'Trust Dashboard',
+        icon: Shield,
+        description: 'Trust metrics',
+      },
+      {
+        path: ROUTES.ADMIN_EXECUTION_AUDIT,
+        label: 'Execution Audit',
+        icon: BarChart3,
+        description: 'Execution logs',
+      },
+      {
+        path: ROUTES.ADMIN_FRAUD_DETECTION,
+        label: 'Fraud Detection',
+        icon: AlertTriangle,
+        badge: 'beta',
+        description: 'Fraud monitoring',
+      },
+      {
+        path: ROUTES.ADMIN_ECONOMIC_LEADERBOARD,
+        label: 'Economic',
+        icon: TrendingUp,
+        description: 'Economic metrics',
+      },
+    ],
   },
   {
-    label: 'State Fabric',
-    path: ROUTES.ADMIN_STATE_FABRIC,
-    icon: CircleDot,
-  },
-  {
-    label: 'Feedback',
-    path: ROUTES.ADMIN_FEEDBACK,
+    id: 'communications',
+    title: 'Communications',
     icon: MessageSquare,
+    collapsible: true,
+    items: [
+      { path: ROUTES.ADMIN_EMAIL, label: 'Email', icon: Mail, description: 'Email templates' },
+      { path: ROUTES.ADMIN_NEWSLETTER, label: 'Newsletter', icon: Mail, description: 'Newsletter campaigns', badge: 'new' },
+      {
+        path: ROUTES.ADMIN_SUPPORT,
+        label: 'Support',
+        icon: MessageSquare,
+        description: 'Support tickets',
+      },
+      {
+        path: ROUTES.ADMIN_FEEDBACK,
+        label: 'Feedback',
+        icon: MessageSquare,
+        description: 'User feedback',
+      },
+    ],
   },
   {
-    label: 'Features',
-    path: ROUTES.ADMIN_FEATURES,
-    icon: Settings,
-  },
-  {
-    label: 'Status',
-    path: ROUTES.ADMIN_STATUS,
+    id: 'status',
+    title: 'Status',
     icon: Landmark,
-  },
-  {
-    label: 'Status Incidents',
-    path: ROUTES.ADMIN_STATUS_INCIDENTS,
-    icon: AlertTriangle,
-  },
-  {
-    label: 'Redirects',
-    path: ROUTES.ADMIN_REDIRECTS,
-    icon: RotateCcw,
-  },
-  {
-    label: 'Email',
-    path: ROUTES.ADMIN_EMAIL,
-    icon: Mail,
-  },
-  {
-    label: 'Content Calendar',
-    path: ROUTES.ADMIN_CONTENT_CALENDAR,
-    icon: Calendar,
-  },
-  {
-    label: 'Trust Dashboard',
-    path: ROUTES.ADMIN_TRUST_DASHBOARD,
-    icon: Shield,
-  },
-  {
-    label: 'Execution Audit',
-    path: ROUTES.ADMIN_EXECUTION_AUDIT,
-    icon: BarChart3,
-  },
-  {
-    label: 'Fraud Detection',
-    path: ROUTES.ADMIN_FRAUD_DETECTION,
-    icon: Shield,
-  },
-  {
-    label: 'Economic Leaderboard',
-    path: ROUTES.ADMIN_ECONOMIC_LEADERBOARD,
-    icon: TrendingUp,
-  },
-  {
-    label: 'Factory',
-    path: ROUTES.ADMIN_FACTORY,
-    icon: Factory,
-  },
-  {
-    label: 'Maintenance',
-    path: ROUTES.ADMIN_MAINTENANCE,
-    icon: Wrench,
-  },
-  {
-    label: 'Cache',
-    path: ROUTES.ADMIN_CACHE,
-    icon: Boxes,
-  },
-  {
-    label: 'Monitoring',
-    path: ROUTES.ADMIN_MONITORING,
-    icon: Activity,
-  },
-  {
-    label: 'Cloudflare',
-    path: ROUTES.ADMIN_CLOUDFLARE_ANALYTICS,
-    icon: Cloud,
-  },
-  {
-    label: 'Support',
-    path: ROUTES.ADMIN_SUPPORT,
-    icon: MessageSquare,
+    collapsible: true,
+    items: [
+      {
+        path: ROUTES.ADMIN_STATUS,
+        label: 'Status Page',
+        icon: Landmark,
+        description: 'Public status page',
+      },
+      {
+        path: ROUTES.ADMIN_STATUS_INCIDENTS,
+        label: 'Incidents',
+        icon: AlertTriangle,
+        description: 'Status incidents',
+      },
+      {
+        path: ROUTES.ADMIN_CLOUDFLARE_ANALYTICS,
+        label: 'Cloudflare',
+        icon: Cloud,
+        description: 'CDN analytics',
+      },
+    ],
   },
 ];
 
+const MD_BREAKPOINT = 768;
+
 export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const isActive = (path: string) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isMd, setIsMd] = useState(() => window.innerWidth >= MD_BREAKPOINT);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(() => {
+    // Start with all sections expanded
+    return new Set(navigationSections.map((s) => s.id));
+  });
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+
+  // Handle resize
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${MD_BREAKPOINT}px)`);
+    const handler = () => setIsMd(mq.matches);
+    handler();
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // Focus search on mobile when sidebar opens
+  useEffect(() => {
+    if (isOpen && !isMd && searchInputRef.current) {
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    }
+  }, [isOpen, isMd]);
+
+  // Auto-expand sections with active items
+  useEffect(() => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      navigationSections.forEach((section) => {
+        const hasActive = section.items.some(
+          (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+        );
+        if (hasActive) {
+          next.add(section.id);
+        }
+      });
+      return next;
+    });
+  }, [location.pathname]);
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
+    });
+  };
+
+  // Search functionality
+  const searchableItems = useMemo(() => {
+    return navigationSections.flatMap((section) =>
+      section.items.map((item) => ({ ...item, section: section.title }))
+    );
+  }, []);
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    return searchableItems.filter(
+      (item) =>
+        item.label.toLowerCase().includes(query) ||
+        item.section.toLowerCase().includes(query) ||
+        item.description?.toLowerCase().includes(query)
+    );
+  }, [searchQuery, searchableItems]);
+
+  // Check if item is active
+  const isItemActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
+  // Keyboard shortcuts
+  const handleShortcut = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        const shortcut = e.key.toUpperCase();
+        const item = searchableItems.find((i) => i.shortcut === shortcut);
+        if (item) {
+          e.preventDefault();
+          navigate(item.path);
+        }
+      }
+    },
+    [searchableItems, navigate]
+  );
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleShortcut);
+    return () => document.removeEventListener('keydown', handleShortcut);
+  }, [handleShortcut]);
+
+  // Keyboard navigation
+  const visibleItems = useMemo(() => {
+    if (searchQuery && searchResults.length > 0) return searchResults;
+    return navigationSections.flatMap((s) => (expandedSections.has(s.id) ? s.items : []));
+  }, [searchQuery, searchResults, expandedSections]);
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!isOpen) return;
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev >= visibleItems.length - 1 ? 0 : prev + 1));
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev <= 0 ? visibleItems.length - 1 : prev - 1));
+          break;
+        case 'Enter':
+          if (focusedIndex >= 0 && focusedIndex < visibleItems.length) {
+            const item = visibleItems[focusedIndex];
+            if (item) {
+              navigate(item.path);
+              setSearchQuery('');
+              onClose();
+            }
+          }
+          break;
+        case 'Escape':
+          if (searchQuery) {
+            setSearchQuery('');
+          } else {
+            onClose();
+          }
+          break;
+      }
+    },
+    [isOpen, visibleItems, focusedIndex, navigate, searchQuery, onClose]
+  );
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   return (
     <>
-      {/* Mobile overlay */}
-      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={onClose} />}
+      {/* Mobile Overlay */}
+      {isOpen && !isMd && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden transition-opacity duration-200"
+          onClick={onClose}
+        />
+      )}
 
       {/* Sidebar */}
       <aside
-        className={clsx(
-          'fixed md:static left-0 top-0 h-screen w-64 bg-gray-900 text-white z-50 md:z-auto transition-transform duration-300 ease-in-out',
-          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        className={cn(
+          'fixed left-0 top-0 z-50 h-screen w-[280px] min-w-[280px]',
+          'bg-gray-900 text-white',
+          'border-r border-gray-800',
+          'flex flex-col',
+          'transition-transform duration-300 ease-out',
+          isOpen || isMd ? 'translate-x-0' : '-translate-x-full',
+          'md:static md:translate-x-0 md:self-stretch'
         )}
       >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-            <div className="flex items-center gap-3">
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 32 32"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <rect width="32" height="32" rx="6" fill="#0F172A" />
-                <path d="M16 5L27 16L16 27L5 16L16 5Z" fill="#6366F1" />
-                <path d="M16 9.5L22.5 16L16 22.5L9.5 16L16 9.5Z" fill="white" />
-                <path d="M16 12.5L19.5 16L16 19.5L12.5 16L16 12.5Z" fill="#6366F1" />
-              </svg>
-              <span className="text-lg font-bold text-white">FunctionFly</span>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
+          <div className="flex items-center gap-3">
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 32 32"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="shrink-0"
+            >
+              <rect width="32" height="32" rx="6" fill="#6366F1" />
+              <path d="M16 5L27 16L16 27L5 16L16 5Z" fill="#818CF8" />
+              <path d="M16 9.5L22.5 16L16 22.5L9.5 16L16 9.5Z" fill="white" />
+              <path d="M16 12.5L19.5 16L16 19.5L12.5 16L16 12.5Z" fill="#6366F1" />
+            </svg>
+            <div>
+              <span className="text-sm font-bold text-white">FunctionFly</span>
+              <span className="text-[10px] text-gray-400 block">Admin</span>
             </div>
-            <button onClick={onClose} className="md:hidden">
+          </div>
+
+          <div className="flex items-center gap-1">
+            {/* Command Palette Trigger */}
+            <button
+              onClick={() => {
+                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+              }}
+              className="hidden md:flex items-center gap-1 px-2 py-1 rounded bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-indigo-500/50 transition-colors"
+            >
+              <Command className="w-3 h-3" />
+              <span className="text-[10px]">K</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="md:hidden p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
+        </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto px-4 py-8">
-            <div className="space-y-2">
-              {NAV_ITEMS.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.path);
+        {/* Search */}
+        <div className="px-3 py-3 border-b border-gray-800">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 min-h-0 overflow-y-auto py-3">
+          {/* Search Results */}
+          {searchQuery && (
+            <div className="px-3 pb-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <p className="px-3 text-xs font-medium text-gray-500 mb-2">Search Results</p>
+              {searchResults.length > 0 ? (
+                <div className="space-y-1">
+                  {searchResults.map((item, index) => {
+                    const isActive = isItemActive(item.path);
+                    const Icon = item.icon;
+                    const isFocused = focusedIndex === index;
+
+                    return (
+                      <Link
+                        key={`search-${item.path}`}
+                        to={item.path}
+                        onClick={() => {
+                          onClose();
+                          setSearchQuery('');
+                        }}
+                        className={cn(
+                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all',
+                          isActive
+                            ? 'bg-indigo-500/20 text-indigo-400'
+                            : isFocused
+                              ? 'bg-gray-800 text-white ring-2 ring-indigo-500/50'
+                              : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                        )}
+                      >
+                        <Icon className={cn('w-4 h-4', isActive && 'text-indigo-400')} />
+                        <div className="flex-1 min-w-0">
+                          <span className="block truncate">{item.label}</span>
+                          <span className="text-xs text-gray-500 block truncate">
+                            {item.section}
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="px-3 py-8 text-center">
+                  <Search className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">No results found</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Navigation Sections */}
+          {!searchQuery && (
+            <div className="space-y-1 px-3">
+              {navigationSections.map((section) => {
+                const isExpanded = expandedSections.has(section.id);
+                const SectionIcon = section.icon;
+                const hasActiveItem = section.items.some((item) => isItemActive(item.path));
 
                 return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={clsx(
-                      'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200',
-                      active ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800'
+                  <div key={section.id} className="mb-1">
+                    {/* Section Header */}
+                    {section.collapsible ? (
+                      <button
+                        onClick={() => toggleSection(section.id)}
+                        className={cn(
+                          'flex items-center justify-between w-full px-3 py-2 rounded-lg transition-all',
+                          'hover:bg-gray-800',
+                          hasActiveItem ? 'text-white' : 'text-gray-400'
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <SectionIcon className="w-4 h-4" />
+                          <span className="text-xs font-semibold uppercase tracking-wider">
+                            {section.title}
+                          </span>
+                        </div>
+                        <div
+                          className={cn(
+                            'transition-transform duration-200',
+                            isExpanded ? 'rotate-0' : '-rotate-90'
+                          )}
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </div>
+                      </button>
+                    ) : (
+                      <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        {section.title}
+                      </div>
                     )}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
+
+                    {/* Section Items */}
+                    <div
+                      className={cn(
+                        'overflow-hidden transition-all duration-200 ease-in-out',
+                        isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+                      )}
+                    >
+                      <div className="space-y-0.5 pt-1">
+                        {section.items.map((item, itemIndex) => {
+                          const isActive = isItemActive(item.path);
+                          const Icon = item.icon;
+                          const globalIndex =
+                            navigationSections
+                              .slice(0, navigationSections.indexOf(section))
+                              .reduce(
+                                (acc, s) => acc + (expandedSections.has(s.id) ? s.items.length : 0),
+                                0
+                              ) + itemIndex;
+                          const isFocused = focusedIndex === globalIndex;
+
+                          return (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              onClick={() => onClose()}
+                              className={cn(
+                                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all relative group',
+                                isActive
+                                  ? 'bg-indigo-500/20 text-indigo-400'
+                                  : isFocused
+                                    ? 'bg-gray-800 text-white ring-2 ring-indigo-500/50'
+                                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                              )}
+                            >
+                              {/* Active indicator */}
+                              {isActive && (
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-indigo-500" />
+                              )}
+
+                              <Icon className={cn('w-4 h-4', isActive && 'text-indigo-400')} />
+                              <span className="flex-1 font-medium truncate">{item.label}</span>
+
+                              {/* Badge */}
+                              {item.badge && (
+                                <span
+                                  className={cn(
+                                    'text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase',
+                                    item.badge === 'new'
+                                      ? 'bg-green-500/20 text-green-400'
+                                      : 'bg-blue-500/20 text-blue-400'
+                                  )}
+                                >
+                                  {item.badge}
+                                </span>
+                              )}
+
+                              {/* Shortcut hint */}
+                              {item.shortcut && (
+                                <kbd className="text-[10px] font-mono text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded hidden group-hover:inline-block">
+                                  ⌘{item.shortcut}
+                                </kbd>
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
             </div>
-          </nav>
+          )}
+        </nav>
 
-          {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-800">
-            <p className="text-xs text-gray-400">FunctionFly Admin © {new Date().getFullYear()}</p>
+        {/* Footer */}
+        <div className="p-3 border-t border-gray-800">
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>FunctionFly Admin</span>
+            <span>v2.0</span>
           </div>
         </div>
       </aside>

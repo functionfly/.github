@@ -26,3 +26,11 @@ export type {
 
 // Re-export useRealtime for convenience
 export { useRealtime } from './useRealtime';
+
+// Access control hook
+export {
+  useAccessControl,
+  withAccessControl,
+  type Permission,
+  type AccessDeniedReason,
+} from './useAccessControl';

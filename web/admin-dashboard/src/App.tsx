@@ -12,11 +12,14 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 // Pages
 import { AdminAuditPage } from '@/pages/AdminAuditPage';
+import { AdminAccessDeniedPage } from '@/pages/AdminAccessDeniedPage';
 import { AdminBillingPage } from '@/pages/AdminBillingPage';
 import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
 import { AdminLoginPage } from '@/pages/AdminLoginPage';
+import { AdminNewsletterPage } from '@/pages/AdminNewsletterPage';
 import { AdminTenantsPage } from '@/pages/AdminTenantsPage';
 import { AdminUsersPage } from '@/pages/AdminUsersPage';
+import { ToastProvider } from '@/components/ui/Toast';
 
 // Lazy loaded pages (to be migrated)
 import { Suspense, lazy } from 'react';
@@ -126,6 +129,7 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <ToastProvider>
       <BrowserRouter>
         <AdminAuthRestore>
           <Routes>
@@ -318,7 +322,14 @@ function App() {
                     </Suspense>
                   }
                 />
-                <Route path="newsletter" element={<Navigate to="/email" replace />} />
+                <Route
+                  path="newsletter"
+                  element={
+                    <Suspense fallback={<LoadingScreen />}>
+                      <AdminNewsletterPage />
+                    </Suspense>
+                  }
+                />
                 <Route
                   path="content-calendar"
                   element={
@@ -420,9 +431,11 @@ function App() {
 
             {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="access-denied" element={<AdminAccessDeniedPage />} />
           </Routes>
         </AdminAuthRestore>
       </BrowserRouter>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

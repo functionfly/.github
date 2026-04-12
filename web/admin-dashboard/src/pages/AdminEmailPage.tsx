@@ -3,10 +3,28 @@
  * Tabbed interface: Newsletter (subscribers & campaigns) and Email Settings
  */
 
-import { useState } from 'react';
-import { Mail, Settings, Send } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Mail, Settings, Send, Users, Plus, Trash2, Send as SendIcon, BarChart3, X } from 'lucide-react';
+import { adminApiClient } from '@/lib/api/adminClient';
 
 type TabId = 'newsletter' | 'settings';
+
+interface Subscriber {
+  id: string;
+  email: string;
+  name: string;
+  status: string;
+  source: string;
+  subscribed_at: string;
+}
+
+interface NewsletterStats {
+  total_subscribers: number;
+  active_subscribers: number;
+  unsubscribed: number;
+  bounced: number;
+  subscribers_last_30_days: number;
+}
 
 export function AdminEmailPage() {
   const [activeTab, setActiveTab] = useState<TabId>('newsletter');
@@ -56,17 +74,292 @@ export function AdminEmailPage() {
 }
 
 function NewsletterTab() {
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [stats, setStats] = useState<NewsletterStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newName, setNewName] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  const fetchSubscribers = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await adminApiClient.get<{ subscribers: Subscriber[]; total: number }>(
+        '/newsletter/subscribers?limit=50'
+      );
+      if (response.data) {
+        setSubscribers(response.data.subscribers || []);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to fetch subscribers');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await adminApiClient.get<NewsletterStats>('/newsletter/stats');
+      if (response.data) {
+        setStats(response.data);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch newsletter stats:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSubscribers();
+    fetchStats();
+  }, [fetchSubscribers, fetchStats]);
+
+  const handleAddSubscriber = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmail.trim()) return;
+
+    try {
+      setAdding(true);
+      await adminApiClient.post('/newsletter/subscribers', {
+        email: newEmail.trim(),
+        name: newName.trim(),
+      });
+      setShowAddModal(false);
+      setNewEmail('');
+      setNewName('');
+      fetchSubscribers();
+      fetchStats();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to add subscriber');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleDeleteSubscriber = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this subscriber?')) return;
+
+    try {
+      await adminApiClient.delete(`/newsletter/subscribers/${id}`);
+      fetchSubscribers();
+      fetchStats();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to delete subscriber');
+    }
+  };
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Mail className="w-5 h-5 text-indigo-600" />
-        <h2 className="text-lg font-semibold text-gray-900">Newsletter</h2>
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard
+            label="Total Subscribers"
+            value={stats.total_subscribers}
+            icon={<Users className="w-5 h-5" />}
+            color="blue"
+          />
+          <StatCard
+            label="Active"
+            value={stats.active_subscribers}
+            icon={<Users className="w-5 h-5" />}
+            color="green"
+          />
+          <StatCard
+            label="Unsubscribed"
+            value={stats.unsubscribed}
+            icon={<X className="w-5 h-5" />}
+            color="gray"
+          />
+          <StatCard
+            label="New (30 days)"
+            value={stats.subscribers_last_30_days}
+            icon={<BarChart3 className="w-5 h-5" />}
+            color="purple"
+          />
+        </div>
+      )}
+
+      {/* Subscribers List */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Mail className="w-5 h-5 text-indigo-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Subscribers</h2>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
+          >
+            <Plus className="w-4 h-4" />
+            Add Subscriber
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="p-8 text-center text-gray-500">Loading subscribers...</div>
+        ) : error ? (
+          <div className="p-8 text-center text-red-500">{error}</div>
+        ) : subscribers.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            No subscribers yet. Add your first subscriber to get started.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Source
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Subscribed
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {subscribers.map((subscriber) => (
+                  <tr key={subscriber.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {subscriber.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {subscriber.name || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          subscriber.status === 'active'
+                            ? 'bg-green-100 text-green-800'
+                            : subscriber.status === 'unsubscribed'
+                            ? 'bg-gray-100 text-gray-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {subscriber.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {subscriber.source}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(subscriber.subscribed_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <button
+                        onClick={() => handleDeleteSubscriber(subscriber.id)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Delete subscriber"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-      <p className="text-gray-600 mb-4">
-        Subscribers and campaigns. This area is wired in the new dashboard and ready for full migration.
-      </p>
-      <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 text-sm text-gray-500">
-        Newsletter features (subscriber list, campaigns, templates) can be implemented here.
+
+      {/* Add Subscriber Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Add Subscriber</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAddSubscriber} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="subscriber@example.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name (optional)
+                </label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={adding}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {adding ? 'Adding...' : 'Add Subscriber'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  color: 'blue' | 'green' | 'gray' | 'purple';
+}) {
+  const colorClasses = {
+    blue: 'bg-blue-50 text-blue-600',
+    green: 'bg-green-50 text-green-600',
+    gray: 'bg-gray-50 text-gray-600',
+    purple: 'bg-purple-50 text-purple-600',
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-gray-500">{label}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+        </div>
+        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>{icon}</div>
       </div>
     </div>
   );
