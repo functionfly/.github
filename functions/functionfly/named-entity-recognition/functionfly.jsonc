@@ -10,11 +10,11 @@
   "input": {
     "type": "object",
     "properties": { "text": { "type": "string" } },
-    "required": ["text"],
+    "required": ["text"]
   },
   "output": {
     "type": "object",
-    "properties": { "ok": {}, "result": {}, "entities": {}, "error": {} },
+    "properties": { "ok": {}, "result": {}, "entities": {}, "error": {} }
   },
   "deterministic": true,
   "idempotent": true,
@@ -23,8 +23,8 @@
   "memory_mb": 64,
   "example": {
     "input": {
-      "text": "Apple Inc. was founded by Steve Jobs in Cupertino, California in 1976.",
+      "text": "Apple Inc. was founded by Steve Jobs in Cupertino, California in 1976."
     },
-    "output": { "ok": true },
-  },
+    "output": { "ok": true }
+  }
 }

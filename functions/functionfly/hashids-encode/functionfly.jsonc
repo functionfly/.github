@@ -11,30 +11,30 @@
     "type": "object",
     "properties": {
       "numbers": {
-        "type": "array",
+        "type": "array"
       },
       "salt": {
-        "type": "string",
+        "type": "string"
       },
       "min_length": {
-        "type": "integer",
-      },
+        "type": "integer"
+      }
     },
-    "required": ["numbers"],
+    "required": ["numbers"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "hashid": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -43,11 +43,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "numbers": [123, 456],
+      "numbers": [123, 456]
     },
     "output": {
       "ok": true,
-      "hashid": "NkK9",
-    },
-  },
+      "hashid": "NkK9"
+    }
+  }
 }

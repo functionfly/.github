@@ -11,24 +11,24 @@
     "type": "object",
     "properties": {
       "morse": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["morse"],
+    "required": ["morse"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "text": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -37,11 +37,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "morse": ".... . .-.. .-.. ---",
+      "morse": ".... . .-.. .-.. ---"
     },
     "output": {
       "ok": true,
-      "text": "HELLO",
-    },
-  },
+      "text": "HELLO"
+    }
+  }
 }

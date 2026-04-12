@@ -11,9 +11,9 @@
     "type": "object",
     "properties": {
       "sentence1": { "type": "string" },
-      "sentence2": { "type": "string" },
+      "sentence2": { "type": "string" }
     },
-    "required": ["sentence1", "sentence2"],
+    "required": ["sentence1", "sentence2"]
   },
   "output": {
     "type": "object",
@@ -23,8 +23,8 @@
       "similarity": {},
       "jaccard": {},
       "cosine": {},
-      "error": {},
-    },
+      "error": {}
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -34,8 +34,8 @@
   "example": {
     "input": {
       "sentence1": "The cat sat on the mat",
-      "sentence2": "A cat is sitting on a mat",
+      "sentence2": "A cat is sitting on a mat"
     },
-    "output": { "ok": true, "similarity": 0.72 },
-  },
+    "output": { "ok": true, "similarity": 0.72 }
+  }
 }

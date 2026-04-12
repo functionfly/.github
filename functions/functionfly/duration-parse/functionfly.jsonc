@@ -11,33 +11,33 @@
     "type": "object",
     "properties": {
       "duration": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["duration"],
+    "required": ["duration"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "seconds": {
-        "type": "number",
+        "type": "number"
       },
       "minutes": {
-        "type": "number",
+        "type": "number"
       },
       "hours": {
-        "type": "number",
+        "type": "number"
       },
       "days": {
-        "type": "number",
+        "type": "number"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -46,14 +46,14 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "duration": "PT1H30M",
+      "duration": "PT1H30M"
     },
     "output": {
       "ok": true,
       "seconds": 5400,
       "minutes": 90,
       "hours": 1.5,
-      "days": 0.0625,
-    },
-  },
+      "days": 0.0625
+    }
+  }
 }

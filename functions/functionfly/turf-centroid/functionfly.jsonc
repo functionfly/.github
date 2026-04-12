@@ -17,11 +17,11 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
-      },
+          "maxItems": 2
+        }
+      }
     },
-    "required": ["coordinates"],
+    "required": ["coordinates"]
   },
   "output": {
     "type": "object",
@@ -31,11 +31,11 @@
         "type": "object",
         "properties": {
           "lng": { "type": "number", "description": "Centroid longitude" },
-          "lat": { "type": "number", "description": "Centroid latitude" },
-        },
+          "lat": { "type": "number", "description": "Centroid latitude" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -49,15 +49,15 @@
         [-73.906, 40.7128],
         [-73.906, 40.6628],
         [-74.006, 40.6628],
-        [-74.006, 40.7128],
-      ],
+        [-74.006, 40.7128]
+      ]
     },
     "output": {
       "ok": true,
       "result": {
         "lng": -73.956,
-        "lat": 40.6878,
-      },
-    },
-  },
+        "lat": 40.6878
+      }
+    }
+  }
 }

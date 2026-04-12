@@ -12,7 +12,7 @@
     "diagram",
     "tessellation",
     "geospatial",
-    "computational-geometry",
+    "computational-geometry"
   ],
   "input": {
     "type": "object",
@@ -24,18 +24,18 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
+          "maxItems": 2
+        }
       },
       "bbox": {
         "type": "array",
         "description": "Bounding box [minLng, minLat, maxLng, maxLat] for clipping (optional)",
         "items": { "type": "number" },
         "minItems": 4,
-        "maxItems": 4,
-      },
+        "maxItems": 4
+      }
     },
-    "required": ["points"],
+    "required": ["points"]
   },
   "output": {
     "type": "object",
@@ -47,13 +47,13 @@
           "cells": {
             "type": "array",
             "description": "Array of Voronoi cell polygons, each as array of [lng, lat] pairs",
-            "items": { "type": "array" },
+            "items": { "type": "array" }
           },
-          "point_count": { "type": "integer" },
-        },
+          "point_count": { "type": "integer" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -65,9 +65,9 @@
       "points": [
         [0, 0],
         [10, 0],
-        [5, 8],
+        [5, 8]
       ],
-      "bbox": [-5, -5, 15, 15],
+      "bbox": [-5, -5, 15, 15]
     },
     "output": {
       "ok": true,
@@ -79,7 +79,7 @@
             [5, 4],
             [2.5, 4],
             [-5, 1.5],
-            [-5, -5],
+            [-5, -5]
           ],
           [
             [5, -5],
@@ -87,7 +87,7 @@
             [15, 1.5],
             [7.5, 4],
             [5, 4],
-            [5, -5],
+            [5, -5]
           ],
           [
             [2.5, 4],
@@ -96,11 +96,11 @@
             [5, 15],
             [-5, 15],
             [-5, 1.5],
-            [2.5, 4],
-          ],
+            [2.5, 4]
+          ]
         ],
-        "point_count": 3,
-      },
-    },
-  },
+        "point_count": 3
+      }
+    }
+  }
 }

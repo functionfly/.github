@@ -12,7 +12,7 @@
     "temperature",
     "conditions",
     "geospatial",
-    "mock",
+    "mock"
   ],
   "input": {
     "type": "object",
@@ -21,10 +21,10 @@
       "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
       "units": {
         "type": "string",
-        "description": "Temperature units: 'metric' (Celsius) or 'imperial' (Fahrenheit) (default: 'metric')",
-      },
+        "description": "Temperature units: 'metric' (Celsius) or 'imperial' (Fahrenheit) (default: 'metric')"
+      }
     },
-    "required": ["lat", "lng"],
+    "required": ["lat", "lng"]
   },
   "output": {
     "type": "object",
@@ -42,11 +42,11 @@
           "conditions": { "type": "string" },
           "description": { "type": "string" },
           "visibility_km": { "type": "number" },
-          "units": { "type": "string" },
-        },
+          "units": { "type": "string" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": false,
   "idempotent": false,
@@ -57,7 +57,7 @@
     "input": {
       "lat": 40.7128,
       "lng": -74.006,
-      "units": "metric",
+      "units": "metric"
     },
     "output": {
       "ok": true,
@@ -71,8 +71,8 @@
         "conditions": "Partly Cloudy",
         "description": "partly cloudy with light winds",
         "visibility_km": 10.0,
-        "units": "metric",
-      },
-    },
-  },
+        "units": "metric"
+      }
+    }
+  }
 }

@@ -11,23 +11,23 @@
     "type": "object",
     "properties": {
       "length": {
-        "type": "integer",
-      },
-    },
+        "type": "integer"
+      }
+    }
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "otp": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": false,
   "idempotent": false,
@@ -38,7 +38,7 @@
     "input": {},
     "output": {
       "ok": true,
-      "otp": "123456",
-    },
-  },
+      "otp": "123456"
+    }
+  }
 }

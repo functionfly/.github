@@ -10,7 +10,7 @@
   "input": {
     "type": "object",
     "properties": { "text": { "type": "string" } },
-    "required": ["text"],
+    "required": ["text"]
   },
   "output": {
     "type": "object",
@@ -20,8 +20,8 @@
       "intent": {},
       "confidence": {},
       "scores": {},
-      "error": {},
-    },
+      "error": {}
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -30,6 +30,6 @@
   "memory_mb": 64,
   "example": {
     "input": { "text": "Can you help me reset my password?" },
-    "output": { "ok": true, "intent": "request" },
-  },
+    "output": { "ok": true, "intent": "request" }
+  }
 }

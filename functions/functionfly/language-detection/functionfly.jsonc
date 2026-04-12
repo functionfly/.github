@@ -10,7 +10,7 @@
   "input": {
     "type": "object",
     "properties": { "text": { "type": "string" } },
-    "required": ["text"],
+    "required": ["text"]
   },
   "output": {
     "type": "object",
@@ -21,8 +21,8 @@
       "language_code": {},
       "confidence": {},
       "scores": {},
-      "error": {},
-    },
+      "error": {}
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -31,6 +31,6 @@
   "memory_mb": 64,
   "example": {
     "input": { "text": "Bonjour, comment allez-vous aujourd'hui?" },
-    "output": { "ok": true, "language": "French", "language_code": "fr" },
-  },
+    "output": { "ok": true, "language": "French", "language_code": "fr" }
+  }
 }

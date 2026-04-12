@@ -15,10 +15,10 @@
       "style": {
         "type": "string",
         "enum": ["formal", "casual", "technical", "creative"],
-        "default": "formal",
-      },
+        "default": "formal"
+      }
     },
-    "required": ["prompt"],
+    "required": ["prompt"]
   },
   "output": {
     "type": "object",
@@ -27,8 +27,8 @@
       "result": {},
       "generated_text": {},
       "tokens_generated": {},
-      "error": {},
-    },
+      "error": {}
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -38,8 +38,8 @@
   "example": {
     "input": {
       "prompt": "The future of artificial intelligence",
-      "max_tokens": 30,
+      "max_tokens": 30
     },
-    "output": { "ok": true },
-  },
+    "output": { "ok": true }
+  }
 }

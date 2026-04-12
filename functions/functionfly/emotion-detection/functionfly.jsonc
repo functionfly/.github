@@ -10,7 +10,7 @@
   "input": {
     "type": "object",
     "properties": { "text": { "type": "string" } },
-    "required": ["text"],
+    "required": ["text"]
   },
   "output": {
     "type": "object",
@@ -19,8 +19,8 @@
       "result": {},
       "emotions": {},
       "dominant": {},
-      "error": {},
-    },
+      "error": {}
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -29,6 +29,6 @@
   "memory_mb": 64,
   "example": {
     "input": { "text": "I am so excited and happy about this wonderful news!" },
-    "output": { "ok": true, "dominant": "joy" },
-  },
+    "output": { "ok": true, "dominant": "joy" }
+  }
 }

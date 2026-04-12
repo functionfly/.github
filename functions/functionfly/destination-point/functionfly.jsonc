@@ -12,7 +12,7 @@
     "distance",
     "coordinates",
     "navigation",
-    "geospatial",
+    "geospatial"
   ],
   "input": {
     "type": "object",
@@ -20,19 +20,19 @@
       "lat": { "type": "number", "description": "Start latitude (-90 to 90)" },
       "lng": {
         "type": "number",
-        "description": "Start longitude (-180 to 180)",
+        "description": "Start longitude (-180 to 180)"
       },
       "bearing": {
         "type": "number",
-        "description": "Bearing in degrees (0-360)",
+        "description": "Bearing in degrees (0-360)"
       },
       "distance": { "type": "number", "description": "Distance to travel" },
       "unit": {
         "type": "string",
-        "description": "Unit of distance: 'km', 'miles', 'meters' (default: 'km')",
-      },
+        "description": "Unit of distance: 'km', 'miles', 'meters' (default: 'km')"
+      }
     },
-    "required": ["lat", "lng", "bearing", "distance"],
+    "required": ["lat", "lng", "bearing", "distance"]
   },
   "output": {
     "type": "object",
@@ -45,11 +45,11 @@
           "lng": { "type": "number", "description": "Destination longitude" },
           "bearing": { "type": "number", "description": "Input bearing" },
           "distance": { "type": "number", "description": "Input distance" },
-          "unit": { "type": "string", "description": "Unit of distance" },
-        },
+          "unit": { "type": "string", "description": "Unit of distance" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -62,7 +62,7 @@
       "lng": -74.006,
       "bearing": 90,
       "distance": 100,
-      "unit": "km",
+      "unit": "km"
     },
     "output": {
       "ok": true,
@@ -71,8 +71,8 @@
         "lng": -72.7498,
         "bearing": 90,
         "distance": 100,
-        "unit": "km",
-      },
-    },
-  },
+        "unit": "km"
+      }
+    }
+  }
 }

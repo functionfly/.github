@@ -11,9 +11,9 @@
     "type": "object",
     "properties": {
       "lat": { "type": "number", "description": "Latitude value to validate" },
-      "lng": { "type": "number", "description": "Longitude value to validate" },
+      "lng": { "type": "number", "description": "Longitude value to validate" }
     },
-    "required": ["lat", "lng"],
+    "required": ["lat", "lng"]
   },
   "output": {
     "type": "object",
@@ -24,25 +24,25 @@
         "properties": {
           "valid": {
             "type": "boolean",
-            "description": "Whether both lat and lng are valid",
+            "description": "Whether both lat and lng are valid"
           },
           "lat_valid": {
             "type": "boolean",
-            "description": "Whether latitude is valid",
+            "description": "Whether latitude is valid"
           },
           "lng_valid": {
             "type": "boolean",
-            "description": "Whether longitude is valid",
+            "description": "Whether longitude is valid"
           },
           "lat": { "type": "number" },
           "lng": { "type": "number" },
           "hemisphere_lat": { "type": "string", "description": "N or S" },
           "hemisphere_lng": { "type": "string", "description": "E or W" },
-          "errors": { "type": "array", "items": { "type": "string" } },
-        },
+          "errors": { "type": "array", "items": { "type": "string" } }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -52,7 +52,7 @@
   "example": {
     "input": {
       "lat": 40.7128,
-      "lng": -74.006,
+      "lng": -74.006
     },
     "output": {
       "ok": true,
@@ -64,8 +64,8 @@
         "lng": -74.006,
         "hemisphere_lat": "N",
         "hemisphere_lng": "W",
-        "errors": [],
-      },
-    },
-  },
+        "errors": []
+      }
+    }
+  }
 }

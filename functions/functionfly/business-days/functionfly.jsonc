@@ -11,39 +11,39 @@
     "type": "object",
     "properties": {
       "start_date": {
-        "type": "string",
+        "type": "string"
       },
       "end_date": {
-        "type": "string",
+        "type": "string"
       },
       "exclude_weekends": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "exclude_holidays": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "country": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["start_date", "end_date"],
+    "required": ["start_date", "end_date"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "business_days": {
-        "type": "integer",
+        "type": "integer"
       },
       "total_days": {
-        "type": "integer",
+        "type": "integer"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -53,12 +53,12 @@
   "example": {
     "input": {
       "start_date": "2024-01-01",
-      "end_date": "2024-01-15",
+      "end_date": "2024-01-15"
     },
     "output": {
       "ok": true,
       "business_days": 10,
-      "total_days": 14,
-    },
-  },
+      "total_days": 14
+    }
+  }
 }

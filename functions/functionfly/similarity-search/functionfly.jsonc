@@ -12,13 +12,13 @@
     "properties": {
       "query": { "type": "string" },
       "candidates": { "type": "array", "items": { "type": "string" } },
-      "top_k": { "type": "integer", "default": 5 },
+      "top_k": { "type": "integer", "default": 5 }
     },
-    "required": ["query", "candidates"],
+    "required": ["query", "candidates"]
   },
   "output": {
     "type": "object",
-    "properties": { "ok": {}, "result": {}, "matches": {}, "error": {} },
+    "properties": { "ok": {}, "result": {}, "matches": {}, "error": {} }
   },
   "deterministic": true,
   "idempotent": true,
@@ -32,10 +32,10 @@
         "deep learning",
         "data science",
         "cooking recipes",
-        "neural networks",
+        "neural networks"
       ],
-      "top_k": 2,
+      "top_k": 2
     },
-    "output": { "ok": true },
-  },
+    "output": { "ok": true }
+  }
 }

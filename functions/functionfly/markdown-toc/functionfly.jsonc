@@ -11,24 +11,24 @@
     "type": "object",
     "properties": {
       "markdown": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["markdown"],
+    "required": ["markdown"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "toc": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -37,11 +37,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "markdown": "# Title\n\n## Section 1\n\n## Section 2",
+      "markdown": "# Title\n\n## Section 1\n\n## Section 2"
     },
     "output": {
       "ok": true,
-      "toc": "- [Title](#title)\n  - [Section 1](#section-1)\n  - [Section 2](#section-2)",
-    },
-  },
+      "toc": "- [Title](#title)\n  - [Section 1](#section-1)\n  - [Section 2](#section-2)"
+    }
+  }
 }

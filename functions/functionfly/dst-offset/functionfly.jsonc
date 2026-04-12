@@ -11,33 +11,33 @@
     "type": "object",
     "properties": {
       "timezone": {
-        "type": "string",
+        "type": "string"
       },
       "date": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["timezone"],
+    "required": ["timezone"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "dst_offset_seconds": {
-        "type": "integer",
+        "type": "integer"
       },
       "dst_offset_hours": {
-        "type": "number",
+        "type": "number"
       },
       "is_dst": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -46,13 +46,13 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "timezone": "America/New_York",
+      "timezone": "America/New_York"
     },
     "output": {
       "ok": true,
       "is_dst": true,
       "dst_offset_seconds": 3600,
-      "dst_offset_hours": 1.0,
-    },
-  },
+      "dst_offset_hours": 1.0
+    }
+  }
 }

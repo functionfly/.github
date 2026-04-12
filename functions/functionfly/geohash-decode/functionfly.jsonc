@@ -12,10 +12,10 @@
     "properties": {
       "geohash": {
         "type": "string",
-        "description": "Geohash string to decode",
-      },
+        "description": "Geohash string to decode"
+      }
     },
-    "required": ["geohash"],
+    "required": ["geohash"]
   },
   "output": {
     "type": "object",
@@ -28,11 +28,11 @@
           "lng": { "type": "number", "description": "Center longitude" },
           "lat_error": {
             "type": "number",
-            "description": "Latitude error margin",
+            "description": "Latitude error margin"
           },
           "lng_error": {
             "type": "number",
-            "description": "Longitude error margin",
+            "description": "Longitude error margin"
           },
           "bbox": {
             "type": "object",
@@ -40,14 +40,14 @@
               "min_lat": { "type": "number" },
               "min_lng": { "type": "number" },
               "max_lat": { "type": "number" },
-              "max_lng": { "type": "number" },
-            },
+              "max_lng": { "type": "number" }
+            }
           },
-          "precision": { "type": "integer" },
-        },
+          "precision": { "type": "integer" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -56,7 +56,7 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "geohash": "dr5regw3p",
+      "geohash": "dr5regw3p"
     },
     "output": {
       "ok": true,
@@ -69,10 +69,10 @@
           "min_lat": 40.71278,
           "min_lng": -74.00602,
           "max_lat": 40.71282,
-          "max_lng": -74.00598,
+          "max_lng": -74.00598
         },
-        "precision": 9,
-      },
-    },
-  },
+        "precision": 9
+      }
+    }
+  }
 }

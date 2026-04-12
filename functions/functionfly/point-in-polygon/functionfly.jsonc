@@ -12,7 +12,7 @@
     "contains",
     "geospatial",
     "geometry",
-    "ray-casting",
+    "ray-casting"
   ],
   "input": {
     "type": "object",
@@ -22,7 +22,7 @@
         "description": "Point as [lat, lng]",
         "items": { "type": "number" },
         "minItems": 2,
-        "maxItems": 2,
+        "maxItems": 2
       },
       "polygon": {
         "type": "array",
@@ -31,11 +31,11 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
-      },
+          "maxItems": 2
+        }
+      }
     },
-    "required": ["point", "polygon"],
+    "required": ["point", "polygon"]
   },
   "output": {
     "type": "object",
@@ -46,16 +46,16 @@
         "properties": {
           "inside": {
             "type": "boolean",
-            "description": "Whether the point is inside the polygon",
+            "description": "Whether the point is inside the polygon"
           },
           "on_boundary": {
             "type": "boolean",
-            "description": "Whether the point is on the polygon boundary",
-          },
-        },
+            "description": "Whether the point is on the polygon boundary"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -70,15 +70,15 @@
         [40.7128, -73.906],
         [40.6628, -73.906],
         [40.6628, -74.006],
-        [40.7128, -74.006],
-      ],
+        [40.7128, -74.006]
+      ]
     },
     "output": {
       "ok": true,
       "result": {
         "inside": true,
-        "on_boundary": false,
-      },
-    },
-  },
+        "on_boundary": false
+      }
+    }
+  }
 }

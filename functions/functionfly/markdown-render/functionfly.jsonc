@@ -11,24 +11,24 @@
     "type": "object",
     "properties": {
       "markdown": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["markdown"],
+    "required": ["markdown"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "html": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -37,11 +37,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "markdown": "# Hello\n\nThis is **bold** text.",
+      "markdown": "# Hello\n\nThis is **bold** text."
     },
     "output": {
       "ok": true,
-      "html": "<h1>Hello</h1>\n<p>This is <strong>bold</strong> text.</p>",
-    },
-  },
+      "html": "<h1>Hello</h1>\n<p>This is <strong>bold</strong> text.</p>"
+    }
+  }
 }

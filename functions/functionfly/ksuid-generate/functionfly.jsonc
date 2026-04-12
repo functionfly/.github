@@ -9,21 +9,21 @@
   "tags": ["ksuid", "generate"],
   "input": {
     "type": "object",
-    "properties": {},
+    "properties": {}
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "ksuid": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": false,
   "idempotent": false,
@@ -34,7 +34,7 @@
     "input": {},
     "output": {
       "ok": true,
-      "ksuid": "0ujtsYcgvSTl8PAuAdqWYSmznOt",
-    },
-  },
+      "ksuid": "0ujtsYcgvSTl8PAuAdqWYSmznOt"
+    }
+  }
 }

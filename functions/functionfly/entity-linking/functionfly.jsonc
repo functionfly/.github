@@ -11,13 +11,13 @@
     "type": "object",
     "properties": {
       "entities": { "type": "array", "items": { "type": "string" } },
-      "text": { "type": "string" },
+      "text": { "type": "string" }
     },
-    "required": ["entities"],
+    "required": ["entities"]
   },
   "output": {
     "type": "object",
-    "properties": { "ok": {}, "result": {}, "linked": {}, "error": {} },
+    "properties": { "ok": {}, "result": {}, "linked": {}, "error": {} }
   },
   "deterministic": true,
   "idempotent": true,
@@ -26,8 +26,8 @@
   "memory_mb": 64,
   "example": {
     "input": {
-      "entities": ["Python", "Google", "New York", "Albert Einstein"],
+      "entities": ["Python", "Google", "New York", "Albert Einstein"]
     },
-    "output": { "ok": true },
-  },
+    "output": { "ok": true }
+  }
 }

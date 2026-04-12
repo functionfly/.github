@@ -11,30 +11,30 @@
     "type": "object",
     "properties": {
       "date": {
-        "type": "string",
+        "type": "string"
       },
       "country": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["date", "country"],
+    "required": ["date", "country"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "is_holiday": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "holiday_name": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -44,12 +44,12 @@
   "example": {
     "input": {
       "date": "2024-07-04",
-      "country": "US",
+      "country": "US"
     },
     "output": {
       "ok": true,
       "is_holiday": true,
-      "holiday_name": "Independence Day",
-    },
-  },
+      "holiday_name": "Independence Day"
+    }
+  }
 }

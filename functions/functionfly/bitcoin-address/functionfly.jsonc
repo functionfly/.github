@@ -11,27 +11,27 @@
     "type": "object",
     "properties": {
       "address": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["address"],
+    "required": ["address"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "valid": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "type": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -40,12 +40,12 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+      "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
     },
     "output": {
       "ok": true,
       "valid": true,
-      "type": "P2PKH",
-    },
-  },
+      "type": "P2PKH"
+    }
+  }
 }

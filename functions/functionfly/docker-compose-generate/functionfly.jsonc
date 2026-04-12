@@ -20,16 +20,16 @@
             "ports": { "type": "array", "items": { "type": "string" } },
             "environment": { "type": "object" },
             "volumes": { "type": "array", "items": { "type": "string" } },
-            "depends_on": { "type": "array", "items": { "type": "string" } },
+            "depends_on": { "type": "array", "items": { "type": "string" } }
           },
-          "required": ["name"],
-        },
+          "required": ["name"]
+        }
       },
       "version": { "type": "string", "description": "Docker Compose version" },
       "networks": { "type": "array", "items": { "type": "string" } },
-      "volumes": { "type": "array", "items": { "type": "string" } },
+      "volumes": { "type": "array", "items": { "type": "string" } }
     },
-    "required": ["services"],
+    "required": ["services"]
   },
   "output": {
     "type": "object",
@@ -37,8 +37,8 @@
       "ok": {},
       "result": { "type": "string" },
       "compose_file": { "type": "string" },
-      "error": {},
-    },
+      "error": {}
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -52,14 +52,14 @@
         {
           "name": "db",
           "image": "postgres:15",
-          "environment": { "POSTGRES_DB": "mydb" },
-        },
-      ],
+          "environment": { "POSTGRES_DB": "mydb" }
+        }
+      ]
     },
     "output": {
       "ok": true,
       "result": "docker-compose.yml generated",
-      "compose_file": "version: '3.8'\nservices:\n  web:\n    image: nginx:latest\n    ports:\n      - '80:80'\n  db:\n    image: postgres:15\n    environment:\n      POSTGRES_DB: mydb\n",
-    },
-  },
+      "compose_file": "version: '3.8'\nservices:\n  web:\n    image: nginx:latest\n    ports:\n      - '80:80'\n  db:\n    image: postgres:15\n    environment:\n      POSTGRES_DB: mydb\n"
+    }
+  }
 }

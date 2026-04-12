@@ -11,27 +11,27 @@
     "type": "object",
     "properties": {
       "date": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": [],
+    "required": []
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "year": {
-        "type": "integer",
+        "type": "integer"
       },
       "week": {
-        "type": "integer",
+        "type": "integer"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -40,12 +40,12 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "date": "2024-01-15",
+      "date": "2024-01-15"
     },
     "output": {
       "ok": true,
       "year": 2024,
-      "week": 3,
-    },
-  },
+      "week": 3
+    }
+  }
 }

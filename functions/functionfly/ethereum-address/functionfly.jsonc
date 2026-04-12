@@ -11,27 +11,27 @@
     "type": "object",
     "properties": {
       "address": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["address"],
+    "required": ["address"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "valid": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "checksum": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -40,12 +40,12 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f8bE21",
+      "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f8bE21"
     },
     "output": {
       "ok": true,
       "valid": true,
-      "checksum": "0x742d35Cc6634C0532925a3b844Bc9e7595f8bE21",
-    },
-  },
+      "checksum": "0x742d35Cc6634C0532925a3b844Bc9e7595f8bE21"
+    }
+  }
 }

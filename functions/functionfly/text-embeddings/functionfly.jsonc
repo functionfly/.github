@@ -11,9 +11,9 @@
     "type": "object",
     "properties": {
       "text": { "type": "string" },
-      "dimensions": { "type": "integer", "default": 128 },
+      "dimensions": { "type": "integer", "default": 128 }
     },
-    "required": ["text"],
+    "required": ["text"]
   },
   "output": {
     "type": "object",
@@ -22,8 +22,8 @@
       "result": {},
       "embedding": {},
       "dimensions": {},
-      "error": {},
-    },
+      "error": {}
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -32,6 +32,6 @@
   "memory_mb": 64,
   "example": {
     "input": { "text": "Hello world", "dimensions": 8 },
-    "output": { "ok": true, "dimensions": 8 },
-  },
+    "output": { "ok": true, "dimensions": 8 }
+  }
 }

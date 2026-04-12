@@ -12,7 +12,7 @@
     "self-intersection",
     "polygon",
     "validation",
-    "geospatial",
+    "geospatial"
   ],
   "input": {
     "type": "object",
@@ -24,11 +24,11 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
-      },
+          "maxItems": 2
+        }
+      }
     },
-    "required": ["coordinates"],
+    "required": ["coordinates"]
   },
   "output": {
     "type": "object",
@@ -40,20 +40,20 @@
           "kinks": {
             "type": "array",
             "description": "Array of self-intersection points as [lng, lat]",
-            "items": { "type": "array" },
+            "items": { "type": "array" }
           },
           "kink_count": {
             "type": "integer",
-            "description": "Number of self-intersections found",
+            "description": "Number of self-intersections found"
           },
           "is_simple": {
             "type": "boolean",
-            "description": "Whether the geometry has no self-intersections",
-          },
-        },
+            "description": "Whether the geometry has no self-intersections"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -67,16 +67,16 @@
         [10, 10],
         [10, 0],
         [0, 10],
-        [0, 0],
-      ],
+        [0, 0]
+      ]
     },
     "output": {
       "ok": true,
       "result": {
         "kinks": [[5.0, 5.0]],
         "kink_count": 1,
-        "is_simple": false,
-      },
-    },
-  },
+        "is_simple": false
+      }
+    }
+  }
 }

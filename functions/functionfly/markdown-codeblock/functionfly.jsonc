@@ -11,24 +11,24 @@
     "type": "object",
     "properties": {
       "markdown": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["markdown"],
+    "required": ["markdown"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "code_blocks": {
-        "type": "array",
+        "type": "array"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -37,11 +37,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "markdown": "```python\nprint('hello')\n```",
+      "markdown": "```python\nprint('hello')\n```"
     },
     "output": {
       "ok": true,
-      "code_blocks": [{ "language": "python", "code": "print('hello')" }],
-    },
-  },
+      "code_blocks": [{ "language": "python", "code": "print('hello')" }]
+    }
+  }
 }

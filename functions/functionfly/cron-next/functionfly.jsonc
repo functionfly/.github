@@ -11,30 +11,30 @@
     "type": "object",
     "properties": {
       "expression": {
-        "type": "string",
+        "type": "string"
       },
       "from_time": {
-        "type": "string",
+        "type": "string"
       },
       "count": {
-        "type": "integer",
-      },
+        "type": "integer"
+      }
     },
-    "required": ["expression"],
+    "required": ["expression"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "next_runs": {
-        "type": "array",
+        "type": "array"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -43,11 +43,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "expression": "0 9 * * 1-5",
+      "expression": "0 9 * * 1-5"
     },
     "output": {
       "ok": true,
-      "next_runs": ["2024-01-15T09:00:00Z"],
-    },
-  },
+      "next_runs": ["2024-01-15T09:00:00Z"]
+    }
+  }
 }

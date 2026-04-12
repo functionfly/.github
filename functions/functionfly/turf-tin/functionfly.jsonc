@@ -17,11 +17,11 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 3,
-        },
-      },
+          "maxItems": 3
+        }
+      }
     },
-    "required": ["points"],
+    "required": ["points"]
   },
   "output": {
     "type": "object",
@@ -33,14 +33,14 @@
           "triangles": {
             "type": "array",
             "description": "Array of triangles, each as array of 3 [lng, lat] points",
-            "items": { "type": "array" },
+            "items": { "type": "array" }
           },
           "triangle_count": { "type": "integer" },
-          "point_count": { "type": "integer" },
-        },
+          "point_count": { "type": "integer" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -53,8 +53,8 @@
         [0, 0],
         [10, 0],
         [5, 8],
-        [5, 3],
-      ],
+        [5, 3]
+      ]
     },
     "output": {
       "ok": true,
@@ -63,22 +63,22 @@
           [
             [0, 0],
             [10, 0],
-            [5, 3],
+            [5, 3]
           ],
           [
             [0, 0],
             [5, 3],
-            [5, 8],
+            [5, 8]
           ],
           [
             [10, 0],
             [5, 8],
-            [5, 3],
-          ],
+            [5, 3]
+          ]
         ],
         "triangle_count": 3,
-        "point_count": 4,
-      },
-    },
-  },
+        "point_count": 4
+      }
+    }
+  }
 }

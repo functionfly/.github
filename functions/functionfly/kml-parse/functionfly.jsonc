@@ -10,9 +10,9 @@
   "input": {
     "type": "object",
     "properties": {
-      "kml": { "type": "string", "description": "KML XML string to parse" },
+      "kml": { "type": "string", "description": "KML XML string to parse" }
     },
-    "required": ["kml"],
+    "required": ["kml"]
   },
   "output": {
     "type": "object",
@@ -23,17 +23,17 @@
         "properties": {
           "type": {
             "type": "string",
-            "description": "GeoJSON type (FeatureCollection)",
+            "description": "GeoJSON type (FeatureCollection)"
           },
           "features": {
             "type": "array",
-            "description": "Array of GeoJSON features",
+            "description": "Array of GeoJSON features"
           },
-          "feature_count": { "type": "integer" },
-        },
+          "feature_count": { "type": "integer" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -42,7 +42,7 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "kml": "<kml><Placemark><name>New York</name><Point><coordinates>-74.006,40.7128,0</coordinates></Point></Placemark></kml>",
+      "kml": "<kml><Placemark><name>New York</name><Point><coordinates>-74.006,40.7128,0</coordinates></Point></Placemark></kml>"
     },
     "output": {
       "ok": true,
@@ -53,13 +53,13 @@
             "type": "Feature",
             "geometry": {
               "type": "Point",
-              "coordinates": [-74.006, 40.7128, 0],
+              "coordinates": [-74.006, 40.7128, 0]
             },
-            "properties": { "name": "New York" },
-          },
+            "properties": { "name": "New York" }
+          }
         ],
-        "feature_count": 1,
-      },
-    },
-  },
+        "feature_count": 1
+      }
+    }
+  }
 }

@@ -9,21 +9,21 @@
   "tags": ["tsid", "generate"],
   "input": {
     "type": "object",
-    "properties": {},
+    "properties": {}
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "tsid": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": false,
   "idempotent": false,
@@ -34,7 +34,7 @@
     "input": {},
     "output": {
       "ok": true,
-      "tsid": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-    },
-  },
+      "tsid": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+    }
+  }
 }

@@ -11,27 +11,27 @@
     "type": "object",
     "properties": {
       "iban": {
-        "type": "string",
+        "type": "string"
       },
       "format": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["iban"],
+    "required": ["iban"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "formatted": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -40,11 +40,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "iban": "GB82WEST12345698765432",
+      "iban": "GB82WEST12345698765432"
     },
     "output": {
       "ok": true,
-      "formatted": "GB82 WEST 1234 5698 7654 32",
-    },
-  },
+      "formatted": "GB82 WEST 1234 5698 7654 32"
+    }
+  }
 }

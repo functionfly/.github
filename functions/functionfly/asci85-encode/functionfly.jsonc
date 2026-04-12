@@ -11,24 +11,24 @@
     "type": "object",
     "properties": {
       "data": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["data"],
+    "required": ["data"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "encoded": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -37,11 +37,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "data": "Hello",
+      "data": "Hello"
     },
     "output": {
       "ok": true,
-      "encoded": "<~87cURD]~>",
-    },
-  },
+      "encoded": "<~87cURD]~>"
+    }
+  }
 }

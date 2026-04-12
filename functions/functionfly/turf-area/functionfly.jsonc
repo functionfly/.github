@@ -17,11 +17,11 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
-      },
+          "maxItems": 2
+        }
+      }
     },
-    "required": ["coordinates"],
+    "required": ["coordinates"]
   },
   "output": {
     "type": "object",
@@ -32,24 +32,24 @@
         "properties": {
           "area_sq_meters": {
             "type": "number",
-            "description": "Area in square meters",
+            "description": "Area in square meters"
           },
           "area_sq_km": {
             "type": "number",
-            "description": "Area in square kilometers",
+            "description": "Area in square kilometers"
           },
           "area_hectares": {
             "type": "number",
-            "description": "Area in hectares",
+            "description": "Area in hectares"
           },
           "area_sq_miles": {
             "type": "number",
-            "description": "Area in square miles",
-          },
-        },
+            "description": "Area in square miles"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -63,8 +63,8 @@
         [-73.906, 40.7128],
         [-73.906, 40.6628],
         [-74.006, 40.6628],
-        [-74.006, 40.7128],
-      ],
+        [-74.006, 40.7128]
+      ]
     },
     "output": {
       "ok": true,
@@ -72,8 +72,8 @@
         "area_sq_meters": 49870000.0,
         "area_sq_km": 49.87,
         "area_hectares": 4987.0,
-        "area_sq_miles": 19.25,
-      },
-    },
-  },
+        "area_sq_miles": 19.25
+      }
+    }
+  }
 }

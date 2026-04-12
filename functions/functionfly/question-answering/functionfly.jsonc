@@ -11,9 +11,9 @@
     "type": "object",
     "properties": {
       "question": { "type": "string" },
-      "context": { "type": "string" },
+      "context": { "type": "string" }
     },
-    "required": ["question", "context"],
+    "required": ["question", "context"]
   },
   "output": {
     "type": "object",
@@ -24,8 +24,8 @@
       "confidence": {},
       "span_start": {},
       "span_end": {},
-      "error": {},
-    },
+      "error": {}
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -35,8 +35,8 @@
   "example": {
     "input": {
       "question": "Who founded Apple?",
-      "context": "Apple Inc. was founded by Steve Jobs, Steve Wozniak, and Ronald Wayne in 1976.",
+      "context": "Apple Inc. was founded by Steve Jobs, Steve Wozniak, and Ronald Wayne in 1976."
     },
-    "output": { "ok": true },
-  },
+    "output": { "ok": true }
+  }
 }

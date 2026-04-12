@@ -11,33 +11,33 @@
     "type": "object",
     "properties": {
       "text1": {
-        "type": "string",
+        "type": "string"
       },
       "text2": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["text1", "text2"],
+    "required": ["text1", "text2"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "diff": {
-        "type": "string",
+        "type": "string"
       },
       "added": {
-        "type": "integer",
+        "type": "integer"
       },
       "removed": {
-        "type": "integer",
+        "type": "integer"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -47,13 +47,13 @@
   "example": {
     "input": {
       "text1": "Hello World",
-      "text2": "Hello Python",
+      "text2": "Hello Python"
     },
     "output": {
       "ok": true,
       "diff": "- Hello World\n+ Hello Python",
       "added": 1,
-      "removed": 1,
-    },
-  },
+      "removed": 1
+    }
+  }
 }

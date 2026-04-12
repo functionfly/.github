@@ -12,9 +12,9 @@
     "properties": {
       "text": { "type": "string" },
       "num_sentences": { "type": "integer", "default": 3 },
-      "ratio": { "type": "number", "default": 0.3 },
+      "ratio": { "type": "number", "default": 0.3 }
     },
-    "required": ["text"],
+    "required": ["text"]
   },
   "output": {
     "type": "object",
@@ -24,8 +24,8 @@
       "summary": {},
       "sentences": {},
       "compression_ratio": {},
-      "error": {},
-    },
+      "error": {}
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -35,8 +35,8 @@
   "example": {
     "input": {
       "text": "Artificial intelligence is transforming industries. Machine learning enables computers to learn from data. Deep learning uses neural networks with many layers.",
-      "num_sentences": 2,
+      "num_sentences": 2
     },
-    "output": { "ok": true },
-  },
+    "output": { "ok": true }
+  }
 }

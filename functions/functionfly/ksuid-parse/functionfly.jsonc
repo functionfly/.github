@@ -11,27 +11,27 @@
     "type": "object",
     "properties": {
       "ksuid": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["ksuid"],
+    "required": ["ksuid"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "timestamp": {
-        "type": "integer",
+        "type": "integer"
       },
       "payload": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -40,12 +40,12 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "ksuid": "0ujtsYcgvSTl8PAuAdqWYSmznOt",
+      "ksuid": "0ujtsYcgvSTl8PAuAdqWYSmznOt"
     },
     "output": {
       "ok": true,
       "timestamp": 1400000000,
-      "payload": "...",
-    },
-  },
+      "payload": "..."
+    }
+  }
 }

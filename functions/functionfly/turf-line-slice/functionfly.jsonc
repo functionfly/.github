@@ -17,23 +17,23 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
+          "maxItems": 2
+        }
       },
       "start_distance": {
         "type": "number",
-        "description": "Start distance along the line",
+        "description": "Start distance along the line"
       },
       "stop_distance": {
         "type": "number",
-        "description": "Stop distance along the line",
+        "description": "Stop distance along the line"
       },
       "unit": {
         "type": "string",
-        "description": "Unit: 'km', 'miles', 'meters' (default: 'km')",
-      },
+        "description": "Unit: 'km', 'miles', 'meters' (default: 'km')"
+      }
     },
-    "required": ["coordinates", "start_distance", "stop_distance"],
+    "required": ["coordinates", "start_distance", "stop_distance"]
   },
   "output": {
     "type": "object",
@@ -45,16 +45,16 @@
           "coordinates": {
             "type": "array",
             "description": "Sliced line coordinates as [lng, lat] pairs",
-            "items": { "type": "array" },
+            "items": { "type": "array" }
           },
           "length_km": {
             "type": "number",
-            "description": "Length of sliced segment in km",
-          },
-        },
+            "description": "Length of sliced segment in km"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -66,11 +66,11 @@
       "coordinates": [
         [-74.006, 40.7128],
         [-87.6298, 41.8781],
-        [-118.2437, 34.0522],
+        [-118.2437, 34.0522]
       ],
       "start_distance": 500,
       "stop_distance": 1500,
-      "unit": "km",
+      "unit": "km"
     },
     "output": {
       "ok": true,
@@ -78,10 +78,10 @@
         "coordinates": [
           [-80.5, 41.3],
           [-87.6298, 41.8781],
-          [-95.2, 38.5],
+          [-95.2, 38.5]
         ],
-        "length_km": 1000.0,
-      },
-    },
-  },
+        "length_km": 1000.0
+      }
+    }
+  }
 }

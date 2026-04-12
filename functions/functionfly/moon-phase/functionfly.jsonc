@@ -12,9 +12,9 @@
     "properties": {
       "date": {
         "type": "string",
-        "description": "Date in YYYY-MM-DD format (default: today UTC)",
-      },
-    },
+        "description": "Date in YYYY-MM-DD format (default: today UTC)"
+      }
+    }
   },
   "output": {
     "type": "object",
@@ -27,21 +27,21 @@
           "phase_name": { "type": "string", "description": "Moon phase name" },
           "phase_angle": {
             "type": "number",
-            "description": "Phase angle in degrees (0-360)",
+            "description": "Phase angle in degrees (0-360)"
           },
           "illumination": {
             "type": "number",
-            "description": "Illumination percentage (0-100)",
+            "description": "Illumination percentage (0-100)"
           },
           "age_days": {
             "type": "number",
-            "description": "Age of moon in days (0-29.5)",
+            "description": "Age of moon in days (0-29.5)"
           },
-          "emoji": { "type": "string", "description": "Moon phase emoji" },
-        },
+          "emoji": { "type": "string", "description": "Moon phase emoji" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -50,7 +50,7 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "date": "2024-01-01",
+      "date": "2024-01-01"
     },
     "output": {
       "ok": true,
@@ -60,8 +60,8 @@
         "phase_angle": 135.2,
         "illumination": 72.4,
         "age_days": 19.8,
-        "emoji": "🌔",
-      },
-    },
-  },
+        "emoji": "🌔"
+      }
+    }
+  }
 }

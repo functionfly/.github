@@ -17,19 +17,19 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
+          "maxItems": 2
+        }
       },
       "distance": {
         "type": "number",
-        "description": "Distance along the line",
+        "description": "Distance along the line"
       },
       "unit": {
         "type": "string",
-        "description": "Unit: 'km', 'miles', 'meters' (default: 'km')",
-      },
+        "description": "Unit: 'km', 'miles', 'meters' (default: 'km')"
+      }
     },
-    "required": ["coordinates", "distance"],
+    "required": ["coordinates", "distance"]
   },
   "output": {
     "type": "object",
@@ -40,24 +40,24 @@
         "properties": {
           "lng": {
             "type": "number",
-            "description": "Longitude of point along line",
+            "description": "Longitude of point along line"
           },
           "lat": {
             "type": "number",
-            "description": "Latitude of point along line",
+            "description": "Latitude of point along line"
           },
           "distance_along": {
             "type": "number",
-            "description": "Actual distance along line",
+            "description": "Actual distance along line"
           },
           "total_length_km": {
             "type": "number",
-            "description": "Total line length in km",
-          },
-        },
+            "description": "Total line length in km"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -69,10 +69,10 @@
       "coordinates": [
         [-74.006, 40.7128],
         [-87.6298, 41.8781],
-        [-118.2437, 34.0522],
+        [-118.2437, 34.0522]
       ],
       "distance": 1000,
-      "unit": "km",
+      "unit": "km"
     },
     "output": {
       "ok": true,
@@ -80,8 +80,8 @@
         "lng": -87.1234,
         "lat": 41.5678,
         "distance_along": 1000,
-        "total_length_km": 3940.07,
-      },
-    },
-  },
+        "total_length_km": 3940.07
+      }
+    }
+  }
 }

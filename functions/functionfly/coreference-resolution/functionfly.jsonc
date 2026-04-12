@@ -10,7 +10,7 @@
   "input": {
     "type": "object",
     "properties": { "text": { "type": "string" } },
-    "required": ["text"],
+    "required": ["text"]
   },
   "output": {
     "type": "object",
@@ -19,8 +19,8 @@
       "result": {},
       "chains": {},
       "resolved_text": {},
-      "error": {},
-    },
+      "error": {}
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -29,8 +29,8 @@
   "memory_mb": 64,
   "example": {
     "input": {
-      "text": "Alice went to the store. She bought milk. It was fresh.",
+      "text": "Alice went to the store. She bought milk. It was fresh."
     },
-    "output": { "ok": true },
-  },
+    "output": { "ok": true }
+  }
 }

@@ -12,25 +12,25 @@
     "properties": {
       "lat": {
         "type": "number",
-        "description": "Latitude for lat/lng to MGRS conversion",
+        "description": "Latitude for lat/lng to MGRS conversion"
       },
       "lng": {
         "type": "number",
-        "description": "Longitude for lat/lng to MGRS conversion",
+        "description": "Longitude for lat/lng to MGRS conversion"
       },
       "mgrs": {
         "type": "string",
-        "description": "MGRS string for MGRS to lat/lng conversion",
+        "description": "MGRS string for MGRS to lat/lng conversion"
       },
       "direction": {
         "type": "string",
-        "description": "'to_mgrs' or 'to_latlong' (default: 'to_mgrs')",
+        "description": "'to_mgrs' or 'to_latlong' (default: 'to_mgrs')"
       },
       "precision": {
         "type": "integer",
-        "description": "MGRS precision 1-5 (default: 5, 1m resolution)",
-      },
-    },
+        "description": "MGRS precision 1-5 (default: 5, 1m resolution)"
+      }
+    }
   },
   "output": {
     "type": "object",
@@ -42,21 +42,21 @@
           "mgrs": { "type": "string", "description": "MGRS coordinate string" },
           "lat": {
             "type": "number",
-            "description": "Latitude (for to_latlong)",
+            "description": "Latitude (for to_latlong)"
           },
           "lng": {
             "type": "number",
-            "description": "Longitude (for to_latlong)",
+            "description": "Longitude (for to_latlong)"
           },
           "zone": { "type": "integer" },
           "band": { "type": "string" },
           "grid_square": { "type": "string" },
           "easting": { "type": "string" },
-          "northing": { "type": "string" },
-        },
+          "northing": { "type": "string" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -67,7 +67,7 @@
     "input": {
       "lat": 40.7128,
       "lng": -74.006,
-      "direction": "to_mgrs",
+      "direction": "to_mgrs"
     },
     "output": {
       "ok": true,
@@ -77,8 +77,8 @@
         "band": "T",
         "grid_square": "WL",
         "easting": "83960",
-        "northing": "07523",
-      },
-    },
-  },
+        "northing": "07523"
+      }
+    }
+  }
 }

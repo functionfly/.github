@@ -11,24 +11,24 @@
     "type": "object",
     "properties": {
       "bbcode": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["bbcode"],
+    "required": ["bbcode"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "html": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -37,11 +37,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "bbcode": "[b]Bold[/b] [i]Italic[/i]",
+      "bbcode": "[b]Bold[/b] [i]Italic[/i]"
     },
     "output": {
       "ok": true,
-      "html": "<b>Bold</b> <i>Italic</i>",
-    },
-  },
+      "html": "<b>Bold</b> <i>Italic</i>"
+    }
+  }
 }

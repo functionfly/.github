@@ -17,18 +17,18 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
+          "maxItems": 2
+        }
       },
       "point": {
         "type": "array",
         "description": "Point as [lng, lat] (GeoJSON order)",
         "items": { "type": "number" },
         "minItems": 2,
-        "maxItems": 2,
-      },
+        "maxItems": 2
+      }
     },
-    "required": ["polygon", "point"],
+    "required": ["polygon", "point"]
   },
   "output": {
     "type": "object",
@@ -39,12 +39,12 @@
         "properties": {
           "contains": {
             "type": "boolean",
-            "description": "Whether the polygon contains the point",
-          },
-        },
+            "description": "Whether the polygon contains the point"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -58,15 +58,15 @@
         [-73.906, 40.7128],
         [-73.906, 40.6628],
         [-74.006, 40.6628],
-        [-74.006, 40.7128],
+        [-74.006, 40.7128]
       ],
-      "point": [-73.95, 40.69],
+      "point": [-73.95, 40.69]
     },
     "output": {
       "ok": true,
       "result": {
-        "contains": true,
-      },
-    },
-  },
+        "contains": true
+      }
+    }
+  }
 }

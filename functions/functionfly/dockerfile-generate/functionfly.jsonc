@@ -12,25 +12,25 @@
     "properties": {
       "language": {
         "type": "string",
-        "description": "Programming language (python, node, go, rust, java, php, ruby)",
+        "description": "Programming language (python, node, go, rust, java, php, ruby)"
       },
       "framework": {
         "type": "string",
-        "description": "Framework name (flask, django, express, gin, etc.)",
+        "description": "Framework name (flask, django, express, gin, etc.)"
       },
       "ports": {
         "type": "array",
         "items": { "type": "integer" },
-        "description": "Ports to expose",
+        "description": "Ports to expose"
       },
       "env_vars": {
         "type": "object",
-        "description": "Environment variables to set",
+        "description": "Environment variables to set"
       },
       "base_image": { "type": "string", "description": "Override base image" },
-      "cmd": { "type": "string", "description": "Override CMD instruction" },
+      "cmd": { "type": "string", "description": "Override CMD instruction" }
     },
-    "required": ["language"],
+    "required": ["language"]
   },
   "output": {
     "type": "object",
@@ -38,8 +38,8 @@
       "ok": {},
       "result": { "type": "string" },
       "dockerfile": { "type": "string" },
-      "error": {},
-    },
+      "error": {}
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -51,7 +51,7 @@
     "output": {
       "ok": true,
       "result": "Dockerfile generated successfully",
-      "dockerfile": "FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nEXPOSE 8000\nCMD [\"python\", \"app.py\"]",
-    },
-  },
+      "dockerfile": "FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nEXPOSE 8000\nCMD [\"python\", \"app.py\"]"
+    }
+  }
 }

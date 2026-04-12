@@ -11,27 +11,27 @@
     "type": "object",
     "properties": {
       "otp": {
-        "type": "string",
+        "type": "string"
       },
       "expected": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["otp", "expected"],
+    "required": ["otp", "expected"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "valid": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -41,11 +41,11 @@
   "example": {
     "input": {
       "otp": "123456",
-      "expected": "123456",
+      "expected": "123456"
     },
     "output": {
       "ok": true,
-      "valid": true,
-    },
-  },
+      "valid": true
+    }
+  }
 }

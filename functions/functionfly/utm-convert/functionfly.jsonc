@@ -12,40 +12,40 @@
     "coordinates",
     "projection",
     "geospatial",
-    "transverse-mercator",
+    "transverse-mercator"
   ],
   "input": {
     "type": "object",
     "properties": {
       "lat": {
         "type": "number",
-        "description": "Latitude (-80 to 84) for lat/lng to UTM conversion",
+        "description": "Latitude (-80 to 84) for lat/lng to UTM conversion"
       },
       "lng": {
         "type": "number",
-        "description": "Longitude (-180 to 180) for lat/lng to UTM conversion",
+        "description": "Longitude (-180 to 180) for lat/lng to UTM conversion"
       },
       "easting": {
         "type": "number",
-        "description": "UTM easting for UTM to lat/lng conversion",
+        "description": "UTM easting for UTM to lat/lng conversion"
       },
       "northing": {
         "type": "number",
-        "description": "UTM northing for UTM to lat/lng conversion",
+        "description": "UTM northing for UTM to lat/lng conversion"
       },
       "zone": {
         "type": "integer",
-        "description": "UTM zone number (1-60) for UTM to lat/lng conversion",
+        "description": "UTM zone number (1-60) for UTM to lat/lng conversion"
       },
       "hemisphere": {
         "type": "string",
-        "description": "Hemisphere 'N' or 'S' for UTM to lat/lng conversion",
+        "description": "Hemisphere 'N' or 'S' for UTM to lat/lng conversion"
       },
       "direction": {
         "type": "string",
-        "description": "'to_utm' or 'to_latlong' (default: 'to_utm')",
-      },
-    },
+        "description": "'to_utm' or 'to_latlong' (default: 'to_utm')"
+      }
+    }
   },
   "output": {
     "type": "object",
@@ -61,16 +61,16 @@
           "zone_letter": { "type": "string", "description": "UTM zone letter" },
           "lat": {
             "type": "number",
-            "description": "Latitude (for to_latlong)",
+            "description": "Latitude (for to_latlong)"
           },
           "lng": {
             "type": "number",
-            "description": "Longitude (for to_latlong)",
-          },
-        },
+            "description": "Longitude (for to_latlong)"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -81,7 +81,7 @@
     "input": {
       "lat": 40.7128,
       "lng": -74.006,
-      "direction": "to_utm",
+      "direction": "to_utm"
     },
     "output": {
       "ok": true,
@@ -90,8 +90,8 @@
         "northing": 4507523.0,
         "zone": 18,
         "hemisphere": "N",
-        "zone_letter": "T",
-      },
-    },
-  },
+        "zone_letter": "T"
+      }
+    }
+  }
 }

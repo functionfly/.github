@@ -11,30 +11,30 @@
     "type": "object",
     "properties": {
       "string1": {
-        "type": "string",
+        "type": "string"
       },
       "string2": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["string1", "string2"],
+    "required": ["string1", "string2"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "distance": {
-        "type": "integer",
+        "type": "integer"
       },
       "similarity": {
-        "type": "number",
+        "type": "number"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -44,12 +44,12 @@
   "example": {
     "input": {
       "string1": "kitten",
-      "string2": "sitting",
+      "string2": "sitting"
     },
     "output": {
       "ok": true,
       "distance": 3,
-      "similarity": 0.57,
-    },
-  },
+      "similarity": 0.57
+    }
+  }
 }

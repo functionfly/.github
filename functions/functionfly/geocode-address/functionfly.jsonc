@@ -12,17 +12,17 @@
     "coordinates",
     "latitude",
     "longitude",
-    "location",
+    "location"
   ],
   "input": {
     "type": "object",
     "properties": {
       "address": {
         "type": "string",
-        "description": "Street address or place name to geocode",
-      },
+        "description": "Street address or place name to geocode"
+      }
     },
-    "required": ["address"],
+    "required": ["address"]
   },
   "output": {
     "type": "object",
@@ -36,20 +36,20 @@
           "lng": { "type": "number", "description": "Longitude" },
           "formatted_address": {
             "type": "string",
-            "description": "Formatted address",
+            "description": "Formatted address"
           },
           "confidence": {
             "type": "number",
-            "description": "Confidence score 0-1",
+            "description": "Confidence score 0-1"
           },
           "type": {
             "type": "string",
-            "description": "Location type (city, street, etc.)",
-          },
-        },
+            "description": "Location type (city, street, etc.)"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": false,
   "idempotent": true,
@@ -58,7 +58,7 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "address": "New York, NY",
+      "address": "New York, NY"
     },
     "output": {
       "ok": true,
@@ -68,8 +68,8 @@
         "lng": -74.006,
         "formatted_address": "New York, NY, USA",
         "confidence": 0.95,
-        "type": "city",
-      },
-    },
-  },
+        "type": "city"
+      }
+    }
+  }
 }

@@ -12,7 +12,7 @@
     "ramer-douglas-peucker",
     "rdp",
     "coordinates",
-    "geospatial",
+    "geospatial"
   ],
   "input": {
     "type": "object",
@@ -24,15 +24,15 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
+          "maxItems": 2
+        }
       },
       "tolerance": {
         "type": "number",
-        "description": "Simplification tolerance in degrees (default: 0.0001)",
-      },
+        "description": "Simplification tolerance in degrees (default: 0.0001)"
+      }
     },
-    "required": ["coordinates"],
+    "required": ["coordinates"]
   },
   "output": {
     "type": "object",
@@ -44,24 +44,24 @@
           "coordinates": {
             "type": "array",
             "description": "Simplified polyline coordinates",
-            "items": { "type": "array" },
+            "items": { "type": "array" }
           },
           "original_count": {
             "type": "integer",
-            "description": "Original number of points",
+            "description": "Original number of points"
           },
           "simplified_count": {
             "type": "integer",
-            "description": "Simplified number of points",
+            "description": "Simplified number of points"
           },
           "reduction_percent": {
             "type": "number",
-            "description": "Percentage of points removed",
-          },
-        },
+            "description": "Percentage of points removed"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -76,9 +76,9 @@
         [2, -0.1],
         [3, 5],
         [4, 6],
-        [5, 7],
+        [5, 7]
       ],
-      "tolerance": 1.0,
+      "tolerance": 1.0
     },
     "output": {
       "ok": true,
@@ -87,12 +87,12 @@
           [0, 0],
           [2, -0.1],
           [3, 5],
-          [5, 7],
+          [5, 7]
         ],
         "original_count": 6,
         "simplified_count": 4,
-        "reduction_percent": 33.33,
-      },
-    },
-  },
+        "reduction_percent": 33.33
+      }
+    }
+  }
 }

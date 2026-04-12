@@ -12,7 +12,7 @@
     "center",
     "coordinates",
     "geospatial",
-    "geometry",
+    "geometry"
   ],
   "input": {
     "type": "object",
@@ -24,11 +24,11 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
-      },
+          "maxItems": 2
+        }
+      }
     },
-    "required": ["coordinates"],
+    "required": ["coordinates"]
   },
   "output": {
     "type": "object",
@@ -38,11 +38,11 @@
         "type": "object",
         "properties": {
           "lat": { "type": "number", "description": "Centroid latitude" },
-          "lng": { "type": "number", "description": "Centroid longitude" },
-        },
+          "lng": { "type": "number", "description": "Centroid longitude" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -55,15 +55,15 @@
         [40.7128, -74.006],
         [40.7128, -73.906],
         [40.6628, -73.906],
-        [40.6628, -74.006],
-      ],
+        [40.6628, -74.006]
+      ]
     },
     "output": {
       "ok": true,
       "result": {
         "lat": 40.6878,
-        "lng": -73.956,
-      },
-    },
-  },
+        "lng": -73.956
+      }
+    }
+  }
 }

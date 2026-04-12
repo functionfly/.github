@@ -15,7 +15,7 @@
         "description": "Target point as [lng, lat]",
         "items": { "type": "number" },
         "minItems": 2,
-        "maxItems": 2,
+        "maxItems": 2
       },
       "points": {
         "type": "array",
@@ -24,11 +24,11 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
-      },
+          "maxItems": 2
+        }
+      }
     },
-    "required": ["target", "points"],
+    "required": ["target", "points"]
   },
   "output": {
     "type": "object",
@@ -40,20 +40,20 @@
           "nearest": {
             "type": "array",
             "description": "Nearest point as [lng, lat]",
-            "items": { "type": "number" },
+            "items": { "type": "number" }
           },
           "index": {
             "type": "integer",
-            "description": "Index of nearest point in input array",
+            "description": "Index of nearest point in input array"
           },
           "distance_km": {
             "type": "number",
-            "description": "Distance to nearest point in km",
-          },
-        },
+            "description": "Distance to nearest point in km"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -66,16 +66,16 @@
       "points": [
         [-73.906, 40.7128],
         [-87.6298, 41.8781],
-        [-118.2437, 34.0522],
-      ],
+        [-118.2437, 34.0522]
+      ]
     },
     "output": {
       "ok": true,
       "result": {
         "nearest": [-73.906, 40.7128],
         "index": 0,
-        "distance_km": 8.52,
-      },
-    },
-  },
+        "distance_km": 8.52
+      }
+    }
+  }
 }

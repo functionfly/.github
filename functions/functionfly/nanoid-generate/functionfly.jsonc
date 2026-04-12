@@ -11,23 +11,23 @@
     "type": "object",
     "properties": {
       "size": {
-        "type": "integer",
-      },
-    },
+        "type": "integer"
+      }
+    }
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "nanoid": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": false,
   "idempotent": false,
@@ -38,7 +38,7 @@
     "input": {},
     "output": {
       "ok": true,
-      "nanoid": "V1StGXR8_Z5jdHi6B-myT",
-    },
-  },
+      "nanoid": "V1StGXR8_Z5jdHi6B-myT"
+    }
+  }
 }

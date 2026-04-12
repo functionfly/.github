@@ -11,27 +11,27 @@
     "type": "object",
     "properties": {
       "machine_id": {
-        "type": "integer",
+        "type": "integer"
       },
       "datacenter_id": {
-        "type": "integer",
-      },
+        "type": "integer"
+      }
     },
-    "required": [],
+    "required": []
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "id": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": false,
   "idempotent": false,
@@ -42,7 +42,7 @@
     "input": {},
     "output": {
       "ok": true,
-      "id": "1234567890123456789",
-    },
-  },
+      "id": "1234567890123456789"
+    }
+  }
 }

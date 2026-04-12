@@ -12,17 +12,17 @@
     "spatial-index",
     "coordinates",
     "geospatial",
-    "mock",
+    "mock"
   ],
   "input": {
     "type": "object",
     "properties": {
       "h3_index": {
         "type": "string",
-        "description": "H3 index string (15 hex characters)",
-      },
+        "description": "H3 index string (15 hex characters)"
+      }
     },
-    "required": ["h3_index"],
+    "required": ["h3_index"]
   },
   "output": {
     "type": "object",
@@ -38,12 +38,12 @@
           "boundary": {
             "type": "array",
             "description": "Hexagon boundary vertices as [lat, lng] pairs",
-            "items": { "type": "array" },
-          },
-        },
+            "items": { "type": "array" }
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -52,7 +52,7 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "h3_index": "892a1072803ffff",
+      "h3_index": "892a1072803ffff"
     },
     "output": {
       "ok": true,
@@ -67,9 +67,9 @@
           [40.7128, -74.009],
           [40.7118, -74.0075],
           [40.7118, -74.0045],
-          [40.7128, -74.003],
-        ],
-      },
-    },
-  },
+          [40.7128, -74.003]
+        ]
+      }
+    }
+  }
 }

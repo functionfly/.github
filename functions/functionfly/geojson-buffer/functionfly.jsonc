@@ -12,19 +12,19 @@
     "properties": {
       "geojson": {
         "type": "object",
-        "description": "GeoJSON Point geometry or Feature with Point geometry",
+        "description": "GeoJSON Point geometry or Feature with Point geometry"
       },
       "radius": { "type": "number", "description": "Buffer radius" },
       "unit": {
         "type": "string",
-        "description": "Unit: 'km', 'miles', 'meters' (default: 'km')",
+        "description": "Unit: 'km', 'miles', 'meters' (default: 'km')"
       },
       "steps": {
         "type": "integer",
-        "description": "Number of polygon vertices (default: 64)",
-      },
+        "description": "Number of polygon vertices (default: 64)"
+      }
     },
-    "required": ["geojson", "radius"],
+    "required": ["geojson", "radius"]
   },
   "output": {
     "type": "object",
@@ -32,10 +32,10 @@
       "ok": { "type": "boolean" },
       "result": {
         "type": "object",
-        "description": "GeoJSON Polygon representing the buffer",
+        "description": "GeoJSON Polygon representing the buffer"
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -46,17 +46,17 @@
     "input": {
       "geojson": {
         "type": "Point",
-        "coordinates": [-74.006, 40.7128],
+        "coordinates": [-74.006, 40.7128]
       },
       "radius": 1,
-      "unit": "km",
+      "unit": "km"
     },
     "output": {
       "ok": true,
       "result": {
         "type": "Polygon",
-        "coordinates": [[["-74.006", "40.7218"], ["..."]]],
-      },
-    },
-  },
+        "coordinates": [[["-74.006", "40.7218"], ["..."]]]
+      }
+    }
+  }
 }

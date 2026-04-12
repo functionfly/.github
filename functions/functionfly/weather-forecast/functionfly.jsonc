@@ -12,7 +12,7 @@
     "temperature",
     "prediction",
     "geospatial",
-    "mock",
+    "mock"
   ],
   "input": {
     "type": "object",
@@ -21,14 +21,14 @@
       "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
       "days": {
         "type": "integer",
-        "description": "Number of forecast days (1-7, default: 5)",
+        "description": "Number of forecast days (1-7, default: 5)"
       },
       "units": {
         "type": "string",
-        "description": "Temperature units: 'metric' or 'imperial' (default: 'metric')",
-      },
+        "description": "Temperature units: 'metric' or 'imperial' (default: 'metric')"
+      }
     },
-    "required": ["lat", "lng"],
+    "required": ["lat", "lng"]
   },
   "output": {
     "type": "object",
@@ -40,13 +40,13 @@
           "location": { "type": "object" },
           "forecast": {
             "type": "array",
-            "description": "Array of daily forecasts",
+            "description": "Array of daily forecasts"
           },
-          "units": { "type": "string" },
-        },
+          "units": { "type": "string" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": false,
   "idempotent": false,
@@ -58,7 +58,7 @@
       "lat": 40.7128,
       "lng": -74.006,
       "days": 3,
-      "units": "metric",
+      "units": "metric"
     },
     "output": {
       "ok": true,
@@ -70,25 +70,25 @@
             "temp_high": 24.5,
             "temp_low": 16.2,
             "conditions": "Partly Cloudy",
-            "precipitation_mm": 0,
+            "precipitation_mm": 0
           },
           {
             "date": "2024-06-22",
             "temp_high": 22.1,
             "temp_low": 15.8,
             "conditions": "Rain",
-            "precipitation_mm": 12.5,
+            "precipitation_mm": 12.5
           },
           {
             "date": "2024-06-23",
             "temp_high": 26.3,
             "temp_low": 17.4,
             "conditions": "Clear",
-            "precipitation_mm": 0,
-          },
+            "precipitation_mm": 0
+          }
         ],
-        "units": "metric",
-      },
-    },
-  },
+        "units": "metric"
+      }
+    }
+  }
 }

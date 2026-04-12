@@ -12,17 +12,17 @@
     "properties": {
       "data": {
         "type": "string",
-        "description": "Base64-encoded shapefile (.shp) data",
+        "description": "Base64-encoded shapefile (.shp) data"
       },
       "url": {
         "type": "string",
-        "description": "URL to shapefile (mock: returns sample data)",
+        "description": "URL to shapefile (mock: returns sample data)"
       },
       "format": {
         "type": "string",
-        "description": "Input format: 'base64' or 'url' (default: 'url')",
-      },
-    },
+        "description": "Input format: 'base64' or 'url' (default: 'url')"
+      }
+    }
   },
   "output": {
     "type": "object",
@@ -35,11 +35,11 @@
           "features": { "type": "array" },
           "feature_count": { "type": "integer" },
           "geometry_type": { "type": "string" },
-          "note": { "type": "string" },
-        },
+          "note": { "type": "string" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": false,
   "idempotent": true,
@@ -49,7 +49,7 @@
   "example": {
     "input": {
       "url": "https://example.com/data.shp",
-      "format": "url",
+      "format": "url"
     },
     "output": {
       "ok": true,
@@ -59,13 +59,13 @@
           {
             "type": "Feature",
             "geometry": { "type": "Point", "coordinates": [-74.006, 40.7128] },
-            "properties": { "id": 1, "name": "Sample Point" },
-          },
+            "properties": { "id": 1, "name": "Sample Point" }
+          }
         ],
         "feature_count": 1,
         "geometry_type": "Point",
-        "note": "Mock data - actual shapefile parsing requires binary .shp file processing",
-      },
-    },
-  },
+        "note": "Mock data - actual shapefile parsing requires binary .shp file processing"
+      }
+    }
+  }
 }

@@ -11,27 +11,27 @@
     "type": "object",
     "properties": {
       "text": {
-        "type": "string",
+        "type": "string"
       },
       "patch": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["text", "patch"],
+    "required": ["text", "patch"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "result": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -41,11 +41,11 @@
   "example": {
     "input": {
       "text": "Hello World",
-      "patch": "--- a/file.txt\n+++ b/file.txt\n@@ -1 +1 @@\n-Hello World\n+Hello Python",
+      "patch": "--- a/file.txt\n+++ b/file.txt\n@@ -1 +1 @@\n-Hello World\n+Hello Python"
     },
     "output": {
       "ok": true,
-      "result": "Hello Python",
-    },
-  },
+      "result": "Hello Python"
+    }
+  }
 }

@@ -14,10 +14,10 @@
       "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
       "precision": {
         "type": "integer",
-        "description": "Geohash precision (1-12, default: 9)",
-      },
+        "description": "Geohash precision (1-12, default: 9)"
+      }
     },
-    "required": ["lat", "lng"],
+    "required": ["lat", "lng"]
   },
   "output": {
     "type": "object",
@@ -32,12 +32,12 @@
           "lng": { "type": "number" },
           "error_km": {
             "type": "number",
-            "description": "Approximate error in km at this precision",
-          },
-        },
+            "description": "Approximate error in km at this precision"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -48,7 +48,7 @@
     "input": {
       "lat": 40.7128,
       "lng": -74.006,
-      "precision": 9,
+      "precision": 9
     },
     "output": {
       "ok": true,
@@ -57,8 +57,8 @@
         "precision": 9,
         "lat": 40.7128,
         "lng": -74.006,
-        "error_km": 0.0024,
-      },
-    },
-  },
+        "error_km": 0.0024
+      }
+    }
+  }
 }

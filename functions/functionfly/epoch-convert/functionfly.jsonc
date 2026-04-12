@@ -11,36 +11,36 @@
     "type": "object",
     "properties": {
       "epoch_seconds": {
-        "type": "number",
+        "type": "number"
       },
       "epoch_millis": {
-        "type": "number",
+        "type": "number"
       },
       "date": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": [],
+    "required": []
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "epoch_seconds": {
-        "type": "number",
+        "type": "number"
       },
       "epoch_millis": {
-        "type": "number",
+        "type": "number"
       },
       "date": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -49,13 +49,13 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "epoch_seconds": 1705312800,
+      "epoch_seconds": 1705312800
     },
     "output": {
       "ok": true,
       "epoch_seconds": 1705312800,
       "epoch_millis": 1705312800000,
-      "date": "2024-01-15T09:00:00Z",
-    },
-  },
+      "date": "2024-01-15T09:00:00Z"
+    }
+  }
 }

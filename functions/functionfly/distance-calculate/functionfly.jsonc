@@ -11,33 +11,33 @@
     "haversine",
     "coordinates",
     "great-circle",
-    "geospatial",
+    "geospatial"
   ],
   "input": {
     "type": "object",
     "properties": {
       "lat1": {
         "type": "number",
-        "description": "Latitude of first point (-90 to 90)",
+        "description": "Latitude of first point (-90 to 90)"
       },
       "lng1": {
         "type": "number",
-        "description": "Longitude of first point (-180 to 180)",
+        "description": "Longitude of first point (-180 to 180)"
       },
       "lat2": {
         "type": "number",
-        "description": "Latitude of second point (-90 to 90)",
+        "description": "Latitude of second point (-90 to 90)"
       },
       "lng2": {
         "type": "number",
-        "description": "Longitude of second point (-180 to 180)",
+        "description": "Longitude of second point (-180 to 180)"
       },
       "unit": {
         "type": "string",
-        "description": "Unit of distance: 'km', 'miles', 'meters', 'feet' (default: 'km')",
-      },
+        "description": "Unit of distance: 'km', 'miles', 'meters', 'feet' (default: 'km')"
+      }
     },
-    "required": ["lat1", "lng1", "lat2", "lng2"],
+    "required": ["lat1", "lng1", "lat2", "lng2"]
   },
   "output": {
     "type": "object",
@@ -48,25 +48,25 @@
         "properties": {
           "distance": {
             "type": "number",
-            "description": "Distance in requested unit",
+            "description": "Distance in requested unit"
           },
           "unit": { "type": "string", "description": "Unit of distance" },
           "distance_km": {
             "type": "number",
-            "description": "Distance in kilometers",
+            "description": "Distance in kilometers"
           },
           "distance_miles": {
             "type": "number",
-            "description": "Distance in miles",
+            "description": "Distance in miles"
           },
           "distance_meters": {
             "type": "number",
-            "description": "Distance in meters",
-          },
-        },
+            "description": "Distance in meters"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -79,7 +79,7 @@
       "lng1": -74.006,
       "lat2": 34.0522,
       "lng2": -118.2437,
-      "unit": "km",
+      "unit": "km"
     },
     "output": {
       "ok": true,
@@ -88,8 +88,8 @@
         "unit": "km",
         "distance_km": 3940.07,
         "distance_miles": 2448.24,
-        "distance_meters": 3940070.0,
-      },
-    },
-  },
+        "distance_meters": 3940070.0
+      }
+    }
+  }
 }

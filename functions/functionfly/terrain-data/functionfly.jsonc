@@ -11,9 +11,9 @@
     "type": "object",
     "properties": {
       "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
-      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" }
     },
-    "required": ["lat", "lng"],
+    "required": ["lat", "lng"]
   },
   "output": {
     "type": "object",
@@ -27,24 +27,24 @@
           "elevation_m": { "type": "number" },
           "slope_degrees": {
             "type": "number",
-            "description": "Terrain slope in degrees",
+            "description": "Terrain slope in degrees"
           },
           "aspect_degrees": {
             "type": "number",
-            "description": "Aspect (direction slope faces) in degrees",
+            "description": "Aspect (direction slope faces) in degrees"
           },
           "terrain_type": {
             "type": "string",
-            "description": "Terrain classification",
+            "description": "Terrain classification"
           },
           "roughness": {
             "type": "string",
-            "description": "Terrain roughness: flat, gentle, moderate, steep, cliff",
-          },
-        },
+            "description": "Terrain roughness: flat, gentle, moderate, steep, cliff"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -54,7 +54,7 @@
   "example": {
     "input": {
       "lat": 40.7128,
-      "lng": -74.006,
+      "lng": -74.006
     },
     "output": {
       "ok": true,
@@ -65,8 +65,8 @@
         "slope_degrees": 2.1,
         "aspect_degrees": 180,
         "terrain_type": "coastal_plain",
-        "roughness": "flat",
-      },
-    },
-  },
+        "roughness": "flat"
+      }
+    }
+  }
 }

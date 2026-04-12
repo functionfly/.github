@@ -15,7 +15,7 @@
         "description": "Point as [lng, lat] (GeoJSON order)",
         "items": { "type": "number" },
         "minItems": 2,
-        "maxItems": 2,
+        "maxItems": 2
       },
       "polygon": {
         "type": "array",
@@ -24,11 +24,11 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
-      },
+          "maxItems": 2
+        }
+      }
     },
-    "required": ["point", "polygon"],
+    "required": ["point", "polygon"]
   },
   "output": {
     "type": "object",
@@ -39,12 +39,12 @@
         "properties": {
           "within": {
             "type": "boolean",
-            "description": "Whether the point is within the polygon",
-          },
-        },
+            "description": "Whether the point is within the polygon"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -59,14 +59,14 @@
         [-73.906, 40.7128],
         [-73.906, 40.6628],
         [-74.006, 40.6628],
-        [-74.006, 40.7128],
-      ],
+        [-74.006, 40.7128]
+      ]
     },
     "output": {
       "ok": true,
       "result": {
-        "within": true,
-      },
-    },
-  },
+        "within": true
+      }
+    }
+  }
 }

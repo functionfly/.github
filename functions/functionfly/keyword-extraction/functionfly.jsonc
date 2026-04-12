@@ -12,13 +12,13 @@
     "properties": {
       "text": { "type": "string" },
       "top_n": { "type": "integer", "default": 10 },
-      "ngram_max": { "type": "integer", "default": 2 },
+      "ngram_max": { "type": "integer", "default": 2 }
     },
-    "required": ["text"],
+    "required": ["text"]
   },
   "output": {
     "type": "object",
-    "properties": { "ok": {}, "result": {}, "keywords": {}, "error": {} },
+    "properties": { "ok": {}, "result": {}, "keywords": {}, "error": {} }
   },
   "deterministic": true,
   "idempotent": true,
@@ -28,8 +28,8 @@
   "example": {
     "input": {
       "text": "Machine learning algorithms process large datasets to find patterns.",
-      "top_n": 5,
+      "top_n": 5
     },
-    "output": { "ok": true },
-  },
+    "output": { "ok": true }
+  }
 }

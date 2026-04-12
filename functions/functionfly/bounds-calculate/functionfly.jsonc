@@ -12,7 +12,7 @@
     "bbox",
     "coordinates",
     "geospatial",
-    "extent",
+    "extent"
   ],
   "input": {
     "type": "object",
@@ -24,11 +24,11 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
-      },
+          "maxItems": 2
+        }
+      }
     },
-    "required": ["coordinates"],
+    "required": ["coordinates"]
   },
   "output": {
     "type": "object",
@@ -45,16 +45,16 @@
           "center_lng": { "type": "number", "description": "Center longitude" },
           "width_km": {
             "type": "number",
-            "description": "Width of bounding box in km",
+            "description": "Width of bounding box in km"
           },
           "height_km": {
             "type": "number",
-            "description": "Height of bounding box in km",
-          },
-        },
+            "description": "Height of bounding box in km"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -66,8 +66,8 @@
       "coordinates": [
         [40.7128, -74.006],
         [34.0522, -118.2437],
-        [41.8781, -87.6298],
-      ],
+        [41.8781, -87.6298]
+      ]
     },
     "output": {
       "ok": true,
@@ -79,8 +79,8 @@
         "center_lat": 37.9652,
         "center_lng": -96.1249,
         "width_km": 3940.07,
-        "height_km": 869.12,
-      },
-    },
-  },
+        "height_km": 869.12
+      }
+    }
+  }
 }

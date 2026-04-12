@@ -12,15 +12,15 @@
     "pollution",
     "environment",
     "geospatial",
-    "mock",
+    "mock"
   ],
   "input": {
     "type": "object",
     "properties": {
       "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
-      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" }
     },
-    "required": ["lat", "lng"],
+    "required": ["lat", "lng"]
   },
   "output": {
     "type": "object",
@@ -31,17 +31,17 @@
         "properties": {
           "aqi": {
             "type": "integer",
-            "description": "Air Quality Index (0-500)",
+            "description": "Air Quality Index (0-500)"
           },
           "category": { "type": "string", "description": "AQI category" },
           "color": { "type": "string", "description": "AQI color code" },
           "health_message": { "type": "string" },
           "pollutants": { "type": "object" },
-          "dominant_pollutant": { "type": "string" },
-        },
+          "dominant_pollutant": { "type": "string" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": false,
   "idempotent": false,
@@ -51,7 +51,7 @@
   "example": {
     "input": {
       "lat": 40.7128,
-      "lng": -74.006,
+      "lng": -74.006
     },
     "output": {
       "ok": true,
@@ -66,10 +66,10 @@
           "o3": 45.2,
           "no2": 12.1,
           "so2": 2.3,
-          "co": 0.4,
+          "co": 0.4
         },
-        "dominant_pollutant": "pm25",
-      },
-    },
-  },
+        "dominant_pollutant": "pm25"
+      }
+    }
+  }
 }

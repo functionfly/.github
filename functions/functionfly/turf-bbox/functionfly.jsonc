@@ -17,11 +17,11 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
-      },
+          "maxItems": 2
+        }
+      }
     },
-    "required": ["coordinates"],
+    "required": ["coordinates"]
   },
   "output": {
     "type": "object",
@@ -33,16 +33,16 @@
           "bbox": {
             "type": "array",
             "description": "Bounding box as [minLng, minLat, maxLng, maxLat]",
-            "items": { "type": "number" },
+            "items": { "type": "number" }
           },
           "min_lng": { "type": "number" },
           "min_lat": { "type": "number" },
           "max_lng": { "type": "number" },
-          "max_lat": { "type": "number" },
-        },
+          "max_lat": { "type": "number" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -55,8 +55,8 @@
         [-74.006, 40.7128],
         [-73.906, 40.7128],
         [-73.906, 40.6628],
-        [-74.006, 40.6628],
-      ],
+        [-74.006, 40.6628]
+      ]
     },
     "output": {
       "ok": true,
@@ -65,8 +65,8 @@
         "min_lng": -74.006,
         "min_lat": 40.6628,
         "max_lng": -73.906,
-        "max_lat": 40.7128,
-      },
-    },
-  },
+        "max_lat": 40.7128
+      }
+    }
+  }
 }

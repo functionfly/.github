@@ -11,24 +11,24 @@
     "type": "object",
     "properties": {
       "string": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["string"],
+    "required": ["string"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "nysiis": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -37,11 +37,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "string": "Robert",
+      "string": "Robert"
     },
     "output": {
       "ok": true,
-      "nysiis": "ROBAD",
-    },
-  },
+      "nysiis": "ROBAD"
+    }
+  }
 }

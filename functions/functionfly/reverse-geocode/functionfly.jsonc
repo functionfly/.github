@@ -12,15 +12,15 @@
     "address",
     "latitude",
     "longitude",
-    "location",
+    "location"
   ],
   "input": {
     "type": "object",
     "properties": {
       "lat": { "type": "number", "description": "Latitude (-90 to 90)" },
-      "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
+      "lng": { "type": "number", "description": "Longitude (-180 to 180)" }
     },
-    "required": ["lat", "lng"],
+    "required": ["lat", "lng"]
   },
   "output": {
     "type": "object",
@@ -33,22 +33,22 @@
           "lng": { "type": "number", "description": "Input longitude" },
           "formatted_address": {
             "type": "string",
-            "description": "Formatted address",
+            "description": "Formatted address"
           },
           "city": { "type": "string", "description": "City name" },
           "country": { "type": "string", "description": "Country name" },
           "country_code": {
             "type": "string",
-            "description": "ISO country code",
+            "description": "ISO country code"
           },
           "confidence": {
             "type": "number",
-            "description": "Confidence score 0-1",
-          },
-        },
+            "description": "Confidence score 0-1"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -58,7 +58,7 @@
   "example": {
     "input": {
       "lat": 40.7128,
-      "lng": -74.006,
+      "lng": -74.006
     },
     "output": {
       "ok": true,
@@ -69,8 +69,8 @@
         "city": "New York",
         "country": "United States",
         "country_code": "US",
-        "confidence": 0.92,
-      },
-    },
-  },
+        "confidence": 0.92
+      }
+    }
+  }
 }

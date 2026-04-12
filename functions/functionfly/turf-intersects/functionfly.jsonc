@@ -17,8 +17,8 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
+          "maxItems": 2
+        }
       },
       "polygon2": {
         "type": "array",
@@ -27,11 +27,11 @@
           "type": "array",
           "items": { "type": "number" },
           "minItems": 2,
-          "maxItems": 2,
-        },
-      },
+          "maxItems": 2
+        }
+      }
     },
-    "required": ["polygon1", "polygon2"],
+    "required": ["polygon1", "polygon2"]
   },
   "output": {
     "type": "object",
@@ -42,12 +42,12 @@
         "properties": {
           "intersects": {
             "type": "boolean",
-            "description": "Whether the polygons intersect",
-          },
-        },
+            "description": "Whether the polygons intersect"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -61,21 +61,21 @@
         [-73.906, 40.7128],
         [-73.906, 40.6628],
         [-74.006, 40.6628],
-        [-74.006, 40.7128],
+        [-74.006, 40.7128]
       ],
       "polygon2": [
         [-73.956, 40.7378],
         [-73.856, 40.7378],
         [-73.856, 40.6878],
         [-73.956, 40.6878],
-        [-73.956, 40.7378],
-      ],
+        [-73.956, 40.7378]
+      ]
     },
     "output": {
       "ok": true,
       "result": {
-        "intersects": true,
-      },
-    },
-  },
+        "intersects": true
+      }
+    }
+  }
 }

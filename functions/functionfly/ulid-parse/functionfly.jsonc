@@ -11,27 +11,27 @@
     "type": "object",
     "properties": {
       "ulid": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["ulid"],
+    "required": ["ulid"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "timestamp": {
-        "type": "integer",
+        "type": "integer"
       },
       "randomness": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -40,12 +40,12 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "ulid": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "ulid": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
     },
     "output": {
       "ok": true,
       "timestamp": 1400000000000,
-      "randomness": "...",
-    },
-  },
+      "randomness": "..."
+    }
+  }
 }

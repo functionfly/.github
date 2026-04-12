@@ -11,30 +11,30 @@
     "type": "object",
     "properties": {
       "birthdate": {
-        "type": "string",
+        "type": "string"
       },
       "reference_date": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["birthdate"],
+    "required": ["birthdate"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "days_until_next": {
-        "type": "integer",
+        "type": "integer"
       },
       "next_birthday": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -43,12 +43,12 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "birthdate": "1990-01-15",
+      "birthdate": "1990-01-15"
     },
     "output": {
       "ok": true,
       "days_until_next": 365,
-      "next_birthday": "2025-01-15",
-    },
-  },
+      "next_birthday": "2025-01-15"
+    }
+  }
 }

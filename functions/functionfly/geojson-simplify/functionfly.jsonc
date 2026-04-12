@@ -12,14 +12,14 @@
     "properties": {
       "geojson": {
         "type": "object",
-        "description": "GeoJSON geometry or Feature to simplify",
+        "description": "GeoJSON geometry or Feature to simplify"
       },
       "tolerance": {
         "type": "number",
-        "description": "Simplification tolerance in degrees (default: 0.0001)",
-      },
+        "description": "Simplification tolerance in degrees (default: 0.0001)"
+      }
     },
-    "required": ["geojson"],
+    "required": ["geojson"]
   },
   "output": {
     "type": "object",
@@ -27,10 +27,10 @@
       "ok": { "type": "boolean" },
       "result": {
         "type": "object",
-        "description": "Simplified GeoJSON object",
+        "description": "Simplified GeoJSON object"
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -47,10 +47,10 @@
           [2, -0.1],
           [3, 5],
           [4, 6],
-          [5, 7],
-        ],
+          [5, 7]
+        ]
       },
-      "tolerance": 1.0,
+      "tolerance": 1.0
     },
     "output": {
       "ok": true,
@@ -60,9 +60,9 @@
           [0, 0],
           [2, -0.1],
           [3, 5],
-          [5, 7],
-        ],
-      },
-    },
-  },
+          [5, 7]
+        ]
+      }
+    }
+  }
 }

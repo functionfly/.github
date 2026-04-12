@@ -11,30 +11,30 @@
     "type": "object",
     "properties": {
       "secret": {
-        "type": "string",
+        "type": "string"
       },
       "digits": {
-        "type": "integer",
+        "type": "integer"
       },
       "period": {
-        "type": "integer",
-      },
+        "type": "integer"
+      }
     },
-    "required": ["secret"],
+    "required": ["secret"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "totp": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": false,
   "idempotent": false,
@@ -43,11 +43,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "secret": "JBSWY3DPEHPK3PXP",
+      "secret": "JBSWY3DPEHPK3PXP"
     },
     "output": {
       "ok": true,
-      "totp": "123456",
-    },
-  },
+      "totp": "123456"
+    }
+  }
 }

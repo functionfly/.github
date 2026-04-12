@@ -12,9 +12,9 @@
     "properties": {
       "text": { "type": "string" },
       "source_lang": { "type": "string", "default": "en" },
-      "target_lang": { "type": "string" },
+      "target_lang": { "type": "string" }
     },
-    "required": ["text", "target_lang"],
+    "required": ["text", "target_lang"]
   },
   "output": {
     "type": "object",
@@ -24,8 +24,8 @@
       "translated_text": {},
       "source_lang": {},
       "target_lang": {},
-      "error": {},
-    },
+      "error": {}
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -34,6 +34,6 @@
   "memory_mb": 64,
   "example": {
     "input": { "text": "Hello, how are you?", "target_lang": "es" },
-    "output": { "ok": true, "translated_text": "Hola, ¿cómo estás?" },
-  },
+    "output": { "ok": true, "translated_text": "Hola, ¿cómo estás?" }
+  }
 }

@@ -11,24 +11,24 @@
     "type": "object",
     "properties": {
       "textile": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["textile"],
+    "required": ["textile"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "html": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -37,11 +37,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "textile": "h1. Hello\n\nThis is *bold* text.",
+      "textile": "h1. Hello\n\nThis is *bold* text."
     },
     "output": {
       "ok": true,
-      "html": "<h1>Hello</h1>\n<p>This is <strong>bold</strong> text.</p>",
-    },
-  },
+      "html": "<h1>Hello</h1>\n<p>This is <strong>bold</strong> text.</p>"
+    }
+  }
 }

@@ -12,7 +12,7 @@
     "radius",
     "coordinates",
     "geospatial",
-    "geometry",
+    "geometry"
   ],
   "input": {
     "type": "object",
@@ -20,19 +20,19 @@
       "lat": { "type": "number", "description": "Center latitude (-90 to 90)" },
       "lng": {
         "type": "number",
-        "description": "Center longitude (-180 to 180)",
+        "description": "Center longitude (-180 to 180)"
       },
       "radius": { "type": "number", "description": "Buffer radius" },
       "unit": {
         "type": "string",
-        "description": "Unit of radius: 'km', 'miles', 'meters' (default: 'km')",
+        "description": "Unit of radius: 'km', 'miles', 'meters' (default: 'km')"
       },
       "steps": {
         "type": "integer",
-        "description": "Number of polygon vertices (default: 64, min: 8, max: 360)",
-      },
+        "description": "Number of polygon vertices (default: 64, min: 8, max: 360)"
+      }
     },
-    "required": ["lat", "lng", "radius"],
+    "required": ["lat", "lng", "radius"]
   },
   "output": {
     "type": "object",
@@ -45,20 +45,20 @@
             "type": "object",
             "properties": {
               "lat": { "type": "number" },
-              "lng": { "type": "number" },
-            },
+              "lng": { "type": "number" }
+            }
           },
           "radius": { "type": "number" },
           "unit": { "type": "string" },
           "coordinates": {
             "type": "array",
             "description": "Polygon vertices as [lat, lng] pairs",
-            "items": { "type": "array" },
-          },
-        },
+            "items": { "type": "array" }
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -71,7 +71,7 @@
       "lng": -74.006,
       "radius": 1,
       "unit": "km",
-      "steps": 8,
+      "steps": 8
     },
     "output": {
       "ok": true,
@@ -88,9 +88,9 @@
           [40.7064, -74.0191],
           [40.7128, -74.0178],
           [40.7192, -74.0191],
-          [40.7218, -74.006],
-        ],
-      },
-    },
-  },
+          [40.7218, -74.006]
+        ]
+      }
+    }
+  }
 }

@@ -11,27 +11,27 @@
     "type": "object",
     "properties": {
       "country": {
-        "type": "string",
+        "type": "string"
       },
       "year": {
-        "type": "integer",
-      },
+        "type": "integer"
+      }
     },
-    "required": ["country"],
+    "required": ["country"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "holidays": {
-        "type": "array",
+        "type": "array"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -41,14 +41,14 @@
   "example": {
     "input": {
       "country": "US",
-      "year": 2024,
+      "year": 2024
     },
     "output": {
       "ok": true,
       "holidays": [
         { "date": "2024-01-01", "name": "New Year's Day" },
-        { "date": "2024-07-04", "name": "Independence Day" },
-      ],
-    },
-  },
+        { "date": "2024-07-04", "name": "Independence Day" }
+      ]
+    }
+  }
 }

@@ -11,33 +11,33 @@
     "type": "object",
     "properties": {
       "id": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["id"],
+    "required": ["id"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "timestamp": {
-        "type": "integer",
+        "type": "integer"
       },
       "datacenter_id": {
-        "type": "integer",
+        "type": "integer"
       },
       "machine_id": {
-        "type": "integer",
+        "type": "integer"
       },
       "sequence": {
-        "type": "integer",
+        "type": "integer"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -46,14 +46,14 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "id": "1234567890123456789",
+      "id": "1234567890123456789"
     },
     "output": {
       "ok": true,
       "timestamp": 1609459200000,
       "datacenter_id": 1,
       "machine_id": 1,
-      "sequence": 0,
-    },
-  },
+      "sequence": 0
+    }
+  }
 }

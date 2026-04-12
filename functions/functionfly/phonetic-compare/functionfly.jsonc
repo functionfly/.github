@@ -11,33 +11,33 @@
     "type": "object",
     "properties": {
       "string1": {
-        "type": "string",
+        "type": "string"
       },
       "string2": {
-        "type": "string",
+        "type": "string"
       },
       "algorithm": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["string1", "string2"],
+    "required": ["string1", "string2"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "match": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "algorithm": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -48,12 +48,12 @@
     "input": {
       "string1": "Robert",
       "string2": "Rupert",
-      "algorithm": "soundex",
+      "algorithm": "soundex"
     },
     "output": {
       "ok": true,
       "match": true,
-      "algorithm": "soundex",
-    },
-  },
+      "algorithm": "soundex"
+    }
+  }
 }

@@ -14,10 +14,10 @@
       "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
       "date": {
         "type": "string",
-        "description": "Date in YYYY-MM-DD format (default: today UTC)",
-      },
+        "description": "Date in YYYY-MM-DD format (default: today UTC)"
+      }
     },
-    "required": ["lat", "lng"],
+    "required": ["lat", "lng"]
   },
   "output": {
     "type": "object",
@@ -29,34 +29,34 @@
           "date": { "type": "string" },
           "sunrise": {
             "type": "string",
-            "description": "Sunrise time in HH:MM UTC",
+            "description": "Sunrise time in HH:MM UTC"
           },
           "sunset": {
             "type": "string",
-            "description": "Sunset time in HH:MM UTC",
+            "description": "Sunset time in HH:MM UTC"
           },
           "solar_noon": {
             "type": "string",
-            "description": "Solar noon time in HH:MM UTC",
+            "description": "Solar noon time in HH:MM UTC"
           },
           "day_length_hours": {
             "type": "number",
-            "description": "Day length in hours",
+            "description": "Day length in hours"
           },
           "civil_twilight_begin": { "type": "string" },
           "civil_twilight_end": { "type": "string" },
           "polar_day": {
             "type": "boolean",
-            "description": "True if sun never sets",
+            "description": "True if sun never sets"
           },
           "polar_night": {
             "type": "boolean",
-            "description": "True if sun never rises",
-          },
-        },
+            "description": "True if sun never rises"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -67,7 +67,7 @@
     "input": {
       "lat": 40.7128,
       "lng": -74.006,
-      "date": "2024-06-21",
+      "date": "2024-06-21"
     },
     "output": {
       "ok": true,
@@ -80,8 +80,8 @@
         "civil_twilight_begin": "08:55",
         "civil_twilight_end": "01:01",
         "polar_day": false,
-        "polar_night": false,
-      },
-    },
-  },
+        "polar_night": false
+      }
+    }
+  }
 }

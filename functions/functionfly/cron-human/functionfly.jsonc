@@ -11,24 +11,24 @@
     "type": "object",
     "properties": {
       "expression": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["expression"],
+    "required": ["expression"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "description": {
-        "type": "string",
+        "type": "string"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -37,11 +37,11 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "expression": "0 9 * * 1-5",
+      "expression": "0 9 * * 1-5"
     },
     "output": {
       "ok": true,
-      "description": "At the start of the hour, at 09:00, on Monday through Friday",
-    },
-  },
+      "description": "At the start of the hour, at 09:00, on Monday through Friday"
+    }
+  }
 }

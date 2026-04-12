@@ -11,27 +11,27 @@
     "type": "object",
     "properties": {
       "string1": {
-        "type": "string",
+        "type": "string"
       },
       "string2": {
-        "type": "string",
-      },
+        "type": "string"
+      }
     },
-    "required": ["string1", "string2"],
+    "required": ["string1", "string2"]
   },
   "output": {
     "type": "object",
     "properties": {
       "ok": {
-        "type": "boolean",
+        "type": "boolean"
       },
       "similarity": {
-        "type": "number",
+        "type": "number"
       },
       "error": {
-        "type": "string",
-      },
-    },
+        "type": "string"
+      }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -41,11 +41,11 @@
   "example": {
     "input": {
       "string1": "MARTHA",
-      "string2": "MARHTA",
+      "string2": "MARHTA"
     },
     "output": {
       "ok": true,
-      "similarity": 0.96,
-    },
-  },
+      "similarity": 0.96
+    }
+  }
 }

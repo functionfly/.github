@@ -10,9 +10,9 @@
   "input": {
     "type": "object",
     "properties": {
-      "gpx": { "type": "string", "description": "GPX XML string to parse" },
+      "gpx": { "type": "string", "description": "GPX XML string to parse" }
     },
-    "required": ["gpx"],
+    "required": ["gpx"]
   },
   "output": {
     "type": "object",
@@ -26,11 +26,11 @@
           "metadata": { "type": "object" },
           "waypoint_count": { "type": "integer" },
           "track_count": { "type": "integer" },
-          "route_count": { "type": "integer" },
-        },
+          "route_count": { "type": "integer" }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -39,7 +39,7 @@
   "memory_mb": 128,
   "example": {
     "input": {
-      "gpx": "<?xml version=\"1.0\"?><gpx version=\"1.1\"><wpt lat=\"40.7128\" lon=\"-74.006\"><name>New York</name></wpt></gpx>",
+      "gpx": "<?xml version=\"1.0\"?><gpx version=\"1.1\"><wpt lat=\"40.7128\" lon=\"-74.006\"><name>New York</name></wpt></gpx>"
     },
     "output": {
       "ok": true,
@@ -49,14 +49,14 @@
           {
             "type": "Feature",
             "geometry": { "type": "Point", "coordinates": [-74.006, 40.7128] },
-            "properties": { "name": "New York", "gpx_type": "waypoint" },
-          },
+            "properties": { "name": "New York", "gpx_type": "waypoint" }
+          }
         ],
         "metadata": {},
         "waypoint_count": 1,
         "track_count": 0,
-        "route_count": 0,
-      },
-    },
-  },
+        "route_count": 0
+      }
+    }
+  }
 }

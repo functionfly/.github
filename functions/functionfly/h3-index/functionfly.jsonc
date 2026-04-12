@@ -14,10 +14,10 @@
       "lng": { "type": "number", "description": "Longitude (-180 to 180)" },
       "resolution": {
         "type": "integer",
-        "description": "H3 resolution (0-15, default: 9)",
-      },
+        "description": "H3 resolution (0-15, default: 9)"
+      }
     },
-    "required": ["lat", "lng"],
+    "required": ["lat", "lng"]
   },
   "output": {
     "type": "object",
@@ -32,12 +32,12 @@
           "lng": { "type": "number" },
           "avg_area_km2": {
             "type": "number",
-            "description": "Average hexagon area at this resolution",
-          },
-        },
+            "description": "Average hexagon area at this resolution"
+          }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -48,7 +48,7 @@
     "input": {
       "lat": 40.7128,
       "lng": -74.006,
-      "resolution": 9,
+      "resolution": 9
     },
     "output": {
       "ok": true,
@@ -57,8 +57,8 @@
         "resolution": 9,
         "lat": 40.7128,
         "lng": -74.006,
-        "avg_area_km2": 0.1053,
-      },
-    },
-  },
+        "avg_area_km2": 0.1053
+      }
+    }
+  }
 }

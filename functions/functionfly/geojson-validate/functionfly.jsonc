@@ -12,10 +12,10 @@
     "properties": {
       "geojson": {
         "type": "object",
-        "description": "GeoJSON object to validate",
-      },
+        "description": "GeoJSON object to validate"
+      }
     },
-    "required": ["geojson"],
+    "required": ["geojson"]
   },
   "output": {
     "type": "object",
@@ -26,15 +26,15 @@
         "properties": {
           "valid": {
             "type": "boolean",
-            "description": "Whether the GeoJSON is valid",
+            "description": "Whether the GeoJSON is valid"
           },
           "type": { "type": "string", "description": "GeoJSON type" },
           "errors": { "type": "array", "items": { "type": "string" } },
-          "warnings": { "type": "array", "items": { "type": "string" } },
-        },
+          "warnings": { "type": "array", "items": { "type": "string" } }
+        }
       },
-      "error": { "type": "string" },
-    },
+      "error": { "type": "string" }
+    }
   },
   "deterministic": true,
   "idempotent": true,
@@ -47,10 +47,10 @@
         "type": "Feature",
         "geometry": {
           "type": "Point",
-          "coordinates": [-74.006, 40.7128],
+          "coordinates": [-74.006, 40.7128]
         },
-        "properties": { "name": "New York" },
-      },
+        "properties": { "name": "New York" }
+      }
     },
     "output": {
       "ok": true,
@@ -58,8 +58,8 @@
         "valid": true,
         "type": "Feature",
         "errors": [],
-        "warnings": [],
-      },
-    },
-  },
+        "warnings": []
+      }
+    }
+  }
 }
