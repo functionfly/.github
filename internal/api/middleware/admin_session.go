@@ -311,6 +311,14 @@ func (m *AdminSessionMiddleware) RevokeAllUserSessions(userID uuid.UUID) error {
 // RequireAdminSession middleware validates the admin session on each request
 func (m *AdminSessionMiddleware) RequireAdminSession(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Skip validation for auth bootstrap endpoints that create synthetic sessions
+		// These endpoints use JWT validation and need to pass through to handle bootstrap
+		path := r.URL.Path
+		if strings.HasSuffix(path, "/admin/auth/session") || strings.HasSuffix(path, "/admin/auth/last-login") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Skip validation if database is not configured (development mode)
 		if m.db == nil {
 			m.logger.Warn("Admin session validation skipped - database not configured")

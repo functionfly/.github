@@ -12,19 +12,41 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// CostAllocationHandlerSetter interface for setting cost allocation handler
+type CostAllocationHandlerSetter interface {
+	SetCostAllocationHandler(handler *billing.CostAllocationHandler)
+}
+
+// ExportHandlerSetter interface for setting export handler
+type ExportHandlerSetter interface {
+	SetExportHandler(handler *billing.ExportHandler)
+}
+
+// ExternalBillingHandlerSetter interface for setting external billing handler
+type ExternalBillingHandlerSetter interface {
+	SetExternalBillingHandler(handler *billing.ExternalBillingHandler)
+}
+
 // registerAuthRoutes wires all authentication, user, follow, API-key, billing,
 // MFA, and notification endpoints.
 func registerAuthRoutes(
 	router *mux.Router,
 	api *mux.Router,
 	authRateLimiter *middleware.AuthRateLimiter,
+	walletRateLimiter *middleware.WalletRateLimiter,
 	authMiddleware *middleware.AuthMiddleware,
+	csrfMiddleware *middleware.CSRFMiddleware,
 	authHandler *authHandlerPkg.Handler,
 	apiKeyAuthHandler *apikeys.APIKeyAuthHandler,
 	usersHandler *usersHandlerPkg.Handler,
 	followHandler *followHandlerPkg.Handler,
 	apiKeysHandler *apikeys.Handler,
 	billingHandler *billing.Handler,
+	usageHandler *billing.UsageHandler,
+	forecastHandler *billing.UsageForecastHandler,
+	costAllocationHandler *billing.CostAllocationHandler,
+	exportHandler *billing.ExportHandler,
+	externalBillingHandler *billing.ExternalBillingHandler,
 	mfaHandler *mfaHandlerPkg.MFAHandler,
 	notificationHandler *notificationHandlerPkg.Handler,
 	notificationWSHandler *notificationHandlerPkg.WebSocketHandler,
@@ -141,29 +163,80 @@ func registerAuthRoutes(
 	// ── Billing ─────────────────────────────────────────────────────────────
 	// State Fabric add-on catalog (public — pricing page)
 	api.HandleFunc("/billing/state-fabric/add-ons", billingHandler.HandleListStateFabricAddOnCatalog).Methods("GET", "OPTIONS")
-	// Billing (protected)
-	api.HandleFunc("/billing/portal-session", authMiddleware.RequireAuth(billingHandler.HandleCreatePortalSession)).Methods("POST", "OPTIONS")
-	api.HandleFunc("/billing/checkout", authMiddleware.RequireAuth(billingHandler.HandleCreateCheckoutSession)).Methods("POST", "OPTIONS")
+	// Billing (protected) - POST endpoints require CSRF protection for security
+	api.HandleFunc("/billing/portal-session", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleCreatePortalSession))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/billing/checkout", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleCreateCheckoutSession))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/billing/subscription", authMiddleware.RequireAuth(billingHandler.HandleGetSubscription)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/billing/subscription/cancel", authMiddleware.RequireAuth(billingHandler.HandleCancelSubscription)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/billing/subscription/cancel", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleCancelSubscription))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/billing/invoices", authMiddleware.RequireAuth(billingHandler.HandleListInvoices)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/usage", authMiddleware.RequireAuth(billingHandler.HandleGetUsage)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/billing/wallet", authMiddleware.RequireAuth(billingHandler.HandleGetWallet)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/billing/wallet/top-up", authMiddleware.RequireAuth(billingHandler.HandleWalletTopUp)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/billing/wallet", authMiddleware.RequireAuth(walletRateLimiter.LimitBalanceCheck(billingHandler.HandleGetWallet))).Methods("GET", "OPTIONS")
+	api.HandleFunc("/billing/wallet/top-up", authMiddleware.RequireAuth(walletRateLimiter.LimitTopUp(csrfMiddleware.RequireCSRF(billingHandler.HandleWalletTopUp)))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/billing/fees", authMiddleware.RequireAuth(billingHandler.HandleListPlatformFees)).Methods("GET", "OPTIONS")
 
 	// ── Revenue System Phase 1 - Trust Layer Monetization ──────────────────
 	api.HandleFunc("/billing/plans", authMiddleware.RequireAuth(billingHandler.HandleGetPlans)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/billing/subscribe", authMiddleware.RequireAuth(billingHandler.HandleSubscribe)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/billing/subscribe", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleSubscribe))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/billing/verification-cost", authMiddleware.RequireAuth(billingHandler.HandleGetVerificationCost)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/billing/verify-function", authMiddleware.RequireAuth(billingHandler.HandleVerifyFunction)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/billing/verify-function", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleVerifyFunction))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/billing/earnings", authMiddleware.RequireAuth(billingHandler.HandleGetEarnings)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/agent-usage", authMiddleware.RequireAuth(billingHandler.HandleGetAgentUsage)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/state-fabric/add-ons/entitlements", authMiddleware.RequireAuth(billingHandler.HandleGetStateFabricAddOnEntitlements)).Methods("GET", "OPTIONS")
-	api.HandleFunc("/billing/state-fabric/add-ons/checkout", authMiddleware.RequireAuth(billingHandler.HandleCreateStateFabricAddOnCheckout)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/billing/state-fabric/add-ons/checkout", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleCreateStateFabricAddOnCheckout))).Methods("POST", "OPTIONS")
+	// 3-Layer Pricing Strategy endpoints
+	api.HandleFunc("/billing/usage-pricing", authMiddleware.RequireAuth(billingHandler.HandleGetUsagePricing)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/billing/usage/current", authMiddleware.RequireAuth(billingHandler.HandleGetCurrentUsage)).Methods("GET", "OPTIONS")
 	// Internal webhook endpoint for subscription updates (called by Stripe webhook handler or admin)
 	// Requires X-Internal-Webhook-Secret header matching INTERNAL_WEBHOOK_SECRET env var
 	api.HandleFunc("/billing/subscription/webhook", billingHandler.HandleSubscriptionWebhook).Methods("POST", "OPTIONS")
+
+	// ── Backend-in-a-Box Pricing Bundles (viral pricing) ───────────────────
+	// Bundle catalog and details
+	api.HandleFunc("/billing/bundles", billingHandler.HandleGetBundles).Methods("GET", "OPTIONS")
+	api.HandleFunc("/billing/bundles/{slug}", billingHandler.HandleGetBundle).Methods("GET", "OPTIONS")
+	// Immediate bundle checkout
+	api.HandleFunc("/billing/bundles/{slug}/checkout", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleCreateBundleCheckout))).Methods("POST", "OPTIONS")
+	// Founder mode registration ("Build Now, Pay Later" + "Free until $1K MRR")
+	api.HandleFunc("/billing/bundles/{slug}/founder", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleRegisterFounderMode))).Methods("POST", "OPTIONS")
+	// Founder mode status and deferred billing progress
+	api.HandleFunc("/billing/founder-mode", authMiddleware.RequireAuth(billingHandler.HandleGetFounderModeStatus)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/billing/deferred-status", authMiddleware.RequireAuth(billingHandler.HandleGetDeferredBillingStatus)).Methods("GET", "OPTIONS")
+	// Manual conversion to paid plan
+	api.HandleFunc("/billing/convert-to-paid", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleConvertToPaid))).Methods("POST", "OPTIONS")
+
+	// ── Real-time Usage (protected) ───────────────────────────────────────
+	api.HandleFunc("/usage/realtime", authMiddleware.RequireAuth(usageHandler.GetRealtimeUsage)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/usage/check", authMiddleware.RequireAuth(usageHandler.CheckQuota)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/usage/history", authMiddleware.RequireAuth(usageHandler.GetUsageHistory)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/usage/current-period", authMiddleware.RequireAuth(usageHandler.GetCurrentPeriodUsage)).Methods("GET", "OPTIONS")
+
+	// ── Usage Forecasting & Alerts (protected) ─────────────────────────────
+	api.HandleFunc("/usage/forecast", authMiddleware.RequireAuth(forecastHandler.GetCurrentForecast)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/usage/forecast/{type}", authMiddleware.RequireAuth(forecastHandler.GetForecastByType)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/usage/forecast/refresh", authMiddleware.RequireAuth(forecastHandler.RefreshForecast)).Methods("POST", "OPTIONS")
+
+	// Usage alert configuration
+	api.HandleFunc("/usage/alerts", authMiddleware.RequireAuth(forecastHandler.ListAlerts)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/usage/alerts", authMiddleware.RequireAuth(forecastHandler.CreateAlert)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/usage/alerts/{id}", authMiddleware.RequireAuth(forecastHandler.GetAlert)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/usage/alerts/{id}", authMiddleware.RequireAuth(forecastHandler.UpdateAlert)).Methods("PUT", "OPTIONS")
+	api.HandleFunc("/usage/alerts/{id}", authMiddleware.RequireAuth(forecastHandler.DeleteAlert)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/usage/alerts/history", authMiddleware.RequireAuth(forecastHandler.GetAlertHistory)).Methods("GET", "OPTIONS")
+
+	// Spend cap management
+	api.HandleFunc("/usage/spend-cap", authMiddleware.RequireAuth(forecastHandler.GetSpendCap)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/usage/spend-cap", authMiddleware.RequireAuth(forecastHandler.UpdateSpendCap)).Methods("PUT", "OPTIONS")
+
+	// Usage trends
+	api.HandleFunc("/usage/trends", authMiddleware.RequireAuth(forecastHandler.GetUsageTrends)).Methods("GET", "OPTIONS")
+
+	// ── Detailed Cost Allocation (protected) ────────────────────────────────
+	// Cost summary and breakdown
+	api.HandleFunc("/costs/summary", authMiddleware.RequireAuth(costAllocationHandler.GetCostSummary)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/costs/by-function", authMiddleware.RequireAuth(costAllocationHandler.GetCostByFunction)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/costs/by-period", authMiddleware.RequireAuth(costAllocationHandler.GetCostByPeriod)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/costs/by-region", authMiddleware.RequireAuth(costAllocationHandler.GetCostByRegion)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/costs/entries", authMiddleware.RequireAuth(costAllocationHandler.GetCostEntries)).Methods("GET", "OPTIONS")
 
 	// ── Notifications (protected) ───────────────────────────────────────────
 	api.HandleFunc("/notifications", authMiddleware.RequireAuth(notificationHandler.HandleListNotifications)).Methods("GET", "OPTIONS")
@@ -172,4 +245,40 @@ func registerAuthRoutes(
 	api.HandleFunc("/notifications/{id}/read", authMiddleware.RequireAuth(notificationHandler.HandleMarkAsRead)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/notifications/{id}", authMiddleware.RequireAuth(notificationHandler.HandleDeleteNotification)).Methods("DELETE", "OPTIONS")
 	api.HandleFunc("/notifications/stream", authMiddleware.RequireAuth(notificationWSHandler.HandleWebSocket))
+
+	// ── Usage Exports (protected) ────────────────────────────────────────
+	// Export configuration management
+	api.HandleFunc("/exports/configurations", authMiddleware.RequireAuth(exportHandler.ListExportConfigurations)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/exports/configurations", authMiddleware.RequireAuth(exportHandler.CreateExportConfiguration)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/exports/configurations/{id}", authMiddleware.RequireAuth(exportHandler.GetExportConfiguration)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/exports/configurations/{id}", authMiddleware.RequireAuth(exportHandler.UpdateExportConfiguration)).Methods("PUT", "OPTIONS")
+	api.HandleFunc("/exports/configurations/{id}", authMiddleware.RequireAuth(exportHandler.DeleteExportConfiguration)).Methods("DELETE", "OPTIONS")
+
+	// Export job execution
+	api.HandleFunc("/exports/execute", authMiddleware.RequireAuth(exportHandler.ExecuteExport)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/exports/jobs", authMiddleware.RequireAuth(exportHandler.ListExportJobs)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/exports/jobs/{id}", authMiddleware.RequireAuth(exportHandler.GetExportJob)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/exports/{id}/download", authMiddleware.RequireAuth(exportHandler.DownloadExport)).Methods("GET", "OPTIONS")
+
+	// Export templates
+	api.HandleFunc("/exports/templates", authMiddleware.RequireAuth(exportHandler.ListExportTemplates)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/exports/templates/{id}", authMiddleware.RequireAuth(exportHandler.GetExportTemplate)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/exports/templates/{id}/use", authMiddleware.RequireAuth(exportHandler.CreateConfigurationFromTemplate)).Methods("POST", "OPTIONS")
+
+	// ── External Billing Integration (protected) ───────────────────────────
+	// External billing systems
+	api.HandleFunc("/exports/external-systems", authMiddleware.RequireAuth(externalBillingHandler.ListExternalBillingSystems)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/exports/external-systems", authMiddleware.RequireAuth(externalBillingHandler.CreateExternalBillingSystem)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/exports/external-systems/{id}", authMiddleware.RequireAuth(externalBillingHandler.GetExternalBillingSystem)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/exports/external-systems/{id}", authMiddleware.RequireAuth(externalBillingHandler.UpdateExternalBillingSystem)).Methods("PUT", "OPTIONS")
+	api.HandleFunc("/exports/external-systems/{id}", authMiddleware.RequireAuth(externalBillingHandler.DeleteExternalBillingSystem)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/exports/external-systems/{id}/test", authMiddleware.RequireAuth(externalBillingHandler.TestExternalBillingSystem)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/exports/external-systems/{id}/sync", authMiddleware.RequireAuth(externalBillingHandler.TriggerBillingSync)).Methods("POST", "OPTIONS")
+
+	// Billing sync records
+	api.HandleFunc("/exports/syncs", authMiddleware.RequireAuth(externalBillingHandler.ListBillingSyncs)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/exports/syncs/{id}", authMiddleware.RequireAuth(externalBillingHandler.GetBillingSync)).Methods("GET", "OPTIONS")
+
+	// Billing system types (public endpoint for discovery)
+	api.HandleFunc("/exports/billing-system-types", externalBillingHandler.GetBillingSystemTypes).Methods("GET", "OPTIONS")
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/statefabric"
 	statushandler "github.com/functionfly/functionfly/internal/api/handlers/status"
 	"github.com/functionfly/functionfly/internal/api/handlers/support"
+	teammemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/team_memory"
 	"github.com/functionfly/functionfly/internal/api/handlers/teams"
 	"github.com/functionfly/functionfly/internal/api/handlers/vault"
 	versionhandler "github.com/functionfly/functionfly/internal/api/handlers/version"
@@ -37,6 +38,7 @@ func registerPlatformRoutes(
 	authMiddleware *middleware.AuthMiddleware,
 	advancedSecurityMiddleware *advancedsecurity.AdvancedSecurityMiddleware,
 	vaultRateLimiter *middleware.VaultRateLimiter,
+	providerRateLimiter *middleware.ProviderRateLimiter,
 	monitoringHandler *monitoring.Handler,
 	securityHandler *security.Handler,
 	statusHandler *statushandler.Handler,
@@ -62,6 +64,7 @@ func registerPlatformRoutes(
 	maintenanceHandler *admin.MaintenanceHandler,
 	supportHdlr *support.Handler,
 	supportAdminHdlr *support.AdminHandler,
+	supportWSHub *support.WebSocketHub,
 ) {
 	// ── Metrics (public) ─────────────────────────────────────────────────────
 	api.HandleFunc("/metrics/global", s.handleGlobalMetrics).Methods("GET", "OPTIONS")
@@ -182,13 +185,28 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/user/teams", authMiddleware.RequireAuth(teamHandler.HandleGetUserTeams)).Methods("GET")
 	protected.HandleFunc("/permissions/{resourceType}/{resourceId}", authMiddleware.RequireAuth(teamHandler.HandleCheckUserResourcePermission)).Methods("GET")
 
+	// ── Team Memory Engine (Shared Brain) ────────────────────────────────────
+	teamMemoryHandler := teammemoryhandler.NewHandler(s.repo)
+	protected.HandleFunc("/teams/{teamId}/memories", authMiddleware.RequireAuth(teamMemoryHandler.HandleCreateMemory)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/teams/{teamId}/memories", authMiddleware.RequireAuth(teamMemoryHandler.HandleListMemories)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/teams/{teamId}/memories/search", authMiddleware.RequireAuth(teamMemoryHandler.HandleSearchMemories)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/teams/{teamId}/memories/query", authMiddleware.RequireAuth(teamMemoryHandler.HandleQueryMemories)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/teams/{teamId}/memories/{memoryId}", authMiddleware.RequireAuth(teamMemoryHandler.HandleGetMemory)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/teams/{teamId}/memories/{memoryId}", authMiddleware.RequireAuth(teamMemoryHandler.HandleUpdateMemory)).Methods("PUT", "PATCH", "OPTIONS")
+	protected.HandleFunc("/teams/{teamId}/memories/{memoryId}", authMiddleware.RequireAuth(teamMemoryHandler.HandleDeleteMemory)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/teams/{teamId}/memories/{memoryId}/validate", authMiddleware.RequireAuth(teamMemoryHandler.HandleValidateMemory)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/teams/{teamId}/memories/extractions", authMiddleware.RequireAuth(teamMemoryHandler.HandleListExtractions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/teams/{teamId}/memories/extractions/{extractionId}/approve", authMiddleware.RequireAuth(teamMemoryHandler.HandleApproveExtraction)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/teams/{teamId}/memories/extractions/{extractionId}/reject", authMiddleware.RequireAuth(teamMemoryHandler.HandleRejectExtraction)).Methods("POST", "OPTIONS")
+
 	// ── Providers (protected) ─────────────────────────────────────────────────
+	// Provider operations are rate-limited per tenant to prevent abuse
 	protected.HandleFunc("/providers", authMiddleware.RequireAuth(providersHandler.HandleListProviders)).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/providers/connect", authMiddleware.RequireAuth(providersHandler.HandleConnectProvider)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/providers/connect", authMiddleware.RequireAuth(providerRateLimiter.LimitConnect(providersHandler.HandleConnectProvider))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/providers/validate", authMiddleware.RequireAuth(providersHandler.HandleValidateProvider)).Methods("POST")
 	protected.HandleFunc("/providers/cost-estimate", authMiddleware.RequireAuth(providersHandler.HandleEstimateCost)).Methods("POST")
-	protected.HandleFunc("/providers/{providerId}", authMiddleware.RequireAuth(providersHandler.HandleDisconnectProvider)).Methods("DELETE", "OPTIONS")
-	protected.HandleFunc("/providers/{providerId}/test", authMiddleware.RequireAuth(providersHandler.HandleTestConnection)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/providers/{providerId}", authMiddleware.RequireAuth(providerRateLimiter.LimitDisconnect(providersHandler.HandleDisconnectProvider))).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/providers/{providerId}/test", authMiddleware.RequireAuth(providerRateLimiter.LimitTest(providersHandler.HandleTestConnection))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/providers/{providerId}/share", authMiddleware.RequireAuth(providersHandler.HandleShareProvider)).Methods("POST")
 	protected.HandleFunc("/teams/invites", authMiddleware.RequireAuth(providersHandler.HandleCreateTeamInvite)).Methods("POST")
 
@@ -308,4 +326,8 @@ func registerPlatformRoutes(
 	// ── Support (protected; register on api so /v1/support/... is matched) ─────────
 	supportHdlr.RegisterRoutes(api, authMiddleware)
 	supportAdminHdlr.RegisterRoutes(protected)
+
+	// ── Support WebSocket (real-time chat) ──────────────────────────────────────
+	// Register on api subrouter so /v1/support/ws matches (auth middleware runs first)
+	support.RegisterWebSocketRoutes(api, supportWSHub)
 }

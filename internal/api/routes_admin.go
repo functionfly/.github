@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
+	"github.com/functionfly/functionfly/internal/api/handlers/billing"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
@@ -45,6 +46,10 @@ func registerAdminRoutes(
 	adminAuditHandler *admin.AdminAuditHandler,
 	securityEventHandler *admin.SecurityEventHandler,
 	alertHandler *admin.AlertHandler,
+	newsletterHandler *admin.NewsletterHandler,
+	usageHandler *billing.UsageHandler,
+	costAllocationHandler *billing.CostAllocationHandler,
+	retentionHandler *admin.RetentionHandler,
 ) {
 	adminRoutes := api.PathPrefix("/admin").Subrouter()
 
@@ -200,6 +205,24 @@ func registerAdminRoutes(
 
 	// Billing management
 	adminRoutes.HandleFunc("/billing/summary", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleBillingSummary)).Methods("GET", "OPTIONS")
+
+	// Wallet admin management (freeze, suspend, adjustments, reconciliation)
+	adminRoutes.HandleFunc("/wallets", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListWallets)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/wallets/{walletId}", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleGetWallet)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/wallets/{walletId}/freeze", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleFreezeWallet))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/wallets/{walletId}/unfreeze", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleUnfreezeWallet))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/wallets/{walletId}/close", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleCloseWallet))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/wallets/{walletId}/adjust", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleAdjustWalletBalance))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/wallets/reconciliation", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleTriggerReconciliation))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/wallets/reconciliation/runs", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleGetReconciliationRuns)).Methods("GET", "OPTIONS")
+
+	// Payout approval management
+	adminRoutes.HandleFunc("/payouts/pending", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListPendingPayouts)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/payouts/{payoutId}/approve", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleApprovePayout))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/payouts/{payoutId}/reject", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleRejectPayout))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/payouts/approval-rules", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListPayoutApprovalRules)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/payouts/approval-rules", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleCreatePayoutApprovalRule))).Methods("POST", "OPTIONS")
+
 	adminRoutes.HandleFunc("/billing/tiers", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListPricingTiers)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/billing/tiers", authMiddleware.RequirePermission(auth.PermBillingWrite)(adminHandler.HandleCreatePricingTier)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/billing/tiers/{tierId}", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleGetPricingTier)).Methods("GET", "OPTIONS")
@@ -233,6 +256,14 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/feedback/{id}/status", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(feedbackHandler.UpdateFeedbackStatus))).Methods("PATCH")
 	adminRoutes.HandleFunc("/billing/coupons", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleCreateCoupon))).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/billing/coupons/{couponId}/redeem", authMiddleware.RequirePermission(auth.PermBillingWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminHandler.HandleRedeemCoupon))).Methods("POST", "OPTIONS")
+
+	// Admin usage management (real-time usage tracking)
+	adminRoutes.HandleFunc("/usage/tenants/{tenantId}", authMiddleware.RequirePermission(auth.PermBillingRead)(usageHandler.AdminGetTenantUsage)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/usage/metrics", authMiddleware.RequirePermission(auth.PermSystemRead)(usageHandler.GetUsageMetrics)).Methods("GET", "OPTIONS")
+
+	// Admin cost allocation (detailed cost tracking and chargebacks)
+	adminRoutes.HandleFunc("/costs/tenants/{tenant_id}/summary", authMiddleware.RequirePermission(auth.PermBillingRead)(costAllocationHandler.AdminGetTenantCostSummary)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/costs/chargeback", authMiddleware.RequirePermission(auth.PermBillingRead)(costAllocationHandler.GetChargebackReport)).Methods("GET", "OPTIONS")
 
 	// Monitoring management
 	adminRoutes.HandleFunc("/monitoring/alerts", authMiddleware.RequirePermission(auth.PermSystemWrite)(monitoringHandler.HandleCreateAlert)).Methods("POST")
@@ -284,6 +315,14 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/cache/{functionId}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminRegistryHandler.HandlePurgeFunctionCache))).Methods("DELETE", "OPTIONS")
 	adminRoutes.HandleFunc("/cache/{functionId}/{version}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(adminRegistryHandler.HandlePurgeVersionCache))).Methods("DELETE", "OPTIONS")
 
+	// Admin retention management routes (execution log data retention policies)
+	adminRoutes.HandleFunc("/retention/settings", authMiddleware.RequirePermission(auth.PermSystemRead)(retentionHandler.HandleGetRetentionSettings)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/retention/settings", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(retentionHandler.HandleUpdateRetentionSettings))).Methods("PUT", "OPTIONS")
+	adminRoutes.HandleFunc("/retention/settings/reset", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(retentionHandler.HandleResetRetentionDefaults))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/retention/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(retentionHandler.HandleGetRetentionStats)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/retention/metrics", authMiddleware.RequirePermission(auth.PermSystemRead)(retentionHandler.HandleGetCleanupMetrics)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/retention/cleanup", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(retentionHandler.HandleRunManualCleanup))).Methods("POST", "OPTIONS")
+
 	// Cloudflare analytics
 	adminRoutes.HandleFunc("/cloudflare/analytics", authMiddleware.RequirePermission(auth.PermSystemRead)(adminHandler.HandleCloudflareAnalytics)).Methods("GET", "OPTIONS")
 
@@ -297,6 +336,10 @@ func registerAdminRoutes(
 
 	// Trust Score management (admin only)
 	adminRoutes.HandleFunc("/trust/refresh-all", authMiddleware.RequirePermission(auth.PermSystemWrite)(registryHandler.HandleRefreshAllTrustScores)).Methods("POST", "OPTIONS")
+
+	// Sliding window trust score management
+	adminRoutes.HandleFunc("/trust/calculate-sliding", authMiddleware.RequirePermission(auth.PermSystemWrite)(registryHandler.HandleCalculateSlidingWindow)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/trust/sliding-window/{functionId}", authMiddleware.RequirePermission(auth.PermSystemRead)(registryHandler.HandleGetSlidingWindowState)).Methods("GET", "OPTIONS")
 
 	// Admin factory (same handlers as /v1/factory, for admin dashboard calling /v1/admin/factory/*)
 	adminRoutes.HandleFunc("/factory/status", authMiddleware.RequirePermission(auth.PermSystemRead)(factoryHandler.HandleStatus)).Methods("GET", "OPTIONS")
@@ -372,4 +415,14 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/tenants/{tenantId}/seat-usage", authMiddleware.RequirePermission(auth.PermTenantsRead)(adminHandler.HandleGetSeatUsage)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/users/{userId}/deactivate", authMiddleware.RequirePermission(auth.PermUsersWrite)(adminHandler.HandleDeactivateUser)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/users/{userId}/reactivate", authMiddleware.RequirePermission(auth.PermUsersWrite)(adminHandler.HandleReactivateUser)).Methods("POST", "OPTIONS")
+
+	// Newsletter management
+	adminRoutes.HandleFunc("/newsletter/subscribers", authMiddleware.RequirePermission(auth.PermSystemRead)(newsletterHandler.ListSubscribers)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/newsletter/subscribers", authMiddleware.RequirePermission(auth.PermSystemWrite)(newsletterHandler.CreateSubscriber)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/newsletter/subscribers/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(newsletterHandler.DeleteSubscriber)).Methods("DELETE", "OPTIONS")
+	adminRoutes.HandleFunc("/newsletter/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(newsletterHandler.GetStats)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/newsletter/campaigns", authMiddleware.RequirePermission(auth.PermSystemRead)(newsletterHandler.ListCampaigns)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/newsletter/campaigns", authMiddleware.RequirePermission(auth.PermSystemWrite)(newsletterHandler.CreateCampaign)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/newsletter/campaigns/{id}", authMiddleware.RequirePermission(auth.PermSystemRead)(newsletterHandler.GetCampaign)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/newsletter/campaigns/{id}/send", authMiddleware.RequirePermission(auth.PermSystemWrite)(newsletterHandler.SendCampaign)).Methods("POST", "OPTIONS")
 }

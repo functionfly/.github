@@ -12,12 +12,26 @@ import (
 
 // TrustScoreScheduler manages scheduled trust score recalculations
 type TrustScoreScheduler struct {
-	cron     *cron.Cron
-	repo     *registry.RegistryRepository
+	cron       *cron.Cron
+	repo       *registry.RegistryRepository
 	scheduleID cron.EntryID
-	mu        sync.RWMutex
-	isRunning bool
-	nextRun  time.Time
+	mu         sync.RWMutex
+	isRunning  bool
+	nextRun    time.Time
+
+	// Real-time streaming support
+	streamingConfig     TrustScoreStreamingConfig
+	onScoreUpdate       func(*registry.TrustScoreDelta)
+	slidingWindowConfig registry.SlidingWindowConfig
+}
+
+// TrustScoreStreamingConfig controls real-time streaming behavior
+type TrustScoreStreamingConfig struct {
+	Enabled              bool          `json:"enabled"`
+	BroadcastSignificant bool          `json:"broadcast_significant"` // Only broadcast significant changes
+	MinChangeThreshold   float64       `json:"min_change_threshold"`  // Minimum score change to broadcast
+	EnableSlidingWindow  bool          `json:"enable_sliding_window"` // Use sliding window instead of discrete
+	UpdateInterval       time.Duration `json:"update_interval"`       // For sliding window updates
 }
 
 // TrustScoreScheduleConfig represents the trust score schedule configuration
@@ -31,7 +45,110 @@ func NewTrustScoreScheduler(repo *registry.RegistryRepository) *TrustScoreSchedu
 	return &TrustScoreScheduler{
 		cron: cron.New(),
 		repo: repo,
+		streamingConfig: TrustScoreStreamingConfig{
+			Enabled:              false,
+			BroadcastSignificant: true,
+			MinChangeThreshold:   5.0,
+			EnableSlidingWindow:  false,
+			UpdateInterval:       5 * time.Minute,
+		},
+		slidingWindowConfig: registry.DefaultSlidingWindowConfig(),
 	}
+}
+
+// SetOnScoreUpdate sets the callback for trust score updates
+func (s *TrustScoreScheduler) SetOnScoreUpdate(callback func(*registry.TrustScoreDelta)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onScoreUpdate = callback
+}
+
+// SetStreamingConfig updates the streaming configuration
+func (s *TrustScoreScheduler) SetStreamingConfig(config TrustScoreStreamingConfig) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.streamingConfig = config
+}
+
+// SetSlidingWindowConfig updates the sliding window configuration
+func (s *TrustScoreScheduler) SetSlidingWindowConfig(config registry.SlidingWindowConfig) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.slidingWindowConfig = config
+}
+
+// StartSlidingWindowUpdates starts continuous sliding window updates in a separate goroutine
+func (s *TrustScoreScheduler) StartSlidingWindowUpdates(ctx context.Context) {
+	if !s.streamingConfig.EnableSlidingWindow {
+		return
+	}
+
+	go func() {
+		ticker := time.NewTicker(s.streamingConfig.UpdateInterval)
+		defer ticker.Stop()
+
+		logrus.WithField("interval", s.streamingConfig.UpdateInterval).Info("Starting sliding window updates")
+
+		for {
+			select {
+			case <-ticker.C:
+				s.performSlidingWindowUpdate()
+			case <-ctx.Done():
+				logrus.Info("Stopping sliding window updates")
+				return
+			}
+		}
+	}()
+}
+
+// performSlidingWindowUpdate recalculates all sliding window scores
+func (s *TrustScoreScheduler) performSlidingWindowUpdate() {
+	s.mu.RLock()
+	config := s.slidingWindowConfig
+	onUpdate := s.onScoreUpdate
+	streamConfig := s.streamingConfig
+	s.mu.RUnlock()
+
+	deltas, err := s.repo.UpdateSlidingWindowScores(config)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to update sliding window scores")
+		return
+	}
+
+	// Notify callback for significant changes
+	if onUpdate != nil {
+		for _, delta := range deltas {
+			if streamConfig.BroadcastSignificant {
+				if abs(delta.ScoreChange) < streamConfig.MinChangeThreshold && !delta.TierChanged {
+					continue
+				}
+			}
+			onUpdate(&delta)
+		}
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"deltas":              len(deltas),
+		"significant_changes": countSignificant(deltas, streamConfig.MinChangeThreshold),
+	}).Debug("Sliding window update complete")
+}
+
+// countSignificant counts deltas that exceed the threshold or involve tier changes
+func countSignificant(deltas []registry.TrustScoreDelta, threshold float64) int {
+	count := 0
+	for _, d := range deltas {
+		if abs(d.ScoreChange) >= threshold || d.TierChanged {
+			count++
+		}
+	}
+	return count
+}
+
+func abs(x float64) float64 {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 // Start starts the scheduler with the given configuration
@@ -142,7 +259,16 @@ type TrustScoreSchedulerStatus struct {
 
 // executeTrustScoreRecalculation runs the trust score recalculation
 func (s *TrustScoreScheduler) executeTrustScoreRecalculation(ctx context.Context) {
-	logrus.Info("Starting scheduled trust score recalculation")
+	s.mu.RLock()
+	streamingEnabled := s.streamingConfig.Enabled
+	slidingWindowEnabled := s.streamingConfig.EnableSlidingWindow
+	onUpdate := s.onScoreUpdate
+	s.mu.RUnlock()
+
+	logrus.WithFields(logrus.Fields{
+		"streaming_enabled":      streamingEnabled,
+		"sliding_window_enabled": slidingWindowEnabled,
+	}).Info("Starting scheduled trust score recalculation")
 
 	// First, aggregate hourly metrics for the past hour
 	hour := time.Now().Add(-1 * time.Hour).Truncate(time.Hour)
@@ -150,7 +276,38 @@ func (s *TrustScoreScheduler) executeTrustScoreRecalculation(ctx context.Context
 		logrus.WithError(err).Error("Failed to aggregate hourly metrics")
 	}
 
-	// Then recalculate trust scores for all functions
+	var deltas []registry.TrustScoreDelta
+
+	// Use sliding window calculations if enabled
+	if slidingWindowEnabled {
+		var err error
+		deltas, err = s.repo.UpdateSlidingWindowScores(s.slidingWindowConfig)
+		if err != nil {
+			logrus.WithError(err).Error("Failed to update sliding window scores")
+		}
+	} else {
+		// Traditional discrete window recalculation
+		// We need to track deltas manually since RefreshAllTrustScores doesn't return them
+		deltas = s.recalculateWithDeltas()
+	}
+
+	// Broadcast updates if streaming is enabled
+	if streamingEnabled && onUpdate != nil {
+		for _, delta := range deltas {
+			// Only broadcast significant changes
+			threshold := s.streamingConfig.MinChangeThreshold
+			if s.streamingConfig.BroadcastSignificant {
+				if abs(delta.ScoreChange) < threshold && !delta.TierChanged {
+					continue
+				}
+			}
+			onUpdate(&delta)
+		}
+
+		logrus.WithField("broadcast_count", len(deltas)).Debug("Broadcast trust score updates")
+	}
+
+	// Also run the full recalculation job for history tracking
 	job, err := s.repo.RefreshAllTrustScores()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to refresh trust scores")
@@ -158,7 +315,7 @@ func (s *TrustScoreScheduler) executeTrustScoreRecalculation(ctx context.Context
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"job_id":               job.ID,
+		"job_id":              job.ID,
 		"functions_processed": job.FunctionsProcessed,
 		"functions_total":     job.FunctionsTotal,
 		"status":              job.Status,
@@ -176,6 +333,81 @@ func (s *TrustScoreScheduler) executeTrustScoreRecalculation(ctx context.Context
 			}
 		}
 	}
+}
+
+// recalculateWithDeltas performs traditional recalculation and returns deltas
+// This is used when sliding window is disabled but streaming is enabled
+func (s *TrustScoreScheduler) recalculateWithDeltas() []registry.TrustScoreDelta {
+	// Query current scores before recalculation
+	functions, err := s.repo.GetAllFunctionsWithTrustScores()
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get functions for delta tracking")
+		return []registry.TrustScoreDelta{}
+	}
+
+	// Store previous scores
+	previousScores := make(map[string]struct {
+		Score float64
+		Tier  registry.TrustTier
+	})
+	for _, fn := range functions {
+		previousScores[fn.ID.String()] = struct {
+			Score float64
+			Tier  registry.TrustTier
+		}{
+			Score: fn.TrustScore,
+			Tier:  fn.TrustTier,
+		}
+	}
+
+	// Recalculate all trust scores
+	_, err = s.repo.RefreshAllTrustScores()
+	if err != nil {
+		logrus.WithError(err).Error("Failed to refresh trust scores for delta tracking")
+		return []registry.TrustScoreDelta{}
+	}
+
+	// Query new scores and generate deltas
+	updatedFunctions, err := s.repo.GetAllFunctionsWithTrustScores()
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get updated functions for delta tracking")
+		return []registry.TrustScoreDelta{}
+	}
+
+	var deltas []registry.TrustScoreDelta
+	now := time.Now()
+	for _, fn := range updatedFunctions {
+		prev, exists := previousScores[fn.ID.String()]
+		if !exists {
+			// New function or no previous data
+			continue
+		}
+
+		// Only include if score changed
+		if fn.TrustScore != prev.Score {
+			scoreChange := fn.TrustScore - prev.Score
+			scoreChangePercent := 0.0
+			if prev.Score > 0 {
+				scoreChangePercent = (scoreChange / prev.Score) * 100
+			}
+
+			delta := registry.TrustScoreDelta{
+				FunctionID:         fn.ID,
+				PreviousScore:      prev.Score,
+				CurrentScore:       fn.TrustScore,
+				ScoreChange:        scoreChange,
+				ScoreChangePercent: scoreChangePercent,
+				PreviousTier:       prev.Tier,
+				CurrentTier:        fn.TrustTier,
+				TierChanged:        prev.Tier != fn.TrustTier,
+				CalculatedAt:       now,
+				WindowType:         registry.WindowTypeDiscrete,
+			}
+			deltas = append(deltas, delta)
+		}
+	}
+
+	return deltas
 }
 
 // TriggerImmediate triggers an immediate trust score recalculation

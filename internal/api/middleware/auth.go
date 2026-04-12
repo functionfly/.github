@@ -104,6 +104,16 @@ func GetClaimsFromContext(ctx context.Context) *auth.Claims {
 	return nil
 }
 
+// GetTenantID extracts the tenant ID from the request context
+// Returns the TenantID from the user's claims if authenticated
+func GetTenantID(r *http.Request) (uuid.UUID, bool) {
+	claims := GetUserFromContext(r)
+	if claims != nil {
+		return claims.TenantID, true
+	}
+	return uuid.Nil, false
+}
+
 // getActingTenantID gets the tenant ID the admin is currently acting as (for tenant-scoped operations)
 func GetActingTenantID(r *http.Request) *uuid.UUID {
 	if tenantID, ok := r.Context().Value(contextKeyActingTenantID).(*uuid.UUID); ok {

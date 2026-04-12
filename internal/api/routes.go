@@ -16,7 +16,9 @@ import (
 	factorysvc "github.com/functionfly/functionfly/internal/agent/factory"
 	"github.com/functionfly/functionfly/internal/agent/generation"
 	"github.com/functionfly/functionfly/internal/agent/identity"
+	"github.com/functionfly/functionfly/internal/agent/learning"
 	"github.com/functionfly/functionfly/internal/agent/marketplace"
+	agentsecurity "github.com/functionfly/functionfly/internal/agent/security"
 	"github.com/functionfly/functionfly/internal/agent/swarm"
 	"github.com/functionfly/functionfly/internal/agent/testing"
 	"github.com/functionfly/functionfly/internal/analytics"
@@ -41,8 +43,10 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
+	"github.com/functionfly/functionfly/internal/api/handlers/newsletter"
 	notificationHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	"github.com/functionfly/functionfly/internal/api/handlers/playground"
+	privacyhandler "github.com/functionfly/functionfly/internal/api/handlers/privacy"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
 	"github.com/functionfly/functionfly/internal/api/handlers/recommendations"
 	registryhandler "github.com/functionfly/functionfly/internal/api/handlers/registry"
@@ -62,6 +66,7 @@ import (
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/captcha"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
+	"github.com/functionfly/functionfly/internal/privacy"
 	"github.com/functionfly/functionfly/internal/scheduler"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
@@ -97,7 +102,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	deploymentsHandler := deployments.NewHandler(s.repo, s.deploySvc)
 	functionsHandler := functions.NewHandler(s.repo, s.deploySvc)
 	unifiedAnalyticsSvc := unified.NewService(s.postgresDB.GORM, s.usageMetricsAgg)
-	adminHandler := admin.NewHandler(s.repo, s.postgresDB.LoginAttemptRepository(), s.authSvc, unifiedAnalyticsSvc, sfAddonRepo)
+	adminHandler := admin.NewHandler(s.repo, s.postgresDB.LoginAttemptRepository(), s.postgresDB.AnalyticsRepository(), s.authSvc, unifiedAnalyticsSvc, sfAddonRepo)
 	adminBackendsHandler := admin.NewBackendsHandler(s.repo, s.authSvc)
 	adminProvidersHandler := admin.NewProvidersHandler(s.repo, s.authSvc)
 	securityHandler := security.NewHandler(s.repo, s.authSvc)
@@ -127,6 +132,54 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		notificationHandlerPkg.NewWebSocketHub(logrus.New()),
 		logrus.New(),
 	)
+
+	newsletterHandler := newsletter.NewHandler(s.repo, s.emailSvc)
+
+	// ── Real-time Usage Tracking ─────────────────────────────────────────────
+	// Initialize the real-time usage tracker with Redis counters for quota enforcement
+	realtimeUsageTracker := services.NewRealtimeUsageTracker(
+		s.redisClient,
+		s.repo,
+		s.notificationSvc,
+		services.DefaultRealtimeUsageConfig(),
+	)
+	// Start the background sync job to periodically sync counters to the database
+	realtimeUsageTracker.Start(context.Background())
+	logrus.Info("Real-time usage tracker initialized with background sync")
+
+	// Initialize quota middleware for synchronous quota enforcement
+	quotaMiddleware := middleware.NewQuotaMiddleware(realtimeUsageTracker, s.repo, &middleware.QuotaMiddlewareConfig{
+		Enabled:              true,
+		Mode:                 middleware.QuotaModeEnforce,
+		AllowPublicFunctions: true,
+	})
+	_ = quotaMiddleware // Used for API routes that need quota enforcement
+
+	// Initialize usage handler for real-time usage API endpoints
+	usageHandler := billing.NewUsageHandler(realtimeUsageTracker, s.repo)
+
+	// Initialize cost allocation handler for detailed cost tracking
+	costAllocationHandler := billing.NewCostAllocationHandler(s.repo)
+
+	// Initialize export repository, service, and handlers for usage data export
+	exportRepo := storage.NewExportRepository(s.postgresDB.DB)
+	exportService := services.NewExportService(exportRepo, s.repo, os.Getenv("API_BASE_URL"))
+	exportHandler := billing.NewExportHandler(exportRepo, exportService, s.repo)
+	externalBillingHandler := billing.NewExternalBillingHandler(exportRepo, s.repo)
+
+	// Initialize export scheduler for automated exports
+	exportScheduler := services.NewExportScheduler(exportRepo, exportService)
+	exportScheduler.Start()
+	logrus.Info("Export scheduler initialized")
+
+	// Initialize usage alert repository and forecast/alerter services
+	alertRepo := storage.NewUsageAlertRepository(s.postgresDB.DB)
+	forecastConfig := services.DefaultUsageForecasterConfig()
+	usageForecaster := services.NewUsageForecaster(alertRepo, s.repo, forecastConfig)
+	usageAlerter := services.NewUsageAlerter(alertRepo, s.repo, s.notificationSvc, usageForecaster, services.DefaultUsageAlerterConfig())
+
+	// Initialize forecast handler for usage forecasting and alerts
+	forecastHandler := billing.NewUsageForecastHandler(alertRepo, s.repo, usageForecaster, usageAlerter)
 
 	versionRepo := versioning.NewRepository(s.postgresDB.DB)
 	versionHandler := versionhandler.NewHandler(versionRepo)
@@ -191,15 +244,32 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	)
 	edgeCache.SetRepository(registryRepo)
 
-	registryHandler := registryhandler.NewHandler(registryRepo, s.repo, cacheService, cdnService, edgeCache, s.realtimeMonitor, platformFeeRepo, s.recommendationSvc)
+	// Create function repository for remix/fork operations
+	functionRepo := storage.NewFunctionRepository(s.postgresDB.DB)
+
+	registryHandler := registryhandler.NewHandler(registryRepo, s.repo, functionRepo, cacheService, cdnService, edgeCache, s.realtimeMonitor, platformFeeRepo, s.recommendationSvc, realtimeUsageTracker)
+
+	// Initialize privacy service and wire it into the registry handler
+	privacyRepo := privacy.NewRepository(s.postgresDB)
+	privacySalt := os.Getenv("PRIVACY_SALT")
+	if privacySalt == "" {
+		privacySalt = "functionfly-default-salt-change-in-production"
+		logrus.Warn("PRIVACY_SALT not set, using default salt - CHANGE THIS IN PRODUCTION!")
+	}
+	privacyService := privacy.NewService(privacyRepo, privacySalt)
+	registryHandler.SetPrivacyService(privacyService)
+
+	// Initialize privacy handler for API routes
+	privacyHandler := privacyhandler.NewHandler(privacyService, s.authSvc)
+
 	adminRegistryHandler := admin.NewRegistryHandler(registryRepo, cacheService)
 	oversightHandler := admin.NewOversightHandler(registryRepo, s.postgresDB.GORM, nil)
 	docsHandler := registryhandler.NewDocumentationHandler(registryRepo)
 	registryPlaygroundHandler := registryhandler.NewPlaygroundHandler(registryRepo)
 	tutorialsHandler := registryhandler.NewTutorialsHandler()
 
-	teamHandler := teams.NewHandler(s.repo, nil)
-	providersHandler := providers.NewHandler(s.repo)
+	teamHandler := teams.NewHandler(s.repo, s.notificationSvc, nil)
+	providersHandler := providers.NewHandler(s.repo, s.notificationSvc)
 	dashboardHandler := dashboard.NewHandler(s.repo)
 	enterpriseSLAHandler := enterprise.NewSLAHandler(s.repo)
 
@@ -259,6 +329,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	supportHdlr := supportHandler.NewHandler(supportService, supportLogger)
 	supportAdminHdlr := supportHandler.NewAdminHandler(supportRepo, supportLogger)
 
+	// Initialize support WebSocket hub for real-time chat
+	supportWSHub := supportHandler.NewWebSocketHub(supportService, nil, s.authSvc, supportLogger)
+	go supportWSHub.Run()
+
 	aepHandler := agenthandler.NewHandler(s.postgresDB.GORM, s.redisClient, registryRepo, s.repo, s.notificationSvc)
 
 	agentIdentityRepo := identity.NewRepository(s.postgresDB.GORM)
@@ -270,9 +344,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	agentSwarmService := swarm.NewService(s.postgresDB.GORM, agentIdentityRepo, agentEconomyService)
 
 	prometheusURL := os.Getenv("PROMETHEUS_URL")
-	if prometheusURL == "" {
-		prometheusURL = "http://127.0.0.1:9091"
-	}
+	// When PROMETHEUS_URL is not set, status queries will return ErrPrometheusNotConfigured
+	// instead of attempting to connect to localhost (which causes connection errors in production)
 	statusRepo := statushandler.NewRepository(s.postgresDB.DB)
 	statusRepo.SetGormDB(s.postgresDB.GORM)
 	statusHandlerInst := statushandler.NewHandler(statusRepo, prometheusURL, s.authSvc)
@@ -326,6 +399,24 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		logrus.Infof("trust score scheduler started with cron: %s", trustScoreCron)
 	}
 
+	// Subscription Sync Scheduler - syncs Stripe subscription status periodically
+	subscriptionSyncScheduler := scheduler.NewSubscriptionSyncScheduler(s.repo, nil)       // notification service will be injected later
+	subscriptionSyncEnabled := os.Getenv("SUBSCRIPTION_SYNC_SCHEDULER_ENABLED") != "false" // Default: enabled
+	subscriptionSyncCron := os.Getenv("SUBSCRIPTION_SYNC_SCHEDULER_CRON")
+	if subscriptionSyncCron == "" {
+		subscriptionSyncCron = "0 */6 * * *" // Default: every 6 hours
+	}
+	subscriptionSyncConfig := scheduler.SubscriptionSyncScheduleConfig{
+		Cron: subscriptionSyncCron,
+	}
+	if subscriptionSyncEnabled {
+		if err := subscriptionSyncScheduler.Start(context.Background(), subscriptionSyncConfig); err != nil {
+			logrus.WithError(err).Error("failed to start subscription sync scheduler")
+		} else {
+			logrus.Infof("subscription sync scheduler started with cron: %s", subscriptionSyncCron)
+		}
+	}
+
 	experimentService := factorysvc.NewExperimentService(s.postgresDB.GORM)
 	experimentAdapter := factorysvc.NewGenerationExperimentAdapter(s.postgresDB.GORM, experimentService)
 	experimentHandler := factoryhandler.NewExperimentHandler(s.postgresDB.GORM, experimentService, experimentAdapter)
@@ -336,6 +427,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	analyticsSvc := analytics.NewService(s.postgresDB.GORM, analytics.DefaultServiceConfig(factoryConfig.AgentID))
 	analyticsHandler := analyticshandler.NewHandler(analyticsSvc, s.authSvc)
 
+	// Initialize learning and deployment services for swarm
+	agentLearningRepo := learning.NewRepository(s.postgresDB.GORM)
+	agentAnalyzer := learning.NewAnalyzer(s.postgresDB.GORM)
+	agentOptimizer := learning.NewOptimizer(s.postgresDB.GORM)
+	openRouterAPIKey := os.Getenv("OPENROUTER_API_KEY")
+	agentGenerator := agentdeployment.NewGenerator(s.postgresDB.GORM, openRouterAPIKey)
+	agentPublisher := agentdeployment.NewPublisher(s.postgresDB.GORM)
+	agentSecurityService := agentsecurity.NewSwarmSecurityService(s.postgresDB.GORM)
+
 	swarmHandler := agenthandler.NewSwarmHandler(
 		agentSwarmService,
 		agentSwarmMessageService,
@@ -345,6 +445,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		agentEvolutionService,
 		agentAutonomyService,
 		agentIdentityRepo,
+		agentLearningRepo,
+		agentAnalyzer,
+		agentOptimizer,
+		agentGenerator,
+		agentPublisher,
+		agentSecurityService,
 	)
 
 	recommendationHandler := recommendations.NewHandler(s.recommendationSvc)
@@ -453,18 +559,28 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	authRateLimiter := middleware.NewAuthRateLimiter()
 	vaultRateLimiter := middleware.NewVaultRateLimiter()
 	flywheelRateLimiter := middleware.NewFlywheelRateLimiter()
+	providerRateLimiter := middleware.NewProviderRateLimiter()
+	walletRateLimiter := middleware.NewWalletRateLimiter()
+
+	// Initialize CSRF middleware early for billing route protection
+	csrfMiddleware := middleware.NewCSRFMiddleware(s.upstashRedis, s.authSvc)
 
 	// Status WebSocket hub — must be wired before route registration
 	statusWSHub := statushandler.NewStatusWebSocketHub(statusHandlerInst, logrus.New())
 	go statusWSHub.Run()
 	statusHandlerInst.SetStatusHub(statusWSHub)
 
+	// Public newsletter routes
+	newsletterHandler.RegisterRoutes(api)
+
 	// ── Domain-scoped route registration ─────────────────────────────────────
 	registerAuthRoutes(
 		s.router, api,
-		authRateLimiter, authMiddleware,
+		authRateLimiter, walletRateLimiter, authMiddleware, csrfMiddleware,
 		authHandler, apiKeyAuthHandler, usersHandler,
 		followHandler, apiKeysHandler, billingHandler,
+		usageHandler, forecastHandler, costAllocationHandler,
+		exportHandler, externalBillingHandler,
 		mfaHandler, notificationHandler, notificationWSHandler,
 	)
 
@@ -476,9 +592,16 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		versionHandler, contentHandler, feedbackHandler, recommendationHandler,
 	)
 
+	// ── FRG (Function Registry + Live Runtime Graph) ─────────────────────────
+	registerFRGRoutes(
+		s, api,
+		authMiddleware, executionSecurityMW,
+		registryRepo,
+	)
+
 	registerPlatformRoutes(
 		s, api, protected,
-		authMiddleware, advancedSecurityMiddleware, vaultRateLimiter,
+		authMiddleware, advancedSecurityMiddleware, vaultRateLimiter, providerRateLimiter,
 		monitoringHandler, securityHandler, statusHandlerInst,
 		factoryHandler, experimentHandler, categorizationHandler,
 		analyticsHandler, unifiedAnalyticsSvc,
@@ -489,7 +612,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		appsHandler, functionsHandler,
 		backendsHandler, deploymentsHandler,
 		versionHandler, maintenanceHandler,
-		supportHdlr, supportAdminHdlr,
+		supportHdlr, supportAdminHdlr, supportWSHub,
 	)
 
 	registerAgentRoutes(
@@ -500,8 +623,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		platformFeeRepo,
 	)
 
-	// Initialize admin security middleware
-	csrfMiddleware := middleware.NewCSRFMiddleware(s.upstashRedis, s.authSvc)
+	// Initialize admin security middleware (csrfMiddleware already initialized above for billing)
 	adminRateLimiter := middleware.NewAdminRateLimiter(s.redisClient)
 	adminSessionMiddleware := middleware.NewAdminSessionMiddleware(s.postgresDB.DB, s.authSvc)
 	ipAllowlistMiddleware := middleware.NewIPAllowlistMiddleware(s.postgresDB.DB, s.redisClient)
@@ -509,6 +631,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	adminAuditHandler := admin.NewAdminAuditHandler(s.postgresDB.DB)
 	securityEventHandler := admin.NewSecurityEventHandler(s.postgresDB.DB)
 	alertHandler := admin.NewAlertHandler(s.postgresDB.DB)
+	adminNewsletterHandler := admin.NewNewsletterHandler(s.repo, s.emailSvc)
+
+	// Initialize retention handler with cleanup service for admin management
+	retentionHandler := admin.NewRetentionHandler(s.postgresDB, s.executionLogCleanup)
 
 	registerAdminRoutes(
 		s, api, authMiddleware, advancedSecurityMiddleware,
@@ -519,10 +645,23 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		stateFabricHandler, contentHandler,
 		csrfMiddleware, adminRateLimiter, adminSessionMiddleware,
 		ipAllowlistMiddleware, adminIPAllowlistHandler, adminAuditHandler, securityEventHandler, alertHandler,
+		adminNewsletterHandler, usageHandler, costAllocationHandler,
+		retentionHandler,
 	)
 
 	// Trust API for external platform partners
 	registerTrustAPIRoutes(s, api, registryRepo)
+
+	// Privacy API routes (GDPR compliance, data export/deletion, consent management)
+	registerPrivacyRoutes(api, authMiddleware, privacyHandler)
+
+	// ── AI Service Proxy (for AI Composer + Gallery features) ───────────────
+	aiProxyHandler := NewAIProxyHandler()
+
+	// AI Composer routes - paths are relative to /v1 subrouter
+	protected.HandleFunc("/ai/composer/generate", authMiddleware.RequireAuth(aiProxyHandler.HandleGenerateFunction)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/ai/composer/generate/stream", authMiddleware.RequireAuth(aiProxyHandler.HandleGenerateFunctionStream)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/ai/health", aiProxyHandler.HandleHealth).Methods("GET", "OPTIONS")
 
 	// ── Infrastructure endpoints ──────────────────────────────────────────────
 	wellknownHandler := wellknown.NewHandler(registryRepo)

@@ -499,7 +499,8 @@ type FunctionEmbeddingWithDistance struct {
 
 // SearchFunctionEmbeddingsByVector returns function embeddings ordered by cosine similarity (<=>), with distance.
 // excludeFunctionID optionally excludes one function from results (e.g. the query function).
-func (r *Repository) SearchFunctionEmbeddingsByVector(ctx context.Context, queryVector []float32, limit int, excludeFunctionID *uuid.UUID) ([]*FunctionEmbeddingWithDistance, error) {
+// tenantID optionally filters by tenant for multi-tenant isolation.
+func (r *Repository) SearchFunctionEmbeddingsByVector(ctx context.Context, queryVector []float32, limit int, excludeFunctionID *uuid.UUID, tenantID *uuid.UUID) ([]*FunctionEmbeddingWithDistance, error) {
 	vectorStr := "["
 	for i, v := range queryVector {
 		if i > 0 {
@@ -510,20 +511,34 @@ func (r *Repository) SearchFunctionEmbeddingsByVector(ctx context.Context, query
 	vectorStr += "]"
 
 	var args []interface{}
-	sql := `SELECT id, function_id, embedding, embedded_text, embedding_model, computed_at,
-		(embedding <=> ?) AS distance
-		FROM function_embeddings
-		WHERE embedding IS NOT NULL`
+	// Join with registry_functions to enforce tenant isolation when tenantID is provided
+	sql := `SELECT e.id, e.function_id, e.embedding, e.embedded_text, e.embedding_model, e.computed_at,
+		(e.embedding <=> ?) AS distance
+		FROM function_embeddings e`
+
+	// Add tenant join if filtering by tenant
+	if tenantID != nil {
+		sql += ` JOIN registry_functions rf ON rf.id = e.function_id AND rf.tenant_id = ?`
+		args = append(args, *tenantID)
+	}
+
+	sql += ` WHERE e.embedding IS NOT NULL`
+
 	if excludeFunctionID != nil {
-		sql += ` AND function_id != ?`
+		sql += ` AND e.function_id != ?`
 		args = append(args, *excludeFunctionID)
 	}
-	sql += ` ORDER BY embedding <=> ? LIMIT ?`
+	sql += ` ORDER BY e.embedding <=> ? LIMIT ?`
 	args = append(args, vectorStr, vectorStr, limit)
 
 	var out []*FunctionEmbeddingWithDistance
 	err := r.db.WithContext(ctx).Raw(sql, args...).Scan(&out).Error
 	return out, err
+}
+
+// SearchFunctionEmbeddingsByVectorForTenant is a convenience method that requires tenant isolation.
+func (r *Repository) SearchFunctionEmbeddingsByVectorForTenant(ctx context.Context, tenantID uuid.UUID, queryVector []float32, limit int, excludeFunctionID *uuid.UUID) ([]*FunctionEmbeddingWithDistance, error) {
+	return r.SearchFunctionEmbeddingsByVector(ctx, queryVector, limit, excludeFunctionID, &tenantID)
 }
 
 // vectorToSlice converts a float32 slice to a pgvector-compatible string.
@@ -576,29 +591,40 @@ func (r *Repository) GetFunctionEmbeddingTriple(ctx context.Context, functionID 
 
 // SearchByTripleVector performs weighted MaxSim across all three vector columns.
 // Returns top `limit` functions ordered by combined weighted score.
-func (r *Repository) SearchByTripleVector(ctx context.Context, contractVec, semanticVec, codeVec []float32, weights TripleSearchWeights, limit int, excludeID *uuid.UUID) ([]TripleSearchResult, error) {
+// tenantID optionally filters by tenant for multi-tenant isolation.
+func (r *Repository) SearchByTripleVector(ctx context.Context, contractVec, semanticVec, codeVec []float32, weights TripleSearchWeights, limit int, excludeID *uuid.UUID, tenantID *uuid.UUID) ([]TripleSearchResult, error) {
 	cVec := vectorToSlice(contractVec)
 	sVec := vectorToSlice(semanticVec)
 	codeVecStr := vectorToSlice(codeVec)
 
 	var args []interface{}
-	sql := `SELECT function_id,
-		1 - (contract_embedding <=> $1::vector) AS contract_score,
-		1 - (semantic_embedding <=> $2::vector) AS semantic_score,
-		1 - (code_embedding <=> $3::vector) AS code_score,
-		($4 * (1 - (contract_embedding <=> $1::vector))) +
-		($5 * (1 - (semantic_embedding <=> $2::vector))) +
-		($6 * (1 - (code_embedding <=> $3::vector))) AS combined_score
-	FROM function_embedding_triples
-	WHERE contract_embedding IS NOT NULL
-		AND semantic_embedding IS NOT NULL
-		AND code_embedding IS NOT NULL`
+	// Join with registry_functions to enforce tenant isolation when tenantID is provided
+	sql := `SELECT t.function_id,
+		1 - (t.contract_embedding <=> $1::vector) AS contract_score,
+		1 - (t.semantic_embedding <=> $2::vector) AS semantic_score,
+		1 - (t.code_embedding <=> $3::vector) AS code_score,
+		($4 * (1 - (t.contract_embedding <=> $1::vector))) +
+		($5 * (1 - (t.semantic_embedding <=> $2::vector))) +
+		($6 * (1 - (t.code_embedding <=> $3::vector))) AS combined_score
+	FROM function_embedding_triples t`
 
-	argIdx := 4
+	argIdx := 7
+
+	// Add tenant join if filtering by tenant
+	if tenantID != nil {
+		sql += ` JOIN registry_functions rf ON rf.id = t.function_id AND rf.tenant_id = $7`
+		args = append(args, *tenantID)
+		argIdx = 8
+	}
+
+	sql += ` WHERE t.contract_embedding IS NOT NULL
+		AND t.semantic_embedding IS NOT NULL
+		AND t.code_embedding IS NOT NULL`
+
 	args = append(args, cVec, sVec, codeVecStr, weights.Contract, weights.Semantic, weights.Code)
 
 	if excludeID != nil {
-		sql += fmt.Sprintf(" AND function_id != $%d", argIdx)
+		sql += fmt.Sprintf(" AND t.function_id != $%d", argIdx)
 		args = append(args, *excludeID)
 		argIdx++
 	}
@@ -609,6 +635,11 @@ func (r *Repository) SearchByTripleVector(ctx context.Context, contractVec, sema
 	var results []TripleSearchResult
 	err := r.db.WithContext(ctx).Raw(sql, args...).Scan(&results).Error
 	return results, err
+}
+
+// SearchByTripleVectorForTenant is a convenience method that requires tenant isolation.
+func (r *Repository) SearchByTripleVectorForTenant(ctx context.Context, tenantID uuid.UUID, contractVec, semanticVec, codeVec []float32, weights TripleSearchWeights, limit int, excludeID *uuid.UUID) ([]TripleSearchResult, error) {
+	return r.SearchByTripleVector(ctx, contractVec, semanticVec, codeVec, weights, limit, excludeID, &tenantID)
 }
 
 // SearchByContractVector searches by contract vector only (for schema matching).

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"net"
@@ -278,6 +279,29 @@ func (sm *SecurityMiddleware) CORSMiddleware(next http.HandlerFunc) http.Handler
 		next.ServeHTTP(w, r)
 	}
 }
+
+// BodySizeLimitMiddleware creates middleware that limits request body size.
+// Use this to prevent DoS attacks via large request bodies.
+func BodySizeLimitMiddleware(maxBytes int64) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+			next.ServeHTTP(w, r)
+		}
+	}
+}
+
+// FlywheelBodySizeLimits provides sensible defaults for Flywheel endpoints.
+const (
+	// FlywheelMaxThreadBodySize limits thread creation (1MB - generous for problem descriptions)
+	FlywheelMaxThreadBodySize = 1 << 20
+	// FlywheelMaxReplyBodySize limits reply creation (512KB)
+	FlywheelMaxReplyBodySize = 512 << 10
+	// FlywheelMaxChallengeBodySize limits challenge submissions (256KB)
+	FlywheelMaxChallengeBodySize = 256 << 10
+	// FlywheelMaxCollaborationBodySize limits agent collaboration payloads (128KB)
+	FlywheelMaxCollaborationBodySize = 128 << 10
+)
 
 // SecurityHeaders middleware adds security headers to responses
 func (sm *SecurityMiddleware) SecurityHeaders(next http.HandlerFunc) http.HandlerFunc {
@@ -619,10 +643,11 @@ func (v *VaultRateLimiter) limitByTenant(prefix string, limiter *RateLimiter, ne
 // FlywheelRateLimiter applies per-tenant rate limits for Flywheel Network (community) write operations.
 // Use after RequireAuth so tenant ID is available from context.
 type FlywheelRateLimiter struct {
-	createThreadLimiter    *RateLimiter // e.g. 10/minute per tenant
-	createReplyLimiter     *RateLimiter // e.g. 20/minute per tenant
-	submitChallengeLimiter *RateLimiter // e.g. 5/minute per tenant
-	executeReplyLimiter    *RateLimiter // e.g. 30/minute per tenant
+	createThreadLimiter       *RateLimiter // e.g. 10/minute per tenant
+	createReplyLimiter        *RateLimiter // e.g. 20/minute per tenant
+	submitChallengeLimiter    *RateLimiter // e.g. 5/minute per tenant
+	executeReplyLimiter       *RateLimiter // e.g. 30/minute per tenant
+	agentCollaborationLimiter *RateLimiter // e.g. 15/minute per tenant
 }
 
 // NewFlywheelRateLimiter creates a limiter for Flywheel operations:
@@ -630,12 +655,14 @@ type FlywheelRateLimiter struct {
 // - Create reply: 20/minute per tenant
 // - Submit challenge: 5/minute per tenant
 // - Execute reply: 30/minute per tenant
+// - Agent collaboration: 15/minute per tenant
 func NewFlywheelRateLimiter() *FlywheelRateLimiter {
 	return &FlywheelRateLimiter{
-		createThreadLimiter:    NewRateLimiter(time.Minute, 10),
-		createReplyLimiter:     NewRateLimiter(time.Minute, 20),
-		submitChallengeLimiter: NewRateLimiter(time.Minute, 5),
-		executeReplyLimiter:    NewRateLimiter(time.Minute, 30),
+		createThreadLimiter:       NewRateLimiter(time.Minute, 10),
+		createReplyLimiter:        NewRateLimiter(time.Minute, 20),
+		submitChallengeLimiter:    NewRateLimiter(time.Minute, 5),
+		executeReplyLimiter:       NewRateLimiter(time.Minute, 30),
+		agentCollaborationLimiter: NewRateLimiter(time.Minute, 15),
 	}
 }
 
@@ -660,6 +687,72 @@ func (f *FlywheelRateLimiter) LimitExecuteReply(next http.HandlerFunc) http.Hand
 	return f.limitByTenant("flywheel_execute", f.executeReplyLimiter, next)
 }
 
+// LimitAgentCollaboration wraps a handler with per-tenant rate limiting for agent collaboration operations.
+func (f *FlywheelRateLimiter) LimitAgentCollaboration(next http.HandlerFunc) http.HandlerFunc {
+	return f.limitByTenant("flywheel_agent_collab", f.agentCollaborationLimiter, next)
+}
+
+// ProviderRateLimiter limits provider connect/disconnect/test operations per tenant.
+type ProviderRateLimiter struct {
+	connectLimiter    *RateLimiter // Limit: 10/hour per tenant for connecting new providers
+	disconnectLimiter *RateLimiter // Limit: 20/hour per tenant for disconnecting providers
+	testLimiter       *RateLimiter // Limit: 30/minute per tenant for testing connections
+}
+
+// NewProviderRateLimiter creates a limiter for provider operations with sensible defaults.
+func NewProviderRateLimiter() *ProviderRateLimiter {
+	return &ProviderRateLimiter{
+		connectLimiter:    NewRateLimiter(time.Hour, 10),   // 10 connects per hour per tenant
+		disconnectLimiter: NewRateLimiter(time.Hour, 20),   // 20 disconnects per hour per tenant
+		testLimiter:       NewRateLimiter(time.Minute, 30), // 30 tests per minute per tenant
+	}
+}
+
+// LimitConnect wraps a handler with per-tenant rate limiting for connecting providers.
+func (p *ProviderRateLimiter) LimitConnect(next http.HandlerFunc) http.HandlerFunc {
+	return p.limitByTenant("provider_connect", p.connectLimiter, next)
+}
+
+// LimitDisconnect wraps a handler with per-tenant rate limiting for disconnecting providers.
+func (p *ProviderRateLimiter) LimitDisconnect(next http.HandlerFunc) http.HandlerFunc {
+	return p.limitByTenant("provider_disconnect", p.disconnectLimiter, next)
+}
+
+// LimitTest wraps a handler with per-tenant rate limiting for testing provider connections.
+func (p *ProviderRateLimiter) LimitTest(next http.HandlerFunc) http.HandlerFunc {
+	return p.limitByTenant("provider_test", p.testLimiter, next)
+}
+
+func (p *ProviderRateLimiter) limitByTenant(prefix string, limiter *RateLimiter, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		key := fmt.Sprintf("%s:tenant:%s", prefix, claims.TenantID.String())
+
+		if !limiter.Allow(key) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(limiter.window.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			logrus.WithFields(logrus.Fields{
+				"tenant_id": claims.TenantID.String(),
+				"prefix":    prefix,
+				"ip":        getClientIP(r),
+			}).Warn("Provider operation rate limit exceeded")
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"message": "Too many provider operations. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
 func (f *FlywheelRateLimiter) limitByTenant(prefix string, limiter *RateLimiter, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims := GetUserFromContext(r)
@@ -675,6 +768,123 @@ func (f *FlywheelRateLimiter) limitByTenant(prefix string, limiter *RateLimiter,
 			_, _ = fmt.Fprintf(w, `{"error":"Too Many Requests","code":"FLYWHEEL_RATE_LIMIT","message":"Flywheel operation rate limit exceeded. Try again later."}`)
 			return
 		}
+		next.ServeHTTP(w, r)
+	}
+}
+
+// WalletRateLimiter limits wallet operations per user/agent to prevent abuse
+// and protect financial operations from brute force or spam
+type WalletRateLimiter struct {
+	balanceCheckLimiter *RateLimiter // Limit: 60/minute per wallet for balance checks
+	topUpLimiter        *RateLimiter // Limit: 5/hour per wallet for top-up requests
+	adjustmentLimiter   *RateLimiter // Limit: 10/hour per admin for adjustments
+}
+
+// NewWalletRateLimiter creates a limiter for wallet operations with sensible defaults
+func NewWalletRateLimiter() *WalletRateLimiter {
+	return &WalletRateLimiter{
+		balanceCheckLimiter: NewRateLimiter(time.Minute, 60), // 60 balance checks per minute per wallet
+		topUpLimiter:        NewRateLimiter(time.Hour, 5),    // 5 top-ups per hour per wallet
+		adjustmentLimiter:   NewRateLimiter(time.Hour, 10),   // 10 adjustments per hour per admin
+	}
+}
+
+// LimitBalanceCheck wraps a handler with rate limiting for balance check operations
+// Uses wallet ID as the key
+func (wr *WalletRateLimiter) LimitBalanceCheck(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Use user ID as the wallet identifier key
+		key := fmt.Sprintf("wallet_balance_check:%s", claims.UserID.String())
+
+		if !wr.balanceCheckLimiter.Allow(key) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", "60")
+			w.WriteHeader(http.StatusTooManyRequests)
+			logrus.WithFields(logrus.Fields{
+				"user_id": claims.UserID.String(),
+				"path":    r.URL.Path,
+			}).Warn("Wallet balance check rate limit exceeded")
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "WALLET_RATE_LIMIT",
+				"message": "Too many wallet balance checks. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// LimitTopUp wraps a handler with rate limiting for wallet top-up operations
+// Uses wallet/user ID as the key
+func (wr *WalletRateLimiter) LimitTopUp(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Use tenant + user ID as the key
+		key := fmt.Sprintf("wallet_topup:%s:%s", claims.TenantID.String(), claims.UserID.String())
+
+		if !wr.topUpLimiter.Allow(key) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(wr.topUpLimiter.window.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			logrus.WithFields(logrus.Fields{
+				"user_id":   claims.UserID.String(),
+				"tenant_id": claims.TenantID.String(),
+				"path":      r.URL.Path,
+			}).Warn("Wallet top-up rate limit exceeded")
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "WALLET_TOPUP_RATE_LIMIT",
+				"message": "Too many wallet top-up attempts. Please try again later.",
+			})
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// LimitAdminAdjustment wraps a handler with rate limiting for admin wallet adjustments
+// Uses admin user ID as the key
+func (wr *WalletRateLimiter) LimitAdminAdjustment(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := GetUserFromContext(r)
+		if claims == nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Use admin user ID as the key
+		key := fmt.Sprintf("wallet_admin_adjustment:%s", claims.UserID.String())
+
+		if !wr.adjustmentLimiter.Allow(key) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(wr.adjustmentLimiter.window.Seconds())))
+			w.WriteHeader(http.StatusTooManyRequests)
+			logrus.WithFields(logrus.Fields{
+				"admin_id": claims.UserID.String(),
+				"path":     r.URL.Path,
+			}).Warn("Wallet admin adjustment rate limit exceeded")
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "rate_limit_exceeded",
+				"code":    "WALLET_ADJUSTMENT_RATE_LIMIT",
+				"message": "Too many wallet adjustments. Please try again later.",
+			})
+			return
+		}
+
 		next.ServeHTTP(w, r)
 	}
 }

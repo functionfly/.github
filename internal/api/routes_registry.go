@@ -267,4 +267,20 @@ func registerRegistryRoutes(
 	api.HandleFunc("/feedback", feedbackHandler.CreateFeedback).Methods("POST")
 	api.HandleFunc("/feedback/history", authMiddleware.RequireAuth(feedbackHandler.GetFeedbackHistory)).Methods("GET")
 	api.HandleFunc("/feedback/attachments/{id}/download", authMiddleware.RequireAuth(feedbackHandler.DownloadAttachment)).Methods("GET")
+
+	// ── AI Composer + Gallery (Phase 4) ───────────────────────────────────────
+	// Gallery trending and discovery (public)
+	api.HandleFunc("/registry/trending", registryHandler.HandleGetTrendingFunctions).Methods("GET", "OPTIONS")
+
+	// Remix/fork functionality (protected)
+	api.HandleFunc("/registry/functions/{author}/{name}/remix/cost", authMiddleware.RequireAuth(registryHandler.HandleGetRemixCost)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/functions/{author}/{name}/remix", authMiddleware.RequireAuth(registryHandler.HandleRemix)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/registry/functions/{author}/{name}/remix/history", registryHandler.HandleGetRemixHistory).Methods("GET", "OPTIONS")
+
+	// Social features (likes) - protected for write, public for read
+	api.HandleFunc("/registry/functions/{author}/{name}/likes", registryHandler.HandleGetFunctionLikes).Methods("GET", "OPTIONS")
+	api.HandleFunc("/registry/functions/{author}/{name}/likes", authMiddleware.RequireAuth(registryHandler.HandleLikeFunction)).Methods("POST", "OPTIONS")
+
+	// ── FRG (Function Registry + Live Runtime Graph) ──────────────────────────
+	// These routes are registered when FRG is initialized in routes.go
 }
