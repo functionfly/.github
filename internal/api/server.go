@@ -19,6 +19,7 @@ import (
 	"github.com/functionfly/functionfly/internal/adapters/functionfly"
 	"github.com/functionfly/functionfly/internal/adapters/vercel"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
+	"github.com/functionfly/functionfly/internal/api/handlers/billing"
 	regexec "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/cache"
@@ -69,6 +70,9 @@ type Server struct {
 	// Trigger engine for state changes
 	triggerEngine *staterepo.TriggerEngine
 
+	// Execution log cleanup service
+	executionLogCleanup *storage.ExecutionLogCleanupService
+
 	// State cleanup service for TTL-based cleanup
 	stateCleanup *staterepo.CleanupService
 
@@ -78,11 +82,17 @@ type Server struct {
 	// Usage metrics aggregation service
 	usageMetricsAgg *services.AggregationService
 
+	// Email service for sending emails
+	emailSvc email.Service
+
 	// Unified analytics sync job (Phase 3: fills analytics_rollups from source tables)
 	unifiedSyncJob *unified.SyncJob
 
 	// Vault repository for token cleanup job (set in setupRoutes)
 	vaultRepo *vaultstorage.Repository
+
+	// Deferred billing checker for Backend-in-a-Box founder mode
+	deferredBillingChecker *billing.DeferredBillingChecker
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -131,6 +141,13 @@ func NewServer(db *storage.PostgresDB) *Server {
 	if err != nil {
 		logrus.WithError(err).Warn("Failed to initialize Upstash Redis client, CSRF and other features may not work")
 		upstashRedis = nil
+	}
+
+	// Fallback: If Upstash is not configured but standard Redis is available,
+	// wrap the standard Redis client for CSRF and other middleware that requires Upstash interface
+	if upstashRedis == nil && redisClient != nil {
+		upstashRedis = cache.NewUpstashRedisClientFromStandardRedis(redisClient)
+		logrus.Info("Using standard Redis client for CSRF and middleware (Upstash not configured)")
 	}
 
 	// Initialize artifact store (Redis for production, fallback to memory for development)
@@ -202,6 +219,25 @@ func NewServer(db *storage.PostgresDB) *Server {
 	// Initialize auth event cleanup service
 	authEventCleanup := storage.NewAuthEventCleanupService(repo)
 
+	// Initialize execution log cleanup service with monitoring callback
+	executionRetentionConfig := storage.ExecutionRetentionConfigFromEnv()
+	cleanupCallback := func(tableName string, deleted int64, err error) {
+		if err != nil {
+			monitoring.RecordExecutionLogCleanupError(tableName, "cleanup_failed")
+		} else {
+			monitoring.RecordExecutionLogCleanupDeleted(tableName, deleted)
+		}
+	}
+	executionLogCleanup := storage.NewExecutionLogCleanupServiceWithCallback(repo, executionRetentionConfig, cleanupCallback)
+
+	// Update retention age metrics
+	monitoring.UpdateExecutionLogRetentionAge("registry_function_executions", executionRetentionConfig.ExecutionRetentionDays)
+	monitoring.UpdateExecutionLogRetentionAge("registry_executions_public", executionRetentionConfig.PublicExecutionRetentionDays)
+	monitoring.UpdateExecutionLogRetentionAge("execution_resource_usage", executionRetentionConfig.ResourceUsageRetentionDays)
+	monitoring.UpdateExecutionLogRetentionAge("execution_meg_records", executionRetentionConfig.MEGRecordRetentionDays)
+	monitoring.UpdateExecutionLogRetentionAge("drift_reports", executionRetentionConfig.DriftReportRetentionDays)
+	monitoring.UpdateExecutionLogRetentionAge("execution_certificates", executionRetentionConfig.ExecutionCertRetentionDays)
+
 	// Initialize state cleanup service for TTL-based cleanup
 	stateCleanupConfig := staterepo.DefaultCleanupConfig()
 	stateCleanupConfig.Interval = 1 * time.Hour
@@ -240,29 +276,41 @@ func NewServer(db *storage.PostgresDB) *Server {
 	usageMetricsConfig := services.LoadAggregationConfig()
 	usageMetricsAgg := services.NewAggregationService(db.GORM, usageMetricsConfig)
 
+	// Initialize deferred billing checker for Backend-in-a-Box founder mode
+	deferredBillingCheckInterval := 24 * time.Hour
+	if v := os.Getenv("DEFERRED_BILLING_CHECK_INTERVAL"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d >= time.Hour {
+			deferredBillingCheckInterval = d
+		}
+	}
+	deferredBillingChecker := billing.NewDeferredBillingChecker(repo, notificationSvc, deferredBillingCheckInterval)
+
 	s := &Server{
-		postgresDB:          db,
-		repo:                repo,
-		router:              router,
-		authSvc:             authSvc,
-		routingSvc:          routing.NewRouter(repo),
-		deploySvc:           deploySvc,
-		monitoringSvc:       monitoringSvc,
-		realtimeMonitor:     realtimeMonitor,
-		storageService:      storageService,
-		sessionCleanup:      sessionCleanup,
-		oauthStateCleanup:   oauthStateCleanup,
-		loginAttemptCleanup: loginAttemptCleanup,
-		authEventCleanup:    authEventCleanup,
-		stateCleanup:        stateCleanup,
-		healthMonitor:       healthMonitor,
-		redisClient:         redisClient,
-		upstashRedis:        upstashRedis,
-		shutdownTimeout:     shutdownTimeout,
-		notificationSvc:     notificationSvc,
-		notificationRepo:    notificationRepo,
-		recommendationSvc:   recommendationSvc,
-		usageMetricsAgg:     usageMetricsAgg,
+		postgresDB:             db,
+		repo:                   repo,
+		router:                 router,
+		authSvc:                authSvc,
+		routingSvc:             routing.NewRouter(repo),
+		deploySvc:              deploySvc,
+		monitoringSvc:          monitoringSvc,
+		realtimeMonitor:        realtimeMonitor,
+		storageService:         storageService,
+		sessionCleanup:         sessionCleanup,
+		oauthStateCleanup:      oauthStateCleanup,
+		loginAttemptCleanup:    loginAttemptCleanup,
+		authEventCleanup:       authEventCleanup,
+		executionLogCleanup:    executionLogCleanup,
+		stateCleanup:           stateCleanup,
+		healthMonitor:          healthMonitor,
+		redisClient:            redisClient,
+		upstashRedis:           upstashRedis,
+		shutdownTimeout:        shutdownTimeout,
+		notificationSvc:        notificationSvc,
+		notificationRepo:       notificationRepo,
+		recommendationSvc:      recommendationSvc,
+		usageMetricsAgg:        usageMetricsAgg,
+		emailSvc:               emailSvc,
+		deferredBillingChecker: deferredBillingChecker,
 		httpServer: &http.Server{
 			Handler:      router,
 			ReadTimeout:  15 * time.Second,
@@ -440,6 +488,13 @@ func (s *Server) ListenAndServe(addr string) error {
 	// Start auth event cleanup routine (runs daily, keeps 90 days of history for security/compliance)
 	s.authEventCleanup.StartCleanupRoutine(24*time.Hour, 90*24*time.Hour)
 
+	// Start execution log cleanup routine (configurable retention, default daily)
+	if s.executionLogCleanup != nil {
+		cleanupCtx := context.Background()
+		go s.executionLogCleanup.StartCleanupRoutine(cleanupCtx)
+		logrus.Info("Execution log cleanup routine started")
+	}
+
 	// Start local runtime cleanup routine (runs every 5 minutes)
 	ctx := context.Background()
 	go s.monitoringSvc.StartLocalRuntimeCleanup(ctx, 5*time.Minute, 10*time.Minute)
@@ -453,6 +508,12 @@ func (s *Server) ListenAndServe(addr string) error {
 	// Start notification service
 	s.notificationSvc.Start(ctx)
 	logrus.Info("Notification service started")
+
+	// Start deferred billing checker for Backend-in-a-Box founder mode
+	if s.deferredBillingChecker != nil {
+		s.deferredBillingChecker.Start()
+		logrus.Info("Deferred billing checker started")
+	}
 
 	// Start trigger engine for state changes
 	if s.triggerEngine != nil {
@@ -698,8 +759,8 @@ func initializeUpstashRedis() (*cache.UpstashRedisClient, error) {
 	}
 
 	config := &cache.UpstashConfig{
-		URL:      upstashURL,
-		Token:    upstashToken,
+		URL:       upstashURL,
+		Token:     upstashToken,
 		IsUpstash: true,
 	}
 

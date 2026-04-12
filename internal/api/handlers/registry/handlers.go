@@ -12,6 +12,7 @@ import (
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/dre"
 	"github.com/functionfly/functionfly/internal/monitoring"
+	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
@@ -23,17 +24,24 @@ import (
 type Handler struct {
 	repo              *registry.RegistryRepository
 	backendRepo       storage.Repository
-	cacheService     *cache.CacheService
-	cdnService       *cache.CDNService
-	edgeCache        *cache.EdgeCacheService
-	realtimeMonitor  *monitoring.RealtimeMonitor
-	platformFeeRepo  *registry.PlatformFeeRepository
-	recommendationSvc interface{ EmbedFunctionViaAIService(ctx context.Context, functionID uuid.UUID, name, title, description, category string, tags []string, manifest map[string]interface{}, sourceCode, runtime string, capabilities []string) error }
+	functionRepo      *storage.FunctionRepository
+	cacheService      *cache.CacheService
+	cdnService        *cache.CDNService
+	edgeCache         *cache.EdgeCacheService
+	realtimeMonitor   *monitoring.RealtimeMonitor
+	platformFeeRepo   *registry.PlatformFeeRepository
+	recommendationSvc interface {
+		EmbedFunctionViaAIService(ctx context.Context, functionID uuid.UUID, name, title, description, category string, tags []string, manifest map[string]interface{}, sourceCode, runtime string, capabilities []string) error
+	}
+	// RealtimeUsageTracker provides real-time quota enforcement and usage tracking
+	realtimeUsageTracker services.RealtimeUsageTrackerInterface
+	// PrivacyService provides privacy and compliance features
+	privacySvc execution.PrivacyService
 	// DRE execution node config (optional): when set, FXCERTs are signed
-	dreNodeKey      ed25519.PrivateKey
-	drePlatformKey  ed25519.PrivateKey
-	dreNodeID       string
-	dreRegion       string
+	dreNodeKey     ed25519.PrivateKey
+	drePlatformKey ed25519.PrivateKey
+	dreNodeID      string
+	dreRegion      string
 }
 
 // NewHandler creates a new registry handler.
@@ -41,22 +49,29 @@ type Handler struct {
 func NewHandler(
 	repo *registry.RegistryRepository,
 	backendRepo storage.Repository,
+	functionRepo *storage.FunctionRepository,
 	cacheService *cache.CacheService,
 	cdnService *cache.CDNService,
 	edgeCache *cache.EdgeCacheService,
 	realtimeMonitor *monitoring.RealtimeMonitor,
 	platformFeeRepo *registry.PlatformFeeRepository,
-	recommendationSvc interface{ EmbedFunctionViaAIService(ctx context.Context, functionID uuid.UUID, name, title, description, category string, tags []string, manifest map[string]interface{}, sourceCode, runtime string, capabilities []string) error },
+	recommendationSvc interface {
+		EmbedFunctionViaAIService(ctx context.Context, functionID uuid.UUID, name, title, description, category string, tags []string, manifest map[string]interface{}, sourceCode, runtime string, capabilities []string) error
+	},
+	realtimeUsageTracker services.RealtimeUsageTrackerInterface,
 ) *Handler {
 	h := &Handler{
-		repo:              repo,
-		backendRepo:       backendRepo,
-		cacheService:     cacheService,
-		cdnService:       cdnService,
-		edgeCache:        edgeCache,
-		realtimeMonitor:  realtimeMonitor,
-		platformFeeRepo:  platformFeeRepo,
-		recommendationSvc: recommendationSvc,
+		repo:                 repo,
+		backendRepo:          backendRepo,
+		functionRepo:         functionRepo,
+		cacheService:         cacheService,
+		cdnService:           cdnService,
+		edgeCache:            edgeCache,
+		realtimeMonitor:      realtimeMonitor,
+		platformFeeRepo:      platformFeeRepo,
+		recommendationSvc:    recommendationSvc,
+		realtimeUsageTracker: realtimeUsageTracker,
+		privacySvc:           nil, // Set later via SetPrivacyService
 	}
 	key, nodeID, region, err := dre.LoadNodeKeyFromEnv()
 	if err != nil {
@@ -77,6 +92,11 @@ func NewHandler(
 	h.dreNodeID = nodeID
 	h.dreRegion = region
 	return h
+}
+
+// SetPrivacyService sets the privacy service for compliance features
+func (h *Handler) SetPrivacyService(svc execution.PrivacyService) {
+	h.privacySvc = svc
 }
 
 // getClientIP extracts the client IP address from the request
@@ -342,9 +362,9 @@ func (h *Handler) HandleRegenerateBootstrap(w http.ResponseWriter, r *http.Reque
 				execution.BootstrapFXCERT(h.repo, &fn, fnVersion, "bootstrap", "internal", h.dreNodeKey, h.drePlatformKey)
 				regenerated++
 				logrus.WithFields(logrus.Fields{
-					"function":  fmt.Sprintf("%s/%s", fn.Author, fn.Name),
-					"version":   fnVersion.Version,
-					"cert_id":   cert.CertificateID,
+					"function": fmt.Sprintf("%s/%s", fn.Author, fn.Name),
+					"version":  fnVersion.Version,
+					"cert_id":  cert.CertificateID,
 				}).Info("DRE: regenerated bootstrap FXCERT")
 			}
 		}

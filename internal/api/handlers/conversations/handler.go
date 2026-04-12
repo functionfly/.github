@@ -29,6 +29,13 @@ type Handler struct {
 	notify       *notification.Service
 	users        userByIDGetter
 	logger       *logrus.Logger
+	// memoryEvents is the team memory event publisher (may be nil if team memory not configured)
+	memoryEvents ConversationEventPublisher
+}
+
+// ConversationEventPublisher defines the interface for publishing conversation events to team memory
+type ConversationEventPublisher interface {
+	PublishResolved(ctx context.Context, conv *conversations.Conversation) error
 }
 
 // userByIDGetter resolves users for notification copy (minimal surface for tests).
@@ -56,7 +63,13 @@ func NewHandler(
 		notify:       notify,
 		users:        users,
 		logger:       logger,
+		memoryEvents: nil, // Set via SetMemoryEventPublisher if team memory is enabled
 	}
+}
+
+// SetMemoryEventPublisher sets the team memory event publisher for conversation webhooks
+func (h *Handler) SetMemoryEventPublisher(publisher ConversationEventPublisher) {
+	h.memoryEvents = publisher
 }
 
 // GetCollaborationProfile handles GET /api/v1/conversations/collaboration-profile/:user_id
@@ -566,6 +579,18 @@ func (h *Handler) ResolveConversation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c, _ := h.repo.GetConversationByID(r.Context(), id)
+
+	// Trigger team memory extraction webhook if enabled
+	if h.memoryEvents != nil && c != nil {
+		go func(conv *conversations.Conversation) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := h.memoryEvents.PublishResolved(ctx, conv); err != nil {
+				h.logger.WithError(err).Warn("Failed to publish conversation resolved event for memory extraction")
+			}
+		}(c)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(c)
 }
@@ -600,8 +625,8 @@ func (h *Handler) ListBounties(w http.ResponseWriter, r *http.Request) {
 
 // CreateBountyRequest is the body for attaching a bounty.
 type CreateBountyRequest struct {
-	AmountReputation        int     `json:"amount_reputation"`
-	AmountCents             int     `json:"amount_cents,omitempty"`
+	AmountReputation         int     `json:"amount_reputation"`
+	AmountCents              int     `json:"amount_cents,omitempty"`
 	SecurityWeightMultiplier float64 `json:"security_weight_multiplier,omitempty"`
 }
 
@@ -635,10 +660,10 @@ func (h *Handler) CreateBounty(w http.ResponseWriter, r *http.Request) {
 		req.SecurityWeightMultiplier = 1.0
 	}
 	b := &conversations.ConversationBounty{
-		ConversationID:         id,
-		OfferedBy:              user.UserID,
-		AmountReputation:       req.AmountReputation,
-		AmountCents:            req.AmountCents,
+		ConversationID:           id,
+		OfferedBy:                user.UserID,
+		AmountReputation:         req.AmountReputation,
+		AmountCents:              req.AmountCents,
 		SecurityWeightMultiplier: req.SecurityWeightMultiplier,
 	}
 	if err := h.repo.CreateBounty(r.Context(), b); err != nil {
@@ -761,7 +786,7 @@ func (h *Handler) notifyConversationMessage(ctx context.Context, conversationID,
 			Title:    title,
 			Body:     body,
 			Data: notification.JSONMap{
-				"action_url":       actionPath,
+				"action_url":      actionPath,
 				"conversation_id": conversationID.String(),
 				"message_id":      m.ID.String(),
 				"from_user_id":    authorID.String(),

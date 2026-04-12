@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -27,6 +28,8 @@ type StatusWebSocketClient struct {
 	Send     chan []byte
 	Hub      *StatusWebSocketHub
 	IsAdmin  bool
+	closed   bool
+	mu       sync.Mutex
 }
 
 // StatusWebSocketHub manages all WebSocket connections for status updates
@@ -76,7 +79,12 @@ func (h *StatusWebSocketHub) Run() {
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
-				close(client.Send)
+				client.mu.Lock()
+				if !client.closed {
+					client.closed = true
+					close(client.Send)
+				}
+				client.mu.Unlock()
 				h.logger.WithField("client_id", client.ID).Debug("Status WebSocket client unregistered")
 			}
 
@@ -118,6 +126,21 @@ func (h *StatusWebSocketHub) broadcastToSubscribers(message *StatusUpdateMessage
 func (h *StatusWebSocketHub) sendInitialStatus(client *StatusWebSocketClient) {
 	ctx := context.Background()
 
+	// Helper to safely send messages
+	safeSend := func(data []byte) bool {
+		client.mu.Lock()
+		defer client.mu.Unlock()
+		if client.closed {
+			return false
+		}
+		select {
+		case client.Send <- data:
+			return true
+		default:
+			return false
+		}
+	}
+
 	// Send platform status (always send initial status)
 	status, err := h.getCurrentPlatformStatus()
 	if err == nil {
@@ -128,10 +151,7 @@ func (h *StatusWebSocketHub) sendInitialStatus(client *StatusWebSocketClient) {
 			Data:      status,
 		}
 		data, _ := json.Marshal(msg)
-		select {
-		case client.Send <- data:
-		default:
-		}
+		safeSend(data)
 	}
 
 	// Send provider status (always send initial status)
@@ -144,10 +164,7 @@ func (h *StatusWebSocketHub) sendInitialStatus(client *StatusWebSocketClient) {
 			Data:      providers,
 		}
 		data, _ := json.Marshal(msg)
-		select {
-		case client.Send <- data:
-		default:
-		}
+		safeSend(data)
 	}
 
 	// Send active incidents (always send initial status)
@@ -160,10 +177,7 @@ func (h *StatusWebSocketHub) sendInitialStatus(client *StatusWebSocketClient) {
 			Data:      incidents,
 		}
 		data, _ := json.Marshal(msg)
-		select {
-		case client.Send <- data:
-		default:
-		}
+		safeSend(data)
 	}
 }
 

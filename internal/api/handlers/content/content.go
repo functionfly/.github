@@ -367,7 +367,13 @@ func (h *Handler) HandleListBlogPosts(w http.ResponseWriter, r *http.Request) {
 	posts, err := h.repo.ListBlogPosts(limit, offset, publishedOnly, tagFilter)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list blog posts")
-		http.Error(w, "Failed to list blog posts", http.StatusInternalServerError)
+		// Return empty list instead of 500 to prevent UI crashes during auth state changes
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"posts":  []*storage.BlogPost{},
+			"limit":  limit,
+			"offset": offset,
+		})
 		return
 	}
 

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -108,8 +108,8 @@ type WebSocketHub struct {
 // BroadcastMessage represents a message to broadcast
 type BroadcastMessage struct {
 	ConversationID uuid.UUID
-	Message       *WebSocketMessage
-	Exclude       *WebSocketConn
+	Message        *WebSocketMessage
+	Exclude        *WebSocketConn
 }
 
 // WebSocketConn represents a WebSocket connection
@@ -129,7 +129,7 @@ func NewWebSocketHub(service *support.Service, redis support.RedisClient, authSv
 		conversations: make(map[uuid.UUID]map[*WebSocketConn]bool),
 		users:         make(map[uuid.UUID]map[*WebSocketConn]bool),
 		staff:         make(map[*WebSocketConn]bool),
-		register:       make(chan *WebSocketConn),
+		register:      make(chan *WebSocketConn),
 		unregister:    make(chan *WebSocketConn),
 		broadcast:     make(chan *BroadcastMessage),
 		service:       service,
@@ -276,7 +276,7 @@ func (h *WebSocketHub) BroadcastToConversation(conversationID uuid.UUID, msg *We
 	h.broadcast <- &BroadcastMessage{
 		ConversationID: conversationID,
 		Message:        msg,
-		Exclude:       exclude,
+		Exclude:        exclude,
 	}
 }
 
@@ -499,9 +499,10 @@ func (h *WebSocketHub) HandleWebSocketWithRouter(w http.ResponseWriter, r *http.
 	h.HandleWebSocket(w, r)
 }
 
-// RegisterWebSocketRoutes registers WebSocket routes on a router
+// RegisterWebSocketRoutes registers WebSocket routes on a router.
+// The route is registered at /support/ws - use on a /v1 subrouter for /v1/support/ws.
 func RegisterWebSocketRoutes(router *mux.Router, hub *WebSocketHub) {
-	router.HandleFunc("/v1/support/ws", hub.HandleWebSocketWithRouter).Methods("GET")
+	router.HandleFunc("/support/ws", hub.HandleWebSocketWithRouter).Methods("GET")
 }
 
 // Helper to send WebSocket message to a specific user

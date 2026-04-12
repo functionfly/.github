@@ -205,7 +205,7 @@ func (se *SandboxExecutor) executeWithRuntimeLimits(wasmPath string, fnVersion *
 			ResourceUsage: &execution.ResourceUsage{
 				MaxMemoryMB:    maxMemoryMB,
 				MaxCPUTimeMs:   maxCPUTimeMs,
-				MemoryUsedMB:   parseMemoryUsage(stderr.String()),
+				MemoryUsedMB:   int(parseMemoryUsage(stderr.String())),
 				CPUTimeUsedMs:  wallTimeUsedMs,
 				WallTimeUsedMs: wallTimeUsedMs,
 			},
@@ -228,7 +228,7 @@ func (se *SandboxExecutor) executeWithRuntimeLimits(wasmPath string, fnVersion *
 			ResourceUsage: &execution.ResourceUsage{
 				MaxMemoryMB:    maxMemoryMB,
 				MaxCPUTimeMs:   maxCPUTimeMs,
-				MemoryUsedMB:   parseMemoryUsage(stderr.String()),
+				MemoryUsedMB:   int(parseMemoryUsage(stderr.String())),
 				CPUTimeUsedMs:  wallTimeUsedMs,
 				WallTimeUsedMs: wallTimeUsedMs,
 			},
@@ -249,7 +249,7 @@ func (se *SandboxExecutor) executeWithRuntimeLimits(wasmPath string, fnVersion *
 			ResourceUsage: &execution.ResourceUsage{
 				MaxMemoryMB:    maxMemoryMB,
 				MaxCPUTimeMs:   maxCPUTimeMs,
-				MemoryUsedMB:   parseMemoryUsage(stderr.String()),
+				MemoryUsedMB:   int(parseMemoryUsage(stderr.String())),
 				CPUTimeUsedMs:  respBody.ExecTime,
 				WallTimeUsedMs: wallTimeUsedMs,
 			},
@@ -370,7 +370,7 @@ func (se *SandboxExecutor) executeWithRuntime(ctx context.Context, wasmPath stri
 	err := cmd.Run()
 
 	// Parse memory usage from stderr output
-	memoryUsedMB := parseMemoryUsage(stderr.String())
+	memoryUsedMB := int(parseMemoryUsage(stderr.String()))
 
 	// Basic resource usage
 	resourceUsage := &execution.ResourceUsage{
@@ -391,9 +391,9 @@ func (se *SandboxExecutor) executeWithRuntime(ctx context.Context, wasmPath stri
 	}
 
 	// Check resource limit violations
-	if resourceUsage.MemoryUsedMB > float64(maxMemoryMB) {
+	if resourceUsage.MemoryUsedMB > maxMemoryMB {
 		return nil, &execution.ExecutionError{
-			Err:           fmt.Errorf("memory limit exceeded: used %.2f MB of %d MB", resourceUsage.MemoryUsedMB, maxMemoryMB),
+			Err:           fmt.Errorf("memory limit exceeded: used %d MB of %d MB", resourceUsage.MemoryUsedMB, maxMemoryMB),
 			ResourceUsage: resourceUsage,
 			TerminatedBy:  "memory_limit",
 		}

@@ -57,13 +57,13 @@ func (h *Handler) HandleGetTrustScore(w http.ResponseWriter, r *http.Request) {
 	// Build response
 	response := registry.TrustScoreResponse{
 		FunctionID:        functionID,
-		TrustScore:       history.TrustScore,
-		TrustTier:        history.TrustTier,
-		IsVerified:       history.IsVerified,
+		TrustScore:        history.TrustScore,
+		TrustTier:         history.TrustTier,
+		IsVerified:        history.IsVerified,
 		VerificationLevel: history.VerificationLevel,
-		LastUpdated:      history.CalculatedAt,
-		WindowStart:      history.WindowStart,
-		WindowEnd:        history.WindowEnd,
+		LastUpdated:       history.CalculatedAt,
+		WindowStart:       history.WindowStart,
+		WindowEnd:         history.WindowEnd,
 	}
 
 	// Set component scores
@@ -126,7 +126,7 @@ func (h *Handler) HandleGetTrustHistory(w http.ResponseWriter, r *http.Request) 
 	}
 
 	response := registry.TrustHistoryResponse{
-		FunctionID:  functionID,
+		FunctionID: functionID,
 		History:    history,
 		TotalCount: total,
 		Page:       page,
@@ -177,12 +177,12 @@ func (h *Handler) HandleRefreshTrustScore(w http.ResponseWriter, r *http.Request
 	_ = fn // fn is used to verify function exists
 
 	response := map[string]interface{}{
-		"ok":             true,
-		"message":        "Trust score refreshed successfully",
-		"function_id":    functionID,
-		"trust_score":    history.TrustScore,
-		"trust_tier":     history.TrustTier,
-		"calculated_at":  history.CalculatedAt,
+		"ok":            true,
+		"message":       "Trust score refreshed successfully",
+		"function_id":   functionID,
+		"trust_score":   history.TrustScore,
+		"trust_tier":    history.TrustTier,
+		"calculated_at": history.CalculatedAt,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -229,13 +229,13 @@ func (h *Handler) HandleGetFunctionTrustByAuthorName(w http.ResponseWriter, r *h
 	// Build response
 	response := registry.TrustScoreResponse{
 		FunctionID:        fn.ID,
-		TrustScore:       history.TrustScore,
-		TrustTier:        history.TrustTier,
-		IsVerified:       history.IsVerified,
+		TrustScore:        history.TrustScore,
+		TrustTier:         history.TrustTier,
+		IsVerified:        history.IsVerified,
 		VerificationLevel: history.VerificationLevel,
-		LastUpdated:      history.CalculatedAt,
-		WindowStart:      history.WindowStart,
-		WindowEnd:        history.WindowEnd,
+		LastUpdated:       history.CalculatedAt,
+		WindowStart:       history.WindowStart,
+		WindowEnd:         history.WindowEnd,
 	}
 
 	// Set component scores
@@ -265,9 +265,8 @@ func (h *Handler) HandleGetFunctionTrustByAuthorName(w http.ResponseWriter, r *h
 
 // HandleRefreshAllTrustScores handles POST /v1/admin/trust/refresh-all
 // Forces a full recalculation of all trust scores (admin only)
+// Note: This endpoint is protected by authMiddleware.RequirePermission(auth.PermSystemWrite) at the route level
 func (h *Handler) HandleRefreshAllTrustScores(w http.ResponseWriter, r *http.Request) {
-	// This should be called by an admin or system process
-	// In production, you would add admin authentication check here
 
 	job, err := h.repo.RefreshAllTrustScores()
 	if err != nil {
@@ -279,11 +278,90 @@ func (h *Handler) HandleRefreshAllTrustScores(w http.ResponseWriter, r *http.Req
 	response := map[string]interface{}{
 		"ok":                  true,
 		"message":             "Trust score refresh job started",
-		"job_id":             job.ID,
-		"job_type":           job.JobType,
-		"status":             job.Status,
-		"functions_total":    job.FunctionsTotal,
+		"job_id":              job.ID,
+		"job_type":            job.JobType,
+		"status":              job.Status,
+		"functions_total":     job.FunctionsTotal,
 		"functions_processed": job.FunctionsProcessed,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// HandleCalculateSlidingWindow handles POST /v1/admin/trust/calculate-sliding
+// Forces a sliding window recalculation for all functions (admin only)
+func (h *Handler) HandleCalculateSlidingWindow(w http.ResponseWriter, r *http.Request) {
+	// Parse configuration from request body
+	var config registry.SlidingWindowConfig
+	if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
+		// Use default config if no body provided
+		config = registry.DefaultSlidingWindowConfig()
+	}
+
+	deltas, err := h.repo.UpdateSlidingWindowScores(config)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to update sliding window scores")
+		http.Error(w, "Failed to update sliding window scores", http.StatusInternalServerError)
+		return
+	}
+
+	// Count significant changes
+	significantCount := 0
+	for _, d := range deltas {
+		if d.TierChanged || d.ScoreChange >= 5.0 {
+			significantCount++
+		}
+	}
+
+	response := map[string]interface{}{
+		"ok":                  true,
+		"message":             "Sliding window recalculation complete",
+		"functions_updated":   len(deltas),
+		"significant_changes": significantCount,
+		"window_duration":     config.WindowDuration.String(),
+		"smoothing_factor":    config.SmoothingFactor,
+		"deltas":              deltas,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// HandleGetSlidingWindowState handles GET /v1/admin/trust/sliding-window/{function_id}
+// Returns the current sliding window state for a function (admin only)
+func (h *Handler) HandleGetSlidingWindowState(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	functionIDStr := vars["functionId"]
+
+	functionID, err := uuid.Parse(functionIDStr)
+	if err != nil {
+		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get latest trust history as proxy for sliding window state
+	history, err := h.repo.GetLatestTrustHistory(functionID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get sliding window state")
+		http.Error(w, "Failed to get state", http.StatusInternalServerError)
+		return
+	}
+
+	if history == nil {
+		http.Error(w, "No trust history found for function", http.StatusNotFound)
+		return
+	}
+
+	response := map[string]interface{}{
+		"function_id":         functionID,
+		"current_score":       history.TrustScore,
+		"trust_tier":          history.TrustTier,
+		"window_start":        history.WindowStart,
+		"window_end":          history.WindowEnd,
+		"last_calculated":     history.CalculatedAt,
+		"total_calls":         history.TotalCalls,
+		"calculation_version": history.CalculationVersion,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -304,13 +382,13 @@ func (h *Handler) GetTrustScoreComponents(functionID uuid.UUID) (*registry.Trust
 
 	response := &registry.TrustScoreResponse{
 		FunctionID:        functionID,
-		TrustScore:       history.TrustScore,
-		TrustTier:        history.TrustTier,
-		IsVerified:       history.IsVerified,
+		TrustScore:        history.TrustScore,
+		TrustTier:         history.TrustTier,
+		IsVerified:        history.IsVerified,
 		VerificationLevel: history.VerificationLevel,
-		LastUpdated:      history.CalculatedAt,
-		WindowStart:      history.WindowStart,
-		WindowEnd:        history.WindowEnd,
+		LastUpdated:       history.CalculatedAt,
+		WindowStart:       history.WindowStart,
+		WindowEnd:         history.WindowEnd,
 	}
 
 	response.Components.Reliability = history.ReliabilityScore

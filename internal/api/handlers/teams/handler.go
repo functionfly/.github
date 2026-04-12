@@ -6,6 +6,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -15,6 +16,7 @@ import (
 // Handler handles team-related API requests
 type Handler struct {
 	repo            storage.Repository
+	notify          *notification.Service
 	realtimeMonitor interface{} // Will be used for broadcasting team updates
 }
 
@@ -44,9 +46,10 @@ type TeamPermissionRequest struct {
 }
 
 // NewHandler creates a new team handler
-func NewHandler(repo storage.Repository, realtimeMonitor interface{}) *Handler {
+func NewHandler(repo storage.Repository, notify *notification.Service, realtimeMonitor interface{}) *Handler {
 	return &Handler{
 		repo:            repo,
+		notify:          notify,
 		realtimeMonitor: realtimeMonitor,
 	}
 }
@@ -94,6 +97,13 @@ func (h *Handler) HandleCreateTeam(w http.ResponseWriter, r *http.Request) {
 	if err := h.repo.AddTeamMember(membership); err != nil {
 		logrus.WithError(err).Error("Failed to add team creator as owner")
 		// Don't fail the request, but log the error
+	}
+
+	// Notify the creator that team was created
+	if h.notify != nil {
+		if err := h.notify.SendTeamCreated(r.Context(), user.UserID, team.ID, team.Name); err != nil {
+			logrus.WithError(err).Warn("Failed to send team creation notification")
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -276,10 +286,29 @@ func (h *Handler) HandleDeleteTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get all team members to notify them before deletion
+	var memberUserIDs []uuid.UUID
+	for _, member := range team.Members {
+		memberUserIDs = append(memberUserIDs, member.UserID)
+	}
+
+	teamName := team.Name
+	deletedByName := user.Username
+	if deletedByName == "" {
+		deletedByName = user.Email
+	}
+
 	if err := h.repo.DeleteTeam(teamID); err != nil {
 		logrus.WithError(err).Error("Failed to delete team")
 		http.Error(w, "Failed to delete team", http.StatusInternalServerError)
 		return
+	}
+
+	// Notify all team members about deletion
+	if h.notify != nil && len(memberUserIDs) > 0 {
+		if err := h.notify.SendTeamDeleted(r.Context(), memberUserIDs, teamName, deletedByName); err != nil {
+			logrus.WithError(err).Warn("Failed to send team deletion notifications")
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -378,6 +407,17 @@ func (h *Handler) HandleAddTeamMember(w http.ResponseWriter, r *http.Request) {
 		logrus.WithError(err).Error("Failed to add team member")
 		http.Error(w, "Failed to add team member", http.StatusInternalServerError)
 		return
+	}
+
+	// Notify the added user
+	if h.notify != nil {
+		addedByName := user.Username
+		if addedByName == "" {
+			addedByName = user.Email
+		}
+		if err := h.notify.SendTeamMemberAdded(r.Context(), req.UserID, teamID, team.Name, addedByName, req.Role); err != nil {
+			logrus.WithError(err).Warn("Failed to send team member added notification")
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -511,10 +551,27 @@ func (h *Handler) HandleRemoveTeamMember(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	// Get team details for notification
+	team, err := h.repo.GetTeamByID(teamID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get team for removal notification")
+	}
+
 	if err := h.repo.RemoveTeamMember(teamID, userID); err != nil {
 		logrus.WithError(err).Error("Failed to remove team member")
 		http.Error(w, "Failed to remove team member", http.StatusInternalServerError)
 		return
+	}
+
+	// Notify the removed user
+	if h.notify != nil && team != nil {
+		removedByName := user.Username
+		if removedByName == "" {
+			removedByName = user.Email
+		}
+		if err := h.notify.SendTeamMemberRemoved(r.Context(), userID, teamID, team.Name, removedByName); err != nil {
+			logrus.WithError(err).Warn("Failed to send team member removal notification")
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -590,17 +647,17 @@ func (h *Handler) HandleGrantTeamPermission(w http.ResponseWriter, r *http.Reque
 
 	// Validate permissions
 	validPermissions := map[string]bool{
-		auth.PermAppsRead:         true,
-		auth.PermAppsWrite:        true,
-		auth.PermAppsDelete:       true,
-		auth.PermFunctionsRead:    true,
-		auth.PermFunctionsWrite:   true,
-		auth.PermFunctionsDelete:  true,
-		auth.PermBackendsRead:     true,
-		auth.PermBackendsWrite:    true,
-		auth.PermBackendsDelete:   true,
-		auth.PermDeploymentsRead:  true,
-		auth.PermDeploymentsWrite: true,
+		auth.PermAppsRead:          true,
+		auth.PermAppsWrite:         true,
+		auth.PermAppsDelete:        true,
+		auth.PermFunctionsRead:     true,
+		auth.PermFunctionsWrite:    true,
+		auth.PermFunctionsDelete:   true,
+		auth.PermBackendsRead:      true,
+		auth.PermBackendsWrite:     true,
+		auth.PermBackendsDelete:    true,
+		auth.PermDeploymentsRead:   true,
+		auth.PermDeploymentsWrite:  true,
 		auth.PermDeploymentsDelete: true,
 	}
 

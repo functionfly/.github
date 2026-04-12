@@ -104,6 +104,10 @@ func convertToFunctionInfos(infos []map[string]interface{}) []functionregistry.F
 			Version:      info["version"].(string),
 			PricePerCall: info["price_per_call"].(float64),
 		}
+		// ID (required for gallery)
+		if v, ok := info["id"].(string); ok {
+			fi.ID = v
+		}
 		if v, ok := info["title"].(string); ok {
 			fi.Title = v
 		}
@@ -236,6 +240,24 @@ func convertToFunctionInfos(infos []map[string]interface{}) []functionregistry.F
 		}
 		if v, ok := info["user_diversity"].(int); ok {
 			fi.UserDiversity = v
+		}
+		// Gallery-specific fields
+		if v, ok := info["popularity_score"].(int); ok {
+			fi.PopularityScore = v
+		} else if v, ok := info["popularity_score"].(float64); ok {
+			fi.PopularityScore = int(v)
+		}
+		if v, ok := info["remix_count"].(int); ok {
+			fi.RemixCount = v
+		}
+		if v, ok := info["like_count"].(int); ok {
+			fi.LikeCount = v
+		}
+		if v, ok := info["created_at"].(string); ok {
+			fi.CreatedAt = v
+		}
+		if v, ok := info["updated_at"].(string); ok {
+			fi.UpdatedAt = v
 		}
 		result = append(result, fi)
 	}

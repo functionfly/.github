@@ -10,68 +10,23 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/api/utils"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
-type Handler struct {
-	repo storage.Repository
-}
-
-type ProviderValidationRequest struct {
-	Provider string `json:"provider"`
-	Token    string `json:"token"`
-}
-
-type ProviderValidationResponse struct {
-	IsValid bool   `json:"is_valid"`
-	Message string `json:"message,omitempty"`
-	UserID  string `json:"user_id,omitempty"`
-	Email   string `json:"email,omitempty"`
-}
-
-type CostEstimationRequest struct {
-	Provider        string   `json:"provider"`
-	FunctionName    string   `json:"function_name"`
-	Runtime         string   `json:"runtime"`
-	MemoryMB        int      `json:"memory_mb"`
-	RequestsPerDay  int      `json:"requests_per_day"`
-	ComputeDuration int      `json:"compute_duration_ms"`
-	Regions         []string `json:"regions"`
-}
-
-type CostEstimationResponse struct {
-	MonthlyCost  float64                `json:"monthly_cost"`
-	Currency     string                 `json:"currency"`
-	Breakdown    map[string]float64     `json:"breakdown"`
-	ProviderData map[string]interface{} `json:"provider_data,omitempty"`
-}
-
-type TeamInviteRequest struct {
-	Emails  []string `json:"emails"`
-	Role    string   `json:"role"`
-	Message string   `json:"message,omitempty"`
-}
-
-type TeamInviteResponse struct {
-	Invites []TeamInvite `json:"invites"`
-}
-
-type TeamInvite struct {
-	Email   string `json:"email"`
-	Token   string `json:"token"`
-	Expires int64  `json:"expires"`
-}
-
-func NewHandler(repo storage.Repository) *Handler {
-	return &Handler{
-		repo: repo,
+// isProviderStale returns true if the provider hasn't been used in more than 30 days
+func isProviderStale(p *storage.Provider) bool {
+	if p.LastUsedAt == nil {
+		// Never used - check if created more than 30 days ago
+		return time.Since(p.CreatedAt) > 30*24*time.Hour
 	}
+	return time.Since(*p.LastUsedAt) > 30*24*time.Hour
 }
 
-// ListProvidersResponseItem matches the frontend ConnectedProvider shape (token omitted).
 func listProviderFromStorage(p *storage.Provider) map[string]interface{} {
 	status := "pending"
 	switch p.Status {
@@ -82,12 +37,20 @@ func listProviderFromStorage(p *storage.Provider) map[string]interface{} {
 	case "error":
 		status = "degraded"
 	}
-	return map[string]interface{}{
+
+	result := map[string]interface{}{
 		"id":          p.ID,
 		"name":        p.Provider,
 		"status":      status,
 		"connectedAt": p.CreatedAt.Format(time.RFC3339),
+		"isStale":     isProviderStale(p),
 	}
+
+	if p.LastUsedAt != nil {
+		result["lastUsedAt"] = p.LastUsedAt.Format(time.RFC3339)
+	}
+
+	return result
 }
 
 // connectedProviderResponse is the shape returned to the dashboard for a connected provider.
@@ -101,12 +64,20 @@ func connectedProviderResponse(p *storage.Provider) map[string]interface{} {
 	case "error":
 		status = "degraded"
 	}
-	return map[string]interface{}{
+
+	result := map[string]interface{}{
 		"id":          p.ID,
 		"name":        p.Provider,
 		"status":      status,
 		"connectedAt": p.CreatedAt.Format(time.RFC3339),
+		"isStale":     isProviderStale(p),
 	}
+
+	if p.LastUsedAt != nil {
+		result["lastUsedAt"] = p.LastUsedAt.Format(time.RFC3339)
+	}
+
+	return result
 }
 
 // HandleConnectProvider validates an API token for the given provider and, if valid, saves
@@ -116,6 +87,14 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 	if claims == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
+	}
+
+	ctx := r.Context()
+	ipAddress := middleware.ExtractClientIP(r)
+	userAgent := r.UserAgent()
+	requestID := ""
+	if id := ctx.Value("request_id"); id != nil {
+		requestID = id.(string)
 	}
 
 	var req struct {
@@ -155,6 +134,17 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "Failed to enable provider", http.StatusInternalServerError)
 			return
 		}
+
+		// Audit log: Provider connected
+		providerUUID, _ := uuid.Parse(provider.ID)
+		utils.LogAuditEvent(ctx, h.repo, r, "provider.connect", "provider", &providerUUID, nil, map[string]interface{}{
+			"provider_id":   provider.ID,
+			"provider_type": "functionfly-edge",
+			"ip_address":    ipAddress,
+			"user_agent":    userAgent,
+			"request_id":    requestID,
+		}, true)
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"provider": connectedProviderResponse(provider),
@@ -194,6 +184,22 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		existing.Status = "active"
+
+		// Audit log: Provider updated
+		existingUUID, _ := uuid.Parse(existing.ID)
+		utils.LogAuditEvent(ctx, h.repo, r, "provider.update", "provider", &existingUUID, map[string]interface{}{
+			"provider_id":   existing.ID,
+			"provider_type": req.ProviderID,
+			"status":        "active",
+		}, map[string]interface{}{
+			"provider_id":   existing.ID,
+			"provider_type": req.ProviderID,
+			"status":        "active",
+			"ip_address":    ipAddress,
+			"user_agent":    userAgent,
+			"request_id":    requestID,
+		}, true)
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"provider": connectedProviderResponse(existing),
@@ -217,6 +223,16 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Audit log: Provider connected
+	providerUUID, _ := uuid.Parse(provider.ID)
+	utils.LogAuditEvent(ctx, h.repo, r, "provider.connect", "provider", &providerUUID, nil, map[string]interface{}{
+		"provider_id":   provider.ID,
+		"provider_type": req.ProviderID,
+		"ip_address":    ipAddress,
+		"user_agent":    userAgent,
+		"request_id":    requestID,
+	}, true)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"provider": connectedProviderResponse(provider),
@@ -231,6 +247,14 @@ func (h *Handler) HandleDisconnectProvider(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	ctx := r.Context()
+	ipAddress := middleware.ExtractClientIP(r)
+	userAgent := r.UserAgent()
+	requestID := ""
+	if id := ctx.Value("request_id"); id != nil {
+		requestID = id.(string)
+	}
+
 	vars := mux.Vars(r)
 	providerID := vars["providerId"]
 	if providerID == "" {
@@ -238,10 +262,50 @@ func (h *Handler) HandleDisconnectProvider(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Get provider info before deletion for audit logging
+	provider, _ := h.repo.GetProviderByUserAndType(claims.UserID, providerID)
+
 	if err := h.repo.DeleteProvider(r.Context(), providerID, claims.UserID); err != nil {
 		logrus.WithError(err).WithField("providerID", providerID).Error("Failed to delete provider")
+
+		// Audit log: Failed disconnect
+		providerUUID, _ := uuid.Parse(providerID)
+		utils.LogAuditEvent(ctx, h.repo, r, "provider.disconnect", "provider", &providerUUID, map[string]interface{}{
+			"provider_id": providerID,
+			"status":      "failed",
+			"error":       err.Error(),
+		}, nil, false)
+
 		http.Error(w, "Failed to disconnect provider", http.StatusInternalServerError)
 		return
+	}
+
+	// Audit log: Provider disconnected
+	var providerUUID uuid.UUID
+	if provider != nil {
+		providerUUID, _ = uuid.Parse(provider.ID)
+		utils.LogAuditEvent(ctx, h.repo, r, "provider.disconnect", "provider", &providerUUID, map[string]interface{}{
+			"provider_id":   provider.ID,
+			"provider_type": provider.Provider,
+		}, map[string]interface{}{
+			"provider_id": providerID,
+			"status":      "disconnected",
+			"ip_address":  ipAddress,
+			"user_agent":  userAgent,
+			"request_id":  requestID,
+		}, true)
+	} else {
+		// Provider not found but deletion succeeded (edge case)
+		providerUUID, _ = uuid.Parse(providerID)
+		utils.LogAuditEvent(ctx, h.repo, r, "provider.disconnect", "provider", &providerUUID, map[string]interface{}{
+			"provider_id": providerID,
+		}, map[string]interface{}{
+			"provider_id": providerID,
+			"status":      "disconnected",
+			"ip_address":  ipAddress,
+			"user_agent":  userAgent,
+			"request_id":  requestID,
+		}, true)
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -255,6 +319,7 @@ func (h *Handler) HandleTestConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := r.Context()
 	vars := mux.Vars(r)
 	providerID := vars["providerId"]
 
@@ -263,6 +328,11 @@ func (h *Handler) HandleTestConnection(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Provider not found"})
 		return
+	}
+
+	// Update last used timestamp (even for failed tests)
+	if err := h.repo.UpdateProviderLastUsed(ctx, provider.ID); err != nil {
+		logrus.WithError(err).WithField("provider_id", provider.ID).Warn("Failed to update provider last_used_at")
 	}
 
 	// FunctionFly Edge is always reachable.
@@ -456,6 +526,20 @@ func (h *Handler) HandleCreateTeamInvite(w http.ResponseWriter, r *http.Request)
 		if err := h.repo.CreateTeamInvite(invite); err != nil {
 			logrus.WithError(err).WithField("email", email).Error("Failed to create team invite")
 			continue
+		}
+
+		// Send in-app notification to the invited user if they have an account
+		if h.notify != nil {
+			invitedUser, err := h.repo.GetUserByEmail(email)
+			if err == nil && invitedUser != nil {
+				invitedByName := user.Email
+				if user.Username != nil && *user.Username != "" {
+					invitedByName = *user.Username
+				}
+				if err := h.notify.SendTeamInviteSent(r.Context(), invitedUser.ID, team.ID, team.Name, invitedByName, req.Role); err != nil {
+					logrus.WithError(err).WithField("email", email).Warn("Failed to send team invite notification")
+				}
+			}
 		}
 
 		invites = append(invites, TeamInvite{
