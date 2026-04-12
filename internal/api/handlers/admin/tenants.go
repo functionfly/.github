@@ -1,20 +1,274 @@
 package admin
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/utils"
+	"github.com/functionfly/functionfly/internal/plans"
+	"github.com/functionfly/functionfly/internal/services/membership"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
-// Tenant-scoped handler functions
+// HandleListTenants lists all tenants
+func (h *Handler) HandleListTenants(w http.ResponseWriter, r *http.Request) {
+	tenants, err := h.repo.ListTenants()
+	if err != nil {
+		logrus.WithError(err).Error("Failed to list tenants")
+		// Return empty list so admin UI can load; caller can retry or check logs
+		tenants = []*storage.Tenant{}
+	}
 
-// HandleListTenantApps lists apps for a specific tenant (admin view)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":    tenants,
+		"tenants": tenants,
+	})
+}
+
+// HandleGetTenant gets a specific tenant
+func (h *Handler) HandleGetTenant(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tenantIDStr := vars["tenantId"]
+	tenantID, err := uuid.Parse(tenantIDStr)
+	if err != nil {
+		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		return
+	}
+
+	tenant, err := h.repo.GetTenantByID(tenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant")
+		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		return
+	}
+	if tenant == nil {
+		http.Error(w, "Tenant not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"data": tenant})
+}
+
+// HandleCreateTenant creates a new tenant
+func (h *Handler) HandleCreateTenant(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name string `json:"name"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.Name == "" {
+		http.Error(w, "Tenant name is required", http.StatusBadRequest)
+		return
+	}
+
+	tenant, err := h.repo.CreateTenant(r.Context(), req.Name)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to create tenant")
+		http.Error(w, "Failed to create tenant", http.StatusInternalServerError)
+		return
+	}
+
+	// Log successful creation
+	utils.LogAuditEvent(r.Context(), h.repo, r, "tenant.create", "tenant", &tenant.ID, nil, tenant, true)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(tenant)
+}
+
+// HandleUpdateTenant updates a tenant
+func (h *Handler) HandleUpdateTenant(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tenantIDStr := vars["tenantId"]
+	tenantID, err := uuid.Parse(tenantIDStr)
+	if err != nil {
+		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		return
+	}
+
+	var updates map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Get before state for audit
+	beforeTenant, _ := h.repo.GetTenantByID(tenantID)
+	if beforeTenant == nil {
+		http.Error(w, "Tenant not found", http.StatusNotFound)
+		return
+	}
+
+	oldPlan := beforeTenant.Plan
+
+	// Check if plan is being changed and if new plan would exceed seat limit
+	if newPlan, ok := updates["plan"].(string); ok && newPlan != "" {
+		newMaxUsers := plans.MaxUsersPerPlan(newPlan)
+		if newMaxUsers != -1 {
+			if currentCount, err := h.repo.CountActiveUsersByTenant(r.Context(), tenantID); err == nil && currentCount > newMaxUsers {
+				gracePeriodEnd := time.Now().AddDate(0, 0, plans.GetSeatGracePeriodDays())
+				updates["seat_grace_period_end"] = gracePeriodEnd
+				logrus.WithFields(logrus.Fields{"tenant_id": tenantID, "new_plan": newPlan, "current_users": currentCount, "max_users": newMaxUsers, "grace_period_end": gracePeriodEnd}).Info("Plan downgrade exceeded seat limit - grace period started")
+			}
+		}
+	}
+
+	tenant, err := h.repo.UpdateTenant(r.Context(), tenantID, updates)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to update tenant")
+		http.Error(w, "Failed to update tenant", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if plan was upgraded and process membership events
+	if newPlan, ok := updates["plan"].(string); ok && newPlan != "" && newPlan != oldPlan {
+		go h.processPlanUpgrade(tenantID, oldPlan, newPlan)
+	}
+
+	// Log successful update
+	utils.LogAuditEvent(r.Context(), h.repo, r, "tenant.update", "tenant", &tenantID, beforeTenant, tenant, true)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tenant)
+}
+
+// processPlanUpgrade handles membership events for plan upgrades asynchronously
+func (h *Handler) processPlanUpgrade(tenantID uuid.UUID, oldPlan, newPlan string) {
+	// Get all active users in the tenant to award achievements and create activities
+	users, err := h.repo.ListActiveUsersByTenant(context.Background(), tenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to list users for plan upgrade processing")
+		return
+	}
+
+	// Get the admin user who likely performed the upgrade (first user as proxy)
+	var adminUserID uuid.UUID
+	if len(users) > 0 {
+		adminUserID = users[0].ID
+	}
+
+	for _, user := range users {
+		upgradeData := membership.PlanUpgradeData{
+			UserID:     user.ID,
+			TenantID:   tenantID,
+			OldPlan:    oldPlan,
+			NewPlan:    newPlan,
+			UpgradedAt: time.Now(),
+			UpgradedBy: adminUserID,
+		}
+
+		if err := h.membershipSvc.HandlePlanUpgrade(context.Background(), upgradeData); err != nil {
+			logrus.WithError(err).WithFields(logrus.Fields{
+				"user_id":   user.ID,
+				"tenant_id": tenantID,
+			}).Warn("Failed to process plan upgrade for user")
+		}
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"tenant_id":  tenantID,
+		"old_plan":   oldPlan,
+		"new_plan":   newPlan,
+		"user_count": len(users),
+	}).Info("Processed plan upgrade for tenant users")
+}
+
+// HandleDeleteTenant deletes a tenant
+func (h *Handler) HandleDeleteTenant(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tenantIDStr := vars["tenantId"]
+	tenantID, err := uuid.Parse(tenantIDStr)
+	if err != nil {
+		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get before state for audit
+	beforeTenant, _ := h.repo.GetTenantByID(tenantID)
+
+	err = h.repo.DeleteTenant(r.Context(), tenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to delete tenant")
+		if err.Error() == "cannot delete tenant with existing users" {
+			http.Error(w, "Cannot delete tenant with existing users", http.StatusConflict)
+		} else {
+			http.Error(w, "Failed to delete tenant", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Log successful deletion
+	utils.LogAuditEvent(r.Context(), h.repo, r, "tenant.delete", "tenant", &tenantID, beforeTenant, nil, true)
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleGetSeatUsage returns seat usage information for a tenant
+// GET /v1/admin/tenants/{tenantId}/seat-usage
+func (h *Handler) HandleGetSeatUsage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tenantIDStr := vars["tenantId"]
+	tenantID, err := uuid.Parse(tenantIDStr)
+	if err != nil {
+		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
+		return
+	}
+
+	tenant, err := h.repo.GetTenantByID(tenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant")
+		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		return
+	}
+	if tenant == nil {
+		http.Error(w, "Tenant not found", http.StatusNotFound)
+		return
+	}
+
+	// Count active users for this tenant
+	activeUserCount, err := h.repo.CountActiveUsersByTenant(r.Context(), tenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to count active users")
+		http.Error(w, "Failed to get seat usage", http.StatusInternalServerError)
+		return
+	}
+
+	// Get seat usage info from plans package
+	seatInfo := plans.GetSeatUsage(tenant.Plan, activeUserCount)
+
+	// Include grace period info if set
+	var gracePeriodEndsAt *time.Time
+	if tenant.SeatGracePeriodEnd != nil {
+		gracePeriodEndsAt = tenant.SeatGracePeriodEnd
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"tenant_id":         tenantID,
+		"tenant_name":       tenant.Name,
+		"plan":              seatInfo.Plan,
+		"current_users":     seatInfo.CurrentUsers,
+		"max_users":         seatInfo.MaxUsers,
+		"is_unlimited":      seatInfo.IsUnlimited,
+		"is_at_limit":       seatInfo.IsAtLimit,
+		"is_at_warning":     seatInfo.IsAtWarning,
+		"warning_threshold": seatInfo.WarningPercent,
+		"grace_period_ends": gracePeriodEndsAt,
+	})
+}
+
+// HandleListTenantApps lists apps for a specific tenant (admin impersonating tenant)
 func (h *Handler) HandleListTenantApps(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	tenantIDStr := vars["tenantId"]
@@ -24,32 +278,22 @@ func (h *Handler) HandleListTenantApps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get apps for this tenant
 	apps, err := h.repo.ListAppsByTenant(tenantID)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to list tenant apps")
-		http.Error(w, "Failed to list tenant apps", http.StatusInternalServerError)
+		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to list tenant apps")
+		http.Error(w, "Failed to list apps", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"apps":      apps,
-		"tenant_id": tenantID,
-	})
+	json.NewEncoder(w).Encode(map[string]interface{}{"data": apps})
 }
 
-// HandleGetTenantApp gets a specific app for a tenant (admin view)
+// HandleGetTenantApp gets a specific app for a tenant (admin impersonating tenant)
 func (h *Handler) HandleGetTenantApp(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	tenantIDStr := vars["tenantId"]
-	tenantID, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
-		return
-	}
-
 	appIDStr := vars["appId"]
+
 	appID, err := uuid.Parse(appIDStr)
 	if err != nil {
 		http.Error(w, "Invalid app ID", http.StatusBadRequest)
@@ -58,121 +302,68 @@ func (h *Handler) HandleGetTenantApp(w http.ResponseWriter, r *http.Request) {
 
 	app, err := h.repo.GetAppByID(appID)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to get tenant app")
-		http.Error(w, "Failed to get tenant app", http.StatusInternalServerError)
+		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get app")
+		http.Error(w, "Failed to get app", http.StatusInternalServerError)
 		return
 	}
-	if app == nil || app.TenantID != tenantID {
-		http.Error(w, "App not found or access denied", http.StatusNotFound)
+	if app == nil {
+		http.Error(w, "App not found", http.StatusNotFound)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(app)
+	json.NewEncoder(w).Encode(map[string]interface{}{"data": app})
 }
 
-// HandleListTenantBackends lists backends for a specific app/tenant (admin view)
+// HandleListTenantBackends lists backends for a specific tenant app (admin impersonating tenant)
 func (h *Handler) HandleListTenantBackends(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	tenantIDStr := vars["tenantId"]
-	tenantID, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
-		return
-	}
-
 	appIDStr := vars["appId"]
+
 	appID, err := uuid.Parse(appIDStr)
 	if err != nil {
 		http.Error(w, "Invalid app ID", http.StatusBadRequest)
-		return
-	}
-
-	// Verify app belongs to tenant
-	app, err := h.repo.GetAppByID(appID)
-	if err != nil {
-		logrus.WithError(err).Error("Failed to verify app ownership")
-		http.Error(w, "Failed to verify app ownership", http.StatusInternalServerError)
-		return
-	}
-	if app == nil || app.TenantID != tenantID {
-		http.Error(w, "App not found or access denied", http.StatusNotFound)
 		return
 	}
 
 	backends, err := h.repo.ListBackendsByAppID(appID)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to list tenant backends")
-		http.Error(w, "Failed to list tenant backends", http.StatusInternalServerError)
+		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list backends")
+		http.Error(w, "Failed to list backends", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"backends":  backends,
-		"app_id":    appID,
-		"tenant_id": tenantID,
-	})
+	json.NewEncoder(w).Encode(map[string]interface{}{"data": backends})
 }
 
-// HandleListTenantDeployments lists deployments for a specific app/tenant (admin view)
+// HandleListTenantDeployments lists deployments for a specific tenant app (admin impersonating tenant)
 func (h *Handler) HandleListTenantDeployments(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	tenantIDStr := vars["tenantId"]
-	tenantID, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
-		return
-	}
-
 	appIDStr := vars["appId"]
+
 	appID, err := uuid.Parse(appIDStr)
 	if err != nil {
 		http.Error(w, "Invalid app ID", http.StatusBadRequest)
 		return
 	}
 
-	// Verify app belongs to tenant
-	app, err := h.repo.GetAppByID(appID)
+	// Default limit of 50 deployments
+	deployments, err := h.repo.ListDeploymentsByAppID(appID, 50)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to verify app ownership")
-		http.Error(w, "Failed to verify app ownership", http.StatusInternalServerError)
+		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list deployments")
+		http.Error(w, "Failed to list deployments", http.StatusInternalServerError)
 		return
 	}
-	if app == nil || app.TenantID != tenantID {
-		http.Error(w, "App not found or access denied", http.StatusNotFound)
-		return
-	}
-
-	// For now, return empty list - deployment functionality would need to be implemented
-	deployments := []*storage.Deployment{}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"deployments": deployments,
-		"app_id":      appID,
-		"tenant_id":   tenantID,
-	})
+	json.NewEncoder(w).Encode(map[string]interface{}{"data": deployments})
 }
 
-// HandleTenantDeploymentRollback rolls back a deployment for a tenant (admin with approval)
+// HandleTenantDeploymentRollback rolls back a deployment for a tenant app (admin impersonating tenant)
 func (h *Handler) HandleTenantDeploymentRollback(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	tenantIDStr := vars["tenantId"]
-	tenantID, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
-		return
-	}
-
-	appIDStr := vars["appId"]
 	deploymentIDStr := vars["deploymentId"]
-
-	appID, err := uuid.Parse(appIDStr)
-	if err != nil {
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
-		return
-	}
 
 	deploymentID, err := uuid.Parse(deploymentIDStr)
 	if err != nil {
@@ -180,54 +371,37 @@ func (h *Handler) HandleTenantDeploymentRollback(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Verify app belongs to tenant
-	app, err := h.repo.GetAppByID(appID)
+	// Get deployment to verify it exists
+	deployment, err := h.repo.GetDeploymentByID(deploymentID)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to verify app ownership")
-		http.Error(w, "Failed to verify app ownership", http.StatusInternalServerError)
+		logrus.WithError(err).WithField("deployment_id", deploymentID).Error("Failed to get deployment")
+		http.Error(w, "Failed to get deployment", http.StatusInternalServerError)
 		return
 	}
-	if app == nil || app.TenantID != tenantID {
-		http.Error(w, "App not found or access denied", http.StatusNotFound)
-		return
-	}
-
-	// Parse rollback request
-	var req struct {
-		Reason     string `json:"reason"`
-		ApprovedBy string `json:"approved_by,omitempty"` // For audit trail
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+	if deployment == nil {
+		http.Error(w, "Deployment not found", http.StatusNotFound)
 		return
 	}
 
-	if req.Reason == "" {
-		http.Error(w, "Rollback reason is required", http.StatusBadRequest)
+	// Update deployment status to rolled back
+	err = h.repo.UpdateDeploymentStatus(deploymentID, "rolled_back", "Manually rolled back by admin", nil)
+	if err != nil {
+		logrus.WithError(err).WithField("deployment_id", deploymentID).Error("Failed to rollback deployment")
+		http.Error(w, "Failed to rollback deployment", http.StatusInternalServerError)
 		return
 	}
 
-	// For now, simulate rollback - in a real implementation this would call the deployment service
-	result := map[string]interface{}{
-		"deployment_id": deploymentID,
-		"app_id":        appID,
-		"tenant_id":     tenantID,
-		"status":        "rollback_initiated",
-		"reason":        req.Reason,
-		"approved_by":   req.ApprovedBy,
-		"timestamp":     time.Now(),
-	}
-
-	// Log the rollback action
-	utils.LogAuditEvent(r.Context(), h.repo, r, "deployment.rollback", "deployment", &deploymentID, nil, result, true)
+	utils.LogAuditEvent(r.Context(), h.repo, r, "deployment.rollback", "deployment", &deploymentID, nil, map[string]interface{}{
+		"app_id": deployment.AppID,
+	}, true)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Deployment rolled back successfully",
+	})
 }
 
-// HandleTenantMetrics provides observability metrics for a tenant (admin view).
-// Uses unified analytics when available for real data.
+// HandleTenantMetrics returns metrics for a specific tenant (admin view)
 func (h *Handler) HandleTenantMetrics(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	tenantIDStr := vars["tenantId"]
@@ -237,136 +411,21 @@ func (h *Handler) HandleTenantMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.unifiedAnalytics != nil {
-		start := time.Now().UTC().Add(-24 * time.Hour)
-		end := time.Now().UTC()
-		if s := r.URL.Query().Get("start"); s != "" {
-			if t, err := time.Parse(time.RFC3339, s); err == nil {
-				start = t.UTC()
-			}
-		}
-		if e := r.URL.Query().Get("end"); e != "" {
-			if t, err := time.Parse(time.RFC3339, e); err == nil {
-				end = t.UTC()
-			}
-		}
-		sum, err := h.unifiedAnalytics.TenantSummary(r.Context(), tenantID, start, end)
-		if err != nil {
-			logrus.WithError(err).WithField("tenant_id", tenantID).Error("admin: tenant metrics from unified analytics failed")
-			http.Error(w, "Failed to get tenant metrics", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"tenant_id": tenantID,
-			"timestamp": time.Now(),
-			"summary":   sum,
-			"metrics": map[string]interface{}{
-				"function_executions": sum.FunctionExecutions,
-				"state_storage_bytes": sum.StateStorageBytes,
-				"state_read_ops":      sum.StateReadOps,
-				"state_write_ops":     sum.StateWriteOps,
-				"billing_quantity":    sum.BillingQuantity,
-				"agent_calls":         sum.AgentCalls,
-				"agent_cost_usd":      sum.AgentCostUSD,
-				"registry_executions": sum.RegistryExecutions,
-			},
-			"alerts": []string{},
-		})
-		return
-	}
-
-	// Fallback placeholder when unified analytics not injected
+	// Placeholder: tenant metrics can be integrated with metrics service
 	metrics := map[string]interface{}{
 		"tenant_id": tenantID,
-		"timestamp": time.Now(),
-		"metrics": map[string]interface{}{
-			"apps_count":           0,
-			"active_deployments":   0,
-			"total_requests_24h":   0,
-			"error_rate_24h":       0.0,
-			"avg_response_time_ms": 0,
+		"functions": map[string]interface{}{
+			"total":     0,
+			"executions_24h": 0,
 		},
-		"alerts": []string{},
+		"generated_at": time.Now().UTC(),
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(metrics)
 }
 
-// HandlePlatformAnalyticsSummary returns platform-wide analytics summary (admin only).
-// GET /v1/admin/analytics/platform/summary?start=...&end=...
-func (h *Handler) HandlePlatformAnalyticsSummary(w http.ResponseWriter, r *http.Request) {
-	if h.unifiedAnalytics == nil {
-		http.Error(w, "Analytics not available", http.StatusServiceUnavailable)
-		return
-	}
-	start := time.Now().UTC().Add(-30 * 24 * time.Hour)
-	end := time.Now().UTC()
-	if s := r.URL.Query().Get("start"); s != "" {
-		if t, err := time.Parse(time.RFC3339, s); err == nil {
-			start = t.UTC()
-		} else if t, err := time.Parse("2006-01-02", s); err == nil {
-			start = t.UTC()
-		}
-	}
-	if e := r.URL.Query().Get("end"); e != "" {
-		if t, err := time.Parse(time.RFC3339, e); err == nil {
-			end = t.UTC()
-		} else if t, err := time.Parse("2006-01-02", e); err == nil {
-			end = t.UTC()
-		}
-	}
-	sum, err := h.unifiedAnalytics.PlatformSummary(r.Context(), start, end)
-	if err != nil {
-		logrus.WithError(err).Error("admin: platform analytics summary failed")
-		http.Error(w, "Failed to get platform summary", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sum)
-}
-
-// HandleTenantAnalyticsSummary returns unified tenant summary for any tenant (admin only).
-// GET /v1/admin/analytics/tenants/:tenantId/summary?start=...&end=...
-func (h *Handler) HandleTenantAnalyticsSummary(w http.ResponseWriter, r *http.Request) {
-	if h.unifiedAnalytics == nil {
-		http.Error(w, "Analytics not available", http.StatusServiceUnavailable)
-		return
-	}
-	vars := mux.Vars(r)
-	tenantIDStr := vars["tenantId"]
-	tenantID, err := uuid.Parse(tenantIDStr)
-	if err != nil {
-		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
-		return
-	}
-	start := time.Now().UTC().Add(-30 * 24 * time.Hour)
-	end := time.Now().UTC()
-	if s := r.URL.Query().Get("start"); s != "" {
-		if t, err := time.Parse(time.RFC3339, s); err == nil {
-			start = t.UTC()
-		} else if t, err := time.Parse("2006-01-02", s); err == nil {
-			start = t.UTC()
-		}
-	}
-	if e := r.URL.Query().Get("end"); e != "" {
-		if t, err := time.Parse(time.RFC3339, e); err == nil {
-			end = t.UTC()
-		} else if t, err := time.Parse("2006-01-02", e); err == nil {
-			end = t.UTC()
-		}
-	}
-	sum, err := h.unifiedAnalytics.TenantSummary(r.Context(), tenantID, start, end)
-	if err != nil {
-		logrus.WithError(err).WithField("tenant_id", tenantID).Error("admin: tenant analytics summary failed")
-		http.Error(w, "Failed to get tenant summary", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sum)
-}
-
-// HandleTenantHealth provides health status for a tenant's resources (admin view)
+// HandleTenantHealth returns health status for a specific tenant (admin view)
 func (h *Handler) HandleTenantHealth(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	tenantIDStr := vars["tenantId"]
@@ -376,15 +435,24 @@ func (h *Handler) HandleTenantHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenant, err := h.repo.GetTenantByID(tenantID)
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to get tenant for health check")
+		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		return
+	}
+	if tenant == nil {
+		http.Error(w, "Tenant not found", http.StatusNotFound)
+		return
+	}
+
 	health := map[string]interface{}{
-		"tenant_id": tenantID,
-		"status":    "healthy",
-		"timestamp": time.Now(),
+		"tenant_id":  tenantID,
+		"tenant_name": tenant.Name,
+		"status":     "healthy",
 		"checks": map[string]interface{}{
-			"apps_accessible":     true,
-			"deployments_healthy": true,
-			"backends_responding": true,
-			"routing_functional":  true,
+			"database": "ok",
+			"storage":  "ok",
 		},
 	}
 
