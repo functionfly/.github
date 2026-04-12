@@ -5,12 +5,14 @@ go 1.25.0
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/PaesslerAG/jsonpath v0.1.1
 	github.com/alicebob/miniredis/v2 v2.36.1
 	github.com/aws/aws-sdk-go-v2 v1.41.4
 	github.com/aws/aws-sdk-go-v2/config v1.32.10
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.10
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.64.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.96.2
+	github.com/aws/smithy-go v1.24.2
 	github.com/bytecodealliance/wasmtime-go/v19 v19.0.0
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.27.0
@@ -29,10 +31,12 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/jaevor/go-nanoid v1.4.0
+	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	github.com/oschwald/geoip2-golang v1.13.0
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.23.2
+	github.com/prometheus/client_model v0.6.2
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/resend/resend-go/v2 v2.28.0
@@ -59,6 +63,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.8.0 // indirect
 	filippo.io/edwards25519 v1.1.1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/PaesslerAG/gval v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.7 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.18 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.20 // indirect
@@ -73,7 +78,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.11 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.7 // indirect
-	github.com/aws/smithy-go v1.24.2 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.13.0 // indirect
@@ -132,7 +136,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect

@@ -2,15 +2,15 @@
   "name": "@functionfly/monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "FunctionFly - Serverless Function Platform",
+  "description": "FunctionFly™ - Serverless Function Platform",
   "workspaces": [
     "web/*"
   ],
   "scripts": {
-    "dev": "nx run-many -t dev -p dashboard,functionfly-marketing,docs,admin-dashboard,functionfly-auth --parallel=5",
+    "dev": "nx run-many -t dev -p dashboard,functionfly-marketing,functionfly-blog,docs,admin-dashboard,functionfly-auth --parallel=6",
     "dev:all": "nx run-many -t dev --all --parallel=4",
     "dev:admin": "nx run admin-dashboard -t dev",
-    "dev:blog": "nx run blog-api -t dev",
+    "dev:blog": "nx run functionfly-blog -t dev",
     "build": "nx run-many --target=build --all",
     "build:affected": "nx affected --target=build",
     "test": "nx run-many --target=test --all",
@@ -43,6 +43,7 @@
     "jspdf": "^4.2.1",
     "minimatch": "^9.0.7",
     "next": "^16.1.7",
+    "react-router-dom": "^7.14.0",
     "undici": "^7.24.0",
     "vercel": "^50.38.2"
   },
@@ -58,6 +59,8 @@
     "smol-toml": "^1.6.1",
     "yaml": "^2.8.3",
     "brace-expansion": "^5.0.5",
-    "fastify": "^5.8.4"
+    "fastify": "^5.8.4",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.2"
   }
 }

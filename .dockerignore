@@ -1,3 +1,10 @@
+# Emscripten SDK - not needed for Go API
+emsdk/
+
+# Go workspace file (references ../fly which is outside Docker context)
+go.work
+go.work.sum
+
 # Git and IDE
 .git
 .gitignore

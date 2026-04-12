@@ -1,4 +1,4 @@
-# FunctionFly
+# FunctionFly™
 
 <div align="center">
 
@@ -13,7 +13,7 @@ A production-ready serverless function platform built with Go, designed for high
 
 ## Overview
 
-FunctionFly is a comprehensive serverless platform that enables developers to deploy and run functions in various languages with automatic scaling, built-in monitoring, and a pay-per-use pricing model.
+FunctionFly™ is a comprehensive serverless platform that enables developers to deploy and run functions in various languages with automatic scaling, built-in monitoring, and a pay-per-use pricing model.
 
 ## Features
 
@@ -124,7 +124,7 @@ See [packaging/README.md](packaging/README.md) for Windows (Scoop/Chocolatey), u
 ### Using the CLI
 
 ```bash
-# Login to FunctionFly
+# Login to FunctionFly™
 fly login
 
 # Initialize a new function project
@@ -208,7 +208,7 @@ Environment variables can be configured via `.env` files. See `.env.example` for
 
 ## Monitoring
 
-FunctionFly includes built-in monitoring with Prometheus and Grafana.
+FunctionFly™ includes built-in monitoring with Prometheus and Grafana.
 
 1. Start the monitoring stack:
 

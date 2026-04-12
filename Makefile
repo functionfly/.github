@@ -189,91 +189,99 @@ dev-neon: ## Start API with Neon DB (no local Postgres). Starts FlyMind (ai-serv
 	echo "Starting API (Neon DB, Redis $$REDIS_ADDR) + FlyMind if needed..."; \
 	exec ./scripts/run-orchestrator-with-ai.sh ./bin/orchestrator-api --skip-migrations )
 
+dev-local: ## Start API with local Postgres + Redis + FlyMind. No Neon/Upstash needed. Set DB_PORT=5434 for Docker Postgres.
+	@echo "Using local services: DB_PORT=$${DB_PORT:-5432}, REDIS_ADDR=$${REDIS_ADDR:-localhost:6379}"
+	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+	REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} DEVELOPMENT=true DEVELOPMENT_ALLOW_NONLOCAL_HOST=true \
+	SKIP_MIGRATION_VALIDATION=true VERIFICATION_ENABLED=false \
+	JWT_SECRET=$${JWT_SECRET:-dev-jwt-secret-not-for-production} \
+	./scripts/run-orchestrator-with-ai.sh ./bin/orchestrator-api --skip-migrations
+
 dev: ## Start development environment (local Postgres + Redis, no Docker). Set DB_PORT=5434 for Docker Postgres. Start Prometheus with: docker compose up -d prometheus (then status page will show component health).
 	@echo "Using local services: DB_PORT=$${DB_PORT:-5432}, REDIS_ADDR=$${REDIS_ADDR:-localhost:6379}, PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091}"
-	@if command -v infisical >/dev/null 2>&1; then \
-		DEVELOPMENT=true infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091} \
-		SKIP_MIGRATION_VALIDATION=true \
-		go run ./cmd/orchestrator-api; \
-	else \
-		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091} DEVELOPMENT=true \
-		SKIP_MIGRATION_VALIDATION=true \
-		go run ./cmd/orchestrator-api; \
-	fi
+	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+	REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091} DEVELOPMENT=true \
+	SKIP_MIGRATION_VALIDATION=true \
+	go run ./cmd/orchestrator-api
 
-api: ## Run orchestrator API (local services; use infisical if available). Set DB_PORT=5434 for Docker Postgres.
-	@if command -v infisical >/dev/null 2>&1; then \
-		infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} \
-		SKIP_MIGRATION_VALIDATION=true \
-		go run ./cmd/orchestrator-api; \
-	else \
-		./scripts/run-api-local.sh; \
-	fi
+api: ## Run orchestrator API (local services). Set DB_PORT=5434 for Docker Postgres.
+	@./scripts/run-api-local.sh
 
 api-local: ## Run orchestrator API without Infisical (uses run-api-local.sh). Use when Infisical returns 403 or is unavailable.
 	./scripts/run-api-local.sh
 
 health-monitor: ## Run health monitor service (local DB/Redis). Set DB_PORT=5434 for Docker Postgres.
-	@if command -v infisical >/dev/null 2>&1; then \
-		infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} \
-		SKIP_MIGRATION_VALIDATION=true \
-		go run ./cmd/health-monitor; \
-	else \
-		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} \
-		SKIP_MIGRATION_VALIDATION=true \
-		go run ./cmd/health-monitor; \
-	fi
+	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+	REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} \
+	SKIP_MIGRATION_VALIDATION=true \
+	go run ./cmd/health-monitor
 
 migrate: ## Run database migrations (up). Uses local DB by default (DB_PORT=5432). Set DB_PORT=5434 for Docker Postgres.
-	@if command -v infisical >/dev/null 2>&1; then \
-		infisical run --env=dev -- env DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		go run ./cmd/migrate up; \
-	else \
-		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		go run ./cmd/migrate up; \
-	fi
+	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+	go run ./cmd/migrate up
 
 migrate-local: ## Run database migrations (up) without Infisical. Use when Infisical returns 403 or is unavailable.
 	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} go run ./cmd/migrate up
 
 migrate-down: ## Rollback database migrations
-	@if command -v infisical >/dev/null 2>&1; then \
-		infisical run --env=dev -- go run ./cmd/migrate down; \
-	else \
-		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		go run ./cmd/migrate down; \
-	fi
+	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+	go run ./cmd/migrate down
 
 migrate-status: ## Show migration status
-	@if command -v infisical >/dev/null 2>&1; then \
-		infisical run --env=dev -- go run ./cmd/migrate status; \
-	else \
-		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		go run ./cmd/migrate status; \
-	fi
+	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+	go run ./cmd/migrate status
 
 migrate-version: ## Show current migration version
-	@if command -v infisical >/dev/null 2>&1; then \
-		infisical run --env=dev -- go run ./cmd/migrate version; \
-	else \
-		DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-		DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-		go run ./cmd/migrate version; \
+	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+	go run ./cmd/migrate version
+
+migrate-neon: ## Run database migrations (up) on Neon PostgreSQL. Requires DATABASE_URL env var.
+	@if [ -z "$${DATABASE_URL:-}" ]; then \
+		echo "Error: DATABASE_URL not set. Please set it to your Neon connection string."; \
+		echo "Example: export DATABASE_URL=postgresql://user:pass@host.neon.tech/dbname?sslmode=require"; \
+		exit 1; \
 	fi
+	@echo "Running migrations on Neon PostgreSQL..."
+	@unset DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSLMODE; \
+	go run ./cmd/migrate up
+
+migrate-neon-status: ## Show migration status on Neon PostgreSQL. Requires DATABASE_URL env var.
+	@if [ -z "$${DATABASE_URL:-}" ]; then \
+		echo "Error: DATABASE_URL not set."; \
+		exit 1; \
+	fi
+	@unset DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSLMODE; \
+	go run ./cmd/migrate status
+
+migrate-all: ## Run migrations on both local and Neon (if DATABASE_URL is set)
+	@echo "========================================"
+	@echo "Running migrations on LOCAL PostgreSQL"
+	@echo "========================================"
+	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+	go run ./cmd/migrate up
+	@echo ""
+	@if [ -n "$${DATABASE_URL:-}" ]; then \
+		echo "========================================"; \
+		echo "Running migrations on NEON PostgreSQL"; \
+		echo "========================================"; \
+		unset DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSLMODE; \
+		go run ./cmd/migrate up; \
+	else \
+		echo "Skipping Neon migrations (DATABASE_URL not set)"; \
+	fi
+
+migrate-dry-run: ## Show what migrations would be applied without running them (local DB)
+	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
+	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
+	go run ./cmd/apply-migrations -dry-run -target=local
 
 reset-db: ## Drop DB, recreate, and run migrations (clean slate). Use when DB is dirty or inconsistent.
 	@./scripts/reset-db.sh
@@ -376,11 +384,7 @@ db-backup-list: ## List available backups
 
 db-maintenance: ## Run database maintenance (analyze/vacuum) to optimize performance
 	@echo "Running database maintenance..."
-	@if command -v infisical >/dev/null 2>&1; then \
-		infisical run --env=dev -- ./scripts/db-maintenance.sh; \
-	else \
-		./scripts/db-maintenance.sh; \
-	fi
+	@./scripts/db-maintenance.sh
 
 db-migrate-prod: ## Run migrations on production DB via Infisical prod (requires INFISICAL_TOKEN + infisical CLI)
 	@echo "Running migrations on production database..."
