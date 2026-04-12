@@ -19,47 +19,47 @@ type User struct {
 	EmailVerified bool      `json:"email_verified" gorm:"default:false"`
 	// TokenVersion is used for JWT revocation - incrementing this invalidates all existing tokens
 	// Set via application code on password change/logout all
-	TokenVersion  int        `json:"token_version,omitempty" gorm:"default:0"`
-	CompanyName   *string   `json:"company_name,omitempty" gorm:"size:255"`
-	DateOfBirth   *time.Time `json:"date_of_birth,omitempty" gorm:"column:date_of_birth;type:date"`
-	Bio           *string   `json:"bio,omitempty" gorm:"type:text"`
+	TokenVersion int        `json:"token_version,omitempty" gorm:"default:0"`
+	CompanyName  *string    `json:"company_name,omitempty" gorm:"size:255"`
+	DateOfBirth  *time.Time `json:"date_of_birth,omitempty" gorm:"column:date_of_birth;type:date"`
+	Bio          *string    `json:"bio,omitempty" gorm:"type:text"`
 	// ProfileNumber is a sequential number assigned to users based on registration order
 	// Used to identify and reward early adopters (e.g., "Member #123")
-	ProfileNumber *int      `json:"profile_number,omitempty" gorm:"column:profile_number;uniqueIndex"`
+	ProfileNumber *int `json:"profile_number,omitempty" gorm:"column:profile_number;uniqueIndex"`
 	// Extended profile fields
-	Location              *string                `json:"location,omitempty" gorm:"size:255"`
-	Website               *string                `json:"website,omitempty" gorm:"size:500"`
-	JobTitle              *string                `json:"job_title,omitempty" gorm:"size:255"`
-	SocialLinks           map[string]interface{} `json:"social_links,omitempty" gorm:"type:jsonb;default:'{}'"`
-	TwitterURL            *string                `json:"twitter_url,omitempty" gorm:"column:twitter_url;size:500"`
-	GithubURL             *string                `json:"github_url,omitempty" gorm:"column:github_url;size:500"`
-	LinkedInURL           *string                `json:"linkedin_url,omitempty" gorm:"column:linkedin_url;size:500"`
-	CoverImageURL         *string                `json:"cover_image_url,omitempty" gorm:"column:cover_image_url;size:500"`
-	VerificationToken     *string                `json:"verification_token,omitempty"`
-	VerificationExpiresAt *time.Time             `json:"verification_expires_at,omitempty"`
+	Location              *string    `json:"location,omitempty" gorm:"size:255"`
+	Website               *string    `json:"website,omitempty" gorm:"size:500"`
+	JobTitle              *string    `json:"job_title,omitempty" gorm:"size:255"`
+	SocialLinks           JSONMap    `json:"social_links,omitempty" gorm:"type:jsonb;default:'{}'"`
+	TwitterURL            *string    `json:"twitter_url,omitempty" gorm:"column:twitter_url;size:500"`
+	GithubURL             *string    `json:"github_url,omitempty" gorm:"column:github_url;size:500"`
+	LinkedInURL           *string    `json:"linkedin_url,omitempty" gorm:"column:linkedin_url;size:500"`
+	CoverImageURL         *string    `json:"cover_image_url,omitempty" gorm:"column:cover_image_url;size:500"`
+	VerificationToken     *string    `json:"verification_token,omitempty"`
+	VerificationExpiresAt *time.Time `json:"verification_expires_at,omitempty"`
 	// Social authentication fields
-	Provider     *string                `json:"provider,omitempty"`                        // 'google', 'github', etc.
-	ProviderID   *string                `json:"provider_id,omitempty"`                     // External user ID from OAuth provider
-	ProviderData map[string]interface{} `json:"provider_data,omitempty" gorm:"type:jsonb"` // Additional provider-specific data
+	Provider     *string `json:"provider,omitempty"`                        // 'google', 'github', etc.
+	ProviderID   *string `json:"provider_id,omitempty"`                     // External user ID from OAuth provider
+	ProviderData JSONMap `json:"provider_data,omitempty" gorm:"type:jsonb"` // Additional provider-specific data
 	// MFA fields
 	MFASecret      *string    `json:"mfa_secret,omitempty"`                         // TOTP secret for MFA
 	MFAEnabled     bool       `json:"mfa_enabled" gorm:"default:false"`             // Whether MFA is enabled for this user
 	MFABackupCodes []string   `json:"mfa_backup_codes,omitempty" gorm:"type:jsonb"` // Backup codes for MFA recovery
 	MFALastUsed    *time.Time `json:"mfa_last_used,omitempty"`                      // Last time MFA was used
 	// Deactivation fields (for user management instead of hard delete)
-	DeactivatedAt  *time.Time `json:"deactivated_at,omitempty"`
-	DeactivatedBy  *uuid.UUID `json:"deactivated_by,omitempty"`
+	DeactivatedAt *time.Time `json:"deactivated_at,omitempty"`
+	DeactivatedBy *uuid.UUID `json:"deactivated_by,omitempty"`
 	// Team collaboration fields
 	Teams []TeamMembership `json:"teams,omitempty" gorm:"foreignKey:UserID"`
 	// Profile-related associations
-	Skills       []UserSkill            `json:"skills,omitempty" gorm:"foreignKey:UserID"`
-	Achievements []UserAchievement      `json:"achievements,omitempty" gorm:"foreignKey:UserID"`
-	Activity     []UserActivity         `json:"activity,omitempty" gorm:"foreignKey:UserID"`
-	Settings     map[string]interface{} `json:"settings,omitempty" gorm:"type:jsonb;default:'{}'"` // Profile settings (visibility, notifications, privacy)
+	Skills       []UserSkill       `json:"skills,omitempty" gorm:"foreignKey:UserID"`
+	Achievements []UserAchievement `json:"achievements,omitempty" gorm:"foreignKey:UserID"`
+	Activity     []UserActivity    `json:"activity,omitempty" gorm:"foreignKey:UserID"`
+	Settings     JSONMap           `json:"settings,omitempty" gorm:"type:jsonb;default:'{}'"` // Profile settings (visibility, notifications, privacy)
 	// Online status tracking
-	LastActiveAt *time.Time             `json:"last_active_at,omitempty" gorm:"column:last_active_at;index"` // Last time user was active (for online status)
-	CreatedAt    time.Time              `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt    time.Time              `json:"updated_at" gorm:"autoUpdateTime"`
+	LastActiveAt *time.Time `json:"last_active_at,omitempty" gorm:"column:last_active_at;index"` // Last time user was active (for online status)
+	CreatedAt    time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // UserSearchHit is a public-safe row for username autocomplete (no email or tenant).
@@ -127,13 +127,13 @@ type Tenant struct {
 	MFAPolicy          string         `json:"mfa_policy" gorm:"default:'optional'"`    // 'disabled', 'optional', 'required'
 	SessionPersistence bool           `json:"session_persistence" gorm:"default:true"` // Whether sessions persist across browser restarts
 	// Seat management fields
-	SeatGracePeriodEnd *time.Time    `json:"seat_grace_period_end,omitempty"`   // Grace period end after downgrade
-	SeatWarningSentAt *time.Time    `json:"seat_warning_sent_at,omitempty"`    // Last seat warning notification
-	Users              []User         `json:"users,omitempty" gorm:"foreignKey:TenantID"`
-	Apps               []App          `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
-	Teams              []Team         `json:"teams,omitempty" gorm:"foreignKey:TenantID"`
-	CreatedAt          time.Time      `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt          time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
+	SeatGracePeriodEnd *time.Time `json:"seat_grace_period_end,omitempty"` // Grace period end after downgrade
+	SeatWarningSentAt  *time.Time `json:"seat_warning_sent_at,omitempty"`  // Last seat warning notification
+	Users              []User     `json:"users,omitempty" gorm:"foreignKey:TenantID"`
+	Apps               []App      `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
+	Teams              []Team     `json:"teams,omitempty" gorm:"foreignKey:TenantID"`
+	CreatedAt          time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt          time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // Team represents a team within a tenant
@@ -142,7 +142,9 @@ type Team struct {
 	TenantID    uuid.UUID        `json:"tenant_id" gorm:"type:uuid;not null"`
 	Tenant      *Tenant          `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
 	Name        string           `json:"name" gorm:"not null"`
+	Slug        string           `json:"slug" gorm:"not null;size:100;uniqueIndex:idx_team_tenant_slug,priority:2"`
 	Description string           `json:"description"`
+	Visibility  string           `json:"visibility" gorm:"default:'private';size:20"` // 'private', 'internal', 'public'
 	CreatedBy   uuid.UUID        `json:"created_by" gorm:"type:uuid;not null"`
 	Members     []TeamMembership `json:"members,omitempty" gorm:"foreignKey:TeamID"`
 	Permissions []TeamPermission `json:"permissions,omitempty" gorm:"foreignKey:TeamID"`
@@ -196,15 +198,16 @@ func (TeamInvite) TableName() string {
 
 // Provider represents a cloud provider configuration
 type Provider struct {
-	ID        string    `json:"id" gorm:"type:varchar(255);primaryKey"`
-	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
-	Provider  string    `json:"provider" gorm:"not null;index"` // "cloudflare", "vercel", "fly"
-	Token     string    `json:"token" gorm:"not null"`          // Encrypted API token
-	Status    string    `json:"status" gorm:"not null"`         // "active", "inactive", "error"
-	IsShared  bool      `json:"is_shared" gorm:"default:false"` // Shared with team
-	TeamID    *string   `json:"team_id,omitempty" gorm:"type:varchar(255);index"`
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	ID         string     `json:"id" gorm:"type:varchar(255);primaryKey"`
+	UserID     uuid.UUID  `json:"user_id" gorm:"type:uuid;not null;index"`
+	Provider   string     `json:"provider" gorm:"not null;index"` // "cloudflare", "vercel", "fly"
+	Token      string     `json:"token" gorm:"not null"`          // Encrypted API token
+	Status     string     `json:"status" gorm:"not null"`         // "active", "inactive", "error"
+	IsShared   bool       `json:"is_shared" gorm:"default:false"` // Shared with team
+	TeamID     *string    `json:"team_id,omitempty" gorm:"type:varchar(255);index"`
+	LastUsedAt *time.Time `json:"last_used_at,omitempty" gorm:"index"` // Last time the provider was used
+	CreatedAt  time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt  time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 func (Provider) TableName() string {
@@ -249,15 +252,15 @@ func (Achievement) TableName() string {
 
 // UserAchievement represents an achievement earned by a user
 type UserAchievement struct {
-	ID            uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	UserID        uuid.UUID              `json:"user_id" gorm:"type:uuid;not null;index"`
-	User          *User                  `json:"user,omitempty" gorm:"foreignKey:UserID"`
-	AchievementID uuid.UUID              `json:"achievement_id" gorm:"type:uuid;not null;index"`
-	Achievement   *Achievement           `json:"achievement,omitempty" gorm:"foreignKey:AchievementID"`
-	EarnedAt      time.Time              `json:"earned_at" gorm:"autoCreateTime"`
-	Progress      int                    `json:"progress" gorm:"default:0"`
-	IsCompleted   bool                   `json:"is_completed" gorm:"default:false"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb"`
+	ID            uuid.UUID    `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	UserID        uuid.UUID    `json:"user_id" gorm:"type:uuid;not null;index"`
+	User          *User        `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	AchievementID uuid.UUID    `json:"achievement_id" gorm:"type:uuid;not null;index"`
+	Achievement   *Achievement `json:"achievement,omitempty" gorm:"foreignKey:AchievementID"`
+	EarnedAt      time.Time    `json:"earned_at" gorm:"autoCreateTime"`
+	Progress      int          `json:"progress" gorm:"default:0"`
+	IsCompleted   bool         `json:"is_completed" gorm:"default:false"`
+	Metadata      JSONMap      `json:"metadata,omitempty" gorm:"type:jsonb"`
 }
 
 func (UserAchievement) TableName() string {
@@ -266,15 +269,15 @@ func (UserAchievement) TableName() string {
 
 // UserActivity represents an activity feed item for a user
 type UserActivity struct {
-	ID           uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	UserID       uuid.UUID              `json:"user_id" gorm:"type:uuid;not null;index"`
-	User         *User                  `json:"user,omitempty" gorm:"foreignKey:UserID"`
-	ActivityType string                 `json:"activity_type" gorm:"size:50;not null"` // function_published, function_updated, badge_earned, profile_updated
-	Title        string                 `json:"title" gorm:"size:255;not null"`
-	Description  string                 `json:"description" gorm:"type:text"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb"`
-	IsPublic     bool                   `json:"is_public" gorm:"default:true"`
-	CreatedAt    time.Time              `json:"created_at" gorm:"autoCreateTime"`
+	ID           uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	UserID       uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
+	User         *User     `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	ActivityType string    `json:"activity_type" gorm:"size:50;not null"` // function_published, function_updated, badge_earned, profile_updated
+	Title        string    `json:"title" gorm:"size:255;not null"`
+	Description  string    `json:"description" gorm:"type:text"`
+	Metadata     JSONMap   `json:"metadata,omitempty" gorm:"type:jsonb"`
+	IsPublic     bool      `json:"is_public" gorm:"default:true"`
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 
 func (UserActivity) TableName() string {
@@ -290,23 +293,122 @@ type SocialLinks struct {
 
 // EmailEvent represents an email delivery event from Resend webhooks
 type EmailEvent struct {
-	ID           int64                  `json:"id" gorm:"primaryKey;autoIncrement"`
-	UserID       *uuid.UUID             `json:"user_id,omitempty" gorm:"type:uuid;index"`
-	User         *User                  `json:"user,omitempty" gorm:"foreignKey:UserID"`
-	UserEmail    string                 `json:"user_email" gorm:"size:255;index"`
-	EmailID      string                 `json:"email_id" gorm:"size:255;index"`          // Resend email ID for deduplication
-	EventType    string                 `json:"event_type" gorm:"size:50;index"`         // email.sent, email.delivered, email.bounced, email.complained, etc.
-	EventData    map[string]interface{} `json:"event_data,omitempty" gorm:"type:jsonb"`  // Raw webhook data
-	Metadata     map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb"`    // Additional metadata (alias for EventData for compatibility)
-	BounceReason string                 `json:"bounce_reason,omitempty" gorm:"size:255"` // Bounce reason for bounce events
-	Timestamp    time.Time              `json:"timestamp" gorm:"index"`
-	Reviewed     bool                   `json:"reviewed" gorm:"default:false;index"`
-	ReviewedBy   *uuid.UUID             `json:"reviewed_by,omitempty" gorm:"type:uuid"`
-	ReviewedAt   *time.Time             `json:"reviewed_at,omitempty"`
-	CreatedAt    time.Time              `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt    time.Time              `json:"updated_at" gorm:"autoUpdateTime"`
+	ID           int64      `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserID       *uuid.UUID `json:"user_id,omitempty" gorm:"type:uuid;index"`
+	User         *User      `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	UserEmail    string     `json:"user_email" gorm:"size:255;index"`
+	EmailID      string     `json:"email_id" gorm:"size:255;index"`          // Resend email ID for deduplication
+	EventType    string     `json:"event_type" gorm:"size:50;index"`         // email.sent, email.delivered, email.bounced, email.complained, etc.
+	EventData    JSONMap    `json:"event_data,omitempty" gorm:"type:jsonb"`  // Raw webhook data
+	Metadata     JSONMap    `json:"metadata,omitempty" gorm:"type:jsonb"`    // Additional metadata (alias for EventData for compatibility)
+	BounceReason string     `json:"bounce_reason,omitempty" gorm:"size:255"` // Bounce reason for bounce events
+	Timestamp    time.Time  `json:"timestamp" gorm:"index"`
+	Reviewed     bool       `json:"reviewed" gorm:"default:false;index"`
+	ReviewedBy   *uuid.UUID `json:"reviewed_by,omitempty" gorm:"type:uuid"`
+	ReviewedAt   *time.Time `json:"reviewed_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 func (EmailEvent) TableName() string {
 	return "email_events"
+}
+
+// NewsletterSubscriber represents a newsletter subscription
+type NewsletterSubscriber struct {
+	ID             uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Email          string     `json:"email" gorm:"uniqueIndex;not null;size:255"`
+	Name           string     `json:"name,omitempty" gorm:"size:255"`
+	Status         string     `json:"status" gorm:"size:20;not null;default:'active'"` // active, unsubscribed, bounced
+	Source         string     `json:"source,omitempty" gorm:"size:50"`                 // landing_page, admin, api
+	IPAddress      string     `json:"ip_address,omitempty" gorm:"size:45"`             // IPv4/IPv6
+	UserAgent      string     `json:"user_agent,omitempty" gorm:"size:500"`
+	SubscribedAt   time.Time  `json:"subscribed_at" gorm:"autoCreateTime"`
+	UnsubscribedAt *time.Time `json:"unsubscribed_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt      time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+func (NewsletterSubscriber) TableName() string {
+	return "newsletter_subscribers"
+}
+
+// NewsletterCampaign represents a newsletter campaign
+type NewsletterCampaign struct {
+	ID           uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Subject      string     `json:"subject" gorm:"not null;size:255"`
+	PreviewText  string     `json:"preview_text,omitempty" gorm:"size:255"`
+	Content      string     `json:"content" gorm:"type:text;not null"`
+	HTMLContent  string     `json:"html_content" gorm:"type:text"`
+	Status       string     `json:"status" gorm:"size:20;not null;default:'draft'"` // draft, scheduled, sent, failed
+	SentAt       *time.Time `json:"sent_at,omitempty"`
+	ScheduledAt  *time.Time `json:"scheduled_at,omitempty"`
+	SentCount    int        `json:"sent_count" gorm:"default:0"`
+	OpenCount    int        `json:"open_count" gorm:"default:0"`
+	ClickCount   int        `json:"click_count" gorm:"default:0"`
+	BounceCount  int        `json:"bounce_count" gorm:"default:0"`
+	ErrorMessage string     `json:"error_message,omitempty" gorm:"size:500"`
+	Metadata     JSONMap    `json:"metadata,omitempty" gorm:"type:jsonb"`
+	CreatedBy    *uuid.UUID `json:"created_by,omitempty" gorm:"type:uuid"`
+	CreatedAt    time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+func (NewsletterCampaign) TableName() string {
+	return "newsletter_campaigns"
+}
+
+// NewsletterCampaignEmail tracks which subscribers received which campaign
+type NewsletterCampaignEmail struct {
+	ID           uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	CampaignID   uuid.UUID  `json:"campaign_id" gorm:"type:uuid;not null;index"`
+	SubscriberID uuid.UUID  `json:"subscriber_id" gorm:"type:uuid;not null;index"`
+	EmailID      string     `json:"email_id,omitempty" gorm:"size:255"`               // Resend email ID
+	Status       string     `json:"status" gorm:"size:20;not null;default:'pending'"` // pending, sent, delivered, opened, clicked, bounced, complained
+	SentAt       *time.Time `json:"sent_at,omitempty"`
+	DeliveredAt  *time.Time `json:"delivered_at,omitempty"`
+	OpenedAt     *time.Time `json:"opened_at,omitempty"`
+	ClickedAt    *time.Time `json:"clicked_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+func (NewsletterCampaignEmail) TableName() string {
+	return "newsletter_campaign_emails"
+}
+
+// ExecutionRetentionSettings represents the database model for retention configuration
+type ExecutionRetentionSettings struct {
+	ID                           uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ExecutionRetentionDays       int        `gorm:"column:execution_retention_days;not null;default:90"`
+	PublicExecutionRetentionDays int        `gorm:"column:public_execution_retention_days;not null;default:30"`
+	ResourceUsageRetentionDays   int        `gorm:"column:resource_usage_retention_days;not null;default:90"`
+	MEGRecordRetentionDays       int        `gorm:"column:meg_record_retention_days;not null;default:365"`
+	DriftReportRetentionDays     int        `gorm:"column:drift_report_retention_days;not null;default:365"`
+	ExecutionCertRetentionDays   int        `gorm:"column:execution_cert_retention_days;not null;default:365"`
+	CleanupIntervalMinutes       int        `gorm:"column:cleanup_interval_minutes;not null;default:1440"`
+	BatchSize                    int        `gorm:"column:batch_size;not null;default:1000"`
+	VerboseLogging               bool       `gorm:"column:verbose_logging;not null;default:false"`
+	CreatedAt                    time.Time  `gorm:"column:created_at;not null;default:now()"`
+	UpdatedAt                    time.Time  `gorm:"column:updated_at;not null;default:now()"`
+	UpdatedBy                    *uuid.UUID `gorm:"column:updated_by;type:uuid"`
+	IsActive                     bool       `gorm:"column:is_active;not null;default:true;unique"`
+}
+
+func (ExecutionRetentionSettings) TableName() string {
+	return "execution_retention_settings"
+}
+
+// ExecutionRetentionSettingsUpdate represents updateable fields for retention settings
+type ExecutionRetentionSettingsUpdate struct {
+	ExecutionRetentionDays       *int       `json:"execution_retention_days,omitempty"`
+	PublicExecutionRetentionDays *int       `json:"public_execution_retention_days,omitempty"`
+	ResourceUsageRetentionDays   *int       `json:"resource_usage_retention_days,omitempty"`
+	MEGRecordRetentionDays       *int       `json:"meg_record_retention_days,omitempty"`
+	DriftReportRetentionDays     *int       `json:"drift_report_retention_days,omitempty"`
+	ExecutionCertRetentionDays   *int       `json:"execution_cert_retention_days,omitempty"`
+	CleanupIntervalMinutes       *int       `json:"cleanup_interval_minutes,omitempty"`
+	BatchSize                    *int       `json:"batch_size,omitempty"`
+	VerboseLogging               *bool      `json:"verbose_logging,omitempty"`
+	UpdatedBy                    *uuid.UUID `json:"updated_by,omitempty"`
 }

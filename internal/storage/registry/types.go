@@ -44,6 +44,12 @@ type RegistryFunction struct {
 	CreatedAt            time.Time       `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt            time.Time       `json:"updated_at" gorm:"autoUpdateTime"`
 
+	// Trust Score fields (denormalized from trust_history for quick access)
+	TrustScore              float64    `json:"trust_score" gorm:"default:0"`
+	TrustTier               TrustTier  `json:"trust_tier" gorm:"size:20;default:'untrusted'"`
+	TrustUpdatedAt          *time.Time `json:"trust_updated_at,omitempty" gorm:"type:timestamptz"`
+	TrustCalculationVersion int        `json:"trust_calculation_version" gorm:"default:0"`
+
 	// Relationships
 	Versions []RegistryFunctionVersion `json:"versions,omitempty" gorm:"foreignKey:FunctionID;references:ID"`
 	Rating   *RegistryFunctionRating   `json:"rating,omitempty" gorm:"foreignKey:FunctionID;references:ID"`
@@ -685,6 +691,40 @@ func (TrustScoreJob) TableName() string {
 	return "trust_score_jobs"
 }
 
+// RemixHistory records the relationship between original functions and their remixes
+type RemixHistory struct {
+	ID               uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	SourceFunctionID uuid.UUID `json:"source_function_id" gorm:"type:uuid;not null;index"`       // Original function
+	TargetFunctionID uuid.UUID `json:"target_function_id" gorm:"type:uuid;not null;uniqueIndex"` // Remixed function
+	RemixedByUserID  uuid.UUID `json:"remixed_by_user_id" gorm:"type:uuid;not null;index"`
+	RemixedAt        time.Time `json:"remixed_at" gorm:"type:timestamptz;not null;index"`
+	Customization    string    `json:"customization" gorm:"type:text"` // User's customization description
+	CostUSD          float64   `json:"cost_usd" gorm:"default:0"`      // Fee charged for remix
+	CreatedAt        time.Time `json:"created_at" gorm:"autoCreateTime"`
+
+	// Relationships
+	SourceFunction *RegistryFunction `json:"source_function,omitempty" gorm:"foreignKey:SourceFunctionID;references:ID"`
+	TargetFunction *RegistryFunction `json:"target_function,omitempty" gorm:"foreignKey:TargetFunctionID;references:ID"`
+}
+
+// TableName returns the database table name for RemixHistory.
+func (RemixHistory) TableName() string {
+	return "remix_history"
+}
+
+// FunctionLike tracks user likes on registry functions
+type FunctionLike struct {
+	ID         uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID uuid.UUID `json:"function_id" gorm:"type:uuid;not null;index:idx_function_user,unique"`
+	UserID     uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index:idx_function_user,unique"`
+	LikedAt    time.Time `json:"liked_at" gorm:"type:timestamptz;not null;autoCreateTime;index"`
+}
+
+// TableName returns the database table name for FunctionLike.
+func (FunctionLike) TableName() string {
+	return "function_likes"
+}
+
 // TrustScoreResponse is the API response for trust score queries
 type TrustScoreResponse struct {
 	FunctionID        uuid.UUID `json:"function_id"`
@@ -725,6 +765,143 @@ type TrustHistoryResponse struct {
 	TotalCount int            `json:"total_count"`
 	Page       int            `json:"page"`
 	PageSize   int            `json:"page_size"`
+}
+
+// WindowType represents the type of calculation window
+type WindowType string
+
+const (
+	// WindowTypeDiscrete uses fixed time windows (hourly, daily, etc)
+	WindowTypeDiscrete WindowType = "discrete"
+	// WindowTypeSliding uses a continuous rolling window with exponential smoothing
+	WindowTypeSliding WindowType = "sliding"
+)
+
+// SlidingWindowConfig holds configuration for sliding window calculations
+type SlidingWindowConfig struct {
+	WindowDuration  time.Duration `json:"window_duration"`  // e.g., 24h
+	SmoothingFactor float64       `json:"smoothing_factor"` // alpha for EMA (0-1), higher = more responsive
+	MinDataPoints   int           `json:"min_data_points"`  // minimum executions for calculation
+	UpdateInterval  time.Duration `json:"update_interval"`  // how often to recalculate
+}
+
+// DefaultSlidingWindowConfig returns default sliding window settings
+func DefaultSlidingWindowConfig() SlidingWindowConfig {
+	return SlidingWindowConfig{
+		WindowDuration:  24 * time.Hour,
+		SmoothingFactor: 0.3, // Balanced between responsive and stable
+		MinDataPoints:   10,
+		UpdateInterval:  5 * time.Minute,
+	}
+}
+
+// TrustScoreDelta represents a change in trust score
+type TrustScoreDelta struct {
+	FunctionID         uuid.UUID          `json:"function_id"`
+	PreviousScore      float64            `json:"previous_score"`
+	CurrentScore       float64            `json:"current_score"`
+	ScoreChange        float64            `json:"score_change"`         // absolute change
+	ScoreChangePercent float64            `json:"score_change_percent"` // percentage change
+	PreviousTier       TrustTier          `json:"previous_tier"`
+	CurrentTier        TrustTier          `json:"current_tier"`
+	TierChanged        bool               `json:"tier_changed"`
+	ComponentChanges   map[string]float64 `json:"component_changes,omitempty"`
+	CalculatedAt       time.Time          `json:"calculated_at"`
+	WindowType         WindowType         `json:"window_type"`
+}
+
+// TrustScoreThresholdConfig holds threshold configuration for alerts
+type TrustScoreThresholdConfig struct {
+	CriticalThreshold  float64       `json:"critical_threshold"`    // Score below this triggers critical alert (default: 50)
+	WarningThreshold   float64       `json:"warning_threshold"`     // Score below this triggers warning (default: 70)
+	MinChangeForNotify float64       `json:"min_change_for_notify"` // Min score change to trigger notification (default: 5)
+	CooldownPeriod     time.Duration `json:"cooldown_period"`       // Min time between notifications per function (default: 15m)
+}
+
+// DefaultThresholdConfig returns default threshold settings
+func DefaultThresholdConfig() TrustScoreThresholdConfig {
+	return TrustScoreThresholdConfig{
+		CriticalThreshold:  50.0,
+		WarningThreshold:   70.0,
+		MinChangeForNotify: 5.0,
+		CooldownPeriod:     15 * time.Minute,
+	}
+}
+
+// TrustScoreStreamEvent represents an event for SSE/WebSocket streaming
+type TrustScoreStreamEvent struct {
+	EventType  string           `json:"event_type"` // "score_update", "tier_change", "threshold_breach"
+	FunctionID uuid.UUID        `json:"function_id"`
+	Score      *TrustHistory    `json:"score,omitempty"`
+	Delta      *TrustScoreDelta `json:"delta,omitempty"`
+	Timestamp  time.Time        `json:"timestamp"`
+	WindowType WindowType       `json:"window_type"`
+}
+
+// SlidingWindowState holds the state for a sliding window calculation
+type SlidingWindowState struct {
+	FunctionID         uuid.UUID `json:"function_id" gorm:"type:uuid;primaryKey"`
+	CurrentScore       float64   `json:"current_score"`
+	PreviousScore      float64   `json:"previous_score"`
+	ReliabilityScore   float64   `json:"reliability_score"`
+	LatencyScore       float64   `json:"latency_score"`
+	ErrorRateScore     float64   `json:"error_rate_score"`
+	UserRatingScore    float64   `json:"user_rating_score"`
+	VerificationBonus  float64   `json:"verification_bonus"`
+	LastUpdated        time.Time `json:"last_updated" gorm:"type:timestamptz"`
+	WindowStart        time.Time `json:"window_start" gorm:"type:timestamptz"`
+	WindowEnd          time.Time `json:"window_end" gorm:"type:timestamptz"`
+	TotalCallsInWindow int       `json:"total_calls_in_window"`
+	LastCalculation    time.Time `json:"last_calculation" gorm:"type:timestamptz"`
+	SmoothingFactor    float64   `json:"smoothing_factor"`
+}
+
+// TableName returns the database table name for SlidingWindowState.
+func (SlidingWindowState) TableName() string {
+	return "trust_sliding_window_state"
+}
+
+// GetComponentScore retrieves a specific component score from the sliding window state
+func (s *SlidingWindowState) GetComponentScore(component string) float64 {
+	switch component {
+	case "reliability":
+		return s.ReliabilityScore
+	case "latency":
+		return s.LatencyScore
+	case "error_rate":
+		return s.ErrorRateScore
+	case "user_rating":
+		return s.UserRatingScore
+	case "verification":
+		return s.VerificationBonus
+	default:
+		return 0
+	}
+}
+
+// SetComponentScore updates a specific component score in the sliding window state
+func (s *SlidingWindowState) SetComponentScore(component string, score float64) {
+	switch component {
+	case "reliability":
+		s.ReliabilityScore = score
+	case "latency":
+		s.LatencyScore = score
+	case "error_rate":
+		s.ErrorRateScore = score
+	case "user_rating":
+		s.UserRatingScore = score
+	case "verification":
+		s.VerificationBonus = score
+	}
+}
+
+// UpdateComponentScores updates all component scores from a TrustHistory record
+func (s *SlidingWindowState) UpdateComponentScores(history *TrustHistory) {
+	s.ReliabilityScore = history.ReliabilityScore
+	s.LatencyScore = history.LatencyScore
+	s.ErrorRateScore = history.ErrorRateScore
+	s.UserRatingScore = history.UserRatingScore
+	s.VerificationBonus = history.VerificationBonus
 }
 
 // ============================================

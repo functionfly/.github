@@ -81,6 +81,25 @@ func (r *RegistryRepository) ListFunctions(author, category string, tags []strin
 	return functions, int(total), nil
 }
 
+// ListTrendingFunctions lists functions sorted by popularity score (for trending/gallery)
+func (r *RegistryRepository) ListTrendingFunctions(limit, offset int) ([]RegistryFunction, int, error) {
+	// Count total public functions
+	var total int64
+	if err := r.db.Model(&RegistryFunction{}).Where("visibility = ?", "public").Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count functions: %w", err)
+	}
+
+	// Query functions sorted by popularity_score descending
+	var functions []RegistryFunction
+	if err := r.db.Where("visibility = ?", "public").
+		Order("popularity_score DESC, created_at DESC").
+		Limit(limit).Offset(offset).Find(&functions).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to list trending functions: %w", err)
+	}
+
+	return functions, int(total), nil
+}
+
 // GetEdgeCacheCandidates retrieves functions eligible for edge caching based on metrics
 func (r *RegistryRepository) GetEdgeCacheCandidates(ctx context.Context, minPopularity, minExecutionCount int, minTrustScore, minSuccessRate float64, maxLatencyMs int, limit int) ([]*cache.EdgeCacheCandidate, error) {
 	// Query functions that meet edge cache criteria

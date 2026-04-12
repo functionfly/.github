@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -113,13 +114,26 @@ func (r *PlatformFeeRepository) GetWalletBalance(ctx context.Context, userID uui
 	return wallet.BalanceUSD, nil
 }
 
-// CreditWallet adds funds to a user's wallet
+// CreditWallet adds funds to a user's wallet. It is idempotent based on stripePaymentID reference.
+// If the reference already exists, the operation succeeds without adding duplicate credits.
 func (r *PlatformFeeRepository) CreditWallet(ctx context.Context, userID uuid.UUID, amountUSD float64, stripePaymentID string) error {
 	if amountUSD <= 0 {
 		return fmt.Errorf("credit amount must be positive")
 	}
 
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Check if this credit has already been applied (idempotency check)
+		var existingCount int64
+		if err := tx.Model(&FeeTransaction{}).
+			Where("reference = ? AND kind = ?", stripePaymentID, "credit").
+			Count(&existingCount).Error; err != nil {
+			return fmt.Errorf("failed to check for existing credit: %w", err)
+		}
+		if existingCount > 0 {
+			// Already credited, return success without adding duplicate
+			return nil
+		}
+
 		// Lock the wallet row for update
 		var wallet UserWallet
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
@@ -163,6 +177,11 @@ func (r *PlatformFeeRepository) CreditWallet(ctx context.Context, userID uuid.UU
 			CreatedAt: time.Now(),
 		}
 		if err := tx.Create(&txRecord).Error; err != nil {
+			// Check if it's a unique constraint violation (another concurrent request beat us)
+			if isUniqueViolation(err) {
+				// Credit already applied, rollback the transaction but return success
+				return nil
+			}
 			return fmt.Errorf("failed to record transaction: %w", err)
 		}
 
@@ -343,4 +362,17 @@ func CalculateVersionUpdateFee(author string) float64 {
 		return 0
 	}
 	return VersionUpdateFeeAmount
+}
+
+// isUniqueViolation checks if an error is a PostgreSQL unique constraint violation.
+func isUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pgErr *pq.Error
+	if errors.As(err, &pgErr) {
+		// PostgreSQL error code for unique_violation is 23505
+		return pgErr.Code == "23505"
+	}
+	return false
 }

@@ -43,12 +43,19 @@ func (f *RegistryFunction) ToInfoWithRating(version *RegistryFunctionVersion, ra
 		versionStr = version.Version
 	}
 	info := map[string]interface{}{
-		"author":         f.Author,
-		"name":           f.Name,
-		"version":        versionStr,
-		"visibility":     f.Visibility,
-		"price_per_call": f.PricePerCall,
-		"reliability":    f.ReliabilityScore,
+		"id":                  f.ID.String(),
+		"author":              f.Author,
+		"name":                f.Name,
+		"version":             versionStr,
+		"visibility":          f.Visibility,
+		"price_per_call":      f.PricePerCall,
+		"popularity_score":    f.PopularityScore,
+		"reliability_score":   f.ReliabilityScore,
+		"deterministic_score": f.DeterministicScore,
+		"overall_score":       0, // Will be set from rating if available
+		"total_ratings":       0, // Will be set from rating if available
+		"remix_count":         0, // Gallery field - not yet implemented
+		"like_count":          0, // Gallery field - not yet implemented
 	}
 
 	if f.Title.Valid {
@@ -146,6 +153,8 @@ func (f *RegistryFunction) ToInfoWithRating(version *RegistryFunctionVersion, ra
 			trustScore = trustScore * 100
 		}
 		info["trust_score"] = trustScore
+		info["overall_score"] = rating.OverallScore
+		info["total_ratings"] = rating.TotalRatings
 		info["success_rate"] = rating.SuccessRate
 		info["p50_latency_ms"] = rating.P50LatencyMs
 		info["p95_latency_ms"] = rating.P95LatencyMs

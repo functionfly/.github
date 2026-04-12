@@ -10,18 +10,6 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 )
 
-// ExecutionMetadata contains the metadata fields used in MEG construction.
-type ExecutionMetadata struct {
-	ExecutionID     string
-	FunctionID      string
-	OwnerID         string
-	CallerID        string
-	NodeID          string
-	Region          string
-	Nonce           string
-	ProtocolVersion string
-}
-
 // megInputPayload is the canonical input structure for MEG hashing.
 type megInputPayload struct {
 	Args     json.RawMessage `json:"args"`
@@ -98,7 +86,7 @@ func BuildMEGFromExecution(
 	if resourceUsage != nil {
 		resPayload = megResourcePayload{
 			CPUTimeMs:    resourceUsage.CPUTimeUsedMs,
-			MemoryPeakMB: resourceUsage.MemoryUsedMB,
+			MemoryPeakMB: float64(resourceUsage.MemoryUsedMB),
 			WallTimeMs:   resourceUsage.WallTimeUsedMs,
 		}
 	}

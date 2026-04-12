@@ -1,47 +1,27 @@
 package execution
 
 import (
-	"crypto/ed25519"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/cache"
-	"github.com/functionfly/functionfly/internal/dre/capsule"
-	drecert "github.com/functionfly/functionfly/internal/dre/cert"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/plans"
-	"github.com/functionfly/functionfly/internal/queue/rabbitmq"
+	"github.com/functionfly/functionfly/internal/privacy"
 	"github.com/functionfly/functionfly/internal/storage"
-	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/functionfly/functionfly/internal/verification"
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	gonanoid "github.com/jaevor/go-nanoid"
 	"github.com/sirupsen/logrus"
-)
 
-// Handler contains dependencies for execution handlers
-type Handler struct {
-	Repo         *registry.RegistryRepository
-	BackendRepo  storage.Repository
-	CacheService *cache.CacheService
-	EdgeCache    *cache.EdgeCacheService
-	// NodeID is the identifier of this execution node (used in MEG records and certificates)
-	NodeID string
-	// Region is the geographic region of this node
-	Region string
-	// NodeKey is the Ed25519 private key used to sign FXCERTs. If nil, certs are generated without a node signature (e.g. bootstrap).
-	NodeKey ed25519.PrivateKey
-	// PlatformKey is the optional Ed25519 platform key; when set, certs include a platform signature (Platform Key ID in UI).
-	PlatformKey ed25519.PrivateKey
-}
+	"github.com/gorilla/mux"
+)
 
 // HandleExecute handles executing a function
 func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +81,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate runtime for tenant's plan - check if runtime is allowed
+	// Validate runtime for tenant's plan
 	if fnVersion.Runtime == plans.RuntimePythonMicroVM {
 		if fn.TenantID == nil {
 			h.writeError(w, http.StatusForbidden, functionregistry.ErrCodeInvalidInput,
@@ -117,7 +97,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check function verification status before execution
-	verificationSvc := verification.NewVerificationService(h.Repo, "", "") // Configure URLs as needed
+	verificationSvc := verification.NewVerificationService(h.Repo, "", "")
 	allowed, reason, err := verificationSvc.CheckExecutionAllowed(fnVersion.ID, author)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to check function verification status")
@@ -129,6 +109,39 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		logrus.WithField("function_version_id", fnVersion.ID).Warn("Function execution blocked due to verification failure")
 		h.writeError(w, http.StatusForbidden, functionregistry.ErrCodeInvalidInput, fmt.Sprintf("Function execution not allowed: %s", reason))
 		return
+	}
+
+	// Real-time quota enforcement
+	if fn.TenantID != nil && h.UsageTracker != nil && h.UsageTracker.IsEnabled() {
+		quotaResult, err := h.UsageTracker.RecordExecution(r.Context(), *fn.TenantID, "")
+		if err != nil {
+			logrus.WithError(err).WithField("tenant_id", *fn.TenantID).Warn("Quota check failed, allowing execution")
+		} else if !quotaResult.Allowed {
+			logrus.WithFields(logrus.Fields{
+				"tenant_id": *fn.TenantID,
+				"reason":    quotaResult.Reason,
+				"status":    quotaResult.Status,
+			}).Warn("Quota exceeded, blocking execution")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusPaymentRequired) // 402
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]interface{}{
+					"code":    "QUOTA_EXCEEDED",
+					"message": quotaResult.Reason,
+					"type":    "quota_exceeded",
+				},
+				"quota_status": quotaResult.Status,
+				"upgrade_url":  "/settings/billing",
+			})
+			return
+		}
+
+		// Add quota headers to response
+		if quotaResult.Status != nil {
+			w.Header().Set("X-Quota-Executions-Percent", fmt.Sprintf("%.1f", quotaResult.Status.ExecutionsPercent))
+			w.Header().Set("X-Quota-Compute-Percent", fmt.Sprintf("%.1f", quotaResult.Status.ComputeMsPercent))
+			w.Header().Set("X-Quota-Status", quotaResult.Status.Status)
+		}
 	}
 
 	// Check if we should queue this execution due to high load
@@ -168,7 +181,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	eligibility := cache.CheckEligibility(versionData)
 	eligibility.CanUseCDN = fn.Visibility == "public"
 
-	// Get resource limits (using function defaults for now)
+	// Get resource limits
 	maxMemoryMB := fnVersion.MemoryMB
 	maxCPUTimeMs := fnVersion.TimeoutMs
 
@@ -190,7 +203,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	// Calculate execution time
 	durationMs := int(time.Since(startTime).Milliseconds())
 
-	// Enterprise MicroVM billing — log usage metrics for downstream aggregation.
+	// Enterprise MicroVM billing - log usage metrics for downstream aggregation
 	if fnVersion.Runtime == plans.RuntimePythonMicroVM && fn.TenantID != nil {
 		tenantPlan := getTenantPlanFromContext(h.BackendRepo, *fn.TenantID)
 		if billing := plans.CalculateMicroVMBilling(
@@ -217,83 +230,180 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	// Perform replay verification for deterministic functions (only on successful executions)
 	var verificationResult *ReplayVerificationResult
 	if statusCode >= 200 && statusCode < 300 && fnVersion.Deterministic && !cached {
-		// Get execution statistics for sophisticated verification scheduling
-		executionCount, err := h.Repo.GetExecutionCountForVersion(fn.ID, fnVersion.Version)
-		if err != nil {
-			logrus.WithError(err).WithFields(logrus.Fields{
-				"function_id": fn.ID,
-				"version":     fnVersion.Version,
-			}).Warn("Failed to get execution count for verification scheduling, using random sampling")
-			executionCount = 0
-		}
-
-		lastVerified, err := h.Repo.GetLastVerificationTimeForVersion(fn.ID, fnVersion.Version)
-		if err != nil {
-			logrus.WithError(err).WithFields(logrus.Fields{
-				"function_id": fn.ID,
-				"version":     fnVersion.Version,
-			}).Warn("Failed to get last verification time, proceeding without it")
-		}
-
-		recentFailureRate, err := h.Repo.GetRecentVerificationFailureRate(fn.ID, fnVersion.Version)
-		if err != nil {
-			logrus.WithError(err).WithFields(logrus.Fields{
-				"function_id": fn.ID,
-				"version":     fnVersion.Version,
-			}).Warn("Failed to get recent failure rate, assuming 0")
-			recentFailureRate = 0
-		}
-
-		// Use sophisticated verification scheduling
-		shouldVerify := shouldVerifyReplay(fnVersion, executionCount+1, lastVerified, recentFailureRate)
-
-		if shouldVerify {
-			logrus.WithFields(logrus.Fields{
-				"function_id": fn.ID,
-				"version":     fnVersion.Version,
-				"author":      author,
-				"name":        name,
-			}).Info("Performing replay verification for deterministic function")
-
-			verificationResult = h.verifyReplay(fnVersion, execReq.Input, result, durationMs)
-
-			// DRE 2.0: Update Trust Score v2 after successful verification
-			if verificationResult != nil && verificationResult.Status == VerificationVerified {
-				go h.updateTrustScoreV2(fn.ID)
-			}
-		}
+		verificationResult = h.performReplayVerification(fn, fnVersion, author, name, execReq.Input, result, durationMs)
 	}
 
-	// DRE 2.0: Build Merkle Execution Graph and FXCERT for deterministic functions, or all functionfly-authored functions
+	// Build and store MEG for deterministic functions, or all functionfly-authored functions
 	var executionRootHash string
 	var certID string
-	issueFXCERT := statusCode >= 200 && statusCode < 300 && !cached && (fnVersion.Deterministic || strings.EqualFold(author, "functionfly"))
-	if issueFXCERT {
+	if shouldIssueFXCERT(author, fnVersion) && statusCode >= 200 && statusCode < 300 && !cached {
 		go h.buildAndStoreMEG(fn, fnVersion, execReq.Input, result, resourceUsage, durationMs)
 	}
 
 	// Record execution in database
+	execRecord := h.createExecutionRecord(fn, fnVersion, durationMs, statusCode, cached, outcome, errorCode, r, verificationResult)
+
+	// Save execution record and trigger async updates
+	if err := h.Repo.RecordExecution(execRecord); err != nil {
+		logrus.WithError(err).Error("Failed to record execution")
+	} else {
+		// Async updates
+		go h.updateFunctionPopularity(fn.ID)
+		go h.recordBillingUsageEvent(fn, execRecord, resourceUsage)
+		go h.syncRealtimeUsage(fn, resourceUsage)
+	}
+
+	// Record resource usage if available
+	if resourceUsage != nil {
+		h.recordResourceUsage(execRecord.ID, resourceUsage, executionErr)
+	}
+
+	// Generate public execution ID if successful and shareable
+	executionID := h.generateExecutionID(statusCode, fnVersion, fn, execReq.Input, result, durationMs, cached, verificationResult, r)
+
+	// Format response
+	if executionErr != nil || statusCode >= 400 {
+		h.writeErrorResponse(w, executionErr, statusCode, errorCode, durationMs, fnVersion.Version)
+	} else {
+		h.writeSuccessResponse(w, result, cached, durationMs, fnVersion.Version, executionID, eligibility, cacheResult, fn)
+	}
+
+	// Suppress unused variable warnings
+	_ = executionRootHash
+	_ = certID
+}
+
+// performReplayVerification handles replay verification for deterministic functions
+func (h *Handler) performReplayVerification(
+	fn *storage.RegistryFunction,
+	fnVersion *storage.RegistryFunctionVersion,
+	author, name string,
+	input json.RawMessage,
+	result json.RawMessage,
+	durationMs int,
+) *ReplayVerificationResult {
+	// Get execution statistics for verification scheduling
+	executionCount, err := h.Repo.GetExecutionCountForVersion(fn.ID, fnVersion.Version)
+	if err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"function_id": fn.ID,
+			"version":     fnVersion.Version,
+		}).Warn("Failed to get execution count for verification scheduling")
+		executionCount = 0
+	}
+
+	lastVerified, err := h.Repo.GetLastVerificationTimeForVersion(fn.ID, fnVersion.Version)
+	if err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"function_id": fn.ID,
+			"version":     fnVersion.Version,
+		}).Warn("Failed to get last verification time")
+	}
+
+	recentFailureRate, err := h.Repo.GetRecentVerificationFailureRate(fn.ID, fnVersion.Version)
+	if err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"function_id": fn.ID,
+			"version":     fnVersion.Version,
+		}).Warn("Failed to get recent failure rate")
+		recentFailureRate = 0
+	}
+
+	// Use sophisticated verification scheduling
+	shouldVerify := shouldVerifyReplay(fnVersion, executionCount+1, lastVerified, recentFailureRate)
+
+	if !shouldVerify {
+		return nil
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function_id": fn.ID,
+		"version":     fnVersion.Version,
+		"author":      author,
+		"name":        name,
+	}).Info("Performing replay verification for deterministic function")
+
+	verificationResult := h.verifyReplay(fnVersion, input, result, durationMs)
+
+	// Update Trust Score v2 after successful verification
+	if verificationResult != nil && verificationResult.Status == VerificationVerified {
+		go h.updateTrustScoreV2(fn.ID)
+	}
+
+	return verificationResult
+}
+
+// createExecutionRecord creates the execution record for database storage
+// with privacy-aware logging
+func (h *Handler) createExecutionRecord(
+	fn *storage.RegistryFunction,
+	fnVersion *storage.RegistryFunctionVersion,
+	durationMs, statusCode int,
+	cached bool,
+	outcome ExecutionOutcome,
+	errorCode string,
+	r *http.Request,
+	verificationResult *ReplayVerificationResult,
+) *storage.RegistryFunctionExecution {
+	// Extract raw values
+	rawIP := getClientIP(r)
+	rawUA := r.UserAgent()
+	var embedOrigin string
+	if embedOrigin = r.Header.Get("X-Embed-Origin"); embedOrigin == "" {
+		embedOrigin = r.Header.Get("Origin")
+	}
+
+	// Check for privacy context from middleware
+	var privacySettings *privacy.PrivacySettings
+	if ctxSettings := privacy.GetPrivacySettingsFromContext(r.Context()); ctxSettings != nil {
+		privacySettings = ctxSettings
+	}
+
+	// Apply privacy controls if privacy service is available
+	var callerIP, userAgent string
+	if h.PrivacyService != nil {
+		// Anonymize data based on privacy settings
+		callerIP, userAgent, embedOrigin = h.PrivacyService.AnonymizeExecutionData(rawIP, rawUA, embedOrigin, privacySettings)
+	} else {
+		// Default: use raw values (backward compatible)
+		callerIP = rawIP
+		userAgent = rawUA
+	}
+
+	// Check if we should log geo data
+	logGeo := true
+	if h.PrivacyService != nil && privacySettings != nil {
+		logGeo = h.PrivacyService.ShouldLogGeoData(privacySettings)
+	}
+
+	// Check if we should log embed origin
+	logEmbed := true
+	if h.PrivacyService != nil && privacySettings != nil {
+		logEmbed = h.PrivacyService.ShouldLogEmbedOrigin(privacySettings)
+	}
+
 	execRecord := &storage.RegistryFunctionExecution{
 		FunctionID: fn.ID,
 		Version:    fnVersion.Version,
 		DurationMs: durationMs,
 		StatusCode: statusCode,
 		Cached:     cached,
-		Outcome:    outcome,
+		Outcome:    string(outcome),
 		ErrorCode:  toNullString(&errorCode),
-		CallerIP:   toNullString(func() *string { ip := getClientIP(r); return &ip }()),
-		UserAgent:  toNullString(func() *string { ua := r.UserAgent(); return &ua }()),
+		CallerIP:   toNullString(&callerIP),
+		UserAgent:  toNullString(&userAgent),
 	}
 
-	// Phase 3 — Embed analytics: record the Origin header when the request
-	// comes from an embed script (identified by the X-Embed-Origin header or
-	// the standard Origin header when the Referer suggests an embed context).
-	if embedOrigin := r.Header.Get("X-Embed-Origin"); embedOrigin != "" {
+	// Add geo country if logging is enabled
+	if logGeo && callerIP != "" && callerIP != "[REDACTED]" {
+		// Get privacy-preserving region instead of exact geo
+		region := privacy.GetRegionFromIP(callerIP)
+		execRecord.GeoCountry = sql.NullString{String: region, Valid: true}
+	}
+
+	// Record embed analytics origin if logging is enabled
+	if logEmbed && embedOrigin != "" {
 		execRecord.EmbedOrigin = sql.NullString{String: embedOrigin, Valid: true}
-	} else if origin := r.Header.Get("Origin"); origin != "" {
-		// Only record as embed origin when the request is cross-origin
-		// (i.e., the Origin header is present and differs from the API host).
-		execRecord.EmbedOrigin = sql.NullString{String: origin, Valid: true}
 	}
 
 	// Add verification results if available
@@ -305,165 +415,226 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		}
 		execRecord.ReplayedDurationMs = sql.NullInt32{Int32: int32(verificationResult.ReplayedDuration), Valid: true}
 	}
-	if err := h.Repo.RecordExecution(execRecord); err != nil {
-		logrus.WithError(err).Error("Failed to record execution")
-		// Don't fail the request if recording fails
-	} else {
-		// Update popularity score based on execution (async)
-		go func() {
-			if err := h.updateFunctionPopularity(fn.ID); err != nil {
-				logrus.WithError(err).WithField("function_id", fn.ID).Warn("Failed to update function popularity")
-			}
-		}()
+
+	return execRecord
+}
+
+// recordResourceUsage records resource usage for an execution
+func (h *Handler) recordResourceUsage(executionID uuid.UUID, resourceUsage *ResourceUsage, executionErr error) {
+	if resourceUsage == nil {
+		return
 	}
 
-	// Record resource usage if available
-	if resourceUsage != nil {
-		resourceRecord := &storage.ExecutionResourceUsage{
-			ExecutionID:    &execRecord.ID,
-			MaxMemoryMB:    resourceUsage.MaxMemoryMB,
-			MaxCPUTimeMs:   resourceUsage.MaxCPUTimeMs,
-			MemoryUsedMB:   resourceUsage.MemoryUsedMB,
-			CPUTimeUsedMs:  resourceUsage.CPUTimeUsedMs,
-			WallTimeUsedMs: resourceUsage.WallTimeUsedMs,
-		}
+	resourceRecord := &storage.ExecutionResourceUsage{
+		ExecutionID:    &executionID,
+		MaxMemoryMB:    resourceUsage.MaxMemoryMB,
+		MaxCPUTimeMs:   resourceUsage.MaxCPUTimeMs,
+		MemoryUsedMB:   float64(resourceUsage.MemoryUsedMB),
+		CPUTimeUsedMs:  resourceUsage.CPUTimeUsedMs,
+		WallTimeUsedMs: resourceUsage.WallTimeUsedMs,
+	}
 
-		// Set termination reason if execution failed due to resource limits
-		if executionErr != nil {
-			if execError, ok := executionErr.(*ExecutionError); ok && execError.ResourceUsage != nil {
-				resourceRecord.TerminatedBy = execError.TerminatedBy
-			}
-		}
-
-		if err := h.Repo.RecordResourceUsage(resourceRecord); err != nil {
-			logrus.WithError(err).Error("Failed to record resource usage")
-			// Don't fail the request if recording fails
+	// Set termination reason if execution failed due to resource limits
+	if executionErr != nil {
+		if execError, ok := executionErr.(*ExecutionError); ok && execError.ResourceUsage != nil {
+			resourceRecord.TerminatedBy = execError.TerminatedBy
 		}
 	}
 
-	// Generate public execution ID if execution was successful and should be shareable
-	var executionID *string
-	if statusCode >= 200 && statusCode < 300 && fnVersion.SideEffects == "none" {
-		// Generate a unique execution ID using nanoid
-		gen, err := gonanoid.Canonic()
-		if err != nil {
-			logrus.WithError(err).Error("Failed to create nanoid generator")
-			fallbackID := fmt.Sprintf("exec_%d", time.Now().UnixNano())
-			executionID = &fallbackID
+	if err := h.Repo.RecordResourceUsage(resourceRecord); err != nil {
+		logrus.WithError(err).Error("Failed to record resource usage")
+	}
+
+	// Update resourceUsage region from handler for cost tracking
+	if resourceUsage.Region == "" && h.Region != "" {
+		resourceUsage.Region = h.Region
+	}
+}
+
+// syncRealtimeUsage syncs usage to the realtime tracker for quota enforcement
+func (h *Handler) syncRealtimeUsage(fn *storage.RegistryFunction, resourceUsage *ResourceUsage) {
+	if fn.TenantID != nil && h.UsageTracker != nil && h.UsageTracker.IsEnabled() {
+		if resourceUsage != nil && resourceUsage.CPUTimeUsedMs > 0 {
+			if err := h.UsageTracker.RecordComputeUsage(context.Background(), *fn.TenantID, resourceUsage.CPUTimeUsedMs); err != nil {
+				logrus.WithError(err).WithField("tenant_id", *fn.TenantID).Warn("Failed to record realtime compute usage")
+			}
+		}
+	}
+}
+
+// generateExecutionID creates a public execution ID for successful, shareable executions
+// with privacy-aware input/output handling
+func (h *Handler) generateExecutionID(
+	statusCode int,
+	fnVersion *storage.RegistryFunctionVersion,
+	fn *storage.RegistryFunction,
+	input json.RawMessage,
+	result json.RawMessage,
+	durationMs int,
+	cached bool,
+	verificationResult *ReplayVerificationResult,
+	r *http.Request,
+) *string {
+	if statusCode < 200 || statusCode >= 300 || fnVersion.SideEffects != "none" {
+		return nil
+	}
+
+	// Check privacy settings for input/output storage
+	var storeInputOutput = true
+	var sanitizedInput, sanitizedOutput = input, result
+
+	if h.PrivacyService != nil {
+		var privacySettings *privacy.PrivacySettings
+		if ctxSettings := privacy.GetPrivacySettingsFromContext(r.Context()); ctxSettings != nil {
+			privacySettings = ctxSettings
+		}
+		storeInputOutput = h.PrivacyService.ShouldStoreInputOutput(privacySettings)
+
+		// If storing, sanitize for PII first
+		if storeInputOutput {
+			sanitizedInput, sanitizedOutput, _ = h.PrivacyService.SanitizeInputOutput(input, result)
+		}
+	}
+
+	// If input/output storage is disabled, don't create public execution
+	if !storeInputOutput {
+		logrus.Debug("Input/output storage disabled for privacy, skipping public execution creation")
+		return nil
+	}
+
+	gen, err := gonanoid.Canonic()
+	if err != nil {
+		logrus.WithError(err).Error("Failed to create nanoid generator")
+		fallbackID := fmt.Sprintf("exec_%d", time.Now().UnixNano())
+		return &fallbackID
+	}
+
+	nanoID := gen()
+
+	publicExec := &storage.RegistryExecutionPublic{
+		PublicID:   nanoID,
+		FunctionID: fn.ID,
+		Version:    fnVersion.Version,
+		InputJSON:  sanitizedInput,
+		OutputJSON: sanitizedOutput,
+		DurationMs: durationMs,
+		Cached:     cached,
+		Shareable:  true,
+	}
+
+	// Add verification results to public execution if available
+	if verificationResult != nil {
+		publicExec.VerifiedAt = sql.NullTime{Time: verificationResult.VerifiedAt, Valid: true}
+		publicExec.VerificationStatus = sql.NullString{String: string(verificationResult.Status), Valid: true}
+		if verificationResult.Error != "" {
+			publicExec.VerificationError = sql.NullString{String: verificationResult.Error, Valid: true}
+		}
+		publicExec.ReplayedOutputJSON = verificationResult.ReplayedOutput
+		if verificationResult.ReplayedDuration > 0 {
+			replayMs := int32(verificationResult.ReplayedDuration)
+			publicExec.ReplayedDurationMs = sql.NullInt32{Int32: replayMs, Valid: true}
+		}
+	}
+
+	if err := h.Repo.CreateExecutionPublic(publicExec); err != nil {
+		logrus.WithError(err).Error("Failed to create public execution")
+		return nil
+	}
+
+	return &publicExec.PublicID
+}
+
+// writeErrorResponse writes an error response for failed executions
+func (h *Handler) writeErrorResponse(w http.ResponseWriter, executionErr error, statusCode int, errorCode string, durationMs int, version string) {
+	logrus.WithFields(logrus.Fields{
+		"error":      executionErr,
+		"statusCode": statusCode,
+	}).Error("Execution failed, writing error response")
+
+	msg := "Execution failed"
+	if executionErr != nil {
+		if s := executionErr.Error(); s != "" {
+			msg = s
+		}
+	}
+
+	code := errorCode
+	if code == "" {
+		code = functionregistry.ErrCodeRuntimeError
+	}
+
+	errorResp := functionregistry.ExecutionError{
+		OK:         false,
+		DurationMs: durationMs,
+		Version:    version,
+		Error: functionregistry.ErrorDetail{
+			Code:    code,
+			Message: msg,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(errorResp)
+}
+
+// writeSuccessResponse writes a success response for successful executions
+func (h *Handler) writeSuccessResponse(
+	w http.ResponseWriter,
+	result json.RawMessage,
+	cached bool,
+	durationMs int,
+	version string,
+	executionID *string,
+	eligibility cache.EligibilityResult,
+	cacheResult *cache.CacheResult,
+	fn *storage.RegistryFunction,
+) {
+	logrus.WithFields(logrus.Fields{
+		"result":     string(result),
+		"cached":     cached,
+		"durationMs": durationMs,
+		"version":    version,
+	}).Info("Writing success response")
+
+	successResp := functionregistry.ExecutionResponse{
+		OK:          true,
+		Data:        result,
+		Cached:      cached,
+		DurationMs:  durationMs,
+		Version:     version,
+		ExecutionID: executionID,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// Set cache headers
+	if eligibility.Eligible {
+		cache.SetCDNHeaders(w, eligibility, fn.Visibility == "public")
+
+		// Set edge cache headers for popular functions
+		if h.EdgeCache != nil {
+			popularityScore := fn.PopularityScore
+			if popularityScore == 0 {
+				popularityScore = 75
+			}
+			h.EdgeCache.SetEdgeCacheHeaders(w, fn.ID, version, popularityScore)
+		}
+
+		// Set X-Cache-Status and X-Cache-Layer headers
+		if cached {
+			w.Header().Set("X-Cache-Status", "HIT")
 		} else {
-			nanoID := gen()
-
-			publicExec := &storage.RegistryExecutionPublic{
-				PublicID:   nanoID,
-				FunctionID: fn.ID,
-				Version:    fnVersion.Version,
-				InputJSON:  execReq.Input,
-				OutputJSON: result,
-				DurationMs: durationMs,
-				Cached:     cached,
-				Shareable:  true,
-			}
-
-			// Add verification results to public execution if available
-			if verificationResult != nil {
-				publicExec.VerifiedAt = sql.NullTime{Time: verificationResult.VerifiedAt, Valid: true}
-				publicExec.VerificationStatus = sql.NullString{String: string(verificationResult.Status), Valid: true}
-				if verificationResult.Error != "" {
-					publicExec.VerificationError = sql.NullString{String: verificationResult.Error, Valid: true}
-				}
-				publicExec.ReplayedOutputJSON = verificationResult.ReplayedOutput
-				publicExec.ReplayedDurationMs = sql.NullInt32{Int32: int32(verificationResult.ReplayedDuration), Valid: true}
-			}
-			if err := h.Repo.CreateExecutionPublic(publicExec); err != nil {
-				logrus.WithError(err).Error("Failed to create public execution")
-			} else {
-				executionID = &publicExec.PublicID
-			}
+			w.Header().Set("X-Cache-Status", "MISS")
 		}
-	}
-
-	// Format response
-	if executionErr != nil || statusCode >= 400 {
-		// Error response
-		logrus.WithFields(logrus.Fields{
-			"error":      executionErr,
-			"statusCode": statusCode,
-		}).Error("Execution failed, writing error response")
-		msg := "Execution failed"
-		if executionErr != nil {
-			if s := executionErr.Error(); s != "" {
-				msg = s
-			}
+		if cacheResult != nil && cacheResult.Layer != "" && cacheResult.Layer != "none" {
+			w.Header().Set("X-Cache-Layer", cacheResult.Layer)
 		}
-		code := errorCode
-		if code == "" {
-			code = functionregistry.ErrCodeRuntimeError
-		}
-		errorResp := functionregistry.ExecutionError{
-			OK:         false,
-			DurationMs: durationMs,
-			Version:    fnVersion.Version,
-			Error: functionregistry.ErrorDetail{
-				Code:    code,
-				Message: msg,
-			},
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
-		json.NewEncoder(w).Encode(errorResp)
 	} else {
-		// Success response
-		logrus.WithFields(logrus.Fields{
-			"result":     string(result),
-			"cached":     cached,
-			"durationMs": durationMs,
-			"version":    fnVersion.Version,
-		}).Info("Writing success response")
-		successResp := functionregistry.ExecutionResponse{
-			OK:          true,
-			Data:        result,
-			Cached:      cached,
-			DurationMs:  durationMs,
-			Version:     fnVersion.Version,
-			ExecutionID: executionID,
-		}
-		// Suppress unused variable warnings — these are populated asynchronously
-		_ = executionRootHash
-		_ = certID
-		w.Header().Set("Content-Type", "application/json")
-
-		// Set cache headers
-		if eligibility.Eligible {
-			cache.SetCDNHeaders(w, eligibility, fn.Visibility == "public")
-
-			// Set edge cache headers for popular functions
-			if h.EdgeCache != nil {
-				// Get function popularity score from repository
-				popularityScore := fn.PopularityScore
-				if popularityScore == 0 {
-					// If not cached, use a default based on execution patterns
-					// This could be enhanced to get real-time popularity
-					popularityScore = 75 // Assume moderately popular for executed functions
-				}
-
-				h.EdgeCache.SetEdgeCacheHeaders(w, fn.ID, fnVersion.Version, popularityScore)
-			}
-
-			// Set X-Cache-Status and X-Cache-Layer headers for observability
-			if cached {
-				w.Header().Set("X-Cache-Status", "HIT")
-			} else {
-				w.Header().Set("X-Cache-Status", "MISS")
-			}
-			if cacheResult.Layer != "" && cacheResult.Layer != "none" {
-				w.Header().Set("X-Cache-Layer", cacheResult.Layer)
-			}
-		} else {
-			cache.SetNoCacheHeaders(w)
-		}
-
-		json.NewEncoder(w).Encode(successResp)
+		cache.SetNoCacheHeaders(w)
 	}
+
+	json.NewEncoder(w).Encode(successResp)
 }
 
 // HandleTest handles testing a function with validation data
@@ -496,7 +667,7 @@ func (h *Handler) HandleTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate function version is deployed (has deployment or backend)
+	// Validate function version is deployed
 	if fnVersion.DeploymentID == nil && fnVersion.BackendID == nil {
 		h.writeError(w, http.StatusBadRequest, functionregistry.ErrCodeInvalidInput, "Function version is not deployed")
 		return
@@ -533,7 +704,7 @@ func (h *Handler) HandleTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if function is eligible for caching (for validation purposes)
+	// Check if function is eligible for caching
 	versionData := cache.FunctionVersionData{
 		FunctionID:    fnVersion.FunctionID,
 		Version:       fnVersion.Version,
@@ -543,10 +714,8 @@ func (h *Handler) HandleTest(w http.ResponseWriter, r *http.Request) {
 	}
 	eligibility := cache.CheckEligibility(versionData)
 
-	// Attempt to execute with test data (but don't store results)
+	// Attempt to execute with test data
 	_, err = h.CacheService.GetOrExecute(eligibility, inputJSON, func() (json.RawMessage, error) {
-		// This is a test execution - we validate the function can be called
-		// but return a mock response instead of actual execution
 		testResult := map[string]interface{}{
 			"status":          "test_success",
 			"message":         "Function validation successful",
@@ -677,338 +846,4 @@ func (h *Handler) HandleVerifyReplay(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-}
-
-// writeError writes a structured error response for execution errors
-func (h *Handler) writeError(w http.ResponseWriter, statusCode int, errorCode, message string) {
-	errResp := functionregistry.ExecutionError{
-		OK: false,
-		Error: functionregistry.ErrorDetail{
-			Code:    errorCode,
-			Message: message,
-		},
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	if err := json.NewEncoder(w).Encode(errResp); err != nil {
-		logrus.WithError(err).Error("Failed to encode error response")
-	}
-}
-
-// shouldQueueExecution determines if an execution should be queued due to high load
-// Queueing is opt-in because queueExecution is currently a placeholder (no worker).
-//
-// Enable with:
-// - EXECUTION_QUEUE_ENABLED=true
-// - Client sets header: X-Queue-If-Busy: true
-//
-// Heuristic: if cache is under pressure (low hit ratio and high evictions), treat the node as "busy".
-func (h *Handler) shouldQueueExecution(r *http.Request) bool {
-	if os.Getenv("EXECUTION_QUEUE_ENABLED") != "true" {
-		return false
-	}
-	if strings.ToLower(strings.TrimSpace(r.Header.Get("X-Queue-If-Busy"))) != "true" {
-		return false
-	}
-
-	// If we have no cache service metrics, don't guess.
-	if h.CacheService == nil {
-		return false
-	}
-	mem := h.CacheService.GetMemoryStats()
-	if mem == nil {
-		return false
-	}
-
-	// Optional tuning knobs.
-	minEvictions := int64(500)
-	minSizeBytes := int64(50 * 1024 * 1024) // 50MB
-	maxHitRatio := 0.15
-	if v := os.Getenv("EXECUTION_QUEUE_MIN_EVICTIONS"); v != "" {
-		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n >= 0 {
-			minEvictions = n
-		}
-	}
-	if v := os.Getenv("EXECUTION_QUEUE_MIN_SIZE_BYTES"); v != "" {
-		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n >= 0 {
-			minSizeBytes = n
-		}
-	}
-	if v := os.Getenv("EXECUTION_QUEUE_MAX_HIT_RATIO"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f <= 1 {
-			maxHitRatio = f
-		}
-	}
-
-	// Under pressure: large cache + lots of evictions + poor hit ratio.
-	if mem.SizeBytes >= minSizeBytes && mem.Evictions >= minEvictions && mem.Ratio <= maxHitRatio {
-		return true
-	}
-	return false
-}
-
-// queueExecution queues a function execution for later processing
-// Currently stores the execution request in memory for single-instance deployments.
-// For multi-instance deployments, this should be replaced with Redis-based queuing.
-func (h *Handler) queueExecution(r *http.Request, functionID uuid.UUID, execReq functionregistry.ExecutionRequest, fnVersion *storage.RegistryFunctionVersion) error {
-	// Prefer RabbitMQ when configured; otherwise, log-only fallback.
-	pub := rabbitmq.NewPublisherFromEnv()
-	if pub.Enabled() {
-		defer pub.Close()
-
-		msg := map[string]any{
-			"type":         "function_execution",
-			"function_id":   functionID.String(),
-			"author":        mux.Vars(r)["author"],
-			"name":          mux.Vars(r)["name"],
-			"version":       fnVersion.Version,
-			"input_json":    json.RawMessage(execReq.Input),
-			"requested_at":  time.Now().UTC().Format(time.RFC3339Nano),
-			"request_id":    r.Header.Get("X-Request-ID"),
-			"user_agent":    r.Header.Get("User-Agent"),
-			"queue_reason":  "high_load",
-			"cache_eligible": fnVersion.Deterministic && fnVersion.CacheTTL > 0,
-		}
-
-		// MessageId helps de-dupe on consumer side if needed (best-effort).
-		messageID := fmt.Sprintf("%s:%s:%s", functionID.String(), fnVersion.Version, r.Header.Get("X-Request-ID"))
-		if err := pub.PublishJSON(r.Context(), msg, rabbitmq.PublishOptions{MessageID: messageID}); err != nil {
-			return fmt.Errorf("publish to rabbitmq: %w", err)
-		}
-
-		logrus.WithFields(logrus.Fields{
-			"function_id": functionID,
-			"version":     fnVersion.Version,
-			"input_size":  len(execReq.Input),
-			"request_id":  r.Header.Get("X-Request-ID"),
-		}).Info("Execution queued to RabbitMQ")
-
-		return nil
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"function_id": functionID,
-		"version":     fnVersion.Version,
-		"input_size":  len(execReq.Input),
-	}).Info("Execution queued (no broker configured; log-only)")
-	return nil
-}
-
-func (h *Handler) updateFunctionPopularity(functionID uuid.UUID) error {
-	return h.Repo.IncrementPopularity(functionID)
-}
-
-// updateTrustScoreV2 calculates and updates the Trust Score v2 for a function.
-// This includes DRE 2.0 sub-scores from the execution passport.
-// This is called asynchronously after successful replay verification.
-func (h *Handler) updateTrustScoreV2(functionID uuid.UUID) {
-	// Get DRE scores from the passport
-	dreScores, err := h.Repo.GetDREScoresForTrust(functionID)
-	if err != nil {
-		logrus.WithError(err).WithField("function_id", functionID).Warn("Failed to get DRE scores for trust calculation")
-		return
-	}
-
-	// If no passport exists yet, use default scores
-	if dreScores == nil {
-		dreScores = &registry.DREScores{
-			DeterminismScore:          0,
-			ReplayIntegrityScore:      0,
-			PerformanceStabilityScore: 0,
-			DriftScore:                1.0,
-		}
-	}
-
-	// Convert to TrustMetricsV2 for the calculator
-	metrics := &functionregistry.TrustMetricsV2{
-		TrustMetrics: functionregistry.TrustMetrics{
-			// These would be populated from the function rating in a full implementation
-			SuccessRate:  1.0,
-			P50LatencyMs: 0,
-			P95LatencyMs: 0,
-		},
-		DeterminismScore:          dreScores.DeterminismScore,
-		ReplayIntegrityScore:      dreScores.ReplayIntegrityScore,
-		PerformanceStabilityScore: dreScores.PerformanceStabilityScore,
-		DriftScore:                dreScores.DriftScore,
-	}
-
-	// Calculate Trust Score v2
-	calc := functionregistry.NewTrustScoreCalculator()
-	result := calc.CalculateV2(metrics)
-
-	// Update the trust score in the database
-	if err := h.Repo.UpdateTrustScoreV2(functionID, dreScores, result.TrustScoreV2); err != nil {
-		logrus.WithError(err).WithField("function_id", functionID).Warn("Failed to update Trust Score v2")
-		return
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"function_id":      functionID,
-		"trust_score_v2":   result.TrustScoreV2,
-		"determinism":      dreScores.DeterminismScore,
-		"replay_integrity": dreScores.ReplayIntegrityScore,
-		"performance":      dreScores.PerformanceStabilityScore,
-		"drift":            dreScores.DriftScore,
-	}).Info("Updated Trust Score v2")
-}
-
-// buildAndStoreMEG constructs the Merkle Execution Graph for a completed execution
-// and stores the MEG record and FXCERT certificate asynchronously.
-// This is called in a goroutine and must not block the HTTP response.
-func (h *Handler) buildAndStoreMEG(
-	fn *storage.RegistryFunction,
-	fnVersion *storage.RegistryFunctionVersion,
-	input json.RawMessage,
-	output json.RawMessage,
-	resourceUsage *ResourceUsage,
-	durationMs int,
-) {
-	// Generate a nonce for this MEG construction
-	nonce := fmt.Sprintf("%d", time.Now().UnixNano())
-
-	// Build execution metadata
-	execMeta := ExecutionMetadata{
-		ExecutionID:     uuid.New().String(),
-		FunctionID:      fn.ID.String(),
-		OwnerID:         "",
-		CallerID:        "",
-		NodeID:          h.NodeID,
-		Region:          h.Region,
-		Nonce:           nonce,
-		ProtocolVersion: "dre/1.0",
-	}
-	if fn.OwnerUserID != nil {
-		execMeta.OwnerID = fn.OwnerUserID.String()
-	}
-
-	// Create a default capsule descriptor
-	capsuleDesc := capsule.Default(execMeta.ExecutionID, "", "")
-
-	// Build the MEG
-	megResult, err := BuildMEGFromExecution(fnVersion, input, output, resourceUsage, capsuleDesc, execMeta)
-	if err != nil {
-		logrus.WithError(err).WithFields(logrus.Fields{
-			"function_id": fn.ID,
-			"version":     fnVersion.Version,
-		}).Warn("DRE: Failed to build MEG for execution")
-		return
-	}
-
-	// Get capsule descriptor hash
-	capsuleHash, err := capsuleDesc.Hash()
-	if err != nil {
-		logrus.WithError(err).Warn("DRE: Failed to hash capsule descriptor")
-		capsuleHash = ""
-	}
-
-	// Parse execution ID as UUID (generated above)
-	execUUID, err := uuid.Parse(execMeta.ExecutionID)
-	if err != nil {
-		execUUID = uuid.New()
-	}
-
-	// Store MEG record
-	megRecord := &storage.MEGRecord{
-		ID:                    uuid.New(),
-		ExecutionID:           execUUID,
-		FunctionID:            fn.ID,
-		Version:               fnVersion.Version,
-		ExecutionRootHash:     megResult.ExecutionRootHash,
-		InputHash:             megResult.InputHash,
-		EnvironmentHash:       megResult.EnvironmentHash,
-		DependencyHash:        megResult.DependencyHash,
-		TraceHash:             megResult.TraceHash,
-		ResourceHash:          megResult.ResourceHash,
-		OutputHash:            megResult.OutputHash,
-		MetadataHash:          megResult.MetadataHash,
-		CapsuleDescriptorHash: capsuleHash,
-		DeterminismTier:       capsuleDesc.DeterminismTier,
-		ProtocolVersion:       "dre/1.0",
-	}
-
-	if err := h.Repo.StoreMEGRecord(megRecord); err != nil {
-		logrus.WithError(err).WithFields(logrus.Fields{
-			"function_id":         fn.ID,
-			"execution_root_hash": megResult.ExecutionRootHash,
-		}).Warn("DRE: Failed to store MEG record")
-		return
-	}
-
-	// Generate FXCERT (standard level)
-	certExec := drecert.ExecutionSection{
-		ExecutionID:      execMeta.ExecutionID,
-		FunctionID:       fmt.Sprintf("fx://%s/%s/%s", fn.Author, fn.Name, fnVersion.Version),
-		OwnerID:          execMeta.OwnerID,
-		CallerID:         execMeta.CallerID,
-		NodeID:           h.NodeID,
-		Region:           h.Region,
-		TimestampVirtual: capsuleDesc.TimeSeed,
-		TimestampRealUTC: time.Now().UTC().Format(time.RFC3339),
-		ProtocolVersion:  "dre/1.0",
-	}
-
-	certCapsule := drecert.CapsuleSection{
-		CapsuleDescriptorHash: capsuleHash,
-		DeterminismTier:       capsuleDesc.DeterminismTier,
-		ProtocolVersion:       capsuleDesc.ProtocolVersion,
-	}
-
-	certTrust := drecert.TrustSection{
-		TrustScore:       0,
-		DeterminismScore: 0,
-	}
-
-	// Generate certificate; sign with node key and optional platform key when configured
-	cert, err := drecert.Generate(megResult, certExec, certCapsule, certTrust, drecert.CertLevelStandard, h.NodeKey, h.PlatformKey)
-	if err != nil {
-		logrus.WithError(err).Warn("DRE: Failed to generate FXCERT")
-		return
-	}
-
-	// Marshal certificate to JSON
-	certJSON, err := json.Marshal(cert)
-	if err != nil {
-		logrus.WithError(err).Warn("DRE: Failed to marshal FXCERT")
-		return
-	}
-
-	// Store certificate
-	execCert := &storage.ExecutionCertificate{
-		ID:                uuid.New(),
-		CertificateID:     cert.CertificateID,
-		ExecutionID:       megRecord.ID, // Use MEG record ID as proxy for execution ID
-		MEGRecordID:       megRecord.ID,
-		FunctionID:        fn.ID,
-		CertLevel:         string(drecert.CertLevelStandard),
-		CertJSON:          certJSON,
-		ExecutionRootHash: megResult.ExecutionRootHash,
-		CertificateHash:   cert.Integrity.CertificateHash,
-	}
-
-	if err := h.Repo.StoreCertificate(execCert); err != nil {
-		logrus.WithError(err).WithFields(logrus.Fields{
-			"certificate_id": cert.CertificateID,
-		}).Warn("DRE: Failed to store FXCERT")
-		return
-	}
-
-	// Update execution passport
-	now := time.Now()
-	passportUpdate := storage.PassportUpdate{
-		IncrementTotal:        true,
-		IncrementVerified:     false, // Will be set to true after replay verification
-		CapsuleDescriptorHash: capsuleHash,
-		LastVerifiedAt:        &now,
-		ResourceHash:          megResult.ResourceHash, // For performance stability tracking
-	}
-	if err := h.Repo.UpdatePassport(fn.ID, passportUpdate); err != nil {
-		logrus.WithError(err).WithField("function_id", fn.ID).Warn("DRE: Failed to update execution passport")
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"function_id":         fn.ID,
-		"execution_root_hash": megResult.ExecutionRootHash,
-		"certificate_id":      cert.CertificateID,
-	}).Debug("DRE: MEG and certificate stored successfully")
 }

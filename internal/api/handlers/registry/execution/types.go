@@ -1,65 +1,132 @@
 package execution
 
 import (
+	"context"
+	"crypto/ed25519"
 	"encoding/json"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/dre/capsule"
 	drecrypto "github.com/functionfly/functionfly/internal/dre/crypto"
+	"github.com/functionfly/functionfly/internal/privacy"
+	"github.com/functionfly/functionfly/internal/services"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
+	"github.com/google/uuid"
 )
 
-// ReplayVerificationStatus represents the status of replay verification
-type ReplayVerificationStatus string
-
-const (
-	VerificationPending  ReplayVerificationStatus = "pending"
-	VerificationVerified ReplayVerificationStatus = "verified"
-	VerificationFailed   ReplayVerificationStatus = "failed"
-)
-
-// ReplayVerificationResult represents the result of a replay verification.
-// DRE 2.0 adds MEG-based root hash comparison fields.
-type ReplayVerificationResult struct {
-	Status           ReplayVerificationStatus
-	OriginalOutput   json.RawMessage
-	ReplayedOutput   json.RawMessage
-	OriginalDuration int
-	ReplayedDuration int
-	Error            string
-	VerifiedAt       time.Time
-	OutputMatches    bool
-
-	// DRE 2.0 fields — MEG-based verification
-	OriginalRootHash string
-	ReplayRootHash   string
-	DriftCategory    capsule.DriftCategory
-	ComponentDiff    []string
-	MEGRecord        *registry.MEGRecord
-	OriginalMEG      *drecrypto.MEGResult
-	ReplayMEG        *drecrypto.MEGResult
+// Handler contains dependencies for execution handlers
+type Handler struct {
+	Repo         *registry.RegistryRepository
+	BackendRepo  storage.Repository
+	CacheService *cache.CacheService
+	EdgeCache    *cache.EdgeCacheService
+	// UsageTracker provides real-time quota enforcement and usage tracking
+	UsageTracker UsageTracker
+	// PrivacyService provides privacy and compliance features
+	PrivacyService PrivacyService
+	// NodeID is the identifier of this execution node (used in MEG records and certificates)
+	NodeID string
+	// Region is the geographic region of this node
+	Region string
+	// NodeKey is the Ed25519 private key used to sign FXCERTs. If nil, certs are generated without a node signature (e.g. bootstrap).
+	NodeKey ed25519.PrivateKey
+	// PlatformKey is the optional Ed25519 platform key; when set, certs include a platform signature (Platform Key ID in UI).
+	PlatformKey ed25519.PrivateKey
 }
 
-// ResourceUsage represents resource usage for an execution
+// PrivacyService interface for privacy and compliance features
+type PrivacyService interface {
+	GetPrivacySettings(userID uuid.UUID) (*privacy.PrivacySettings, error)
+	AnonymizeExecutionData(ip, userAgent, embedOrigin string, settings *privacy.PrivacySettings) (string, string, string)
+	ShouldLogGeoData(settings *privacy.PrivacySettings) bool
+	ShouldLogEmbedOrigin(settings *privacy.PrivacySettings) bool
+	ShouldStoreInputOutput(settings *privacy.PrivacySettings) bool
+	ScanForPII(data interface{}, redact bool) (*privacy.PIIDetectionResult, error)
+	SanitizeInputOutput(input, output []byte) ([]byte, []byte, bool)
+}
+
+// UsageTracker interface for real-time quota enforcement
+type UsageTracker interface {
+	RecordExecution(ctx context.Context, tenantID uuid.UUID, executionID string) (*services.QuotaCheckResult, error)
+	RecordComputeUsage(ctx context.Context, tenantID uuid.UUID, cpuTimeMs int) error
+	GetQuotaStatus(ctx context.Context, tenantID uuid.UUID) (*services.RealtimeQuotaStatus, error)
+	IsEnabled() bool
+}
+
+// ResourceUsage tracks resource consumption during function execution
 type ResourceUsage struct {
 	MaxMemoryMB    int
 	MaxCPUTimeMs   int
-	MemoryUsedMB   float64
+	MemoryUsedMB   int
 	CPUTimeUsedMs  int
 	WallTimeUsedMs int
+	Region         string // Geographic region where execution occurred
 }
 
-// ExecutionError wraps execution errors with resource usage information
+// ExecutionError represents an error during function execution with resource context
 type ExecutionError struct {
 	Err           error
 	ResourceUsage *ResourceUsage
 	TerminatedBy  string
 }
 
-func (ee *ExecutionError) Error() string {
-	return ee.Err.Error()
+func (e *ExecutionError) Error() string {
+	if e.Err != nil {
+		return e.Err.Error()
+	}
+	return "execution error"
 }
 
-func (ee *ExecutionError) Unwrap() error {
-	return ee.Err
+// ReplayVerificationResult contains the outcome of a replay verification
+type ReplayVerificationResult struct {
+	VerifiedAt       time.Time
+	Status           VerificationStatus
+	OutputMatches    bool
+	OriginalDuration int
+	ReplayedDuration int
+	ReplayedOutput   json.RawMessage
+	Error            string
+	OriginalOutput   json.RawMessage
+	OriginalMEG      *drecrypto.MEGResult
+	ReplayMEG        *drecrypto.MEGResult
+	OriginalRootHash string
+	ReplayRootHash   string
+	DriftCategory    capsule.DriftCategory
+	ComponentDiff    []string
 }
+
+// VerificationStatus represents the status of replay verification
+type VerificationStatus string
+
+const (
+	VerificationPending    VerificationStatus = "pending"
+	VerificationVerified   VerificationStatus = "verified"
+	VerificationMismatched VerificationStatus = "mismatched"
+	VerificationFailed     VerificationStatus = "failed"
+	VerificationSkipped    VerificationStatus = "skipped"
+)
+
+// ExecutionMetadata contains metadata about an execution for DRE
+type ExecutionMetadata struct {
+	ExecutionID     string
+	FunctionID      string
+	OwnerID         string
+	CallerID        string
+	NodeID          string
+	Region          string
+	Nonce           string
+	ProtocolVersion string
+}
+
+// ExecutionOutcome represents the outcome of a function execution
+type ExecutionOutcome string
+
+const (
+	OutcomeSuccess ExecutionOutcome = "success"
+	OutcomeError     ExecutionOutcome = "error"
+	OutcomeTimeout   ExecutionOutcome = "timeout"
+	OutcomeOOM       ExecutionOutcome = "oom"
+	OutcomeCancelled ExecutionOutcome = "cancelled"
+)

@@ -78,16 +78,16 @@ func (r *RegistryRepository) CalculateTrustScore(functionID uuid.UUID, windowSta
 		P99LatencyMs:       metrics.LatencyP99,
 		ErrorRate:          metrics.ErrorRate,
 		TimeoutRate:        metrics.TimeoutRate,
-		ConsumerDiversity:   uniqueIPs,
+		ConsumerDiversity:  uniqueIPs,
 		TenantDiversity:    uniqueTenants,
 		UserDiversity:      uniqueUsers,
 		IsVerified:         isVerified,
 		VerificationLevel:  verificationLevel,
 		TrustTier:          trustTier,
 		CalculatedAt:       time.Now(),
-		WindowStart:         windowStart,
-		WindowEnd:           windowEnd,
-		CalculationVersion:  1,
+		WindowStart:        windowStart,
+		WindowEnd:          windowEnd,
+		CalculationVersion: 1,
 	}
 
 	return history, nil
@@ -348,9 +348,9 @@ func (r *RegistryRepository) calculateMetricsFromExecutions(functionID uuid.UUID
 		SuccessfulCalls: int(float64(result.TotalCalls) * result.SuccessRate / 100),
 		SuccessRate:     result.SuccessRate,
 		LatencyAvg:      result.AvgLatency,
-		LatencyP50:     result.P50Latency,
-		LatencyP95:     result.P95Latency,
-		LatencyP99:     result.P99Latency,
+		LatencyP50:      result.P50Latency,
+		LatencyP95:      result.P95Latency,
+		LatencyP99:      result.P99Latency,
 		TimeoutRate:     result.TimeoutRate,
 		ErrorRate:       result.ErrorRate,
 		UniqueIPs:       result.UniqueIPs,
@@ -398,10 +398,10 @@ func (r *RegistryRepository) AggregateHourlyMetrics(hour time.Time) error {
 func (r *RegistryRepository) UpdateFunctionTrustScore(functionID uuid.UUID, trustScore float64, trustTier TrustTier) error {
 	now := time.Now()
 	updates := map[string]interface{}{
-		"trust_score":                trustScore,
-		"trust_tier":                 trustTier,
-		"trust_updated_at":           now,
-		"trust_calculation_version":   gorm.Expr("trust_calculation_version + 1"),
+		"trust_score":               trustScore,
+		"trust_tier":                trustTier,
+		"trust_updated_at":          now,
+		"trust_calculation_version": gorm.Expr("trust_calculation_version + 1"),
 	}
 
 	if err := r.db.Model(&RegistryFunction{}).Where("id = ?", functionID).Updates(updates).Error; err != nil {
@@ -505,6 +505,219 @@ func (r *RegistryRepository) GetTrustScoreJob(jobID uuid.UUID) (*TrustScoreJob, 
 }
 
 // ============================================
+// Sliding Window Calculation Methods
+// ============================================
+
+// CalculateTrustScoreSliding computes a trust score using sliding window with exponential smoothing
+func (r *RegistryRepository) CalculateTrustScoreSliding(functionID uuid.UUID, config SlidingWindowConfig) (*TrustHistory, *TrustScoreDelta, error) {
+	now := time.Now()
+	windowStart := now.Add(-config.WindowDuration)
+
+	// Get current sliding window state
+	state, err := r.getOrCreateSlidingWindowState(functionID, config)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get sliding window state: %w", err)
+	}
+
+	// Calculate metrics for the sliding window
+	metrics, err := r.calculateMetricsFromExecutions(functionID, windowStart, now)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to calculate window metrics: %w", err)
+	}
+
+	// Check minimum data points
+	if metrics.TotalCalls < config.MinDataPoints {
+		// Not enough data - use previous score or neutral default
+		if state.CurrentScore > 0 {
+			return nil, nil, fmt.Errorf("insufficient data points: %d < %d", metrics.TotalCalls, config.MinDataPoints)
+		}
+	}
+
+	// Get other trust components
+	isVerified, verificationLevel, err := r.GetFunctionVerificationStatus(functionID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get verification status: %w", err)
+	}
+
+	rating, err := r.GetRatingByFunctionID(functionID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get rating: %w", err)
+	}
+
+	// Calculate component scores
+	reliabilityScore := calculateReliabilityScore(metrics)
+	latencyScore := calculateLatencyScore(metrics)
+	errorRateScore := calculateErrorRateScore(metrics)
+	userRatingScore := calculateUserRatingScore(rating)
+	verificationBonus := calculateVerificationBonus(isVerified, verificationLevel)
+
+	// Get diversity metrics
+	uniqueIPs, uniqueTenants, uniqueUsers, err := r.GetConsumerDiversity(functionID, windowStart)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get consumer diversity: %w", err)
+	}
+
+	// Calculate new score with weighted components
+	weights := DefaultTrustScoreWeights()
+	newScore := (reliabilityScore * weights.Reliability) +
+		(latencyScore * weights.Latency) +
+		(errorRateScore * weights.ErrorRate) +
+		(userRatingScore * weights.UserRating) +
+		(verificationBonus * weights.Verification)
+
+	// Apply exponential smoothing if we have a previous score
+	var finalScore float64
+	if state.CurrentScore > 0 {
+		// EMA: S_t = alpha * Y_t + (1-alpha) * S_{t-1}
+		finalScore = config.SmoothingFactor*newScore + (1-config.SmoothingFactor)*state.CurrentScore
+	} else {
+		finalScore = newScore
+	}
+
+	// Determine trust tier
+	newTier := determineTrustTier(finalScore, isVerified)
+	oldTier := determineTrustTier(state.CurrentScore, isVerified)
+
+	// Create delta
+	delta := &TrustScoreDelta{
+		FunctionID:         functionID,
+		PreviousScore:      state.CurrentScore,
+		CurrentScore:       finalScore,
+		ScoreChange:        finalScore - state.CurrentScore,
+		ScoreChangePercent: 0,
+		PreviousTier:       oldTier,
+		CurrentTier:        newTier,
+		TierChanged:        oldTier != newTier,
+		CalculatedAt:       now,
+		WindowType:         WindowTypeSliding,
+		ComponentChanges: map[string]float64{
+			"reliability":  reliabilityScore - state.GetComponentScore("reliability"),
+			"latency":      latencyScore - state.GetComponentScore("latency"),
+			"error_rate":   errorRateScore - state.GetComponentScore("error_rate"),
+			"user_rating":  userRatingScore - state.GetComponentScore("user_rating"),
+			"verification": verificationBonus - state.GetComponentScore("verification"),
+		},
+	}
+
+	if state.CurrentScore > 0 {
+		delta.ScoreChangePercent = (delta.ScoreChange / state.CurrentScore) * 100
+	}
+
+	// Create history entry
+	history := &TrustHistory{
+		ID:                 uuid.New(),
+		FunctionID:         functionID,
+		TrustScore:         finalScore,
+		ReliabilityScore:   reliabilityScore,
+		LatencyScore:       latencyScore,
+		ErrorRateScore:     errorRateScore,
+		UserRatingScore:    userRatingScore,
+		VerificationBonus:  verificationBonus,
+		TotalCalls:         metrics.TotalCalls,
+		SuccessRate:        metrics.SuccessRate,
+		P50LatencyMs:       metrics.LatencyP50,
+		P95LatencyMs:       metrics.LatencyP95,
+		P99LatencyMs:       metrics.LatencyP99,
+		ErrorRate:          metrics.ErrorRate,
+		TimeoutRate:        metrics.TimeoutRate,
+		ConsumerDiversity:  uniqueIPs,
+		TenantDiversity:    uniqueTenants,
+		UserDiversity:      uniqueUsers,
+		IsVerified:         isVerified,
+		VerificationLevel:  verificationLevel,
+		TrustTier:          newTier,
+		CalculatedAt:       now,
+		WindowStart:        windowStart,
+		WindowEnd:          now,
+		CalculationVersion: 2, // Sliding window version
+	}
+
+	// Update sliding window state with component scores
+	state.PreviousScore = state.CurrentScore
+	state.CurrentScore = finalScore
+	state.LastUpdated = now
+	state.WindowStart = windowStart
+	state.WindowEnd = now
+	state.TotalCallsInWindow = metrics.TotalCalls
+	state.LastCalculation = now
+
+	// Store component scores for next delta calculation
+	state.ReliabilityScore = reliabilityScore
+	state.LatencyScore = latencyScore
+	state.ErrorRateScore = errorRateScore
+	state.UserRatingScore = userRatingScore
+	state.VerificationBonus = verificationBonus
+
+	if err := r.saveSlidingWindowState(state); err != nil {
+		logrus.WithError(err).Warn("Failed to save sliding window state")
+	}
+
+	return history, delta, nil
+}
+
+// getOrCreateSlidingWindowState retrieves or creates sliding window state for a function
+func (r *RegistryRepository) getOrCreateSlidingWindowState(functionID uuid.UUID, config SlidingWindowConfig) (*SlidingWindowState, error) {
+	var state SlidingWindowState
+	err := r.db.Where("function_id = ?", functionID).First(&state).Error
+
+	if err == gorm.ErrRecordNotFound {
+		// Create new state
+		now := time.Now()
+		state = SlidingWindowState{
+			FunctionID:      functionID,
+			LastUpdated:     now,
+			WindowStart:     now.Add(-config.WindowDuration),
+			WindowEnd:       now,
+			SmoothingFactor: config.SmoothingFactor,
+		}
+		return &state, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return &state, nil
+}
+
+// saveSlidingWindowState saves the sliding window state
+func (r *RegistryRepository) saveSlidingWindowState(state *SlidingWindowState) error {
+	return r.db.Save(state).Error
+}
+
+// UpdateSlidingWindowScores updates scores for all functions using sliding window
+func (r *RegistryRepository) UpdateSlidingWindowScores(config SlidingWindowConfig) ([]TrustScoreDelta, error) {
+	var functions []RegistryFunction
+	if err := r.db.Find(&functions).Error; err != nil {
+		return nil, fmt.Errorf("failed to get functions: %w", err)
+	}
+
+	var deltas []TrustScoreDelta
+
+	for _, fn := range functions {
+		history, delta, err := r.CalculateTrustScoreSliding(fn.ID, config)
+		if err != nil {
+			logrus.WithError(err).Warnf("Failed to calculate sliding window score for %s", fn.ID)
+			continue
+		}
+
+		// Save to history
+		if err := r.CreateTrustHistory(history); err != nil {
+			logrus.WithError(err).Warnf("Failed to save trust history for %s", fn.ID)
+		}
+
+		// Update function record
+		if err := r.UpdateFunctionTrustScore(fn.ID, history.TrustScore, history.TrustTier); err != nil {
+			logrus.WithError(err).Warnf("Failed to update function trust score for %s", fn.ID)
+		}
+
+		if delta.ScoreChange != 0 || delta.TierChanged {
+			deltas = append(deltas, *delta)
+		}
+	}
+
+	return deltas, nil
+}
+
+// ============================================
 // Trust Score Refresh Methods
 // ============================================
 
@@ -560,10 +773,10 @@ func (r *RegistryRepository) RefreshAllTrustScores() (*TrustScoreJob, error) {
 	}
 	now := time.Now()
 	r.UpdateTrustScoreJob(job.ID, map[string]interface{}{
-		"status":               status,
-		"functions_processed":  processed,
-		"errors":               errors,
-		"completed_at":         &now,
+		"status":              status,
+		"functions_processed": processed,
+		"errors":              errors,
+		"completed_at":        &now,
 	})
 
 	job.Status = status
@@ -574,6 +787,17 @@ func (r *RegistryRepository) RefreshAllTrustScores() (*TrustScoreJob, error) {
 // Helper function to get pointer to time
 func timePtr(t time.Time) *time.Time {
 	return &t
+}
+
+// GetAllFunctionsWithTrustScores retrieves all functions with their current trust scores
+// Used for delta tracking in streaming updates
+func (r *RegistryRepository) GetAllFunctionsWithTrustScores() ([]RegistryFunction, error) {
+	var functions []RegistryFunction
+	// Select only the fields we need for delta tracking
+	if err := r.db.Select("id, trust_score, trust_tier, trust_updated_at").Find(&functions).Error; err != nil {
+		return nil, fmt.Errorf("failed to get functions with trust scores: %w", err)
+	}
+	return functions, nil
 }
 
 // ============================================
@@ -593,4 +817,136 @@ func (r *RegistryRepository) InvalidateTrustScoreCache(functionID uuid.UUID) err
 		}()
 	}
 	return nil
+}
+
+// ============================================
+// Remix History Methods
+// ============================================
+
+// RecordRemix creates a remix history record linking source and target functions
+func (r *RegistryRepository) RecordRemix(sourceFunctionID, targetFunctionID, remixedByUserID uuid.UUID, customization string, costUSD float64) error {
+	remix := &RemixHistory{
+		ID:               uuid.New(),
+		SourceFunctionID: sourceFunctionID,
+		TargetFunctionID: targetFunctionID,
+		RemixedByUserID:  remixedByUserID,
+		RemixedAt:        time.Now(),
+		Customization:    customization,
+		CostUSD:          costUSD,
+	}
+	if err := r.db.Create(remix).Error; err != nil {
+		return fmt.Errorf("failed to record remix: %w", err)
+	}
+	return nil
+}
+
+// GetRemixHistoryForFunction returns all remixes created from this function
+func (r *RegistryRepository) GetRemixHistoryForFunction(sourceFunctionID uuid.UUID) ([]RemixHistory, error) {
+	var history []RemixHistory
+	if err := r.db.Where("source_function_id = ?", sourceFunctionID).
+		Order("remixed_at DESC").
+		Preload("TargetFunction").
+		Find(&history).Error; err != nil {
+		return nil, fmt.Errorf("failed to get remix history: %w", err)
+	}
+	return history, nil
+}
+
+// CountRemixesForFunction returns the number of remixes for a function
+func (r *RegistryRepository) CountRemixesForFunction(sourceFunctionID uuid.UUID) (int64, error) {
+	var count int64
+	if err := r.db.Model(&RemixHistory{}).Where("source_function_id = ?", sourceFunctionID).Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("failed to count remixes: %w", err)
+	}
+	return count, nil
+}
+
+// IsFunctionRemix checks if a function was created by remixing another function
+// Returns true if the function appears as a target in remix_history
+func (r *RegistryRepository) IsFunctionRemix(targetFunctionID uuid.UUID) (bool, *RemixHistory, error) {
+	var history RemixHistory
+	err := r.db.Where("target_function_id = ?", targetFunctionID).
+		Preload("SourceFunction").
+		First(&history).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, nil, nil
+		}
+		return false, nil, fmt.Errorf("failed to check if function is remix: %w", err)
+	}
+	return true, &history, nil
+}
+
+// ============================================
+// Function Likes Methods
+// ============================================
+
+// ToggleLike toggles a user's like on a function. Returns (liked, totalLikes, error).
+// If the user already liked it, removes the like (unlike). Otherwise adds it.
+func (r *RegistryRepository) ToggleLike(functionID, userID uuid.UUID) (bool, int64, error) {
+	var existing FunctionLike
+	err := r.db.Where("function_id = ? AND user_id = ?", functionID, userID).First(&existing).Error
+
+	if err == nil {
+		// User already liked - remove it (unlike)
+		if err := r.db.Delete(&existing).Error; err != nil {
+			return false, 0, fmt.Errorf("failed to remove like: %w", err)
+		}
+		count, _ := r.CountLikesForFunction(functionID)
+		return false, count, nil
+	} else if err == gorm.ErrRecordNotFound {
+		// User hasn't liked - add like
+		like := FunctionLike{
+			ID:         uuid.New(),
+			FunctionID: functionID,
+			UserID:     userID,
+			LikedAt:    time.Now(),
+		}
+		if err := r.db.Create(&like).Error; err != nil {
+			return false, 0, fmt.Errorf("failed to add like: %w", err)
+		}
+		count, _ := r.CountLikesForFunction(functionID)
+		return true, count, nil
+	}
+
+	return false, 0, fmt.Errorf("failed to check existing like: %w", err)
+}
+
+// HasUserLiked checks if a specific user has liked a function
+func (r *RegistryRepository) HasUserLiked(functionID, userID uuid.UUID) (bool, error) {
+	var count int64
+	if err := r.db.Model(&FunctionLike{}).
+		Where("function_id = ? AND user_id = ?", functionID, userID).
+		Count(&count).Error; err != nil {
+		return false, fmt.Errorf("failed to check like status: %w", err)
+	}
+	return count > 0, nil
+}
+
+// CountLikesForFunction returns the total number of likes for a function
+func (r *RegistryRepository) CountLikesForFunction(functionID uuid.UUID) (int64, error) {
+	var count int64
+	if err := r.db.Model(&FunctionLike{}).Where("function_id = ?", functionID).Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("failed to count likes: %w", err)
+	}
+	return count, nil
+}
+
+// GetLikesForFunction returns the list of users who liked a function (with pagination)
+func (r *RegistryRepository) GetLikesForFunction(functionID uuid.UUID, limit, offset int) ([]FunctionLike, int64, error) {
+	var likes []FunctionLike
+	var total int64
+
+	if err := r.db.Model(&FunctionLike{}).Where("function_id = ?", functionID).Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count likes: %w", err)
+	}
+
+	if err := r.db.Where("function_id = ?", functionID).
+		Order("liked_at DESC").
+		Limit(limit).Offset(offset).
+		Find(&likes).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to get likes: %w", err)
+	}
+
+	return likes, total, nil
 }

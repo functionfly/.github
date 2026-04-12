@@ -2,16 +2,13 @@ package execution
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/storage"
 )
@@ -86,58 +83,3 @@ func (h *Handler) createExecuteFunction(fnVersion *storage.RegistryFunctionVersi
 	}
 }
 
-// executeWithCaching executes a function with caching support
-func (h *Handler) executeWithCaching(eligibility cache.EligibilityResult, input json.RawMessage, executeFn func() (json.RawMessage, error)) (json.RawMessage, error, bool) {
-	cacheResult, err := h.CacheService.GetOrExecute(eligibility, input, executeFn)
-	if err != nil {
-		return nil, err, false
-	}
-	return cacheResult.Output, nil, cacheResult.FromCache
-}
-
-// determineOutcome determines the execution outcome and error code
-func determineOutcome(executionErr error, statusCode int) (string, string) {
-	outcome := "success"
-	errorCode := ""
-	if executionErr != nil || statusCode >= 400 {
-		outcome = "error"
-		if executionErr != nil {
-			errorCode = "execution_failed"
-		} else {
-			errorCode = "http_error"
-		}
-	}
-	return outcome, errorCode
-}
-
-// toNullString converts a string pointer to sql.NullString
-func toNullString(s *string) sql.NullString {
-	if s == nil {
-		return sql.NullString{Valid: false}
-	}
-	return sql.NullString{String: *s, Valid: true}
-}
-
-// getClientIP extracts the client IP from the request
-func getClientIP(r *http.Request) string {
-	// Check X-Forwarded-For header first
-	xff := r.Header.Get("X-Forwarded-For")
-	if xff != "" {
-		// X-Forwarded-For can contain multiple IPs, take the first one
-		ips := strings.Split(xff, ",")
-		return strings.TrimSpace(ips[0])
-	}
-
-	// Check X-Real-IP header
-	xri := r.Header.Get("X-Real-IP")
-	if xri != "" {
-		return xri
-	}
-
-	// Fall back to RemoteAddr
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return ip
-}
