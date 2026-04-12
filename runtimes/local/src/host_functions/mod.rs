@@ -179,6 +179,8 @@ mod tests {
 
     #[test]
     fn test_send_email_no_server() {
+        // This test verifies that email sending attempts to connect to a server
+        // and fails gracefully when no server is available
         let config = Config::default();
         let result = email::send_email(
             "test@example.com",
@@ -187,7 +189,8 @@ mod tests {
             Some("sender@example.com"),
             &config,
         );
-        assert!(result.is_ok());
+        // Should fail because there's no SMTP server running
+        assert!(result.is_err());
     }
 
     #[test]

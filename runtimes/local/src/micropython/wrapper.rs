@@ -124,14 +124,14 @@ impl WrapperGenerator {
   (func (export "free") (param $ptr i32))
 
   ;; mp_js_init - Initialize MicroPython runtime
-  (func (export "mp_js_init") (param $heap_size i32) (result i32)
+  (func $mp_js_init (export "mp_js_init") (param $heap_size i32) (result i32)
     (global.set $alloc_ptr (i32.const {}))
     (global.set $output_written (i32.const 0))
     (memory.fill (i32.const {}) (i32.const 0) (i32.const {}))
     (i32.const 0))
 
   ;; mp_js_do_exec - Execute Python code
-  (func (export "mp_js_do_exec") (param $code_ptr i32) (param $code_len i32) (result i32)
+  (func $mp_js_do_exec (export "mp_js_do_exec") (param $code_ptr i32) (param $code_len i32) (result i32)
     (i32.const 0))
 
   ;; mp_js_do_exec_async - Execute Python code asynchronously

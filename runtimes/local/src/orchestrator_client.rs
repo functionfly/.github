@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn test_default_client() {
         let client = OrchestratorClient::default();
-        assert_eq!(client.orchestrator_url, "http://localhost:8080");
+        assert_eq!(client.orchestrator_url, "http://localhost:9091");
         assert_eq!(client.timeout, Duration::from_secs(30));
     }
 }

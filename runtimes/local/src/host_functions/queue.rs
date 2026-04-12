@@ -166,3 +166,91 @@ pub fn add_queue_functions(
     );
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::VecDeque;
+
+    #[tokio::test]
+    async fn test_new_queue_store() {
+        let store = new_queue_store();
+        let guard = store.read().await;
+        assert!(guard.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_queue_store_push_and_pop() {
+        let store = new_queue_store();
+        
+        // Push to queue
+        {
+            let mut guard = store.write().await;
+            let queue = guard.entry("test-queue".to_string()).or_insert_with(VecDeque::new);
+            queue.push_back("message 1".to_string());
+            queue.push_back("message 2".to_string());
+        }
+        
+        // Pop from queue
+        {
+            let mut guard = store.write().await;
+            let msg = guard.get_mut("test-queue").unwrap().pop_front();
+            assert_eq!(msg, Some("message 1".to_string()));
+        }
+        
+        // Verify second message
+        {
+            let mut guard = store.write().await;
+            let msg = guard.get_mut("test-queue").unwrap().pop_front();
+            assert_eq!(msg, Some("message 2".to_string()));
+        }
+        
+        // Queue should be empty now
+        {
+            let guard = store.read().await;
+            assert!(guard.get("test-queue").unwrap().is_empty());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_queue_store_multiple_queues() {
+        let store = new_queue_store();
+        
+        // Push to different queues
+        {
+            let mut guard = store.write().await;
+            guard.entry("queue1".to_string()).or_insert_with(VecDeque::new).push_back("msg1".to_string());
+            guard.entry("queue2".to_string()).or_insert_with(VecDeque::new).push_back("msg2".to_string());
+        }
+        
+        // Verify both queues exist
+        {
+            let guard = store.read().await;
+            assert_eq!(guard.len(), 2);
+            assert_eq!(guard.get("queue1").unwrap().len(), 1);
+            assert_eq!(guard.get("queue2").unwrap().len(), 1);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_queue_store_namespace_isolation() {
+        let store = new_queue_store();
+        
+        // Simulate namespace isolation by using namespaced keys
+        let ns1_key = "tenant1:queue-a";
+        let ns2_key = "tenant2:queue-a";
+        
+        {
+            let mut guard = store.write().await;
+            guard.entry(ns1_key.to_string()).or_insert_with(VecDeque::new).push_back("ns1 msg".to_string());
+            guard.entry(ns2_key.to_string()).or_insert_with(VecDeque::new).push_back("ns2 msg".to_string());
+        }
+        
+        // Verify isolation
+        {
+            let guard = store.read().await;
+            assert_eq!(guard.get(ns1_key).unwrap().front(), Some(&"ns1 msg".to_string()));
+            assert_eq!(guard.get(ns2_key).unwrap().front(), Some(&"ns2 msg".to_string()));
+        }
+    }
+}

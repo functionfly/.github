@@ -121,3 +121,104 @@ impl IntoResponse for ErrorResponse {
         axum::Json(self).into_response()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_execute_request_deserialization() {
+        let json = r#"{"input": "test input", "tenant_id": "tenant-123"}"#;
+        let request: ExecuteRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.input, Some("test input".to_string()));
+        assert_eq!(request.tenant_id, Some("tenant-123".to_string()));
+    }
+
+    #[test]
+    fn test_execute_request_minimal() {
+        let json = r#"{}"#;
+        let request: ExecuteRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.input, None);
+        assert_eq!(request.tenant_id, None);
+    }
+
+    #[test]
+    fn test_daemon_execute_request_deserialization() {
+        let json = r#"{
+            "wasm_binary": "aGVsbG8=",
+            "input": "test input",
+            "timeout_ms": 5000,
+            "memory_mb": 256
+        }"#;
+        let request: DaemonExecuteRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(request.wasm_binary, "aGVsbG8=");
+        assert_eq!(request.input, "test input");
+        assert_eq!(request.timeout_ms, Some(5000));
+        assert_eq!(request.memory_mb, Some(256));
+    }
+
+    #[test]
+    fn test_health_response_serialization() {
+        let response = HealthResponse {
+            status: "healthy".to_string(),
+            version: "1.0.0".to_string(),
+        };
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("healthy"));
+        assert!(json.contains("1.0.0"));
+    }
+
+    #[test]
+    fn test_execute_response_serialization() {
+        let response = ExecuteResponse {
+            result: "success".to_string(),
+            exec_time_ms: 100,
+            cache_hit: true,
+            instance_id: "inst-123".to_string(),
+            function: "my-function".to_string(),
+            version: "1.0.0".to_string(),
+        };
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("success"));
+        assert!(json.contains("100"));
+        assert!(json.contains("inst-123"));
+    }
+
+    #[test]
+    fn test_error_response_serialization() {
+        let response = ErrorResponse {
+            error: "Something went wrong".to_string(),
+            correlation_id: Some("corr-456".to_string()),
+            recovery_suggestions: vec!["Try again".to_string(), "Check logs".to_string()],
+        };
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("Something went wrong"));
+        assert!(json.contains("corr-456"));
+        assert!(json.contains("Try again"));
+    }
+
+    #[test]
+    fn test_error_response_optional_fields() {
+        let response = ErrorResponse {
+            error: "Simple error".to_string(),
+            correlation_id: None,
+            recovery_suggestions: vec![],
+        };
+        let json = serde_json::to_string(&response).unwrap();
+        // correlation_id should be skipped when None
+        assert!(!json.contains("correlation_id"));
+        // recovery_suggestions should be skipped when empty
+        assert!(!json.contains("recovery_suggestions"));
+    }
+
+    #[test]
+    fn test_error_response_into_response() {
+        let response = ErrorResponse {
+            error: "test error".to_string(),
+            correlation_id: None,
+            recovery_suggestions: vec![],
+        };
+        let axum_response = response.into_response();
+        assert_eq!(axum_response.status(), axum::http::StatusCode::OK);
+    }
+}

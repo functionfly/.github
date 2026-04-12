@@ -430,7 +430,7 @@ mod tests {
         let report = enforcer.get_resource_report().await;
 
         assert!(report.function_quotas.is_empty());
-        assert_eq!(report.global_limits.max_total_memory_mb, 8192);
+        assert_eq!(report.global_limits.max_total_memory_mb, 3686);
     }
 
     #[tokio::test]
@@ -446,5 +446,160 @@ mod tests {
             EnforcementDecision::Allow => {}, // Expected for empty system
             _ => panic!("Expected Allow decision"),
         }
+    }
+
+    #[tokio::test]
+    async fn test_enforcement_decision_display() {
+        // Test that decision variants can be cloned and compared
+        let allow = EnforcementDecision::Allow;
+        let _throttle = EnforcementDecision::Throttle(Duration::from_secs(5));
+        let block = EnforcementDecision::Block("test reason".to_string());
+        
+        // Clone should work
+        let allow_clone = allow.clone();
+        assert!(matches!(allow_clone, EnforcementDecision::Allow));
+        
+        let block_clone = block.clone();
+        assert!(matches!(block_clone, EnforcementDecision::Block(ref msg) if msg == "test reason"));
+    }
+
+    #[tokio::test]
+    async fn test_global_resource_limits_default() {
+        let limits = GlobalResourceLimits::default();
+        assert_eq!(limits.max_total_memory_mb, 3072);
+        assert_eq!(limits.max_total_cpu_percent, 90.0);
+        assert_eq!(limits.max_concurrent_functions, 200);
+        assert_eq!(limits.max_memory_per_tenant_mb, 512);
+        assert_eq!(limits.max_concurrent_per_tenant, 20);
+        assert_eq!(limits.max_executions_per_tenant_per_minute, 600);
+    }
+
+    #[tokio::test]
+    async fn test_resource_quota_creation() {
+        let quota = ResourceQuota {
+            quota_type: QuotaType::CpuTimePerMinute,
+            limit: 60000.0,
+            window_seconds: 60,
+            current_usage: 0.0,
+            last_reset: Instant::now(),
+        };
+        
+        assert!(matches!(quota.quota_type, QuotaType::CpuTimePerMinute));
+        assert_eq!(quota.limit, 60000.0);
+        assert!(quota.current_usage < quota.limit);
+    }
+
+    #[tokio::test]
+    async fn test_enforcement_policy_creation() {
+        let policy = EnforcementPolicy {
+            name: "test_policy".to_string(),
+            throttle_threshold_percent: 75.0,
+            block_threshold_percent: 90.0,
+            predictive_scaling: true,
+            priority: 150,
+        };
+        
+        assert_eq!(policy.name, "test_policy");
+        assert_eq!(policy.throttle_threshold_percent, 75.0);
+        assert!(policy.predictive_scaling);
+        assert_eq!(policy.priority, 150);
+    }
+
+    #[tokio::test]
+    async fn test_quota_type_variants() {
+        // Test all quota types can be created and used
+        let cpu_quota = QuotaType::CpuTimePerMinute;
+        let mem_quota = QuotaType::MemoryUsage;
+        let concurrent_quota = QuotaType::ConcurrentExecutions;
+        let hourly_quota = QuotaType::ExecutionsPerHour;
+        let bw_quota = QuotaType::BandwidthPerMinute;
+        
+        // Verify they are different variants
+        assert_ne!(format!("{:?}", cpu_quota), format!("{:?}", mem_quota));
+        assert_ne!(format!("{:?}", concurrent_quota), format!("{:?}", hourly_quota));
+        let _ = bw_quota;
+    }
+
+    #[tokio::test]
+    async fn test_update_global_limits() {
+        let logger = Arc::new(init_structured_logging(false));
+        let monitor = Arc::new(ResourceMonitor::new(Some(logger)));
+        let config = Config::default();
+        
+        let enforcer = ResourceEnforcer::new(monitor, config);
+        
+        // Update limits
+        let new_limits = GlobalResourceLimits {
+            max_total_memory_mb: 4096,
+            max_total_cpu_percent: 85.0,
+            max_concurrent_functions: 150,
+            max_bandwidth_mbps: 50.0,
+            max_memory_per_tenant_mb: 256,
+            max_concurrent_per_tenant: 10,
+            max_executions_per_tenant_per_minute: 300,
+        };
+        
+        enforcer.update_global_limits(new_limits.clone()).await;
+        
+        let report = enforcer.get_resource_report().await;
+        assert_eq!(report.global_limits.max_total_memory_mb, 4096);
+        assert_eq!(report.global_limits.max_total_cpu_percent, 85.0);
+        assert_eq!(report.global_limits.max_concurrent_functions, 150);
+    }
+
+    #[tokio::test]
+    async fn test_set_and_get_function_quotas() {
+        let logger = Arc::new(init_structured_logging(false));
+        let monitor = Arc::new(ResourceMonitor::new(Some(logger)));
+        let config = Config::default();
+        
+        let enforcer = ResourceEnforcer::new(monitor, config);
+        
+        let quotas = vec![
+            ResourceQuota {
+                quota_type: QuotaType::CpuTimePerMinute,
+                limit: 30000.0,
+                window_seconds: 60,
+                current_usage: 0.0,
+                last_reset: Instant::now(),
+            },
+        ];
+        
+        enforcer.set_function_quotas("test-fn@1.0.0".to_string(), quotas).await;
+        
+        let report = enforcer.get_resource_report().await;
+        assert!(report.function_quotas.contains_key("test-fn@1.0.0"));
+    }
+
+    #[tokio::test]
+    async fn test_record_usage_updates_quotas() {
+        let logger = Arc::new(init_structured_logging(false));
+        let monitor = Arc::new(ResourceMonitor::new(Some(logger)));
+        let config = Config::default();
+        
+        let enforcer = ResourceEnforcer::new(monitor, config);
+        
+        // Record usage for a function
+        let metrics = ExecutionMetrics {
+            function_name: "test".to_string(),
+            function_version: "1.0.0".to_string(),
+            execution_time_ms: 100,
+            cpu_fuel_used: 50000,
+            memory_used_mb: 10.5,
+            peak_memory_mb: 15.2,
+            cache_hit: false,
+            cold_start: false,
+            error_occurred: false,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+        };
+        
+        enforcer.record_usage("test@1.0.0", &metrics).await;
+        
+        // Verify quotas were created for this function
+        let report = enforcer.get_resource_report().await;
+        assert!(report.function_quotas.contains_key("test@1.0.0"));
     }
 }

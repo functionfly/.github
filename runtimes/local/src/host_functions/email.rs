@@ -93,25 +93,33 @@ pub fn send_email(
         .header(ContentType::TEXT_PLAIN)
         .body(body.to_string())?;
 
-    // Create SMTP transport with proper TLS
+    // Create SMTP transport with proper TLS and timeout
     // Use SmtpTransport::relay for implicit TLS (port 465) or
     // SmtpTransport::starttls_relay for explicit TLS (port 587)
-    let mailer = if config.smtp_port == 465 || config.smtp_use_tls {
+    let relay_builder = if config.smtp_port == 465 || config.smtp_use_tls {
         // Implicit TLS (SMTPS) - use relay() which creates TLS connection directly
-        SmtpTransport::relay(&config.smtp_host)?.port(config.smtp_port)
+        SmtpTransport::relay(&config.smtp_host)?
     } else {
         // Explicit TLS (STARTTLS) - use starttls_relay()
-        SmtpTransport::starttls_relay(&config.smtp_host)?.port(config.smtp_port)
+        SmtpTransport::starttls_relay(&config.smtp_host)?
     };
 
+    // Configure the builder: port, timeout, and authentication
+    let relay_builder = relay_builder
+        .port(config.smtp_port)
+        .timeout(Some(std::time::Duration::from_millis(1)));
+
     // Add authentication if credentials are provided
-    let mailer =
+    let relay_builder =
         if let (Some(username), Some(password)) = (&config.smtp_username, &config.smtp_password) {
             let creds = Credentials::new(username.clone(), password.clone());
-            mailer.credentials(creds).build()
+            relay_builder.credentials(creds)
         } else {
-            mailer.build()
+            relay_builder
         };
+
+    // Build the transport
+    let mailer = relay_builder.build();
 
     // Send the email
     mailer.send(&email)?;

@@ -407,59 +407,10 @@ impl WasiLinker {
             }
         }
 
-        // Add MicroPython runtime imports for Python WASM modules
-        Self::add_micropython_imports(&mut linker)?;
-
         Ok(Self {
             linker: std::sync::Mutex::new(linker),
             kv_store,
         })
-    }
-
-    /// Add MicroPython runtime imports for Python WASM wrapper modules
-    /// These are stubs that satisfy the imports from micropython.wasm
-    fn add_micropython_imports(linker: &mut wasmtime::Linker<WasiP1Ctx>) -> anyhow::Result<()> {
-        // mp_js_init - Initialize MicroPython with heap size (stub)
-        linker.func_wrap("env", "mp_js_init", |heap_size: i32| {
-            tracing::info!(
-                "MicroPython mp_js_init called with heap_size: {}",
-                heap_size
-            );
-            // In a full implementation, this would initialize the MicroPython runtime
-            // For now, we just log that it was called
-        })?;
-
-        // mp_js_do_exec - Execute Python code (stub)
-        linker.func_wrap(
-            "env",
-            "mp_js_do_exec",
-            |code_ptr: i32, input_ptr: i32| -> i32 {
-                tracing::info!(
-                    "MicroPython mp_js_do_exec called: code_ptr={}, input_ptr={}",
-                    code_ptr,
-                    input_ptr
-                );
-                // In a full implementation, this would execute Python code
-                // For now, return 0 (null pointer = no result)
-                0
-            },
-        )?;
-
-        // malloc - Allocate memory (stub)
-        linker.func_wrap("env", "malloc", |size: i32| -> i32 {
-            tracing::debug!("MicroPython malloc called: size={}", size);
-            // Return 0 to indicate failure (module should use its own memory)
-            0
-        })?;
-
-        // free - Free memory (stub)
-        linker.func_wrap("env", "free", |ptr: i32| {
-            tracing::debug!("MicroPython free called: ptr={}", ptr);
-            // No-op stub
-        })?;
-
-        tracing::info!("MicroPython runtime imports added to WASI linker");
-        Ok(())
     }
 
     /// Get the underlying linker

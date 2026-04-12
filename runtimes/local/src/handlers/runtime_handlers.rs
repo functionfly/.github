@@ -91,7 +91,8 @@ pub async fn runtime_status(State(state): State<Arc<AppState>>) -> axum::respons
             "enabled": true,
             "idle_count": stats.idle_count,
             "max_idle": stats.max_idle,
-            "available_permits": stats.available_permits,
+            "active_count": stats.active_count,
+            "max_concurrent": stats.max_concurrent,
         }))
     } else {
         Some(serde_json::json!({
@@ -134,7 +135,7 @@ pub async fn runtime_status(State(state): State<Arc<AppState>>) -> axum::respons
 /// Engine status handler - provides WasmEngine operational information.
 pub async fn engine_status(State(state): State<Arc<AppState>>) -> axum::response::Response {
     let engine_ptr = format!("{:p}", state.engine.engine() as *const _);
-    
+
     let wasi_linker_info = if let Some(_linker) = state.engine.wasi_linker() {
         serde_json::json!({
             "available": true,
@@ -617,9 +618,9 @@ pub async fn create_wasi_context(
             "error": "Invalid function key format"
         })).into_response();
     }
-    
+
     let input = request.input.unwrap_or_default();
-    
+
     match state.engine.create_wasi_context(&request.function_key, &input) {
         Ok(wasi_ctx) => {
             Json(serde_json::json!({

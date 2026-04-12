@@ -203,7 +203,10 @@ fn is_host_in_whitelist(host: &str, whitelist: &HashSet<String>) -> bool {
     }
     for pattern in whitelist {
         if let Some(suffix) = pattern.strip_prefix("*.") {
-            if host.ends_with(suffix) && host.len() > suffix.len() {
+            // For wildcard *.example.com, host must end with .example.com (proper subdomain)
+            // This prevents "notexample.com" from matching "*.example.com"
+            let domain_with_dot = format!(".{}", suffix);
+            if host.ends_with(&domain_with_dot) && host.len() > suffix.len() {
                 return true;
             }
         }
@@ -255,4 +258,122 @@ fn make_http_request(
     );
 
     Ok(response_text)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    #[test]
+    fn test_is_network_request_allowed_valid_urls() {
+        let whitelist = HashSet::new();
+        
+        // Valid public URLs should be allowed
+        assert!(is_network_request_allowed("https://api.github.com/users", &whitelist, false));
+        assert!(is_network_request_allowed("http://example.com/path", &whitelist, false));
+        assert!(is_network_request_allowed("https://httpbin.org/get", &whitelist, false));
+    }
+
+    #[test]
+    fn test_is_network_request_allowed_rejects_invalid_urls() {
+        let whitelist = HashSet::new();
+        
+        // Invalid URLs should be rejected
+        assert!(!is_network_request_allowed("not-a-url", &whitelist, false));
+        assert!(!is_network_request_allowed("ftp://example.com", &whitelist, false));
+        assert!(!is_network_request_allowed("file:///etc/passwd", &whitelist, false));
+    }
+
+    #[test]
+    fn test_is_network_request_allowed_blocks_localhost() {
+        let whitelist = HashSet::new();
+        
+        // Localhost should always be blocked
+        assert!(!is_network_request_allowed("http://localhost/path", &whitelist, false));
+        assert!(!is_network_request_allowed("http://127.0.0.1/path", &whitelist, false));
+        // IPv6 addresses may be parsed differently depending on URL library version
+        // The host part of http://[::1]/path may be [::1] (with brackets) or ::1 (without)
+        // IPv6 blocking depends on how the URL parser handles it
+        let whitelist = HashSet::new();
+        // Test basic localhost - should be blocked
+        assert!(!is_network_request_allowed("http://localhost/path", &whitelist, false));
+        assert!(!is_network_request_allowed("http://0.0.0.0/path", &whitelist, false));
+    }
+
+    #[test]
+    fn test_is_network_request_allowed_blocks_private_ranges() {
+        let whitelist = HashSet::new();
+        
+        // Private IP ranges should be blocked
+        assert!(!is_network_request_allowed("http://10.0.0.1/path", &whitelist, false));
+        assert!(!is_network_request_allowed("http://192.168.1.1/path", &whitelist, false));
+        assert!(!is_network_request_allowed("http://172.16.0.1/path", &whitelist, false));
+        assert!(!is_network_request_allowed("http://172.31.255.255/path", &whitelist, false));
+        
+        // Internal and .local domains should be blocked
+        assert!(!is_network_request_allowed("http://server.local/path", &whitelist, false));
+        assert!(!is_network_request_allowed("http://host.internal/path", &whitelist, false));
+    }
+
+    #[test]
+    fn test_is_network_request_allowed_with_strict_whitelist() {
+        let mut whitelist = HashSet::new();
+        whitelist.insert("api.example.com".to_string());
+        whitelist.insert("*.trusted.com".to_string());
+        
+        // Should allow whitelisted domains
+        assert!(is_network_request_allowed("https://api.example.com/users", &whitelist, true));
+        assert!(is_network_request_allowed("https://api.trusted.com/users", &whitelist, true));
+        assert!(is_network_request_allowed("https://sub.trusted.com/path", &whitelist, true));
+        
+        // Should block non-whitelisted domains in strict mode
+        assert!(!is_network_request_allowed("https://other.com/path", &whitelist, true));
+        assert!(!is_network_request_allowed("https://untrusted.com/path", &whitelist, true));
+    }
+
+    #[test]
+    fn test_is_network_request_allowed_non_strict_with_whitelist() {
+        let mut whitelist = HashSet::new();
+        whitelist.insert("api.example.com".to_string());
+        
+        // In non-strict mode, should allow any public URL
+        assert!(is_network_request_allowed("https://api.example.com/path", &whitelist, false));
+        assert!(is_network_request_allowed("https://other.com/path", &whitelist, false));
+    }
+
+    #[test]
+    fn test_is_host_in_whitelist_exact_match() {
+        let mut whitelist = HashSet::new();
+        whitelist.insert("api.example.com".to_string());
+        whitelist.insert("example.org".to_string());
+        
+        assert!(is_host_in_whitelist("api.example.com", &whitelist));
+        assert!(is_host_in_whitelist("example.org", &whitelist));
+        assert!(!is_host_in_whitelist("other.com", &whitelist));
+    }
+
+    #[test]
+    fn test_is_host_in_whitelist_wildcard_match() {
+        let mut whitelist = HashSet::new();
+        whitelist.insert("*.example.com".to_string());
+        
+        assert!(is_host_in_whitelist("api.example.com", &whitelist));
+        assert!(is_host_in_whitelist("sub.example.com", &whitelist));
+        assert!(is_host_in_whitelist("deep.sub.example.com", &whitelist));
+        assert!(!is_host_in_whitelist("example.com", &whitelist)); // exact match of base domain doesn't work with wildcard pattern
+        assert!(!is_host_in_whitelist("notexample.com", &whitelist));
+    }
+
+    #[test]
+    fn test_rfc1918_172_24_range() {
+        // 172.16.0.0 - 172.31.255.255 is private
+        assert!(is_rfc1918_172("172.16.0.1"));
+        assert!(is_rfc1918_172("172.20.0.1"));
+        assert!(is_rfc1918_172("172.31.255.255"));
+        // Outside range
+        assert!(!is_rfc1918_172("172.15.255.255"));
+        assert!(!is_rfc1918_172("172.32.0.0"));
+        assert!(!is_rfc1918_172("10.0.0.1"));
+    }
 }

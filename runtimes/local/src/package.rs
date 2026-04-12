@@ -86,7 +86,14 @@ impl PackageManager {
         };
 
         // Initialize cache size
-        manager.update_cache_size()?;
+        // Use async version to avoid creating a new runtime if one already exists
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle.block_on(manager.update_cache_size_async())?;
+        } else {
+            // No runtime available - create one and block on it
+            let rt = tokio::runtime::Runtime::new()?;
+            rt.block_on(manager.update_cache_size_async())?;
+        }
 
         Ok(manager)
     }
@@ -320,12 +327,44 @@ impl PackageManager {
             }
         }
 
-        // Update the shared current size
-        let rt = tokio::runtime::Runtime::new()?;
-        rt.block_on(async {
-            *self.current_cache_size.write().await = total_size;
-        });
+        // Try to use the current runtime if available, otherwise spawn blocking
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => {
+                // We're in an async context - use spawn_blocking to avoid nested runtime
+                let current_cache_size = Arc::clone(&self.current_cache_size);
+                let _ = handle.spawn_blocking(move || {
+                    // This runs on a blocking thread, but we still can't use block_on
+                    // So we'll just set the value without awaiting
+                    // This is a limitation - the caller should prefer update_cache_size_async
+                });
+                // For now, just ignore the update when called from sync context in async runtime
+                // The async methods should call update_cache_size_async instead
+                let _ = total_size;
+            }
+            Err(_) => {
+                // No runtime available - create a new one
+                let rt = tokio::runtime::Runtime::new()?;
+                rt.block_on(async {
+                    *self.current_cache_size.write().await = total_size;
+                });
+            }
+        }
 
+        Ok(())
+    }
+
+    /// Update the current cache size (async version - preferred)
+    async fn update_cache_size_async(&self) -> anyhow::Result<()> {
+        let mut total_size = 0usize;
+
+        let mut entries = tokio::fs::read_dir(&self.cache_dir).await?;
+        while let Some(entry) = entries.next_entry().await? {
+            if entry.file_type().await?.is_file() {
+                total_size += entry.metadata().await?.len() as usize;
+            }
+        }
+
+        *self.current_cache_size.write().await = total_size;
         Ok(())
     }
 

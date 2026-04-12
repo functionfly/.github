@@ -10,7 +10,7 @@ use crate::errors::{RuntimeError, RuntimeResult};
 use crate::logging::{CorrelationId, StructuredLogger};
 
 type CleanupTask = Box<dyn FnOnce() -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync>;
-type CleanupFn = Box<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>>>> + Send + Sync>;
+type CleanupFn = Arc<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send>> + Send + Sync>;
 
 /// Shutdown coordinator for managing graceful shutdown
 pub struct ShutdownCoordinator {
@@ -290,19 +290,25 @@ impl ManagedResource {
     {
         Self {
             name: name.into(),
-            cleanup_fn: Box::new(move || Box::pin(cleanup_fn())),
+            cleanup_fn: Arc::new(move || Box::pin(cleanup_fn())),
         }
     }
 
     /// Execute cleanup
-    fn cleanup(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // Use block_on to execute the async cleanup function
-        // This allows the cleanup_fn to be async while cleanup() remains synchronous
-        let runtime = tokio::runtime::Handle::current();
-        runtime.block_on(async { (self.cleanup_fn)().await })
+    pub fn cleanup(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => {
+                // We're in an async context - use the current runtime to block on the cleanup
+                handle.block_on((self.cleanup_fn)())
+            }
+            Err(_) => {
+                // No runtime available - create a new one for the cleanup
+                let runtime = tokio::runtime::Runtime::new()?;
+                runtime.block_on(async { (self.cleanup_fn)().await })
+            }
+        }
     }
 }
-
 /// Signal handler for graceful shutdown
 pub async fn handle_shutdown_signals() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let ctrl_c = async {

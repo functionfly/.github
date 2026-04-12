@@ -553,4 +553,161 @@ mod tests {
         let strategy = recovery.get_recovery_strategy(&config_error);
         assert!(matches!(strategy, RecoveryStrategy::FailFast));
     }
+
+    #[test]
+    fn test_error_kind_recoverability() {
+        // Test that recoverable errors are correctly identified
+        let recoverable_kinds = vec![
+            ErrorKind::TimeoutExceeded,
+            ErrorKind::MemoryLimitExceeded,
+            ErrorKind::FuelLimitExceeded,
+            ErrorKind::InstancePoolExhausted,
+            ErrorKind::PoolCapacityExceeded,
+            ErrorKind::ConnectionFailed,
+            ErrorKind::IoError,
+        ];
+        
+        for kind in recoverable_kinds {
+            let error = RuntimeError::new(kind.clone(), "test");
+            assert!(error.recoverable, "Expected {:?} to be recoverable", kind);
+        }
+        
+        // Test non-recoverable errors
+        let non_recoverable_kinds = vec![
+            ErrorKind::WasmCompilation,
+            ErrorKind::WasmInstantiation,
+            ErrorKind::WasmExecution,
+            ErrorKind::FunctionNotFound,
+            ErrorKind::InvalidConfig,
+            ErrorKind::SecurityViolation,
+        ];
+        
+        for kind in non_recoverable_kinds {
+            let error = RuntimeError::new(kind.clone(), "test");
+            assert!(!error.recoverable, "Expected {:?} to be non-recoverable", kind);
+        }
+    }
+
+    #[test]
+    fn test_error_factory_methods() {
+        // Test all error factory methods
+        let errors = vec![
+            RuntimeError::timeout(1000),
+            RuntimeError::wasm_compilation("compilation failed"),
+            RuntimeError::wasm_execution("execution failed"),
+            RuntimeError::memory_limit(128),
+            RuntimeError::pool_exhausted(),
+            RuntimeError::file_not_found("/path/to/file.wasm"),
+            RuntimeError::python_execution("python error"),
+            RuntimeError::config_error("invalid config"),
+            RuntimeError::security_violation("security issue"),
+            RuntimeError::resource_limit("resource exceeded"),
+            RuntimeError::wasm_instantiation("instantiation failed"),
+            RuntimeError::function_not_found("handler"),
+            RuntimeError::rate_limit_exceeded(),
+            RuntimeError::cache_corruption("cache corrupted"),
+            RuntimeError::pool_capacity_exceeded(),
+            RuntimeError::wasi_not_supported("wasi feature"),
+            RuntimeError::wasi_syscall_failed("syscall", "failed"),
+            RuntimeError::python_engine_unavailable("engine down"),
+            RuntimeError::python_module_not_found("module"),
+            RuntimeError::pool_pruning_failed("pruning error"),
+            RuntimeError::cache_size_exceeded(1000),
+            RuntimeError::fuel_limit_exceeded(),
+            RuntimeError::wasm_file_corrupt("/path/to/file.wasm"),
+        ];
+        
+        for error in errors {
+            assert!(!error.message.is_empty());
+            assert!(!error.recovery_suggestions.is_empty() || error.recoverable);
+        }
+    }
+
+    #[test]
+    fn test_error_with_correlation_id() {
+        let error = RuntimeError::new(ErrorKind::TimeoutExceeded, "test");
+        let error_with_id = error.with_correlation_id("corr-123");
+        
+        assert_eq!(error_with_id.correlation_id, Some("corr-123".to_string()));
+    }
+
+    #[test]
+    fn test_error_with_context() {
+        let error = RuntimeError::new(ErrorKind::TimeoutExceeded, "test");
+        let context = ErrorContext {
+            function_name: Some("test-fn".to_string()),
+            function_version: Some("1.0.0".to_string()),
+            input_size: Some(1024),
+            execution_time: Some(Duration::from_millis(5000)),
+            memory_used: Some(128 * 1024 * 1024),
+            instance_id: Some("inst-123".to_string()),
+            request_id: Some("req-456".to_string()),
+        };
+        
+        let error_with_ctx = error.with_context(context);
+        assert!(error_with_ctx.context.is_some());
+        let ctx = error_with_ctx.context.unwrap();
+        assert_eq!(ctx.function_name, Some("test-fn".to_string()));
+        assert_eq!(ctx.function_version, Some("1.0.0".to_string()));
+    }
+
+    #[test]
+    fn test_error_with_recovery_suggestion() {
+        let error = RuntimeError::new(ErrorKind::TimeoutExceeded, "test");
+        let error_with_suggestion = error.with_recovery_suggestion("Try increasing the timeout");
+        
+        assert!(error_with_suggestion.recovery_suggestions.contains(&"Try increasing the timeout".to_string()));
+    }
+
+    #[test]
+    fn test_error_display() {
+        let error = RuntimeError::new(ErrorKind::TimeoutExceeded, "timeout exceeded");
+        let display = format!("{}", error);
+        
+        assert!(display.contains("TimeoutExceeded"));
+        assert!(display.contains("timeout exceeded"));
+    }
+
+    #[test]
+    fn test_error_display_with_correlation_id() {
+        let error = RuntimeError::new(ErrorKind::WasmCompilation, "compilation failed")
+            .with_correlation_id("corr-789");
+        
+        let display = format!("{}", error);
+        assert!(display.contains("corr-789"));
+    }
+
+    #[test]
+    fn test_recovery_strategy_factories() {
+        // Test Retry factory
+        let retry = RecoveryStrategy::retry(3, 200);
+        assert!(matches!(retry, RecoveryStrategy::Retry { attempts: 3, delay_ms: 200 }));
+        
+        // Test Fallback factory
+        let fallback = RecoveryStrategy::fallback("alternative");
+        assert!(matches!(fallback, RecoveryStrategy::Fallback { alternative } if alternative == "alternative"));
+        
+        // Test Degrade factory
+        let degrade = RecoveryStrategy::degrade("degraded mode");
+        assert!(matches!(degrade, RecoveryStrategy::Degrade { message } if message == "degraded mode"));
+    }
+
+    #[test]
+    fn test_error_recovery_default() {
+        let recovery = ErrorRecovery::default();
+        assert_eq!(recovery.max_retry_attempts, 3);
+        assert_eq!(recovery.base_retry_delay_ms, 100);
+    }
+
+    #[test]
+    fn test_error_recovery_panic_without_attempts() {
+        let recovery = ErrorRecovery::new();
+        
+        // Create a non-recoverable error
+        let error = RuntimeError::config_error("invalid");
+        let strategy = recovery.get_recovery_strategy(&error);
+        
+        // Should return FailFast for non-recoverable errors
+        assert!(matches!(strategy, RecoveryStrategy::FailFast));
+    }
 }
