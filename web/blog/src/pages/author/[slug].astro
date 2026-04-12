@@ -1,0 +1,177 @@
+---
+import BlogLayout from '../../layouts/BlogLayout.astro';
+import BlogGrid from '../../components/BlogGrid.astro';
+import AuthorBio from '../../components/AuthorBio.astro';
+import Pagination from '../../components/Pagination.astro';
+import { getPosts, getAuthors } from '../../lib/api';
+
+// Enable server-side rendering
+export const prerender = false;
+
+const { slug } = Astro.params;
+const url = Astro.url;
+const currentPage = parseInt(url.searchParams.get('page') || '1', 10);
+
+if (!slug) {
+  return Astro.redirect('/');
+}
+
+// Fetch author and their posts
+const [authors, postsResponse] = await Promise.all([
+  getAuthors(),
+  getPosts({ author: slug, page: currentPage, limit: 10 }),
+]);
+
+const author = authors.find(a => a.slug === slug);
+const posts = postsResponse.data || [];
+const { totalPages } = postsResponse.meta;
+
+// Redirect if author not found and no posts
+if (!author && posts.length === 0) {
+  return Astro.redirect('/');
+}
+
+const authorName = author?.name || slug.replace(/-/g, ' ');
+---
+
+<BlogLayout 
+  title={`${authorName} - FunctionFly Blog`}
+  description={`Posts by ${authorName} on the FunctionFly Blog.`}
+>
+  <div class="blog-surface">
+    <section class="author-page">
+      <div class="author-inner">
+        <header class="author-header">
+          <a href="/" class="back-link">
+            <span class="back-link-icon" aria-hidden="true">&larr;</span>
+            All Posts
+          </a>
+        </header>
+
+        {author && (
+          <AuthorBio author={author} />
+        )}
+
+        <div class="author-posts">
+          <h2 class="author-posts-title">
+            <span class="gradient-text">Posts by {authorName}</span>
+          </h2>
+          
+          {posts.length > 0 ? (
+            <>
+              <BlogGrid posts={posts} />
+              <Pagination 
+                currentPage={currentPage} 
+                totalPages={totalPages} 
+                baseUrl={`/author/${slug}`}
+              />
+            </>
+          ) : (
+            <div class="author-empty">
+              <p>No posts found for this author.</p>
+              <a href="/" class="btn-primary">Browse all posts</a>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  </div>
+</BlogLayout>
+
+<style>
+  .blog-surface {
+    position: relative;
+    overflow: hidden;
+    min-height: 100vh;
+  }
+
+  .blog-surface::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.14), transparent 55%),
+      radial-gradient(ellipse 50% 30% at 100% 10%, rgba(16, 185, 129, 0.05), transparent 40%);
+  }
+
+  .author-page {
+    position: relative;
+    padding: 2.5rem 1.5rem 5rem;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .author-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    transition: color 0.2s;
+  }
+
+  .back-link:hover {
+    color: var(--color-secondary);
+  }
+
+  .author-posts {
+    margin-top: 2rem;
+  }
+
+  .author-posts-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .author-empty {
+    text-align: center;
+    padding: 3rem 0;
+  }
+
+  .author-empty p {
+    color: var(--color-text-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: white;
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover {
+    background: #4f46e5;
+    border-color: #4f46e5;
+  }
+
+  @media (max-width: 768px) {
+    .author-page {
+      padding: 1.5rem 1rem 3rem;
+    }
+  }
+</style>

@@ -1,0 +1,271 @@
+---
+import BlogLayout from '../layouts/BlogLayout.astro';
+import BlogGrid from '../components/BlogGrid.astro';
+import CategoryFilter from '../components/CategoryFilter.astro';
+import Pagination from '../components/Pagination.astro';
+import SearchBox from '../components/SearchBox.astro';
+import { getPosts, getCategories } from '../lib/api';
+import { SITE_NAME, SITE_DESCRIPTION } from '../lib/constants';
+
+// Get pagination parameters from URL
+const url = Astro.url;
+const currentPage = parseInt(url.searchParams.get('page') || '1', 10);
+const limit = parseInt(url.searchParams.get('limit') || '10', 10);
+
+// Fetch posts and categories
+const [postsResponse, categories] = await Promise.all([
+  getPosts({ page: currentPage, limit }),
+  getCategories(),
+]);
+
+const posts = postsResponse.data || [];
+const { totalPages } = postsResponse.meta;
+---
+
+<BlogLayout 
+  title={SITE_NAME}
+  description={SITE_DESCRIPTION}
+>
+  <div class="blog-surface">
+    <section class="blog-page">
+      <div class="blog-inner">
+        <header class="blog-hero">
+          <div class="blog-hero-pill">
+            <svg class="blog-hero-pill-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
+            <span>Insights &amp; Updates</span>
+          </div>
+          <h1 class="blog-title">
+            <span class="blog-title-gradient">FunctionFly Blog</span>
+          </h1>
+          <p class="blog-subtitle">Tutorials, product updates, and edge computing insights.</p>
+          
+          <div class="blog-search">
+            <SearchBox />
+          </div>
+        </header>
+
+        {posts.length === 0 ? (
+          <div class="blog-coming-soon">
+            <div class="blog-coming-soon-icon" aria-hidden="true">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                <path d="M12 6v4M12 14h.01" />
+              </svg>
+            </div>
+            <h2 class="blog-coming-soon-title">Blog coming soon</h2>
+            <p class="blog-coming-soon-text">Tutorials, product updates, and edge computing insights are on the way.</p>
+            <div class="blog-coming-soon-pill">
+              <span class="blog-coming-soon-dot"></span>
+              <span>Launching 2026</span>
+            </div>
+          </div>
+        ) : (
+          <div class="blog-content-wrapper">
+            <aside class="blog-sidebar">
+              <CategoryFilter categories={categories} />
+            </aside>
+            
+            <div class="blog-main">
+              <BlogGrid posts={posts} featuredFirst={currentPage === 1} />
+              
+              <Pagination 
+                currentPage={currentPage} 
+                totalPages={totalPages} 
+                baseUrl="/"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  </div>
+</BlogLayout>
+
+<style>
+  .blog-surface {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .blog-surface::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.14), transparent 55%),
+      radial-gradient(ellipse 50% 30% at 100% 10%, rgba(16, 185, 129, 0.05), transparent 40%);
+  }
+
+  .blog-page {
+    position: relative;
+    padding: 2.5rem 1.5rem 5rem;
+    min-height: 100vh;
+  }
+
+  .blog-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .blog-hero {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .blog-hero-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-secondary);
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    margin-bottom: 1.25rem;
+  }
+
+  .blog-hero-pill-icon {
+    flex-shrink: 0;
+    opacity: 0.9;
+  }
+
+  .blog-title {
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 0.75rem;
+  }
+
+  .blog-title-gradient {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .blog-subtitle {
+    color: var(--color-text-muted);
+    font-size: 1.125rem;
+    line-height: 1.65;
+    max-width: 28rem;
+    margin: 0 auto 1.5rem;
+  }
+
+  .blog-search {
+    margin-top: 1.5rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .blog-content-wrapper {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .blog-sidebar {
+    position: sticky;
+    top: 6rem;
+  }
+
+  .blog-main {
+    min-width: 0;
+  }
+
+  .blog-coming-soon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 5rem 1.5rem;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .blog-coming-soon-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 96px;
+    height: 96px;
+    border-radius: 20px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    color: var(--color-primary);
+    margin-bottom: 1.75rem;
+  }
+
+  .blog-coming-soon-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  .blog-coming-soon-text {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    max-width: 320px;
+  }
+
+  .blog-coming-soon-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-primary);
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+  }
+
+  .blog-coming-soon-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  @media (max-width: 992px) {
+    .blog-content-wrapper {
+      grid-template-columns: 1fr;
+    }
+
+    .blog-sidebar {
+      position: static;
+      margin-bottom: 1rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .blog-page {
+      padding: 1.5rem 1rem 3rem;
+    }
+
+    .blog-coming-soon {
+      padding: 3rem 1rem;
+    }
+  }
+</style>

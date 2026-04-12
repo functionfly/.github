@@ -7,7 +7,7 @@ export const DOCS_ORIGIN =
   "https://docs.functionfly.com";
 export const AUTH_ORIGIN =
   (import.meta.env.PUBLIC_AUTH_URL as string | undefined)?.replace(/\/$/, "") ||
-  "https://auth.functionfly.com";
+  (import.meta.env.DEV ? "http://localhost:4324" : "https://auth.functionfly.com");
 
 /** Dashboard / app origin (nav “Dashboard”, Get Started, etc.). Dev: PUBLIC_APP_URL=http://localhost:3000 */
 export const APP_DASHBOARD_ORIGIN =
@@ -30,3 +30,11 @@ export const BLOG_API_ORIGIN =
     /\/$/,
     "",
   ) || "http://localhost:3000";
+
+/**
+ * Main API origin for newsletter and other public endpoints.
+ * Dev: http://localhost:8080, Prod: https://api.functionfly.com (or same domain)
+ */
+export const API_ORIGIN =
+  (import.meta.env.PUBLIC_API_URL as string | undefined)?.replace(/\/$/, "") ||
+  (import.meta.env.DEV ? "http://localhost:8080" : "https://api.functionfly.com");

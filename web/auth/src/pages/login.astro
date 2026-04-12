@@ -14,10 +14,10 @@ const showMagic = magicParam === "true";
 const resetSuccess = Astro.url.searchParams.get("reset") === "success";
 ---
 
-<AuthLayout title="Sign in — FunctionFly">
+<AuthLayout title="Sign in — FunctionFly™">
   <FormCard
     title="Welcome back"
-    subtitle="Sign in to your FunctionFly account"
+    subtitle="Sign in to your FunctionFly™ account"
     success={resetSuccess ? "Password updated successfully. Please sign in." : undefined}
     client:load
   >
@@ -282,12 +282,17 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
       trackAuth("magic_link_requested");
     });
 
-    // Check network status
+    // Check network status - less aggressive: only show warning after failed submission
     const offlineIndicator = document.createElement("div");
     offlineIndicator.className = "offline-indicator";
     offlineIndicator.textContent = "⚠️ You appear to be offline. Please check your connection.";
 
-    async function updateNetworkStatus() {
+    let hasSubmitted = false;
+
+    async function updateNetworkStatus(showImmediately = false) {
+      // Only show offline warning after user has tried to submit or explicitly requested
+      if (!hasSubmitted && !showImmediately) return;
+
       const forms = document.querySelectorAll(".auth-form");
       forms.forEach((form) => {
         if (!form.querySelector(".offline-indicator")) {
@@ -296,7 +301,19 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
       });
 
       // More reliable network check - try a quick fetch to verify connectivity
-      const { checkNetworkConnectivity } = await import('/src/utils/networkCheck.ts');
+      async function checkNetworkConnectivity(timeoutMs = 3000) {
+        if (!navigator.onLine) return false;
+        try {
+          const response = await fetch(`${apiOrigin}/health`, {
+            method: 'GET',
+            cache: 'no-cache',
+            signal: AbortSignal.timeout(timeoutMs),
+          });
+          return response.ok;
+        } catch (error) {
+          return false;
+        }
+      }
       const isOnline = await checkNetworkConnectivity();
 
       const indicators = document.querySelectorAll(".offline-indicator");
@@ -309,30 +326,37 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
         btn.disabled = !isOnline;
         btn.title = isOnline ? '' : 'You appear to be offline';
       });
-    }
-      });
 
-      const indicators = document.querySelectorAll(".offline-indicator");
-      indicators.forEach((ind) => {
-        ind.classList.toggle("visible", !navigator.onLine);
-      });
-
-      const submitBtns = document.querySelectorAll('button[type="submit"]');
-      submitBtns.forEach((btn) => {
-        btn.disabled = !navigator.onLine;
-      });
+      return isOnline;
     }
 
-    window.addEventListener("online", updateNetworkStatus);
-    window.addEventListener("offline", updateNetworkStatus);
-    updateNetworkStatus();
+    window.addEventListener("online", () => updateNetworkStatus(hasSubmitted));
+    window.addEventListener("offline", () => updateNetworkStatus(hasSubmitted));
 
     // Password form submission
     const form = document.getElementById("login-form");
     form?.addEventListener("submit", async (e) => {
       e.preventDefault();
+      hasSubmitted = true;
+
+      // Check connectivity before attempting login
+      const isOnline = await updateNetworkStatus(true);
+      if (isOnline === false) {
+        // Offline - don't proceed, warning is already shown
+        return;
+      }
+
       const fd = new FormData(form);
-      const body = Object.fromEntries(fd.entries());
+
+      // Only include email and password in the request body (backend LoginRequest expects these only)
+      const body = {
+        email: fd.get("email"),
+        password: fd.get("password")
+      };
+
+      // Store redirect_to and remember for post-login handling
+      const redirectTo = fd.get("redirect_to");
+      const remember = fd.get("remember");
 
       // Track attempt
       trackAuth("login_attempt", { method: "password" });
@@ -345,7 +369,7 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
       }
 
       try {
-        const res = await fetch(form.action, {
+        const res = await fetch(`${apiOrigin}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -356,13 +380,15 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
 
         if (res.ok && data.token) {
           // Track success
-          trackAuth("login_success", { method: "password", remember: !!body.remember });
+          trackAuth("login_success", { method: "password", remember: !!remember });
           stopTimer();
 
           // Redirect
           const params = new URLSearchParams();
           params.set("token", data.token);
           if (data.refresh_token) params.set("refresh_token", data.refresh_token);
+          // Pass through the original redirect if provided
+          if (redirectTo) params.set("redirect", redirectTo.toString());
           window.location.replace(appOrigin + "/auth/callback?" + params.toString());
         } else {
           // Track error

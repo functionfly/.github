@@ -1,11 +1,11 @@
 ---
 title: Getting Started
-description: Quick start guide for FunctionFly
+description: Quick start guide for FunctionFly™
 ---
 
-# Getting Started with FunctionFly
+# Getting Started with FunctionFly™
 
-Welcome to FunctionFly, a production-ready serverless function platform built with Go.
+Welcome to FunctionFly™, a production-ready serverless function platform built with Go.
 
 ## Quick Start
 

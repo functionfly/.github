@@ -1,0 +1,221 @@
+---
+import BlogLayout from '../../layouts/BlogLayout.astro';
+import BlogGrid from '../../components/BlogGrid.astro';
+import Pagination from '../../components/Pagination.astro';
+import { getPosts, getCategories } from '../../lib/api';
+
+// Enable server-side rendering for this page
+export const prerender = false;
+
+const { slug } = Astro.params;
+const url = Astro.url;
+const currentPage = parseInt(url.searchParams.get('page') || '1', 10);
+
+if (!slug) {
+  return Astro.redirect('/');
+}
+
+// Normalize the tag for display
+let tag = slug.replace(/-/g, ' ');
+const tagDisplay = tag.split(' ').map(word =>
+  word.charAt(0).toUpperCase() + word.slice(1)
+).join(' ');
+
+// Fetch posts with the tag and categories
+const [categories, postsResponse] = await Promise.all([
+  getCategories(),
+  getPosts({ tag: slug, page: currentPage, limit: 10 }),
+]);
+
+const posts = postsResponse.data || [];
+const { totalPages } = postsResponse.meta;
+---
+
+<BlogLayout 
+  title={`${tagDisplay} - FunctionFly Blog`}
+  description={`Posts tagged with "${tagDisplay}" on the FunctionFly Blog.`}
+>
+  <div class="blog-surface">
+    <section class="tag-page">
+      <div class="tag-inner">
+        <header class="tag-header">
+          <a href="/" class="back-link">
+            <span class="back-link-icon" aria-hidden="true">&larr;</span>
+            All Posts
+          </a>
+          <div class="tag-pill">
+            <span class="tag-pill-icon">#</span>
+            <span>{tagDisplay}</span>
+          </div>
+          <h1 class="tag-title">
+            <span class="gradient-text">Tagged Posts</span>
+          </h1>
+        </header>
+
+        <div class="tag-content">
+          {posts.length > 0 ? (
+            <>
+              <BlogGrid posts={posts} />
+              <Pagination 
+                currentPage={currentPage} 
+                totalPages={totalPages} 
+                baseUrl={`/tag/${slug}`}
+              />
+            </>
+          ) : (
+            <div class="tag-empty">
+              <div class="tag-empty-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                  <path d="M2 17l10 5 10-5"/>
+                  <path d="M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <h2>No posts found</h2>
+              <p>No posts are tagged with "{tagDisplay}" yet.</p>
+              <a href="/" class="btn-primary">Browse all posts</a>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  </div>
+</BlogLayout>
+
+<style>
+  .blog-surface {
+    position: relative;
+    overflow: hidden;
+    min-height: 100vh;
+  }
+
+  .blog-surface::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.14), transparent 55%),
+      radial-gradient(ellipse 50% 30% at 100% 10%, rgba(16, 185, 129, 0.05), transparent 40%);
+  }
+
+  .tag-page {
+    position: relative;
+    padding: 2.5rem 1.5rem 5rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .tag-header {
+    margin-bottom: 2.5rem;
+    text-align: center;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-bottom: 1.25rem;
+    transition: color 0.2s;
+  }
+
+  .back-link:hover {
+    color: var(--color-secondary);
+  }
+
+  .tag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1.25rem;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 9999px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    margin-bottom: 1rem;
+  }
+
+  .tag-pill-icon {
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  .tag-title {
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .tag-content {
+    position: relative;
+  }
+
+  .tag-empty {
+    text-align: center;
+    padding: 4rem 0;
+  }
+
+  .tag-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    color: var(--color-primary);
+    margin: 0 auto 1.5rem;
+  }
+
+  .tag-empty h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 0.75rem;
+  }
+
+  .tag-empty p {
+    color: var(--color-text-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: white;
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 768px) {
+    .tag-page {
+      padding: 1.5rem 1rem 3rem;
+    }
+  }
+</style>

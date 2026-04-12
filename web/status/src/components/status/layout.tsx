@@ -1,5 +1,11 @@
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
@@ -12,11 +18,19 @@ import {
   Mail,
   RefreshCw,
   Search,
+  Command,
+  Activity,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { StatusOrbital } from "./backgrounds";
 import { HeroSkeleton } from "./skeletons";
 import type { HeaderProps, HeroStatusProps } from "./types";
+
+// Quick action shortcuts
+const QUICK_ACTIONS = [
+  { key: 'r', label: 'Refresh Status', icon: RefreshCw },
+  { key: 's', label: 'Search', icon: Search },
+];
 
 export function Header({
   onRefresh,
@@ -25,6 +39,7 @@ export function Header({
   isRealtimeConnected,
 }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -32,67 +47,218 @@ export function Header({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Keyboard shortcuts
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Command palette: Cmd/Ctrl + K
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      setShowCommandPalette(true);
+    }
+
+    // Quick refresh: Cmd/Ctrl + R
+    if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
+      e.preventDefault();
+      onRefresh();
+    }
+  }, [onRefresh]);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   return (
-    <motion.header
-      className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-        isScrolled
-          ? "bg-bg-glass-strong/90 backdrop-blur-xl border-b border-border-subtle shadow-lg"
-          : "bg-transparent",
-      )}
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Logo size="sm" showText={true} animated={true} />
-            <span className="text-text-muted">/</span>
-            <span className="font-semibold text-text-primary">Status</span>
-          </div>
+    <TooltipProvider delayDuration={0}>
+      <>
+        <motion.header
+          className={cn(
+            "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+            isScrolled
+              ? "bg-aviation-bg-primary/95 backdrop-blur-xl border-b border-aviation-border-panel shadow-lg"
+              : "bg-transparent",
+          )}
+          initial={{ y: -100 }}
+          animate={{ y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex h-16 items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Logo size="sm" showText={true} animated={true} />
+                <span className="text-aviation-text-muted">/</span>
+                <span className="font-semibold text-aviation-text-primary">Status</span>
+              </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 text-sm text-text-muted">
-              <span
-                className={cn(
-                  "w-2 h-2 rounded-full animate-pulse",
-                  isRealtimeConnected ? "bg-emerald-500" : "bg-amber-500",
-                )}
-              />
-              <span>
-                {isRealtimeConnected ? "Live Updates" : "Monitoring Active"}
-              </span>
+              <div className="flex items-center gap-2 sm:gap-4">
+                {/* Command Palette Trigger */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setShowCommandPalette(true)}
+                      className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-aviation-text-muted bg-aviation-bg-instrument/50 border border-aviation-border-instrument rounded-lg hover:text-aviation-text-primary hover:border-aviation-amber/30 transition-all"
+                    >
+                      <Command className="w-3.5 h-3.5" />
+                      <span>Quick Actions</span>
+                      <kbd className="text-[10px] font-mono text-aviation-text-dim bg-aviation-bg-instrument px-1.5 py-0.5 rounded">
+                        ⌘K
+                      </kbd>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>Command Palette</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Live Status Indicator */}
+                <div className="hidden md:flex items-center gap-2 text-sm text-aviation-text-secondary">
+                  <span
+                    className={cn(
+                      "w-2 h-2 rounded-full animate-pulse",
+                      isRealtimeConnected ? "bg-aviation-green" : "bg-aviation-yellow",
+                    )}
+                  />
+                  <span>
+                    {isRealtimeConnected ? "Live Updates" : "Monitoring Active"}
+                  </span>
+                </div>
+
+                {/* Refresh Button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onRefresh}
+                      className="group text-aviation-text-secondary hover:text-aviation-text-primary hover:bg-aviation-bg-instrument"
+                    >
+                      <RefreshCw
+                        className={cn(
+                          "w-4 h-4 transition-transform duration-500",
+                          isRefreshing && "animate-spin",
+                        )}
+                      />
+                      <span className="hidden sm:inline ml-2">
+                        {format(lastUpdated, "HH:mm:ss")}
+                      </span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>Refresh Status (⌘R)</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Search */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="hidden sm:flex text-aviation-text-secondary hover:text-aviation-text-primary hover:bg-aviation-bg-instrument"
+                    >
+                      <Search className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>Search</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Notifications */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="hidden sm:flex text-aviation-text-secondary hover:text-aviation-text-primary hover:bg-aviation-bg-instrument"
+                    >
+                      <Bell className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>Notifications</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onRefresh}
-              className="group"
-            >
-              <RefreshCw
-                className={cn(
-                  "w-4 h-4 transition-transform duration-500",
-                  isRefreshing && "animate-spin",
-                )}
-              />
-              <span className="hidden sm:inline ml-2">
-                {format(lastUpdated, "HH:mm:ss")}
-              </span>
-            </Button>
-
-            <Button variant="ghost" size="icon" className="hidden sm:flex">
-              <Search className="w-4 h-4 text-text-secondary" />
-            </Button>
-
-            <Button variant="ghost" size="icon" className="hidden sm:flex">
-              <Bell className="w-4 h-4 text-text-secondary" />
-            </Button>
           </div>
-        </div>
-      </div>
-    </motion.header>
+        </motion.header>
+
+        {/* Command Palette Overlay */}
+        <AnimatePresence>
+          {showCommandPalette && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center pt-[20vh]"
+              onClick={() => setShowCommandPalette(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                className="w-full max-w-2xl mx-4 bg-aviation-bg-primary border border-aviation-border-panel rounded-xl shadow-2xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Search Input */}
+                <div className="flex items-center gap-3 px-4 py-4 border-b border-aviation-border-panel">
+                  <Command className="w-5 h-5 text-aviation-text-muted" />
+                  <input
+                    type="text"
+                    placeholder="Search services, incidents, components..."
+                    className="flex-1 text-base text-aviation-text-primary placeholder:text-aviation-text-dim bg-transparent focus:outline-none"
+                    autoFocus
+                  />
+                  <kbd className="text-[10px] font-mono text-aviation-text-dim bg-aviation-bg-instrument px-2 py-1 rounded">
+                    ESC
+                  </kbd>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="p-2">
+                  <p className="px-3 py-2 text-xs font-semibold text-aviation-text-muted uppercase tracking-wider">
+                    Quick Actions
+                  </p>
+                  <div className="space-y-1">
+                    {QUICK_ACTIONS.map((action) => (
+                      <button
+                        key={action.key}
+                        onClick={() => {
+                          setShowCommandPalette(false);
+                          if (action.key === 'r') onRefresh();
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-aviation-text-secondary hover:text-aviation-text-primary hover:bg-aviation-bg-instrument transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <action.icon className="w-4 h-4" />
+                          <span>{action.label}</span>
+                        </div>
+                        <kbd className="text-[10px] font-mono text-aviation-text-dim bg-aviation-bg-instrument px-1.5 py-0.5 rounded">
+                          ⌘{action.key.toUpperCase()}
+                        </kbd>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="px-4 py-3 bg-aviation-bg-secondary border-t border-aviation-border-panel text-xs text-aviation-text-muted">
+                  <p className="flex items-center gap-2">
+                    <span>Use</span>
+                    <kbd className="font-mono bg-aviation-bg-instrument px-1 py-0.5 rounded">↑</kbd>
+                    <kbd className="font-mono bg-aviation-bg-instrument px-1 py-0.5 rounded">↓</kbd>
+                    <span>to navigate,</span>
+                    <kbd className="font-mono bg-aviation-bg-instrument px-1 py-0.5 rounded">↵</kbd>
+                    <span>to select</span>
+                  </p>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
+    </TooltipProvider>
   );
 }
 
@@ -116,8 +282,8 @@ export function HeroStatus({
         "relative overflow-hidden rounded-2xl p-8 md:p-12",
         "border backdrop-blur-xl",
         isOperational
-          ? "bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-500/20"
-          : "bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border-amber-500/20",
+          ? "bg-aviation-green/10 border-aviation-green/30"
+          : "bg-aviation-yellow/10 border-aviation-yellow/30",
       )}
     >
       <div
@@ -130,8 +296,8 @@ export function HeroStatus({
           className={cn(
             "absolute inset-0",
             isOperational
-              ? "bg-gradient-to-r from-emerald-500/20 via-emerald-400/10 to-transparent"
-              : "bg-gradient-to-r from-amber-500/20 via-amber-400/10 to-transparent",
+              ? "bg-gradient-to-r from-aviation-green/20 via-aviation-green/10 to-transparent"
+              : "bg-gradient-to-r from-aviation-yellow/20 via-aviation-yellow/10 to-transparent",
           )}
         />
       </div>
@@ -143,7 +309,7 @@ export function HeroStatus({
           <motion.h2
             className={cn(
               "text-3xl md:text-4xl font-bold mb-2",
-              isOperational ? "text-emerald-400" : "text-amber-400",
+              isOperational ? "text-aviation-green" : "text-aviation-yellow",
             )}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -154,7 +320,7 @@ export function HeroStatus({
               : "Partial Service Disruption"}
           </motion.h2>
           <motion.p
-            className="text-text-secondary text-lg"
+            className="text-aviation-text-secondary text-lg"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
@@ -165,7 +331,7 @@ export function HeroStatus({
         </div>
 
         <motion.div
-          className="flex items-center gap-2 text-sm text-text-muted"
+          className="flex items-center gap-2 text-sm text-aviation-text-muted"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
@@ -212,7 +378,7 @@ export function Footer() {
     {
       label: "API Status",
       href: "https://api.functionfly.com/health",
-      icon: ExternalLink,
+      icon: Activity,
     },
     {
       label: "GitHub",
@@ -222,19 +388,19 @@ export function Footer() {
   ];
 
   return (
-    <footer className="border-t border-border-subtle bg-bg-secondary/50 mt-16">
+    <footer className="border-t border-aviation-border-panel bg-aviation-bg-secondary mt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <Logo size="md" showText={true} />
-            <p className="mt-4 text-sm text-text-secondary">
+            <p className="mt-4 text-sm text-aviation-text-secondary">
               Real-time status monitoring for FunctionFly platform services.
               Built with reliability at the edge.
             </p>
           </div>
 
           <div>
-            <h4 className="font-semibold text-text-primary mb-4">Resources</h4>
+            <h4 className="font-semibold text-aviation-text-primary mb-4">Resources</h4>
             <ul className="space-y-2">
               {links.map((link) => (
                 <li key={link.label}>
@@ -242,7 +408,7 @@ export function Footer() {
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-text-secondary hover:text-text-primary transition-colors inline-flex items-center gap-2 group"
+                    className="text-sm text-aviation-text-secondary hover:text-aviation-text-primary transition-colors inline-flex items-center gap-2 group"
                   >
                     {link.label}
                     <link.icon className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -253,14 +419,14 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold text-text-primary mb-4">Legal</h4>
+            <h4 className="font-semibold text-aviation-text-primary mb-4">Legal</h4>
             <ul className="space-y-2">
               <li>
                 <a
                   href="https://functionfly.com/privacy"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-text-secondary hover:text-text-primary transition-colors inline-flex items-center gap-2 group"
+                  className="text-sm text-aviation-text-secondary hover:text-aviation-text-primary transition-colors inline-flex items-center gap-2 group"
                 >
                   Privacy Policy
                   <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -271,7 +437,7 @@ export function Footer() {
                   href="https://functionfly.com/terms"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-text-secondary hover:text-text-primary transition-colors inline-flex items-center gap-2 group"
+                  className="text-sm text-aviation-text-secondary hover:text-aviation-text-primary transition-colors inline-flex items-center gap-2 group"
                 >
                   Terms of Service
                   <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -282,7 +448,7 @@ export function Footer() {
                   href="https://functionfly.com/security"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-text-secondary hover:text-text-primary transition-colors inline-flex items-center gap-2 group"
+                  className="text-sm text-aviation-text-secondary hover:text-aviation-text-primary transition-colors inline-flex items-center gap-2 group"
                 >
                   Security
                   <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -292,11 +458,11 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-border-subtle flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-text-muted">
+        <div className="mt-12 pt-8 border-t border-aviation-border-panel flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-aviation-text-muted">
             © {new Date().getFullYear()} FunctionFly. All rights reserved.
           </p>
-          <div className="flex items-center gap-2 text-sm text-text-muted">
+          <div className="flex items-center gap-2 text-sm text-aviation-text-muted">
             <Globe className="w-4 h-4" />
             <span>Global Infrastructure</span>
           </div>
@@ -318,16 +484,15 @@ export function SubscribeSection() {
       transition={{ delay: 0.8 }}
       className={cn(
         "relative overflow-hidden rounded-2xl p-8",
-        "bg-gradient-to-br from-brand-500/10 via-purple-500/5 to-transparent",
-        "border border-brand-500/20",
+        "bg-aviation-amber/10 border border-aviation-amber/30",
       )}
     >
       <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="text-center md:text-left">
-          <h3 className="text-xl font-semibold text-text-primary mb-2">
+          <h3 className="text-xl font-semibold text-aviation-text-primary mb-2">
             Subscribe to Status Updates
           </h3>
-          <p className="text-text-secondary">
+          <p className="text-aviation-text-secondary">
             Get notified when there are service disruptions or maintenance
             windows.
           </p>
@@ -335,14 +500,14 @@ export function SubscribeSection() {
         <div className="flex gap-3">
           <Button
             variant="outline"
-            className="border-border-default hover:bg-bg-hover"
+            className="border-aviation-border-instrument hover:bg-aviation-bg-instrument text-aviation-text-secondary"
             onClick={() => setShowEmailSubscription(!showEmailSubscription)}
           >
             <Bell className="w-4 h-4 mr-2" />
             Email Alerts
           </Button>
           <Button
-            className="bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/25"
+            className="aviation-button-primary"
             onClick={() => window.open("/api/v1/status/rss", "_blank")}
           >
             <ExternalLink className="w-4 h-4 mr-2" />
@@ -360,9 +525,9 @@ export function SubscribeSection() {
             transition={{ duration: 0.3 }}
             className="overflow-hidden"
           >
-            <div className="mt-6 pt-6 border-t border-border-subtle">
+            <div className="mt-6 pt-6 border-t border-aviation-border-panel">
               {subscribed ? (
-                <div className="flex items-center gap-3 text-emerald-400">
+                <div className="flex items-center gap-3 text-aviation-green">
                   <CheckCircle className="w-5 h-5" />
                   <span>Thanks! You'll receive status updates at {email}</span>
                 </div>
@@ -373,10 +538,10 @@ export function SubscribeSection() {
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="flex-1 w-full px-4 py-2 rounded-lg bg-bg-secondary border border-border-subtle text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="flex-1 w-full px-4 py-2 rounded-lg bg-aviation-bg-instrument border border-aviation-border-instrument text-aviation-text-primary placeholder:text-aviation-text-dim focus:outline-none focus:border-aviation-amber"
                   />
                   <Button
-                    className="w-full sm:w-auto bg-brand-500 hover:bg-brand-600 text-white"
+                    className="w-full sm:w-auto aviation-button-primary"
                     onClick={() => {
                       if (email.includes("@")) {
                         setSubscribed(true);

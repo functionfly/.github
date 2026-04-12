@@ -1,0 +1,38 @@
+{
+  "name": "functionfly-blog",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "FunctionFly™ Blog - Standalone Astro Blog Application",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/node": "^10.0.4",
+    "@astrojs/react": "^5.0.3",
+    "@astrojs/rss": "^4.0.18",
+    "@astrojs/sitemap": "^3.6.1",
+    "@fontsource/inter": "^5.2.5",
+    "@fontsource/jetbrains-mono": "^5.2.5",
+    "@fontsource/space-grotesk": "^5.2.10",
+    "astro": "^6.1.4",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.8.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
+    "sharp": "^0.34.1",
+    "tailwind-merge": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.8.3"
+  }
+}

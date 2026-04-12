@@ -98,6 +98,45 @@ import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN } from '../config';
       <p class="footnote">
         Limits and features match what your workspace shows. Verification, marketplace, and Trust API usage may be billed separately—see <a href="/trust">Trust layer</a> and in-product usage for current rates.
       </p>
+
+      {/* Backend-in-a-Box Bundles Promo */}
+      <div class="bundles-promo">
+        <div class="bundles-badge">
+          <span class="sparkle">✨</span> NEW: Backend-in-a-Box
+        </div>
+        <h3 class="bundles-title">One Click → Full Backend</h3>
+        <p class="bundles-desc">
+          Skip the decision fatigue. Get pre-configured bundles with Auth, Payments, User DB, and more.
+          <strong>Start free</strong> until you hit 100 users or $1K MRR.
+        </p>
+        <div class="bundles-grid">
+          <div class="bundle-item">
+            <span class="bundle-icon">🚀</span>
+            <strong>SaaS Starter</strong> — $29/mo
+            <span class="bundle-features">Auth · Payments · User DB · Email · Analytics</span>
+          </div>
+          <div class="bundle-item">
+            <span class="bundle-icon">🛒</span>
+            <strong>Marketplace</strong> — $49/mo
+            <span class="bundle-features">Listings · Payments · Messaging · Notifications</span>
+          </div>
+          <div class="bundle-item">
+            <span class="bundle-icon">🤖</span>
+            <strong>AI App</strong> — $39/mo
+            <span class="bundle-features">Vector DB · Embeddings · Chat · Memory</span>
+          </div>
+        </div>
+        <div class="bundles-cta">
+          <a class="btn btn-gradient" href={`${APP_DASHBOARD_ORIGIN}/pricing/bundles`}>
+            Explore Bundles →
+          </a>
+          <span class="bundles-trust">
+            <span class="pill">🎯 100 users free</span>
+            <span class="pill">💰 $1K MRR free</span>
+            <span class="pill">⏰ 3 months free</span>
+          </span>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -947,6 +986,134 @@ import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN } from '../config';
 
       .addon-grid {
         grid-template-columns: 1fr;
+      }
+
+      .bundles-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Backend-in-a-Box Bundles Promo */
+    .bundles-promo {
+      margin-top: 2.5rem;
+      padding: 2rem;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1), rgba(236, 72, 153, 0.1));
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    .bundles-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.9rem;
+      background: linear-gradient(90deg, #6366f1, #a855f7);
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 999px;
+      margin-bottom: 1rem;
+    }
+
+    .sparkle {
+      font-size: 1rem;
+    }
+
+    .bundles-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--color-text);
+    }
+
+    .bundles-desc {
+      color: var(--color-muted);
+      max-width: 600px;
+      margin: 0 auto 1.5rem;
+      line-height: 1.6;
+    }
+
+    .bundles-desc strong {
+      color: var(--color-primary);
+    }
+
+    .bundles-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .bundle-item {
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.9rem;
+    }
+
+    .bundle-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .bundle-features {
+      font-size: 0.75rem;
+      color: var(--color-muted);
+    }
+
+    .bundles-cta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn-gradient {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 1.75rem;
+      background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
+      color: white;
+      font-weight: 600;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-gradient:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    }
+
+    .bundles-trust {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .pill {
+      padding: 0.35rem 0.75rem;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 999px;
+      font-size: 0.8rem;
+      color: var(--color-muted);
+    }
+
+    @media (max-width: 1050px) {
+      .bundles-grid {
+        grid-template-columns: 1fr;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
       }
     }
   </style>

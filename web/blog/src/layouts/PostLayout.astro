@@ -1,0 +1,860 @@
+---
+import BlogLayout from './BlogLayout.astro';
+import { slateBodyToHtml, calculateReadingTime } from '../lib/slate-to-html';
+import { formatDate, formatDateISO } from '../lib/utils';
+import AuthorBio from '../components/AuthorBio.astro';
+import type { BlogPost } from '../types/blog';
+
+interface Props {
+  post: BlogPost;
+}
+
+const { post } = Astro.props;
+
+const bodyHtml = slateBodyToHtml(post.body);
+const readingMinutes = calculateReadingTime(post.body);
+const metaTitle = post.seoTitle || post.title;
+const metaDesc = post.seoDescription || post.description;
+const canonicalUrl = post.canonicalUrl || new URL(`/blog/${post.slug}`, Astro.site).toString();
+const ogImageUrl = post.ogImage?.url || post.heroImage?.url;
+---
+
+<BlogLayout 
+  title={`${metaTitle} - FunctionFly Blog`}
+  description={metaDesc}
+  ogImage={ogImageUrl || undefined}
+  canonical={canonicalUrl}
+>
+  <div class="post-surface">
+    <article class="blog-post">
+      <div class="post-container">
+        <!-- Reading Progress Sidebar -->
+        <aside class="post-sidebar">
+          <div class="sidebar-sticky">
+            <div class="reading-indicator">
+              <span class="reading-indicator__time">{readingMinutes} min</span>
+              <span class="reading-indicator__label">read</span>
+            </div>
+            {post.tags && post.tags.length > 0 && (
+              <div class="sidebar-tags">
+                <h4 class="sidebar-title">Tags</h4>
+                <div class="sidebar-tag-list">
+                  {post.tags.map((tag) => (
+                    <a href={`/tag/${tag.toLowerCase().replace(/\s+/g, '-')}`} class="sidebar-tag">
+                      {tag}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <div class="post-main">
+          <!-- Back Link -->
+          <nav class="post-nav">
+            <a href="/" class="back-link">
+              <svg class="back-link__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+              <span>All Posts</span>
+            </a>
+          </nav>
+
+          <!-- Hero Header -->
+          <header class="post-hero">
+            {post.category && (
+              <a href={`/category/${post.category.slug}`} class="post-category">
+                <span class="post-category__dot"></span>
+                {post.category.title}
+              </a>
+            )}
+            
+            <h1 class="post-title">
+              <span class="title-accent">{post.title}</span>
+            </h1>
+            
+            <p class="post-description">{post.description}</p>
+            
+            <div class="post-meta">
+              <div class="meta-author">
+                {post.author?.name && (
+                  <a href={`/author/${post.author.slug}`} class="author-link">
+                    {post.author.photo && typeof post.author.photo === 'object' && 'url' in post.author.photo ? (
+                      <img 
+                        src={(post.author.photo as { url: string }).url} 
+                        alt={post.author.name}
+                        class="author-avatar"
+                      />
+                    ) : (
+                      <span class="author-avatar author-avatar--initial">
+                        {post.author.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span class="author-name">{post.author.name}</span>
+                  </a>
+                )}
+              </div>
+              
+              <span class="meta-separator"></span>
+              
+              {post.publishedAt && (
+                <time datetime={formatDateISO(post.publishedAt)} class="meta-date">
+                  {formatDate(post.publishedAt)}
+                </time>
+              )}
+              
+              <span class="meta-separator"></span>
+              
+              <span class="meta-reading">{readingMinutes} min read</span>
+            </div>
+          </header>
+
+          <!-- Hero Image -->
+          {post.heroImage?.url && (
+            <div class="hero-image-wrapper">
+              <img
+                src={post.heroImage.url}
+                alt={post.heroImage.alt || post.title}
+                class="hero-image"
+                loading="eager"
+              />
+              {post.heroImage.caption && (
+                <figcaption class="hero-caption">{post.heroImage.caption}</figcaption>
+              )}
+            </div>
+          )}
+
+          <!-- Content -->
+          <div class="post-content-wrapper">
+            <div class="post-content blog-content" set:html={bodyHtml} />
+          </div>
+
+          <!-- Author Bio at bottom -->
+          {post.author && (
+            <div class="author-section">
+              <AuthorBio author={post.author} />
+            </div>
+          )}
+
+          <!-- Tags Footer -->
+          {post.tags && post.tags.length > 0 && (
+            <footer class="post-footer">
+              <h3 class="footer-title">Related Topics</h3>
+              <ul class="tag-list">
+                {post.tags.map((tag) => (
+                  <li>
+                    <a href={`/tag/${tag.toLowerCase().replace(/\s+/g, '-')}`} class="tag-link">
+                      <span class="tag-hash">#</span>
+                      {tag}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </footer>
+          )}
+        </div>
+      </div>
+
+      <slot name="related-posts" />
+    </article>
+  </div>
+
+  <!-- Copy Code Script -->
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', function() {
+      const codeBlocks = document.querySelectorAll('.copy-code-btn');
+      
+      codeBlocks.forEach(btn => {
+        btn.addEventListener('click', async function() {
+          const code = this.getAttribute('data-code');
+          
+          try {
+            await navigator.clipboard.writeText(code);
+            
+            // Show copied state
+            this.classList.add('copied');
+            
+            setTimeout(() => {
+              this.classList.remove('copied');
+            }, 2000);
+          } catch (err) {
+            console.error('Failed to copy:', err);
+          }
+        });
+      });
+      
+      // Reading progress
+      const progressBar = document.createElement('div');
+      progressBar.className = 'reading-progress';
+      document.body.appendChild(progressBar);
+      
+      window.addEventListener('scroll', () => {
+        const scrollTop = window.scrollY;
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const scrollPercent = (scrollTop / docHeight) * 100;
+        progressBar.style.width = `${scrollPercent}%`;
+      }, { passive: true });
+    });
+  </script>
+</BlogLayout>
+
+<style is:global>
+  /* ============================
+     POST LAYOUT STYLES
+     ============================ */
+  
+  .post-surface {
+    position: relative;
+    overflow: hidden;
+    min-height: 100vh;
+  }
+
+  .post-surface::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.08), transparent 55%),
+      radial-gradient(ellipse 40% 20% at 100% 0%, rgba(16, 185, 129, 0.03), transparent 40%);
+  }
+
+  .blog-post {
+    position: relative;
+    padding: 2rem 1rem 5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .post-container {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 3rem;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  /* ============================
+     SIDEBAR
+     ============================ */
+  
+  .post-sidebar {
+    position: relative;
+  }
+
+  .sidebar-sticky {
+    position: sticky;
+    top: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .reading-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 12px;
+  }
+
+  .reading-indicator__time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #f8fafc;
+    line-height: 1;
+  }
+
+  .reading-indicator__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #94a3b8;
+    margin-top: 0.25rem;
+  }
+
+  .sidebar-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+    margin-bottom: 0.75rem;
+  }
+
+  .sidebar-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .sidebar-tag {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    color: #c7d2fe;
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-tag:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.4);
+  }
+
+  /* ============================
+     MAIN CONTENT
+     ============================ */
+  
+  .post-main {
+    min-width: 0;
+  }
+
+  .post-nav {
+    margin-bottom: 1.5rem;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #94a3b8;
+    transition: color 0.2s;
+  }
+
+  .back-link:hover {
+    color: #e2e8f0;
+  }
+
+  .back-link__icon {
+    transition: transform 0.2s;
+  }
+
+  .back-link:hover .back-link__icon {
+    transform: translateX(-3px);
+  }
+
+  /* ============================
+     HERO HEADER
+     ============================ */
+  
+  .post-hero {
+    margin-bottom: 2.5rem;
+  }
+
+  .post-category {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #10b981;
+    margin-bottom: 1.25rem;
+    transition: all 0.2s;
+  }
+
+  .post-category:hover {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.4);
+  }
+
+  .post-category__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  }
+
+  .post-title {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+  }
+
+  .title-accent {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 40%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .post-description {
+    font-size: 1.25rem;
+    color: #94a3b8;
+    line-height: 1.6;
+    max-width: 650px;
+    margin-bottom: 1.5rem;
+  }
+
+  .post-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    color: #64748b;
+  }
+
+  .author-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #e2e8f0;
+    transition: color 0.2s;
+  }
+
+  .author-link:hover {
+    color: #f8fafc;
+  }
+
+  .author-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(148, 163, 184, 0.2);
+  }
+
+  .author-avatar--initial {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .author-name {
+    font-weight: 500;
+  }
+
+  .meta-separator {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #475569;
+  }
+
+  .meta-date {
+    color: #94a3b8;
+  }
+
+  .meta-reading {
+    color: #94a3b8;
+  }
+
+  /* ============================
+     HERO IMAGE
+     ============================ */
+  
+  .hero-image-wrapper {
+    margin-bottom: 3rem;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+  }
+
+  .hero-image {
+    width: 100%;
+    max-height: 500px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .hero-caption {
+    padding: 1rem 1.25rem;
+    background: rgba(30, 41, 59, 0.8);
+    font-size: 0.875rem;
+    color: #94a3b8;
+    text-align: center;
+    font-style: italic;
+  }
+
+  /* ============================
+     CONTENT STYLES
+     ============================ */
+  
+  .post-content-wrapper {
+    margin-bottom: 3rem;
+  }
+
+  .post-content {
+    font-size: 1.0625rem;
+    line-height: 1.8;
+    color: #e2e8f0;
+  }
+
+  /* Paragraphs */
+  .post-content .content-paragraph {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Headings */
+  .post-content h1,
+  .post-content h2,
+  .post-content h3,
+  .post-content h4 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 600;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    color: #f8fafc;
+    letter-spacing: -0.01em;
+  }
+
+  .post-content h1 {
+    font-size: 2rem;
+  }
+
+  .post-content h2 {
+    font-size: 1.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  }
+
+  .post-content h3 {
+    font-size: 1.5rem;
+  }
+
+  .post-content h4 {
+    font-size: 1.25rem;
+  }
+
+  /* Links */
+  .post-content .content-link {
+    color: #818cf8;
+    text-decoration: underline;
+    text-decoration-color: rgba(129, 140, 248, 0.4);
+    text-underline-offset: 3px;
+    transition: all 0.2s;
+  }
+
+  .post-content .content-link:hover {
+    color: #a5b4fc;
+    text-decoration-color: #a5b4fc;
+  }
+
+  /* Inline Code */
+  .post-content .inline-code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.875em;
+    padding: 0.2em 0.4em;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 4px;
+    color: #c7d2fe;
+  }
+
+  /* Lists */
+  .post-content .content-list {
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
+  }
+
+  .post-content .content-list li {
+    margin-bottom: 0.5rem;
+    color: #e2e8f0;
+  }
+
+  .post-content .content-list--bullet {
+    list-style-type: disc;
+  }
+
+  .post-content .content-list--numbered {
+    list-style-type: decimal;
+  }
+
+  /* Blockquote */
+  .post-content .content-blockquote {
+    margin: 2rem 0;
+    padding: 1.25rem 1.5rem;
+    border-left: 4px solid #6366f1;
+    background: rgba(99, 102, 241, 0.05);
+    border-radius: 0 8px 8px 0;
+    font-style: italic;
+    color: #cbd5e1;
+  }
+
+  .post-content .content-blockquote p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Divider */
+  .post-content .content-divider {
+    margin: 3rem 0;
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.3), transparent);
+  }
+
+  /* ============================
+     CODE BLOCKS
+     ============================ */
+  
+  .code-block-wrapper {
+    margin: 2rem 0;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    background: #0f172a;
+  }
+
+  .code-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: rgba(30, 41, 59, 0.8);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  }
+
+  .code-language-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    padding: 0.25rem 0.5rem;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 4px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+  }
+
+  .copy-code-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .copy-code-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: #e2e8f0;
+  }
+
+  .copy-code-btn.copied {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #10b981;
+  }
+
+  .copy-code-btn .copied-text {
+    display: none;
+  }
+
+  .copy-code-btn.copied .copy-text {
+    display: none;
+  }
+
+  .copy-code-btn.copied .copied-text {
+    display: inline;
+  }
+
+  .code-block-content {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .line-numbers {
+    flex-shrink: 0;
+    padding: 1rem 0.75rem;
+    background: rgba(30, 41, 59, 0.5);
+    border-right: 1px solid rgba(148, 163, 184, 0.1);
+    text-align: right;
+    user-select: none;
+  }
+
+  .line-number {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    color: #475569;
+  }
+
+  .code-block {
+    flex: 1;
+    margin: 0;
+    padding: 1rem 1.25rem;
+    background: transparent;
+    overflow-x: auto;
+  }
+
+  .code-block code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    color: #e2e8f0;
+    background: transparent;
+    padding: 0;
+    display: block;
+  }
+
+  /* ============================
+     AUTHOR SECTION
+     ============================ */
+  
+  .author-section {
+    margin: 3rem 0;
+    padding: 2rem;
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 12px;
+  }
+
+  /* ============================
+     FOOTER TAGS
+     ============================ */
+  
+  .post-footer {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+  }
+
+  .footer-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 1rem;
+  }
+
+  .tag-list {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .tag-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 1rem;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    color: #c7d2fe;
+    transition: all 0.2s;
+  }
+
+  .tag-link:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .tag-hash {
+    color: #6366f1;
+    font-weight: 500;
+  }
+
+  /* ============================
+     READING PROGRESS
+     ============================ */
+  
+  .reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 3px;
+    background: linear-gradient(90deg, #6366f1, #10b981);
+    z-index: 9999;
+    transition: width 0.1s linear;
+  }
+
+  /* ============================
+     RESPONSIVE
+     ============================ */
+  
+  @media (max-width: 1024px) {
+    .post-container {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    .post-sidebar {
+      display: none;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .blog-post {
+      padding: 1.5rem 1rem 3rem;
+    }
+
+    .post-hero {
+      margin-bottom: 2rem;
+    }
+
+    .post-title {
+      font-size: 1.875rem;
+    }
+
+    .post-description {
+      font-size: 1.125rem;
+    }
+
+    .hero-image {
+      max-height: 300px;
+    }
+
+    .post-content {
+      font-size: 1rem;
+      line-height: 1.75;
+    }
+
+    .post-content h2 {
+      font-size: 1.5rem;
+    }
+
+    .post-content h3 {
+      font-size: 1.25rem;
+    }
+
+    .code-block-wrapper {
+      margin: 1.5rem -1rem;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+    }
+
+    .author-section {
+      padding: 1.5rem;
+      margin: 2rem -1rem;
+      border-radius: 0;
+    }
+  }
+</style>

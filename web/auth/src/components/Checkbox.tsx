@@ -5,6 +5,8 @@ interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "typ
   name: string;
   error?: string;
   helperText?: string;
+  termsUrl?: string;
+  privacyUrl?: string;
 }
 
 export const Checkbox: React.FC<CheckboxProps> = ({
@@ -12,6 +14,8 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   name,
   error,
   helperText,
+  termsUrl,
+  privacyUrl,
   className = "",
   id,
   ...rest
@@ -19,6 +23,23 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   const inputId = id || name;
   const errorId = error ? `${inputId}-error` : undefined;
   const helperId = helperText ? `${inputId}-helper` : undefined;
+
+  const renderLabel = (labelContent: ReactNode) => {
+    if (React.isValidElement(labelContent)) {
+      return labelContent;
+    }
+    if (termsUrl && privacyUrl) {
+      return (
+        <span className="checkbox-text">
+          {labelContent}
+          <a href={termsUrl} target="_blank" rel="noopener">Terms of Service</a>
+          {" and "}
+          <a href={privacyUrl} target="_blank" rel="noopener">Privacy Policy</a>
+        </span>
+      );
+    }
+    return <span className="checkbox-text">{labelContent}</span>;
+  };
 
   return (
     <div className={`checkbox-field ${className}`}>
@@ -32,7 +53,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
           aria-describedby={error ? errorId : helperId}
           {...rest}
         />
-        <span className="checkbox-text">{label}</span>
+        {renderLabel(label)}
       </label>
 
       {helperText && !error && (

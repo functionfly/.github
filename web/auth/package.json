@@ -2,6 +2,7 @@
   "name": "functionfly-auth",
   "type": "module",
   "version": "1.0.0",
+  "description": "FunctionFly™ Auth Service",
   "scripts": {
     "dev": "bun run astro dev",
     "start": "bun run astro dev",
@@ -16,7 +17,8 @@
     "@astrojs/react": "^3.6.0",
     "astro": "^5.15.9",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "vercel": "^50.41.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.0",

@@ -1,0 +1,213 @@
+---
+import BlogLayout from '../../layouts/BlogLayout.astro';
+import BlogGrid from '../../components/BlogGrid.astro';
+import CategoryFilter from '../../components/CategoryFilter.astro';
+import Pagination from '../../components/Pagination.astro';
+import { getPosts, getCategories } from '../../lib/api';
+
+// Enable server-side rendering for this page
+export const prerender = false;
+
+const { slug } = Astro.params;
+const url = Astro.url;
+const currentPage = parseInt(url.searchParams.get('page') || '1', 10);
+
+if (!slug) {
+  return Astro.redirect('/');
+}
+
+// Fetch category, posts, and all categories
+const [categories, postsResponse] = await Promise.all([
+  getCategories(),
+  getPosts({ category: slug, page: currentPage, limit: 10 }),
+]);
+
+const currentCategory = categories.find(c => c.slug === slug);
+const posts = postsResponse.data || [];
+const { totalPages } = postsResponse.meta;
+
+// Redirect if category not found
+if (!currentCategory && posts.length === 0) {
+  return Astro.redirect('/');
+}
+
+const categoryTitle = currentCategory?.title || slug.replace(/-/g, ' ');
+const categoryDescription = currentCategory?.description || `Posts in the ${categoryTitle} category.`;
+---
+
+<BlogLayout 
+  title={`${categoryTitle} - FunctionFly Blog`}
+  description={categoryDescription}
+>
+  <div class="blog-surface">
+    <section class="category-page">
+      <div class="category-inner">
+        <header class="category-header">
+          <a href="/" class="back-link">
+            <span class="back-link-icon" aria-hidden="true">&larr;</span>
+            All Posts
+          </a>
+          <h1 class="category-title">
+            <span class="gradient-text">{categoryTitle}</span>
+          </h1>
+          {currentCategory?.description && (
+            <p class="category-description">{currentCategory.description}</p>
+          )}
+        </header>
+
+        <div class="category-content-wrapper">
+          <aside class="category-sidebar">
+            <CategoryFilter categories={categories} activeCategory={slug} />
+          </aside>
+          
+          <div class="category-main">
+            {posts.length > 0 ? (
+              <>
+                <BlogGrid posts={posts} />
+                <Pagination 
+                  currentPage={currentPage} 
+                  totalPages={totalPages} 
+                  baseUrl={`/category/${slug}`}
+                />
+              </>
+            ) : (
+              <div class="category-empty">
+                <p>No posts found in this category.</p>
+                <a href="/" class="btn-primary">Browse all posts</a>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</BlogLayout>
+
+<style>
+  .blog-surface {
+    position: relative;
+    overflow: hidden;
+    min-height: 100vh;
+  }
+
+  .blog-surface::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.14), transparent 55%),
+      radial-gradient(ellipse 50% 30% at 100% 10%, rgba(16, 185, 129, 0.05), transparent 40%);
+  }
+
+  .category-page {
+    position: relative;
+    padding: 2.5rem 1.5rem 5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .category-header {
+    margin-bottom: 2.5rem;
+    text-align: center;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-bottom: 1.25rem;
+    transition: color 0.2s;
+  }
+
+  .back-link:hover {
+    color: var(--color-secondary);
+  }
+
+  .category-title {
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.75rem;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .category-description {
+    color: var(--color-text-muted);
+    font-size: 1.125rem;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .category-content-wrapper {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .category-sidebar {
+    position: sticky;
+    top: 6rem;
+  }
+
+  .category-main {
+    min-width: 0;
+  }
+
+  .category-empty {
+    text-align: center;
+    padding: 4rem 0;
+  }
+
+  .category-empty p {
+    color: var(--color-text-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: white;
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover {
+    background: #4f46e5;
+    border-color: #4f46e5;
+  }
+
+  @media (max-width: 992px) {
+    .category-content-wrapper {
+      grid-template-columns: 1fr;
+    }
+
+    .category-sidebar {
+      position: static;
+      margin-bottom: 1rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .category-page {
+      padding: 1.5rem 1rem 3rem;
+    }
+  }
+</style>

@@ -1,24 +1,45 @@
 ---
 // SAML SSO endpoint — initiates SAML authentication flow
-// The actual SSO initiation is handled server-side; this page redirects to the IdP
 import { API_ORIGIN } from "../../../config";
-
-const tenantId = Astro.url.searchParams.get("tenant") || "";
-const relayState = Astro.url.searchParams.get("RelayState") || Astro.url.searchParams.get("redirect_to") || "";
-
-// Initiate SAML login via API
-const res = await fetch(`${API_ORIGIN}/auth/saml/sso/initiate${tenantId ? `?tenant=${tenantId}` : ""}&relay_state=${encodeURIComponent(relayState)}`, {
-  credentials: "include",
-});
-const data = await res.json().catch(() => ({}));
-if (data.redirect_url) {
-  return Astro.redirect(data.redirect_url);
-}
 ---
 <html>
   <head><meta charset="UTF-8" /><title>SAML SSO</title></head>
   <body>
-    <p>Initiating SAML login…</p>
-    {data.error && <p style="color:red">Error: {data.error}</p>}
+    <p id="status">Initiating SAML login…</p>
+    <p id="error" style="color:red; display:none;"></p>
+
+    <script is:inline define:vars={{ API_ORIGIN }}>
+      (async function() {
+        const url = new URL(window.location.href);
+        const tenantId = url.searchParams.get("tenant") || "";
+        const relayState = url.searchParams.get("RelayState") || url.searchParams.get("redirect_to") || "";
+        const statusEl = document.getElementById("status");
+        const errorEl = document.getElementById("error");
+
+        try {
+          const res = await fetch(
+            `${API_ORIGIN}/auth/saml/sso/initiate${tenantId ? `?tenant=${tenantId}` : ""}&relay_state=${encodeURIComponent(relayState)}`,
+            { credentials: "include" }
+          );
+          const data = await res.json().catch(() => ({}));
+
+          if (data.redirect_url) {
+            window.location.href = data.redirect_url;
+          } else if (data.error) {
+            statusEl.style.display = "none";
+            errorEl.textContent = "Error: " + data.error;
+            errorEl.style.display = "block";
+          } else {
+            statusEl.style.display = "none";
+            errorEl.textContent = "Error: Failed to initiate SAML login";
+            errorEl.style.display = "block";
+          }
+        } catch (e) {
+          statusEl.style.display = "none";
+          errorEl.textContent = "Error: Unable to connect to API server. Please ensure the orchestrator API is running.";
+          errorEl.style.display = "block";
+        }
+      })();
+    </script>
   </body>
 </html>

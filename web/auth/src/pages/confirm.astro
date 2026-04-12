@@ -8,7 +8,7 @@ const email = Astro.url.searchParams.get("email") || "";
 const sent = Astro.url.searchParams.get("sent") === "true";
 ---
 
-<AuthLayout title="Check your email — FunctionFly" maxWidth="440px">
+<AuthLayout title="Check your email — FunctionFly™" maxWidth="440px">
   <FormCard
     title="Check your email"
     subtitle={email ? `We sent a verification link to ${email}` : "Check your inbox for a verification link"}

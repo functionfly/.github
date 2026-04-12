@@ -2,6 +2,7 @@
   "name": "functionfly-status",
   "private": true,
   "version": "0.0.1",
+  "description": "FunctionFly™ Status Page",
   "type": "module",
   "scripts": {
     "dev": "vite",

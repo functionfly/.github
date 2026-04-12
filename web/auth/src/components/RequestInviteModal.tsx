@@ -273,7 +273,7 @@ export default function RequestInviteModal() {
             </div>
             <h2>Request an invite</h2>
             <p>
-              Enter your email and we'll get you early access to FunctionFly.
+              Enter your email and we'll get you early access to FunctionFly™.
             </p>
           </div>
 

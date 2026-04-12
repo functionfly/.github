@@ -3,6 +3,7 @@ import sitemap from "@astrojs/sitemap";
 import { defineConfig } from "astro/config";
 
 const site = process.env.PUBLIC_SITE_URL || "https://functionfly.com";
+const blogSiteUrl = process.env.PUBLIC_BLOG_URL || "https://blog.functionfly.com";
 
 // https://astro.build/config
 export default defineConfig({
@@ -16,6 +17,10 @@ export default defineConfig({
   },
   build: {
     format: "directory",
+  },
+  redirects: {
+    '/blog': blogSiteUrl,
+    '/blog/[...slug]': `${blogSiteUrl}/[...slug]`,
   },
   vite: {
     server: {

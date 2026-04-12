@@ -1,0 +1,52 @@
+---
+import BlogCard from './BlogCard.astro';
+import type { BlogPost } from '../types/blog';
+
+interface Props {
+  posts: BlogPost[];
+}
+
+const { posts } = Astro.props;
+
+// Don't render if no related posts
+if (posts.length === 0) return null;
+---
+
+<section class="related-posts">
+  <h2 class="related-posts__title">
+    <span class="related-posts__title-accent">Related Posts</span>
+  </h2>
+  <div class="related-posts__grid">
+    {posts.map((post) => (
+      <BlogCard post={post} variant="compact" />
+    ))}
+  </div>
+</section>
+
+<style>
+  .related-posts {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .related-posts__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .related-posts__title-accent {
+    background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .related-posts__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+</style>

@@ -1,0 +1,53 @@
+---
+import { SITE_NAME } from '../lib/constants';
+import type { SEOProps } from '../types/blog';
+
+interface Props extends SEOProps {}
+
+const {
+  title,
+  description,
+  canonical,
+  ogImage,
+  ogType = 'website',
+  publishedAt,
+  modifiedAt,
+  author,
+  tags,
+} = Astro.props;
+
+const fullTitle = `${title} - ${SITE_NAME}`;
+const metaDescription = description || '';
+---
+
+<title>{fullTitle}</title>
+<meta name="description" content={metaDescription} />
+{canonical && <link rel="canonical" href={canonical} />}
+
+<!-- Open Graph -->
+<meta property="og:title" content={title} />
+<meta property="og:description" content={metaDescription} />
+{canonical && <meta property="og:url" content={canonical} />}
+<meta property="og:type" content={ogType} />
+<meta property="og:site_name" content={SITE_NAME} />
+{ogImage && <meta property="og:image" content={ogImage} />}
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={metaDescription} />
+{ogImage && <meta name="twitter:image" content={ogImage} />}
+
+<!-- Article specific -->
+{ogType === 'article' && publishedAt && (
+  <meta property="article:published_time" content={publishedAt} />
+)}
+{ogType === 'article' && modifiedAt && (
+  <meta property="article:modified_time" content={modifiedAt} />
+)}
+{ogType === 'article' && author && (
+  <meta property="article:author" content={author} />
+)}
+{ogType === 'article' && tags && tags.map(tag => (
+  <meta property="article:tag" content={tag} />
+))}

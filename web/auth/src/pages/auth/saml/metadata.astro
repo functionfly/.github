@@ -1,19 +1,35 @@
 ---
 // SAML SP metadata endpoint — provides XML metadata for IdP configuration
 import { API_ORIGIN } from "../../../config";
-
-const tenantId = Astro.url.searchParams.get("tenant") || "";
-const res = await fetch(`${API_ORIGIN}/auth/saml/metadata${tenantId ? `?tenant=${tenantId}` : ""}`, {
-  headers: { Accept: "application/xml" },
-});
-const metadata = await res.text().catch(() => "");
 ---
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>SAML Metadata — FunctionFly</title>
+    <title>SAML Metadata — FunctionFly™</title>
   </head>
   <body>
-    <pre>{metadata}</pre>
+    <pre id="metadata">Loading SAML metadata...</pre>
+
+    <script is:inline define:vars={{ API_ORIGIN }}>
+      (async function() {
+        const url = new URL(window.location.href);
+        const tenantId = url.searchParams.get("tenant") || "";
+        const metadataEl = document.getElementById("metadata");
+
+        try {
+          const res = await fetch(
+            `${API_ORIGIN}/auth/saml/metadata${tenantId ? `?tenant=${tenantId}` : ""}`,
+            { headers: { Accept: "application/xml" } }
+          );
+          if (res.ok) {
+            metadataEl.textContent = await res.text();
+          } else {
+            metadataEl.textContent = `Error: Failed to fetch metadata (HTTP ${res.status})`;
+          }
+        } catch (e) {
+          metadataEl.textContent = "Error: Unable to connect to API server. Please ensure the orchestrator API is running.";
+        }
+      })();
+    </script>
   </body>
 </html>

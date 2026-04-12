@@ -10,10 +10,19 @@ export const API_ORIGIN =
     ? "http://localhost:8080"
     : "https://api.functionfly.com");
 
-/** Dashboard origin (redirect after auth). */
-export const APP_ORIGIN =
-  (import.meta.env.PUBLIC_APP_URL as string | undefined)?.replace(/\/$/, "") ||
-  "https://app.functionfly.com";
+function getAppOrigin(): string {
+  if (import.meta.env.DEV) {
+    return "http://localhost:3000";
+  }
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "";
+  if (hostname.includes("staging")) {
+    return "https://app.staging.functionfly.com";
+  }
+  return "https://app.functionfly.com";
+}
+
+/** Dashboard origin (redirect after auth). Resolved at runtime from hostname. */
+export const APP_ORIGIN = getAppOrigin();
 
 /** Marketing site origin (for terms & privacy links). */
 export const MARKETING_ORIGIN =

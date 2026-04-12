@@ -31,6 +31,9 @@ export default function InputField({
   const hintId = hint ? `${id}-hint` : undefined;
   const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
 
+  const autoCompleteValue = (rest as Record<string, unknown>).autoComplete as string || (rest as Record<string, unknown>).autocomplete as string;
+  const { autoComplete: _ac1, autocomplete: _ac2, ...restWithoutAutoComplete } = rest as Props & { autoComplete?: string; autocomplete?: string };
+
   return (
     <div className="field">
       <label className="field-label" htmlFor={id}>
@@ -44,7 +47,8 @@ export default function InputField({
           className={`field-input${error ? " field-input--error" : ""}`}
           aria-invalid={error ? "true" : "false"}
           aria-describedby={describedBy}
-          {...rest}
+          autoComplete={autoCompleteValue}
+          {...restWithoutAutoComplete}
         />
         {isPassword && (
           <button

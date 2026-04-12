@@ -2,6 +2,7 @@
   "name": "functionfly-docs",
   "type": "module",
   "version": "1.0.0",
+  "description": "FunctionFly™ Documentation Site",
   "scripts": {
     "sync-docs": "node scripts/sync-docs.mjs",
     "dev": "node scripts/sync-docs.mjs && bun run astro dev",
@@ -11,16 +12,17 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^5.15.9",
-    "@astrojs/react": "^3.6.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "@fontsource/inter": "^5.0.0",
-    "@fontsource/jetbrains-mono": "^5.0.0"
+    "astro": "^5.6.1",
+    "@astrojs/react": "^4.2.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.5.0",
+    "@fontsource/inter": "^5.2.5",
+    "@fontsource/jetbrains-mono": "^5.2.5"
   },
   "devDependencies": {
-    "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0",
-    "typescript": "^5.0.0"
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.2",
+    "typescript": "^5.8.3"
   }
 }

@@ -1,0 +1,173 @@
+---
+import { getPaginationRange } from '../lib/utils';
+
+interface Props {
+  currentPage: number;
+  totalPages: number;
+  baseUrl: string;
+}
+
+const { currentPage, totalPages, baseUrl } = Astro.props;
+
+// Build pagination URL helper
+function buildPageUrl(page: number): string {
+  if (page === 1) return baseUrl;
+  return `${baseUrl}?page=${page}`;
+}
+
+const pages = getPaginationRange(currentPage, totalPages);
+const hasPrevious = currentPage > 1;
+const hasNext = currentPage < totalPages;
+---
+
+{totalPages > 1 && (
+  <nav class="pagination" aria-label="Pagination">
+    <div class="pagination__inner">
+      {hasPrevious ? (
+        <a href={buildPageUrl(currentPage - 1)} class="pagination__arrow pagination__arrow--prev">
+          <span aria-hidden="true">&larr;</span>
+          Previous
+        </a>
+      ) : (
+        <span class="pagination__arrow pagination__arrow--disabled">
+          <span aria-hidden="true">&larr;</span>
+          Previous
+        </span>
+      )}
+
+      <div class="pagination__pages">
+        {pages.map((page) => (
+          page === '...' ? (
+            <span class="pagination__ellipsis">&hellip;</span>
+          ) : (
+            <a
+              href={buildPageUrl(page as number)}
+              class:list={['pagination__page', { 'pagination__page--active': page === currentPage }]}
+              aria-current={page === currentPage ? 'page' : undefined}
+            >
+              {page}
+            </a>
+          )
+        ))}
+      </div>
+
+      {hasNext ? (
+        <a href={buildPageUrl(currentPage + 1)} class="pagination__arrow pagination__arrow--next">
+          Next
+          <span aria-hidden="true">&rarr;</span>
+        </a>
+      ) : (
+        <span class="pagination__arrow pagination__arrow--disabled">
+          Next
+          <span aria-hidden="true">&rarr;</span>
+        </span>
+      )}
+    </div>
+  </nav>
+)}
+
+<style>
+  .pagination {
+    margin-top: 3rem;
+  }
+
+  .pagination__inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .pagination__arrow {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text);
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .pagination__arrow:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.4);
+  }
+
+  .pagination__arrow--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .pagination__pages {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .pagination__page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding: 0 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .pagination__page:hover {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--color-text);
+  }
+
+  .pagination__page--active {
+    color: var(--color-primary);
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.3);
+    font-weight: 600;
+  }
+
+  .pagination__ellipsis {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    color: var(--color-text-muted);
+    font-size: 1rem;
+  }
+
+  @media (max-width: 640px) {
+    .pagination__arrow {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .pagination__arrow span {
+      display: none;
+    }
+
+    .pagination__page {
+      min-width: 2rem;
+      height: 2rem;
+      font-size: 0.8rem;
+    }
+
+    .pagination__ellipsis {
+      min-width: 2rem;
+      height: 2rem;
+    }
+  }
+</style>

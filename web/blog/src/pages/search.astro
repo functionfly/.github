@@ -1,0 +1,200 @@
+---
+import BlogLayout from '../layouts/BlogLayout.astro';
+import BlogGrid from '../components/BlogGrid.astro';
+import Pagination from '../components/Pagination.astro';
+import SearchBox from '../components/SearchBox.astro';
+import { getPosts, getCategories } from '../lib/api';
+
+// Enable server-side rendering for search
+export const prerender = false;
+
+const query = Astro.url.searchParams.get('q') || '';
+const currentPage = parseInt(Astro.url.searchParams.get('page') || '1', 10);
+
+// Fetch search results and categories in parallel
+const [postsResponse, categories] = await Promise.all([
+  query ? getPosts({ search: query, page: currentPage, limit: 10 }) : Promise.resolve({ data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 0 } }),
+  getCategories(),
+]);
+
+const posts = postsResponse.data || [];
+const { totalPages } = postsResponse.meta;
+
+// Find matching category name for display
+const matchingCategory = categories.find(c => 
+  c.title.toLowerCase().includes(query.toLowerCase()) ||
+  c.slug.toLowerCase() === query.toLowerCase()
+);
+---
+
+<BlogLayout 
+  title={`Search: ${query} - FunctionFly Blog`}
+  description={`Search results for "${query}" on the FunctionFly Blog.`}
+>
+  <div class="blog-surface">
+    <section class="search-page">
+      <div class="search-inner">
+        <header class="search-header">
+          <h1 class="search-title">
+            <span class="gradient-text">Search Results</span>
+          </h1>
+          <SearchBox query={query} />
+        </header>
+
+        {query ? (
+          <div class="search-results">
+            <p class="search-meta">
+              {posts.length > 0 ? (
+                <span>Found {posts.length} result{posts.length !== 1 ? 's' : ''} for "<strong>{query}</strong>"</span>
+              ) : (
+                <span>No results found for "<strong>{query}</strong>"</span>
+              )}
+            </p>
+
+            {posts.length > 0 && (
+              <>
+                <BlogGrid posts={posts} />
+                <Pagination 
+                  currentPage={currentPage} 
+                  totalPages={totalPages} 
+                  baseUrl={`/search?q=${encodeURIComponent(query)}`}
+                />
+              </>
+            )}
+
+            {posts.length === 0 && (
+              <div class="search-empty">
+                <p>Try searching with different keywords or browse by category:</p>
+                <div class="search-categories">
+                  {categories.map(cat => (
+                    <a href={`/category/${cat.slug}`} class="search-category-link">
+                      {cat.title}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div class="search-intro">
+            <p>Enter a search term above to find articles, tutorials, and updates.</p>
+            <h2 class="search-categories-title">Or browse by category:</h2>
+            <div class="search-categories">
+              {categories.map(cat => (
+                <a href={`/category/${cat.slug}`} class="search-category-link">
+                  {cat.title}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  </div>
+</BlogLayout>
+
+<style>
+  .blog-surface {
+    position: relative;
+    overflow: hidden;
+    min-height: 100vh;
+  }
+
+  .blog-surface::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.14), transparent 55%),
+      radial-gradient(ellipse 50% 30% at 100% 10%, rgba(16, 185, 129, 0.05), transparent 40%);
+  }
+
+  .search-page {
+    position: relative;
+    padding: 2.5rem 1.5rem 5rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .search-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .search-title {
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.5rem;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .search-meta {
+    color: var(--color-text-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .search-meta strong {
+    color: var(--color-text);
+  }
+
+  .search-results {
+    margin-top: 2rem;
+  }
+
+  .search-empty,
+  .search-intro {
+    text-align: center;
+    padding: 3rem 0;
+  }
+
+  .search-empty p,
+  .search-intro p {
+    color: var(--color-text-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .search-categories-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 1rem;
+  }
+
+  .search-categories {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+
+  .search-category-link {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    color: #c7d2fe;
+    transition: all 0.2s;
+  }
+
+  .search-category-link:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: var(--color-text);
+  }
+
+  @media (max-width: 768px) {
+    .search-page {
+      padding: 1.5rem 1rem 3rem;
+    }
+  }
+</style>

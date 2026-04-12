@@ -1,5 +1,4 @@
 ---
-import { createElement, Fragment } from "react";
 import AuthLayout from "../layouts/AuthLayout.astro";
 import FormCard from "../components/FormCard";
 import InputField from "../components/InputField";
@@ -11,30 +10,14 @@ import UsernameField from "../components/UsernameField";
 import InviteCodeField from "../components/InviteCodeField";
 import RequestInviteModal from "../components/RequestInviteModal";
 import { API_ORIGIN, MARKETING_ORIGIN } from "../config";
+import "../styles/oauth-providers.css";
 
 const urlInviteCode = Astro.url.searchParams.get("invite_code") || undefined;
 const redirectAfterLogin = Astro.url.searchParams.get("redirect_uri") || undefined;
 const inviteCode = urlInviteCode || "";
-
-const termsCheckboxLabel = createElement(
-  Fragment,
-  null,
-  "I agree to the ",
-  createElement(
-    "a",
-    { href: `${MARKETING_ORIGIN}/terms`, target: "_blank", rel: "noopener" },
-    "Terms of Service",
-  ),
-  " and ",
-  createElement(
-    "a",
-    { href: `${MARKETING_ORIGIN}/privacy`, target: "_blank", rel: "noopener" },
-    "Privacy Policy",
-  ),
-);
 ---
 
-<AuthLayout title="Create account — FunctionFly">
+<AuthLayout title="Create account — FunctionFly™">
   <!-- Invite Request Banner (outside FormCard so modal backdrop is unclipped) -->
   <div class="invite-request-banner" id="invite-banner">
     <div class="invite-request-content">
@@ -54,8 +37,8 @@ const termsCheckboxLabel = createElement(
   <!-- Request Invite Modal -->
   <RequestInviteModal client:load />
 
-  <FormCard title="Create your account" subtitle="Start building on FunctionFly" client:load>
-    <OAuthProviders client:load inviteCode={inviteCode} redirectAfterLogin={redirectAfterLogin} />
+  <FormCard title="Create your account" subtitle="Start building on FunctionFly™" client:load>
+    <OAuthProviders client:only="react" inviteCode={inviteCode} redirectAfterLogin={redirectAfterLogin} />
 
     <!-- Divider -->
     <div class="form-divider">
@@ -95,7 +78,7 @@ const termsCheckboxLabel = createElement(
           type="email"
           placeholder="you@example.com"
           required
-          autocomplete="email"
+          autoComplete="email"
           id="email-field"
           aria-describedby="step1-desc"
         />
@@ -109,7 +92,7 @@ const termsCheckboxLabel = createElement(
             placeholder="Min. 8 characters"
             required
             minLength={8}
-            autocomplete="new-password"
+            autoComplete="new-password"
             id="password-field"
             aria-describedby="password-strength"
           />
@@ -136,7 +119,7 @@ const termsCheckboxLabel = createElement(
           placeholder="Re-enter your password"
           required
           minLength={8}
-          autocomplete="new-password"
+          autoComplete="new-password"
           id="confirm-password-field"
         />
         <p id="password-match-error" class="field-error hidden" role="alert" aria-live="polite">Passwords do not match</p>
@@ -171,7 +154,7 @@ const termsCheckboxLabel = createElement(
           type="text"
           placeholder="John Doe"
           required
-          autocomplete="name"
+          autoComplete="name"
         />
 
         <UsernameField client:load />
@@ -234,10 +217,12 @@ const termsCheckboxLabel = createElement(
         <!-- Terms Checkbox -->
         <Checkbox
           client:load
-          label={termsCheckboxLabel}
+          label="I agree to the "
           name="terms"
           required={true}
           id="terms-checkbox"
+          termsUrl={`${MARKETING_ORIGIN}/terms`}
+          privacyUrl={`${MARKETING_ORIGIN}/privacy`}
         />
 
         <!-- CAPTCHA -->

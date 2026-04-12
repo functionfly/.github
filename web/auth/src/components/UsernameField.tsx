@@ -245,7 +245,7 @@ export default function UsernameField() {
     if (validation.isValid && validation.isAvailable)
       return "✓ Username is available";
     if (validation.error && touched) return validation.error;
-    return "This will be your @username on FunctionFly";
+    return "This will be your @username on FunctionFly™";
   };
 
   const getHintClass = () => {

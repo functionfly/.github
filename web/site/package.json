@@ -2,6 +2,7 @@
   "name": "functionfly-marketing",
   "type": "module",
   "version": "1.0.0",
+  "description": "FunctionFly™ Marketing Site",
   "scripts": {
     "dev": "bun run astro dev",
     "start": "bun run astro dev",

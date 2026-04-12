@@ -1,0 +1,468 @@
+---
+import { formatDate } from '../lib/utils';
+import { calculateReadingTime } from '../lib/slate-to-html';
+import type { BlogPost } from '../types/blog';
+
+interface Props {
+  post: BlogPost;
+  variant?: 'default' | 'featured' | 'compact';
+  index?: number;
+}
+
+const { post, variant = 'default', index = 0 } = Astro.props;
+
+const readingMinutes = calculateReadingTime(post.body);
+
+// Determine if we should show the image based on variant and availability
+const showImage = variant !== 'compact' && post.heroImage?.url;
+const imageUrl = post.heroImage?.url;
+
+// Category color mapping for dynamic styling
+const categoryColors: Record<string, string> = {
+  'engineering': '#3b82f6',
+  'product': '#10b981',
+  'company-news': '#8b5cf6',
+  'tutorials': '#f59e0b',
+  'community': '#ec4899',
+  'security': '#ef4444',
+  'ai-ml': '#6366f1',
+  'devops': '#06b6d4',
+  'api-sdks': '#f97316',
+  'releases': '#14b8a6',
+  'case-studies': '#0ea5e9',
+};
+
+const categoryColor = post.category?.slug ? categoryColors[post.category.slug] || '#6366f1' : '#6366f1';
+---
+
+<article class:list={['blog-card', `blog-card--${variant}`, { 'animate-in': true }]} style={`--category-color: ${categoryColor}; --animation-delay: ${index * 0.1}s`}>
+  <a href={`/${post.slug}`} class="blog-card__link">
+    {showImage && imageUrl && (
+      <div class="blog-card__image-wrapper">
+        <div class="blog-card__image-overlay"></div>
+        <img
+          src={imageUrl}
+          alt={post.heroImage?.alt || post.title}
+          class="blog-card__image"
+          loading={variant === 'featured' ? 'eager' : 'lazy'}
+        />
+        <div class="blog-card__image-glow"></div>
+      </div>
+    )}
+    
+    <div class="blog-card__content">
+      {post.category && (
+        <span class="blog-card__category" style={`--cat-color: ${categoryColor}`}>
+          <span class="blog-card__category-dot"></span>
+          {post.category.title}
+        </span>
+      )}
+      
+      <h3 class="blog-card__title">
+        <span class="blog-card__title-text">{post.title}</span>
+      </h3>
+      
+      {variant !== 'compact' && (
+        <p class="blog-card__description">{post.description}</p>
+      )}
+      
+      <div class="blog-card__meta">
+        <div class="blog-card__meta-item">
+          <svg class="blog-card__meta-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          {post.publishedAt && (
+            <time datetime={post.publishedAt}>
+              {formatDate(post.publishedAt)}
+            </time>
+          )}
+        </div>
+        <div class="blog-card__meta-separator"></div>
+        <div class="blog-card__meta-item">
+          <svg class="blog-card__meta-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span>{readingMinutes} min read</span>
+        </div>
+      </div>
+      
+      <div class="blog-card__arrow">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </div>
+    </div>
+  </a>
+</article>
+
+<style>
+  .blog-card {
+    position: relative;
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    transform: translateY(20px);
+    animation: cardFadeIn 0.6s ease-out forwards;
+    animation-delay: var(--animation-delay, 0s);
+  }
+
+  @keyframes cardFadeIn {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .blog-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at top, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .blog-card:hover::before {
+    opacity: 1;
+  }
+
+  .blog-card::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.4) 0%, transparent 50%, rgba(16, 185, 129, 0.2) 100%);
+    border-radius: 16px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .blog-card:hover::after {
+    opacity: 1;
+  }
+
+  .blog-card:hover {
+    transform: translateY(-6px) scale(1.01);
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 
+      0 20px 40px rgba(0, 0, 0, 0.4),
+      0 0 60px rgba(99, 102, 241, 0.15);
+  }
+
+  .blog-card__link {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .blog-card__image-wrapper {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  }
+
+  .blog-card__image-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 50%, rgba(15, 23, 42, 0.8) 100%);
+    z-index: 1;
+    transition: opacity 0.3s ease;
+  }
+
+  .blog-card__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .blog-card:hover .blog-card__image {
+    transform: scale(1.08);
+  }
+
+  .blog-card__image-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, var(--category-color, #6366f1) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: 2;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+
+  .blog-card:hover .blog-card__image-glow {
+    opacity: 0.3;
+  }
+
+  .blog-card__content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    position: relative;
+    z-index: 1;
+  }
+
+  .blog-card__category {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    background: rgba(var(--cat-color-rgb, 99, 102, 241), 0.1);
+    border: 1px solid rgba(var(--cat-color-rgb, 99, 102, 241), 0.2);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--category-color, #6366f1);
+    margin-bottom: 0.875rem;
+    width: fit-content;
+    transition: all 0.3s ease;
+  }
+
+  .blog-card:hover .blog-card__category {
+    background: rgba(var(--cat-color-rgb, 99, 102, 241), 0.2);
+    border-color: rgba(var(--cat-color-rgb, 99, 102, 241), 0.4);
+    transform: translateX(4px);
+  }
+
+  .blog-card__category-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--category-color, #6366f1);
+    box-shadow: 0 0 8px var(--category-color, #6366f1);
+  }
+
+  .blog-card__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 0.75rem;
+    color: #f8fafc;
+    position: relative;
+  }
+
+  .blog-card__title-text {
+    background: linear-gradient(90deg, #f8fafc 0%, #e2e8f0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    transition: all 0.3s ease;
+  }
+
+  .blog-card:hover .blog-card__title-text {
+    background: linear-gradient(90deg, #f8fafc 0%, #818cf8 50%, #c7d2fe 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+
+  .blog-card__description {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    line-height: 1.7;
+    margin-bottom: 1.25rem;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    transition: color 0.3s ease;
+  }
+
+  .blog-card:hover .blog-card__description {
+    color: #cbd5e1;
+  }
+
+  .blog-card__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.1);
+  }
+
+  .blog-card__meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .blog-card__meta-icon {
+    opacity: 0.7;
+    transition: all 0.3s ease;
+  }
+
+  .blog-card:hover .blog-card__meta-icon {
+    opacity: 1;
+    color: #818cf8;
+  }
+
+  .blog-card__meta-separator {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #475569;
+  }
+
+  .blog-card__arrow {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #818cf8;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .blog-card:hover .blog-card__arrow {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .blog-card__arrow svg {
+    transition: transform 0.3s ease;
+  }
+
+  .blog-card:hover .blog-card__arrow svg {
+    transform: translateX(2px);
+  }
+
+  /* Featured variant */
+  .blog-card--featured {
+    grid-column: span 2;
+  }
+
+  .blog-card--featured .blog-card__link {
+    flex-direction: row;
+  }
+
+  .blog-card--featured .blog-card__image-wrapper {
+    aspect-ratio: 4 / 3;
+    flex: 0 0 55%;
+    max-width: 500px;
+  }
+
+  .blog-card--featured .blog-card__content {
+    padding: 2rem;
+    justify-content: center;
+  }
+
+  .blog-card--featured .blog-card__category {
+    font-size: 0.8125rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .blog-card--featured .blog-card__title {
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .blog-card--featured .blog-card__description {
+    font-size: 1rem;
+    -webkit-line-clamp: 4;
+    margin-bottom: 1.5rem;
+  }
+
+  .blog-card--featured .blog-card__meta {
+    font-size: 0.875rem;
+    gap: 1rem;
+  }
+
+  /* Compact variant */
+  .blog-card--compact {
+    border-radius: 12px;
+  }
+
+  .blog-card--compact .blog-card__link {
+    flex-direction: row;
+    padding: 1rem;
+  }
+
+  .blog-card--compact .blog-card__content {
+    padding: 0 0 0 1rem;
+    justify-content: center;
+  }
+
+  .blog-card--compact .blog-card__category {
+    margin-bottom: 0.5rem;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.6rem;
+  }
+
+  .blog-card--compact .blog-card__title {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .blog-card--compact .blog-card__meta {
+    font-size: 0.7rem;
+    padding-top: 0.5rem;
+    border-top: none;
+  }
+
+  .blog-card--compact .blog-card__arrow {
+    display: none;
+  }
+
+  @media (max-width: 968px) {
+    .blog-card--featured {
+      grid-column: span 1;
+    }
+    
+    .blog-card--featured .blog-card__link {
+      flex-direction: column;
+    }
+
+    .blog-card--featured .blog-card__image-wrapper {
+      flex: none;
+      max-width: none;
+      aspect-ratio: 16 / 9;
+    }
+
+    .blog-card--featured .blog-card__title {
+      font-size: 1.375rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .blog-card__content {
+      padding: 1.25rem;
+    }
+
+    .blog-card__title {
+      font-size: 1rem;
+    }
+
+    .blog-card__description {
+      -webkit-line-clamp: 2;
+    }
+
+    .blog-card__arrow {
+      display: none;
+    }
+  }
+</style>
