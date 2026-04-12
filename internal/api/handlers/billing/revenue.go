@@ -53,12 +53,12 @@ type VerificationCostResponse struct {
 // VerificationCostsResponse is the response for listing verification costs
 type VerificationCostsResponse struct {
 	VerificationLevels []VerificationCostResponse `json:"verification_levels"`
-	Message            string                    `json:"message"`
+	Message            string                     `json:"message"`
 }
 
 // VerifyFunctionRequest is the request body for paying for function verification
 type VerifyFunctionRequest struct {
-	FunctionID  uuid.UUID `json:"function_id"`
+	FunctionID uuid.UUID `json:"function_id"`
 	Level      string    `json:"level"` // 'basic', 'standard', 'full'
 	SuccessURL string    `json:"success_url"`
 	CancelURL  string    `json:"cancel_url"`
@@ -78,50 +78,50 @@ type VerifyFunctionResponse struct {
 
 // EarningsResponse represents publisher earnings
 type EarningsResponse struct {
-	TotalPendingCents   int                `json:"total_pending_cents"`
-	TotalAvailableCents int                `json:"total_available_cents"`
-	TotalWithdrawnCents int                `json:"total_withdrawn_cents"`
-	RecentEarnings      []EarningItem      `json:"recent_earnings"`
-	PlatformFeePercent  float64            `json:"platform_fee_percent"`
-	Summary             *EarningsSummary   `json:"summary,omitempty"`
+	TotalPendingCents   int              `json:"total_pending_cents"`
+	TotalAvailableCents int              `json:"total_available_cents"`
+	TotalWithdrawnCents int              `json:"total_withdrawn_cents"`
+	RecentEarnings      []EarningItem    `json:"recent_earnings"`
+	PlatformFeePercent  float64          `json:"platform_fee_percent"`
+	Summary             *EarningsSummary `json:"summary,omitempty"`
 }
 
 // EarningItem represents a single earning entry
 type EarningItem struct {
-	ID                uuid.UUID `json:"id"`
-	FunctionID        *uuid.UUID `json:"function_id,omitempty"`
-	FunctionName      string    `json:"function_name,omitempty"`
-	TransactionType   string    `json:"transaction_type"`
-	NetAmountCents    int       `json:"net_amount_cents"`
-	GrossAmountCents  int       `json:"gross_amount_cents"`
-	PlatformFeeCents  int       `json:"platform_fee_cents"`
-	Status            string    `json:"status"`
-	EarnedAt          time.Time `json:"earned_at"`
+	ID               uuid.UUID  `json:"id"`
+	FunctionID       *uuid.UUID `json:"function_id,omitempty"`
+	FunctionName     string     `json:"function_name,omitempty"`
+	TransactionType  string     `json:"transaction_type"`
+	NetAmountCents   int        `json:"net_amount_cents"`
+	GrossAmountCents int        `json:"gross_amount_cents"`
+	PlatformFeeCents int        `json:"platform_fee_cents"`
+	Status           string     `json:"status"`
+	EarnedAt         time.Time  `json:"earned_at"`
 }
 
 // EarningsSummary provides a monthly breakdown
 type EarningsSummary struct {
-	Year          int               `json:"year"`
+	Year             int              `json:"year"`
 	MonthlyBreakdown []MonthlyEarning `json:"monthly_breakdown"`
 }
 
 // MonthlyEarning represents monthly earnings breakdown
 type MonthlyEarning struct {
-	Month        int    `json:"month"`
-	TotalCents   int    `json:"total_cents"`
+	Month            int `json:"month"`
+	TotalCents       int `json:"total_cents"`
 	TransactionCount int `json:"transaction_count"`
 }
 
 // AgentUsageResponse represents agent usage stats
 type AgentUsageResponse struct {
-	AgentID             uuid.UUID         `json:"agent_id"`
-	TotalCalls          int               `json:"total_calls"`
-	BillableCalls       int               `json:"billable_calls"`
-	OverageCalls        int               `json:"overage_calls"`
-	EstimatedCostCents  int               `json:"estimated_cost_cents"`
-	EstimatedCostUSD    float64           `json:"estimated_cost_usd"`
+	AgentID             uuid.UUID           `json:"agent_id"`
+	TotalCalls          int                 `json:"total_calls"`
+	BillableCalls       int                 `json:"billable_calls"`
+	OverageCalls        int                 `json:"overage_calls"`
+	EstimatedCostCents  int                 `json:"estimated_cost_cents"`
+	EstimatedCostUSD    float64             `json:"estimated_cost_usd"`
 	ActiveSubscriptions []AgentSubscription `json:"active_subscriptions,omitempty"`
-	RecentUsage         []AgentUsageItem  `json:"recent_usage,omitempty"`
+	RecentUsage         []AgentUsageItem    `json:"recent_usage,omitempty"`
 }
 
 // AgentUsageItem represents a single usage entry
@@ -302,6 +302,17 @@ func (h *Handler) HandleVerifyFunction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Build display name for Stripe customer
+	name := user.Name
+	if name == "" && user.ProviderData != nil {
+		if n, ok := user.ProviderData["name"].(string); ok {
+			name = n
+		}
+	}
+	if name == "" {
+		name = user.Email
+	}
+
 	// Create or get Stripe customer
 	customerID, err := payment.CreateOrGetStripeCustomer(r.Context(), h.repo, claims.TenantID, user.Email, user.Name)
 	if err != nil {
@@ -342,19 +353,50 @@ func (h *Handler) HandleVerifyFunction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create Stripe checkout session
-	// Note: This is a simplified implementation. In production, you'd create
-	// a proper Stripe product and price for verification fees
-	logrus.WithFields(logrus.Fields{
-		"payment_id":    paymentRecord.ID,
-		"function_id":   req.FunctionID,
-		"level":         req.Level,
-		"amount_cents":  fee.PriceCents,
-		"customer_id":   customerID,
-	}).Info("Verification payment initiated")
+	// Create Stripe checkout session for verification payment
+	checkoutResult, err := payment.CreateVerificationCheckoutSession(
+		r.Context(),
+		h.repo,
+		claims.TenantID,
+		claims.UserID,
+		user.Email,
+		name,
+		paymentRecord.ID,
+		req.FunctionID,
+		req.Level,
+		fee.PriceCents,
+		successURL,
+		cancelURL,
+	)
+	if err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"payment_id":  paymentRecord.ID,
+			"function_id": req.FunctionID,
+		}).Error("billing: failed to create verification checkout session")
 
-	// Return the payment record ID - frontend would use Stripe.js to complete payment
-	// and then call a webhook or confirmation endpoint
+		// Mark payment as failed since checkout creation failed
+		_ = h.repo.UpdateFunctionVerificationPaymentStatus(r.Context(), paymentRecord.ID, "failed", nil, nil)
+
+		writeJSONError(w, http.StatusInternalServerError, "Failed to create checkout session")
+		return
+	}
+
+	// Update payment record with checkout session ID
+	sessionIDStr := checkoutResult.SessionID
+	if err := h.repo.UpdateFunctionVerificationPaymentStatus(r.Context(), paymentRecord.ID, "pending_checkout", nil, &sessionIDStr); err != nil {
+		logrus.WithError(err).WithField("payment_id", paymentRecord.ID).Warn("billing: failed to update payment with checkout session ID")
+		// Continue - this is not fatal, webhook can still match by metadata
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"payment_id":   paymentRecord.ID,
+		"function_id":  req.FunctionID,
+		"level":        req.Level,
+		"amount_cents": fee.PriceCents,
+		"customer_id":  customerID,
+		"checkout_url": checkoutResult.URL,
+	}).Info("Verification checkout session created")
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(VerifyFunctionResponse{
@@ -362,8 +404,9 @@ func (h *Handler) HandleVerifyFunction(w http.ResponseWriter, r *http.Request) {
 		AmountCents: fee.PriceCents,
 		Currency:    fee.Currency,
 		Level:       req.Level,
-		Status:      "pending",
-		Message:     "Payment initiated - complete payment to verify function",
+		Status:      "pending_checkout",
+		URL:         checkoutResult.URL,
+		Message:     "Complete payment at the provided checkout URL to verify function",
 	})
 }
 

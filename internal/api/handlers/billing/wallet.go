@@ -145,6 +145,10 @@ func (h *Handler) HandleWalletTopUp(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "Invalid amount. Minimum top-up is $1.00.")
 		return
 	}
+	if req.AmountUSD > payment.MaxRegistryWalletTopUpUSD {
+		writeJSONError(w, http.StatusBadRequest, "Invalid amount. Maximum top-up is $10,000.00.")
+		return
+	}
 
 	user, err := h.repo.GetUserByID(claims.UserID)
 	if err != nil || user == nil {

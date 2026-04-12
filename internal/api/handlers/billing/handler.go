@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -79,11 +80,25 @@ type CreatePortalSessionRequest struct {
 	ReturnURL string `json:"return_url"`
 }
 
+// Validate implements the ValidatedRequest interface
+func (r CreatePortalSessionRequest) Validate() error {
+	// Portal session requests are optional - empty is valid
+	return nil
+}
+
 // CreateCheckoutSessionRequest is the request body for creating a checkout session.
 type CreateCheckoutSessionRequest struct {
 	PriceID    string `json:"price_id"`
 	SuccessURL string `json:"success_url"`
 	CancelURL  string `json:"cancel_url"`
+}
+
+// Validate implements the ValidatedRequest interface
+func (r CreateCheckoutSessionRequest) Validate() error {
+	if r.PriceID == "" {
+		return fmt.Errorf("price_id is required")
+	}
+	return nil
 }
 
 // CreatePortalSessionResponse is the response with the Stripe portal URL.
@@ -102,19 +117,19 @@ type CreateCheckoutSessionResponse struct {
 func (h *Handler) HandleCreatePortalSession(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	if !payment.IsConfigured() {
-		writeJSONError(w, http.StatusServiceUnavailable, "Billing is not configured")
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Billing is not configured"))
 		return
 	}
 
 	user, err := h.repo.GetUserByID(claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("billing portal: user not found")
-		writeJSONError(w, http.StatusNotFound, "User not found")
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -210,7 +225,7 @@ func (h *Handler) HandleCreateCheckoutSession(w http.ResponseWriter, r *http.Req
 	}
 
 	if req.PriceID == "" {
-		writeJSONError(w, http.StatusBadRequest, "price_id is required")
+		apierror.WriteError(w, apierror.ValidationFieldError("price_id", "price_id is required"))
 		return
 	}
 
@@ -251,10 +266,15 @@ func (h *Handler) HandleCreateCheckoutSession(w http.ResponseWriter, r *http.Req
 	json.NewEncoder(w).Encode(resp)
 }
 
+// writeJSONError writes a standardized JSON error response
+// Deprecated: Use apierror.WriteError() directly for new code
 func writeJSONError(w http.ResponseWriter, status int, msg string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+	err := &apierror.APIError{
+		Status:  status,
+		Code:    apierror.ErrCodeInternal,
+		Message: msg,
+	}
+	apierror.WriteError(w, err)
 }
 
 // HandleGetSubscription returns the current user's subscription details.
@@ -487,6 +507,12 @@ func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 // CancelSubscriptionRequest is the request body for cancelling a subscription
 type CancelSubscriptionRequest struct {
 	Immediately bool `json:"immediately"`
+}
+
+// Validate implements the ValidatedRequest interface
+func (r CancelSubscriptionRequest) Validate() error {
+	// Cancel subscription requests are valid with any values
+	return nil
 }
 
 // HandleCancelSubscription cancels the current user's subscription.
