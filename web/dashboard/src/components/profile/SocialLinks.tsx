@@ -28,14 +28,12 @@ import {
 } from "@/components/ui/tooltip";
 import type { SocialLinks as SocialLinksType } from "@/types";
 import {
-  Github,
-  Twitter,
-  Linkedin,
   Globe,
   MessageCircle,
   ExternalLink,
   type LucideIcon,
 } from "lucide-react";
+import { Icon } from '@iconify/react';
 
 interface SocialLinksProps {
   links: SocialLinksType;
@@ -47,7 +45,8 @@ interface SocialLinksProps {
 
 interface SocialLinkConfig {
   key: keyof SocialLinksType;
-  icon: LucideIcon;
+  icon: LucideIcon | string;
+  iconType: 'lucide' | 'iconify';
   label: string;
   color: string;
   hoverColor: string;
@@ -57,7 +56,8 @@ interface SocialLinkConfig {
 const SOCIAL_CONFIGS: SocialLinkConfig[] = [
   {
     key: "github",
-    icon: Github,
+    icon: "simple-icons:github",
+    iconType: 'iconify',
     label: "GitHub",
     color: "text-text-secondary",
     hoverColor: "hover:text-white hover:bg-gray-800",
@@ -65,7 +65,8 @@ const SOCIAL_CONFIGS: SocialLinkConfig[] = [
   },
   {
     key: "twitter",
-    icon: Twitter,
+    icon: "simple-icons:x",
+    iconType: 'iconify',
     label: "Twitter",
     color: "text-text-secondary",
     hoverColor: "hover:text-white hover:bg-sky-500",
@@ -73,7 +74,8 @@ const SOCIAL_CONFIGS: SocialLinkConfig[] = [
   },
   {
     key: "linkedin",
-    icon: Linkedin,
+    icon: "simple-icons:linkedin",
+    iconType: 'iconify',
     label: "LinkedIn",
     color: "text-text-secondary",
     hoverColor: "hover:text-white hover:bg-blue-600",
@@ -82,6 +84,7 @@ const SOCIAL_CONFIGS: SocialLinkConfig[] = [
   {
     key: "website",
     icon: Globe,
+    iconType: 'lucide',
     label: "Website",
     color: "text-text-secondary",
     hoverColor: "hover:text-white hover:bg-brand-500",
@@ -89,6 +92,7 @@ const SOCIAL_CONFIGS: SocialLinkConfig[] = [
   {
     key: "discord",
     icon: MessageCircle,
+    iconType: 'lucide',
     label: "Discord",
     color: "text-text-secondary",
     hoverColor: "hover:text-white hover:bg-indigo-500",
@@ -97,6 +101,7 @@ const SOCIAL_CONFIGS: SocialLinkConfig[] = [
   {
     key: "devto",
     icon: ExternalLink,
+    iconType: 'lucide',
     label: "Dev.to",
     color: "text-text-secondary",
     hoverColor: "hover:text-white hover:bg-black",
@@ -105,6 +110,7 @@ const SOCIAL_CONFIGS: SocialLinkConfig[] = [
   {
     key: "medium",
     icon: ExternalLink,
+    iconType: 'lucide',
     label: "Medium",
     color: "text-text-secondary",
     hoverColor: "hover:text-white hover:bg-green-600",
@@ -191,7 +197,23 @@ export function SocialLinks({
 
           const normalizedUrl = normalizeUrl(url, config);
           const displayText = getDisplayText(url, config);
-          const Icon = config.icon;
+
+          const renderIcon = () => {
+            if (config.iconType === 'iconify') {
+              return <Icon icon={config.icon as string} className={cn(
+                "w-4 h-4 transition-colors",
+                !isCompact && config.color,
+                !isCompact && "group-hover:text-brand-400"
+              )} />;
+            } else {
+              const LucideIconComponent = config.icon as LucideIcon;
+              return <LucideIconComponent className={cn(
+                "w-4 h-4 transition-colors",
+                !isCompact && config.color,
+                !isCompact && "group-hover:text-brand-400"
+              )} />;
+            }
+          };
 
           const linkContent = (
             <a
@@ -217,13 +239,7 @@ export function SocialLinks({
                 iconClassName
               )}
             >
-              <Icon
-                className={cn(
-                  "w-4 h-4 transition-colors",
-                  !isCompact && config.color,
-                  !isCompact && "group-hover:text-brand-400"
-                )}
-              />
+              {renderIcon()}
               {!isCompact && showLabels && (
                 <div className="flex flex-col items-start min-w-0">
                   <span className="text-xs text-text-muted">{config.label}</span>
@@ -242,7 +258,7 @@ export function SocialLinks({
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-xs">
                 <div className="flex items-center gap-2">
-                  <Icon className="w-3.5 h-3.5" />
+                  {renderIcon()}
                   <span>
                     {config.label}: {displayText}
                   </span>

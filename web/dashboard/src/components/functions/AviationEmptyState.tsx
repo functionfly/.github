@@ -53,7 +53,7 @@ export function AviationEmptyState({ onDeploy, searchQuery }: AviationEmptyState
         >
           {/* Outer ring - stronger in light mode for visibility */}
           <div
-            className="absolute inset-0 rounded-full border-2 dark:border-(--color-aviation-amber-dim)"
+            className="absolute inset-0 rounded-full border-2"
             style={{
               borderColor: 'var(--color-aviation-amber)',
               opacity: 0.6,
@@ -62,7 +62,7 @@ export function AviationEmptyState({ onDeploy, searchQuery }: AviationEmptyState
 
           {/* Middle ring - more visible */}
           <div
-            className="absolute inset-4 rounded-full border-2 dark:border-(--color-aviation-amber-dim)"
+            className="absolute inset-4 rounded-full border-2"
             style={{
               borderColor: 'var(--color-aviation-amber)',
               opacity: 0.4,
@@ -71,7 +71,7 @@ export function AviationEmptyState({ onDeploy, searchQuery }: AviationEmptyState
 
           {/* Inner ring */}
           <div
-            className="absolute inset-8 rounded-full border-2 dark:border-(--color-aviation-amber-dim)"
+            className="absolute inset-8 rounded-full border-2"
             style={{
               borderColor: 'var(--color-aviation-amber)',
               opacity: 0.25,

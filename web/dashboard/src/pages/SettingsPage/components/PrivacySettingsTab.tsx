@@ -30,14 +30,14 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { tabContentVariants } from "../../animations";
+import { tabContentVariants } from "@/pages/ProfilePage/animations";
 import { usersApi, type UpdateProfileRequest } from "@/api/users";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import type { UserProfile } from "@/types";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-interface SettingsTabProps {
+interface PrivacySettingsTabProps {
   profile?: UserProfile;
 }
 
@@ -84,7 +84,7 @@ const defaultSettings: ProfileSettings = {
   showLastActive: true,
 };
 
-export function SettingsTab({ profile }: SettingsTabProps = {}) {
+export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
   const currentUser = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
   const username = profile?.username || currentUser?.username || "";
@@ -767,4 +767,4 @@ export function SettingsTab({ profile }: SettingsTabProps = {}) {
   );
 }
 
-export default SettingsTab;
+export default PrivacySettingsTab;

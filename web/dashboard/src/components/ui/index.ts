@@ -58,6 +58,8 @@ export { ScrollArea } from "./scroll-area";
 export { Sheet } from "./sheet";
 export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";
 export { Pagination } from "./pagination";
+export { DataTable } from "./data-table";
+export type { DataTableProps } from "./data-table";
 export { FormField } from "./form-field";
 export { FormError } from "./form-error";
 export { LoadingSpinner } from "./loading-spinner";
@@ -132,3 +134,128 @@ export type { TextGradientProps } from "./TextGradient";
  */
 export { UserNotFoundView } from "./UserNotFoundView";
 export type { UserNotFoundViewProps } from "./UserNotFoundView";
+
+// ============================================================================
+// Rich Text Editor Components
+// ============================================================================
+
+/**
+ * RichTextEditor - WYSIWYG editor with secure HTML sanitization
+ * Uses DOMPurify for XSS protection. Supports headings, lists, links, etc.
+ */
+export { RichTextEditor, RichTextViewer } from "./rich-text-editor";
+export type { RichTextEditorProps, RichTextViewerProps } from "./rich-text-editor";
+
+// ============================================================================
+// Date/Time Picker Components
+// ============================================================================
+
+/**
+ * DatePicker & DateRangePicker - Calendar selection components
+ * Built on react-day-picker with Radix UI popover primitives.
+ */
+export { DatePicker, DateRangePicker } from "./date-picker";
+export type { DatePickerProps, DateRangePickerProps, DateRangeSelection } from "./date-picker";
+
+/**
+ * TimePicker - Time selection component with step controls
+ * Supports custom hour/minute steps and time constraints.
+ */
+export { TimePicker } from "./time-picker";
+export type { TimePickerProps } from "./time-picker";
+
+// ============================================================================
+// Chart Components (Standardized Recharts Wrappers)
+// ============================================================================
+
+/**
+ * Chart Components - Consistent, styled chart wrappers
+ * Pre-configured recharts components matching FunctionFly design system.
+ */
+export { LineChart, Sparkline } from "./chart-line";
+export type { LineChartProps, LineSeries, LineChartData } from "./chart-line";
+
+export { BarChart, SimpleBarChart } from "./chart-bar";
+export type { BarChartProps, BarSeries, BarChartData } from "./chart-bar";
+
+export { AreaChart, SparkAreaChart } from "./chart-area";
+export type { AreaChartProps, AreaSeries, AreaChartData } from "./chart-area";
+
+export { PieChart } from "./chart-pie";
+export type { PieChartProps, PieChartData } from "./chart-pie";
+
+// ============================================================================
+// Empty State Components
+// ============================================================================
+
+/**
+ * EmptyState - Illustrated empty states with actions
+ * Replaces generic "No data" text with visual context.
+ */
+export { EmptyState, emptyStateVariants } from "./empty-state";
+export type { EmptyStateProps } from "./empty-state";
+
+// ============================================================================
+// Toggle Button Components
+// ============================================================================
+
+/**
+ * ToggleButtonGroup - Button group for view switching
+ * Perfect for list/grid/calendar toggles and filter groups.
+ */
+export { ToggleButtonGroup, toggleGroupVariants, toggleGroupItemVariants } from "./toggle-button-group";
+export type { ToggleButtonGroupProps, ToggleButtonOption } from "./toggle-button-group";
+
+// ============================================================================
+// Stepper/Wizard Components
+// ============================================================================
+
+/**
+ * Stepper - Multi-step progress indicator
+ * Supports horizontal and vertical orientations with clickable steps.
+ */
+export { Stepper, StepperContent, StepItem, StepIndicator, StepConnector, useStepper } from "./stepper";
+export type { StepperProps, Step, StepItemProps } from "./stepper";
+
+// ============================================================================
+// Color Picker Components
+// ============================================================================
+
+/**
+ * ColorPicker - Color selection with presets and manual input
+ * Supports hex color format with validation.
+ */
+export { ColorPicker } from "./color-picker";
+export type { ColorPickerProps } from "./color-picker";
+
+// ============================================================================
+// Domain-Specific Skeleton Components
+// ============================================================================
+
+/**
+ * Skeleton Components - Loading placeholders for specific content types
+ * More contextual than generic Skeleton - shows structure of content loading.
+ */
+export {
+  SkeletonCard,
+  SkeletonList,
+  SkeletonListItem,
+  SkeletonTable,
+  SkeletonStats,
+  SkeletonForm,
+  SkeletonChart,
+  SkeletonAvatar,
+  skeletonCardVariants,
+  SkeletonListVariants,
+  SkeletonTableVariants,
+} from "./skeleton-domain";
+export type {
+  SkeletonCardProps,
+  SkeletonListProps,
+  SkeletonListItemProps,
+  SkeletonTableProps,
+  SkeletonStatsProps,
+  SkeletonFormProps,
+  SkeletonChartProps,
+  SkeletonAvatarProps,
+} from "./skeleton-domain";

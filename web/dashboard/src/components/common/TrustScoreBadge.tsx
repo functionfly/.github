@@ -60,6 +60,9 @@ export function TrustScoreBadge({ trustScore, trustLevel, showScore = true, size
   const level: TrustLevel = trustLevel || getTrustLevel(trustScore);
   const config = levelConfig[level];
 
+  // Don't show score for insufficient data (score of 0)
+  const shouldShowScore = showScore && level !== 'insufficient_data';
+
   return (
     <span
       className={`
@@ -69,7 +72,7 @@ export function TrustScoreBadge({ trustScore, trustLevel, showScore = true, size
       `}
     >
       {config.icon}
-      {showScore && <span>{Math.round(trustScore)}</span>}
+      {shouldShowScore && <span>{Math.round(trustScore)}</span>}
       <span>{config.label}</span>
     </span>
   );

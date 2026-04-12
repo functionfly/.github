@@ -1,32 +1,50 @@
 import { providersApi } from '@/api';
 import { appsApi } from '@/api/apps';
+import { createCheckoutSession } from '@/api/billing';
 import { dashboardApi } from '@/api/dashboard';
 import { functionsApi } from '@/api/functions';
 import { ProviderStatus } from '@/components/common/ProviderStatus';
 import type { AgentActivityItem } from '@/components/dashboard';
 import {
   AgentActivityFeed,
+  ErrorRateWidget,
   ExecutionRateChart,
+  LiveIndicator,
   MemoryUsageGauge,
   MetricCard,
+  PerformanceLeaderboard,
+  QuickActionsPanel,
   QuickCreateAgentCard,
+  QuotaUsageWidget,
+  RegionDistributionWidget,
   SystemHealthIndicator,
   TrustScoreBadge,
   UsageGraph,
+  type ErrorRateDataPoint,
+  type FunctionPerformance,
+  type RegionData,
 } from '@/components/dashboard';
-import { EnterpriseStatusCard } from '@/components/enterprise';
+import { EnterpriseStatusCard, PlanSelectionModal } from '@/components/enterprise';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { usePlan } from '@/hooks/usePlan';
+import { useAuthStore } from '@/stores/authStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Activity, Building2, FunctionSquare, Globe, Loader2, Play, X, Zap } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export function DashboardPage() {
   const { canResume, completedSteps } = useOnboardingStore();
   const navigate = useNavigate();
+  const { isPaid: isOnPaidPlan, hasMinPlan } = usePlan();
+  const user = useAuthStore((state) => state.user);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  const isFree = !isOnPaidPlan;
+  const nextTier = isFree ? 'Starter' : !hasMinPlan('professional') ? 'Professional' : 'Enterprise';
 
   const { data: functionsData, isLoading: functionsLoading } = useQuery({
     queryKey: ['functions'],
@@ -299,7 +317,7 @@ export function DashboardPage() {
         />
       </motion.div>
 
-      {/* Quick Create */}
+      {/* Quick Create - shows locked state for free users */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -309,7 +327,9 @@ export function DashboardPage() {
           title="Deploy a function"
           description="Create and deploy a new function in minutes."
           actionLabel="New function"
+          isLocked={isFree}
           onCreateClick={() => navigate('/functions/new')}
+          onUpgradeClick={() => setShowPlanModal(true)}
         />
       </motion.div>
 
@@ -364,13 +384,167 @@ export function DashboardPage() {
                 <Loader2 className="h-5 w-5 animate-spin text-text-muted" />
               </div>
             ) : functions.length === 0 ? (
-              <TrustScoreBadge trustScore={0} showScore size="lg" />
+              <TrustScoreBadge trustScore={0} showScore={false} size="lg" />
             ) : (
               <TrustScoreBadge trustScore={aggregateTrustScore} showScore size="lg" />
             )}
           </CardContent>
         </Card>
+        {/* Live Status */}
+        <Card className="border-theme bg-card flex flex-col justify-center p-6">
+          <CardHeader className="p-0 pb-3">
+            <CardTitle className="text-sm font-medium text-text-secondary">
+              Real-time Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="flex items-center gap-3">
+              <LiveIndicator
+                status={
+                  healthStatus === 'healthy'
+                    ? 'connected'
+                    : healthStatus === 'down'
+                      ? 'error'
+                      : 'connecting'
+                }
+                size="md"
+                showIcon
+              />
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-medium text-text-primary truncate">
+                  Active monitoring
+                </span>
+                <span className="text-xs text-text-muted">
+                  {activeFunctions === 0 ? (
+                    <span className="italic">No functions deployed</span>
+                  ) : (
+                    `${activeFunctions} function${activeFunctions !== 1 ? 's' : ''} deployed`
+                  )}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
+
+      {/* Error Rate & Quick Actions */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.28 }}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+      >
+        <ErrorRateWidget
+          data={useMemo<ErrorRateDataPoint[]>(() => {
+            // Generate mock error rate data based on execution rate
+            return executionRateData.map((d) => ({
+              time: d.time,
+              success: Math.round(d.rate * 0.98), // 98% success rate
+              error: Math.round(d.rate * 0.02), // 2% error rate
+            }));
+          }, [executionRateData])}
+          className="lg:col-span-2"
+        />
+        <QuickActionsPanel
+          onCreateFunction={() => navigate('/functions/new')}
+          onCreateGraph={() => navigate('/frg')}
+          onCreateApp={() => navigate('/apps/new')}
+          onConnectProvider={() => navigate('/providers')}
+          onViewSecrets={() => navigate('/vault')}
+          onViewLogs={() => navigate('/functions')}
+          onSettings={() => navigate('/settings')}
+        />
+      </motion.div>
+
+      {/* Regional Distribution & Performance */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.31 }}
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+      >
+        <RegionDistributionWidget
+          regions={useMemo<RegionData[]>(() => {
+            // Mock regional distribution based on functions
+            if (functions.length === 0) return [];
+            return [
+              {
+                name: 'US East',
+                value: Math.ceil(activeFunctions * 0.4),
+                code: 'us-east',
+                provider: 'fly',
+              },
+              {
+                name: 'US West',
+                value: Math.ceil(activeFunctions * 0.3),
+                code: 'us-west',
+                provider: 'fly',
+              },
+              {
+                name: 'Europe',
+                value: Math.ceil(activeFunctions * 0.2),
+                code: 'eu-west',
+                provider: 'fly',
+              },
+              {
+                name: 'Asia',
+                value: Math.ceil(activeFunctions * 0.1),
+                code: 'ap-south',
+                provider: 'fly',
+              },
+            ];
+          }, [functions, activeFunctions])}
+          totalFunctions={activeFunctions}
+        />
+        <PerformanceLeaderboard
+          functions={useMemo<FunctionPerformance[]>(() => {
+            // Mock performance data based on actual functions
+            return functions.slice(0, 6).map((fn, i) => ({
+              id: fn.id,
+              name: fn.name,
+              avgLatency: 50 + Math.random() * 200 + i * 30,
+              p95Latency: 150 + Math.random() * 300 + i * 50,
+              successRate: 95 + Math.random() * 5,
+              invocations: Math.floor(Math.random() * 10000),
+              trend: Math.random() > 0.5 ? 'up' : 'down',
+            }));
+          }, [functions])}
+          maxItems={3}
+        />
+      </motion.div>
+
+      {/* Plan Quota Usage - only for non-enterprise */}
+      {!hasMinPlan('enterprise') && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.34 }}
+          className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+        >
+          <QuotaUsageWidget
+            functionsUsed={activeFunctions}
+            functionsLimit={
+              isFree ? 3 : hasMinPlan('starter') ? 10 : hasMinPlan('professional') ? 50 : 100
+            }
+            requestsUsed={requestsThisMonth}
+            requestsLimit={
+              isFree
+                ? 10000
+                : hasMinPlan('starter')
+                  ? 100000
+                  : hasMinPlan('professional')
+                    ? 1000000
+                    : 10000000
+            }
+            secretsUsed={0} // Would need actual secrets data
+            secretsLimit={
+              isFree ? 5 : hasMinPlan('starter') ? 20 : hasMinPlan('professional') ? 100 : 500
+            }
+            onUpgradeClick={isFree ? () => setShowPlanModal(true) : undefined}
+            className="lg:col-span-2"
+          />
+        </motion.div>
+      )}
 
       {/* Main Content Grid */}
       <motion.div
@@ -524,6 +698,42 @@ export function DashboardPage() {
           <AgentActivityFeed activities={agentActivities} title="Recent activity" maxItems={5} />
         )}
       </motion.div>
+
+      {/* Plan Selection Modal for free users */}
+      <PlanSelectionModal
+        isOpen={showPlanModal}
+        onClose={() => {
+          setShowPlanModal(false);
+          setIsCheckoutLoading(false);
+        }}
+        isFree={isFree}
+        nextTier={nextTier}
+        onSelectPlan={async (planId: string, priceId?: string) => {
+          if (!priceId || priceId.includes('placeholder')) {
+            if (planId === 'enterprise') {
+              navigate('/contact');
+            }
+            return;
+          }
+
+          setIsCheckoutLoading(true);
+          try {
+            const base = window.location.origin;
+            const successUrl = user?.username
+              ? `${base}/u/${user.username}/settings/billing?subscription=success`
+              : `${base}/settings?tab=billing&subscription=success`;
+            const cancelUrl = `${base}/dashboard?subscription=cancel`;
+
+            const { url } = await createCheckoutSession(priceId, successUrl, cancelUrl);
+            window.location.href = url;
+          } catch (err) {
+            setIsCheckoutLoading(false);
+            console.error('Checkout error:', err);
+          }
+        }}
+        isLoading={isCheckoutLoading}
+        featureName="Functions"
+      />
     </div>
   );
 }

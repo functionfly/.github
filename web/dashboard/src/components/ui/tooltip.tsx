@@ -10,10 +10,17 @@ const TooltipTrigger = TooltipPrimitive.Trigger;
 
 const TooltipPortal = TooltipPrimitive.Portal;
 
+interface TooltipContentProps {
+  className?: string;
+  sideOffset?: number;
+  children?: React.ReactNode;
+  side?: 'top' | 'right' | 'bottom' | 'left';
+}
+
 const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
+  TooltipContentProps
+>(({ className, sideOffset = 4, children, ...props }, ref) => (
   <TooltipPortal>
     <TooltipPrimitive.Content
       ref={ref}
@@ -23,7 +30,9 @@ const TooltipContent = React.forwardRef<
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </TooltipPrimitive.Content>
   </TooltipPortal>
 ));
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;

@@ -48,16 +48,18 @@ export function AuthCallbackPage() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  // Extract all callback params
-  const tokenParam = getToken('token');
-  const refreshTokenParam = getToken('refresh_token');
-  const isNewUser = (getToken('new_user') || '') === 'true';
+  // Extract params from URL (for render-time use)
   const redirectPath = searchParams.get('redirect') || '/overview';
   const errorParam = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
+  const isNewUser = (getToken('new_user') || '') === 'true';
 
   useEffect(() => {
     const processAuthCallback = async () => {
+      // Extract tokens fresh from URL inside the effect to avoid stale values on re-renders
+      const tokenParam = getToken('token');
+      const refreshTokenParam = getToken('refresh_token');
+
       try {
         if (errorParam) {
           logger.error('Auth callback error:', {
@@ -69,18 +71,18 @@ export function AuthCallbackPage() {
           return;
         }
 
-        if (tokenParam) {
-          localStorage.setItem('ff-access-token', tokenParam);
-          if (refreshTokenParam) {
-            localStorage.setItem('ff-refresh-token', refreshTokenParam);
-          }
-          logger.info('Got tokens from auth site redirect');
-        } else {
+        if (!tokenParam) {
           logger.error('No access token found in URL fragment or query params');
           setStatus('error');
           setErrorMessage('No authentication token found. Please try logging in again.');
           return;
         }
+
+        localStorage.setItem('ff-access-token', tokenParam);
+        if (refreshTokenParam) {
+          localStorage.setItem('ff-refresh-token', refreshTokenParam);
+        }
+        logger.info('Got tokens from auth site redirect');
 
         await initialize();
         const authState = useAuthStore.getState();
@@ -113,11 +115,8 @@ export function AuthCallbackPage() {
     errorParam,
     errorDescription,
     redirectPath,
-    isNewUser,
     initialize,
     navigate,
-    tokenParam,
-    refreshTokenParam,
   ]);
 
   // Handle "Try Again" click

@@ -36,10 +36,11 @@ export function useAgentMemories(params?: {
   memory_type?: AgentMemoryType;
   limit?: number;
   offset?: number;
-}) {
+}, enabled: boolean = true) {
   return useQuery({
     queryKey: agentMemoryKeys.list(params),
     queryFn: () => agentMemoryApi.list(params),
+    enabled,
   });
 }
 

@@ -1,4 +1,10 @@
-import type { ConnectedProvider, ConnectProviderRequest, ConnectProviderResponse } from '@/types';
+import {
+  connectProviderRequestSchema,
+  connectProviderResponseSchema,
+  connectedProviderSchema,
+  testConnectionResponseSchema,
+} from '@/lib/api-validation';
+import type { ConnectProviderRequest, ConnectProviderResponse, ConnectedProvider } from '@/types';
 import { apiClient } from './client';
 
 /** One row per provider slug (newest `connectedAt` wins). Use after fetch to hide legacy duplicate DB rows. */
@@ -14,24 +20,67 @@ export function dedupeConnectedProvidersBySlug(list: ConnectedProvider[]): Conne
   return Array.from(bySlug.values());
 }
 
+// Sanitize provider ID to prevent injection
+function sanitizeProviderId(id: string): string {
+  return id.replace(/[^a-z0-9-]/g, '');
+}
+
+// Sanitize API key input (basic sanitization, actual validation happens in schema)
+function sanitizeApiKey(key: string): string {
+  return key.trim().replace(/\s+/g, '');
+}
+
 export const providersApi = {
   async getConnectedProviders(): Promise<ConnectedProvider[]> {
     const raw = await apiClient.get<ConnectedProvider[]>('/v1/providers');
-    return dedupeConnectedProvidersBySlug(raw);
-  },
-
-  async connectProvider(request: ConnectProviderRequest): Promise<ConnectProviderResponse> {
-    return apiClient.post<ConnectProviderResponse>('/v1/providers/connect', {
-      providerId: request.providerId,
-      apiKey: request.apiKey,
+    const deduped = dedupeConnectedProvidersBySlug(raw);
+    // Validate each provider with Zod schema
+    return deduped.filter((p) => {
+      const result = connectedProviderSchema.safeParse(p);
+      if (!result.success) {
+        console.warn('Provider validation failed:', result.error);
+      }
+      return result.success;
     });
   },
 
+  async connectProvider(request: ConnectProviderRequest): Promise<ConnectProviderResponse> {
+    // Sanitize inputs
+    const sanitizedRequest = {
+      providerId: sanitizeProviderId(request.providerId),
+      apiKey: request.apiKey ? sanitizeApiKey(request.apiKey) : '',
+    };
+
+    // Validate with Zod before sending
+    const validation = connectProviderRequestSchema.safeParse(sanitizedRequest);
+    if (!validation.success) {
+      const errors = validation.error.issues.map((e) => e.message).join(', ');
+      throw new Error(`Invalid request: ${errors}`);
+    }
+
+    return apiClient.postValidatedData(
+      connectProviderResponseSchema,
+      '/v1/providers/connect',
+      sanitizedRequest
+    );
+  },
+
   async disconnectProvider(providerId: string): Promise<void> {
-    return apiClient.delete(`/v1/providers/${providerId}`);
+    const sanitizedId = sanitizeProviderId(providerId);
+    if (!sanitizedId) {
+      throw new Error('Invalid provider ID');
+    }
+    return apiClient.delete(`/v1/providers/${sanitizedId}`);
   },
 
   async testConnection(providerId: string): Promise<{ success: boolean; message?: string }> {
-    return apiClient.post(`/v1/providers/${providerId}/test`);
+    const sanitizedId = sanitizeProviderId(providerId);
+    if (!sanitizedId) {
+      throw new Error('Invalid provider ID');
+    }
+    return apiClient.postValidatedData(
+      testConnectionResponseSchema,
+      `/v1/providers/${sanitizedId}/test`
+    );
   },
 };

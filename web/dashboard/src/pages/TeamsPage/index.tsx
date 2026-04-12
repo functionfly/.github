@@ -1,3 +1,4 @@
+import "./styles.css";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
@@ -198,10 +199,10 @@ export function TeamsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="team-header">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Teams</h1>
-          <p className="text-text-secondary">Manage your team members and permissions</p>
+          <h1 className="team-title">Teams</h1>
+          <p className="team-subtitle">Manage your team members and permissions</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
@@ -245,39 +246,39 @@ export function TeamsPage() {
 
       {/* Teams Grid */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-text-muted" />
+        <div className="team-loading-container">
+          <Loader2 className="team-loading-spinner" />
         </div>
       ) : teams.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Users className="w-12 h-12 mx-auto text-text-muted mb-4" />
-            <h3 className="text-lg font-medium text-text-primary mb-2">No teams yet</h3>
-            <p className="text-text-secondary mb-4">Create your first team to start collaborating.</p>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <Card className="team-card">
+          <CardContent className="team-empty-state">
+            <Users className="team-empty-icon" />
+            <h3 className="team-empty-title">No teams yet</h3>
+            <p className="team-empty-description">Create your first team to start collaborating.</p>
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="btn-team-primary">
               <Plus className="w-4 h-4 mr-2" />
               Create Team
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="team-grid team-grid-cols-1 team-grid-md-2 team-grid-lg-3">
           {teams.map((team) => (
-            <Card 
-              key={team.id} 
-              className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedTeam?.id === team.id ? "ring-2 ring-brand-500" : ""
+            <Card
+              key={team.id}
+              className={`team-card team-card-hoverable ${
+                selectedTeam?.id === team.id ? "ring-2 ring-[#6366f1]" : ""
               }`}
               onClick={() => setSelectedTeam(team)}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-brand-500/20 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-brand-400" />
+                    <div className="team-avatar team-avatar-sm">
+                      <Users className="team-avatar-icon w-5 h-5" />
                     </div>
                     <div>
-                      <CardTitle className="text-base">{team.name}</CardTitle>
+                      <CardTitle className="text-base text-white">{team.name}</CardTitle>
                       <CardDescription>
                         {team.members?.length ?? 0} members
                       </CardDescription>
@@ -327,11 +328,11 @@ export function TeamsPage() {
       {/* Team Detail / Members */}
       {selectedTeam && (
         <div className="mt-8">
-          <Card>
+          <Card className="team-card">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>{selectedTeam.name}</CardTitle>
+                  <CardTitle className="text-white">{selectedTeam.name}</CardTitle>
                   <CardDescription>Manage team members and their roles</CardDescription>
                 </div>
                 <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
@@ -400,20 +401,20 @@ export function TeamsPage() {
                   {/* Pending Invites */}
                   {invites.length > 0 && (
                     <div className="mb-6">
-                      <h4 className="text-sm font-medium text-text-secondary mb-3">Pending Invitations</h4>
+                      <h4 className="text-sm font-medium text-gray-400 mb-3">Pending Invitations</h4>
                       <div className="space-y-2">
                         {invites.map((invite) => (
-                          <div 
+                          <div
                             key={invite.id}
-                            className="flex items-center justify-between p-3 bg-card rounded-lg border"
+                            className="member-list-item"
                           >
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
                                 <Mail className="w-4 h-4 text-amber-400" />
                               </div>
                               <div>
-                                <p className="text-sm font-medium text-text-primary">{invite.email}</p>
-                                <p className="text-xs text-text-muted">
+                                <p className="member-name">{invite.email}</p>
+                                <p className="member-email">
                                   Invited as {invite.role} • Expires {format(new Date(invite.expires_at), "MMM d")}
                                 </p>
                               </div>
@@ -440,39 +441,40 @@ export function TeamsPage() {
                   )}
 
                   {/* Team Members */}
-                  <h4 className="text-sm font-medium text-text-secondary mb-3">Team Members</h4>
+                  <h4 className="text-sm font-medium text-gray-400 mb-3">Team Members</h4>
                   {members.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Users className="w-8 h-8 mx-auto text-text-muted mb-2" />
-                      <p className="text-text-secondary">No members yet</p>
+                    <div className="team-empty-state py-8">
+                      <Users className="w-8 h-8 mx-auto text-gray-500 mb-2" />
+                      <p className="text-gray-400">No members yet</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
                       {members.map((member) => {
                         const RoleIcon = roleIcons[member.role];
+                        const roleColorClass = roleColors[member.role as keyof typeof roleColors] || roleColors.member;
                         return (
-                          <div 
+                          <div
                             key={member.id}
-                            className="flex items-center justify-between p-3 bg-card rounded-lg border"
+                            className="member-list-item"
                           >
                             <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarFallback className="bg-brand-500/20 text-brand-400">
+                              <Avatar className="member-avatar">
+                                <AvatarFallback className="member-avatar-fallback">
                                   {getInitials(member.user?.name, member.user?.email)}
                                 </AvatarFallback>
                               </Avatar>
-                              <div>
-                                <p className="text-sm font-medium text-text-primary">
+                              <div className="member-info">
+                                <p className="member-name">
                                   {member.user?.name || member.user?.username || member.user?.email}
                                   {isCurrentUserOwner(member) && (
-                                    <span className="ml-2 text-xs text-text-muted">(You)</span>
+                                    <span className="ml-2 text-xs text-gray-500">(You)</span>
                                   )}
                                 </p>
-                                <p className="text-xs text-text-muted">{member.user?.email}</p>
+                                <p className="member-email">{member.user?.email}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge className={roleColors[member.role]}>
+                              <Badge className={`role-badge role-badge-${member.role}`}>
                                 <RoleIcon className="w-3 h-3 mr-1" />
                                 {member.role}
                               </Badge>

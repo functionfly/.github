@@ -61,4 +61,15 @@ export type {
   UpdateIncidentRequest,
   UptimeMetrics,
 } from './status';
+export type {
+  CostAllocationEntry,
+  CostSummary,
+  DailyCostBreakdown,
+  FunctionCostSummary,
+  RegionCostBreakdown,
+  SpendCap,
+  UsageAlert,
+  UsageForecast,
+  UsageTrend,
+} from './usageAnalytics';
 export { usersApi } from './users';

@@ -111,7 +111,7 @@ export function WalletPage() {
         if (list.length === 1) {
           const id = list[0].agentId;
           persistLastWalletAgent(id);
-          navigate(`/wallet/${encodeURIComponent(id)}`, { replace: true });
+          navigate(`/wallet/agents/${encodeURIComponent(id)}`, { replace: true });
           return;
         }
         let last: string | null = null;
@@ -121,7 +121,7 @@ export function WalletPage() {
           /* ignore */
         }
         if (last && list.some((a) => a.agentId === last)) {
-          navigate(`/wallet/${encodeURIComponent(last)}`, { replace: true });
+          navigate(`/wallet/agents/${encodeURIComponent(last)}`, { replace: true });
           return;
         }
         setAgents(list);
@@ -176,7 +176,7 @@ export function WalletPage() {
             <li key={a.agentId}>
               <Button variant="outline" className="h-auto w-full justify-start py-3" asChild>
                 <Link
-                  to={`/wallet/${encodeURIComponent(a.agentId)}`}
+                  to={`/wallet/agents/${encodeURIComponent(a.agentId)}`}
                   onClick={() => persistLastWalletAgent(a.agentId)}
                 >
                   <span className="font-medium">{a.name || a.agentId}</span>

@@ -8,49 +8,7 @@
  * <Route path="/settings/profile" element={<ProfileSettingsPage />} />
  */
 
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
-import {
-  User,
-  Lock,
-  Bell,
-  Shield,
-  Globe,
-  Camera,
-  Save,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
-  ChevronRight,
-  Mail,
-  Smartphone,
-  Eye,
-  EyeOff,
-  Trash2,
-  ArrowLeft,
-  AtSign,
-  Building2,
-  Briefcase,
-  MapPin,
-  Link as LinkIcon,
-  Github,
-  Twitter,
-  Linkedin,
-  ImageIcon,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import { usersApi, type UpdateProfileRequest } from '@/api/users';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,11 +19,48 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useAuthStore } from "@/stores/authStore";
-import { usersApi, type UpdateProfileRequest } from "@/api/users";
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/stores/authStore';
+import { Icon } from '@iconify/react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  AlertCircle,
+  ArrowLeft,
+  AtSign,
+  Bell,
+  Briefcase,
+  Building2,
+  Camera,
+  Eye,
+  EyeOff,
+  Globe,
+  ImageIcon,
+  Link as LinkIcon,
+  Loader2,
+  Lock,
+  Mail,
+  MapPin,
+  Save,
+  Shield,
+  Smartphone,
+  Trash2,
+  User,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
-type SettingsTab = "profile" | "account" | "notifications" | "privacy";
+type SettingsTab = 'profile' | 'account' | 'notifications' | 'privacy';
 
 interface FormErrors {
   name?: string;
@@ -87,36 +82,36 @@ export function ProfileSettingsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
 
   // Fetch latest profile from server
   const { data: serverProfile, isLoading: isLoadingProfile } = useQuery({
-    queryKey: ["my-profile"],
+    queryKey: ['my-profile'],
     queryFn: () => usersApi.getMe(),
     staleTime: 60 * 1000,
   });
 
   const profile = serverProfile ?? {
-    id: user?.id ?? "",
-    name: user?.name ?? "",
-    username: user?.username ?? "",
-    companyName: user?.companyName ?? "",
-    bio: (user as any)?.bio ?? "",
-    email: user?.email ?? "",
+    id: user?.id ?? '',
+    name: user?.name ?? '',
+    username: user?.username ?? '',
+    companyName: user?.companyName ?? '',
+    bio: (user as any)?.bio ?? '',
+    email: user?.email ?? '',
     avatar: user?.avatar,
-    updatedAt: user?.updatedAt ?? "",
+    updatedAt: user?.updatedAt ?? '',
   };
 
   // Update profile mutation
   const updateMutation = useMutation({
     mutationFn: (data: UpdateProfileRequest) => usersApi.updateMe(data),
     onSuccess: () => {
-      toast.success("Profile updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+      toast.success('Profile updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['my-profile'] });
       useAuthStore.getState().initialize();
     },
     onError: (err: Error) => {
-      toast.error(err.message || "Failed to update profile");
+      toast.error(err.message || 'Failed to update profile');
     },
   });
 
@@ -126,19 +121,12 @@ export function ProfileSettingsPage() {
       <div className="border-b border-border-subtle bg-bg-secondary">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate(-1)}
-              className="shrink-0"
-            >
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
               <h1 className="text-2xl font-bold text-text-primary">Profile Settings</h1>
-              <p className="text-text-secondary">
-                Manage your profile, account, and preferences
-              </p>
+              <p className="text-text-secondary">Manage your profile, account, and preferences</p>
             </div>
           </div>
         </div>
@@ -242,17 +230,17 @@ interface ProfileTabProps {
 
 function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
   const [formData, setFormData] = useState({
-    name: profile.name || "",
-    username: profile.username || "",
-    bio: profile.bio || "",
-    location: "",
-    company: profile.companyName || "",
-    jobTitle: "",
-    website: "",
-    twitterUrl: "",
-    githubUrl: "",
-    linkedinUrl: "",
-    coverImageUrl: "",
+    name: profile.name || '',
+    username: profile.username || '',
+    bio: profile.bio || '',
+    location: '',
+    company: profile.companyName || '',
+    jobTitle: '',
+    website: '',
+    twitterUrl: '',
+    githubUrl: '',
+    linkedinUrl: '',
+    coverImageUrl: '',
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -262,34 +250,34 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
-      name: profile.name || "",
-      username: profile.username || "",
-      bio: profile.bio || "",
-      company: profile.companyName || "",
+      name: profile.name || '',
+      username: profile.username || '',
+      bio: profile.bio || '',
+      company: profile.companyName || '',
     }));
   }, [profile]);
 
   const validateField = (field: string, value: string): string | undefined => {
     switch (field) {
-      case "name":
-        if (!value.trim()) return "Name is required";
-        if (value.trim().length < 2) return "Name must be at least 2 characters";
-        if (value.trim().length > 50) return "Name must be less than 50 characters";
+      case 'name':
+        if (!value.trim()) return 'Name is required';
+        if (value.trim().length < 2) return 'Name must be at least 2 characters';
+        if (value.trim().length > 50) return 'Name must be less than 50 characters';
         return;
-      case "username":
-        if (!value) return "Username is required";
-        if (value.length < 3) return "Username must be at least 3 characters";
-        if (value.length > 30) return "Username must be less than 30 characters";
+      case 'username':
+        if (!value) return 'Username is required';
+        if (value.length < 3) return 'Username must be at least 3 characters';
+        if (value.length > 30) return 'Username must be less than 30 characters';
         if (!USERNAME_REGEX.test(value)) {
-          return "Username can only contain lowercase letters, numbers, hyphens, and underscores";
+          return 'Username can only contain lowercase letters, numbers, hyphens, and underscores';
         }
         return;
-      case "website":
-      case "twitterUrl":
-      case "githubUrl":
-      case "linkedinUrl":
-        if (value && !URL_REGEX.test(value) && !value.startsWith("http")) {
-          return "Please enter a valid URL";
+      case 'website':
+      case 'twitterUrl':
+      case 'githubUrl':
+      case 'linkedinUrl':
+        if (value && !URL_REGEX.test(value) && !value.startsWith('http')) {
+          return 'Please enter a valid URL';
         }
         return;
       default:
@@ -339,10 +327,10 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
   };
 
   const isDirty =
-    formData.name !== (profile.name || "") ||
-    formData.username !== (profile.username || "") ||
-    formData.bio !== (profile.bio || "") ||
-    formData.company !== (profile.companyName || "");
+    formData.name !== (profile.name || '') ||
+    formData.username !== (profile.username || '') ||
+    formData.bio !== (profile.bio || '') ||
+    formData.company !== (profile.companyName || '');
 
   return (
     <div className="space-y-6">
@@ -359,17 +347,23 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
           <div className="flex items-center gap-6">
             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-brand-500 to-purple-500 flex items-center justify-center text-white text-3xl font-bold overflow-hidden">
               {profile.avatar ? (
-                <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" />
+                <img
+                  src={profile.avatar}
+                  alt={profile.name}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 profile.name.charAt(0).toUpperCase()
               )}
             </div>
             <div>
               <p className="text-text-secondary text-sm">
-                Avatar is automatically synced from your social login provider (Google, GitHub, etc.)
+                Avatar is automatically synced from your social login provider (Google, GitHub,
+                etc.)
               </p>
               <p className="text-text-muted text-xs mt-1">
-                Last updated: {profile.updatedAt ? new Date(profile.updatedAt).toLocaleDateString() : "Never"}
+                Last updated:{' '}
+                {profile.updatedAt ? new Date(profile.updatedAt).toLocaleDateString() : 'Never'}
               </p>
             </div>
           </div>
@@ -392,8 +386,15 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
               <Mail className="w-4 h-4" />
               Email Address
             </Label>
-            <Input id="email" value={profile.email} disabled className="bg-bg-tertiary opacity-60" />
-            <p className="text-xs text-text-muted">Email cannot be changed here. Contact support to update.</p>
+            <Input
+              id="email"
+              value={profile.email}
+              disabled
+              className="bg-bg-tertiary opacity-60"
+            />
+            <p className="text-xs text-text-muted">
+              Email cannot be changed here. Contact support to update.
+            </p>
           </div>
 
           <Separator />
@@ -404,10 +405,10 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
             <Input
               id="name"
               value={formData.name}
-              onChange={(e) => handleChange("name", e.target.value)}
-              onBlur={() => handleBlur("name")}
+              onChange={(e) => handleChange('name', e.target.value)}
+              onBlur={() => handleBlur('name')}
               placeholder="Your full name"
-              className={cn(touched.name && errors.name && "border-error")}
+              className={cn(touched.name && errors.name && 'border-error')}
             />
             {touched.name && errors.name && (
               <p className="text-xs text-error flex items-center gap-1">
@@ -429,11 +430,11 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
                 id="username"
                 value={formData.username}
                 onChange={(e) =>
-                  handleChange("username", e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))
+                  handleChange('username', e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))
                 }
-                onBlur={() => handleBlur("username")}
+                onBlur={() => handleBlur('username')}
                 placeholder="username"
-                className={cn("pl-7", touched.username && errors.username && "border-error")}
+                className={cn('pl-7', touched.username && errors.username && 'border-error')}
               />
             </div>
             {touched.username && errors.username ? (
@@ -443,7 +444,7 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
               </p>
             ) : (
               <p className="text-xs text-text-muted">
-                Your public profile URL: /u/{formData.username || "username"}
+                Your public profile URL: /u/{formData.username || 'username'}
               </p>
             )}
           </div>
@@ -454,8 +455,8 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
               <Label htmlFor="bio">Bio</Label>
               <span
                 className={cn(
-                  "text-xs",
-                  formData.bio.length > MAX_BIO_LENGTH ? "text-error" : "text-text-muted"
+                  'text-xs',
+                  formData.bio.length > MAX_BIO_LENGTH ? 'text-error' : 'text-text-muted'
                 )}
               >
                 {formData.bio.length}/{MAX_BIO_LENGTH}
@@ -464,7 +465,7 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
             <Textarea
               id="bio"
               value={formData.bio}
-              onChange={(e) => handleChange("bio", e.target.value.slice(0, MAX_BIO_LENGTH))}
+              onChange={(e) => handleChange('bio', e.target.value.slice(0, MAX_BIO_LENGTH))}
               placeholder="Tell others about yourself..."
               rows={4}
             />
@@ -491,7 +492,7 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
               <Input
                 id="company"
                 value={formData.company}
-                onChange={(e) => handleChange("company", e.target.value)}
+                onChange={(e) => handleChange('company', e.target.value)}
                 placeholder="Acme Inc"
               />
             </div>
@@ -502,7 +503,7 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
               <Input
                 id="jobTitle"
                 value={formData.jobTitle}
-                onChange={(e) => handleChange("jobTitle", e.target.value)}
+                onChange={(e) => handleChange('jobTitle', e.target.value)}
                 placeholder="Software Engineer"
               />
             </div>
@@ -517,7 +518,7 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
             <Input
               id="location"
               value={formData.location}
-              onChange={(e) => handleChange("location", e.target.value)}
+              onChange={(e) => handleChange('location', e.target.value)}
               placeholder="San Francisco, CA"
             />
           </div>
@@ -542,10 +543,10 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
             <Input
               id="website"
               value={formData.website}
-              onChange={(e) => handleChange("website", e.target.value)}
-              onBlur={() => handleBlur("website")}
+              onChange={(e) => handleChange('website', e.target.value)}
+              onBlur={() => handleBlur('website')}
               placeholder="https://yourwebsite.com"
-              className={cn(touched.website && errors.website && "border-error")}
+              className={cn(touched.website && errors.website && 'border-error')}
             />
             {touched.website && errors.website && (
               <p className="text-xs text-error flex items-center gap-1">
@@ -560,48 +561,48 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
           {/* GitHub */}
           <div className="space-y-2">
             <Label htmlFor="githubUrl" className="flex items-center gap-2">
-              <Github className="w-4 h-4" />
+              <Icon icon="simple-icons:github" className="w-4 h-4" />
               GitHub
             </Label>
             <Input
               id="githubUrl"
               value={formData.githubUrl}
-              onChange={(e) => handleChange("githubUrl", e.target.value)}
-              onBlur={() => handleBlur("githubUrl")}
+              onChange={(e) => handleChange('githubUrl', e.target.value)}
+              onBlur={() => handleBlur('githubUrl')}
               placeholder="https://github.com/username"
-              className={cn(touched.githubUrl && errors.githubUrl && "border-error")}
+              className={cn(touched.githubUrl && errors.githubUrl && 'border-error')}
             />
           </div>
 
           {/* Twitter */}
           <div className="space-y-2">
             <Label htmlFor="twitterUrl" className="flex items-center gap-2">
-              <Twitter className="w-4 h-4" />
+              <Icon icon="simple-icons:x" className="w-4 h-4" />
               Twitter / X
             </Label>
             <Input
               id="twitterUrl"
               value={formData.twitterUrl}
-              onChange={(e) => handleChange("twitterUrl", e.target.value)}
-              onBlur={() => handleBlur("twitterUrl")}
+              onChange={(e) => handleChange('twitterUrl', e.target.value)}
+              onBlur={() => handleBlur('twitterUrl')}
               placeholder="https://twitter.com/username"
-              className={cn(touched.twitterUrl && errors.twitterUrl && "border-error")}
+              className={cn(touched.twitterUrl && errors.twitterUrl && 'border-error')}
             />
           </div>
 
           {/* LinkedIn */}
           <div className="space-y-2">
             <Label htmlFor="linkedinUrl" className="flex items-center gap-2">
-              <Linkedin className="w-4 h-4" />
+              <Icon icon="simple-icons:linkedin" className="w-4 h-4" />
               LinkedIn
             </Label>
             <Input
               id="linkedinUrl"
               value={formData.linkedinUrl}
-              onChange={(e) => handleChange("linkedinUrl", e.target.value)}
-              onBlur={() => handleBlur("linkedinUrl")}
+              onChange={(e) => handleChange('linkedinUrl', e.target.value)}
+              onBlur={() => handleBlur('linkedinUrl')}
               placeholder="https://linkedin.com/in/username"
-              className={cn(touched.linkedinUrl && errors.linkedinUrl && "border-error")}
+              className={cn(touched.linkedinUrl && errors.linkedinUrl && 'border-error')}
             />
           </div>
         </CardContent>
@@ -628,7 +629,7 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
             <Input
               id="coverImageUrl"
               value={formData.coverImageUrl}
-              onChange={(e) => handleChange("coverImageUrl", e.target.value)}
+              onChange={(e) => handleChange('coverImageUrl', e.target.value)}
               placeholder="https://example.com/cover.jpg"
             />
             <p className="text-xs text-text-muted">Recommended: 1500x500 pixels</p>
@@ -642,17 +643,17 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
           variant="outline"
           onClick={() =>
             setFormData({
-              name: profile.name || "",
-              username: profile.username || "",
-              bio: profile.bio || "",
-              location: "",
-              company: profile.companyName || "",
-              jobTitle: "",
-              website: "",
-              twitterUrl: "",
-              githubUrl: "",
-              linkedinUrl: "",
-              coverImageUrl: "",
+              name: profile.name || '',
+              username: profile.username || '',
+              bio: profile.bio || '',
+              location: '',
+              company: profile.companyName || '',
+              jobTitle: '',
+              website: '',
+              twitterUrl: '',
+              githubUrl: '',
+              linkedinUrl: '',
+              coverImageUrl: '',
             })
           }
           disabled={!isDirty || isLoading}
@@ -682,19 +683,19 @@ function ProfileTab({ profile, onUpdate, isLoading }: ProfileTabProps) {
 // ============================================================================
 
 function AccountTab() {
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error('Passwords do not match');
       return;
     }
     if (newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      toast.error('Password must be at least 8 characters');
       return;
     }
 
@@ -704,12 +705,12 @@ function AccountTab() {
         currentPassword,
         newPassword,
       });
-      toast.success("Password changed successfully");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      toast.success('Password changed successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (err: any) {
-      toast.error(err.message || "Failed to change password");
+      toast.error(err.message || 'Failed to change password');
     } finally {
       setIsChangingPassword(false);
     }
@@ -735,7 +736,7 @@ function AccountTab() {
             <div className="relative">
               <Input
                 id="currentPassword"
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="••••••••"
@@ -807,7 +808,8 @@ function AccountTab() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-text-muted">
-            Session management coming soon. You can currently sign out of all devices by changing your password.
+            Session management coming soon. You can currently sign out of all devices by changing
+            your password.
           </p>
         </CardContent>
       </Card>
@@ -836,8 +838,8 @@ function AccountTab() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete your account and remove
-                    all your data from our servers.
+                    This action cannot be undone. This will permanently delete your account and
+                    remove all your data from our servers.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -897,7 +899,7 @@ function NotificationsTab() {
             <Switch
               id="emailNotifications"
               checked={settings.emailNotifications}
-              onCheckedChange={() => toggleSetting("emailNotifications")}
+              onCheckedChange={() => toggleSetting('emailNotifications')}
             />
           </div>
 
@@ -914,7 +916,7 @@ function NotificationsTab() {
             <Switch
               id="pushNotifications"
               checked={settings.pushNotifications}
-              onCheckedChange={() => toggleSetting("pushNotifications")}
+              onCheckedChange={() => toggleSetting('pushNotifications')}
             />
           </div>
 
@@ -925,9 +927,17 @@ function NotificationsTab() {
             <h4 className="font-medium text-text-primary">Activity Notifications</h4>
 
             {[
-              { key: "newFollower", label: "New followers", description: "When someone follows you" },
-              { key: "functionPublished", label: "Function activity", description: "When your functions get interactions" },
-              { key: "mentions", label: "Mentions", description: "When someone mentions you" },
+              {
+                key: 'newFollower',
+                label: 'New followers',
+                description: 'When someone follows you',
+              },
+              {
+                key: 'functionPublished',
+                label: 'Function activity',
+                description: 'When your functions get interactions',
+              },
+              { key: 'mentions', label: 'Mentions', description: 'When someone mentions you' },
             ].map(({ key, label, description }) => (
               <div key={key} className="flex items-center justify-between">
                 <div className="space-y-0.5">
@@ -961,7 +971,7 @@ function NotificationsTab() {
               <Switch
                 id="weeklyDigest"
                 checked={settings.weeklyDigest}
-                onCheckedChange={() => toggleSetting("weeklyDigest")}
+                onCheckedChange={() => toggleSetting('weeklyDigest')}
               />
             </div>
 
@@ -975,7 +985,7 @@ function NotificationsTab() {
               <Switch
                 id="marketingEmails"
                 checked={settings.marketingEmails}
-                onCheckedChange={() => toggleSetting("marketingEmails")}
+                onCheckedChange={() => toggleSetting('marketingEmails')}
               />
             </div>
           </div>
@@ -993,7 +1003,7 @@ function NotificationsTab() {
             <Switch
               id="securityAlerts"
               checked={settings.securityAlerts}
-              onCheckedChange={() => toggleSetting("securityAlerts")}
+              onCheckedChange={() => toggleSetting('securityAlerts')}
               disabled
             />
           </div>
@@ -1009,7 +1019,7 @@ function NotificationsTab() {
 
 function PrivacyTab() {
   const [settings, setSettings] = useState({
-    profileVisibility: "public",
+    profileVisibility: 'public',
     showEmail: false,
     showActivity: true,
     allowMentions: true,
@@ -1033,18 +1043,20 @@ function PrivacyTab() {
             <Label className="text-base">Profile Visibility</Label>
             <div className="grid grid-cols-3 gap-3">
               {[
-                { value: "public", label: "Public", description: "Everyone can see" },
-                { value: "followers", label: "Followers", description: "Only followers" },
-                { value: "private", label: "Private", description: "Only you" },
+                { value: 'public', label: 'Public', description: 'Everyone can see' },
+                { value: 'followers', label: 'Followers', description: 'Only followers' },
+                { value: 'private', label: 'Private', description: 'Only you' },
               ].map((option) => (
                 <button
                   key={option.value}
-                  onClick={() => setSettings((prev) => ({ ...prev, profileVisibility: option.value }))}
+                  onClick={() =>
+                    setSettings((prev) => ({ ...prev, profileVisibility: option.value }))
+                  }
                   className={cn(
-                    "p-3 rounded-lg border text-left transition-all",
+                    'p-3 rounded-lg border text-left transition-all',
                     settings.profileVisibility === option.value
-                      ? "border-brand-500 bg-brand-500/10"
-                      : "border-border-subtle hover:border-border-default"
+                      ? 'border-brand-500 bg-brand-500/10'
+                      : 'border-border-subtle hover:border-border-default'
                   )}
                 >
                   <div className="font-medium text-text-primary">{option.label}</div>
@@ -1070,7 +1082,9 @@ function PrivacyTab() {
               <Switch
                 id="showEmail"
                 checked={settings.showEmail}
-                onCheckedChange={() => setSettings((prev) => ({ ...prev, showEmail: !prev.showEmail }))}
+                onCheckedChange={() =>
+                  setSettings((prev) => ({ ...prev, showEmail: !prev.showEmail }))
+                }
               />
             </div>
 
@@ -1084,7 +1098,9 @@ function PrivacyTab() {
               <Switch
                 id="showActivity"
                 checked={settings.showActivity}
-                onCheckedChange={() => setSettings((prev) => ({ ...prev, showActivity: !prev.showActivity }))}
+                onCheckedChange={() =>
+                  setSettings((prev) => ({ ...prev, showActivity: !prev.showActivity }))
+                }
               />
             </div>
           </div>
@@ -1105,7 +1121,9 @@ function PrivacyTab() {
               <Switch
                 id="allowMentions"
                 checked={settings.allowMentions}
-                onCheckedChange={() => setSettings((prev) => ({ ...prev, allowMentions: !prev.allowMentions }))}
+                onCheckedChange={() =>
+                  setSettings((prev) => ({ ...prev, allowMentions: !prev.allowMentions }))
+                }
               />
             </div>
 
@@ -1119,7 +1137,9 @@ function PrivacyTab() {
               <Switch
                 id="allowFollowing"
                 checked={settings.allowFollowing}
-                onCheckedChange={() => setSettings((prev) => ({ ...prev, allowFollowing: !prev.allowFollowing }))}
+                onCheckedChange={() =>
+                  setSettings((prev) => ({ ...prev, allowFollowing: !prev.allowFollowing }))
+                }
               />
             </div>
           </div>
@@ -1132,12 +1152,16 @@ function PrivacyTab() {
               <Label htmlFor="dataSharing" className="text-base">
                 Data Sharing
               </Label>
-              <p className="text-sm text-text-muted">Share anonymous usage data to help improve our services</p>
+              <p className="text-sm text-text-muted">
+                Share anonymous usage data to help improve our services
+              </p>
             </div>
             <Switch
               id="dataSharing"
               checked={settings.dataSharing}
-              onCheckedChange={() => setSettings((prev) => ({ ...prev, dataSharing: !prev.dataSharing }))}
+              onCheckedChange={() =>
+                setSettings((prev) => ({ ...prev, dataSharing: !prev.dataSharing }))
+              }
             />
           </div>
         </CardContent>

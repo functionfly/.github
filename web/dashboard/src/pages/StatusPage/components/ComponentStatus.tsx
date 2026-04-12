@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonCard as DomainSkeletonCard, EmptyState } from '@/components/ui';
 import type { ComponentHealth } from '@/api/status';
 
 interface ComponentStatusProps {
@@ -202,31 +203,7 @@ function ComponentCard({
   );
 }
 
-function SkeletonCard() {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-10 w-10 rounded-lg" />
-            <div className="space-y-1.5">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-          </div>
-          <Skeleton className="h-4 w-16" />
-        </div>
-        <div className="mt-4 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-3 w-12" />
-            <Skeleton className="h-3 w-10" />
-          </div>
-          <Skeleton className="h-1.5 w-full" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+// Using standardized SkeletonCard component from ui library
 
 export function ComponentStatus({ components, isLoading }: ComponentStatusProps) {
   const list = Array.isArray(components) ? components : [];
@@ -260,16 +237,20 @@ export function ComponentStatus({ components, isLoading }: ComponentStatusProps)
               <Skeleton className="mb-4 h-6 w-32" />
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {[1, 2, 3].map((i) => (
-                  <SkeletonCard key={i} />
+                  <DomainSkeletonCard key={i} variant="default" showImage={false} contentLines={2} footer={false} />
                 ))}
               </div>
             </div>
           ))}
         </div>
       ) : list.length === 0 ? (
-        <Card className="p-8 text-center">
-          <p className="text-text-secondary">No component data available</p>
-        </Card>
+        <EmptyState
+          icon={<Server className="h-8 w-8" />}
+          title="No component data available"
+          description="Platform component health data will appear here once the monitoring services are connected."
+          variant="card"
+          size="sm"
+        />
       ) : (
         <div className="space-y-8">
           {categories.map((category) => {

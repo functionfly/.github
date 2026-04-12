@@ -21,10 +21,10 @@ export function getAuthSiteOrigin(): string {
   const env = (import.meta.env.VITE_AUTH_SITE_URL ?? '').trim().replace(/\/$/, '');
   if (env) return env;
 
-  // Dev default - auth site runs on port 4323
+  // Dev default - auth site runs on port 4324
   if (typeof window !== 'undefined') {
     const h = window.location.hostname;
-    if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:4323';
+    if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:4324';
   }
 
   return 'https://auth.functionfly.com';

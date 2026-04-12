@@ -196,6 +196,8 @@ export const FEATURES: Record<string, readonly PlanTier[]> = {
   UNLIMITED_FUNCTIONS: ['enterprise'],
   UNLIMITED_PROVIDERS: ['enterprise'],
   PRIORITY_SUPPORT: ['professional', 'enterprise'],
+  /** Enterprise sidebar section with SLA, Audit, Support */
+  ENTERPRISE_SECTION: ['professional', 'enterprise'],
 } as const;
 
 export type FeatureKey = keyof typeof FEATURES;

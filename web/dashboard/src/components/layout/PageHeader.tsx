@@ -1,9 +1,8 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { ChevronRight, Home, LayoutDashboard } from 'lucide-react';
+import { AlertCircle, ChevronRight, Home, LayoutDashboard, Shield, Sparkles } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 interface BreadcrumbItem {
@@ -21,15 +20,27 @@ interface ActionButton {
   disabled?: boolean;
 }
 
+// Enhanced badge types
+interface PageBadge {
+  label: string;
+  variant?:
+    | 'default'
+    | 'secondary'
+    | 'destructive'
+    | 'outline'
+    | 'new'
+    | 'beta'
+    | 'enterprise'
+    | 'warning';
+  icon?: React.ComponentType<{ className?: string }>;
+}
+
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
   breadcrumbs?: BreadcrumbItem[];
   actions?: ActionButton[];
-  badges?: Array<{
-    label: string;
-    variant?: 'default' | 'secondary' | 'destructive' | 'outline';
-  }>;
+  badges?: PageBadge[];
   className?: string;
   animate?: boolean;
 }
@@ -58,22 +69,60 @@ export function PageHeader({
       }
     : {};
 
+  // Get badge styles based on variant
+  const getBadgeStyles = (variant?: string) => {
+    switch (variant) {
+      case 'new':
+        return 'bg-aviation-green/20 text-aviation-green border-aviation-green/30';
+      case 'beta':
+        return 'bg-aviation-cyan/20 text-aviation-cyan border-aviation-cyan/30';
+      case 'enterprise':
+        return 'bg-aviation-amber/20 text-aviation-amber border-aviation-amber/30';
+      case 'warning':
+        return 'bg-aviation-amber/20 text-aviation-amber border-aviation-amber/30';
+      case 'destructive':
+        return 'bg-aviation-red/20 text-aviation-red border-aviation-red/30';
+      case 'secondary':
+        return 'bg-aviation-bg-instrument text-aviation-text-secondary border-aviation-border-instrument';
+      case 'outline':
+        return 'bg-transparent text-aviation-text-muted border-aviation-border-instrument';
+      default:
+        return 'bg-aviation-amber/20 text-aviation-amber border-aviation-amber/30';
+    }
+  };
+
+  // Get badge icon based on variant
+  const getBadgeIcon = (variant?: string) => {
+    switch (variant) {
+      case 'new':
+        return Sparkles;
+      case 'beta':
+        return Shield;
+      case 'enterprise':
+        return Shield;
+      case 'warning':
+        return AlertCircle;
+      default:
+        return null;
+    }
+  };
+
   return (
     <Header {...headerProps} className={cn('space-y-4', className)}>
       {/* Breadcrumbs */}
       {displayBreadcrumbs && displayBreadcrumbs.length > 1 && (
-        <nav className="flex items-center gap-2 text-sm text-text-muted">
+        <nav className="flex items-center gap-2 text-sm text-aviation-text-muted">
           {displayBreadcrumbs.map((crumb, index) => {
             const isLast = index === displayBreadcrumbs.length - 1;
             const Icon = crumb.icon;
 
             return (
               <div key={index} className="flex items-center gap-2">
-                {index > 0 && <ChevronRight className="w-4 h-4" />}
+                {index > 0 && <ChevronRight className="w-4 h-4 text-aviation-text-dim" />}
                 {crumb.path && !isLast ? (
                   <Link
                     to={crumb.path}
-                    className="flex items-center gap-2 hover:text-text-primary transition-colors"
+                    className="flex items-center gap-2 hover:text-aviation-text-primary transition-colors"
                   >
                     {Icon && <Icon className="w-4 h-4" />}
                     <span>{crumb.label}</span>
@@ -82,7 +131,9 @@ export function PageHeader({
                   <span
                     className={cn(
                       'flex items-center gap-2',
-                      isLast ? 'text-text-primary font-medium' : 'text-text-secondary'
+                      isLast
+                        ? 'text-aviation-text-primary font-medium'
+                        : 'text-aviation-text-secondary'
                     )}
                   >
                     {Icon && <Icon className="w-4 h-4" />}
@@ -98,19 +149,29 @@ export function PageHeader({
       {/* Header Content */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-text-primary">{title}</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-bold text-aviation-text-primary">{title}</h1>
             {badges && badges.length > 0 && (
               <div className="flex gap-2">
-                {badges.map((badge, index) => (
-                  <Badge key={index} variant={badge.variant}>
-                    {badge.label}
-                  </Badge>
-                ))}
+                {badges.map((badge, index) => {
+                  const Icon = badge.icon || getBadgeIcon(badge.variant);
+                  return (
+                    <span
+                      key={index}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border',
+                        getBadgeStyles(badge.variant)
+                      )}
+                    >
+                      {Icon && <Icon className="w-3 h-3" />}
+                      {badge.label}
+                    </span>
+                  );
+                })}
               </div>
             )}
           </div>
-          {subtitle && <p className="text-text-secondary">{subtitle}</p>}
+          {subtitle && <p className="text-aviation-text-secondary">{subtitle}</p>}
         </div>
 
         {/* Actions */}
@@ -125,6 +186,7 @@ export function PageHeader({
                   size={action.size === 'md' ? 'default' : action.size || 'sm'}
                   onClick={action.onClick}
                   disabled={action.disabled}
+                  className={cn(action.variant === 'default' && 'aviation-button-primary')}
                 >
                   {Icon && <Icon className="w-4 h-4 mr-2" />}
                   {action.label}
@@ -141,9 +203,7 @@ export function PageHeader({
 // Helper function to generate default breadcrumbs based on current path
 function generateDefaultBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const segments = pathname.split('/').filter(Boolean);
-  const breadcrumbs: BreadcrumbItem[] = [
-    { label: 'Home', path: ROUTES.DASHBOARD, icon: Home },
-  ];
+  const breadcrumbs: BreadcrumbItem[] = [{ label: 'Home', path: ROUTES.DASHBOARD, icon: Home }];
 
   if (segments.length === 0 || (segments[0] === 'dashboard' && segments.length === 1)) {
     return breadcrumbs;
@@ -171,6 +231,20 @@ function generateDefaultBreadcrumbs(pathname: string): BreadcrumbItem[] {
     case 'settings':
       breadcrumbs.push({ label: 'Settings', path: ROUTES.SETTINGS });
       break;
+    case 'agents':
+      breadcrumbs.push({ label: 'Agents', path: ROUTES.AGENTS });
+      break;
+    case 'evolution':
+      breadcrumbs.push({ label: 'Evolution', path: ROUTES.EVOLUTION });
+      break;
+    case 'state-fabric':
+      breadcrumbs.push({ label: 'State Fabric', path: ROUTES.STATE_FABRIC });
+      break;
+    case 'wallet':
+      breadcrumbs.push({ label: 'Wallet', path: '/wallet' });
+      break;
+    default:
+      breadcrumbs.push({ label: section.charAt(0).toUpperCase() + section.slice(1) });
   }
 
   // Add subsection breadcrumb if applicable

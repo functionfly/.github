@@ -736,4 +736,273 @@ export const agentApi = {
    */
   getSchedules: (agentId: string) =>
     apiClient.get<{ ok: boolean; schedules: AutonomySchedule[] }>(`/v1/agent/${agentId}/schedules`),
+
+  /**
+   * Get agent quota.
+   * GET /v1/agent/{agent_id}/quota
+   */
+  getQuota: (agentId: string) =>
+    apiClient.get<{ ok: boolean; quota: AgentQuota }>(`/v1/agent/${agentId}/quota`),
+
+  // ---------------------------------------------------------------------------
+  // Learning & Analysis (New)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Analyze agent execution patterns.
+   * GET /v1/agent/{id}/analyze
+   */
+  analyzeAgent: (agentId: string, params?: { days?: number }) =>
+    apiClient.get<{
+      ok: boolean;
+      analysis: {
+        agent_id: string;
+        total_executions: number;
+        patterns: Array<{
+          id: string;
+          pattern_type: string;
+          confidence: number;
+          recommendations: string[];
+        }>;
+        insights: string[];
+        success_rate: number;
+        avg_latency_ms: number;
+        avg_cost_usd: number;
+      };
+    }>(`/v1/agent/${agentId}/analyze`, { params }),
+
+  /**
+   * Optimize agent - generate optimization recommendations.
+   * POST /v1/agent/{id}/optimize
+   */
+  optimizeAgent: (agentId: string) =>
+    apiClient.post<{
+      ok: boolean;
+      result: {
+        agent_id: string;
+        patterns_found: number;
+        optimizations: Array<{
+          id: string;
+          optimization_type: string;
+          description: string;
+          expected_impact: Record<string, number>;
+          implementation: 'low' | 'medium' | 'high';
+          status: 'pending' | 'approved' | 'rejected' | 'applied';
+        }>;
+      };
+    }>(`/v1/agent/${agentId}/optimize`),
+
+  /**
+   * Get agent insights (patterns + optimizations + memories).
+   * GET /v1/agent/{id}/insights
+   */
+  getInsights: (agentId: string) =>
+    apiClient.get<{
+      ok: boolean;
+      patterns: unknown[];
+      optimizations: unknown[];
+      memories: unknown[];
+      memory_count: number;
+    }>(`/v1/agent/${agentId}/insights`),
+
+  /**
+   * Search agent memories.
+   * GET /v1/agent/{id}/memories
+   */
+  searchMemories: (agentId: string, params?: { q?: string; limit?: number }) =>
+    apiClient.get<{
+      ok: boolean;
+      query: string;
+      memories: Array<{
+        id: string;
+        agent_id: string;
+        memory_type: string;
+        content: Record<string, unknown>;
+        importance: number;
+        is_learned: boolean;
+        created_at: string;
+      }>;
+      count: number;
+    }>(`/v1/agent/${agentId}/memories`, { params }),
+
+  // ---------------------------------------------------------------------------
+  // Code Generation & Deployment (New)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Generate code from specification.
+   * POST /v1/agent/{id}/generate
+   */
+  generateCode: (
+    agentId: string,
+    data: {
+      function_spec: {
+        name: string;
+        title?: string;
+        description: string;
+        prompt?: string;
+        input_schema?: Record<string, unknown>;
+        output_schema?: Record<string, unknown>;
+        category?: string;
+        tags?: string[];
+        examples?: Record<string, unknown>[];
+      };
+      language: 'python' | 'javascript';
+      runtime: string;
+    }
+  ) =>
+    apiClient.post<{
+      ok: boolean;
+      code: {
+        id: string;
+        generated_code: string;
+        language: string;
+        runtime: string;
+        model_used: string;
+        generation_time_ms: number;
+        status: string;
+        created_at: string;
+      };
+    }>(`/v1/agent/${agentId}/generate`, data),
+
+  /**
+   * Get generated code history.
+   * GET /v1/agent/{id}/generations
+   */
+  getGenerations: (agentId: string, params?: { limit?: number; offset?: number }) =>
+    apiClient.get<{
+      ok: boolean;
+      generations: unknown[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/agent/${agentId}/generations`, { params }),
+
+  /**
+   * Publish generated function to registry.
+   * POST /v1/agent/{id}/publish
+   */
+  publishFunction: (
+    agentId: string,
+    data: {
+      generated_code_id: string;
+      author: string;
+      name: string;
+      title?: string;
+      description?: string;
+      category?: string;
+      tags?: string[];
+      is_public?: boolean;
+    }
+  ) =>
+    apiClient.post<{
+      ok: boolean;
+      published: {
+        id: string;
+        agent_id: string;
+        function_id: string;
+        author: string;
+        name: string;
+        version: string;
+        status: string;
+        published_at?: string;
+      };
+    }>(`/v1/agent/${agentId}/publish`, data),
+
+  /**
+   * Get published functions for an agent.
+   * GET /v1/agent/{id}/functions
+   */
+  getAgentFunctions: (agentId: string, params?: { limit?: number; offset?: number }) =>
+    apiClient.get<{
+      ok: boolean;
+      functions: unknown[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/agent/${agentId}/functions`, { params }),
+
+  // ---------------------------------------------------------------------------
+  // Security & Health (New)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Trigger kill switch on agent.
+   * POST /v1/agent/{id}/kill-switch
+   */
+  triggerKillSwitch: (agentId: string, reason?: string) =>
+    apiClient.post<{
+      ok: boolean;
+      agents_killed: number;
+      message: string;
+    }>(`/v1/agent/${agentId}/kill-switch`, { reason }),
+
+  /**
+   * Check swarm health and detect anomalies.
+   * GET /v1/agent/{id}/health
+   */
+  checkSwarmHealth: (agentId: string, params?: { hours?: number }) =>
+    apiClient.get<{
+      ok: boolean;
+      status: 'healthy' | 'degraded' | 'critical';
+      health_score: number;
+      anomalies: Array<{
+        type: string;
+        severity: 'low' | 'medium' | 'high';
+        description: string;
+        timestamp: string;
+      }>;
+      children: number;
+    }>(`/v1/agent/${agentId}/health`, { params }),
+
+  // ---------------------------------------------------------------------------
+  // Marketplace Hiring & Purchasing (New)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Hire an agent for a task.
+   * POST /v1/marketplace/hire
+   */
+  hireAgent: (data: {
+    agent_id: string;
+    task_type: string;
+    task_payload?: Record<string, unknown>;
+    budget_usd?: number;
+  }) =>
+    apiClient.post<{
+      ok: boolean;
+      hiring: {
+        id: string;
+        agent_id: string;
+        hirer_id: string;
+        task_type: string;
+        budget_usd: number;
+        status: string;
+        created_at: string;
+      };
+      message: string;
+    }>('/v1/marketplace/hire', data),
+
+  /**
+   * Purchase a function from marketplace.
+   * POST /v1/marketplace/purchase
+   */
+  purchaseFunction: (data: {
+    function_author: string;
+    function_name: string;
+    agent_id: string;
+    max_price_usd?: number;
+  }) =>
+    apiClient.post<{
+      ok: boolean;
+      purchase: {
+        id: string;
+        agent_id: string;
+        function_author: string;
+        function_name: string;
+        price_paid_usd: number;
+        status: string;
+        created_at: string;
+      };
+    }>('/v1/marketplace/purchase', data),
 };

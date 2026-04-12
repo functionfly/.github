@@ -1,12 +1,7 @@
-import { Crown } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePlan } from '@/hooks/usePlan';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { motion } from 'framer-motion';
+import { Crown, Shield } from 'lucide-react';
 
 /**
  * Enterprise badge component for the navbar
@@ -25,23 +20,26 @@ export function EnterpriseBadge() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full
-                       bg-gradient-to-r from-amber-500/20 to-yellow-500/20
-                       border border-amber-500/30 cursor-pointer
-                       hover:border-amber-500/50 transition-colors"
+                       bg-aviation-amber/10
+                       border border-aviation-amber/30 cursor-pointer
+                       hover:border-aviation-amber/50 hover:bg-aviation-amber/20 transition-colors"
           >
-            <Crown className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-xs font-medium text-amber-400">
+            <Crown className="w-3.5 h-3.5 text-aviation-amber" />
+            <span className="text-xs font-semibold text-aviation-amber hidden sm:inline">
               Enterprise
             </span>
           </motion.div>
         </TooltipTrigger>
         <TooltipContent
           side="bottom"
-          className="bg-bg-tertiary border-white/10"
+          className="bg-aviation-bg-secondary border-aviation-border-panel"
         >
           <div className="space-y-1">
-            <p className="font-medium text-amber-400">Enterprise Plan</p>
-            <p className="text-xs text-text-secondary">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-aviation-amber" />
+              <p className="font-semibold text-aviation-amber">Enterprise Plan</p>
+            </div>
+            <p className="text-xs text-aviation-text-secondary">
               99.99% SLA • Dedicated Support • Unlimited Everything
             </p>
           </div>

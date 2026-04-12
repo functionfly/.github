@@ -5,7 +5,7 @@
 
 import { usersApi } from '@/api/users';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SettingsTab } from '@/pages/ProfilePage/components/tabs/SettingsTab';
+import { PrivacySettingsTab } from './components/PrivacySettingsTab';
 import { useApiReachableStore } from '@/stores/apiReachableStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { UserProfile } from '@/types';
@@ -174,7 +174,7 @@ export function SettingsContent({
         </TabsContent>
 
         <TabsContent value="privacy" className="space-y-6">
-          <SettingsTab profile={profile ?? undefined} />
+          <PrivacySettingsTab profile={profile ?? undefined} />
         </TabsContent>
       </Tabs>
     </div>

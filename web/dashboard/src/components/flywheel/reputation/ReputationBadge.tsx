@@ -2,14 +2,9 @@
  * ReputationBadge - Visual indicator of user's reputation score and tier
  */
 
-import { useEffect, useState } from 'react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { useEffect, useState } from 'react';
 import type { ReputationType } from '../types';
 
 interface ReputationBadgeProps {
@@ -55,6 +50,10 @@ export function ReputationBadge({
   size = 'sm',
   animated = true,
 }: ReputationBadgeProps) {
+  // Handle undefined/null score gracefully
+  const safeScore = score ?? 0;
+  const safeTier = tier ?? 1;
+
   const [displayScore, setDisplayScore] = useState(0);
   const colors = typeColors[type] || typeColors.overall;
 
@@ -68,12 +67,12 @@ export function ReputationBadge({
   const config = sizeConfig[size];
   const radius = (config.ring - config.stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  const progress = Math.min(score / 10000, 1);
+  const progress = Math.min(safeScore / 10000, 1);
   const strokeDashoffset = circumference - progress * circumference;
 
   useEffect(() => {
     if (!animated) {
-      setDisplayScore(score);
+      setDisplayScore(safeScore);
       return;
     }
 
@@ -87,7 +86,7 @@ export function ReputationBadge({
 
       // Ease out cubic
       const easeOut = 1 - Math.pow(1 - progress, 3);
-      setDisplayScore(Math.floor(easeOut * score));
+      setDisplayScore(Math.floor(easeOut * safeScore));
 
       if (progress < 1) {
         requestAnimationFrame(animate);
@@ -95,7 +94,7 @@ export function ReputationBadge({
     };
 
     requestAnimationFrame(animate);
-  }, [score, animated]);
+  }, [safeScore, animated]);
 
   const formatScore = (num: number): string => {
     if (num >= 1000) {
@@ -113,11 +112,7 @@ export function ReputationBadge({
       )}
     >
       {/* Progress Ring */}
-      <svg
-        className="absolute inset-0 -rotate-90"
-        width={config.ring}
-        height={config.ring}
-      >
+      <svg className="absolute inset-0 -rotate-90" width={config.ring} height={config.ring}>
         {/* Background ring */}
         <circle
           cx={config.ring / 2}
@@ -152,12 +147,12 @@ export function ReputationBadge({
   const tooltipContent = (
     <div className="space-y-1">
       <p className="font-medium text-slate-200">{typeLabels[type]} Score</p>
-      <p className="text-2xl font-bold text-white">{score.toLocaleString()}</p>
+      <p className="text-2xl font-bold text-white">{safeScore.toLocaleString()}</p>
       <p className="text-sm text-slate-400">
-        Tier: {tierNames[tier]} ({tier}/5)
+        Tier: {tierNames[safeTier]} ({safeTier}/5)
       </p>
       <p className="text-xs text-slate-400">
-        Next tier: {(tier * 1000 + 1000).toLocaleString()} points
+        Next tier: {(safeTier * 1000 + 1000).toLocaleString()} points
       </p>
     </div>
   );
@@ -172,22 +167,15 @@ export function ReputationBadge({
               <div className="flex flex-col">
                 {showScore && (
                   <span className={cn('font-medium', colors.text)}>
-                    {score.toLocaleString()}
+                    {safeScore.toLocaleString()}
                   </span>
                 )}
-                {showTier && (
-                  <span className="text-xs text-slate-400">
-                    {tierNames[tier]}
-                  </span>
-                )}
+                {showTier && <span className="text-xs text-slate-400">{tierNames[safeTier]}</span>}
               </div>
             )}
           </div>
         </TooltipTrigger>
-        <TooltipContent
-          side="bottom"
-          className="bg-slate-900 border-slate-800 p-3"
-        >
+        <TooltipContent side="bottom" className="bg-slate-900 border-slate-800 p-3">
           {tooltipContent}
         </TooltipContent>
       </Tooltip>
@@ -209,6 +197,8 @@ export function ReputationBadgeInline({
   tier?: number;
   size?: 'xs' | 'sm';
 }) {
+  const safeScore = score ?? 0;
+  const safeTier = tier ?? 1;
   const colors = typeColors[type] || typeColors.overall;
 
   return (
@@ -221,10 +211,8 @@ export function ReputationBadgeInline({
       )}
     >
       <span>⭐</span>
-      {score.toLocaleString()}
-      {tier && tier > 0 && (
-        <span className="opacity-70">({tierNames[tier]})</span>
-      )}
+      {safeScore.toLocaleString()}
+      {safeTier > 0 && <span className="opacity-70">({tierNames[safeTier]})</span>}
     </span>
   );
 }

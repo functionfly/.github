@@ -581,6 +581,8 @@ function SkeletonGrid({ count = 6, mode }: { count?: number; mode: 'grid' | 'lis
   );
 }
 
+const PAGE_SIZE = 50;
+
 export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewVariant }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -591,6 +593,10 @@ export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewV
   const [functions, setFunctions] = useState<RegistryFunction[]>([]);
   const [filteredFunctions, setFilteredFunctions] = useState<RegistryFunction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState(authorFromUrl);
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [sortBy, setSortBy] = useState('popularity');
@@ -601,6 +607,7 @@ export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewV
   const [trustTierFilter, setTrustTierFilter] = useState('all');
   const [minTrustScore, setMinTrustScore] = useState(0);
 
+  // Realtime updates
   useEffect(() => {
     const handleRegistryUpdate = (data: {
       event?: string;
@@ -635,17 +642,35 @@ export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewV
     setSearchQuery(authorFromUrl);
   }, [authorFromUrl]);
 
+  // Build API params from current filters
+  const getApiParams = useCallback((pageOffset: number) => {
+    const params: RegistrySearchParams = {
+      limit: PAGE_SIZE,
+      offset: pageOffset,
+      visibility: 'public',
+    };
+    if (authorFromUrl) params.author = authorFromUrl;
+    if (searchQuery) params.query = searchQuery;
+    if (selectedCategory && selectedCategory !== 'All Categories') {
+      params.category = selectedCategory.toLowerCase().replace(/\s+/g, '-');
+    }
+    return params;
+  }, [authorFromUrl, searchQuery, selectedCategory]);
+
+  // Initial load
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         setLoading(true);
-        const res = await registryApi.getFunctions({
-          limit: 500,
-          ...(authorFromUrl ? { author: authorFromUrl } : {}),
-        });
+        setFunctions([]);
+        setOffset(0);
+        setHasMore(true);
+        const res = await registryApi.getFunctions(getApiParams(0));
         if (!cancelled) {
           setFunctions(res.functions ?? []);
+          setTotalCount((res as any).total ?? res.functions?.length ?? 0);
+          setHasMore((res.functions?.length ?? 0) === PAGE_SIZE);
         }
       } catch (e) {
         console.error('Failed to load registry functions:', e);
@@ -657,24 +682,29 @@ export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewV
     return () => {
       cancelled = true;
     };
-  }, [authorFromUrl]);
+  }, [authorFromUrl, searchQuery, selectedCategory, getApiParams]);
 
+  // Load more handler
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    try {
+      setLoadingMore(true);
+      const nextOffset = offset + PAGE_SIZE;
+      const res = await registryApi.getFunctions(getApiParams(nextOffset));
+      const newFunctions = res.functions ?? [];
+      setFunctions((prev) => [...prev, ...newFunctions]);
+      setOffset(nextOffset);
+      setHasMore(newFunctions.length === PAGE_SIZE);
+    } catch (e) {
+      console.error('Failed to load more functions:', e);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [offset, hasMore, loadingMore, getApiParams]);
+
+  // Client-side filtering for trust filters (not supported by API)
   useEffect(() => {
-    const q = searchQuery.toLowerCase();
-    const selectedNormalized =
-      selectedCategory === 'All Categories'
-        ? 'All Categories'
-        : normalizeCategory(selectedCategory);
     let filtered = functions.filter((fn) => {
-      const matchesSearch =
-        q === '' ||
-        fn.name.toLowerCase().includes(q) ||
-        fn.author.toLowerCase().includes(q) ||
-        (fn.description?.toLowerCase().includes(q) ?? false);
-      const fnCategory = normalizeCategory(fn.category);
-      const matchesCategory =
-        selectedNormalized === 'All Categories' || fnCategory === selectedNormalized;
-
       const trustScore = fn.trust_score ?? fn.overall_score;
       const trustTier = fn.trust_tier ?? fn.verification_status ?? 'unverified';
       const matchesTrustTier =
@@ -685,11 +715,12 @@ export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewV
         (trustTierFilter === 'unverified' &&
           (trustTier === 'untrusted' || trustTier === 'unverified'));
 
-      const matchesMinTrust = trustScore >= minTrustScore;
+      const matchesMinTrust = (trustScore ?? 0) >= minTrustScore;
 
-      return matchesSearch && matchesCategory && matchesTrustTier && matchesMinTrust;
+      return matchesTrustTier && matchesMinTrust;
     });
 
+    // Client-side sorting
     filtered.sort((a, b) => {
       let aVal: number | string, bVal: number | string;
       switch (sortBy) {
@@ -725,16 +756,16 @@ export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewV
     });
 
     setFilteredFunctions(filtered);
-  }, [functions, searchQuery, selectedCategory, sortBy, sortOrder, trustTierFilter, minTrustScore]);
+  }, [functions, sortBy, sortOrder, trustTierFilter, minTrustScore]);
 
   const categoryCounts = useCallback((): Record<string, number> => {
-    const counts: Record<string, number> = { 'All Categories': functions.length };
+    const counts: Record<string, number> = { 'All Categories': totalCount || functions.length };
     for (const fn of functions) {
       const c = normalizeCategory(fn.category);
       if (c) counts[c] = (counts[c] ?? 0) + 1;
     }
     return counts;
-  }, [functions]);
+  }, [functions, totalCount]);
   const counts = categoryCounts();
 
   const categories = getCategoryList(functions);
@@ -761,7 +792,7 @@ export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewV
 
   const handleView = (fn: RegistryFunction) => navigate(`/fx/${fn.author}/${fn.name}`);
 
-  const totalFunctions = functions.length;
+  const loadedCount = functions.length;
   const categoryCount = Math.max(0, categories.length - 1);
   const hasActiveFilters =
     searchQuery !== '' ||
@@ -830,13 +861,13 @@ export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewV
 
             <div className="registry-stats-bar max-w-md">
               <StatItem
-                value={loading ? '—' : totalFunctions.toLocaleString()}
+                value={loading ? '—' : (totalCount || loadedCount).toLocaleString()}
                 label="Functions"
                 icon={Code}
               />
               <StatItem value={loading ? '—' : categoryCount} label="Categories" icon={Layers} />
               <StatItem
-                value={loading ? '—' : filteredFunctions.length.toLocaleString()}
+                value={loading ? '—' : `${filteredFunctions.length.toLocaleString()}${hasMore ? '+' : ''}`}
                 label="Visible"
                 icon={TrendingUp}
               />
@@ -1165,6 +1196,59 @@ export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewV
                       flashId={flashId}
                     />
                   ))}
+                </div>
+              )}
+
+              {/* Load More */}
+              {!loading && hasMore && !hasActiveFilters && (
+                <div className="flex justify-center pt-6">
+                  <button
+                    type="button"
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                    className="h-10 px-6 rounded-xl text-sm font-semibold
+                               bg-bg-secondary border border-border-subtle text-text-secondary
+                               hover:bg-bg-hover hover:text-text-primary hover:border-brand-500/30
+                               disabled:opacity-50 disabled:cursor-not-allowed
+                               transition-all flex items-center gap-2"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <div className="h-4 w-4 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4" />
+                        Load More ({loadedCount.toLocaleString()} of {totalCount.toLocaleString()})
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Loading more indicator (infinite scroll style) */}
+              {loadingMore && (
+                <div className="flex justify-center py-4">
+                  <div className="flex items-center gap-2 text-text-muted text-sm">
+                    <div className="h-4 w-4 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+                    Loading more functions...
+                  </div>
+                </div>
+              )}
+
+              {/* End of results */}
+              {!loading && !hasMore && loadedCount > 0 && !hasActiveFilters && (
+                <div className="text-center py-4 text-text-muted text-sm">
+                  Showing all {loadedCount.toLocaleString()} functions
+                </div>
+              )}
+
+              {/* Trust filter note when paginating */}
+              {!loading && hasMore && (trustTierFilter !== 'all' || minTrustScore > 0) && (
+                <div className="text-center py-4 text-amber-400/80 text-sm">
+                  <Shield className="h-4 w-4 inline mr-1" />
+                  Trust filters applied to loaded functions only. Load more to search deeper.
                 </div>
               )}
             </div>

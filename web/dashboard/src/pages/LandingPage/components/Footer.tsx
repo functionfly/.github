@@ -1,5 +1,5 @@
 import { Logo } from '@/components/common/Logo';
-import { DOCS_SITE_URL, getMarketingPageUrl } from '@/lib/constants';
+import { BLOG_SITE_URL, DOCS_SITE_URL, getMarketingPageUrl } from '@/lib/constants';
 import {
   GitHubIcon,
   InstagramIcon,
@@ -7,8 +7,10 @@ import {
   XIcon,
 } from '@/pages/LandingPage/components/icons';
 import { useAuthStore } from '@/stores/authStore';
+import { useNewsletter } from '@/hooks/useNewsletter';
 import { motion } from 'framer-motion';
-import { ArrowUp, Heart, Mail, MessageCircle } from 'lucide-react';
+import { ArrowUp, Heart, Mail, MessageCircle, Check, AlertCircle } from 'lucide-react';
+import { useState, FormEvent } from 'react';
 
 interface FooterProps {
   /** Set to false when another fixed bottom-right element (e.g. fly guide) is shown to avoid overlap. Default true. */
@@ -17,6 +19,22 @@ interface FooterProps {
 
 export function Footer({ showScrollToTop = true }: FooterProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const { subscribe, isLoading, isSuccess, error, reset } = useNewsletter();
+  const [email, setEmail] = useState('');
+
+  const handleSubscribe = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || isLoading) return;
+
+    const success = await subscribe({ email: email.trim() });
+    if (success) {
+      setEmail('');
+      // Reset success state after 5 seconds
+      setTimeout(() => {
+        reset();
+      }, 5000);
+    }
+  };
 
   return (
     <footer
@@ -202,7 +220,9 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                 </li>
                 <li>
                   <a
-                    href={getMarketingPageUrl('/blog')}
+                    href={BLOG_SITE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
                     Blog
@@ -233,7 +253,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
               <ul className="space-y-3">
                 <li>
                   <a
-                    href="#"
+                    href="/help"
                     className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
                   >
                     Help Center
@@ -272,27 +292,52 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
             <div className="lg:col-span-2">
               <h3 className="text-text-primary font-semibold mb-4">Stay Updated</h3>
               <p className="text-text-secondary text-sm mb-4">
-                Get the latest updates and news about FunctionFly.
+                Get the latest updates and news about FunctionFly™.
               </p>
-              <div className="space-y-3">
+              <form onSubmit={handleSubscribe} className="space-y-3">
                 <div className="flex gap-2">
                   <input
                     type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
-                    className="newsletter-input flex-1 px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder-text-muted text-sm focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20"
+                    disabled={isLoading || isSuccess}
+                    className="newsletter-input flex-1 px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder-text-muted text-sm focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <motion.button
-                    className="px-4 py-2 bg-gradient-to-r from-brand-500 to-purple-500 rounded-lg text-white text-sm font-medium hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-200 glow hover-lift"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    type="submit"
+                    disabled={isLoading || isSuccess || !email.trim()}
+                    className="px-4 py-2 bg-gradient-to-r from-brand-500 to-purple-500 rounded-lg text-white text-sm font-medium hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-200 glow hover-lift disabled:opacity-50 disabled:cursor-not-allowed"
+                    whileHover={!isLoading && !isSuccess ? { scale: 1.02 } : {}}
+                    whileTap={!isLoading && !isSuccess ? { scale: 0.98 } : {}}
                   >
-                    <Mail className="w-4 h-4" />
+                    {isLoading ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : isSuccess ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <Mail className="w-4 h-4" />
+                    )}
                   </motion.button>
                 </div>
-                <p className="text-text-muted text-xs">
-                  We respect your privacy. Unsubscribe at any time.
-                </p>
-              </div>
+                {error && (
+                  <div className="flex items-center gap-2 text-error text-xs">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>{error}</span>
+                  </div>
+                )}
+                {isSuccess && (
+                  <div className="flex items-center gap-2 text-success text-xs">
+                    <Check className="w-3 h-3" />
+                    <span>Successfully subscribed! Check your email for confirmation.</span>
+                  </div>
+                )}
+                {!error && !isSuccess && (
+                  <p className="text-text-muted text-xs">
+                    We respect your privacy. Unsubscribe at any time.
+                  </p>
+                )}
+              </form>
             </div>
           </div>
         </div>
@@ -302,7 +347,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
           <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-sm text-text-muted">
-                <span>© {new Date().getFullYear()} FunctionFly LLC. Made with</span>
+                <span>© {new Date().getFullYear()} FunctionFly™ LLC. Made with</span>
                 <Heart className="w-4 h-4 text-error fill-current" />
                 <span>for indie developers.</span>
               </div>

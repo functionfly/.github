@@ -20,6 +20,7 @@ import { AgentMemoryPage } from '@/pages/AgentMemoryPage';
 import { AgentMemoryDetailPage } from '@/pages/AgentMemoryPage/AgentMemoryDetailPage';
 import AgentSDKIntegrationsPage from '@/pages/AgentSDKIntegrationsPage';
 import AgentsPage from '@/pages/AgentsPage';
+import { AIComposerPage } from '@/pages/AIComposerPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { APIKeyDetailPage, APIKeysPage } from '@/pages/api-keys';
 import { AppDetailPage } from '@/pages/AppDetailPage';
@@ -39,13 +40,16 @@ import { FeedbackPage } from '@/pages/FeedbackPage';
 import { ForbiddenPage } from '@/pages/ForbiddenPage';
 import FunctionMarketplacePage from '@/pages/FunctionMarketplacePage';
 import FunctionPage from '@/pages/FunctionPage';
+import { FunctionsDiscoveryPage } from '@/pages/FunctionsDiscoveryPage';
 import { FunctionsPage } from '@/pages/FunctionsPage';
+import { HelpCenterPage } from '@/pages/HelpCenterPage';
 import { FunctionDetailPage } from '@/pages/FunctionsPage/FunctionDetailPage';
 import { FunctionEditorPage } from '@/pages/FunctionsPage/FunctionEditorPage';
 import { FunctionLogsPage } from '@/pages/FunctionsPage/FunctionLogsPage';
 import { FunctionSettingsPage } from '@/pages/FunctionsPage/FunctionSettingsPage';
 import { IntegrationsPage } from '@/pages/IntegrationsPage';
 import { LaunchPage } from '@/pages/LaunchPage';
+import { BundlePricingPage } from '@/pages/BundlePricingPage';
 import { MyProfilePage } from '@/pages/MyProfilePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { OnboardingPage } from '@/pages/OnboardingPage';
@@ -65,11 +69,16 @@ import { StateFabricPage } from '@/pages/StateFabricPage';
 import { StateFabricDetailPage } from '@/pages/StateFabricPage/StateFabricDetailPage';
 import { StatePage } from '@/pages/StatePage';
 import { StateDetailPage } from '@/pages/StatePage/StateDetailPage';
-import { TeamPage } from '@/pages/TeamPage';
 import { TeamsPage } from '@/pages/TeamsPage';
+import { MyTeamPage } from '@/pages/MyTeamPage';
+import TeamMemoryPage from '@/pages/TeamMemoryPage';
 import { UserDashboardFunctionsPage } from '@/pages/UserDashboardFunctionsPage';
 import { UserDashboardSettingsPage } from '@/pages/UserDashboardSettingsPage';
 import WalletPage from '@/pages/WalletPage';
+import FRGEditorPage from '@/pages/FRGEditorPage';
+import FRGShowcasePage from '@/pages/FRGShowcasePage';
+import FRGGraphsPage from '@/pages/FRGGraphsPage';
+import GalleryPage from '@/pages/GalleryPage';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
@@ -441,21 +450,25 @@ function AppContent() {
         <Route path="/coming-soon" element={<LaunchPage />} />
         <Route path="/status" element={<StatusPage />} />
         <Route path="/pricing" element={<MarketingPricingRedirect />} />
+        <Route path="/pricing/bundles" element={<BundlePricingPage />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
-        <Route path="/team" element={<TeamPage />} />
+        <Route path="/teams" element={<TeamsPage />} />
         <Route path="/privacy" element={<MarketingLegalRedirect page="privacy" />} />
         <Route path="/security" element={<SecurityPage />} />
         <Route path="/terms" element={<MarketingLegalRedirect page="terms" />} />
         <Route path="/changelog" element={<ChangelogPage />} />
         <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/faq" element={<FAQPage />} />
+        <Route path="/help" element={<HelpCenterPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/docs" element={<DocsOutboundRedirect />} />
         <Route path="/docs/:slug" element={<DocsOutboundRedirect />} />
         <Route path="/blog" element={<MarketingBlogRedirect />} />
         <Route path="/blog/:slug" element={<MarketingBlogRedirect />} />
         <Route path="/products/state-fabric" element={<StateFabricMarketingPage />} />
+        <Route path="/frg-showcase" element={<FRGShowcasePage />} />
+        <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/registry" element={<BrowseFunctionsPage />} />
         <Route path="/registry/:author/:name" element={<RegistryFunctionRedirect />} />
 
@@ -526,12 +539,26 @@ function AppContent() {
           <Route path="apps/new" element={<CreateAppPage />} />
           <Route path="apps/:appId" element={<AppDetailPage />} />
           <Route path="functions" element={<FunctionsPage />} />
+          <Route path="functions/hot" element={<FunctionsDiscoveryPage />} />
+          <Route path="functions/trending" element={<FunctionsDiscoveryPage />} />
+          <Route path="functions/explore/new" element={<FunctionsDiscoveryPage />} />
+          <Route path="functions/popular" element={<FunctionsDiscoveryPage />} />
+          <Route path="functions/favorites" element={<FunctionsDiscoveryPage />} />
+          <Route path="functions/my" element={<FunctionsDiscoveryPage />} />
+          <Route path="functions/discovery/:filter" element={<FunctionsDiscoveryPage />} />
           <Route path="functions/new" element={<FunctionEditorPage />} />
           <Route path="functions/deploy" element={<RegistryDeployPage />} />
           <Route path="functions/:id" element={<FunctionDetailPage />} />
           <Route path="functions/:id/edit" element={<FunctionEditorPage />} />
           <Route path="functions/:author/:name/settings" element={<FunctionSettingsPage />} />
           <Route path="functions/:author/:name/logs" element={<FunctionLogsPage />} />
+          {/* AI Composer Route */}
+          <Route path="ai-composer" element={<AIComposerPage />} />
+          {/* FRG (Function Runtime Graph) Routes */}
+          <Route path="frg" element={<FRGGraphsPage />} />
+          <Route path="frg/new" element={<FRGEditorPage />} />
+          <Route path="frg/:id" element={<FRGEditorPage />} />
+
           <Route path="providers" element={<ProvidersPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="usage" element={<UsagePage />} />
@@ -553,6 +580,8 @@ function AppContent() {
           <Route path="dashboard/api-keys/:keyId" element={<APIKeyDetailPage />} />
           <Route path="secrets" element={<SecretsPage />} />
           <Route path="teams" element={<TeamsPage />} />
+          <Route path="my-team" element={<MyTeamPage />} />
+          <Route path="teams/:teamId/memory" element={<TeamMemoryPage />} />
           {/* Enterprise Routes */}
           <Route path="enterprise/sla" element={<EnterpriseSLAPage />} />
           <Route path="enterprise/audit" element={<EnterpriseAuditPage />} />

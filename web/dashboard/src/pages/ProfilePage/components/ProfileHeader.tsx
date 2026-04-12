@@ -45,15 +45,14 @@ import {
   ExternalLink,
   Eye,
   Flag,
-  Linkedin,
   Loader2,
   Mail,
   MapPin,
   MessageCircle,
   MoreHorizontal,
   Share2,
-  Twitter,
 } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -88,7 +87,7 @@ function ShareDialog({ profile, children }: { profile: UserProfile; children: Re
   const shareLinks = [
     {
       name: 'Twitter',
-      icon: Twitter,
+      icon: () => <Icon icon="simple-icons:x" className="w-5 h-5" />,
       url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(profileUrl)}`,
       bg: 'bg-sky-500/10',
       border: 'border-sky-500/20',
@@ -97,7 +96,7 @@ function ShareDialog({ profile, children }: { profile: UserProfile; children: Re
     },
     {
       name: 'LinkedIn',
-      icon: Linkedin,
+      icon: () => <Icon icon="simple-icons:linkedin" className="w-5 h-5" />,
       url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(profileUrl)}`,
       bg: 'bg-blue-600/10',
       border: 'border-blue-600/20',

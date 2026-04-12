@@ -150,6 +150,7 @@ export function LoginForm({
         ...data,
         ...(import.meta.env.PROD && recaptchaToken ? { recaptchaToken } : {}),
       };
+      console.log('[debug] loginData type:', typeof loginData, loginData.constructor.name, JSON.stringify(loginData));
       await login(loginData);
 
       // Check if MFA is required

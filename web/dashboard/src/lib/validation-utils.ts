@@ -1,4 +1,4 @@
-import { z, ZodError, ZodType } from 'zod';
+import { ZodError, ZodType } from 'zod';
 import * as schemas from './api-validation';
 
 // Validation result type
@@ -26,7 +26,7 @@ let logger: ValidationLogger = {
   },
   info: (message: string, data?: unknown) => {
     console.info(`[Validation] ${message}`, data);
-  }
+  },
 };
 
 // Set custom logger
@@ -46,9 +46,10 @@ export function safeParse<T>(
     const result = schema.parse(data);
     return { success: true, data: result };
   } catch (error) {
-    const errorMessage = error instanceof ZodError
-      ? `Validation failed: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`
-      : 'Unknown validation error';
+    const errorMessage =
+      error instanceof ZodError
+        ? `Validation failed: ${error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`
+        : 'Unknown validation error';
 
     logger.warn(`${context ? `[${context}] ` : ''}${errorMessage}`, error);
 
@@ -58,7 +59,7 @@ export function safeParse<T>(
         success: false,
         error: errorMessage,
         data: fallback,
-        fallbackUsed: true
+        fallbackUsed: true,
       };
     }
 
@@ -113,7 +114,9 @@ export function safeParseArray<T>(
   }
 
   if (invalidCount > 0) {
-    logger.warn(`${context ? `[${context}] ` : ''}Filtered out ${invalidCount} invalid items from array`);
+    logger.warn(
+      `${context ? `[${context}] ` : ''}Filtered out ${invalidCount} invalid items from array`
+    );
   }
 
   return validItems;
@@ -177,10 +180,7 @@ export const validateTableName = (tableName: unknown) =>
 
 // Validation middleware for API responses
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createValidatedApiResponse<T>(
-  schema: ZodType<T, any, any>,
-  fallback?: T
-) {
+export function createValidatedApiResponse<T>(schema: ZodType<T, any, any>, fallback?: T) {
   return (data: unknown, context?: string): T | null => {
     const result = safeParse(schema, data, fallback, context);
     return result.data || null;
@@ -193,9 +193,9 @@ export function validateBatch<T>(
   schema: ZodType<T, any, any>,
   items: unknown[],
   context?: string
-): { valid: T[], invalid: { index: number, error: string }[] } {
+): { valid: T[]; invalid: { index: number; error: string }[] } {
   const valid: T[] = [];
-  const invalid: { index: number, error: string }[] = [];
+  const invalid: { index: number; error: string }[] = [];
 
   items.forEach((item, index) => {
     const result = safeParse(schema, item, undefined, `${context}[${index}]`);
@@ -217,7 +217,7 @@ export class ValidationStats {
     successfulValidations: 0,
     failedValidations: 0,
     fallbackUsed: 0,
-    errorsByType: new Map<string, number>()
+    errorsByType: new Map<string, number>(),
   };
 
   static getInstance(): ValidationStats {
@@ -252,7 +252,7 @@ export class ValidationStats {
       successfulValidations: 0,
       failedValidations: 0,
       fallbackUsed: 0,
-      errorsByType: new Map()
+      errorsByType: new Map(),
     };
   }
 }
@@ -292,13 +292,16 @@ export function reportValidationError(
 
   logger.error(`Validation error ${fullContext}: ${errorMessage}`, {
     context,
-    error: error instanceof Error ? {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    } : error,
+    error:
+      error instanceof Error
+        ? {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+          }
+        : error,
     additionalData,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 
   if (import.meta.env.PROD && typeof window !== 'undefined') {

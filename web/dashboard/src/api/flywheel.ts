@@ -4,27 +4,27 @@
  * React Query hooks for threads, replies, reputation, challenges, and WebSocket
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from './client';
-import { getApiBaseUrl } from '@/lib/constants';
 import type {
-  Thread,
-  ThreadFilters,
-  Reply,
-  ReputationProfile,
-  Leaderboard,
+  Category,
   Challenge,
   ChallengeFilters,
   ChallengeSubmission,
-  ExecutionResults,
-  WebSocketMessage,
-  ThreadUpdatePayload,
-  ReplyAddedPayload,
   ExecutionCompletePayload,
-  ReputationChangePayload,
+  ExecutionResults,
+  Leaderboard,
   Pagination,
-  Category,
+  Reply,
+  ReplyAddedPayload,
+  ReputationChangePayload,
+  ReputationProfile,
+  Thread,
+  ThreadFilters,
+  ThreadUpdatePayload,
+  WebSocketMessage,
 } from '@/components/flywheel/types';
+import { getApiBaseUrl } from '@/lib/constants';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from './client';
 
 // ==================== API Endpoints ====================
 
@@ -90,7 +90,7 @@ export function useThreads(filters?: ThreadFilters, limit = 20, offset = 0) {
       if (filters?.category) params.append('category', filters.category);
       if (filters?.search) params.append('search', filters.search);
       if (filters?.sortBy) params.append('sort_by', filters.sortBy);
-      filters?.tags?.forEach(tag => params.append('tags', tag));
+      filters?.tags?.forEach((tag) => params.append('tags', tag));
 
       return apiClient.get<ThreadsResponse>(`${ENDPOINTS.threads}?${params.toString()}`);
     },
@@ -198,10 +198,10 @@ export function useCreateReply() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['flywheel', 'replies', variables.threadId]
+        queryKey: ['flywheel', 'replies', variables.threadId],
       });
       queryClient.invalidateQueries({
-        queryKey: ['flywheel', 'thread', variables.threadId]
+        queryKey: ['flywheel', 'thread', variables.threadId],
       });
     },
   });
@@ -211,12 +211,18 @@ export function useMarkReplyHelpful() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ threadId, replyId }: { threadId: string; replyId: string }): Promise<void> => {
+    mutationFn: async ({
+      threadId,
+      replyId,
+    }: {
+      threadId: string;
+      replyId: string;
+    }): Promise<void> => {
       return apiClient.post<void>(`${ENDPOINTS.replies}/${replyId}/helpful`);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['flywheel', 'replies', variables.threadId]
+        queryKey: ['flywheel', 'replies', variables.threadId],
       });
     },
   });
@@ -226,15 +232,21 @@ export function useAcceptSolution() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ threadId, replyId }: { threadId: string; replyId: string }): Promise<void> => {
+    mutationFn: async ({
+      threadId,
+      replyId,
+    }: {
+      threadId: string;
+      replyId: string;
+    }): Promise<void> => {
       return apiClient.post<void>(`${ENDPOINTS.threads}/${threadId}/accept`, { replyId });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['flywheel', 'thread', variables.threadId]
+        queryKey: ['flywheel', 'thread', variables.threadId],
       });
       queryClient.invalidateQueries({
-        queryKey: ['flywheel', 'replies', variables.threadId]
+        queryKey: ['flywheel', 'replies', variables.threadId],
       });
     },
   });
@@ -394,7 +406,9 @@ export function useSubmitChallenge() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: ChallengeSubmissionRequest): Promise<{ submission: ChallengeSubmission }> => {
+    mutationFn: async (
+      data: ChallengeSubmissionRequest
+    ): Promise<{ submission: ChallengeSubmission }> => {
       return apiClient.post<{ submission: ChallengeSubmission }>(
         `${ENDPOINTS.challenges}/${data.challengeId}/submit`,
         data
@@ -402,7 +416,7 @@ export function useSubmitChallenge() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['flywheel', 'challenge', variables.challengeId]
+        queryKey: ['flywheel', 'challenge', variables.challengeId],
       });
       queryClient.invalidateQueries({ queryKey: ['flywheel', 'challenges'] });
     },
@@ -438,9 +452,32 @@ export function useCategories() {
   });
 }
 
+// ==================== Stats API ====================
+
+export interface FlywheelStats {
+  activeThreads: number;
+  verifiedSolutions: number;
+  activeChallenges: number;
+  totalReputationPoints: number;
+}
+
+interface StatsResponse {
+  stats: FlywheelStats;
+}
+
+export function useFlywheelStats() {
+  return useQuery({
+    queryKey: ['flywheel', 'stats'],
+    queryFn: async (): Promise<StatsResponse> => {
+      return apiClient.get<StatsResponse>('/v1/flywheel/stats');
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
 // ==================== WebSocket Hook ====================
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface UseWebSocketOptions {
   onThreadUpdate?: (payload: ThreadUpdatePayload) => void;
@@ -561,37 +598,43 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 export function useThreadRealtime(threadId: string | undefined) {
   const queryClient = useQueryClient();
 
-  const handleReplyAdded = useCallback((payload: ReplyAddedPayload) => {
-    if (payload.threadId === threadId) {
-      // Update the replies cache
-      queryClient.setQueryData<{ replies: Reply[]; pagination: Pagination }>(
-        ['flywheel', 'replies', threadId],
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            replies: [...old.replies, payload.reply],
-          };
-        }
+  const handleReplyAdded = useCallback(
+    (payload: ReplyAddedPayload) => {
+      if (payload.threadId === threadId) {
+        // Update the replies cache
+        queryClient.setQueryData<{ replies: Reply[]; pagination: Pagination }>(
+          ['flywheel', 'replies', threadId],
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              replies: [...old.replies, payload.reply],
+            };
+          }
+        );
+
+        // Invalidate thread to update reply count
+        queryClient.invalidateQueries({ queryKey: ['flywheel', 'thread', threadId] });
+      }
+    },
+    [queryClient, threadId]
+  );
+
+  const handleExecutionComplete = useCallback(
+    (payload: ExecutionCompletePayload) => {
+      // Update execution results in the cache
+      queryClient.setQueryData<{ results: ExecutionResults }>(
+        ['flywheel', 'execution', payload.executionId],
+        { results: payload.results }
       );
 
-      // Invalidate thread to update reply count
-      queryClient.invalidateQueries({ queryKey: ['flywheel', 'thread', threadId] });
-    }
-  }, [queryClient, threadId]);
-
-  const handleExecutionComplete = useCallback((payload: ExecutionCompletePayload) => {
-    // Update execution results in the cache
-    queryClient.setQueryData<{ results: ExecutionResults }>(
-      ['flywheel', 'execution', payload.executionId],
-      { results: payload.results }
-    );
-
-    // Invalidate replies to show updated verification status
-    if (threadId) {
-      queryClient.invalidateQueries({ queryKey: ['flywheel', 'replies', threadId] });
-    }
-  }, [queryClient, threadId]);
+      // Invalidate replies to show updated verification status
+      if (threadId) {
+        queryClient.invalidateQueries({ queryKey: ['flywheel', 'replies', threadId] });
+      }
+    },
+    [queryClient, threadId]
+  );
 
   return useWebSocket({
     onReplyAdded: handleReplyAdded,
@@ -604,10 +647,13 @@ export function useThreadRealtime(threadId: string | undefined) {
 export function useLeaderboardRealtime() {
   const queryClient = useQueryClient();
 
-  const handleReputationChange = useCallback((payload: ReputationChangePayload) => {
-    // Invalidate all leaderboard queries
-    queryClient.invalidateQueries({ queryKey: ['flywheel', 'leaderboard'] });
-  }, [queryClient]);
+  const handleReputationChange = useCallback(
+    (payload: ReputationChangePayload) => {
+      // Invalidate all leaderboard queries
+      queryClient.invalidateQueries({ queryKey: ['flywheel', 'leaderboard'] });
+    },
+    [queryClient]
+  );
 
   return useWebSocket({
     onReputationChange: handleReputationChange,

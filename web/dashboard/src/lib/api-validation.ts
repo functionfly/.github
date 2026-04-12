@@ -290,7 +290,7 @@ export const functionLogSchema = z
     message: z.string(),
     timestamp: timestampSchema,
     source: z.string().min(1),
-    metadata: z.record(z.any()).nullable().optional(),
+    metadata: z.record(z.string(), z.any()).nullable().optional(),
   })
   .transform((l) => ({
     id: l.id,
@@ -379,7 +379,7 @@ export const analyticsServiceSchema = z.object({
   name: z.string().min(1),
   enabled: z.boolean(),
   status: z.enum(['loading', 'loaded', 'error', 'disabled']),
-  config: z.record(z.any()),
+  config: z.record(z.string(), z.any()),
   lastUsed: timestampSchema.optional(),
 });
 
@@ -459,6 +459,45 @@ export const tableNameSchema = z
   .string()
   .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/, 'Invalid table name format');
 
+// Provider validation schemas
+export const providerIdSchema = z.enum([
+  'workers',
+  'vercel',
+  'fly',
+  'deno',
+  'functionfly-edge',
+]);
+
+export const providerApiKeySchema = z
+  .string()
+  .min(10, 'API key must be at least 10 characters')
+  .max(500, 'API key is too long')
+  .regex(
+    /^[A-Za-z0-9_\-\.\s]+$/,
+    'API key contains invalid characters. Only alphanumeric characters, underscores, hyphens, and periods are allowed.'
+  );
+
+export const connectProviderRequestSchema = z.object({
+  providerId: providerIdSchema,
+  apiKey: providerApiKeySchema.optional().or(z.literal('')),
+});
+
+export const connectedProviderSchema = z.object({
+  id: z.string().min(1, 'Provider ID is required'),
+  name: z.enum(['workers', 'vercel', 'fly', 'deno', 'functionfly-edge']),
+  status: z.enum(['online', 'offline', 'degraded', 'pending']),
+  connectedAt: timestampSchema,
+});
+
+export const connectProviderResponseSchema = z.object({
+  provider: connectedProviderSchema,
+});
+
+export const testConnectionResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string().optional(),
+});
+
 // Type exports for TypeScript inference
 export type DatabaseHealth = z.infer<typeof databaseHealthSchema>;
 export type DatabaseAlert = z.infer<typeof databaseAlertSchema>;
@@ -499,3 +538,10 @@ export type UserStatusChangeEvent = z.infer<typeof userStatusChangeEventSchema>;
 export type ProfileUpdateEvent = z.infer<typeof profileUpdateEventSchema>;
 export type NewNotificationEvent = z.infer<typeof newNotificationEventSchema>;
 export type PresenceEvent = z.infer<typeof presenceEventSchema>;
+
+// Provider types
+export type ProviderId = z.infer<typeof providerIdSchema>;
+export type ConnectProviderRequestValidated = z.infer<typeof connectProviderRequestSchema>;
+export type ConnectedProviderValidated = z.infer<typeof connectedProviderSchema>;
+export type ConnectProviderResponseValidated = z.infer<typeof connectProviderResponseSchema>;
+export type TestConnectionResponseValidated = z.infer<typeof testConnectionResponseSchema>;

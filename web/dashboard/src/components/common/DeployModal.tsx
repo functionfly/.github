@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -9,50 +10,58 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
-  Loader2,
-  Cloud,
-  Globe,
-  Code,
-  Settings,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
   AlertCircle,
   CheckCircle2,
-  Info
-} from "lucide-react";
-import { ProviderIcon } from "./ProviderIcon";
+  Cloud,
+  Code,
+  Globe,
+  Info,
+  Loader2,
+  Settings,
+} from 'lucide-react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { ProviderIcon } from './ProviderIcon';
 
 const deploySchema = z.object({
-  functionName: z.string().min(1, "Function name is required").regex(/^[a-zA-Z0-9_-]+$/, "Function name can only contain letters, numbers, hyphens, and underscores"),
-  version: z.string().min(1, "Version is required").regex(/^\d+\.\d+\.\d+$/, "Version must be in format x.y.z"),
+  functionName: z
+    .string()
+    .min(1, 'Function name is required')
+    .regex(
+      /^[a-zA-Z0-9_-]+$/,
+      'Function name can only contain letters, numbers, hyphens, and underscores'
+    ),
+  version: z
+    .string()
+    .min(1, 'Version is required')
+    .regex(/^\d+\.\d+\.\d+$/, 'Version must be in format x.y.z'),
   description: z.string().optional(),
-  runtime: z.enum(["node", "python", "deno", "go", "rust"], {
-    required_error: "Please select a runtime",
-  }),
-  provider: z.enum(["cloudflare", "vercel", "fly", "deno", "functionfly-edge"], {
-    required_error: "Please select a provider",
-  }),
-  environment: z.enum(["production", "staging", "development"], {
-    required_error: "Please select an environment",
-  }),
+  runtime: z.enum(['node', 'python', 'deno', 'go', 'rust']),
+  provider: z.enum(['cloudflare', 'vercel', 'fly', 'deno', 'functionfly-edge']),
+  environment: z.enum(['production', 'staging', 'development']),
   domain: z.string().optional(),
   enableCORS: z.boolean().default(false),
   enableAuth: z.boolean().default(false),
   enableCaching: z.boolean().default(false),
   memoryLimit: z.number().min(128).max(10240).optional(),
   timeout: z.number().min(5).max(900).optional(),
-  environmentVariables: z.record(z.string()).optional(),
+  environmentVariables: z.record(z.string(), z.string()).optional(),
 });
 
 type DeployFormData = z.infer<typeof deploySchema>;
@@ -71,25 +80,25 @@ interface DeployModalProps {
 }
 
 const runtimeOptions = [
-  { value: "node", label: "Node.js", icon: Code },
-  { value: "python", label: "Python", icon: Code },
-  { value: "deno", label: "Deno", icon: Globe },
-  { value: "go", label: "Go", icon: Settings },
-  { value: "rust", label: "Rust", icon: Settings },
+  { value: 'node', label: 'Node.js', icon: Code },
+  { value: 'python', label: 'Python', icon: Code },
+  { value: 'deno', label: 'Deno', icon: Globe },
+  { value: 'go', label: 'Go', icon: Settings },
+  { value: 'rust', label: 'Rust', icon: Settings },
 ] as const;
 
 const providerOptions = [
-  { value: "cloudflare", label: "Cloudflare Workers", color: "#f48120" },
-  { value: "vercel", label: "Vercel", color: "#ffffff" },
-  { value: "fly", label: "Fly.io", color: "#7b68ee" },
-  { value: "deno", label: "Deno Deploy", color: "#ffffff" },
-  { value: "functionfly-edge", label: "FunctionFly Edge", color: "#6366f1" },
+  { value: 'cloudflare', label: 'Cloudflare Workers', color: '#f48120' },
+  { value: 'vercel', label: 'Vercel', color: '#ffffff' },
+  { value: 'fly', label: 'Fly.io', color: '#7b68ee' },
+  { value: 'deno', label: 'Deno Deploy', color: '#ffffff' },
+  { value: 'functionfly-edge', label: 'FunctionFly Edge', color: '#6366f1' },
 ] as const;
 
 const environmentOptions = [
-  { value: "development", label: "Development", color: "#10b981" },
-  { value: "staging", label: "Staging", color: "#f59e0b" },
-  { value: "production", label: "Production", color: "#ef4444" },
+  { value: 'development', label: 'Development', color: '#10b981' },
+  { value: 'staging', label: 'Staging', color: '#f59e0b' },
+  { value: 'production', label: 'Production', color: '#ef4444' },
 ] as const;
 
 export function DeployModal({
@@ -100,8 +109,29 @@ export function DeployModal({
   functionInfo,
 }: DeployModalProps) {
   const [isDeploying, setIsDeploying] = useState(false);
-  const [deployStatus, setDeployStatus] = useState<"idle" | "deploying" | "success" | "error">("idle");
+  const [deployStatus, setDeployStatus] = useState<'idle' | 'deploying' | 'success' | 'error'>(
+    'idle'
+  );
   const [deployError, setDeployError] = useState<string | null>(null);
+
+  const form = useForm({
+    resolver: zodResolver(deploySchema),
+    defaultValues: {
+      functionName: functionInfo?.name || initialData?.functionName || '',
+      version: functionInfo?.version || initialData?.version || '1.0.0',
+      description: functionInfo?.description || initialData?.description || '',
+      runtime: (functionInfo?.runtime as any) || initialData?.runtime || undefined,
+      provider: initialData?.provider || undefined,
+      environment: initialData?.environment || 'development',
+      domain: initialData?.domain || '',
+      enableCORS: initialData?.enableCORS ?? false,
+      enableAuth: initialData?.enableAuth ?? false,
+      enableCaching: initialData?.enableCaching ?? false,
+      memoryLimit: initialData?.memoryLimit || 256,
+      timeout: initialData?.timeout || 30,
+      environmentVariables: initialData?.environmentVariables || {},
+    },
+  });
 
   const {
     register,
@@ -110,47 +140,30 @@ export function DeployModal({
     setValue,
     reset,
     formState: { errors, isValid },
-  } = useForm<DeployFormData>({
-    resolver: zodResolver(deploySchema),
-    defaultValues: {
-      functionName: functionInfo?.name || initialData?.functionName || "",
-      version: functionInfo?.version || initialData?.version || "1.0.0",
-      description: functionInfo?.description || initialData?.description || "",
-      runtime: (functionInfo?.runtime as any) || initialData?.runtime || undefined,
-      provider: initialData?.provider || undefined,
-      environment: initialData?.environment || "development",
-      domain: initialData?.domain || "",
-      enableCORS: initialData?.enableCORS || false,
-      enableAuth: initialData?.enableAuth || false,
-      enableCaching: initialData?.enableCaching || false,
-      memoryLimit: initialData?.memoryLimit || 256,
-      timeout: initialData?.timeout || 30,
-      environmentVariables: initialData?.environmentVariables || {},
-    },
-  });
+  } = form;
 
-  const watchedProvider = watch("provider");
-  const watchedEnvironment = watch("environment");
-  const watchedRuntime = watch("runtime");
+  const watchedProvider = watch('provider');
+  const watchedEnvironment = watch('environment');
+  const watchedRuntime = watch('runtime');
 
   const handleDeploy = async (data: DeployFormData) => {
     setIsDeploying(true);
-    setDeployStatus("deploying");
+    setDeployStatus('deploying');
     setDeployError(null);
 
     try {
       await onDeploy(data);
-      setDeployStatus("success");
+      setDeployStatus('success');
 
       // Auto-close after success
       setTimeout(() => {
         onClose();
         reset();
-        setDeployStatus("idle");
+        setDeployStatus('idle');
       }, 2000);
     } catch (error) {
-      setDeployStatus("error");
-      setDeployError(error instanceof Error ? error.message : "Deployment failed");
+      setDeployStatus('error');
+      setDeployError(error instanceof Error ? error.message : 'Deployment failed');
     } finally {
       setIsDeploying(false);
     }
@@ -160,7 +173,7 @@ export function DeployModal({
     if (!isDeploying) {
       onClose();
       reset();
-      setDeployStatus("idle");
+      setDeployStatus('idle');
       setDeployError(null);
     }
   };
@@ -178,7 +191,10 @@ export function DeployModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(handleDeploy)} className="space-y-6">
+        <form
+          onSubmit={handleSubmit((data) => handleDeploy(data as DeployFormData))}
+          className="space-y-6"
+        >
           {/* Basic Information */}
           <Card>
             <CardContent className="pt-6">
@@ -189,9 +205,9 @@ export function DeployModal({
                   </Label>
                   <Input
                     id="functionName"
-                    {...register("functionName")}
+                    {...register('functionName')}
                     placeholder="my-function"
-                    className={cn(errors.functionName && "border-red-500")}
+                    className={cn(errors.functionName && 'border-red-500')}
                   />
                   {errors.functionName && (
                     <p className="text-xs text-red-500">{errors.functionName.message}</p>
@@ -204,9 +220,9 @@ export function DeployModal({
                   </Label>
                   <Input
                     id="version"
-                    {...register("version")}
+                    {...register('version')}
                     placeholder="1.0.0"
-                    className={cn(errors.version && "border-red-500")}
+                    className={cn(errors.version && 'border-red-500')}
                   />
                   {errors.version && (
                     <p className="text-xs text-red-500">{errors.version.message}</p>
@@ -218,7 +234,7 @@ export function DeployModal({
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  {...register("description")}
+                  {...register('description')}
                   placeholder="Brief description of your function..."
                   rows={2}
                 />
@@ -236,9 +252,9 @@ export function DeployModal({
                   </Label>
                   <Select
                     value={watchedRuntime}
-                    onValueChange={(value) => setValue("runtime", value as any)}
+                    onValueChange={(value) => setValue('runtime', value as any)}
                   >
-                    <SelectTrigger className={cn(errors.runtime && "border-red-500")}>
+                    <SelectTrigger className={cn(errors.runtime && 'border-red-500')}>
                       <SelectValue placeholder="Select runtime" />
                     </SelectTrigger>
                     <SelectContent>
@@ -263,9 +279,9 @@ export function DeployModal({
                   </Label>
                   <Select
                     value={watchedProvider}
-                    onValueChange={(value) => setValue("provider", value as any)}
+                    onValueChange={(value) => setValue('provider', value as any)}
                   >
-                    <SelectTrigger className={cn(errors.provider && "border-red-500")}>
+                    <SelectTrigger className={cn(errors.provider && 'border-red-500')}>
                       <SelectValue placeholder="Select provider" />
                     </SelectTrigger>
                     <SelectContent>
@@ -290,9 +306,9 @@ export function DeployModal({
                   </Label>
                   <Select
                     value={watchedEnvironment}
-                    onValueChange={(value) => setValue("environment", value as any)}
+                    onValueChange={(value) => setValue('environment', value as any)}
                   >
-                    <SelectTrigger className={cn(errors.environment && "border-red-500")}>
+                    <SelectTrigger className={cn(errors.environment && 'border-red-500')}>
                       <SelectValue placeholder="Select environment" />
                     </SelectTrigger>
                     <SelectContent>
@@ -325,11 +341,7 @@ export function DeployModal({
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="space-y-2">
                   <Label htmlFor="domain">Custom Domain</Label>
-                  <Input
-                    id="domain"
-                    {...register("domain")}
-                    placeholder="api.example.com"
-                  />
+                  <Input id="domain" {...register('domain')} placeholder="api.example.com" />
                 </div>
 
                 <div className="space-y-2">
@@ -337,7 +349,7 @@ export function DeployModal({
                   <Input
                     id="memoryLimit"
                     type="number"
-                    {...register("memoryLimit", { valueAsNumber: true })}
+                    {...register('memoryLimit', { valueAsNumber: true })}
                     placeholder="256"
                     min={128}
                     max={10240}
@@ -351,7 +363,7 @@ export function DeployModal({
                   <Input
                     id="timeout"
                     type="number"
-                    {...register("timeout", { valueAsNumber: true })}
+                    {...register('timeout', { valueAsNumber: true })}
                     placeholder="30"
                     min={5}
                     max={900}
@@ -363,30 +375,21 @@ export function DeployModal({
 
               <div className="space-y-3">
                 <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enableCORS"
-                    {...register("enableCORS")}
-                  />
+                  <Checkbox id="enableCORS" {...register('enableCORS')} />
                   <Label htmlFor="enableCORS" className="text-sm">
                     Enable CORS
                   </Label>
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enableAuth"
-                    {...register("enableAuth")}
-                  />
+                  <Checkbox id="enableAuth" {...register('enableAuth')} />
                   <Label htmlFor="enableAuth" className="text-sm">
                     Enable Authentication
                   </Label>
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enableCaching"
-                    {...register("enableCaching")}
-                  />
+                  <Checkbox id="enableCaching" {...register('enableCaching')} />
                   <Label htmlFor="enableCaching" className="text-sm">
                     Enable Response Caching
                   </Label>
@@ -396,7 +399,7 @@ export function DeployModal({
           </Card>
 
           {/* Status Messages */}
-          {deployStatus === "error" && deployError && (
+          {deployStatus === 'error' && deployError && (
             <Alert className="border-red-500/20 bg-red-500/10">
               <AlertCircle className="h-4 w-4 text-red-500" />
               <AlertDescription className="text-red-600 dark:text-red-400">
@@ -405,7 +408,7 @@ export function DeployModal({
             </Alert>
           )}
 
-          {deployStatus === "success" && (
+          {deployStatus === 'success' && (
             <Alert className="border-green-500/20 bg-green-500/10">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
               <AlertDescription className="text-green-600 dark:text-green-400">
@@ -425,20 +428,20 @@ export function DeployModal({
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-400">
                     <ProviderIcon provider={watchedProvider} size="sm" className="mr-1" />
-                    {providerOptions.find(p => p.value === watchedProvider)?.label}
+                    {providerOptions.find((p) => p.value === watchedProvider)?.label}
                   </Badge>
                   <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-400">
-                    {runtimeOptions.find(r => r.value === watchedRuntime)?.label}
+                    {runtimeOptions.find((r) => r.value === watchedRuntime)?.label}
                   </Badge>
                   <Badge
                     variant="secondary"
                     className="bg-indigo-500/10 text-indigo-400"
                     style={{
-                      backgroundColor: `${environmentOptions.find(e => e.value === watchedEnvironment)?.color}20`,
-                      color: environmentOptions.find(e => e.value === watchedEnvironment)?.color
+                      backgroundColor: `${environmentOptions.find((e) => e.value === watchedEnvironment)?.color}20`,
+                      color: environmentOptions.find((e) => e.value === watchedEnvironment)?.color,
                     }}
                   >
-                    {environmentOptions.find(e => e.value === watchedEnvironment)?.label}
+                    {environmentOptions.find((e) => e.value === watchedEnvironment)?.label}
                   </Badge>
                 </div>
               </CardContent>
@@ -451,7 +454,7 @@ export function DeployModal({
             Cancel
           </Button>
           <Button
-            onClick={handleSubmit(handleDeploy)}
+            onClick={() => form.handleSubmit((data) => handleDeploy(data as DeployFormData))()}
             disabled={!isValid || isDeploying}
             className="min-w-[120px]"
           >
@@ -460,7 +463,7 @@ export function DeployModal({
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Deploying...
               </>
-            ) : deployStatus === "success" ? (
+            ) : deployStatus === 'success' ? (
               <>
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Deployed

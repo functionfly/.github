@@ -27,6 +27,7 @@ import { FAQSection } from './components/FAQSection';
 import { FunctionPlanCard } from './components/FunctionPlanCard';
 import { FunctionsComparisonTable } from './components/FunctionsComparisonTable';
 import { StateFabricPricingSection } from './components/StateFabricPricingSection';
+import { BundleCTACard } from './components/BundleCTACard';
 
 type PricingTab = 'functions' | 'state-fabric' | 'agents';
 
@@ -279,6 +280,9 @@ export function PricingPage() {
               </div>
             </motion.div>
           </div>
+
+          {/* Backend-in-a-Box Bundles Promo */}
+          <BundleCTACard />
 
           {/* Product tabs */}
           <motion.div

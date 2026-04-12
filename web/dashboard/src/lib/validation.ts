@@ -115,9 +115,7 @@ export const redirectSchema = z.object({
       (code) => [301, 302, 307, 308].includes(code),
       'Status code must be 301, 302, 307, or 308'
     ),
-  matchType: z.enum(['exact', 'prefix', 'regex'], {
-    errorMap: () => ({ message: 'Match type must be exact, prefix, or regex' }),
-  }),
+  matchType: z.enum(['exact', 'prefix', 'regex']),
   enabled: z.boolean(),
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
 });

@@ -112,9 +112,10 @@ const DEV_CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: https: blob:",
   "font-src 'self' https://fonts.gstatic.com",
-  "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://va.vercel-scripts.com http://localhost:8080 https: ws: wss:",
+  "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://va.vercel-scripts.com http://localhost:8080 http://localhost:8081 ws://localhost:8081 wss://localhost:8081 https: ws: wss:",
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",
+  "form-action 'self' https://api.functionfly.com https://api.staging.functionfly.com",
 ].join('; ');
 
 export default defineConfig({
@@ -214,25 +215,25 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/health/, '/health'),
         configure: proxyConfigure,
       },
-      // /api/users/... -> backend /users/... (user endpoints without v1 prefix)
+      // /api/users/... -> backend /v1/users/... (user endpoints with v1 prefix)
       '/api/users': {
         target: apiProxyTarget,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/users/, '/users'),
+        rewrite: (path) => path.replace(/^\/api\/users/, '/v1/users'),
         configure: proxyConfigure,
       },
-      // /api/auth/... -> backend /auth/... (auth endpoints without v1 prefix)
+      // /api/auth/... -> backend /v1/auth/... (auth endpoints with v1 prefix)
       '/api/auth': {
         target: apiProxyTarget,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/auth/, '/auth'),
+        rewrite: (path) => path.replace(/^\/api\/auth/, '/v1/auth'),
         configure: proxyConfigure,
       },
-      // /api/billing/... -> backend /billing/... (billing endpoints without v1 prefix)
+      // /api/billing/... -> backend /v1/billing/... (billing endpoints with v1 prefix)
       '/api/billing': {
         target: apiProxyTarget,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/billing/, '/billing'),
+        rewrite: (path) => path.replace(/^\/api\/billing/, '/v1/billing'),
         configure: proxyConfigure,
       },
       // /api/v1/... -> backend /v1/... (API client calls with v1 prefix)

@@ -25,15 +25,13 @@ import {
   Building2,
   Briefcase,
   Globe,
-  Github,
-  Twitter,
-  Linkedin,
   Camera,
   ImageIcon,
   Loader2,
   Check,
   AlertCircle,
 } from "lucide-react";
+import { Icon } from '@iconify/react';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -516,7 +514,7 @@ export function EditProfileModal({
 
                 <div className="space-y-2">
                   <div className="relative">
-                    <Github className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                    <Icon icon="simple-icons:github" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                     <Input
                       {...register("githubUrl")}
                       placeholder="https://github.com/username"
@@ -534,7 +532,7 @@ export function EditProfileModal({
 
                 <div className="space-y-2">
                   <div className="relative">
-                    <Twitter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                    <Icon icon="simple-icons:x" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                     <Input
                       {...register("twitterUrl")}
                       placeholder="https://twitter.com/username"
@@ -552,7 +550,7 @@ export function EditProfileModal({
 
                 <div className="space-y-2">
                   <div className="relative">
-                    <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                    <Icon icon="simple-icons:linkedin" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                     <Input
                       {...register("linkedinUrl")}
                       placeholder="https://linkedin.com/in/username"

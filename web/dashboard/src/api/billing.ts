@@ -119,11 +119,48 @@ export async function createBillingPortalSession(
   returnUrl?: string
 ): Promise<CreatePortalSessionResponse> {
   const body = returnUrl ? { return_url: returnUrl } : undefined;
+
+  // Fetch CSRF token for protected billing endpoint
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
   const response = await apiClient.post<CreatePortalSessionResponse>(
     '/v1/billing/portal-session',
-    body ?? {}
+    body ?? {},
+    { headers }
   );
   return response;
+}
+
+/**
+ * Validates that the provided ID is a valid Stripe price ID.
+ * Prevents common mistakes like using product IDs (prod_*) instead of price IDs.
+ */
+function validateStripePriceId(priceId: string): void {
+  if (!priceId) {
+    throw new Error('Price ID is required');
+  }
+
+  // Check for common mistakes
+  if (priceId.startsWith('prod_')) {
+    throw new Error(
+      `Invalid price ID: received product ID (${priceId}) instead of price ID. ` +
+      'Product IDs cannot be used for checkout - use the associated price ID (price_*) from Stripe Dashboard.'
+    );
+  }
+  if (priceId.startsWith('sub_')) {
+    throw new Error(`Invalid price ID: received subscription ID (${priceId}) instead of price ID`);
+  }
+  if (priceId.startsWith('plan_')) {
+    throw new Error(`Invalid price ID: received plan ID (${priceId}) instead of price ID`);
+  }
+
+  if (!priceId.startsWith('price_')) {
+    throw new Error(`Invalid price ID: must start with 'price_', got: ${priceId}`);
+  }
 }
 
 /**
@@ -138,15 +175,26 @@ export async function createCheckoutSession(
   successUrl?: string,
   cancelUrl?: string
 ): Promise<CreateCheckoutSessionResponse> {
+  // Validate price ID before sending to backend
+  validateStripePriceId(priceId);
+
   const body: CreateCheckoutRequest = {
     price_id: priceId,
   };
   if (successUrl) body.success_url = successUrl;
   if (cancelUrl) body.cancel_url = cancelUrl;
 
+  // Fetch CSRF token for protected billing endpoint
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
   const response = await apiClient.post<CreateCheckoutSessionResponse>(
     '/v1/billing/checkout',
-    body
+    body,
+    { headers }
   );
   return response;
 }
@@ -219,9 +267,18 @@ export async function getUsage(
 export async function cancelSubscription(
   immediately: boolean = false
 ): Promise<{ message: string }> {
-  const response = await apiClient.post<{ message: string }>('/v1/billing/subscription/cancel', {
-    immediately,
-  });
+  // Fetch CSRF token for protected billing endpoint
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  const response = await apiClient.post<{ message: string }>(
+    '/v1/billing/subscription/cancel',
+    { immediately },
+    { headers }
+  );
   return response;
 }
 
@@ -303,7 +360,14 @@ export async function topUpWallet(
   if (successUrl) body.success_url = successUrl;
   if (cancelUrl) body.cancel_url = cancelUrl;
 
-  const response = await apiClient.post<TopUpResponse>('/v1/billing/wallet/top-up', body);
+  // Fetch CSRF token for protected billing endpoint
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  const response = await apiClient.post<TopUpResponse>('/v1/billing/wallet/top-up', body, { headers });
   return response;
 }
 
@@ -370,12 +434,163 @@ export async function createStateFabricAddOnCheckout(
   successUrl?: string,
   cancelUrl?: string
 ): Promise<CreateCheckoutSessionResponse> {
+  // Fetch CSRF token for protected billing endpoint
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
   return apiClient.post<CreateCheckoutSessionResponse>(
     '/v1/billing/state-fabric/add-ons/checkout',
     {
       addon_id: addonId,
       success_url: successUrl,
       cancel_url: cancelUrl,
-    }
+    },
+    { headers }
+  );
+}
+
+// ==================== Backend-in-a-Box Pricing Bundles ====================
+
+export interface Bundle {
+  id: string;
+  slug: string;
+  name: string;
+  display_name: string;
+  description: string;
+  short_description: string;
+  price_cents: number;
+  price_usd: string;
+  billing_interval: string;
+  icon: string;
+  color: string;
+  features_included: string[];
+  feature_limits: Record<string, number>;
+  provisioning_steps: string[];
+  is_popular: boolean;
+}
+
+export interface FounderModeRegistration {
+  id: string;
+  bundle_id: string;
+  bundle_slug: string;
+  mode_type: string;
+  status: string;
+  started_at: string;
+  ends_at?: string;
+  free_days: number;
+  mrr_threshold_cents: number;
+  days_remaining: number;
+}
+
+export interface DeferredBillingStatus {
+  bundle_id: string;
+  status: string;
+  trigger_thresholds: Record<string, unknown>;
+  current_progress: Record<string, unknown>;
+  progress_percent: number;
+  estimated_days_left?: number;
+}
+
+export interface FounderModeRequest {
+  mode_type: 'time_based' | 'revenue_based' | 'hybrid';
+  free_days: number;
+  mrr_threshold: number;
+  success_url: string;
+  cancel_url: string;
+}
+
+/**
+ * Get all active Backend-in-a-Box pricing bundles.
+ * GET /v1/billing/bundles
+ */
+export async function getBundles(): Promise<{ bundles: Bundle[] }> {
+  return apiClient.get<{ bundles: Bundle[] }>('/v1/billing/bundles');
+}
+
+/**
+ * Get a specific bundle by slug.
+ * GET /v1/billing/bundles/:slug
+ */
+export async function getBundle(slug: string): Promise<Bundle> {
+  return apiClient.get<Bundle>(`/v1/billing/bundles/${slug}`);
+}
+
+/**
+ * Create a checkout session for immediate bundle subscription.
+ * POST /v1/billing/bundles/:slug/checkout
+ */
+export async function createBundleCheckout(
+  slug: string,
+  successUrl: string,
+  cancelUrl: string
+): Promise<CreateCheckoutSessionResponse> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  return apiClient.post<CreateCheckoutSessionResponse>(
+    `/v1/billing/bundles/${slug}/checkout`,
+    { success_url: successUrl, cancel_url: cancelUrl },
+    { headers }
+  );
+}
+
+/**
+ * Register for founder mode ("Build Now, Pay Later" / "Free until $1K MRR").
+ * POST /v1/billing/bundles/:slug/founder
+ */
+export async function registerFounderMode(
+  slug: string,
+  data: FounderModeRequest
+): Promise<FounderModeRegistration> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  return apiClient.post<FounderModeRegistration>(
+    `/v1/billing/bundles/${slug}/founder`,
+    data,
+    { headers }
+  );
+}
+
+/**
+ * Get founder mode status for current tenant.
+ * GET /v1/billing/founder-mode
+ */
+export async function getFounderModeStatus(): Promise<{ founder_modes: FounderModeRegistration[] }> {
+  return apiClient.get<{ founder_modes: FounderModeRegistration[] }>('/v1/billing/founder-mode');
+}
+
+/**
+ * Get deferred billing progress toward trigger thresholds.
+ * GET /v1/billing/deferred-status
+ */
+export async function getDeferredBillingStatus(): Promise<DeferredBillingStatus> {
+  return apiClient.get<DeferredBillingStatus>('/v1/billing/deferred-status');
+}
+
+/**
+ * Manually convert from founder mode to paid subscription.
+ * POST /v1/billing/convert-to-paid
+ */
+export async function convertToPaid(bundleId: string): Promise<CreateCheckoutSessionResponse> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  return apiClient.post<CreateCheckoutSessionResponse>(
+    '/v1/billing/convert-to-paid',
+    { bundle_id: bundleId },
+    { headers }
   );
 }

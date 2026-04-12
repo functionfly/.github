@@ -11,11 +11,9 @@ import {
   Building2,
   Briefcase,
   GraduationCap,
-  Github,
-  Twitter,
-  Linkedin,
   Globe,
 } from "lucide-react";
+import { Icon } from '@iconify/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SkillsManager } from "@/components/profile/SkillsManager";
@@ -126,7 +124,7 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
             <Card className="border-border-subtle">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Github className="w-5 h-5 text-brand-500" />
+                  <Icon icon="simple-icons:github" className="w-5 h-5 text-brand-500" />
                   Open Source Contributions
                 </CardTitle>
               </CardHeader>
@@ -169,7 +167,7 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 text-text-secondary hover:text-text-primary transition-colors"
                 >
-                  <Github className="w-5 h-5" />
+                  <Icon icon="simple-icons:github" className="w-5 h-5" />
                   <span className="text-sm">GitHub</span>
                 </a>
               )}
@@ -180,7 +178,7 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 text-text-secondary hover:text-text-primary transition-colors"
                 >
-                  <Twitter className="w-5 h-5" />
+                  <Icon icon="simple-icons:x" className="w-5 h-5" />
                   <span className="text-sm">Twitter</span>
                 </a>
               )}
@@ -191,7 +189,7 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 text-text-secondary hover:text-text-primary transition-colors"
                 >
-                  <Linkedin className="w-5 h-5" />
+                  <Icon icon="simple-icons:linkedin" className="w-5 h-5" />
                   <span className="text-sm">LinkedIn</span>
                 </a>
               )}

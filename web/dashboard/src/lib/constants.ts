@@ -37,6 +37,7 @@ export const ROUTES = {
   SETTINGS: '/settings',
   BILLING: '/settings', // Billing tab lives on Settings page
   TEAMS: '/teams',
+  TEAM_MEMORY: '/teams/:teamId/memory',
   APPS: '/apps',
   APP_DETAIL: '/apps/:appId',
   FUNCTION_DETAIL: '/functions/:id',
@@ -47,6 +48,10 @@ export const ROUTES = {
   MARKETPLACE_AGENTS: '/marketplace/agents',
   MARKETPLACE_FUNCTIONS: '/marketplace/functions',
   EVOLUTION: '/evolution',
+  // FRG - Function Runtime Graph
+  FRG: '/frg',
+  FRG_NEW: '/frg/new',
+  FRG_EDIT: '/frg/:id',
   // Enterprise routes
   ENTERPRISE: '/enterprise',
   ENTERPRISE_SLA: '/enterprise/sla',
@@ -55,6 +60,14 @@ export const ROUTES = {
   ENTERPRISE_SUPPORT: '/enterprise/support',
   ENTERPRISE_COMPLIANCE: '/enterprise/compliance',
   PAYOUTS: '/payouts',
+  PLATFORM_WALLET: '/platform-wallet',
+  AGENT_MEMORIES: '/agent-memories',
+  CONVERSATIONS: '/conversations',
+  STATE: '/state',
+  ENTERPRISE: '/enterprise',
+  ENTERPRISE_SLA: '/enterprise/sla',
+  ENTERPRISE_AUDIT: '/enterprise/audit',
+  ENTERPRISE_SUPPORT: '/enterprise/support',
 } as const;
 
 /**
@@ -78,6 +91,23 @@ export const PUBLIC_SITE_ORIGIN =
  * Same as PUBLIC_SITE_ORIGIN unless overridden for multi-origin setups.
  */
 export const MARKETING_SITE_URL = PUBLIC_SITE_ORIGIN;
+
+/**
+ * Blog site origin (standalone Astro blog at web/blog).
+ * Production: https://blog.functionfly.com, local dev: http://localhost:4327.
+ * Override with VITE_BLOG_SITE_URL.
+ */
+export function getBlogSiteOrigin(): string {
+  const env = (import.meta.env.VITE_BLOG_SITE_URL ?? '').trim().replace(/\/$/, '');
+  if (env) return env;
+  if (import.meta.env.PROD) return 'https://blog.functionfly.com';
+  return 'http://localhost:4327';
+}
+
+/**
+ * URL of the blog site (blog.functionfly.com). The dashboard app redirects "/blog" here.
+ */
+export const BLOG_SITE_URL = getBlogSiteOrigin();
 
 /**
  * Logged-out "/" and nav "Home" go to the Astro marketing site: production uses MARKETING_SITE_URL;
@@ -171,8 +201,8 @@ export const ROUTE_BUILDERS = {
   // User profile
   userProfile: (username: string) => `/u/${username}`,
 
-  // Blog posts (public blog on Astro marketing site, not the app)
-  blogPost: (slug: string) => getMarketingPageUrl(`/blog/${slug}`),
+  // Blog posts (public blog on standalone Astro site web/blog, not the app)
+  blogPost: (slug: string) => `${getBlogSiteOrigin()}/${slug}`,
 
   // Documentation (standalone Astro app web/docs)
   docs: (slug?: string) =>
@@ -570,6 +600,7 @@ export const COMING_SOON_ONLY =
  * Canonical API base URL (no trailing slash). Use for all API and WebSocket calls.
  * - Production: set VITE_API_URL (e.g. https://api.functionfly.com).
  * - Local dev: set VITE_API_URL=http://localhost:8080 to hit the API directly (recommended), or VITE_API_URL=/api to use the Vite proxy (backend must be running on 8080). If you see 404 on /api/v1/api-keys, use http://localhost:8080 or start the backend.
+ * - Flywheel production: http://localhost:3000/flywheel
  */
 export function getApiBaseUrl(): string {
   const env = (import.meta.env.VITE_API_URL ?? '').trim();
@@ -585,8 +616,9 @@ export function getApiBaseUrl(): string {
     }
     return base;
   }
+  // Production: Use configured URL or default to localhost:3000/flywheel
   if (env) return env.replace(/\/$/, '');
-  return 'https://api.functionfly.com';
+  return 'http://localhost:3000/flywheel';
 }
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -609,9 +641,10 @@ export const AI_SERVICE_BASE_URL = getAiServiceBaseUrl();
 
 /**
  * Validate that Stripe price IDs are set in production.
- * Throws an error if any price ID is a placeholder value.
+ * Throws an error if any price ID is a placeholder value or uses invalid ID format.
  */
 const STRIPE_PRICE_ID_PATTERN = /^(price_[\w]+_placeholder|)$/;
+const STRIPE_PRICE_ID_VALID_PATTERN = /^price_[\w]+$/;
 
 function validateStripePriceIds() {
   if (!import.meta.env.PROD) return;
@@ -629,16 +662,27 @@ function validateStripePriceIds() {
 
   const missing: string[] = [];
   const placeholders: string[] = [];
+  const productIds: string[] = [];
+  const invalidIds: string[] = [];
 
   for (const [envVar, value] of Object.entries(priceIds)) {
     if (!value) {
       missing.push(envVar);
     } else if (STRIPE_PRICE_ID_PATTERN.test(value)) {
       placeholders.push(envVar);
+    } else if (value.startsWith('prod_')) {
+      productIds.push(`${envVar}=${value}`);
+    } else if (!STRIPE_PRICE_ID_VALID_PATTERN.test(value)) {
+      invalidIds.push(`${envVar}=${value}`);
     }
   }
 
-  if (missing.length > 0 || placeholders.length > 0) {
+  if (
+    missing.length > 0 ||
+    placeholders.length > 0 ||
+    productIds.length > 0 ||
+    invalidIds.length > 0
+  ) {
     const errors: string[] = [];
     if (missing.length > 0) {
       errors.push(`Missing Stripe price IDs: ${missing.join(', ')}`);
@@ -646,8 +690,14 @@ function validateStripePriceIds() {
     if (placeholders.length > 0) {
       errors.push(`Placeholder Stripe price IDs detected: ${placeholders.join(', ')}`);
     }
+    if (productIds.length > 0) {
+      errors.push(`Product IDs (prod_*) used instead of price IDs: ${productIds.join(', ')}`);
+    }
+    if (invalidIds.length > 0) {
+      errors.push(`Invalid price ID format: ${invalidIds.join(', ')}`);
+    }
     throw new Error(
-      `Production build failed: ${errors.join('. ')}. Set actual Stripe price IDs in your production environment.`
+      `Production build failed: ${errors.join('. ')}. Set actual Stripe price IDs (price_*) in your production environment.`
     );
   }
 }

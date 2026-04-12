@@ -27,7 +27,6 @@ import type { Notification } from '@/types/notifications';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bell } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import CountUp from 'react-countup';
 import { useNavigate } from 'react-router-dom';
 import { NotificationCenter } from './NotificationCenter';
 
@@ -236,11 +235,7 @@ export function NotificationBell({
                 exit={{ scale: 0, opacity: 0 }}
                 className={`absolute -top-1 -right-1 flex items-center justify-center ${badgeSize} bg-error text-white font-bold rounded-full px-1`}
               >
-                {unreadCount > 99 ? (
-                  '99+'
-                ) : (
-                  <CountUp end={unreadCount} duration={0.35} preserveValue />
-                )}
+                {unreadCount > 99 ? '99+' : unreadCount}
               </motion.span>
             )}
           </AnimatePresence>

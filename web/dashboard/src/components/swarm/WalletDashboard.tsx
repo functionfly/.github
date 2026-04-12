@@ -258,8 +258,8 @@ export function WalletDashboard({ agentId }: { agentId: string }) {
 
     setAddFundsLoading(true);
     try {
-      const successUrl = `${window.location.origin}/wallet/${encodeURIComponent(agentId)}?credits=success`;
-      const cancelUrl = `${window.location.origin}/wallet/${encodeURIComponent(agentId)}?credits=cancel`;
+      const successUrl = `${window.location.origin}/wallet/agents/${encodeURIComponent(agentId)}?credits=success`;
+      const cancelUrl = `${window.location.origin}/wallet/agents/${encodeURIComponent(agentId)}?credits=cancel`;
       const res = await agentApi.createCreditsCheckout(agentId, amount, successUrl, cancelUrl);
       if (res?.url) {
         // Redirect to Stripe – notification bell refresh happens in WalletPage on return

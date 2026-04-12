@@ -3,17 +3,18 @@
    Aircraft cockpit aesthetic with full light/dark mode support
    ========================================================================== */
 
-@theme {
-  /* --------------------------------------------------------------------------
-     Aviation Dark Mode - Cockpit Aesthetic
-     -------------------------------------------------------------------------- */
+/* ==========================================================================
+   Aviation Dark Mode - Default ( Cockpit Aesthetic)
+   ========================================================================== */
+
+:root {
+  /* Dark Mode */
   --color-aviation-bg-primary: #08080c;
   --color-aviation-bg-secondary: #0d0d14;
   --color-aviation-bg-tertiary: #14141f;
   --color-aviation-bg-panel: #1a1a28;
   --color-aviation-bg-instrument: #222232;
 
-  /* Aviation Accents - Aircraft Instrument Colors (Dark) */
   --color-aviation-amber: #f59e0b;
   --color-aviation-amber-glow: rgba(245, 158, 11, 0.5);
   --color-aviation-amber-dim: rgba(245, 158, 11, 0.2);
@@ -27,52 +28,81 @@
   --color-aviation-red: #ef4444;
   --color-aviation-red-glow: rgba(239, 68, 68, 0.5);
 
-  /* Aviation Text (Dark) */
   --color-aviation-text-primary: #e8e8f0;
   --color-aviation-text-secondary: #9ca3af;
   --color-aviation-text-muted: #6b7280;
   --color-aviation-text-dim: #4b5563;
 
-  /* Aviation Borders (Dark) */
   --color-aviation-border-panel: rgba(255, 255, 255, 0.08);
   --color-aviation-border-instrument: rgba(255, 255, 255, 0.12);
   --color-aviation-border-glow: rgba(245, 158, 11, 0.3);
   --color-aviation-border-cyan: rgba(6, 182, 212, 0.3);
 
-  /* --------------------------------------------------------------------------
-     Aviation Light Mode - Flight Deck Day Mode
-     -------------------------------------------------------------------------- */
-  --color-aviation-bg-primary-light: #f8f9fa;
-  --color-aviation-bg-secondary-light: #ffffff;
-  --color-aviation-bg-tertiary-light: #f1f3f5;
-  --color-aviation-bg-panel-light: #e9ecef;
-  --color-aviation-bg-instrument-light: #dee2e6;
+  /* Light mode versions */
+  --color-aviation-bg-primary-light: #f1f5f9;
+  --color-aviation-bg-secondary-light: #f8fafc;
+  --color-aviation-bg-tertiary-light: #e2e8f0;
+  --color-aviation-bg-panel-light: #ffffff;
+  --color-aviation-bg-instrument-light: #f1f5f9;
 
-  /* Aviation Accents - Aircraft Instrument Colors (Light) - Enhanced visibility */
-  --color-aviation-amber-light: #b45309;
-  --color-aviation-amber-glow-light: rgba(180, 83, 9, 0.5);
-  --color-aviation-amber-dim-light: rgba(180, 83, 9, 0.3);
-  --color-aviation-amber-subtle-light: rgba(180, 83, 9, 0.2);
-  --color-aviation-cyan-light: #0e7490;
-  --color-aviation-cyan-glow-light: rgba(14, 116, 144, 0.5);
-  --color-aviation-cyan-dim-light: rgba(14, 116, 144, 0.25);
-  --color-aviation-cyan-subtle-light: rgba(14, 116, 144, 0.12);
+  --color-aviation-amber-light: #d97706;
+  --color-aviation-amber-glow-light: rgba(217, 119, 6, 0.5);
+  --color-aviation-amber-dim-light: rgba(217, 119, 6, 0.35);
+  --color-aviation-amber-subtle-light: rgba(217, 119, 6, 0.15);
+  --color-aviation-cyan-light: #0891b2;
+  --color-aviation-cyan-glow-light: rgba(8, 145, 178, 0.5);
+  --color-aviation-cyan-dim-light: rgba(8, 145, 178, 0.3);
+  --color-aviation-cyan-subtle-light: rgba(8, 145, 178, 0.15);
   --color-aviation-green-light: #059669;
   --color-aviation-green-glow-light: rgba(5, 150, 105, 0.4);
   --color-aviation-red-light: #dc2626;
   --color-aviation-red-glow-light: rgba(220, 38, 38, 0.4);
 
-  /* Aviation Text (Light) */
-  --color-aviation-text-primary-light: #1a1a2e;
-  --color-aviation-text-secondary-light: #4a5568;
-  --color-aviation-text-muted-light: #718096;
-  --color-aviation-text-dim-light: #a0aec0;
+  --color-aviation-text-primary-light: #111827;
+  --color-aviation-text-secondary-light: #374151;
+  --color-aviation-text-muted-light: #4b5563;
+  --color-aviation-text-dim-light: #6b7280;
 
-  /* Aviation Borders (Light) */
-  --color-aviation-border-panel-light: rgba(0, 0, 0, 0.08);
-  --color-aviation-border-instrument-light: rgba(0, 0, 0, 0.12);
-  --color-aviation-border-glow-light: rgba(217, 119, 6, 0.25);
-  --color-aviation-border-cyan-light: rgba(8, 145, 178, 0.25);
+  --color-aviation-border-panel-light: rgba(0, 0, 0, 0.1);
+  --color-aviation-border-instrument-light: rgba(0, 0, 0, 0.15);
+  --color-aviation-border-glow-light: rgba(217, 119, 6, 0.35);
+  --color-aviation-border-cyan-light: rgba(8, 145, 178, 0.35);
+}
+
+/* ==========================================================================
+   Aviation Light Mode - Override for inline styles
+   ========================================================================== */
+
+:root[data-theme='light'],
+[data-theme='light'] {
+  --color-aviation-bg-primary: #f1f5f9 !important;
+  --color-aviation-bg-secondary: #f8fafc !important;
+  --color-aviation-bg-tertiary: #e2e8f0 !important;
+  --color-aviation-bg-panel: #ffffff !important;
+  --color-aviation-bg-instrument: #f1f5f9 !important;
+
+  --color-aviation-amber: #d97706 !important;
+  --color-aviation-amber-glow: rgba(217, 119, 6, 0.5) !important;
+  --color-aviation-amber-dim: rgba(217, 119, 6, 0.35) !important;
+  --color-aviation-amber-subtle: rgba(217, 119, 6, 0.15) !important;
+  --color-aviation-cyan: #0891b2 !important;
+  --color-aviation-cyan-glow: rgba(8, 145, 178, 0.5) !important;
+  --color-aviation-cyan-dim: rgba(8, 145, 178, 0.3) !important;
+  --color-aviation-cyan-subtle: rgba(8, 145, 178, 0.15) !important;
+  --color-aviation-green: #059669 !important;
+  --color-aviation-green-glow: rgba(5, 150, 105, 0.4) !important;
+  --color-aviation-red: #dc2626 !important;
+  --color-aviation-red-glow: rgba(220, 38, 38, 0.4) !important;
+
+  --color-aviation-text-primary: #111827 !important;
+  --color-aviation-text-secondary: #374151 !important;
+  --color-aviation-text-muted: #4b5563 !important;
+  --color-aviation-text-dim: #6b7280 !important;
+
+  --color-aviation-border-panel: rgba(0, 0, 0, 0.1) !important;
+  --color-aviation-border-instrument: rgba(0, 0, 0, 0.15) !important;
+  --color-aviation-border-glow: rgba(217, 119, 6, 0.35) !important;
+  --color-aviation-border-cyan: rgba(8, 145, 178, 0.35) !important;
 }
 
 /* ==========================================================================
@@ -619,14 +649,13 @@
   background: var(--color-aviation-bg-instrument);
   border: 1px solid var(--color-aviation-border-instrument);
   border-radius: 6px;
-  padding: 0.625rem 0.875rem;
+  padding: 0 0.875rem;
   color: var(--color-aviation-text-primary);
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.875rem;
-  line-height: 1.5;
+  line-height: 1;
+  height: 2.75rem;
   transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
 }
 
 .aviation-input:focus {
@@ -639,6 +668,7 @@
 
 .aviation-input::placeholder {
   color: var(--color-aviation-text-dim);
+  line-height: 1;
 }
 
 /* Light mode input */
@@ -646,6 +676,7 @@
   background: var(--color-aviation-bg-instrument-light);
   border-color: var(--color-aviation-border-instrument-light);
   color: var(--color-aviation-text-primary-light);
+  line-height: 1;
 }
 
 [data-theme='light'] .aviation-input:focus {
@@ -657,6 +688,7 @@
 
 [data-theme='light'] .aviation-input::placeholder {
   color: var(--color-aviation-text-dim-light);
+  line-height: 1;
 }
 
 /* ==========================================================================
@@ -730,10 +762,10 @@
 @keyframes aviation-glow-pulse-light {
   0%,
   100% {
-    box-shadow: 0 0 20px var(--color-aviation-amber-dim-light);
+    box-shadow: 0 0 20px var(--color-aviation-amber-dim);
   }
   50% {
-    box-shadow: 0 0 40px var(--color-aviation-amber-glow-light);
+    box-shadow: 0 0 40px var(--color-aviation-amber-glow);
   }
 }
 
@@ -796,6 +828,1442 @@
 
 [data-theme='light'] .aviation-data-value {
   color: var(--color-aviation-text-primary-light);
+}
+
+/* ==========================================================================
+   Aviation Sidebar - Theme Aware
+   ========================================================================== */
+
+.aviation-sidebar {
+  background: linear-gradient(
+    180deg,
+    var(--color-aviation-bg-primary) 0%,
+    var(--color-aviation-bg-secondary) 100%
+  );
+  border-right: 1px solid var(--color-aviation-border-panel);
+}
+
+.aviation-sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--color-aviation-amber-dim) 20%,
+    var(--color-aviation-amber-dim) 80%,
+    transparent 100%
+  );
+  opacity: 0.5;
+}
+
+/* Sidebar Section Headers */
+.aviation-sidebar-section {
+  position: relative;
+  color: var(--color-aviation-text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.aviation-sidebar-section::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 0;
+  background: var(--color-aviation-amber);
+  border-radius: 2px;
+  transition: height 0.2s ease;
+  opacity: 0.6;
+}
+
+.aviation-sidebar-section:hover {
+  color: var(--color-aviation-text-secondary);
+}
+
+.aviation-sidebar-section:hover::before {
+  height: 60%;
+}
+
+.aviation-sidebar-section-active {
+  color: var(--color-aviation-amber);
+}
+
+.aviation-sidebar-section-active::before {
+  height: 80%;
+  opacity: 1;
+}
+
+/* Sidebar Navigation Items */
+.aviation-sidebar-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  color: var(--color-aviation-text-secondary);
+  font-size: 0.875rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.aviation-sidebar-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 16px;
+  background: linear-gradient(
+    180deg,
+    var(--color-aviation-amber) 0%,
+    var(--color-aviation-cyan) 100%
+  );
+  border-radius: 0 2px 2px 0;
+  transition: width 0.2s ease;
+}
+
+.aviation-sidebar-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-amber-subtle) 0%,
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  border-radius: 8px;
+}
+
+.aviation-sidebar-item:hover {
+  color: var(--color-aviation-text-primary);
+  background: var(--color-aviation-bg-instrument);
+  transform: translateX(4px);
+}
+
+.aviation-sidebar-item:hover::before {
+  width: 3px;
+}
+
+.aviation-sidebar-item:hover::after {
+  opacity: 1;
+}
+
+.aviation-sidebar-item:hover .aviation-sidebar-icon {
+  color: var(--color-aviation-amber);
+  transform: scale(1.1);
+}
+
+/* Active Item State */
+.aviation-sidebar-item-active {
+  background: var(--color-aviation-amber-subtle);
+  color: var(--color-aviation-amber);
+  border: 1px solid var(--color-aviation-amber-dim);
+}
+
+.aviation-sidebar-item-active::before {
+  width: 3px;
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow);
+}
+
+.aviation-sidebar-item-active::after {
+  opacity: 0.3;
+}
+
+.aviation-sidebar-item-active .aviation-sidebar-icon {
+  color: var(--color-aviation-amber);
+  filter: drop-shadow(0 0 4px var(--color-aviation-amber-glow));
+}
+
+/* Sidebar Icons */
+.aviation-sidebar-icon {
+  width: 18px;
+  height: 18px;
+  transition: all 0.2s ease;
+  color: currentColor;
+}
+
+/* Sidebar Badges */
+.aviation-sidebar-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+}
+
+.aviation-sidebar-badge-new {
+  background: var(--color-aviation-green-glow);
+  color: var(--color-aviation-green);
+  box-shadow: 0 0 8px var(--color-aviation-green-glow);
+}
+
+.aviation-sidebar-badge-beta {
+  background: var(--color-aviation-cyan-dim);
+  color: var(--color-aviation-cyan);
+  box-shadow: 0 0 8px var(--color-aviation-cyan-glow);
+}
+
+.aviation-sidebar-item:hover .aviation-sidebar-badge {
+  transform: scale(1.05);
+}
+
+/* Sidebar Status Indicator */
+.aviation-sidebar-status {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.aviation-sidebar-status::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.aviation-sidebar-item:hover .aviation-sidebar-status::after {
+  opacity: 0.3;
+  animation: aviation-pulse 2s ease-in-out infinite;
+}
+
+/* Keyboard Shortcut Hint */
+.aviation-sidebar-kbd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  background: var(--color-aviation-bg-instrument);
+  color: var(--color-aviation-text-dim);
+  border: 1px solid var(--color-aviation-border-instrument);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.2s ease;
+}
+
+.aviation-sidebar-item:hover .aviation-sidebar-kbd {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Expand/Collapse Button */
+.aviation-sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--color-aviation-text-muted);
+  transition: all 0.2s ease;
+}
+
+.aviation-sidebar-toggle:hover {
+  background: var(--color-aviation-bg-instrument);
+  color: var(--color-aviation-amber);
+}
+
+.aviation-sidebar-toggle-icon {
+  transition: transform 0.2s ease;
+}
+
+/* Light Mode Sidebar */
+[data-theme='light'] .aviation-sidebar {
+  background: linear-gradient(
+    180deg,
+    var(--color-aviation-bg-primary-light) 0%,
+    var(--color-aviation-bg-secondary-light) 100%
+  );
+  border-right-color: var(--color-aviation-border-panel-light);
+}
+
+[data-theme='light'] .aviation-sidebar::before {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--color-aviation-amber-dim-light) 20%,
+    var(--color-aviation-amber-dim-light) 80%,
+    transparent 100%
+  );
+}
+
+[data-theme='light'] .aviation-sidebar-section {
+  color: var(--color-aviation-text-muted-light);
+}
+
+[data-theme='light'] .aviation-sidebar-section:hover {
+  color: var(--color-aviation-text-secondary-light);
+}
+
+[data-theme='light'] .aviation-sidebar-section-active {
+  color: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .aviation-sidebar-item {
+  color: var(--color-aviation-text-secondary-light);
+}
+
+[data-theme='light'] .aviation-sidebar-item:hover {
+  color: var(--color-aviation-text-primary-light);
+  background: var(--color-aviation-bg-instrument-light);
+}
+
+[data-theme='light'] .aviation-sidebar-item:hover .aviation-sidebar-icon {
+  color: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .aviation-sidebar-item-active {
+  background: var(--color-aviation-amber-subtle-light);
+  color: var(--color-aviation-amber-light);
+  border-color: var(--color-aviation-amber-dim-light);
+}
+
+[data-theme='light'] .aviation-sidebar-item-active .aviation-sidebar-icon {
+  color: var(--color-aviation-amber-light);
+  filter: drop-shadow(0 0 4px var(--color-aviation-amber-glow-light));
+}
+
+[data-theme='light'] .aviation-sidebar-badge-new {
+  background: var(--color-aviation-green-glow-light);
+  color: var(--color-aviation-green-light);
+  box-shadow: 0 0 8px var(--color-aviation-green-glow-light);
+}
+
+[data-theme='light'] .aviation-sidebar-badge-beta {
+  background: var(--color-aviation-cyan-dim-light);
+  color: var(--color-aviation-cyan-light);
+  box-shadow: 0 0 8px var(--color-aviation-cyan-glow-light);
+}
+
+[data-theme='light'] .aviation-sidebar-kbd {
+  background: var(--color-aviation-bg-instrument-light);
+  color: var(--color-aviation-text-dim-light);
+  border-color: var(--color-aviation-border-instrument-light);
+}
+
+[data-theme='light'] .aviation-sidebar-toggle:hover {
+  background: var(--color-aviation-bg-instrument-light);
+  color: var(--color-aviation-amber-light);
+}
+
+/* ==========================================================================
+   Aviation Sign Out Button - Theme Aware
+   ========================================================================== */
+
+.aviation-signout {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-aviation-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.aviation-signout::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.1) 0%,
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  border-radius: 8px;
+}
+
+.aviation-signout::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 14px;
+  background: var(--color-aviation-red);
+  border-radius: 0 2px 2px 0;
+  transition: width 0.2s ease;
+  box-shadow: 0 0 8px var(--color-aviation-red-glow);
+}
+
+.aviation-signout:hover {
+  color: var(--color-aviation-red);
+  background: rgba(239, 68, 68, 0.08);
+  border-color: var(--color-aviation-red-glow);
+  transform: translateX(2px);
+}
+
+.aviation-signout:hover::before {
+  opacity: 1;
+}
+
+.aviation-signout:hover::after {
+  width: 3px;
+}
+
+.aviation-signout-icon {
+  width: 18px;
+  height: 18px;
+  transition: all 0.2s ease;
+}
+
+.aviation-signout:hover .aviation-signout-icon {
+  transform: translateX(2px);
+  color: var(--color-aviation-red);
+  filter: drop-shadow(0 0 4px var(--color-aviation-red-glow));
+}
+
+.aviation-signout-text {
+  transition: transform 0.2s ease;
+}
+
+.aviation-signout:hover .aviation-signout-text {
+  transform: translateX(2px);
+}
+
+/* Sign Out Active/Pressed State */
+.aviation-signout:active {
+  transform: translateX(1px) scale(0.98);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* Light Mode Sign Out */
+[data-theme='light'] .aviation-signout {
+  color: var(--color-aviation-text-secondary-light);
+}
+
+[data-theme='light'] .aviation-signout:hover {
+  color: var(--color-aviation-red-light);
+  background: rgba(220, 38, 38, 0.08);
+  border-color: var(--color-aviation-red-glow-light);
+}
+
+[data-theme='light'] .aviation-signout:hover .aviation-signout-icon {
+  color: var(--color-aviation-red-light);
+  filter: drop-shadow(0 0 4px var(--color-aviation-red-glow-light));
+}
+
+[data-theme='light'] .aviation-signout::after {
+  background: var(--color-aviation-red-light);
+  box-shadow: 0 0 8px var(--color-aviation-red-glow-light);
+}
+
+[data-theme='light'] .aviation-signout:active {
+  background: rgba(220, 38, 38, 0.12);
+}
+
+/* ==========================================================================
+   Aviation Profile Card - Theme Aware
+   ========================================================================== */
+
+.aviation-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-bg-instrument) 0%,
+    rgba(245, 158, 11, 0.03) 100%
+  );
+  border: 1px solid var(--color-aviation-border-instrument);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.aviation-profile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-amber-dim) 30%,
+    var(--color-aviation-amber-dim) 70%,
+    transparent 100%
+  );
+  opacity: 0.5;
+}
+
+.aviation-profile::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 10px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-amber-dim) 0%,
+    transparent 40%,
+    transparent 60%,
+    var(--color-aviation-cyan-dim) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.aviation-profile:hover {
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-bg-instrument) 0%,
+    rgba(245, 158, 11, 0.08) 100%
+  );
+  border-color: var(--color-aviation-amber-dim);
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 0 0 1px var(--color-aviation-amber-dim);
+}
+
+.aviation-profile:hover::after {
+  opacity: 1;
+}
+
+/* Avatar Container */
+.aviation-profile-avatar {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.aviation-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-aviation-border-instrument);
+  transition: all 0.3s ease;
+}
+
+.aviation-profile:hover .aviation-profile-avatar img {
+  border-color: var(--color-aviation-amber);
+  box-shadow: 0 0 12px var(--color-aviation-amber-glow);
+}
+
+/* Avatar Initials Fallback */
+.aviation-profile-initials {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  font-weight: 700;
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-amber) 0%,
+    var(--color-aviation-cyan) 100%
+  );
+  color: var(--color-aviation-bg-primary);
+  border: 2px solid transparent;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.aviation-profile-initials::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    var(--color-aviation-amber) 0%,
+    var(--color-aviation-cyan) 25%,
+    var(--color-aviation-amber) 50%,
+    var(--color-aviation-cyan) 75%,
+    var(--color-aviation-amber) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.aviation-profile:hover .aviation-profile-initials {
+  box-shadow: 0 0 15px var(--color-aviation-amber-glow);
+}
+
+.aviation-profile:hover .aviation-profile-initials::before {
+  opacity: 0.4;
+  animation: aviation-avatar-spin 3s linear infinite;
+}
+
+@keyframes aviation-avatar-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Status Indicator Dot */
+.aviation-profile-status {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-aviation-green);
+  border: 2px solid var(--color-aviation-bg-instrument);
+  box-shadow: 0 0 6px var(--color-aviation-green-glow);
+  transition: all 0.2s ease;
+}
+
+.aviation-profile:hover .aviation-profile-status {
+  transform: scale(1.1);
+  box-shadow: 0 0 10px var(--color-aviation-green-glow);
+}
+
+/* User Info */
+.aviation-profile-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.aviation-profile-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -0.01em;
+  transition: color 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aviation-profile:hover .aviation-profile-name {
+  color: var(--color-aviation-amber);
+}
+
+.aviation-profile-plan {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-aviation-text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.aviation-profile:hover .aviation-profile-plan {
+  color: var(--color-aviation-cyan);
+}
+
+/* Plan Badge Indicator */
+.aviation-profile-plan::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-aviation-cyan);
+  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+.aviation-profile:hover .aviation-profile-plan::before {
+  opacity: 1;
+  box-shadow: 0 0 6px var(--color-aviation-cyan-glow);
+}
+
+/* Light Mode Profile */
+[data-theme='light'] .aviation-profile {
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-bg-instrument-light) 0%,
+    rgba(217, 119, 6, 0.05) 100%
+  );
+  border-color: var(--color-aviation-border-instrument-light);
+}
+
+[data-theme='light'] .aviation-profile:hover {
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-bg-instrument-light) 0%,
+    rgba(217, 119, 6, 0.12) 100%
+  );
+  border-color: var(--color-aviation-amber-dim-light);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 0 0 1px var(--color-aviation-amber-dim-light);
+}
+
+[data-theme='light'] .aviation-profile-avatar img {
+  border-color: var(--color-aviation-border-instrument-light);
+}
+
+[data-theme='light'] .aviation-profile:hover .aviation-profile-avatar img {
+  border-color: var(--color-aviation-amber-light);
+  box-shadow: 0 0 12px var(--color-aviation-amber-glow-light);
+}
+
+[data-theme='light'] .aviation-profile-initials {
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-amber-light) 0%,
+    var(--color-aviation-cyan-light) 100%
+  );
+  color: white;
+}
+
+[data-theme='light'] .aviation-profile:hover .aviation-profile-initials {
+  box-shadow: 0 0 15px var(--color-aviation-amber-glow-light);
+}
+
+[data-theme='light'] .aviation-profile-initials::before {
+  background: conic-gradient(
+    from 0deg,
+    var(--color-aviation-amber-light) 0%,
+    var(--color-aviation-cyan-light) 25%,
+    var(--color-aviation-amber-light) 50%,
+    var(--color-aviation-cyan-light) 75%,
+    var(--color-aviation-amber-light) 100%
+  );
+}
+
+[data-theme='light'] .aviation-profile-status {
+  border-color: var(--color-aviation-bg-instrument-light);
+  background: var(--color-aviation-green-light);
+  box-shadow: 0 0 6px var(--color-aviation-green-glow-light);
+}
+
+[data-theme='light'] .aviation-profile:hover .aviation-profile-status {
+  box-shadow: 0 0 10px var(--color-aviation-green-glow-light);
+}
+
+[data-theme='light'] .aviation-profile-name {
+  color: var(--color-aviation-text-primary-light);
+}
+
+[data-theme='light'] .aviation-profile:hover .aviation-profile-name {
+  color: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .aviation-profile-plan {
+  color: var(--color-aviation-text-muted-light);
+}
+
+[data-theme='light'] .aviation-profile:hover .aviation-profile-plan {
+  color: var(--color-aviation-cyan-light);
+}
+
+[data-theme='light'] .aviation-profile-plan::before {
+  background: var(--color-aviation-cyan-light);
+}
+
+[data-theme='light'] .aviation-profile:hover .aviation-profile-plan::before {
+  box-shadow: 0 0 6px var(--color-aviation-cyan-glow-light);
+}
+
+/* ==========================================================================
+   Aviation Upgrade Banner - Theme Aware
+   ========================================================================== */
+
+.aviation-upgrade-banner {
+  position: relative;
+  border-radius: 12px;
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-instrument) 0%,
+    rgba(245, 158, 11, 0.05) 50%,
+    var(--color-aviation-bg-panel) 100%
+  );
+  border: 1px solid var(--color-aviation-border-instrument);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.aviation-upgrade-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(245, 158, 11, 0.03) 50%,
+    transparent 100%
+  );
+  animation: aviation-scan-slow 4s ease-in-out infinite;
+}
+
+.aviation-upgrade-banner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-amber) 20%,
+    var(--color-aviation-cyan) 50%,
+    var(--color-aviation-amber) 80%,
+    transparent 100%
+  );
+  opacity: 0.6;
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow);
+}
+
+.aviation-upgrade-banner:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-aviation-amber-dim);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 0 1px var(--color-aviation-amber-dim),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+@keyframes aviation-scan-slow {
+  0%, 100% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    transform: translateX(100%);
+    opacity: 0.3;
+  }
+}
+
+/* Upgrade Banner Icon Container */
+.aviation-upgrade-icon {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-amber) 0%,
+    var(--color-aviation-cyan) 100%
+  );
+  box-shadow:
+    0 4px 12px var(--color-aviation-amber-dim),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.aviation-upgrade-icon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    transparent 50%
+  );
+}
+
+.aviation-upgrade-banner:hover .aviation-upgrade-icon {
+  transform: scale(1.05) rotate(3deg);
+  box-shadow:
+    0 6px 20px var(--color-aviation-amber-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.aviation-upgrade-icon svg {
+  width: 22px;
+  height: 22px;
+  color: var(--color-aviation-bg-primary);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  transition: transform 0.3s ease;
+}
+
+.aviation-upgrade-banner:hover .aviation-upgrade-icon svg {
+  transform: scale(1.1);
+}
+
+/* Upgrade Badge */
+.aviation-upgrade-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--color-aviation-amber-subtle);
+  color: var(--color-aviation-amber);
+  border: 1px solid var(--color-aviation-amber-dim);
+  transition: all 0.2s ease;
+}
+
+.aviation-upgrade-banner:hover .aviation-upgrade-badge {
+  background: var(--color-aviation-amber-dim);
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow);
+}
+
+/* Upgrade Title */
+.aviation-upgrade-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+  letter-spacing: -0.01em;
+  transition: color 0.2s ease;
+}
+
+.aviation-upgrade-banner:hover .aviation-upgrade-title {
+  color: var(--color-aviation-amber);
+}
+
+/* Upgrade Description */
+.aviation-upgrade-desc {
+  font-size: 0.75rem;
+  color: var(--color-aviation-text-muted);
+  line-height: 1.4;
+}
+
+/* Upgrade Usage Meters */
+.aviation-upgrade-meter {
+  position: relative;
+  height: 4px;
+  background: var(--color-aviation-bg-secondary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.aviation-upgrade-meter-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--color-aviation-amber) 0%,
+    var(--color-aviation-cyan) 100%
+  );
+  box-shadow: 0 0 6px var(--color-aviation-amber-glow);
+  transition: width 0.5s ease;
+  position: relative;
+}
+
+.aviation-upgrade-meter-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: aviation-meter-shine 2s ease-in-out infinite;
+}
+
+@keyframes aviation-meter-shine {
+  0% {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+}
+
+.aviation-upgrade-meter-warning .aviation-upgrade-meter-fill {
+  background: linear-gradient(
+    90deg,
+    var(--color-aviation-red) 0%,
+    var(--color-aviation-amber) 100%
+  );
+  box-shadow: 0 0 6px var(--color-aviation-red-glow);
+}
+
+.aviation-upgrade-meter-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-aviation-text-muted);
+}
+
+.aviation-upgrade-meter-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-secondary);
+}
+
+.aviation-upgrade-meter-value strong {
+  color: var(--color-aviation-amber);
+}
+
+/* Upgrade Warning Alert */
+.aviation-upgrade-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--color-aviation-red-glow);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--color-aviation-red);
+}
+
+.aviation-upgrade-alert svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Upgrade CTA Button */
+.aviation-upgrade-cta {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-aviation-bg-primary);
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-amber) 0%,
+    var(--color-aviation-cyan) 100%
+  );
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.25s ease;
+  box-shadow:
+    0 4px 12px var(--color-aviation-amber-dim),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.aviation-upgrade-cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+
+.aviation-upgrade-cta:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 20px var(--color-aviation-amber-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.aviation-upgrade-cta:hover::before {
+  transform: translateX(100%);
+}
+
+.aviation-upgrade-cta:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.aviation-upgrade-cta svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.aviation-upgrade-cta:hover svg {
+  transform: translateX(2px);
+}
+
+/* Upgrade Price Hint */
+.aviation-upgrade-price {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  text-align: center;
+  color: var(--color-aviation-text-muted);
+}
+
+.aviation-upgrade-price strong {
+  color: var(--color-aviation-amber);
+  font-weight: 600;
+}
+
+/* Light Mode Upgrade Banner */
+[data-theme='light'] .aviation-upgrade-banner {
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-bg-instrument-light) 0%,
+    rgba(217, 119, 6, 0.05) 50%,
+    var(--color-aviation-bg-panel-light) 100%
+  );
+  border-color: var(--color-aviation-border-instrument-light);
+}
+
+[data-theme='light'] .aviation-upgrade-banner::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-amber-light) 20%,
+    var(--color-aviation-cyan-light) 50%,
+    var(--color-aviation-amber-light) 80%,
+    transparent 100%
+  );
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow-light);
+}
+
+[data-theme='light'] .aviation-upgrade-banner:hover {
+  border-color: var(--color-aviation-amber-dim-light);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    0 0 0 1px var(--color-aviation-amber-dim-light),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+[data-theme='light'] .aviation-upgrade-icon {
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-amber-light) 0%,
+    var(--color-aviation-cyan-light) 100%
+  );
+  box-shadow:
+    0 4px 12px var(--color-aviation-amber-glow-light),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+[data-theme='light'] .aviation-upgrade-icon svg {
+  color: white;
+}
+
+[data-theme='light'] .aviation-upgrade-banner:hover .aviation-upgrade-icon {
+  box-shadow:
+    0 6px 20px var(--color-aviation-amber-glow-light),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+[data-theme='light'] .aviation-upgrade-badge {
+  background: var(--color-aviation-amber-subtle-light);
+  color: var(--color-aviation-amber-light);
+  border-color: var(--color-aviation-amber-dim-light);
+}
+
+[data-theme='light'] .aviation-upgrade-banner:hover .aviation-upgrade-badge {
+  background: var(--color-aviation-amber-dim-light);
+  box-shadow: 0 0 8px var(--color-aviation-amber-glow-light);
+}
+
+[data-theme='light'] .aviation-upgrade-title {
+  color: var(--color-aviation-text-primary-light);
+}
+
+[data-theme='light'] .aviation-upgrade-banner:hover .aviation-upgrade-title {
+  color: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .aviation-upgrade-desc {
+  color: var(--color-aviation-text-muted-light);
+}
+
+[data-theme='light'] .aviation-upgrade-meter {
+  background: var(--color-aviation-bg-secondary-light);
+}
+
+[data-theme='light'] .aviation-upgrade-meter-fill {
+  background: linear-gradient(
+    90deg,
+    var(--color-aviation-amber-light) 0%,
+    var(--color-aviation-cyan-light) 100%
+  );
+  box-shadow: 0 0 6px var(--color-aviation-amber-glow-light);
+}
+
+[data-theme='light'] .aviation-upgrade-meter-warning .aviation-upgrade-meter-fill {
+  background: linear-gradient(
+    90deg,
+    var(--color-aviation-red-light) 0%,
+    var(--color-aviation-amber-light) 100%
+  );
+  box-shadow: 0 0 6px var(--color-aviation-red-glow-light);
+}
+
+[data-theme='light'] .aviation-upgrade-meter-label,
+[data-theme='light'] .aviation-upgrade-meter-value {
+  color: var(--color-aviation-text-muted-light);
+}
+
+[data-theme='light'] .aviation-upgrade-meter-value strong {
+  color: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .aviation-upgrade-alert {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: var(--color-aviation-red-glow-light);
+  color: var(--color-aviation-red-light);
+}
+
+[data-theme='light'] .aviation-upgrade-cta {
+  color: white;
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-amber-light) 0%,
+    var(--color-aviation-cyan-light) 100%
+  );
+  box-shadow:
+    0 4px 12px var(--color-aviation-amber-glow-light),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+[data-theme='light'] .aviation-upgrade-cta:hover {
+  box-shadow:
+    0 6px 20px var(--color-aviation-amber-glow-light),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+[data-theme='light'] .aviation-upgrade-price {
+  color: var(--color-aviation-text-muted-light);
+}
+
+[data-theme='light'] .aviation-upgrade-price strong {
+  color: var(--color-aviation-amber-light);
+}
+
+/* ==========================================================================
+   Aviation Collapsible Upgrade Banner
+   ========================================================================== */
+
+.aviation-upgrade-collapsible {
+  position: relative;
+}
+
+/* Collapse Toggle Header */
+.aviation-upgrade-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 12px 12px 0 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--color-aviation-text-secondary);
+}
+
+.aviation-upgrade-collapsible:not(.collapsed) .aviation-upgrade-toggle {
+  border-bottom: 1px solid var(--color-aviation-border-instrument);
+  border-radius: 12px 12px 0 0;
+}
+
+.aviation-upgrade-collapsible.collapsed .aviation-upgrade-toggle {
+  border-radius: 12px;
+}
+
+.aviation-upgrade-toggle:hover {
+  color: var(--color-aviation-amber);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.aviation-upgrade-toggle-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Collapsed Compact View */
+.aviation-upgrade-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.aviation-upgrade-compact-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-amber) 0%,
+    var(--color-aviation-cyan) 100%
+  );
+  box-shadow: 0 2px 8px var(--color-aviation-amber-dim);
+}
+
+.aviation-upgrade-compact-icon svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-aviation-bg-primary);
+}
+
+.aviation-upgrade-compact-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+}
+
+.aviation-upgrade-compact-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+}
+
+.aviation-upgrade-compact-hint {
+  font-size: 0.65rem;
+  color: var(--color-aviation-text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Collapse/Expand Icon */
+.aviation-upgrade-collapse-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-aviation-text-muted);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.aviation-upgrade-collapsible.collapsed .aviation-upgrade-collapse-icon {
+  transform: rotate(-90deg);
+}
+
+.aviation-upgrade-toggle:hover .aviation-upgrade-collapse-icon {
+  color: var(--color-aviation-amber);
+}
+
+/* Collapsible Content */
+.aviation-upgrade-content {
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.3s ease;
+  max-height: 500px;
+  opacity: 1;
+  padding: 1rem;
+}
+
+.aviation-upgrade-collapsible.collapsed .aviation-upgrade-content {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 1rem;
+}
+
+/* Collapsed Badge Indicator */
+.aviation-upgrade-badge-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-aviation-amber);
+  box-shadow: 0 0 6px var(--color-aviation-amber-glow);
+  animation: aviation-pulse 2s ease-in-out infinite;
+}
+
+/* Light Mode Collapsible */
+[data-theme='light'] .aviation-upgrade-toggle {
+  color: var(--color-aviation-text-secondary-light);
+}
+
+[data-theme='light'] .aviation-upgrade-toggle:hover {
+  color: var(--color-aviation-amber-light);
+  background: rgba(217, 119, 6, 0.05);
+}
+
+[data-theme='light'] .aviation-upgrade-collapsible:not(.collapsed) .aviation-upgrade-toggle {
+  border-bottom-color: var(--color-aviation-border-instrument-light);
+}
+
+[data-theme='light'] .aviation-upgrade-compact-icon {
+  background: linear-gradient(
+    145deg,
+    var(--color-aviation-amber-light) 0%,
+    var(--color-aviation-cyan-light) 100%
+  );
+  box-shadow: 0 2px 8px var(--color-aviation-amber-glow-light);
+}
+
+[data-theme='light'] .aviation-upgrade-compact-icon svg {
+  color: white;
+}
+
+[data-theme='light'] .aviation-upgrade-compact-title {
+  color: var(--color-aviation-text-primary-light);
+}
+
+[data-theme='light'] .aviation-upgrade-compact-hint {
+  color: var(--color-aviation-text-muted-light);
+}
+
+[data-theme='light'] .aviation-upgrade-collapse-icon {
+  color: var(--color-aviation-text-muted-light);
+}
+
+[data-theme='light'] .aviation-upgrade-toggle:hover .aviation-upgrade-collapse-icon {
+  color: var(--color-aviation-amber-light);
+}
+
+[data-theme='light'] .aviation-upgrade-badge-indicator {
+  background: var(--color-aviation-amber-light);
+  box-shadow: 0 0 6px var(--color-aviation-amber-glow-light);
 }
 
 /* ==========================================================================

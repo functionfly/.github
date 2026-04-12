@@ -1,9 +1,8 @@
-import { auth } from '@/lib/auth';
 import { getApiBaseUrl } from '@/lib/constants';
 import { safeParse, ValidationResult } from '@/lib/validation-utils';
 import { useApiReachableStore } from '@/stores/apiReachableStore';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import type { ZodTypeAny } from 'zod';
+import { z } from 'zod';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -47,9 +46,14 @@ class ApiClient {
       async (error) => {
         const originalRequest = error.config;
         const status = error.response?.status;
-        if (status !== 401) {
+
+        // Track API reachability - only mark as unreachable for network errors or 5xx
+        if (!error.response || status >= 500) {
           useApiReachableStore.getState().setApiReachable(false);
+        } else if (status < 500) {
+          useApiReachableStore.getState().setApiReachable(true);
         }
+
         // Only attempt refresh once per request — _retry flag prevents infinite loops
         // when the retried request itself returns 401 (e.g. wrong tenant, revoked token).
         if (status === 401 && !originalRequest._retry) {
@@ -68,20 +72,20 @@ class ApiClient {
                 originalRequest._retry = true;
                 originalRequest.headers.Authorization = `Bearer ${newToken}`;
                 return this.client.request(originalRequest);
+              } else {
+                // Refresh returned null - token is invalid, clear session
+                this._handleAuthFailure();
               }
             } catch (refreshError) {
               this.refreshPromise = null;
-              console.warn('Token refresh failed:', refreshError);
+              console.warn('Token refresh failed after retries:', refreshError);
+              // If refresh fails after all retries, clear session and log out
+              this._handleAuthFailure();
             }
+          } else {
+            // No refresh token, clear session
+            this._handleAuthFailure();
           }
-
-          // Refresh failed or no refresh token — clear session and log out
-          localStorage.removeItem('ff-access-token');
-          localStorage.removeItem('ff-refresh-token');
-
-          import('@/stores/authStore').then(({ useAuthStore }) => {
-            useAuthStore.getState().logout();
-          });
         }
         return Promise.reject(error);
       }
@@ -91,10 +95,38 @@ class ApiClient {
     this.loadToken();
   }
 
+  // Helper method to handle auth failures
+  private _handleAuthFailure() {
+    localStorage.removeItem('ff-access-token');
+    localStorage.removeItem('ff-refresh-token');
+    // Avoid showing another account's last agent wallet in the user menu after re-login.
+    localStorage.removeItem('ff-last-wallet-agent-id');
+    apiClient.clearToken();
+
+    import('@/stores/authStore').then(({ useAuthStore }) => {
+      // logout() now handles redirect by default
+      useAuthStore.getState().logout(true);
+    });
+  }
+
   clearToken() {
     this.token = null;
     localStorage.removeItem('ff-access-token');
     localStorage.removeItem('ff-refresh-token');
+  }
+
+  /**
+   * Fetch a CSRF token for protected routes (billing, admin, etc.)
+   * The backend stores CSRF tokens in Redis keyed by session ID.
+   */
+  async fetchCSRFToken(): Promise<string | null> {
+    try {
+      const response = await this.client.get<{ token: string; expires_at: string }>('/v1/admin/csrf');
+      return response.data.token;
+    } catch (error) {
+      console.warn('Failed to fetch CSRF token:', error);
+      return null;
+    }
   }
 
   loadToken() {
@@ -118,21 +150,57 @@ class ApiClient {
 
   private async _doRefresh(refreshToken: string): Promise<string | null> {
     const apiUrl = getApiBaseUrl();
-    const refreshResponse = await fetch(`${apiUrl}/v1/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
+    const maxRetries = 3;
 
-    if (refreshResponse.ok) {
-      const refreshData = await refreshResponse.json();
-      localStorage.setItem('ff-access-token', refreshData.token);
-      localStorage.setItem('ff-refresh-token', refreshData.refresh_token);
-      this.token = refreshData.token;
-      return refreshData.token;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const refreshResponse = await fetch(`${apiUrl}/v1/auth/refresh`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          localStorage.setItem('ff-access-token', refreshData.token);
+          localStorage.setItem('ff-refresh-token', refreshData.refresh_token);
+          this.token = refreshData.token;
+          return refreshData.token;
+        }
+
+        // If we got a 4xx error (except 429 rate limit), token is invalid - don't retry
+        if (
+          refreshResponse.status >= 400 &&
+          refreshResponse.status < 500 &&
+          refreshResponse.status !== 429
+        ) {
+          console.warn(`Token refresh failed with status ${refreshResponse.status}, clearing auth`);
+          return null;
+        }
+
+        // For 5xx errors or 429 rate limit, retry with backoff
+        if (attempt < maxRetries - 1) {
+          const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000); // Cap at 10 seconds
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+      } catch (error) {
+        // Network error or other exception - retry with backoff
+        if (attempt < maxRetries - 1) {
+          const delayMs = Math.min(1000 * Math.pow(2, attempt), 10000);
+          console.warn(
+            `Token refresh attempt ${attempt + 1} failed, retrying in ${delayMs}ms:`,
+            error
+          );
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        } else {
+          console.error('Token refresh failed after all retries:', error);
+          return null;
+        }
+      }
     }
+
     return null;
   }
 
@@ -163,7 +231,7 @@ class ApiClient {
 
   // Validated methods that parse responses with Zod schemas
   async getValidated<T>(
-    schema: ZodTypeAny,
+    schema: z.ZodType<T>,
     url: string,
     config?: AxiosRequestConfig,
     fallback?: T
@@ -182,7 +250,7 @@ class ApiClient {
   }
 
   async postValidated<T>(
-    schema: ZodTypeAny,
+    schema: z.ZodType<T>,
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig,
@@ -201,7 +269,7 @@ class ApiClient {
   }
 
   async putValidated<T>(
-    schema: ZodTypeAny,
+    schema: z.ZodType<T>,
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig,
@@ -220,7 +288,7 @@ class ApiClient {
   }
 
   async patchValidated<T>(
-    schema: ZodTypeAny,
+    schema: z.ZodType<T>,
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig,
@@ -239,7 +307,7 @@ class ApiClient {
   }
 
   async deleteValidated<T>(
-    schema: ZodTypeAny,
+    schema: z.ZodType<T>,
     url: string,
     config?: AxiosRequestConfig,
     fallback?: T
@@ -258,7 +326,7 @@ class ApiClient {
 
   // Convenience methods that return validated data directly (throw on validation failure)
   async getValidatedData<T>(
-    schema: ZodTypeAny,
+    schema: z.ZodType<T>,
     url: string,
     config?: AxiosRequestConfig
   ): Promise<T> {
@@ -270,7 +338,7 @@ class ApiClient {
   }
 
   async postValidatedData<T>(
-    schema: ZodTypeAny,
+    schema: z.ZodType<T>,
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig
@@ -283,7 +351,7 @@ class ApiClient {
   }
 
   async putValidatedData<T>(
-    schema: ZodTypeAny,
+    schema: z.ZodType<T>,
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig
@@ -296,7 +364,7 @@ class ApiClient {
   }
 
   async patchValidatedData<T>(
-    schema: ZodTypeAny,
+    schema: z.ZodType<T>,
     url: string,
     data?: unknown,
     config?: AxiosRequestConfig
@@ -309,7 +377,7 @@ class ApiClient {
   }
 
   async deleteValidatedData<T>(
-    schema: ZodTypeAny,
+    schema: z.ZodType<T>,
     url: string,
     config?: AxiosRequestConfig
   ): Promise<T> {
@@ -318,6 +386,11 @@ class ApiClient {
       throw new Error(result.error || 'Validation failed');
     }
     return result.data as T;
+  }
+
+  // Get the base URL for the API (used for EventSource streaming)
+  getBaseUrl(): string {
+    return this.client.defaults.baseURL || window.location.origin;
   }
 }
 

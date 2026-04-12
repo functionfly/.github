@@ -1,0 +1,656 @@
+/* ==========================================================================
+   FunctionFly Discovery Page & Aviation Cards - Custom Styles
+   Custom styling for FunctionsDiscoveryPage and AviationFunctionCard
+   Theme-aware with light/dark mode support
+   ========================================================================== */
+
+/* ==========================================================================
+   Discovery Page Layout
+   ========================================================================== */
+
+.discovery-page {
+  --discovery-header-height: 140px;
+  --discovery-filter-height: 60px;
+  --discovery-grid-gap: 1rem;
+  --discovery-card-min-width: 320px;
+
+  min-height: 100vh;
+  background: var(--color-aviation-bg-primary);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Subtle grid background pattern */
+.discovery-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(rgba(245, 158, 11, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 158, 11, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Light mode grid */
+[data-theme='light'] .discovery-page::before {
+  background-image:
+    linear-gradient(rgba(217, 119, 6, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(217, 119, 6, 0.06) 1px, transparent 1px);
+}
+
+.discovery-page-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* ==========================================================================
+   Discovery Page Header
+   ========================================================================== */
+
+.discovery-header {
+  position: relative;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(
+    180deg,
+    var(--color-aviation-bg-secondary) 0%,
+    transparent 100%
+  );
+  border-bottom: 1px solid var(--color-aviation-border-panel);
+}
+
+.discovery-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-amber-dim) 20%,
+    var(--color-aviation-amber-dim) 80%,
+    transparent 100%
+  );
+}
+
+.discovery-header-title {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--color-aviation-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.discovery-header-title .icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  background: var(--color-aviation-amber-subtle);
+  border: 1px solid var(--color-aviation-amber-dim);
+  box-shadow: 0 0 20px var(--color-aviation-amber-glow);
+}
+
+.discovery-header-subtitle {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-muted);
+  margin-top: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+/* ==========================================================================
+   Filter Navigation
+   ========================================================================== */
+
+.discovery-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  background: var(--color-aviation-bg-tertiary);
+  border-bottom: 1px solid var(--color-aviation-border-panel);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-aviation-amber-dim) transparent;
+}
+
+.discovery-filters::-webkit-scrollbar {
+  height: 4px;
+}
+
+.discovery-filters::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.discovery-filters::-webkit-scrollbar-thumb {
+  background: var(--color-aviation-amber-dim);
+  border-radius: 2px;
+}
+
+.discovery-filter-btn {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-aviation-border-panel);
+  background: var(--color-aviation-bg-panel);
+  color: var(--color-aviation-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.discovery-filter-btn:hover {
+  border-color: var(--color-aviation-amber-dim);
+  background: var(--color-aviation-amber-subtle);
+  color: var(--color-aviation-amber);
+}
+
+.discovery-filter-btn.active {
+  border-color: var(--color-aviation-amber);
+  background: var(--color-aviation-amber-subtle);
+  color: var(--color-aviation-amber);
+  box-shadow:
+    0 0 0 1px var(--color-aviation-amber-dim),
+    0 0 20px var(--color-aviation-amber-glow);
+}
+
+.discovery-filter-btn .badge {
+  font-size: 0.625rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background: var(--color-aviation-amber);
+  color: var(--color-aviation-bg-primary);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Functions Grid
+   ========================================================================== */
+
+.discovery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--discovery-card-min-width), 1fr));
+  gap: var(--discovery-grid-gap);
+  padding: 1.5rem 2rem;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .discovery-grid {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 1920px) {
+  .discovery-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ==========================================================================
+   Aviation Function Card - Custom Styles
+   ========================================================================== */
+
+.aviation-function-card {
+  position: relative;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+  cursor: pointer;
+}
+
+.aviation-function-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    var(--color-aviation-border-glow) 0%,
+    transparent 50%,
+    var(--color-aviation-border-cyan) 100%
+  );
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.aviation-function-card:hover::before {
+  opacity: 1;
+}
+
+.aviation-function-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-aviation-amber-dim);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 40px var(--color-aviation-amber-glow);
+}
+
+[data-theme='light'] .aviation-function-card:hover {
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 0 40px var(--color-aviation-amber-glow);
+}
+
+/* Card Corner Brackets */
+.aviation-card-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--color-aviation-amber);
+  opacity: 0.4;
+  transition: opacity 0.2s ease;
+}
+
+.aviation-function-card:hover .aviation-card-corner {
+  opacity: 0.8;
+}
+
+.aviation-card-corner-tl {
+  top: 8px;
+  left: 8px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+}
+
+.aviation-card-corner-tr {
+  top: 8px;
+  right: 8px;
+  border-top: 2px solid;
+  border-right: 2px solid;
+}
+
+.aviation-card-corner-bl {
+  bottom: 8px;
+  left: 8px;
+  border-bottom: 2px solid;
+  border-left: 2px solid;
+}
+
+.aviation-card-corner-br {
+  bottom: 8px;
+  right: 8px;
+  border-bottom: 2px solid;
+  border-right: 2px solid;
+}
+
+/* Card Header */
+.aviation-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--color-aviation-border-panel);
+  background: linear-gradient(
+    180deg,
+    var(--color-aviation-bg-instrument) 0%,
+    var(--color-aviation-bg-panel) 100%
+  );
+}
+
+.aviation-card-id {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--color-aviation-text-dim);
+  text-transform: uppercase;
+}
+
+.aviation-card-title {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+  margin-top: 0.25rem;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+/* Status LED */
+.aviation-status-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.aviation-status-led.active {
+  background: var(--color-aviation-green);
+  box-shadow:
+    0 0 8px var(--color-aviation-green-glow),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.aviation-status-led.warning {
+  background: var(--color-aviation-amber);
+  box-shadow:
+    0 0 8px var(--color-aviation-amber-glow),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.aviation-status-led.error {
+  background: var(--color-aviation-red);
+  box-shadow:
+    0 0 8px var(--color-aviation-red-glow),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Card Body */
+.aviation-card-body {
+  padding: 1rem 1.25rem;
+}
+
+/* Badges */
+.aviation-badge {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.aviation-badge-runtime {
+  background: var(--color-aviation-cyan-subtle);
+  border-color: var(--color-aviation-cyan-dim);
+  color: var(--color-aviation-cyan);
+}
+
+.aviation-badge-version {
+  background: var(--color-aviation-green-subtle);
+  border-color: var(--color-aviation-green-glow);
+  color: var(--color-aviation-green);
+}
+
+/* Metrics Grid */
+.aviation-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.aviation-metric {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0.375rem;
+  padding: 0.625rem;
+}
+
+[data-theme='light'] .aviation-metric {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.aviation-metric-label {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.5625rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--color-aviation-text-muted);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.aviation-metric-value {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+  margin-top: 0.125rem;
+}
+
+.aviation-metric-value.highlight {
+  color: var(--color-aviation-cyan);
+}
+
+/* Provider Tags */
+.aviation-provider-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-aviation-border-panel);
+}
+
+.aviation-provider-tag {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.625rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-aviation-amber-dim);
+  background: var(--color-aviation-amber-subtle);
+  color: var(--color-aviation-amber);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.aviation-provider-tag.registry {
+  border-color: var(--color-aviation-cyan-dim);
+  background: var(--color-aviation-cyan-subtle);
+  color: var(--color-aviation-cyan);
+}
+
+.aviation-provider-more {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.625rem;
+  color: var(--color-aviation-text-dim);
+  padding: 0.25rem 0.375rem;
+}
+
+/* Card Footer */
+.aviation-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid var(--color-aviation-border-panel);
+  background: var(--color-aviation-bg-tertiary);
+}
+
+.aviation-card-hint {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--color-aviation-text-dim);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.aviation-card-arrow {
+  color: var(--color-aviation-amber);
+  transition: transform 0.2s ease;
+}
+
+.aviation-function-card:hover .aviation-card-arrow {
+  transform: translateX(4px);
+}
+
+/* Hover Glow Effect */
+.aviation-card-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: radial-gradient(
+    ellipse at center,
+    var(--color-aviation-amber-subtle) 0%,
+    transparent 70%
+  );
+}
+
+.aviation-function-card:hover .aviation-card-glow {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   Loading State
+   ========================================================================== */
+
+.discovery-loading {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--discovery-card-min-width), 1fr));
+  gap: var(--discovery-grid-gap);
+  padding: 1.5rem 2rem;
+}
+
+.discovery-skeleton {
+  height: 280px;
+  background: var(--color-aviation-bg-panel);
+  border: 1px solid var(--color-aviation-border-panel);
+  border-radius: 0.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.discovery-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-aviation-amber-subtle) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+
+.discovery-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  min-height: 400px;
+}
+
+.discovery-empty-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 1rem;
+  background: var(--color-aviation-amber-subtle);
+  border: 1px solid var(--color-aviation-amber-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 0 40px var(--color-aviation-amber-glow);
+}
+
+.discovery-empty-title {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.discovery-empty-description {
+  font-size: 0.875rem;
+  color: var(--color-aviation-text-muted);
+  max-width: 400px;
+  margin-bottom: 1.5rem;
+}
+
+/* ==========================================================================
+   Animation Keyframes
+   ========================================================================== */
+
+@keyframes aviation-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes aviation-pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--color-aviation-amber-glow);
+  }
+  50% {
+    box-shadow: 0 0 40px var(--color-aviation-amber-glow);
+  }
+}
+
+.aviation-animate-fade-in-up {
+  animation: aviation-fade-in-up 0.4s ease forwards;
+}
+
+.aviation-animate-pulse-glow {
+  animation: aviation-pulse-glow 2s ease-in-out infinite;
+}
+
+/* Staggered animation delays */
+.aviation-stagger-1 { animation-delay: 0.1s; }
+.aviation-stagger-2 { animation-delay: 0.2s; }
+.aviation-stagger-3 { animation-delay: 0.3s; }
+.aviation-stagger-4 { animation-delay: 0.4s; }
+.aviation-stagger-5 { animation-delay: 0.5s; }
+.aviation-stagger-6 { animation-delay: 0.6s; }

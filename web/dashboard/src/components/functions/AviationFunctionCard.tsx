@@ -26,8 +26,9 @@ interface AviationFunctionCardProps {
   fn: FunctionConfig;
   onView: (id: string) => void;
   onEdit: (id: string) => void;
-  onDelete: (fn: FunctionConfig) => void;
+  onDelete?: (fn: FunctionConfig) => void;
   index?: number;
+  isNewStyle?: boolean;
 }
 
 /**
@@ -40,6 +41,7 @@ export function AviationFunctionCard({
   onEdit,
   onDelete,
   index = 0,
+  isNewStyle = false,
 }: AviationFunctionCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -68,269 +70,241 @@ export function AviationFunctionCard({
       .toUpperCase();
   };
 
+  // New style specific classes
+  const cardClass = isNewStyle ? 'new-function-card new-animate-fade-in-up' : 'aviation-function-card aviation-animate-fade-in-up';
+  const staggerClass = isNewStyle ? `new-stagger-${(index % 6) + 1}` : '';
+
   return (
     <div
-      className="aviation-instrument group cursor-pointer aviation-animate-fade-in-up"
+      className={`${cardClass} ${staggerClass}`}
       style={{ animationDelay, opacity: 0 }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onView(fn.id)}
     >
-      {/* Corner decorations */}
-      <div className="aviation-instrument-corner aviation-instrument-corner-tl" />
-      <div className="aviation-instrument-corner aviation-instrument-corner-tr" />
-      <div className="aviation-instrument-corner aviation-instrument-corner-bl" />
-      <div className="aviation-instrument-corner aviation-instrument-corner-br" />
+      {isNewStyle && (
+        <>
+          {/* New badge */}
+          <span className="new-badge">NEW</span>
+          {/* Corner decorations */}
+          <div className="corner-decoration corner-tl" />
+          <div className="corner-decoration corner-tr" />
+          <div className="corner-decoration corner-bl" />
+          <div className="corner-decoration corner-br" />
+          {/* Hover glow */}
+          <div className="hover-glow" />
+        </>
+      )}
 
-      <div className="p-5 relative">
+      {!isNewStyle && (
+        <>
+          {/* Corner decorations */}
+          <div className="aviation-card-corner aviation-card-corner-tl" />
+          <div className="aviation-card-corner aviation-card-corner-tr" />
+          <div className="aviation-card-corner aviation-card-corner-bl" />
+          <div className="aviation-card-corner aviation-card-corner-br" />
+          {/* Hover glow effect */}
+          <div className="aviation-card-glow" />
+        </>
+      )}
+
+      <div className={isNewStyle ? 'card-body relative' : 'aviation-card-body relative'}>
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
+        <div className={isNewStyle ? 'card-header' : 'aviation-card-header'}>
           <div className="flex items-center gap-3">
             {/* Status LED */}
-            <div
-              className={`aviation-status-led ${isActive ? 'active' : 'warning'}`}
-              style={{
-                boxShadow: isActive
-                  ? '0 0 8px var(--color-aviation-green-glow), inset 0 1px 2px rgba(0,0,0,0.3)'
-                  : '0 0 8px var(--color-aviation-amber-glow), inset 0 1px 2px rgba(0,0,0,0.3)',
-                background: statusColor,
-              }}
-            />
+            {!isNewStyle && <div className={`aviation-status-led ${isActive ? 'active' : 'warning'}`} />}
 
             <div>
               {/* Function ID label */}
-              <div className="aviation-label mb-0.5">
+              <div className={isNewStyle ? 'card-id' : 'aviation-card-id'}>
                 FUNC-ID: {fn.id.slice(0, 8).toUpperCase()}
               </div>
 
               {/* Function name */}
-              <h4
-                className="font-mono font-semibold text-sm tracking-wide uppercase"
-                style={{ color: 'var(--color-aviation-text-primary)' }}
-              >
+              <h4 className={isNewStyle ? 'card-title' : 'aviation-card-title'}>
                 {fn.name}
               </h4>
             </div>
           </div>
 
-          {/* Actions dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="p-1.5 rounded transition-colors hover:bg-(--color-aviation-border-panel)"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreVertical
-                  className="w-4 h-4"
-                  style={{ color: 'var(--color-aviation-text-muted)' }}
-                />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="aviation-panel border-(--color-aviation-amber-dim)"
-              style={{
-                background: 'var(--color-aviation-bg-tertiary)',
-                borderColor: 'var(--color-aviation-amber-dim)',
-              }}
-            >
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onView(fn.id);
+          {/* Actions dropdown - only for non-new styles */}
+          {!isNewStyle && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="p-1.5 rounded transition-colors hover:bg-[var(--color-aviation-border-panel)]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreVertical
+                    className="w-4 h-4"
+                    style={{ color: 'var(--color-aviation-text-muted)' }}
+                  />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="aviation-panel"
+                style={{
+                  background: 'var(--color-aviation-bg-tertiary)',
+                  borderColor: 'var(--color-aviation-amber-dim)',
                 }}
-                className="cursor-pointer font-mono text-xs flex items-center gap-2"
-                style={{ color: 'var(--color-aviation-text-primary)' }}
               >
-                <Play className="w-3 h-3" style={{ color: 'var(--color-aviation-green)' }} />
-                EXECUTE
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(fn.id);
-                }}
-                className="cursor-pointer font-mono text-xs flex items-center gap-2"
-                style={{ color: 'var(--color-aviation-text-primary)' }}
-              >
-                <Edit3 className="w-3 h-3" style={{ color: 'var(--color-aviation-cyan)' }} />
-                MODIFY
-              </DropdownMenuItem>
-              <DropdownMenuSeparator style={{ background: 'var(--color-aviation-border-panel)' }} />
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(fn);
-                }}
-                className="cursor-pointer font-mono text-xs flex items-center gap-2"
-                style={{ color: 'var(--color-aviation-red)' }}
-              >
-                <Trash2 className="w-3 h-3" />
-                TERMINATE
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onView(fn.id);
+                  }}
+                  className="cursor-pointer font-mono text-xs flex items-center gap-2"
+                  style={{ color: 'var(--color-aviation-text-primary)' }}
+                >
+                  <Play className="w-3 h-3" style={{ color: 'var(--color-aviation-green)' }} />
+                  EXECUTE
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(fn.id);
+                  }}
+                  className="cursor-pointer font-mono text-xs flex items-center gap-2"
+                  style={{ color: 'var(--color-aviation-text-primary)' }}
+                >
+                  <Edit3 className="w-3 h-3" style={{ color: 'var(--color-aviation-cyan)' }} />
+                  MODIFY
+                </DropdownMenuItem>
+                {onDelete && (
+                  <>
+                    <DropdownMenuSeparator style={{ background: 'var(--color-aviation-border-panel)' }} />
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(fn);
+                      }}
+                      className="cursor-pointer font-mono text-xs flex items-center gap-2"
+                      style={{ color: 'var(--color-aviation-red)' }}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      TERMINATE
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
-        {/* Runtime badge */}
-        <div className="flex items-center gap-2 mb-4">
-          <div
-            className="flex items-center gap-1.5 px-2 py-1 rounded border"
-            style={{
-              background: 'var(--color-aviation-cyan-subtle)',
-              borderColor: 'var(--color-aviation-cyan-dim)',
-            }}
-          >
-            <Cpu className="w-3 h-3" style={{ color: 'var(--color-aviation-cyan)' }} />
-            <span
-              className="font-mono text-xs font-semibold"
-              style={{ color: 'var(--color-aviation-cyan)' }}
-            >
-              {runtimeDisplay}
-            </span>
-          </div>
-
-          <div
-            className="flex items-center gap-1.5 px-2 py-1 rounded border"
-            style={{
-              background: 'rgba(16, 185, 129, 0.1)',
-              borderColor: 'rgba(16, 185, 129, 0.2)',
-            }}
-          >
-            <Layers className="w-3 h-3" style={{ color: 'var(--color-aviation-green)' }} />
-            <span
-              className="font-mono text-xs font-semibold"
-              style={{ color: 'var(--color-aviation-green)' }}
-            >
-              V{fn.version || '1.0'}
-            </span>
-          </div>
+        {/* Badges */}
+        <div className={isNewStyle ? 'card-meta' : 'flex items-center gap-2 mb-4'}>
+          {isNewStyle ? (
+            <>
+              <span className="meta-badge">{runtimeDisplay}</span>
+              <span className="meta-badge">V{fn.version || '1.0'}</span>
+            </>
+          ) : (
+            <>
+              <span className="aviation-badge aviation-badge-runtime">
+                <Cpu className="w-3 h-3" />
+                {runtimeDisplay}
+              </span>
+              <span className="aviation-badge aviation-badge-version">
+                <Layers className="w-3 h-3" />
+                V{fn.version || '1.0'}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Metrics grid */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className={isNewStyle ? 'stats-grid' : 'aviation-metrics-grid'}>
           {/* Region */}
-          <div
-            className="aviation-data-row p-2! border-b-0! rounded"
-            style={{ background: 'rgba(0,0,0,0.2)' }}
-          >
-            <div className="flex items-center gap-1.5">
-              <Globe className="w-3 h-3" style={{ color: 'var(--color-aviation-text-muted)' }} />
-              <span className="aviation-data-label">REGION</span>
+          <div className={isNewStyle ? 'stat-item' : 'aviation-metric'}>
+            <div className={isNewStyle ? 'stat-label' : 'aviation-metric-label'}>
+              {!isNewStyle && <Globe className="w-3 h-3" />}
+              REGION
             </div>
-            <span
-              className="aviation-data-value text-xs font-semibold uppercase"
-              style={{ color: 'var(--color-aviation-cyan)' }}
-            >
+            <span className={isNewStyle ? 'stat-value highlight' : 'aviation-metric-value highlight'}>
               {fn.region?.toUpperCase() || 'AUTO'}
             </span>
           </div>
 
           {/* Providers */}
-          <div
-            className="aviation-data-row p-2! border-b-0! rounded"
-            style={{ background: 'rgba(0,0,0,0.2)' }}
-          >
-            <div className="flex items-center gap-1.5">
-              <Server className="w-3 h-3" style={{ color: 'var(--color-aviation-text-muted)' }} />
-              <span className="aviation-data-label">NODES</span>
+          <div className={isNewStyle ? 'stat-item' : 'aviation-metric'}>
+            <div className={isNewStyle ? 'stat-label' : 'aviation-metric-label'}>
+              {!isNewStyle && <Server className="w-3 h-3" />}
+              NODES
             </div>
-            <span
-              className="aviation-data-value text-xs font-semibold"
-              style={{ color: 'var(--color-aviation-text-primary)' }}
-            >
+            <span className={isNewStyle ? 'stat-value' : 'aviation-metric-value'}>
               {fn.providers?.length || 0}
             </span>
           </div>
 
           {/* Status */}
-          <div
-            className="aviation-data-row p-2! border-b-0! rounded"
-            style={{ background: 'rgba(0,0,0,0.2)' }}
-          >
-            <div className="flex items-center gap-1.5">
-              <Activity className="w-3 h-3" style={{ color: 'var(--color-aviation-text-muted)' }} />
-              <span className="aviation-data-label">STATUS</span>
+          <div className={isNewStyle ? 'stat-item' : 'aviation-metric'}>
+            <div className={isNewStyle ? 'stat-label' : 'aviation-metric-label'}>
+              {!isNewStyle && <Activity className="w-3 h-3" />}
+              STATUS
             </div>
-            <span className="font-mono text-xs font-semibold" style={{ color: statusColor }}>
+            <span className={isNewStyle ? 'stat-value' : 'aviation-metric-value'} style={!isNewStyle ? { color: statusColor } : undefined}>
               {statusText}
             </span>
           </div>
 
           {/* Last updated */}
-          <div
-            className="aviation-data-row p-2! border-b-0! rounded"
-            style={{ background: 'rgba(0,0,0,0.2)' }}
-          >
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-3 h-3" style={{ color: 'var(--color-aviation-text-muted)' }} />
-              <span className="aviation-data-label">UPDATED</span>
+          <div className={isNewStyle ? 'stat-item' : 'aviation-metric'}>
+            <div className={isNewStyle ? 'stat-label' : 'aviation-metric-label'}>
+              {!isNewStyle && <Clock className="w-3 h-3" />}
+              UPDATED
             </div>
-            <span
-              className="aviation-data-value text-xs"
-              style={{ color: 'var(--color-aviation-text-secondary)' }}
-            >
+            <span className={isNewStyle ? 'stat-value' : 'aviation-metric-value'}>
               {formatDate(fn.updatedAt)}
             </span>
           </div>
         </div>
 
         {/* Provider tags */}
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {fn.providers?.slice(0, 3).map((provider) => (
-            <span
-              key={provider}
-              className="px-1.5 py-0.5 rounded font-mono text-[10px] border"
-              style={{
-                background: 'var(--color-aviation-amber-subtle)',
-                borderColor: 'var(--color-aviation-amber-dim)',
-                color: 'var(--color-aviation-amber)',
-              }}
-            >
-              {provider.toUpperCase()}
-            </span>
-          ))}
-          {fn.providers && fn.providers.length > 3 && (
-            <span
-              className="px-1.5 py-0.5 font-mono text-[10px]"
-              style={{ color: 'var(--color-aviation-text-muted)' }}
-            >
-              +{fn.providers.length - 3}
-            </span>
+        {!isNewStyle && (
+          <div className="aviation-provider-tags">
+            {fn.providers?.slice(0, 3).map((provider) => (
+              <span
+                key={provider}
+                className={`aviation-provider-tag ${provider === 'registry' ? 'registry' : ''}`}
+              >
+                {provider.toUpperCase()}
+              </span>
+            ))}
+            {fn.providers && fn.providers.length > 3 && (
+              <span className="aviation-provider-more">
+                +{fn.providers.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className={isNewStyle ? 'card-footer' : 'aviation-card-footer'}>
+          <div className={isNewStyle ? 'created-at' : 'aviation-card-hint'}>
+            {isNewStyle ? (
+              <>
+                <Clock className="w-3 h-3" />
+                {formatDate(fn.createdAt)}
+              </>
+            ) : (
+              <>
+                <Zap className="w-3 h-3" />
+                CLICK TO EXECUTE
+              </>
+            )}
+          </div>
+          {isNewStyle ? (
+            <button className="action-btn">
+              EXECUTE
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          ) : (
+            <ChevronRight className="aviation-card-arrow" />
           )}
         </div>
-
-        {/* Footer with action hint */}
-        <div
-          className={`flex items-center justify-between pt-3 border-t transition-all duration-300 ${
-            isHovered ? 'opacity-100' : 'opacity-60'
-          }`}
-          style={{ borderColor: 'var(--color-aviation-border-panel)' }}
-        >
-          <div className="flex items-center gap-1.5">
-            <Zap className="w-3 h-3" style={{ color: 'var(--color-aviation-amber)' }} />
-            <span className="aviation-label text-[10px]">CLICK TO EXECUTE</span>
-          </div>
-
-          <ChevronRight
-            className={`w-4 h-4 transition-transform duration-300 ${
-              isHovered ? 'translate-x-1' : ''
-            }`}
-            style={{ color: 'var(--color-aviation-amber)' }}
-          />
-        </div>
       </div>
-
-      {/* Hover glow effect - amber */}
-      <div
-        className={`absolute inset-0 rounded-xl transition-opacity duration-300 pointer-events-none ${
-          isHovered ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{
-          background:
-            'radial-gradient(ellipse at center, var(--color-aviation-amber-subtle) 0%, transparent 70%)',
-        }}
-      />
     </div>
   );
 }

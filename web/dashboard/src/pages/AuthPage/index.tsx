@@ -2,7 +2,8 @@ import { Navbar } from '@/components/common/Navbar';
 import { Button } from '@/components/ui/button';
 import { getApiBaseUrl, getMarketingPageUrl } from '@/lib/constants';
 import { motion } from 'framer-motion';
-import { Github, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -61,7 +62,7 @@ function OAuthButton({ provider }: { provider: OAuthProvider }) {
 
   const getIcon = () => {
     if (provider.id === 'github') {
-      return <Github className="w-4 h-4" />;
+      return <Icon icon="simple-icons:github" className="w-4 h-4" />;
     }
     if (provider.id === 'google') {
       return (

@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/common/StatCard";
-import { Globe, Clock, AlertTriangle, TrendingUp, Loader2 } from "lucide-react";
+import { Globe, Clock, AlertTriangle, TrendingUp, Loader2, Rocket } from "lucide-react";
+import { EmptyState } from "@/components/ui";
 import { functionsApi } from "@/api/functions";
 import { dashboardApi } from "@/api/dashboard";
 import { UsageGraph } from "@/components/dashboard";
@@ -150,11 +151,16 @@ export function AnalyticsPage() {
       )}
 
       {!functionsLoading && !usageLoading && !executionRateLoading && !metricsLoading && functions.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-text-secondary">No functions deployed yet. Deploy a function to see analytics.</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Rocket className="h-8 w-8" />}
+          title="No functions deployed yet"
+          description="Deploy your first function to start seeing analytics data and performance metrics."
+          action={
+            <Button asChild>
+              <a href="/functions">Deploy a Function</a>
+            </Button>
+          }
+        />
       )}
 
       {/* Charts Grid - shown when functions exist */}

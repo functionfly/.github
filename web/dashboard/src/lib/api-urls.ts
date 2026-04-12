@@ -168,6 +168,14 @@ export const API_URLS = {
     delete: (id: string) => `${API}/state-fabric/${id}`,
     entries: (id: string) => `${API}/state-fabric/${id}/entries`,
   },
+
+  // ========================================================================
+  // Newsletter Endpoints (Public - no auth required)
+  // ========================================================================
+  newsletter: {
+    subscribe: `${apiRoot.replace(/\/$/, '')}/newsletter/subscribe`,
+    unsubscribe: `${apiRoot.replace(/\/$/, '')}/newsletter/unsubscribe`,
+  },
 } as const;
 
 // ============================================================================

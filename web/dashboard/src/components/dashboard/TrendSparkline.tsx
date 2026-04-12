@@ -34,8 +34,8 @@ export function TrendSparkline({
   const chartData = data.map((value, index) => ({ value, index }));
 
   return (
-    <div className={cn("flex items-center", className)}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div className={cn("flex items-center min-h-[20px] min-w-[40px]", className)}>
+      <ResponsiveContainer width="100%" height={40}>
         {variant === "area" ? (
           <AreaChart
             data={chartData}

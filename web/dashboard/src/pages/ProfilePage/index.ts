@@ -63,8 +63,6 @@ export type { AnalyticsTabProps } from "./components/tabs/AnalyticsTab";
 export { AboutTab } from "./components/tabs/AboutTab";
 export type { AboutTabProps } from "./components/tabs/AboutTab";
 
-export { SettingsTab } from "./components/tabs/SettingsTab";
-
 // Main page component
 export { ProfilePage, default } from "./ProfilePage";
 export type { ProfilePageProps } from "./ProfilePage";

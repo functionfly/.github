@@ -235,6 +235,10 @@ export interface ConnectedProvider {
   status: 'online' | 'offline' | 'degraded' | 'pending';
   connectedAt: string;
   apiKey?: string;
+  /** Whether the provider connection is stale (not used in 30+ days) */
+  isStale?: boolean;
+  /** ISO timestamp of when the provider was last used */
+  lastUsedAt?: string;
 }
 
 export interface ConnectProviderRequest {

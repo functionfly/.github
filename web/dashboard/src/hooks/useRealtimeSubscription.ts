@@ -277,12 +277,6 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
         if (import.meta.env.DEV) {
           console.log('Skipping WebSocket connection - missing auth data');
         }
-        if (token) {
-          if (import.meta.env.DEV) {
-            console.log('Clearing invalid token');
-          }
-          localStorage.removeItem('ff-access-token');
-        }
         disconnect();
         return;
       }

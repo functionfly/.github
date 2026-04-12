@@ -1,0 +1,758 @@
+/* ==========================================================================
+   FunctionFly Discovery - New Functions Page
+   Special styling for http://localhost:3000/functions/discovery/new
+   Fresh, vibrant theme for newly created functions
+   ========================================================================== */
+
+/* ==========================================================================
+   New Functions Page - Root Styles
+   ========================================================================== */
+
+.discovery-new-page {
+  --new-page-bg-start: #0a0a0f;
+  --new-page-bg-end: #0f172a;
+  --new-accent-primary: #8b5cf6;
+  --new-accent-secondary: #ec4899;
+  --new-accent-glow: rgba(139, 92, 246, 0.4);
+  --new-pulse-color: rgba(236, 72, 153, 0.3);
+
+  min-height: 100vh;
+  background: linear-gradient(
+    135deg,
+    var(--new-page-bg-start) 0%,
+    var(--new-page-bg-end) 50%,
+    var(--new-page-bg-start) 100%
+  );
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Animated background pattern */
+.discovery-new-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    radial-gradient(circle at 20% 80%, var(--new-accent-glow) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, var(--new-pulse-color) 0%, transparent 50%);
+  animation: new-page-bg-pulse 8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes new-page-bg-pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* Floating particles effect */
+.discovery-new-page::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    radial-gradient(2px 2px at 20px 30px, var(--new-accent-primary), transparent),
+    radial-gradient(2px 2px at 40px 70px, var(--new-accent-secondary), transparent),
+    radial-gradient(2px 2px at 50px 160px, var(--new-accent-primary), transparent),
+    radial-gradient(2px 2px at 90px 40px, var(--new-accent-secondary), transparent),
+    radial-gradient(2px 2px at 130px 80px, var(--new-accent-primary), transparent),
+    radial-gradient(2px 2px at 160px 120px, var(--new-accent-secondary), transparent);
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  animation: new-page-particles 20s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+}
+
+@keyframes new-page-particles {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-200px);
+  }
+}
+
+/* Light mode overrides */
+[data-theme='light'] .discovery-new-page {
+  --new-page-bg-start: #f8fafc;
+  --new-page-bg-end: #e2e8f0;
+  --new-accent-primary: #7c3aed;
+  --new-accent-secondary: #db2777;
+  --new-accent-glow: rgba(124, 58, 237, 0.2);
+  --new-pulse-color: rgba(219, 39, 119, 0.15);
+}
+
+/* ==========================================================================
+   New Functions Header
+   ========================================================================== */
+
+.discovery-new-header {
+  position: relative;
+  padding: 2rem 2.5rem;
+  background: linear-gradient(
+    180deg,
+    rgba(139, 92, 246, 0.1) 0%,
+    transparent 100%
+  );
+  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.discovery-new-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--new-accent-primary) 20%,
+    var(--new-accent-secondary) 80%,
+    transparent 100%
+  );
+  animation: new-header-glow 3s ease-in-out infinite;
+}
+
+@keyframes new-header-glow {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.discovery-new-title {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  background: linear-gradient(
+    135deg,
+    var(--new-accent-primary) 0%,
+    var(--new-accent-secondary) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.discovery-new-title .icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    135deg,
+    var(--new-accent-primary) 0%,
+    var(--new-accent-secondary) 100%
+  );
+  box-shadow:
+    0 0 30px var(--new-accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation: new-icon-pulse 2s ease-in-out infinite;
+}
+
+@keyframes new-icon-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 30px var(--new-accent-glow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 50px var(--new-accent-glow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+}
+
+.discovery-new-subtitle {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.9375rem;
+  color: var(--color-aviation-text-secondary);
+  margin-top: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+.discovery-new-badge {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    135deg,
+    var(--new-accent-primary) 0%,
+    var(--new-accent-secondary) 100%
+  );
+  color: white;
+  margin-left: 1rem;
+  animation: new-badge-shine 3s ease-in-out infinite;
+}
+
+@keyframes new-badge-shine {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.2);
+  }
+}
+
+/* ==========================================================================
+   New Functions Filter Bar
+   ========================================================================== */
+
+.discovery-new-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 2.5rem;
+  background: rgba(139, 92, 246, 0.05);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--new-accent-primary) transparent;
+}
+
+.discovery-new-filters::-webkit-scrollbar {
+  height: 4px;
+}
+
+.discovery-new-filters::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.discovery-new-filters::-webkit-scrollbar-thumb {
+  background: var(--new-accent-primary);
+  border-radius: 2px;
+}
+
+.discovery-new-filter-btn {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  background: rgba(15, 23, 42, 0.5);
+  color: var(--color-aviation-text-secondary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.discovery-new-filter-btn:hover {
+  border-color: var(--new-accent-primary);
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--new-accent-primary);
+  transform: translateY(-1px);
+}
+
+.discovery-new-filter-btn.active {
+  border-color: var(--new-accent-primary);
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.2) 0%,
+    rgba(236, 72, 153, 0.2) 100%
+  );
+  color: white;
+  box-shadow:
+    0 0 20px var(--new-accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* ==========================================================================
+   New Functions Grid
+   ========================================================================== */
+
+.discovery-new-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
+  padding: 2rem 2.5rem;
+  max-width: 1800px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .discovery-new-grid {
+    grid-template-columns: 1fr;
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1920px) {
+  .discovery-new-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ==========================================================================
+   New Function Card - Special Edition
+   ========================================================================== */
+
+.new-function-card {
+  position: relative;
+  background: linear-gradient(
+    145deg,
+    rgba(15, 23, 42, 0.8) 0%,
+    rgba(15, 23, 42, 0.6) 100%
+  );
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 1rem;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.new-function-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.5) 0%,
+    transparent 50%,
+    rgba(236, 72, 153, 0.5) 100%
+  );
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.new-function-card:hover::before {
+  opacity: 1;
+}
+
+.new-function-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.3),
+    0 0 60px var(--new-accent-glow);
+}
+
+/* New badge on card */
+.new-function-card .new-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background: linear-gradient(
+    135deg,
+    var(--new-accent-primary) 0%,
+    var(--new-accent-secondary) 100%
+  );
+  color: white;
+  z-index: 10;
+  animation: new-badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes new-badge-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px var(--new-accent-glow);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--new-accent-glow);
+  }
+}
+
+/* Corner decorations */
+.new-function-card .corner-decoration {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-color: var(--new-accent-primary);
+  opacity: 0.3;
+  transition: all 0.3s ease;
+}
+
+.new-function-card:hover .corner-decoration {
+  opacity: 0.8;
+  width: 20px;
+  height: 20px;
+}
+
+.new-function-card .corner-tl {
+  top: 12px;
+  left: 12px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+}
+
+.new-function-card .corner-tr {
+  top: 12px;
+  right: 12px;
+  border-top: 2px solid;
+  border-right: 2px solid;
+}
+
+.new-function-card .corner-bl {
+  bottom: 12px;
+  left: 12px;
+  border-bottom: 2px solid;
+  border-left: 2px solid;
+}
+
+.new-function-card .corner-br {
+  bottom: 12px;
+  right: 12px;
+  border-bottom: 2px solid;
+  border-right: 2px solid;
+}
+
+/* Card content */
+.new-function-card .card-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+  background: linear-gradient(
+    180deg,
+    rgba(139, 92, 246, 0.05) 0%,
+    transparent 100%
+  );
+}
+
+.new-function-card .card-title {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.new-function-card .card-id {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.625rem;
+  color: var(--new-accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.new-function-card .card-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.new-function-card .meta-badge {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  color: var(--new-accent-primary);
+}
+
+.new-function-card .card-body {
+  padding: 1.5rem;
+}
+
+.new-function-card .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.new-function-card .stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.new-function-card .stat-label {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.5625rem;
+  color: var(--color-aviation-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.new-function-card .stat-value {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+}
+
+.new-function-card .stat-value.highlight {
+  background: linear-gradient(
+    135deg,
+    var(--new-accent-primary) 0%,
+    var(--new-accent-secondary) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.new-function-card .card-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(139, 92, 246, 0.1);
+  background: rgba(139, 92, 246, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.new-function-card .created-at {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.6875rem;
+  color: var(--color-aviation-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.new-function-card .action-btn {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background: linear-gradient(
+    135deg,
+    var(--new-accent-primary) 0%,
+    var(--new-accent-secondary) 100%
+  );
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.new-function-card .action-btn:hover {
+  transform: translateX(4px);
+  box-shadow: 0 0 20px var(--new-accent-glow);
+}
+
+/* Glow effect on hover */
+.new-function-card .hover-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(
+    ellipse at center,
+    var(--new-accent-glow) 0%,
+    transparent 70%
+  );
+}
+
+.new-function-card:hover .hover-glow {
+  opacity: 0.5;
+}
+
+/* ==========================================================================
+   Empty State for New Functions
+   ========================================================================== */
+
+.discovery-new-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6rem 2rem;
+  text-align: center;
+  min-height: 500px;
+  position: relative;
+  z-index: 1;
+}
+
+.discovery-new-empty-icon {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    var(--new-accent-primary) 0%,
+    var(--new-accent-secondary) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2rem;
+  box-shadow: 0 0 60px var(--new-accent-glow);
+  animation: new-empty-float 3s ease-in-out infinite;
+}
+
+@keyframes new-empty-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.discovery-new-empty-title {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-aviation-text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.discovery-new-empty-description {
+  font-size: 1rem;
+  color: var(--color-aviation-text-secondary);
+  max-width: 400px;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.discovery-new-empty-btn {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1rem 2rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    135deg,
+    var(--new-accent-primary) 0%,
+    var(--new-accent-secondary) 100%
+  );
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 30px var(--new-accent-glow);
+}
+
+.discovery-new-empty-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 50px var(--new-accent-glow);
+}
+
+/* ==========================================================================
+   Loading State for New Functions
+   ========================================================================== */
+
+.discovery-new-loading {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
+  padding: 2rem 2.5rem;
+}
+
+.discovery-new-skeleton {
+  height: 300px;
+  background: linear-gradient(
+    145deg,
+    rgba(15, 23, 42, 0.5) 0%,
+    rgba(15, 23, 42, 0.3) 100%
+  );
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  border-radius: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.discovery-new-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(139, 92, 246, 0.1) 50%,
+    transparent 100%
+  );
+  animation: new-skeleton-shimmer 2s infinite;
+}
+
+@keyframes new-skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ==========================================================================
+   Animation Utilities
+   ========================================================================== */
+
+@keyframes new-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.new-animate-fade-in-up {
+  animation: new-fade-in-up 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.new-stagger-1 { animation-delay: 0.1s; }
+.new-stagger-2 { animation-delay: 0.2s; }
+.new-stagger-3 { animation-delay: 0.3s; }
+.new-stagger-4 { animation-delay: 0.4s; }
+.new-stagger-5 { animation-delay: 0.5s; }
+.new-stagger-6 { animation-delay: 0.6s; }

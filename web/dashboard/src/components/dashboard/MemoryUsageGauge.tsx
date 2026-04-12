@@ -51,13 +51,13 @@ export function MemoryUsageGauge({
         : "var(--color-success)";
 
   return (
-    <Card className={cn("border-theme bg-card", className)}>
-      <CardHeader className="pb-1">
+    <Card className={cn("border-theme bg-card flex flex-col justify-center p-6", className)}>
+      <CardHeader className="p-0 pb-2">
         <CardTitle className="text-sm font-medium text-text-secondary">
           {label}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col items-center pt-0">
+      <CardContent className="flex flex-col items-center p-0 pt-0">
         <div className="relative inline-flex items-center justify-center">
           <svg
             width={config.width}

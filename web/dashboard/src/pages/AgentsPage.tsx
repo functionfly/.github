@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DataTable } from "@/components/ui/data-table";
+import { ToggleButtonGroup } from "@/components/ui";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +29,10 @@ import {
   Loader2,
   Copy,
   Check,
+  LayoutGrid,
+  List,
+  Edit3,
+  Eye,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { canCreateAgent, getAgentsLimit, hasFeature } from "@/lib/plan-utils";
@@ -44,6 +51,7 @@ export function AgentsPage() {
   const [createForm, setCreateForm] = useState({ agentId: "", name: "", description: "" });
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const agentCount = agents.length;
   const canCreate = canCreateAgent(plan, agentCount);
@@ -169,6 +177,87 @@ export function AgentsPage() {
       infrastructure: "bg-orange-500",
     };
     return <Badge className={colors[role] || "bg-gray-500"}>{role}</Badge>;
+  };
+
+  // Define table columns for list view
+  const columns = useMemo<ColumnDef<AgentIdentity>[]>(() => [
+    {
+      accessorKey: 'name',
+      header: 'Name',
+      size: 200,
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="font-medium">{row.original.name}</span>
+          <span className="text-xs text-muted-foreground font-mono">{row.original.agentId}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      size: 120,
+      cell: ({ row }) => getStatusBadge(row.original.status),
+    },
+    {
+      accessorKey: 'swarmRole',
+      header: 'Swarm Role',
+      size: 140,
+      cell: ({ row }) => getSwarmRoleBadge(row.original.swarmRole) || <span className="text-muted-foreground">-</span>,
+    },
+    {
+      accessorKey: 'createdAt',
+      header: 'Created',
+      size: 150,
+      cell: ({ row }) => {
+        const date = new Date(row.original.createdAt);
+        return (
+          <span className="text-sm text-muted-foreground">
+            {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        );
+      },
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      size: 150,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(`/agents/${row.original.id}`)}
+            className="h-8 w-8"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(`/agents/${row.original.id}/edit`)}
+            className="h-8 w-8"
+          >
+            <Edit3 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-red-500 hover:text-red-600"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ], [navigate]);
+
+  // Handle bulk actions
+  const handleBulkAction = (action: string, selectedRows: AgentIdentity[]) => {
+    if (action === 'delete') {
+      // Implement bulk delete
+      toast.info(`Would delete ${selectedRows.length} agents`);
+    }
   };
 
   if (loading) {
@@ -362,20 +451,33 @@ export function AgentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Search */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search agents..."
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Search and Controls */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Card className="flex-1">
+          <CardContent className="pt-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search agents..."
+                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+        <ToggleButtonGroup
+          value={viewMode}
+          onValueChange={(v) => setViewMode(v as 'grid' | 'list')}
+          options={[
+            { value: 'grid', label: 'Grid', icon: <LayoutGrid className="h-4 w-4" /> },
+            { value: 'list', label: 'List', icon: <List className="h-4 w-4" /> },
+          ]}
+          variant="outline"
+          size="sm"
+          className="h-fit"
+        />
+      </div>
 
       {error && (
         <Card className="border-red-500">
@@ -383,7 +485,7 @@ export function AgentsPage() {
         </Card>
       )}
 
-      {/* Agents Grid */}
+      {/* Agents Display - Grid or List */}
       {filteredAgents.length === 0 ? (
         <Card>
           <CardContent className="pt-6 text-center py-12">
@@ -396,7 +498,7 @@ export function AgentsPage() {
             </p>
           </CardContent>
         </Card>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredAgents.map((agent) => (
             <Card key={agent.id} className="hover:shadow-lg transition-shadow">
@@ -436,6 +538,35 @@ export function AgentsPage() {
             </Card>
           ))}
         </div>
+      ) : (
+        <DataTable
+          data={filteredAgents}
+          columns={columns}
+          enableRowSelection={true}
+          enableColumnResize={true}
+          enableColumnVisibility={true}
+          enableExport={true}
+          enableGlobalFilter={true}
+          enableColumnFilters={true}
+          onBulkAction={handleBulkAction}
+          bulkActions={[
+            { label: 'Delete Selected', value: 'delete', variant: 'destructive' },
+          ]}
+          exportFileName={`agents-${new Date().toISOString().split('T')[0]}`}
+          emptyState={
+            <Card>
+              <CardContent className="pt-6 text-center py-12">
+                <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium">No agents found</h3>
+                <p className="text-muted-foreground mt-1">
+                  {searchQuery
+                    ? "Try adjusting your search query"
+                    : "Create your first agent to get started"}
+                </p>
+              </CardContent>
+            </Card>
+          }
+        />
       )}
     </div>
   );

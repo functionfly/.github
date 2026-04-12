@@ -28,6 +28,7 @@ import Confetti from 'react-confetti';
 import { useNavigate } from 'react-router-dom';
 // import { useAuthStore } from "@/stores/authStore";
 import { HelpTooltip } from '@/components/ui/help-tooltip';
+import { Stepper, StepperContent, type Step } from '@/components/ui/stepper';
 import { useOnboardingStore, type OnboardingStep } from '@/stores/onboardingStore';
 import { Footer } from '../LandingPage/components/Footer';
 import { ConnectProviderStep } from './ConnectProviderStep';
@@ -399,21 +400,22 @@ export function OnboardingPage() {
             </motion.div>
           )}
 
-          {/* Step Indicators */}
-          <div className="flex justify-center gap-2 mt-8">
-            {steps.map((step, index) => {
-              const isCompleted = completedSteps.includes(step.id as OnboardingStep);
-              const isCurrent = index === currentStepIndex;
-
-              return (
-                <div
-                  key={step.id}
-                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                    isCompleted ? 'bg-green-500' : isCurrent ? 'bg-[#6366f1] w-8' : 'bg-white/20'
-                  }`}
-                />
-              );
-            })}
+          {/* Step Indicators - Using standardized Stepper component */}
+          <div className="mt-8 flex justify-center">
+            <Stepper
+              steps={steps.map((s) => ({
+                id: s.id,
+                title: s.title,
+                description: s.description,
+                icon: <s.icon className="h-4 w-4" />,
+              }))}
+              currentStep={currentStepIndex}
+              completedSteps={completedSteps}
+              orientation="horizontal"
+              clickable={false}
+            >
+              <StepperContent />
+            </Stepper>
           </div>
         </div>
       </main>

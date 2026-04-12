@@ -2,41 +2,63 @@
  * FlywheelHubPage - Main community landing page
  */
 
-import { useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { MetaTags } from '@/components/seo/MetaTags';
-import { useWebVitals } from '@/hooks/useWebVitals';
-import { PublicAnalytics } from '@/components/common/PublicAnalytics';
-import { FlywheelPageLayout, FlywheelSection, FlywheelCard } from '@/components/flywheel/layout/FlywheelLayout';
-import { ThreadCard, ThreadCardSkeleton } from '@/components/flywheel/thread/ThreadCard';
-import { ChallengeCard, ChallengeCardCompact } from '@/components/flywheel/challenge/ChallengeCard';
-import { LeaderboardTable } from '@/components/flywheel/reputation/LeaderboardTable';
-import { useThreads, useChallenges, useLeaderboard } from '@/api/flywheel';
 import {
-  MessageSquare,
-  Trophy,
-  TrendingUp,
-  Users,
+  useCategories,
+  useChallenges,
+  useFlywheelStats,
+  useLeaderboard,
+  useThreads,
+} from '@/api/flywheel';
+import { PublicAnalytics } from '@/components/common/PublicAnalytics';
+import { ChallengeCard } from '@/components/flywheel/challenge/ChallengeCard';
+import {
+  FlywheelCard,
+  FlywheelPageLayout,
+  FlywheelSection,
+} from '@/components/flywheel/layout/FlywheelLayout';
+import { LeaderboardTable } from '@/components/flywheel/reputation/LeaderboardTable';
+import { ThreadCard, ThreadCardSkeleton } from '@/components/flywheel/thread/ThreadCard';
+import { MetaTags } from '@/components/seo/MetaTags';
+import { Button } from '@/components/ui/button';
+import { useWebVitals } from '@/hooks/useWebVitals';
+import { cn } from '@/lib/utils';
+import {
   ArrowRight,
-  Sparkles,
-  Zap,
-  Target,
-  Code,
   BookOpen,
+  Code,
   Cpu,
+  MessageSquare,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Trophy,
+  Users,
+  Zap,
 } from 'lucide-react';
+import type React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // Stats for hero section
 function AnimatedCounter({ value, suffix = '' }: { value: number; suffix?: string }) {
   return (
     <span className="text-3xl font-bold text-white tabular-nums">
-      {value.toLocaleString()}{suffix}
+      {value.toLocaleString()}
+      {suffix}
     </span>
   );
 }
 
-function HeroSection() {
+interface HeroSectionProps {
+  stats?: {
+    activeThreads: number;
+    verifiedSolutions: number;
+    activeChallenges: number;
+    totalReputationPoints: number;
+  };
+  isLoading?: boolean;
+}
+
+function HeroSection({ stats, isLoading }: HeroSectionProps) {
   const navigate = useNavigate();
 
   return (
@@ -79,19 +101,43 @@ function HeroSection() {
         {/* Stats */}
         <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
-            <span className="flywheel-hero-stat"><AnimatedCounter value={1234} /></span>
+            <span className="flywheel-hero-stat">
+              {isLoading ? (
+                <span className="text-3xl font-bold text-white/50">--</span>
+              ) : (
+                <AnimatedCounter value={stats?.activeThreads ?? 0} />
+              )}
+            </span>
             <p className="text-sm text-indigo-200">Active Threads</p>
           </div>
           <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
-            <span className="flywheel-hero-stat"><AnimatedCounter value={567} /></span>
+            <span className="flywheel-hero-stat">
+              {isLoading ? (
+                <span className="text-3xl font-bold text-white/50">--</span>
+              ) : (
+                <AnimatedCounter value={stats?.verifiedSolutions ?? 0} />
+              )}
+            </span>
             <p className="text-sm text-indigo-200">Verified Solutions</p>
           </div>
           <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
-            <span className="flywheel-hero-stat"><AnimatedCounter value={12} /></span>
+            <span className="flywheel-hero-stat">
+              {isLoading ? (
+                <span className="text-3xl font-bold text-white/50">--</span>
+              ) : (
+                <AnimatedCounter value={stats?.activeChallenges ?? 0} />
+              )}
+            </span>
             <p className="text-sm text-indigo-200">Active Challenges</p>
           </div>
           <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
-            <span className="flywheel-hero-stat"><AnimatedCounter value={89000} suffix="+" /></span>
+            <span className="flywheel-hero-stat">
+              {isLoading ? (
+                <span className="text-3xl font-bold text-white/50">--</span>
+              ) : (
+                <AnimatedCounter value={stats?.totalReputationPoints ?? 0} suffix="+" />
+              )}
+            </span>
             <p className="text-sm text-indigo-200">Reputation Points</p>
           </div>
         </div>
@@ -141,17 +187,50 @@ export default function FlywheelHubPage() {
 
   // Fetch data
   const { data: threadsData, isLoading: threadsLoading } = useThreads({ sortBy: 'popular' }, 3);
-  const { data: challengesData, isLoading: challengesLoading } = useChallenges({ status: 'active' }, 2);
-  const { data: leaderboardData, isLoading: leaderboardLoading } = useLeaderboard({ type: 'overall', limit: 5 });
+  const { data: challengesData, isLoading: challengesLoading } = useChallenges(
+    { status: 'active' },
+    2
+  );
+  const { data: leaderboardData, isLoading: leaderboardLoading } = useLeaderboard({
+    type: 'overall',
+    limit: 5,
+  });
+  const { data: statsData, isLoading: statsLoading } = useFlywheelStats();
+  const { data: categoriesData, isLoading: categoriesLoading } = useCategories();
 
-  const categories = [
-    { name: 'Algorithms', count: 245, icon: Zap, color: 'bg-blue-500' },
-    { name: 'Data Structures', count: 189, icon: Target, color: 'bg-violet-500' },
-    { name: 'System Design', count: 156, icon: Cpu, color: 'bg-emerald-500' },
-    { name: 'Optimization', count: 98, icon: TrendingUp, color: 'bg-amber-500' },
-    { name: 'Machine Learning', count: 87, icon: Sparkles, color: 'bg-pink-500' },
-    { name: 'Web Development', count: 234, icon: Code, color: 'bg-cyan-500' },
-  ];
+  // Map category icons based on name
+  const getCategoryIcon = (name: string) => {
+    const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+      Algorithms: Zap,
+      'Data Structures': Target,
+      'System Design': Cpu,
+      Optimization: TrendingUp,
+      'Machine Learning': Sparkles,
+      'Web Development': Code,
+    };
+    return iconMap[name] || Code;
+  };
+
+  // Map category colors based on name
+  const getCategoryColor = (name: string) => {
+    const colorMap: Record<string, string> = {
+      Algorithms: 'bg-blue-500',
+      'Data Structures': 'bg-violet-500',
+      'System Design': 'bg-emerald-500',
+      Optimization: 'bg-amber-500',
+      'Machine Learning': 'bg-pink-500',
+      'Web Development': 'bg-cyan-500',
+    };
+    return colorMap[name] || 'bg-slate-500';
+  };
+
+  const categories =
+    categoriesData?.categories?.map((cat) => ({
+      name: cat.name,
+      count: cat.threadCount ?? 0,
+      icon: getCategoryIcon(cat.name),
+      color: cat.color || getCategoryColor(cat.name),
+    })) ?? [];
 
   return (
     <FlywheelPageLayout>
@@ -159,7 +238,14 @@ export default function FlywheelHubPage() {
       <MetaTags
         title="Flywheel Network - Proof-of-Execution Knowledge Network"
         description="Join the Flywheel Network - a proof-of-execution knowledge network where developers compete, collaborate, and earn rewards through algorithmic challenges and community contributions."
-        keywords={["flywheel network", "proof-of-execution", "algorithmic challenges", "developer community", "coding competitions", "reputation system"]}
+        keywords={[
+          'flywheel network',
+          'proof-of-execution',
+          'algorithmic challenges',
+          'developer community',
+          'coding competitions',
+          'reputation system',
+        ]}
         url={`${window.location.origin}/flywheel`}
         type="website"
       />
@@ -169,7 +255,7 @@ export default function FlywheelHubPage() {
 
       <div className="space-y-8">
         {/* Hero */}
-        <HeroSection />
+        <HeroSection stats={statsData?.stats} isLoading={statsLoading} />
 
         {/* Featured Challenges */}
         <FlywheelSection
@@ -189,10 +275,13 @@ export default function FlywheelHubPage() {
           {challengesLoading ? (
             <div className="grid gap-4 md:grid-cols-2">
               {[1, 2].map((i) => (
-                <div key={i} className="flywheel-skeleton h-64 animate-pulse rounded-xl bg-bg-tertiary" />
+                <div
+                  key={i}
+                  className="flywheel-skeleton h-64 animate-pulse rounded-xl bg-bg-tertiary"
+                />
               ))}
             </div>
-          ) : challengesData?.challenges.length ? (
+          ) : challengesData?.challenges?.length ? (
             <div className="grid gap-4 md:grid-cols-2">
               {challengesData.challenges.map((challenge) => (
                 <ChallengeCard key={challenge.id} challenge={challenge} />
@@ -201,7 +290,9 @@ export default function FlywheelHubPage() {
           ) : (
             <FlywheelCard className="text-center py-8">
               <Trophy className="flywheel-empty-icon mx-auto h-12 w-12 text-text-muted" />
-              <p className="flywheel-empty-text mt-2 text-text-secondary">No active challenges right now</p>
+              <p className="flywheel-empty-text mt-2 text-text-secondary">
+                No active challenges right now
+              </p>
             </FlywheelCard>
           )}
         </FlywheelSection>
@@ -212,13 +303,31 @@ export default function FlywheelHubPage() {
           description="Find threads in your area of interest"
         >
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {categories.map((category) => (
-              <CategoryCard
-                key={category.name}
-                {...category}
-                onClick={() => navigate(`/flywheel/threads?category=${category.name.toLowerCase().replace(' ', '-')}`)}
-              />
-            ))}
+            {categoriesLoading ? (
+              // Loading skeletons for categories
+              Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flywheel-skeleton h-28 animate-pulse rounded-xl bg-bg-tertiary"
+                />
+              ))
+            ) : categories.length ? (
+              categories.map((category) => (
+                <CategoryCard
+                  key={category.name}
+                  {...category}
+                  onClick={() =>
+                    navigate(
+                      `/flywheel/threads?category=${category.name.toLowerCase().replace(' ', '-')}`
+                    )
+                  }
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-8">
+                <p className="text-text-secondary">No categories available</p>
+              </div>
+            )}
           </div>
         </FlywheelSection>
 
@@ -247,7 +356,7 @@ export default function FlywheelHubPage() {
                     <ThreadCardSkeleton />
                     <ThreadCardSkeleton />
                   </>
-                ) : threadsData?.threads.length ? (
+                ) : threadsData?.threads?.length ? (
                   threadsData.threads.map((thread) => (
                     <ThreadCard key={thread.id} thread={thread} />
                   ))
@@ -279,11 +388,8 @@ export default function FlywheelHubPage() {
             >
               {leaderboardLoading ? (
                 <div className="flywheel-skeleton h-48 animate-pulse rounded-xl bg-bg-tertiary" />
-              ) : leaderboardData?.leaders.length ? (
-                <LeaderboardTable
-                  entries={leaderboardData.leaders.slice(0, 5)}
-                  compact
-                />
+              ) : leaderboardData?.leaders?.length ? (
+                <LeaderboardTable entries={leaderboardData.leaders.slice(0, 5)} compact />
               ) : null}
             </FlywheelSection>
 
@@ -295,7 +401,9 @@ export default function FlywheelHubPage() {
                     <BookOpen className="h-4 w-4 text-indigo-400" />
                   </div>
                   <div>
-                    <p className="flywheel-getting-title font-medium text-text-primary">Read the Guide</p>
+                    <p className="flywheel-getting-title font-medium text-text-primary">
+                      Read the Guide
+                    </p>
                     <p className="flywheel-getting-desc text-sm text-text-secondary">
                       Learn how to earn reputation and participate in challenges
                     </p>
@@ -306,7 +414,9 @@ export default function FlywheelHubPage() {
                     <Users className="h-4 w-4 text-emerald-400" />
                   </div>
                   <div>
-                    <p className="flywheel-getting-title font-medium text-text-primary">Join the Community</p>
+                    <p className="flywheel-getting-title font-medium text-text-primary">
+                      Join the Community
+                    </p>
                     <p className="flywheel-getting-desc text-sm text-text-secondary">
                       Connect with other builders and mentors
                     </p>

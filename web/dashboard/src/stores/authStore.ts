@@ -24,13 +24,47 @@ interface AuthState {
   // Actions
   login: (data: LoginRequest) => Promise<void>;
   signup: (data: SignupRequest) => Promise<SignupResponse>;
-  logout: () => Promise<void>;
+  logout: (shouldRedirect?: boolean) => Promise<void>;
   clearError: () => void;
   initialize: () => Promise<void>;
   refreshSession: () => Promise<void>;
   verifyMFA: (code: string) => Promise<void>;
   /** Sync plan from an authoritative source (e.g. GET /users/me) so UI shows correct plan. */
   setUserPlan: (plan: string) => void;
+}
+
+/**
+ * Safely decode a JWT token payload
+ * Handles base64url encoding properly and returns null if decoding fails
+ */
+function safeDecodeJwtPayload(token: string): { exp?: number; [key: string]: unknown } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      console.error('Invalid JWT format: expected 3 parts');
+      return null;
+    }
+
+    const base64Url = parts[1];
+    if (!base64Url) {
+      return null;
+    }
+
+    // Convert base64url to base64
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+
+    // Add padding if needed
+    const padding = 4 - (base64.length % 4);
+    const paddedBase64 = padding !== 4 ? base64 + '='.repeat(padding) : base64;
+
+    // Decode base64
+    const jsonPayload = atob(paddedBase64);
+
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error('Failed to decode JWT token:', error);
+    return null;
+  }
 }
 
 // Create the store
@@ -70,68 +104,85 @@ const authStore = create<AuthState>()(
           });
         };
 
-        try {
-          // Check if token is expired locally first
-          const payload = JSON.parse(atob(jwtToken.split('.')[1]));
-          const currentTime = Math.floor(Date.now() / 1000);
-          const expiresAt = payload.exp || 0;
+        // Attempt to validate or refresh the token with retry logic
+        const maxRetries = 3;
+        let lastError: Error | null = null;
 
-          // If token is still valid, validate with backend
-          if (expiresAt > currentTime) {
-            const apiUrl = getApiBaseUrl();
-            const response = await fetch(`${apiUrl}/v1/auth/validate`, {
-              method: 'GET',
-              headers: {
-                Authorization: `Bearer ${jwtToken}`,
-              },
-            });
-
-            if (response.ok) {
-              const userData = await response.json();
-              const user: User = {
-                id: userData.user.id,
-                email: userData.user.email,
-                username: userData.user.username,
-                companyName: userData.user.company_name,
-                name: userData.user.name || '',
-                avatar: userData.user.avatar || '',
-                tenantId: userData.user.tenant_id || 'default',
-                plan: userData.user.plan || 'starter',
-                role: userData.user.role,
-                createdAt: userData.user.created_at,
-                updatedAt: userData.user.updated_at,
-              };
-
-              const session: Session = {
-                access_token: jwtToken,
-                refresh_token: refreshToken || '',
-                expires_at: expiresAt,
-                token_type: 'bearer',
-                user: {
-                  id: user.id,
-                  email: user.email,
-                  user_metadata: {
-                    name: user.name,
-                    avatar_url: user.avatar,
-                  },
-                  created_at: user.createdAt,
-                  updated_at: user.updatedAt,
-                },
-              };
-
-              set({
-                user,
-                session,
-                isAuthenticated: true,
-                authChecked: true,
-              });
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          try {
+            // Check if token is expired locally first with safe decoding
+            const payload = safeDecodeJwtPayload(jwtToken);
+            if (!payload) {
+              clearAuth();
               return;
             }
-          }
 
-          // Token is expired or invalid, try to refresh if we have a refresh token
-          if (refreshToken) {
-            try {
+            const currentTime = Math.floor(Date.now() / 1000);
+            const expiresAt = payload.exp || 0;
+
+            let response: Response;
+            if (expiresAt > currentTime) {
+              // Token is still valid, validate with backend
+              const apiUrl = getApiBaseUrl();
+              response = await fetch(`${apiUrl}/v1/auth/validate`, {
+                method: 'GET',
+                headers: {
+                  Authorization: `Bearer ${jwtToken}`,
+                },
+              });
+
+              if (!response.ok) {
+                // Token invalid or expired, try to refresh
+                if (!refreshToken) {
+                  clearAuth();
+                  return;
+                }
+              } else {
+                // Token valid, update session
+                const userData = await response.json();
+                const user: User = {
+                  id: userData.user.id,
+                  email: userData.user.email,
+                  username: userData.user.username,
+                  companyName: userData.user.company_name,
+                  name: userData.user.name || '',
+                  avatar: userData.user.avatar || '',
+                  tenantId: userData.user.tenant_id || 'default',
+                  plan: userData.user.plan || 'starter',
+                  role: userData.user.role,
+                  createdAt: userData.user.created_at,
+                  updatedAt: userData.user.updated_at,
+                };
+
+                const session: Session = {
+                  access_token: jwtToken,
+                  refresh_token: refreshToken || '',
+                  expires_at: expiresAt,
+                  token_type: 'bearer',
+                  user: {
+                    id: user.id,
+                    email: user.email,
+                    user_metadata: {
+                      name: user.name,
+                      avatar_url: user.avatar,
+                    },
+                    created_at: user.createdAt,
+                    updated_at: user.updatedAt,
+                  },
+                };
+
+                set({
+                  user,
+                  session,
+                  isAuthenticated: true,
+                  authChecked: true,
+                });
+                return;
+              }
+            }
+
+            // Token is expired or response was not ok, try to refresh
+            if (refreshToken) {
               const apiUrl = getApiBaseUrl();
               const refreshResponse = await fetch(`${apiUrl}/v1/auth/refresh`, {
                 method: 'POST',
@@ -156,15 +207,18 @@ const authStore = create<AuthState>()(
                   companyName: refreshData.user.company_name,
                   name: refreshData.user.name || '',
                   avatar: refreshData.user.avatar || '',
-                tenantId: refreshData.user.tenant_id || 'default',
-                plan: refreshData.user.plan || 'starter',
-                role: refreshData.user.role,
+                  tenantId: refreshData.user.tenant_id || 'default',
+                  plan: refreshData.user.plan || 'starter',
+                  role: refreshData.user.role,
                   createdAt: refreshData.user.created_at,
                   updatedAt: refreshData.user.updated_at,
                 };
 
-                // Decode new token to get expiration
-                const newPayload = JSON.parse(atob(refreshData.token.split('.')[1]));
+                // Decode new token to get expiration with safe decoding
+                const newPayload = safeDecodeJwtPayload(refreshData.token);
+                if (!newPayload) {
+                  throw new Error('Invalid token format from refresh');
+                }
                 const newExpiresAt = newPayload.exp || Math.floor(Date.now() / 1000) + 30 * 60; // 30 minutes fallback
 
                 const session: Session = {
@@ -192,123 +246,144 @@ const authStore = create<AuthState>()(
                 });
                 return;
               }
-            } catch (refreshError) {
-              console.warn('Token refresh failed:', refreshError);
+            }
+
+            // If we get here, refresh failed or wasn't possible
+            clearAuth();
+            return;
+          } catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error));
+            console.warn(`Auth initialization attempt ${attempt + 1} failed:`, error);
+
+            // Don't retry on the last attempt
+            if (attempt < maxRetries - 1) {
+              // Exponential backoff: 500ms, 1000ms, 2000ms
+              const delayMs = 500 * Math.pow(2, attempt);
+              await new Promise((resolve) => setTimeout(resolve, delayMs));
             }
           }
+        }
 
-          clearAuth();
-        } catch {
-          clearAuth();
+        // All retries exhausted
+        console.error('Auth initialization failed after all retries:', lastError);
+        clearAuth();
+      },
+
+      login: async (data: LoginRequest) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await apiClient.post<{
+            user: User;
+            session: Session;
+          }>('/auth/login', data);
+
+          const { user, session } = response;
+
+          localStorage.setItem('ff-access-token', session.access_token);
+          if (session.refresh_token) {
+            localStorage.setItem('ff-refresh-token', session.refresh_token);
+          }
+
+          set({
+            user,
+            session,
+            isAuthenticated: true,
+            isLoading: false,
+            authChecked: true,
+            mfaRequired: false,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Login failed';
+          set({ error: message, isLoading: false });
+          throw error;
         }
       },
 
-      refreshSession: async () => {
-        // JWT tokens are stateless; re-run initialize to re-validate the stored token
-        // and refresh in-memory state from the backend.
-        await authStore.getState().initialize();
-      },
-
-      login: async (data) => {
+      signup: async (data: SignupRequest) => {
         set({ isLoading: true, error: null });
         try {
+          const response = await apiClient.post<SignupResponse>('/auth/signup', data);
+          set({ isLoading: false });
+          return response;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Signup failed';
+          set({ error: message, isLoading: false });
+          throw error;
+        }
+      },
+
+      logout: async (shouldRedirect: boolean = true) => {
+        try {
+          await apiClient.post('/auth/logout');
+        } catch (error) {
+          console.warn('Logout API call failed:', error);
+        } finally {
+          localStorage.removeItem('ff-access-token');
+          localStorage.removeItem('ff-refresh-token');
+          localStorage.removeItem('ff-last-wallet-agent-id');
+          set({
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            error: null,
+            mfaRequired: false,
+            authChecked: true,
+          });
+          // Redirect to login if not already there
+          if (shouldRedirect && window.location.pathname !== '/login') {
+            const currentPath = window.location.pathname + window.location.search;
+            window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+          }
+        }
+      },
+
+      clearError: () => set({ error: null }),
+
+      refreshSession: async () => {
+        const refreshToken = localStorage.getItem('ff-refresh-token');
+        if (!refreshToken) {
+          set({ isAuthenticated: false, authChecked: true });
+          return;
+        }
+
+        try {
           const apiUrl = getApiBaseUrl();
-          const response = await fetch(`${apiUrl}/auth/login`, {
+          const response = await fetch(`${apiUrl}/v1/auth/refresh`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              email: data.email,
-              password: data.password,
-            }),
+            body: JSON.stringify({ refresh_token: refreshToken }),
           });
 
           if (!response.ok) {
-            const text = await response.text();
-            let msg = 'Login failed';
-            let detail: string | undefined;
-            let retryAfterSec: number | undefined;
-            const retryHdr = response.headers.get('Retry-After');
-            if (retryHdr) {
-              const n = parseInt(retryHdr, 10);
-              if (!Number.isNaN(n)) retryAfterSec = n;
-            }
-            try {
-              const errorData = text ? JSON.parse(text) : {};
-              msg = errorData.message || msg;
-              if (errorData.retry_after != null && retryAfterSec === undefined) {
-                const r = Number(errorData.retry_after);
-                if (!Number.isNaN(r)) retryAfterSec = r;
-              }
-              // Only expose detail in development mode
-              if (import.meta.env.DEV) {
-                detail = errorData.detail;
-              }
-            } catch {
-              // Non-JSON body (proxy error, network issue, etc.)
-              if (response.status >= 500) {
-                msg = 'Cannot reach the API. Please try again later.';
-              }
-            }
-            const fullMessage = detail ? `${msg} ${detail}` : msg;
-            const err = new Error(fullMessage) as Error & {
-              status: number;
-              retryAfter?: number;
-            };
-            err.status = response.status;
-            if (retryAfterSec !== undefined) err.retryAfter = retryAfterSec;
-            throw err;
+            throw new Error('Session refresh failed');
           }
 
-          const authData = await response.json();
+          const data = await response.json();
+          localStorage.setItem('ff-access-token', data.token);
+          localStorage.setItem('ff-refresh-token', data.refresh_token);
 
-          // Check if MFA is required
-          if (authData.mfaRequired) {
-            // Store temp token for MFA verification
-            if (authData.tempToken) {
-              localStorage.setItem('sb-mfa-temp-token', authData.tempToken);
-            }
-            set({
-              mfaRequired: true,
-              isLoading: false,
-              error: null,
-            });
-            throw new Error('MFA_REQUIRED');
-          }
-
-          if (!authData.token) {
-            throw new Error('Authentication response missing token');
-          }
-
-          // Store JWT token and refresh token for future requests
-          localStorage.setItem('ff-access-token', authData.token);
-          if (authData.refresh_token) {
-            localStorage.setItem('ff-refresh-token', authData.refresh_token);
-          }
-
-          // Create user object from response
           const user: User = {
-            id: authData.user.id,
-            email: authData.user.email || '',
-            username: authData.user.username,
-            companyName: authData.user.company_name,
-            name: authData.user.name || '',
-            avatar: authData.user.avatar || '',
-            tenantId: authData.user.tenant_id || 'default',
-            plan: authData.user.plan || 'starter',
-            role: authData.user.role,
-            createdAt: authData.user.created_at,
-            updatedAt: authData.user.updated_at,
+            id: data.user.id,
+            email: data.user.email,
+            username: data.user.username,
+            companyName: data.user.company_name,
+            name: data.user.name || '',
+            avatar: data.user.avatar || '',
+            tenantId: data.user.tenant_id || 'default',
+            plan: data.user.plan || 'starter',
+            role: data.user.role,
+            createdAt: data.user.created_at,
+            updatedAt: data.user.updated_at,
           };
 
-          // Decode JWT to get actual expiration time
-          const payload = JSON.parse(atob(authData.token.split('.')[1]));
-          const expiresAt = payload.exp || Math.floor(Date.now() / 1000) + 24 * 60 * 60;
+          const payload = safeDecodeJwtPayload(data.token);
+          const expiresAt = payload?.exp || Math.floor(Date.now() / 1000) + 30 * 60;
 
-          const loginSession: Session = {
-            access_token: authData.token,
-            refresh_token: '',
+          const session: Session = {
+            access_token: data.token,
+            refresh_token: data.refresh_token,
             expires_at: expiresAt,
             token_type: 'bearer',
             user: {
@@ -325,157 +400,57 @@ const authStore = create<AuthState>()(
 
           set({
             user,
-            session: loginSession,
+            session,
             isAuthenticated: true,
-            isLoading: false,
             authChecked: true,
           });
-
-          // Reload API client token cache
-          apiClient.reloadToken();
         } catch (error) {
-          let errorMessage = 'Login failed';
-          if (error instanceof Error) {
-            errorMessage = error.message;
-            if (
-              error.name === 'TypeError' &&
-              (error.message === 'Failed to fetch' || error.message.includes('NetworkError'))
-            ) {
-              errorMessage =
-                'Cannot reach the server. Check that the API is running and try again.';
-            }
-          }
+          console.error('Session refresh failed:', error);
+          localStorage.removeItem('ff-access-token');
+          localStorage.removeItem('ff-refresh-token');
           set({
-            error: errorMessage,
-            isLoading: false,
-            isAuthenticated: false,
             user: null,
+            session: null,
+            isAuthenticated: false,
+            authChecked: true,
           });
-          throw error;
         }
       },
-
-      signup: async (data) => {
-        set({ isLoading: true, error: null });
-        try {
-          const apiUrl = getApiBaseUrl();
-          const response = await fetch(`${apiUrl}/auth/signup`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: data.email,
-              password: data.password,
-              confirmPassword: data.confirmPassword,
-              name: data.name,
-              dateOfBirth: data.dateOfBirth,
-              username: data.username || undefined,
-              companyName: data.companyName || undefined,
-              inviteCode: data.inviteCode || undefined,
-              termsAccepted: data.termsAccepted,
-            }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'Signup failed' }));
-            throw new Error(errorData.message || 'Signup failed');
-          }
-
-          const authData = await response.json();
-
-          set({ isLoading: false });
-
-          return {
-            message: authData.message || 'Account created successfully',
-            emailSent: authData.emailSent || false,
-            requiresVerification: authData.requiresVerification || false,
-          };
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Signup failed';
-          set({
-            error: errorMessage,
-            isLoading: false,
-          });
-          throw error;
-        }
-      },
-
-      logout: async () => {
-        const token = localStorage.getItem('ff-access-token');
-
-        // Invalidate the session server-side (best-effort — don't block local clear on failure)
-        if (token) {
-          try {
-            const apiUrl = getApiBaseUrl();
-            await fetch(`${apiUrl}/auth/logout`, {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-            });
-          } catch {
-            // Network error during logout — proceed with local cleanup regardless
-          }
-        }
-
-        // Clear all local auth state
-        localStorage.removeItem('ff-access-token');
-        localStorage.removeItem('ff-refresh-token');
-        // Avoid showing another account's last agent wallet in the user menu after re-login.
-        localStorage.removeItem('ff-last-wallet-agent-id');
-        apiClient.clearToken();
-
-        set({
-          user: null,
-          session: null,
-          isAuthenticated: false,
-          error: null,
-        });
-      },
-
-      clearError: () => set({ error: null }),
-
-      setUserPlan: (plan: string) =>
-        set((state) => (state.user ? { user: { ...state.user, plan } } : {})),
 
       verifyMFA: async (code: string) => {
         set({ isLoading: true, error: null });
         try {
-          const token = localStorage.getItem('ff-access-token');
-          const apiUrl = getApiBaseUrl();
-          const response = await fetch(`${apiUrl}/auth/mfa/verify`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-          });
+          const response = await apiClient.post<{
+            user: User;
+            session: Session;
+          }>('/auth/mfa/verify', { code });
 
-          const authData = await response.json();
+          const { user, session } = response;
 
-          // Update session with new token if provided
-          if (authData.token) {
-            localStorage.setItem('ff-access-token', authData.token);
+          localStorage.setItem('ff-access-token', session.access_token);
+          if (session.refresh_token) {
+            localStorage.setItem('ff-refresh-token', session.refresh_token);
           }
 
           set({
-            mfaRequired: false,
+            user,
+            session,
+            isAuthenticated: true,
             isLoading: false,
+            mfaRequired: false,
             authChecked: true,
           });
-
-          // Reload API client token cache
-          apiClient.reloadToken();
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'MFA verification failed';
-          set({
-            error: errorMessage,
-            isLoading: false,
-          });
+          const message = error instanceof Error ? error.message : 'MFA verification failed';
+          set({ error: message, isLoading: false });
           throw error;
         }
+      },
+
+      setUserPlan: (plan: string) => {
+        set((state) => ({
+          user: state.user ? { ...state.user, plan } : null,
+        }));
       },
     }),
     {
@@ -484,6 +459,7 @@ const authStore = create<AuthState>()(
         user: state.user,
         session: state.session,
         isAuthenticated: state.isAuthenticated,
+        authChecked: state.authChecked,
       }),
     }
   )

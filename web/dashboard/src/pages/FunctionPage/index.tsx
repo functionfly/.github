@@ -27,6 +27,7 @@ import type {
   TrustMetrics,
   TrustTier,
 } from '@/types';
+import { Icon } from '@iconify/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -37,7 +38,6 @@ import {
   ChevronRight,
   ExternalLink,
   FileJson,
-  Github,
   Loader2,
   Package,
   Play,
@@ -541,7 +541,7 @@ print(result)`,
                 </Button>
               </Link>
               <Button variant="outline" size="lg" className="gap-2">
-                <Github className="w-4 h-4" />
+                <Icon icon="simple-icons:github" className="w-4 h-4" />
                 View on GitHub
               </Button>
               <ShareButton functionInfo={functionInfo} />

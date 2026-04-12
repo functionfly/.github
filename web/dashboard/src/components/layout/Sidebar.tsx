@@ -1,6 +1,7 @@
 import { Logo } from '@/components/common/Logo';
-import { Button } from '@/components/ui/button';
+import { UpgradeBanner } from '@/components/enterprise';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { useNavigationStatus } from '@/hooks/useNavigationStatus';
 import { usePlan } from '@/hooks/usePlan';
@@ -17,91 +18,353 @@ import {
   BarChart3,
   Bell,
   Bot,
+  Briefcase,
   Building2,
   ChevronDown,
   Cloud,
   Code,
+  Command,
   Database,
+  FileSearch,
+  Flame,
   FunctionSquare,
   Key,
   KeyRound,
   LayoutDashboard,
+  LayoutGrid,
   LogOut,
+  MessageSquare,
   PieChart,
   Puzzle,
+  Rocket,
+  Scale,
   Search,
   Settings,
   Shield,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  LifeBuoy,
+  TrendingUp,
   Users,
   Wallet,
   X,
+  Network,
+  Workflow,
+  Zap,
+  type LucideIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+interface NavItem {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: 'new' | 'beta' | number;
+  shortcut?: string;
+  description?: string;
+}
+
 interface NavSection {
+  id: string;
   title: string;
-  items: Array<{
-    path: string;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-  }>;
+  icon: LucideIcon;
+  items: NavItem[];
+  collapsible?: boolean;
 }
 
 const navigationSections: NavSection[] = [
   {
+    id: 'overview',
     title: 'Overview',
+    icon: LayoutDashboard,
+    collapsible: true,
     items: [
-      { path: ROUTES.DASHBOARD, label: 'Discover', icon: Code },
-      { path: ROUTES.OVERVIEW, label: 'Overview', icon: LayoutDashboard },
-      { path: '/status', label: 'Status', icon: Activity },
-      { path: '/notifications', label: 'Notifications', icon: Bell },
+      {
+        path: ROUTES.DASHBOARD,
+        label: 'Discover',
+        icon: Code,
+        shortcut: 'G',
+        description: 'Browse functions and marketplace',
+      },
+      {
+        path: ROUTES.OVERVIEW,
+        label: 'Overview',
+        icon: LayoutDashboard,
+        description: 'Your dashboard summary',
+      },
+      {
+        path: '/notifications',
+        label: 'Notifications',
+        icon: Bell,
+        description: 'View your notifications',
+      },
+      {
+        path: ROUTES.CONVERSATIONS,
+        label: 'Conversations',
+        icon: MessageSquare,
+        shortcut: 'C',
+        description: 'Chat and message history',
+      },
     ],
   },
   {
-    title: 'Swarm',
+    id: 'functions',
+    title: 'Functions',
+    icon: FunctionSquare,
+    collapsible: true,
     items: [
-      { path: ROUTES.AGENTS, label: 'Agents', icon: Bot },
-      { path: ROUTES.SDK_INTEGRATIONS, label: 'SDK Integrations', icon: Puzzle },
-      { path: ROUTES.EVOLUTION, label: 'Evolution', icon: Activity },
-      { path: ROUTES.MARKETPLACE_AGENTS, label: 'Agent Marketplace', icon: Shield },
-      { path: '/wallet', label: 'Wallet', icon: Wallet },
+      {
+        path: '/functions/hot',
+        label: 'Hot',
+        icon: Flame,
+        shortcut: 'H',
+        description: 'Trending hot functions right now',
+      },
+      {
+        path: '/functions/trending',
+        label: 'Trending',
+        icon: TrendingUp,
+        shortcut: 'T',
+        description: 'Functions gaining popularity',
+      },
+      {
+        path: '/functions/explore/new',
+        label: 'New',
+        icon: Sparkles,
+        shortcut: 'N',
+        description: 'Recently added functions',
+      },
+      {
+        path: '/functions/popular',
+        label: 'Popular',
+        icon: Zap,
+        description: 'Most used functions of all time',
+      },
+      {
+        path: '/functions/favorites',
+        label: 'Favorites',
+        icon: Star,
+        description: 'Your starred functions',
+      },
+      {
+        path: '/functions/my',
+        label: 'My Functions',
+        icon: Code,
+        description: 'Functions you created',
+      },
     ],
   },
   {
+    id: 'swarm',
+    title: 'Agent Swarm',
+    icon: Bot,
+    collapsible: true,
+    items: [
+      {
+        path: ROUTES.AGENTS,
+        label: 'Agents',
+        icon: Bot,
+        shortcut: 'A',
+        badge: 'new',
+        description: 'Manage AI agents',
+      },
+      {
+        path: ROUTES.EVOLUTION,
+        label: 'Evolution',
+        icon: Sparkles,
+        badge: 'beta',
+        description: 'Agent evolution tracking',
+      },
+      {
+        path: ROUTES.MARKETPLACE_AGENTS,
+        label: 'Marketplace',
+        icon: Shield,
+        description: 'Browse agent marketplace',
+      },
+      {
+        path: ROUTES.AGENT_MEMORIES,
+        label: 'Memory',
+        icon: Database,
+        description: 'Agent memory and context storage',
+      },
+    ],
+  },
+  {
+    id: 'teams',
+    title: 'Teams',
+    icon: Users,
+    collapsible: true,
+    items: [
+      {
+        path: ROUTES.TEAMS,
+        label: 'All Teams',
+        icon: Users,
+        shortcut: 'M',
+        description: 'Manage your teams',
+      },
+      {
+        path: '/my-team',
+        label: 'My Team',
+        icon: Shield,
+        description: 'Your primary team and memory',
+      },
+    ],
+  },
+  {
+    id: 'management',
     title: 'Management',
+    icon: Building2,
+    collapsible: true,
     items: [
-      { path: ROUTES.FUNCTIONS, label: 'Functions', icon: FunctionSquare },
-      { path: ROUTES.APPS, label: 'Apps', icon: Building2 },
-      { path: ROUTES.PROVIDERS, label: 'Providers', icon: Cloud },
-      { path: ROUTES.TEAMS, label: 'Teams', icon: Users },
-      { path: ROUTES.STATE_FABRIC, label: 'State Fabric', icon: Database },
-      { path: ROUTES.SECRETS, label: 'Secrets', icon: Key },
-      { path: ROUTES.API_KEYS, label: 'API Keys', icon: KeyRound },
+      {
+        path: '/ai-composer',
+        label: 'AI Composer',
+        icon: Sparkles,
+        badge: 'new',
+        description: 'AI-powered function generation',
+      },
+      {
+        path: '/frg',
+        label: 'Graph Editor',
+        icon: Network,
+        badge: 'beta',
+        shortcut: 'R',
+        description: 'Visual function graph editor',
+      },
+      {
+        path: '/gallery',
+        label: 'Gallery',
+        icon: LayoutGrid,
+        badge: 'new',
+        description: 'Browse and remix public functions',
+      },
+      { path: ROUTES.APPS, label: 'Apps', icon: Building2, description: 'Your applications' },
+      {
+        path: ROUTES.SDK_INTEGRATIONS,
+        label: 'SDK',
+        icon: Puzzle,
+        description: 'SDK integrations',
+      },
+      {
+        path: ROUTES.PROVIDERS,
+        label: 'Providers',
+        icon: Cloud,
+        shortcut: 'P',
+        description: 'Cloud providers',
+      },
+      {
+        path: ROUTES.STATE_FABRIC,
+        label: 'State Fabric',
+        icon: Network,
+        badge: 'beta',
+        description: 'Distributed state management',
+      },
+      {
+        path: ROUTES.STATE,
+        label: 'State',
+        icon: Database,
+        description: 'Function state management',
+      },
+      { path: ROUTES.SECRETS, label: 'Secrets', icon: Key, description: 'Secure secret storage' },
+      {
+        path: ROUTES.API_KEYS,
+        label: 'API Keys',
+        icon: KeyRound,
+        description: 'API key management',
+      },
+      {
+        path: '/wallet',
+        label: 'Wallet',
+        icon: Wallet,
+        description: 'Platform wallet & credits',
+      },
+      {
+        path: '/pricing/bundles',
+        label: 'Bundles',
+        icon: Rocket,
+        badge: 'new',
+        description: 'Backend-in-a-Box pricing bundles',
+      },
     ],
   },
   {
+    id: 'insights',
     title: 'Insights',
+    icon: BarChart3,
+    collapsible: true,
     items: [
-      { path: ROUTES.ANALYTICS, label: 'Analytics', icon: BarChart3 },
-      { path: ROUTES.USAGE, label: 'Usage', icon: PieChart },
+      {
+        path: ROUTES.ANALYTICS,
+        label: 'Analytics',
+        icon: BarChart3,
+        shortcut: 'Y',
+        description: 'Performance analytics',
+      },
+      { path: ROUTES.USAGE, label: 'Usage', icon: PieChart, description: 'Resource usage & cost analytics' },
+      { path: '/status', label: 'Status', icon: Activity, description: 'System status' },
     ],
   },
   {
+    id: 'enterprise',
+    title: 'Enterprise',
+    icon: Briefcase,
+    collapsible: true,
+    items: [
+      {
+        path: ROUTES.ENTERPRISE_SLA,
+        label: 'SLA',
+        icon: Scale,
+        description: 'Service Level Agreements',
+      },
+      {
+        path: ROUTES.ENTERPRISE_AUDIT,
+        label: 'Audit Log',
+        icon: FileSearch,
+        description: 'Security audit and compliance logs',
+      },
+      {
+        path: ROUTES.ENTERPRISE_SUPPORT,
+        label: 'Support',
+        icon: LifeBuoy,
+        description: 'Enterprise support center',
+      },
+    ],
+  },
+  {
+    id: 'account',
     title: 'Account',
-    items: [{ path: ROUTES.SETTINGS, label: 'Settings', icon: Settings }],
+    icon: Settings,
+    collapsible: false,
+    items: [
+      {
+        path: ROUTES.SETTINGS,
+        label: 'Settings',
+        icon: Settings,
+        shortcut: 'S',
+        description: 'Account settings',
+      },
+    ],
   },
 ];
 
 const LG_BREAKPOINT = 1024;
 
+// Animation variants
+const sectionVariants = {
+  collapsed: { height: 0, opacity: 0 },
+  expanded: { height: 'auto', opacity: 1 },
+};
+
 function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
   const status = useNavigationStatus();
@@ -112,10 +375,17 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [isLg, setIsLg] = useState(
     () => typeof window !== 'undefined' && window.innerWidth >= LG_BREAKPOINT
   );
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const recordRecent = useRecentNavStore((s) => s.record);
   const recentPaths = useRecentNavStore((s) => s.recentPaths);
 
+  // Record current route for recent-tab tracking
+  useEffect(() => {
+    recordRecent(location.pathname);
+  }, [location.pathname, recordRecent]);
+
+  // Handle resize
   useEffect(() => {
     const mq = window.matchMedia(`(min-width: ${LG_BREAKPOINT}px)`);
     const handler = () => setIsLg(mq.matches);
@@ -124,36 +394,34 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  // Record current route for recent-tab tracking (only when inside dashboard layout)
+  // Focus search on mobile when sidebar opens
   useEffect(() => {
-    recordRecent(location.pathname);
-  }, [location.pathname, recordRecent]);
-
-  /** Prefer /wallet/:agentId when we know it (current URL or last wallet visit). */
-  const walletNavPath = useMemo(() => {
-    const m = location.pathname.match(/^\/wallet\/([^/]+)/);
-    if (m?.[1]) return `/wallet/${m[1]}`;
-    try {
-      const id = localStorage.getItem('ff-last-wallet-agent-id');
-      if (id) return `/wallet/${encodeURIComponent(id)}`;
-    } catch {
-      /* ignore */
+    if (isOpen && !isLg && searchInputRef.current) {
+      setTimeout(() => searchInputRef.current?.focus(), 100);
     }
+  }, [isOpen, isLg]);
+
+  /** Prefer /wallet/agents/:agentId when we know it */
+  const walletNavPath = useMemo(() => {
+    const m = location.pathname.match(/^\/wallet\/agents\/([^/]+)/);
+    if (m?.[1]) return `/wallet/agents/${m[1]}`;
+    // Platform wallet is always available at /wallet
     return '/wallet';
   }, [location.pathname]);
 
   const resolveNavPath = useCallback(
-    (item: { path: string; label: string }) =>
-      item.label === 'Wallet' ? walletNavPath : item.path,
+    (item: NavItem) => (item.label === 'Wallet' ? walletNavPath : item.path),
     [walletNavPath]
   );
 
   // Swipe gesture for mobile
   const { gestureHandlers } = useSwipeGesture({
-    onSwipeLeft: () => onClose(), // Close sidebar on swipe left
+    onSwipeLeft: () => onClose(),
   });
 
   const { plan } = usePlan();
+
+  // Filter sections based on plan features
   const allSections = useMemo(() => {
     return navigationSections
       .map((section) => ({
@@ -168,82 +436,152 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           return true;
         }),
       }))
-      .filter((section) => section.items.length > 0);
+      .filter((section) => {
+        if (section.items.length === 0) return false;
+        // Hide enterprise section for free/starter plans
+        if (section.id === 'enterprise') {
+          return planHasFeature(plan, 'ENTERPRISE_SECTION');
+        }
+        return true;
+      });
   }, [plan]);
 
-  // Build path -> nav item map and derive recent items from stored paths (only show items that exist in current nav)
-  const pathToItem = new Map(
-    allSections.flatMap((s) => s.items.map((item) => [item.path, item] as const))
-  );
-  const recentItems = recentPaths
-    .map((path) => pathToItem.get(path))
-    .filter((item): item is NonNullable<typeof item> => item != null);
+  // Build searchable items
+  const searchableItems = useMemo(() => {
+    return allSections.flatMap((section) =>
+      section.items.map((item) => ({
+        ...item,
+        section: section.title,
+      }))
+    );
+  }, [allSections]);
 
-  // Initialize expanded state - all sections expanded by default
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    () => new Set(allSections.map((section) => section.title))
-  );
+  // Filtered search results
+  const searchResults = useMemo(() => {
+    if (!mobileSearchQuery.trim()) return [];
+    const query = mobileSearchQuery.toLowerCase();
+    return searchableItems.filter(
+      (item) =>
+        item.label.toLowerCase().includes(query) ||
+        item.section.toLowerCase().includes(query) ||
+        item.description?.toLowerCase().includes(query)
+    );
+  }, [mobileSearchQuery, searchableItems]);
 
-  const toggleSection = (sectionTitle: string) => {
-    setExpandedSections((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(sectionTitle)) {
-        newSet.delete(sectionTitle);
-      } else {
-        newSet.add(sectionTitle);
+  // Determine expanded sections based on active route
+  const getInitialExpanded = useCallback(() => {
+    const expanded = new Set<string>();
+    allSections.forEach((section) => {
+      const hasActive = section.items.some(
+        (item) =>
+          location.pathname === item.path ||
+          (item.path !== ROUTES.DASHBOARD && location.pathname.startsWith(item.path))
+      );
+      if (hasActive || !section.collapsible) {
+        expanded.add(section.id);
       }
-      return newSet;
+    });
+    return expanded;
+  }, [allSections, location.pathname]);
+
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(getInitialExpanded);
+
+  // Update expanded sections when route changes
+  useEffect(() => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      allSections.forEach((section) => {
+        const hasActive = section.items.some(
+          (item) =>
+            location.pathname === item.path ||
+            (item.path !== ROUTES.DASHBOARD && location.pathname.startsWith(item.path))
+        );
+        if (hasActive) {
+          next.add(section.id);
+        }
+      });
+      return next;
+    });
+  }, [location.pathname, allSections]);
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
     });
   };
 
-  // Filter sections and items based on mobile search
-  const filteredSections = mobileSearchQuery.trim()
-    ? allSections
-        .map((section) => ({
-          ...section,
-          items: section.items.filter((item) =>
-            item.label.toLowerCase().includes(mobileSearchQuery.toLowerCase())
-          ),
-        }))
-        .filter((section) => section.items.length > 0)
-    : allSections;
-
-  // Get all navigable items (flattened for keyboard navigation)
-  const allNavigableItems = filteredSections.flatMap((section) =>
-    expandedSections.has(section.title) ? section.items : []
-  );
+  // Get all visible navigable items for keyboard navigation
+  const visibleNavigableItems = useMemo(() => {
+    if (mobileSearchQuery && searchResults.length > 0) {
+      return searchResults;
+    }
+    return allSections.flatMap((section) =>
+      expandedSections.has(section.id) ? section.items : []
+    );
+  }, [mobileSearchQuery, searchResults, allSections, expandedSections]);
 
   // Keyboard navigation
   const handleArrowUp = useCallback(() => {
     if (!isOpen) return;
     setFocusedIndex((prev) => {
-      const newIndex = prev <= 0 ? allNavigableItems.length - 1 : prev - 1;
-      return newIndex;
+      if (prev <= 0) return visibleNavigableItems.length - 1;
+      return prev - 1;
     });
-  }, [isOpen, allNavigableItems.length]);
+  }, [isOpen, visibleNavigableItems.length]);
 
   const handleArrowDown = useCallback(() => {
     if (!isOpen) return;
     setFocusedIndex((prev) => {
-      const newIndex = prev >= allNavigableItems.length - 1 ? 0 : prev + 1;
-      return newIndex;
+      if (prev >= visibleNavigableItems.length - 1) return 0;
+      return prev + 1;
     });
-  }, [isOpen, allNavigableItems.length]);
+  }, [isOpen, visibleNavigableItems.length]);
 
   const handleEnter = useCallback(() => {
-    if (!isOpen || focusedIndex < 0 || focusedIndex >= allNavigableItems.length) return;
-    const item = allNavigableItems[focusedIndex];
+    if (!isOpen || focusedIndex < 0 || focusedIndex >= visibleNavigableItems.length) return;
+    const item = visibleNavigableItems[focusedIndex];
     if (item) {
       onClose();
-      window.location.href = resolveNavPath(item);
+      navigate(resolveNavPath(item));
+      setMobileSearchQuery('');
     }
-  }, [isOpen, focusedIndex, allNavigableItems, onClose, resolveNavPath]);
+  }, [isOpen, focusedIndex, visibleNavigableItems, onClose, navigate, resolveNavPath]);
 
   const handleEscape = useCallback(() => {
     if (isOpen) {
-      onClose();
+      if (mobileSearchQuery) {
+        setMobileSearchQuery('');
+      } else {
+        onClose();
+      }
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, mobileSearchQuery, onClose]);
+
+  // Keyboard shortcuts for quick navigation
+  const handleShortcut = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        const shortcut = e.key.toUpperCase();
+        const item = searchableItems.find((i) => i.shortcut === shortcut);
+        if (item) {
+          e.preventDefault();
+          navigate(resolveNavPath(item));
+        }
+      }
+    },
+    [searchableItems, navigate, resolveNavPath]
+  );
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleShortcut);
+    return () => document.removeEventListener('keydown', handleShortcut);
+  }, [handleShortcut]);
 
   useKeyboardNavigation({
     enabled: isOpen,
@@ -257,268 +595,424 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     logout();
   };
 
+  // Check if item is active
+  const isItemActive = (path: string) => {
+    return (
+      location.pathname === path ||
+      (path !== ROUTES.DASHBOARD && path !== ROUTES.OVERVIEW && location.pathname.startsWith(path))
+    );
+  };
+
+  // Get status badge for item
+  const getStatusBadge = (path: string): { count: string; color: string } | null => {
+    switch (path) {
+      case ROUTES.PROVIDERS:
+        return status.providers.hasOffline ? { count: '!', color: 'bg-warning' } : null;
+      case ROUTES.ANALYTICS:
+        return status.analytics.hasAlerts ? { count: '!', color: 'bg-warning' } : null;
+      case ROUTES.SETTINGS:
+        return status.settings.hasWarnings ? { count: '!', color: 'bg-warning' } : null;
+      case '/notifications':
+        return unreadCount > 0
+          ? { count: unreadCount > 99 ? '99+' : unreadCount.toString(), color: 'bg-error' }
+          : null;
+      default:
+        return null;
+    }
+  };
+
+  // Build path -> item map for recent items
+  const pathToItem = useMemo(() => {
+    const map = new Map<string, NavItem>();
+    allSections.forEach((section) => {
+      section.items.forEach((item) => map.set(item.path, item));
+    });
+    return map;
+  }, [allSections]);
+
+  const recentItems = useMemo(() => {
+    return recentPaths
+      .map((path) => pathToItem.get(path))
+      .filter((item): item is NonNullable<typeof item> => item != null)
+      .slice(0, 4);
+  }, [recentPaths, pathToItem]);
+
   return (
-    <>
-      {/* Mobile Overlay */}
-      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onClose} />}
-
-      {/* Sidebar */}
-      <motion.aside
-        {...gestureHandlers}
-        initial={false}
-        animate={{
-          x: isOpen || isLg ? 0 : -280,
-        }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className={cn(
-          'dashboard-sidebar fixed left-0 top-0 z-50 min-h-screen w-[260px] min-w-[260px] bg-bg-primary border-r border-border-subtle',
-          'flex flex-col lg:self-stretch lg:translate-x-0 lg:static lg:shrink-0'
-        )}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border-subtle">
-          <Logo size="sm" />
-          <button
-            onClick={onClose}
-            aria-label="Close navigation"
-            className="lg:hidden p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-text-primary"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Mobile Search */}
-        <div className="px-4 pb-4 lg:hidden border-b border-border-subtle">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-            <Input
-              placeholder="Search navigation..."
-              value={mobileSearchQuery}
-              onChange={(e) => setMobileSearchQuery(e.target.value)}
-              className="pl-9"
+    <TooltipProvider delayDuration={0}>
+      <>
+        {/* Mobile Overlay */}
+        <AnimatePresence>
+          {isOpen && !isLg && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+              onClick={onClose}
             />
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav
-          className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4"
-          aria-label="Primary navigation"
-        >
-          {/* Recent Items */}
-          {recentItems.length > 0 && !mobileSearchQuery && (
-            <div className="space-y-2">
-              <h3 className="px-3 text-xs font-semibold text-text-muted uppercase tracking-wider">
-                Recent
-              </h3>
-              <div className="space-y-1">
-                {recentItems.map((item) => {
-                  const isActive =
-                    location.pathname === item.path ||
-                    (item.path !== ROUTES.DASHBOARD &&
-                      item.path !== ROUTES.OVERVIEW &&
-                      location.pathname.startsWith(item.path));
-                  const Icon = item.icon;
-                  const itemIndex = allNavigableItems.findIndex(
-                    (navItem) => navItem.path === item.path
-                  );
-                  const isFocused = focusedIndex === itemIndex;
-
-                  return (
-                    <NavLink
-                      key={`recent-${item.path}`}
-                      to={resolveNavPath(item)}
-                      onClick={() => onClose()}
-                      className={cn(
-                        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
-                        'relative overflow-hidden',
-                        isActive
-                          ? 'text-text-primary bg-bg-hover'
-                          : isFocused
-                            ? 'text-text-primary bg-bg-hover ring-2 ring-border-focus'
-                            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-                      )}
-                    >
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeNav"
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-full bg-linear-to-b from-brand-500 to-brand-600"
-                          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                        />
-                      )}
-                      <Icon className={cn('w-5 h-5', isActive && 'text-brand-500')} />
-                      <span>{item.label}</span>
-                    </NavLink>
-                  );
-                })}
-              </div>
-            </div>
           )}
+        </AnimatePresence>
 
-          {filteredSections.map((section) => {
-            const isExpanded = expandedSections.has(section.title);
-            const hasActiveItem = section.items.some(
-              (item) =>
-                location.pathname === item.path ||
-                (item.path !== ROUTES.DASHBOARD &&
-                  item.path !== ROUTES.OVERVIEW &&
-                  location.pathname.startsWith(item.path))
-            );
+        {/* Sidebar */}
+        <motion.aside
+          {...gestureHandlers}
+          initial={false}
+          animate={{
+            x: isOpen || isLg ? 0 : -300,
+          }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          className={cn(
+            'fixed left-0 top-0 z-50 h-screen w-[280px] min-w-[280px]',
+            'aviation-sidebar',
+            'flex flex-col',
+            'lg:static lg:translate-x-0 lg:self-stretch'
+          )}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-aviation-border-panel">
+            <Logo size="sm" />
+            <div className="flex items-center gap-1">
+              {/* Command Palette Trigger (Desktop) */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => {
+                      document.dispatchEvent(
+                        new KeyboardEvent('keydown', { key: 'k', metaKey: true })
+                      );
+                    }}
+                    className="hidden lg:flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-aviation-bg-instrument/50 border border-aviation-border-instrument text-aviation-text-muted hover:text-aviation-text-secondary hover:border-aviation-amber/30 transition-colors"
+                  >
+                    <Command className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-medium">K</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Command Palette</p>
+                </TooltipContent>
+              </Tooltip>
 
-            return (
-              <div key={section.title} className="space-y-2">
-                <button
-                  onClick={() => toggleSection(section.title)}
-                  className={cn(
-                    'flex items-center justify-between w-full px-3 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg transition-colors',
-                    'hover:bg-bg-hover',
-                    hasActiveItem ? 'text-text-primary' : 'text-text-muted'
-                  )}
+              <button
+                onClick={onClose}
+                aria-label="Close navigation"
+                className="lg:hidden p-2 rounded-lg hover:bg-aviation-bg-instrument text-aviation-text-secondary hover:text-aviation-text-primary transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Search */}
+          <div className="px-3 py-3 lg:hidden border-b border-aviation-border-panel">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-aviation-text-muted" />
+              <Input
+                ref={searchInputRef}
+                placeholder="Search navigation..."
+                value={mobileSearchQuery}
+                onChange={(e) => setMobileSearchQuery(e.target.value)}
+                className="pl-9 bg-aviation-bg-instrument border-aviation-border-instrument text-aviation-text-primary placeholder:text-aviation-text-dim focus:border-aviation-amber focus:ring-aviation-amber/20"
+              />
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav
+            className="flex-1 min-h-0 overflow-y-auto aviation-scroll py-3"
+            aria-label="Primary navigation"
+          >
+            {/* Search Results */}
+            <AnimatePresence mode="wait">
+              {mobileSearchQuery && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="px-3 pb-3"
                 >
-                  <span>{section.title}</span>
-                  <ChevronDown
-                    className={cn(
-                      'w-4 h-4 transition-transform duration-200',
-                      isExpanded ? 'rotate-0' : '-rotate-90'
-                    )}
-                  />
-                </button>
-
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-1 overflow-hidden"
-                    >
-                      {section.items.map((item) => {
-                        const isActive =
-                          location.pathname === item.path ||
-                          (item.path !== ROUTES.DASHBOARD &&
-                            item.path !== ROUTES.OVERVIEW &&
-                            location.pathname.startsWith(item.path));
+                  <p className="px-3 text-xs font-medium text-aviation-text-muted mb-2">
+                    Search Results
+                  </p>
+                  {searchResults.length > 0 ? (
+                    <div className="space-y-1">
+                      {searchResults.map((item, index) => {
+                        const isActive = isItemActive(item.path);
                         const Icon = item.icon;
-
-                        // Determine if this item has status indicators
-                        const hasStatusIndicator = (() => {
-                          switch (item.path) {
-                            case ROUTES.PROVIDERS:
-                              return status.providers.hasOffline;
-                            case ROUTES.ANALYTICS:
-                              return status.analytics.hasAlerts;
-                            case ROUTES.SETTINGS:
-                              return status.settings.hasWarnings;
-                            case '/notifications':
-                              return unreadCount > 0;
-                            default:
-                              return false;
-                          }
-                        })();
-
-                        const getStatusBadge = () => {
-                          switch (item.path) {
-                            case ROUTES.PROVIDERS:
-                              if (status.providers.hasOffline) {
-                                return {
-                                  count: '!',
-                                  color: 'bg-warning',
-                                };
-                              }
-                              break;
-                            case ROUTES.ANALYTICS:
-                              if (status.analytics.hasAlerts) {
-                                return {
-                                  count: '!',
-                                  color: 'bg-warning',
-                                };
-                              }
-                              break;
-                            case ROUTES.SETTINGS:
-                              if (status.settings.hasWarnings) {
-                                return {
-                                  count: '!',
-                                  color: 'bg-warning',
-                                };
-                              }
-                              break;
-                            case '/notifications':
-                              if (unreadCount > 0) {
-                                return {
-                                  count: unreadCount > 99 ? '99+' : unreadCount.toString(),
-                                  color: 'bg-error',
-                                };
-                              }
-                              break;
-                          }
-                          return null;
-                        };
-
-                        const statusBadge = getStatusBadge();
-                        const itemIndex = allNavigableItems.findIndex(
-                          (navItem) => navItem.path === item.path
-                        );
-                        const isFocused = focusedIndex === itemIndex;
+                        const isFocused = focusedIndex === index;
 
                         return (
                           <NavLink
-                            key={item.path}
+                            key={`search-${item.path}`}
                             to={resolveNavPath(item)}
-                            onClick={() => onClose()}
+                            onClick={() => {
+                              onClose();
+                              setMobileSearchQuery('');
+                            }}
                             className={cn(
-                              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
-                              'relative overflow-hidden',
-                              isActive
-                                ? 'text-text-primary bg-bg-hover'
-                                : isFocused
-                                  ? 'text-text-primary bg-bg-hover ring-2 ring-border-focus'
-                                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                              'aviation-sidebar-item',
+                              isActive && 'aviation-sidebar-item-active',
+                              isFocused && 'ring-2 ring-aviation-amber/50'
                             )}
                           >
-                            {isActive && (
-                              <motion.div
-                                layoutId="activeNav"
-                                className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-full bg-linear-to-b from-brand-500 to-brand-600"
-                                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                              />
-                            )}
-                            <Icon className={cn('w-5 h-5', isActive && 'text-brand-500')} />
-                            <span className="flex-1">{item.label}</span>
-                            {statusBadge && (
-                              <span
-                                className={cn(
-                                  'flex items-center justify-center min-w-[18px] h-[18px] text-xs font-bold text-white rounded-full text-[10px]',
-                                  statusBadge.color
-                                )}
-                              >
-                                {statusBadge.count}
+                            <Icon className="aviation-sidebar-icon" />
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium block truncate">{item.label}</span>
+                              <span className="text-xs text-aviation-text-muted block truncate">
+                                {item.section}
                               </span>
-                            )}
+                            </div>
                           </NavLink>
                         );
                       })}
-                    </motion.div>
+                    </div>
+                  ) : (
+                    <div className="px-3 py-8 text-center">
+                      <Search className="w-8 h-8 text-aviation-text-dim mx-auto mb-2" />
+                      <p className="text-sm text-aviation-text-muted">No results found</p>
+                    </div>
                   )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-        </nav>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-border-subtle">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 text-text-secondary hover:text-error hover:bg-error/10"
-            onClick={handleLogout}
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Logout</span>
-          </Button>
-        </div>
-      </motion.aside>
-    </>
+            {/* Recent Items */}
+            {!mobileSearchQuery && recentItems.length > 0 && (
+              <div className="px-3 mb-4">
+                <p className="px-3 text-[10px] font-semibold text-aviation-text-muted uppercase tracking-wider mb-2">
+                  Recent
+                </p>
+                <div className="space-y-0.5">
+                  {recentItems.map((item) => {
+                    const isActive = isItemActive(item.path);
+                    const Icon = item.icon;
+
+                    return (
+                      <Tooltip key={`recent-${item.path}`}>
+                        <TooltipTrigger asChild>
+                          <NavLink
+                            to={resolveNavPath(item)}
+                            onClick={() => onClose()}
+                            className={cn(
+                              'aviation-sidebar-item',
+                              isActive && 'aviation-sidebar-item-active'
+                            )}
+                          >
+                            <Icon className="aviation-sidebar-icon" />
+                            <span className="flex-1 font-medium truncate">{item.label}</span>
+                            {item.shortcut && (
+                              <kbd className="aviation-sidebar-kbd">
+                                ⌘{item.shortcut}
+                              </kbd>
+                            )}
+                          </NavLink>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>{item.description || item.label}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Navigation Sections */}
+            {!mobileSearchQuery && (
+              <div className="space-y-1 px-3">
+                {allSections.map((section) => {
+                  const isExpanded = expandedSections.has(section.id);
+                  const SectionIcon = section.icon;
+                  const hasActiveItem = section.items.some((item) => isItemActive(item.path));
+
+                  return (
+                    <div key={section.id} className="mb-1">
+                      {/* Section Header */}
+                      {section.collapsible ? (
+                        <button
+                          onClick={() => toggleSection(section.id)}
+                          className={cn(
+                            'flex items-center justify-between w-full px-3 py-2 rounded-lg transition-all duration-200',
+                            'aviation-sidebar-section',
+                            hasActiveItem && 'aviation-sidebar-section-active'
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <SectionIcon className="w-4 h-4" />
+                            <span>{section.title}</span>
+                          </div>
+                          <motion.div
+                            animate={{ rotate: isExpanded ? 0 : -90 }}
+                            transition={{ duration: 0.2 }}
+                            className="aviation-sidebar-toggle"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5 aviation-sidebar-toggle-icon" />
+                          </motion.div>
+                        </button>
+                      ) : (
+                        <div
+                          className={cn(
+                            'px-3 py-2 aviation-sidebar-section',
+                            hasActiveItem && 'aviation-sidebar-section-active'
+                          )}
+                        >
+                          {section.title}
+                        </div>
+                      )}
+
+                      {/* Section Items */}
+                      <AnimatePresence initial={false}>
+                        {isExpanded && (
+                          <motion.div
+                            initial="collapsed"
+                            animate="expanded"
+                            exit="collapsed"
+                            variants={sectionVariants}
+                            transition={{ duration: 0.2, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                          >
+                            <div className="space-y-0.5 pt-1">
+                              {section.items.map((item, itemIndex) => {
+                                const isActive = isItemActive(item.path);
+                                const Icon = item.icon;
+                                const statusBadge = getStatusBadge(item.path);
+                                const globalIndex =
+                                  allSections
+                                    .slice(0, allSections.indexOf(section))
+                                    .reduce(
+                                      (acc, s) =>
+                                        acc + (expandedSections.has(s.id) ? s.items.length : 0),
+                                      0
+                                    ) + itemIndex;
+                                const isFocused = focusedIndex === globalIndex;
+
+                                return (
+                                  <Tooltip key={item.path}>
+                                    <TooltipTrigger asChild>
+                                      <NavLink
+                                        to={resolveNavPath(item)}
+                                        onClick={() => onClose()}
+                                        className={cn(
+                                          'aviation-sidebar-item',
+                                          isActive && 'aviation-sidebar-item-active',
+                                          isFocused && 'ring-2 ring-aviation-amber/50'
+                                        )}
+                                      >
+                                        {/* Active indicator */}
+                                        {isActive && (
+                                          <motion.div
+                                            layoutId="activeNavIndicator"
+                                            className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-linear-to-b from-aviation-amber to-aviation-amber-glow"
+                                            transition={{
+                                              type: 'spring',
+                                              stiffness: 400,
+                                              damping: 30,
+                                            }}
+                                          />
+                                        )}
+
+                                        <Icon className="aviation-sidebar-icon" />
+
+                                        <span className="flex-1 font-medium truncate">
+                                          {item.label}
+                                        </span>
+
+                                        {/* Badge */}
+                                        {item.badge && (
+                                          <span
+                                            className={cn(
+                                              'aviation-sidebar-badge',
+                                              item.badge === 'new'
+                                                ? 'aviation-sidebar-badge-new'
+                                                : 'aviation-sidebar-badge-beta'
+                                            )}
+                                          >
+                                            {item.badge}
+                                          </span>
+                                        )}
+
+                                        {/* Status badge */}
+                                        {statusBadge && (
+                                          <span
+                                            className={cn(
+                                              'flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold text-white rounded-full aviation-sidebar-status',
+                                              statusBadge.color
+                                            )}
+                                          >
+                                            {statusBadge.count}
+                                          </span>
+                                        )}
+
+                                        {/* Shortcut hint */}
+                                        {item.shortcut && (
+                                          <kbd className="aviation-sidebar-kbd">
+                                            ⌘{item.shortcut}
+                                          </kbd>
+                                        )}
+                                      </NavLink>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                      <p>{item.description || item.label}</p>
+                                      {item.shortcut && (
+                                        <p className="text-xs text-aviation-text-muted mt-1">
+                                          Shortcut: ⌘{item.shortcut}
+                                        </p>
+                                      )}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </nav>
+
+          {/* Upgrade Banner - only for free users */}
+          <div className="px-3 pb-3">
+            <UpgradeBanner placement="sidebar" />
+          </div>
+
+          {/* Footer */}
+          <div className="p-3 border-t border-aviation-border-panel">
+            <div className="aviation-profile mb-3">
+              <div className="aviation-profile-avatar">
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.name || 'User'}
+                  />
+                ) : (
+                  <div className="aviation-profile-initials">
+                    {(user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                  </div>
+                )}
+                <span className="aviation-profile-status" />
+              </div>
+              <div className="aviation-profile-info">
+                <p className="aviation-profile-name">
+                  {user?.username || user?.name || user?.email?.split('@')[0] || 'User'}
+                </p>
+                <p className="aviation-profile-plan">{plan || 'Free'} Plan</p>
+              </div>
+            </div>
+
+            <button
+              className="aviation-signout"
+              onClick={handleLogout}
+            >
+              <LogOut className="aviation-signout-icon" />
+              <span className="aviation-signout-text">Sign Out</span>
+            </button>
+          </div>
+        </motion.aside>
+      </>
+    </TooltipProvider>
   );
 }
 
