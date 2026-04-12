@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/functionfly/functionfly/internal/storage/trustapi"
 	"github.com/google/uuid"
@@ -50,6 +51,39 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 	partners.HandleFunc("/{partner_id}/api-keys", h.HandleCreateAPIKey).Methods("POST")
 	partners.HandleFunc("/{partner_id}/api-keys", h.HandleListAPIKeys).Methods("GET")
 	partners.HandleFunc("/{partner_id}/api-keys/{key_id}", h.HandleRevokeAPIKey).Methods("DELETE")
+}
+
+// RegisterExtendedRoutes registers extended Trust API routes (requires ExtendedHandler)
+func (h *ExtendedHandler) RegisterExtendedRoutes(r *mux.Router, authMiddleware *middleware.AuthMiddleware) {
+	// Trust revocation endpoints
+	trust := r.PathPrefix("/v1/trust").Subrouter()
+
+	// Revocation endpoints (admin/authorized only)
+	revokeRouter := trust.PathPrefix("/revoke").Subrouter()
+	if authMiddleware != nil {
+		revokeRouter = revokeRouter.Methods("POST", "DELETE", "GET").Subrouter()
+	}
+	revokeRouter.HandleFunc("", h.HandleRevokeTrust).Methods("POST")
+	revokeRouter.HandleFunc("/revoked", h.HandleListRevocations).Methods("GET")
+	revokeRouter.HandleFunc("/revoked/{function_id}", h.HandleCheckFunctionRevoked).Methods("GET")
+	revokeRouter.HandleFunc("/{revocation_id}", h.HandleGetRevocation).Methods("GET")
+	revokeRouter.HandleFunc("/{revocation_id}/lift", h.HandleUnrevokeTrust).Methods("POST")
+
+	// Attestation endpoints
+	trust.HandleFunc("/attestations", h.HandleGetAttestations).Methods("GET")
+	trust.HandleFunc("/attestations/{attestation_id}", h.HandleGetAttestation).Methods("GET")
+	trust.HandleFunc("/attestations/{attestation_id}/verify", h.HandleVerifyAttestation).Methods("GET")
+	trust.HandleFunc("/attestations/{function_id}/chain", h.HandleGetAttestationChain).Methods("GET")
+
+	// Policy endpoints
+	policies := trust.PathPrefix("/policies").Subrouter()
+	policies.HandleFunc("", h.HandleCreatePolicy).Methods("POST")
+	policies.HandleFunc("", h.HandleListPolicies).Methods("GET")
+	policies.HandleFunc("/evaluate", h.HandleEvaluatePolicy).Methods("POST")
+	policies.HandleFunc("/evaluate/batch", h.HandleBatchEvaluatePolicy).Methods("POST")
+	policies.HandleFunc("/{policy_id}", h.HandleGetPolicy).Methods("GET")
+	policies.HandleFunc("/{policy_id}", h.HandleUpdatePolicy).Methods("PUT")
+	policies.HandleFunc("/{policy_id}", h.HandleDeletePolicy).Methods("DELETE")
 }
 
 // getFunctionInfo retrieves function information from the registry
