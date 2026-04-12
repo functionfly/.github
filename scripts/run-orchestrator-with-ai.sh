@@ -33,6 +33,11 @@ elif command -v uv >/dev/null 2>&1 && [ -f "$ROOT/ai-service/pyproject.toml" ]; 
     set -a
     [ -f .env ] && . ./.env
     set +a
+    # Disable RAG to prevent Ollama blocking during startup
+    export ENABLE_RAG="${ENABLE_RAG:-false}"
+    export RAG_EMBEDDING_PROVIDER="${RAG_EMBEDDING_PROVIDER:-openai}"
+    # Force local Redis for ai-service dev mode (ignore Upstash URL from root .env)
+    export REDIS_URL="redis://localhost:6379"
     exec env PYTHONPATH=. uv run uvicorn src.main:app --host 127.0.0.1 --port "$AI_PORT"
   ) &
   AI_PID=$!

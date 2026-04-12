@@ -1,133 +1,168 @@
-# Database Migrations
+# Database Migrations Guide
 
-This project uses an embedded SQL migration system that compiles migration files directly into the Go binary.
+This guide explains how to apply database migrations to your PostgreSQL databases (local development and Neon production).
 
-## Directory Structure
+## Quick Start
 
-```
-internal/storage/sql/migrations/
-├── 20240101000000_initial_schema.up.sql
-├── 20240101000000_initial_schema.down.sql
-├── 20260214141003_add_user_roles.up.sql
-└── 20260214141003_add_user_roles.down.sql
-```
-
-## Migration Files
-
-Each migration consists of two files:
-
-- `VERSION_DESCRIPTION.up.sql` - SQL to apply the migration
-- `VERSION_DESCRIPTION.down.sql` - SQL to rollback the migration
-
-### Naming Convention
-
-- **Version**: `YYYYMMDDHHMMSS` format (timestamp)
-- **Description**: lowercase with underscores instead of spaces
-- **Extensions**: `.up.sql` for applying, `.down.sql` for rolling back
-
-## CLI Commands
-
-The migration CLI tool provides several commands:
-
-### Build the CLI
+### Option 1: Using the Migration Tool (Recommended)
 
 ```bash
-go build -o migrate cmd/migrate/main.go
+# Apply to local PostgreSQL only
+go run cmd/apply-migrations/main.go -target=local
+
+# Apply to Neon only
+go run cmd/apply-migrations/main.go -target=neon
+
+# Apply to both
+make migrate
+
+# Check migration status
+go run cmd/apply-migrations/main.go -target=local -status
+go run cmd/apply-migrations/main.go -target=neon -status
+
+# Dry-run (show what would be applied without running)
+go run cmd/apply-migrations/main.go -target=local -dry-run
+
+# Skip validation (useful in development)
+go run cmd/apply-migrations/main.go -target=local -skip-validation
 ```
 
-### Create New Migration
+### Option 2: Using the Orchestrator API
+
+The orchestrator API automatically applies migrations on startup (unless `--skip-migrations` is provided):
 
 ```bash
-./migrate create -desc "add user roles"
+# Start API with migrations
+./bin/orchestrator-api
+
+# Skip migrations (use existing schema)
+./bin/orchestrator-api --skip-migrations
 ```
 
-This creates two files:
+### Option 3: Using golang-migrate CLI
 
-- `internal/storage/sql/migrations/YYYYMMDDHHMMSS_add_user_roles.up.sql`
-- `internal/storage/sql/migrations/YYYYMMDDHHMMSS_add_user_roles.down.sql`
-
-### Run Migrations
+If you have the `migrate` CLI installed:
 
 ```bash
-./migrate run
+# Local PostgreSQL
+migrate -path migrations -database "postgres://postgres:postgres@localhost:5432/functionfly?sslmode=disable" up
+
+# Neon
+migrate -path migrations -database "$DATABASE_URL" up
 ```
 
-Applies all pending migrations to the database.
+Install golang-migrate CLI:
+```bash
+# macOS
+brew install golang-migrate
 
-### Check Migration Status
+# Linux
+curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migrate.linux-amd64.tar.gz | tar xvz
+sudo mv migrate /usr/local/bin/
+
+# See: https://github.com/golang-migrate/migrate/tree/master/cmd/migrate
+```
+
+## Environment Setup
+
+### Local PostgreSQL
+
+Ensure these are set in your `.env` file:
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=functionfly
+DB_SSLMODE=disable
+```
+
+### Neon PostgreSQL
+
+Ensure this is set (from Neon console):
+```env
+DATABASE_URL=postgresql://user:pass@neon-host.neon.tech/dbname?sslmode=require
+```
+
+## Migration Status
+
+To check which migrations have been applied:
 
 ```bash
-./migrate status
+# Using psql (local)
+psql -h localhost -U postgres -d functionfly -c "SELECT * FROM schema_migrations;"
+
+# Using psql (Neon)
+psql "$DATABASE_URL" -c "SELECT * FROM schema_migrations;"
 ```
 
-Shows which migrations are applied and which are pending.
+## Creating New Migrations
 
-## Writing Migrations
+1. Create new migration files:
+```bash
+# Using golang-migrate CLI
+migrate create -ext sql -dir migrations -seq my_new_feature
 
-### Up Migrations
-
-Write SQL that transforms the database to the new state:
-
-```sql
--- Add a new column to users table
-ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'user';
-
--- Create a new table
-CREATE TABLE user_permissions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    permission VARCHAR(100) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Add an index
-CREATE INDEX idx_user_permissions_user_id ON user_permissions(user_id);
+# Or manually create:
+# migrations/000XXX_description.up.sql
+# migrations/000XXX_description.down.sql
 ```
 
-### Down Migrations
+2. Write your SQL in the `.up.sql` file
+3. Write rollback SQL in the `.down.sql` file (optional but recommended)
 
-Write SQL that reverses the up migration:
+## Troubleshooting
 
-```sql
--- Reverse the changes in reverse order
-DROP INDEX IF EXISTS idx_user_permissions_user_id;
-DROP TABLE IF EXISTS user_permissions;
-ALTER TABLE users DROP COLUMN IF EXISTS role;
-```
+### "Dirty" Migration State
 
-## Best Practices
-
-1. **Always provide down migrations** - Even if rollback is rare, it's essential for development
-2. **Use transactions** - The system wraps each migration in a transaction automatically
-3. **Test migrations** - Test both up and down migrations on a copy of production data
-4. **Keep migrations small** - Prefer multiple small migrations over one large one
-5. **Use IF EXISTS/NOT EXISTS** - Make migrations idempotent where possible
-6. **Version control** - Commit migration files with your code changes
-
-## Rebuilding After Changes
-
-After creating new migration files, rebuild the binary:
+If migrations fail and leave the database in a "dirty" state:
 
 ```bash
-go build -o migrate cmd/migrate/main.go
+# Check current state
+psql "$DATABASE_URL" -c "SELECT version, dirty FROM schema_migrations;"
+
+# Force to a specific version (use with caution!)
+migrate -path migrations -database "$DATABASE_URL" force <VERSION_NUMBER>
 ```
 
-The embedded files are compiled into the binary at build time.
+### Duplicate Sequence Numbers
 
-## Database Setup
-
-The system automatically creates the `schema_migrations` table to track applied migrations:
-
-```sql
-CREATE TABLE schema_migrations (
-    version VARCHAR(255) PRIMARY KEY,
-    applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+If you encounter errors about duplicate migration sequence numbers:
+```bash
+# The migration system handles this automatically via the repair mechanism
+# Just run migrations normally and they will be repaired if needed
 ```
 
-## Error Handling
+### Connection Issues (Neon)
 
-- Each migration runs in its own transaction
-- If a migration fails, the transaction is rolled back
-- Failed migrations are not recorded as applied
-- Use `./migrate status` to see which migrations failed
+Neon uses PgBouncer which can cause issues with prepared statements. The migration tool handles this automatically by using a dedicated connection for migrations.
+
+## Available Migrations
+
+Check `migrations/` directory for all available migrations. Key recent migrations:
+
+- `000244_create_cost_allocation_entries` - Detailed cost tracking for chargebacks
+- Registry feature migrations
+- Billing and usage tracking
+- Security and authentication
+
+## Migration Validation
+
+After migrations run, the system performs validation checks:
+
+1. Foreign key integrity
+2. Required indexes exist
+3. Required tables exist
+4. Data integrity constraints
+
+Validation failures are logged but don't stop the application in development mode (when `SKIP_MIGRATION_VALIDATION=true`).
+
+## Rollback Testing
+
+To test migration rollbacks:
+```bash
+export DB_TEST_MIGRATION_ROLLBACK=true
+go run cmd/apply-migrations/main.go
+```
+
+This will test that the latest migration can be rolled back successfully on a temporary database.
