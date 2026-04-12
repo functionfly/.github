@@ -4,7 +4,7 @@ This document describes the migration of the dashboard authentication from an em
 
 ## Overview
 
-The dashboard now delegates all authentication (login, signup, password reset, MFA) to the standalone auth site running at `auth.functionfly.com` (or `localhost:4323` in dev). This provides:
+The dashboard now delegates all authentication (login, signup, password reset, MFA) to the standalone auth site running at `auth.functionfly.com` (or `localhost:4324` in dev). This provides:
 
 - Centralized auth logic across all FunctionFly properties
 - Consistent branding and UX for auth flows
@@ -62,7 +62,7 @@ The dashboard now delegates all authentication (login, signup, password reset, M
 
 | Environment | Dashboard | Auth Site | API |
 |-------------|-----------|-----------|-----|
-| **Local Dev** | http://localhost:3000 | http://localhost:4323 | http://localhost:8080 |
+| **Local Dev** | http://localhost:3000 | http://localhost:4324 | http://localhost:8080 |
 | **Production** | https://app.functionfly.com | https://auth.functionfly.com | https://api.functionfly.com |
 
 ## Flow
@@ -90,9 +90,9 @@ Add to your `.env`:
 
 ```env
 # Optional: standalone auth site (@web/auth). Default shown below.
-# - Dev: http://localhost:4323 (auth site dev server)
+# - Dev: http://localhost:4324 (auth site dev server)
 # - Prod: https://auth.functionfly.com
-VITE_AUTH_SITE_URL=http://localhost:4323
+VITE_AUTH_SITE_URL=http://localhost:4324
 
 # Optional: dashboard/app origin for auth redirects.
 # This is where users return after authenticating on the auth site.
@@ -164,7 +164,7 @@ Tokens are migrated from `sessionStorage` → `localStorage` by `AuthCallbackPag
 
 ## Migration Checklist
 
-- [ ] Auth site deployed and accessible (`auth.functionfly.com` or `localhost:4323`)
+- [ ] Auth site deployed and accessible (`auth.functionfly.com` or `localhost:4324`)
 - [ ] Orchestrator API has auth endpoints (`/v1/auth/*`)
 - [ ] Dashboard `.env` has `VITE_AUTH_SITE_URL` set correctly
 - [ ] Test login flow end-to-end
@@ -203,7 +203,7 @@ Tokens are migrated from `sessionStorage` → `localStorage` by `AuthCallbackPag
 bun dev
 
 # Or start individually:
-nx run functionfly-auth -t dev  # Auth site (port 4323)
+nx run functionfly-auth -t dev  # Auth site (port 4324)
 nx run dashboard -t dev         # Dashboard (port 3000)
 ./bin/orchestrator-api --skip-migrations  # API (port 8080)
 ```
