@@ -1,0 +1,202 @@
+/* ==========================================================================
+   FunctionFly™ Auth - Velocity Brand Palette
+   Jet exhaust flames at sunset altitude
+   
+   Note: Core CSS variables imported from velocity-theme.css via BaseLayout.astro
+   This file extends with auth-specific component utilities.
+   ========================================================================== */
+
+/* Import shared theme variables */
+@import './velocity-theme.css';
+
+/* Primary CTA Button - Velocity Style (Legacy: prefer ff-btn--primary) */
+.auth-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ff-space-2);
+  padding: var(--ff-space-3) var(--ff-space-6);
+  background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-afterburner) 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  border: none;
+  border-radius: var(--ff-radius-md);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--ff-shadow-glow-flame);
+  transition: all var(--ff-transition-base);
+}
+
+.auth-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(var(--ff-flame-rgb), 0.5), var(--ff-shadow-glow-flame);
+}
+
+.auth-btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Secondary Button (Legacy: prefer ff-btn--secondary) */
+.auth-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ff-space-2);
+  padding: var(--ff-space-3) var(--ff-space-4);
+  background: transparent;
+  border: 1px solid var(--ff-border-default);
+  color: var(--ff-secondary-text);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: var(--ff-radius-md);
+  cursor: pointer;
+  transition: all var(--ff-transition-fast);
+}
+
+.auth-btn-secondary:hover {
+  background: var(--ff-flightdeck);
+  border-color: var(--ff-cyan);
+  color: var(--ff-cyan);
+}
+
+/* Input Fields with Velocity Focus (Legacy: prefer ff-input) */
+.auth-input {
+  width: 100%;
+  padding: var(--ff-space-3) var(--ff-space-4);
+  background: var(--ff-tower);
+  border: 1px solid var(--ff-border-default);
+  border-radius: var(--ff-radius-md);
+  color: var(--ff-primary-text);
+  font-size: 0.875rem;
+  transition: border-color var(--ff-transition-fast), 
+              box-shadow var(--ff-transition-fast);
+  box-sizing: border-box;
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: var(--ff-flame);
+  box-shadow: 0 0 0 2px rgba(var(--ff-flame-rgb), 0.2);
+}
+
+.auth-input-error {
+  border-color: var(--ff-error);
+}
+
+.auth-input-error:focus {
+  border-color: var(--ff-error);
+  box-shadow: 0 0 0 2px rgba(255, 45, 85, 0.2);
+}
+
+/* Links with Velocity Color (Legacy: use native a styling from auth-components.css) */
+.auth-link {
+  color: var(--ff-cyan);
+  text-decoration: none;
+  transition: color var(--ff-transition-fast);
+}
+
+.auth-link:hover {
+  color: var(--ff-flame);
+  text-decoration: underline;
+}
+
+/* Card/Modal with Velocity Border (Legacy: prefer ff-card) */
+.auth-card {
+  background: var(--ff-cockpit);
+  border: 1px solid var(--ff-border-default);
+  border-radius: var(--ff-radius-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg, 
+    var(--ff-flame), 
+    var(--ff-cyan), 
+    var(--ff-flame)
+  );
+  opacity: 0.6;
+}
+
+/* Error States (Legacy: prefer ff-status-banner) */
+.auth-error {
+  margin: 0 0 0.75rem;
+  padding: var(--ff-space-3) var(--ff-space-4);
+  border-radius: var(--ff-radius-md);
+  border: 1px solid rgba(255, 45, 85, 0.5);
+  background: rgba(255, 45, 85, 0.15);
+  color: var(--ff-error);
+  font-size: 0.8125rem;
+}
+
+/* OAuth Button Hover States */
+.oauth-btn {
+  transition: all var(--ff-transition-fast);
+}
+
+.oauth-btn:hover:not(:disabled) {
+  border-color: var(--ff-cyan);
+  background: rgba(var(--ff-cyan-rgb), 0.1);
+  transform: translateY(-1px);
+}
+
+/* Divider with Velocity Gradient */
+.auth-divider::before,
+.auth-divider::after {
+  background: linear-gradient(
+    90deg, 
+    transparent, 
+    rgba(var(--ff-flame-rgb), 0.3) 50%, 
+    transparent
+  ) !important;
+}
+
+/* Status Badge (Legacy: prefer ff-badge) */
+.auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ff-space-1);
+  padding: var(--ff-space-1) var(--ff-space-3);
+  border-radius: var(--ff-radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(var(--ff-flame-rgb), 0.15);
+  color: var(--ff-flame);
+  border: 1px solid rgba(var(--ff-flame-rgb), 0.3);
+}
+
+/* Success State */
+.auth-success {
+  color: var(--ff-success);
+}
+
+.auth-success-bg {
+  background: rgba(0, 255, 157, 0.15);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+}
+
+/* Focus Visible */
+:focus-visible {
+  outline: 2px solid var(--ff-flame);
+  outline-offset: 2px;
+}
+
+/* Selection - Theme aware */
+::selection {
+  background: rgba(var(--ff-flame-rgb), 0.4);
+  color: var(--ff-primary-text);
+}
+
+/* Light theme specific overrides */
+[data-theme='light'] ::selection {
+  background: rgba(var(--ff-flame-rgb), 0.3);
+}

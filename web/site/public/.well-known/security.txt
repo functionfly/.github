@@ -1,0 +1,41 @@
+# FunctionFly Security Policy
+# ===========================
+# This file follows the security.txt standard (RFC 9116)
+# https://securitytxt.org/
+
+# Contact
+# -------
+# How to report security vulnerabilities
+Contact: mailto:security@functionfly.com
+Contact: mailto:privacy@functionfly.com
+
+# Expires
+# -------
+# When this file should be considered stale
+Expires: 2027-04-13T15:47:21-05:00
+
+# Preferred-Languages
+# -------------------
+# Languages we can respond to (in order of preference)
+Preferred-Languages: en, es, de, fr
+
+# Policy
+# ------
+# Link to our security policy and responsible disclosure guidelines
+Policy: https://functionfly.com/trust
+Policy: https://functionfly.com/terms
+
+# Acknowledgments
+# ---------------
+# Hall of Fame for security researchers
+Acknowledgments: https://functionfly.com/trust#acknowledgments
+
+# Encryption (optional)
+# --------------------
+# For encrypted communications, use our GPG key
+# (Coming soon - check back for GPG fingerprint)
+
+# Canonical
+# ---------
+# Canonical URI for this security.txt file
+Canonical: https://functionfly.com/.well-known/security.txt

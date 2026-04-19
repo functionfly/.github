@@ -1,0 +1,831 @@
+/**
+ * Auth Component Styles - Tailwind-inspired layered CSS
+ * 
+ * Uses @layer pattern to organize styles:
+ * - base: Resets and base element styles
+ * - components: Reusable component classes
+ * - utilities: Helper classes and animations
+ */
+
+/* Import theme variables */
+@import './velocity-theme.css';
+
+/* ==========================================================================
+   Layer: Base
+   ========================================================================== */
+
+@layer base {
+  /* Reset and base styles */
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    font-family: var(--ff-font-sans);
+    background-color: var(--ff-tarmac);
+    color: var(--ff-primary-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* Selection styling */
+  ::selection {
+    background-color: rgba(var(--ff-flame-rgb), 0.3);
+    color: var(--ff-primary-text);
+  }
+
+  /* Focus visible for accessibility */
+  :focus-visible {
+    outline: 2px solid var(--ff-flame);
+    outline-offset: 2px;
+  }
+
+  /* Form element resets */
+  input, button, textarea, select {
+    font: inherit;
+    color: inherit;
+  }
+
+  button {
+    cursor: pointer;
+    border: none;
+    background: none;
+  }
+
+  a {
+    color: var(--ff-cyan);
+    text-decoration: none;
+    transition: color var(--ff-transition-fast);
+  }
+
+  a:hover {
+    color: var(--ff-flame);
+  }
+}
+
+/* ==========================================================================
+   Layer: Components
+   ========================================================================== */
+
+@layer components {
+  /* Card Component
+     Usage: <div class="ff-card">
+     Optional variants: ff-card--elevated, ff-card--focused */
+  .ff-card {
+    background-color: var(--ff-cockpit);
+    border: 1px solid var(--ff-border-default);
+    border-radius: var(--ff-radius-lg);
+    padding: var(--ff-space-8);
+    position: relative;
+    transition: 
+      border-color var(--ff-transition-fast),
+      box-shadow var(--ff-transition-fast),
+      transform var(--ff-transition-fast);
+  }
+
+  .ff-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      var(--ff-flame) 0%,
+      var(--ff-cyan) 50%,
+      var(--ff-flame) 100%
+    );
+    border-radius: var(--ff-radius-lg) var(--ff-radius-lg) 0 0;
+    opacity: 0.8;
+    transition: opacity var(--ff-transition-fast);
+  }
+
+  .ff-card:hover {
+    border-color: var(--ff-border-strong);
+    transform: translateY(-2px);
+    box-shadow: var(--ff-shadow-md);
+  }
+
+  .ff-card--elevated {
+    box-shadow: var(--ff-shadow-lg);
+  }
+
+  .ff-card--focused {
+    border-color: rgba(var(--ff-flame-rgb), 0.5);
+    box-shadow: var(--ff-shadow-glow-flame);
+  }
+
+  /* Button Component
+     Variants: ff-btn--primary, ff-btn--secondary, ff-btn--ghost */
+  .ff-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ff-space-2);
+    padding: var(--ff-space-3) var(--ff-space-5);
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: var(--ff-radius-md);
+    transition: 
+      background-color var(--ff-transition-fast),
+      border-color var(--ff-transition-fast),
+      color var(--ff-transition-fast),
+      transform var(--ff-transition-fast),
+      box-shadow var(--ff-transition-fast);
+  }
+
+  .ff-btn--primary {
+    background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-afterburner) 100%);
+    color: var(--ff-primary-text);
+    border: 1px solid transparent;
+  }
+
+  /* Ensure primary button has good contrast in both themes */
+  [data-theme='light'] .ff-btn--primary {
+    color: #FFFFFF;
+  }
+
+  .ff-btn--primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--ff-shadow-glow-flame);
+  }
+
+  .ff-btn--primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .ff-btn--secondary {
+    background-color: var(--ff-flightdeck);
+    border: 1px solid var(--ff-border-default);
+    color: var(--ff-primary-text);
+  }
+
+  .ff-btn--secondary:hover:not(:disabled) {
+    background-color: rgba(var(--ff-cyan-rgb), 0.1);
+    border-color: var(--ff-cyan);
+    color: var(--ff-cyan);
+  }
+
+  .ff-btn--ghost {
+    background-color: transparent;
+    border: 1px solid transparent;
+    color: var(--ff-secondary-text);
+  }
+
+  .ff-btn--ghost:hover:not(:disabled) {
+    background-color: var(--ff-flightdeck);
+    color: var(--ff-primary-text);
+  }
+
+  .ff-btn--loading {
+    position: relative;
+    color: transparent !important;
+  }
+
+  .ff-btn--loading::after {
+    content: '';
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: var(--ff-radius-full);
+    animation: ff-spin 1s linear infinite;
+  }
+
+  .ff-btn--full {
+    width: 100%;
+  }
+
+  /* Input Component */
+  .ff-input {
+    width: 100%;
+    padding: var(--ff-space-3) var(--ff-space-4);
+    background-color: var(--ff-tower);
+    border: 1px solid var(--ff-border-default);
+    border-radius: var(--ff-radius-md);
+    color: var(--ff-primary-text);
+    font-size: 0.875rem;
+    transition: 
+      border-color var(--ff-transition-fast),
+      box-shadow var(--ff-transition-fast);
+  }
+
+  .ff-input::placeholder {
+    color: var(--ff-muted-text);
+  }
+
+  .ff-input:focus {
+    outline: none;
+    border-color: var(--ff-flame);
+    box-shadow: 0 0 0 3px rgba(var(--ff-flame-rgb), 0.15);
+  }
+
+  .ff-input--error {
+    border-color: var(--ff-error);
+    box-shadow: var(--ff-shadow-glow-error);
+  }
+
+  .ff-input--error:focus {
+    border-color: var(--ff-error);
+    box-shadow: var(--ff-shadow-glow-error);
+  }
+
+  .ff-input--success {
+    border-color: var(--ff-success);
+    box-shadow: var(--ff-shadow-glow-success);
+  }
+
+  /* Light theme input state adjustments */
+  [data-theme='light'] .ff-input--error {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+  }
+
+  [data-theme='light'] .ff-input--success {
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+  }
+
+  /* Password input with icon button */
+  .ff-input--password {
+    padding-right: calc(var(--ff-space-4) + 2.5rem);
+  }
+
+  /* Password toggle button */
+  .ff-input__toggle {
+    position: absolute;
+    right: var(--ff-space-2);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: var(--ff-radius-md);
+    cursor: pointer;
+    color: var(--ff-muted-text);
+    transition: color var(--ff-transition-fast),
+                background-color var(--ff-transition-fast);
+  }
+
+  .ff-input__toggle:hover {
+    color: var(--ff-cyan);
+    background-color: var(--ff-flightdeck);
+  }
+
+  .ff-input__toggle:focus-visible {
+    outline: 2px solid var(--ff-flame);
+    outline-offset: 2px;
+  }
+
+  /* Form Field Component */
+  .ff-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ff-space-2);
+    margin-bottom: var(--ff-space-4);
+  }
+
+  /* Input wrapper for positioning icons/buttons */
+  .ff-field__wrap {
+    position: relative;
+    min-width: 0;
+  }
+
+  .ff-field__label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ff-primary-text);
+  }
+
+  .ff-field__hint {
+    font-size: 0.75rem;
+    color: var(--ff-muted-text);
+  }
+
+  .ff-field__error {
+    font-size: 0.75rem;
+    color: var(--ff-error);
+    display: flex;
+    align-items: center;
+    gap: var(--ff-space-1);
+  }
+
+  /* Badge Component */
+  .ff-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ff-space-1);
+    padding: var(--ff-space-1) var(--ff-space-2);
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: var(--ff-radius-full);
+    border: 1px solid transparent;
+  }
+
+  .ff-badge--default {
+    background-color: var(--ff-flightdeck);
+    color: var(--ff-secondary-text);
+    border-color: var(--ff-border-default);
+  }
+
+  .ff-badge--flame {
+    background-color: rgba(var(--ff-flame-rgb), 0.15);
+    color: var(--ff-flame);
+    border-color: rgba(var(--ff-flame-rgb), 0.3);
+  }
+
+  .ff-badge--cyan {
+    background-color: rgba(var(--ff-cyan-rgb), 0.15);
+    color: var(--ff-cyan);
+    border-color: rgba(var(--ff-cyan-rgb), 0.3);
+  }
+
+  .ff-badge--success {
+    background-color: rgba(0, 255, 157, 0.15);
+    color: var(--ff-success);
+    border-color: rgba(0, 255, 157, 0.3);
+  }
+
+  .ff-badge--error {
+    background-color: rgba(255, 45, 85, 0.15);
+    color: var(--ff-error);
+    border-color: rgba(255, 45, 85, 0.3);
+  }
+
+  /* Light theme badge adjustments */
+  [data-theme='light'] .ff-badge--success {
+    background-color: rgba(5, 150, 105, 0.12);
+    border-color: rgba(5, 150, 105, 0.25);
+  }
+
+  [data-theme='light'] .ff-badge--error {
+    background-color: rgba(220, 38, 38, 0.12);
+    border-color: rgba(220, 38, 38, 0.25);
+  }
+
+  /* OAuth Provider Button */
+  .ff-oauth-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ff-space-3);
+    width: 100%;
+    padding: var(--ff-space-3) var(--ff-space-4);
+    background-color: var(--ff-cockpit);
+    border: 1px solid var(--ff-border-default);
+    border-radius: var(--ff-radius-md);
+    color: var(--ff-primary-text);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: 
+      background-color var(--ff-transition-fast),
+      border-color var(--ff-transition-fast),
+      transform var(--ff-transition-fast),
+      box-shadow var(--ff-transition-fast);
+  }
+
+  .ff-oauth-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      transparent 50%,
+      transparent 100%
+    );
+    opacity: 0;
+    transition: opacity var(--ff-transition-fast);
+  }
+
+  .ff-oauth-btn:hover:not(:disabled)::before {
+    opacity: 1;
+  }
+
+  .ff-oauth-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--ff-shadow-md);
+  }
+
+  .ff-oauth-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .ff-oauth-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
+  .ff-oauth-btn:focus-visible {
+    outline: 2px solid var(--ff-flame);
+    outline-offset: 2px;
+  }
+
+  /* Provider-specific OAuth button styles */
+
+  /* GitHub - Dark industrial aesthetic */
+  .ff-oauth-btn--github {
+    background-color: var(--ff-cockpit);
+    border-color: var(--ff-border-default);
+  }
+
+  .ff-oauth-btn--github:hover:not(:disabled) {
+    border-color: #6E7681;
+    background-color: var(--ff-flightdeck);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(110, 118, 129, 0.3);
+  }
+
+  /* Google - Brand-aligned colorful aesthetic */
+  .ff-oauth-btn--google {
+    background-color: var(--ff-cockpit);
+    border-color: var(--ff-border-default);
+  }
+
+  .ff-oauth-btn--google:hover:not(:disabled) {
+    border-color: #4285F4;
+    background-color: var(--ff-flightdeck);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(66, 133, 244, 0.3);
+  }
+
+  /* Light theme adjustments for OAuth buttons */
+  [data-theme='light'] .ff-oauth-btn--github:hover:not(:disabled) {
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.1),
+      0 0 0 1px rgba(110, 118, 129, 0.2);
+  }
+
+  [data-theme='light'] .ff-oauth-btn--google:hover:not(:disabled) {
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.1),
+      0 0 0 1px rgba(66, 133, 244, 0.2);
+  }
+
+  /* OAuth Button sub-elements */
+  .ff-oauth-btn__icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+  }
+
+  .ff-oauth-btn__text {
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .ff-oauth-btn--loading {
+    position: relative;
+    color: transparent !important;
+  }
+
+  .ff-oauth-btn--loading .ff-oauth-btn__text,
+  .ff-oauth-btn--loading .ff-oauth-btn__icon {
+    visibility: hidden;
+  }
+
+  /* Divider */
+  .ff-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--ff-space-4);
+    color: var(--ff-muted-text);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+  }
+
+  .ff-divider::before,
+  .ff-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--ff-border-subtle) 10%,
+      var(--ff-border-default) 50%,
+      var(--ff-border-subtle) 90%,
+      transparent
+    );
+  }
+
+  /* Validation Status */
+  .ff-validation-status {
+    display: flex;
+    align-items: center;
+    gap: var(--ff-space-2);
+    font-size: 0.75rem;
+  }
+
+  .ff-validation-status--loading {
+    color: var(--ff-secondary-text);
+  }
+
+  .ff-validation-status--valid {
+    color: var(--ff-success);
+  }
+
+  .ff-validation-status--invalid {
+    color: var(--ff-error);
+  }
+
+  /* Loading Spinner */
+  .ff-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: var(--ff-radius-full);
+    animation: ff-spin 1s linear infinite;
+  }
+
+  .ff-spinner--sm {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-width: 1.5px;
+  }
+
+  .ff-spinner--lg {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-width: 2.5px;
+  }
+
+  /* Checkbox */
+  .ff-checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--ff-space-3);
+    cursor: pointer;
+  }
+
+  .ff-checkbox__input {
+    appearance: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 2px solid var(--ff-border-default);
+    border-radius: var(--ff-radius-sm);
+    background-color: var(--ff-tower);
+    cursor: pointer;
+    transition: 
+      border-color var(--ff-transition-fast),
+      background-color var(--ff-transition-fast);
+  }
+
+  .ff-checkbox__input:checked {
+    background-color: var(--ff-flame);
+    border-color: var(--ff-flame);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+    background-size: 75%;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .ff-checkbox__input:focus-visible {
+    outline: none;
+    border-color: var(--ff-flame);
+    box-shadow: 0 0 0 3px rgba(var(--ff-flame-rgb), 0.15);
+  }
+
+  .ff-checkbox__label {
+    font-size: 0.875rem;
+    color: var(--ff-secondary-text);
+    user-select: none;
+  }
+
+  /* Modal/Dialog */
+  .ff-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    padding: var(--ff-space-4);
+  }
+
+  [data-theme='light'] .ff-modal {
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+
+  .ff-modal__content {
+    background-color: var(--ff-cockpit);
+    border: 1px solid var(--ff-border-default);
+    border-radius: var(--ff-radius-lg);
+    padding: var(--ff-space-6);
+    max-width: 400px;
+    width: 100%;
+    animation: ff-modal-enter 0.2s ease-out;
+  }
+
+  /* Status Banner */
+  .ff-status-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--ff-space-3);
+    padding: var(--ff-space-4);
+    border-radius: var(--ff-radius-md);
+    font-size: 0.875rem;
+  }
+
+  .ff-status-banner--error {
+    background-color: rgba(255, 45, 85, 0.1);
+    border: 1px solid rgba(255, 45, 85, 0.2);
+    color: var(--ff-error);
+  }
+
+  .ff-status-banner--success {
+    background-color: rgba(0, 255, 157, 0.1);
+    border: 1px solid rgba(0, 255, 157, 0.2);
+    color: var(--ff-success);
+  }
+
+  .ff-status-banner--warning {
+    background-color: rgba(255, 149, 0, 0.1);
+    border: 1px solid rgba(255, 149, 0, 0.2);
+    color: var(--ff-warning);
+  }
+
+  /* Light theme status banner adjustments */
+  [data-theme='light'] .ff-status-banner--error {
+    background-color: rgba(220, 38, 38, 0.08);
+    border: 1px solid rgba(220, 38, 38, 0.15);
+  }
+
+  [data-theme='light'] .ff-status-banner--success {
+    background-color: rgba(5, 150, 105, 0.08);
+    border: 1px solid rgba(5, 150, 105, 0.15);
+  }
+
+  [data-theme='light'] .ff-status-banner--warning {
+    background-color: rgba(217, 119, 6, 0.08);
+    border: 1px solid rgba(217, 119, 6, 0.15);
+  }
+
+  /* Utility classes for auth-specific patterns */
+  .ff-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+/* ==========================================================================
+   Layer: Utilities
+   ========================================================================== */
+
+@layer utilities {
+  /* Animations */
+  .ff-animate-fade-in {
+    animation: ff-fade-in 0.3s ease-out;
+  }
+
+  .ff-animate-slide-up {
+    animation: ff-slide-up 0.3s ease-out;
+  }
+
+  .ff-animate-pulse-soft {
+    animation: ff-pulse-soft 2s ease-in-out infinite;
+  }
+
+  .ff-animate-shake {
+    animation: ff-shake 0.5s ease-in-out;
+  }
+
+  /* Transition utilities */
+  .ff-transition-fast {
+    transition: all var(--ff-transition-fast);
+  }
+
+  .ff-transition-base {
+    transition: all var(--ff-transition-base);
+  }
+
+  .ff-transition-slow {
+    transition: all var(--ff-transition-slow);
+  }
+
+  /* Focus ring utility */
+  .ff-focus-ring {
+    outline: none;
+  }
+
+  .ff-focus-ring:focus-visible {
+    outline: 2px solid var(--ff-flame);
+    outline-offset: 2px;
+  }
+
+  /* Gradient text */
+  .ff-gradient-text {
+    background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-cyan) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* ==========================================================================
+   Keyframes (outside layers for global availability)
+   ========================================================================== */
+
+@keyframes ff-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ff-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ff-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ff-pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes ff-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+@keyframes ff-modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Data flow animation for real-time indicators */
+@keyframes ff-data-flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+@keyframes ff-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(var(--ff-flame-rgb), 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(var(--ff-flame-rgb), 0.5);
+  }
+}
