@@ -24,19 +24,17 @@ const { title, description = "Authenticate to FunctionFly™" } = Astro.props;
     <link rel="dns-prefetch" href="https://accounts.google.com" />
     <link rel="dns-prefetch" href="https://challenges.cloudflare.com" />
 
+    <!-- Velocity Theme + Auth Component Styles -->
+    <link rel="stylesheet" href="/src/styles/velocity-theme.css" />
+    <link rel="stylesheet" href="/src/styles/auth-components.css" />
+
     <style>
+      /* Global resets that can't be in component layer */
       * { box-sizing: border-box; margin: 0; padding: 0; }
       html, body { height: 100%; }
-      body {
-        font-family: "Geist", "Inter", system-ui, -apple-system, sans-serif;
-        background: #0a0a0b;
-        color: #fafafa;
-        -webkit-font-smoothing: antialiased;
-      }
-      ::selection { background: #6366f1; color: #fff; }
     </style>
   </head>
-  <body>
+  <body class="antialiased font-sans bg-[var(--ff-tarmac)] text-[var(--ff-primary-text)]">
     <slot />
   </body>
 </html>

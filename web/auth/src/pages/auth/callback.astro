@@ -1,5 +1,8 @@
 ---
 // OAuth callback page — the orchestrator redirects here with token/refresh_token params
+// Server-rendered to capture auth tokens from query params
+export const prerender = false;
+
 import { APP_ORIGIN } from "../../config";
 
 const token = decodeURIComponent(Astro.url.searchParams.get("token") || "");
@@ -15,12 +18,12 @@ const isNewUser = Astro.url.searchParams.get("new_user") === "true";
     <title>{error ? "Auth failed" : "Signing in…"} — FunctionFly™</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: system-ui, sans-serif; background: #0a0a0b; color: #fafafa; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-      .card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 2rem; max-width: 420px; width: 90%; text-align: center; }
+      body { font-family: system-ui, sans-serif; background: #0D1117; color: #F0F6FC; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+      .card { background: #161B22; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; padding: 2rem; max-width: 420px; width: 90%; text-align: center; }
       h1 { font-size: 1.25rem; margin-bottom: 0.75rem; }
-      p { color: #71717a; font-size: 0.9375rem; line-height: 1.6; }
-      a { color: #6366f1; text-decoration: none; }
-      a:hover { text-decoration: underline; }
+      p { color: #8B949E; font-size: 0.9375rem; line-height: 1.6; }
+      a { color: #00D4FF; text-decoration: none; }
+      a:hover { color: #FF6B35; text-decoration: underline; }
     </style>
   </head>
   <body>

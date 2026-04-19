@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { API_ORIGIN } from "../config";
+import { cn } from "../lib/utils";
 
 interface Props {
   initialValue?: string;
@@ -47,14 +48,12 @@ export default function InviteCodeField({
         setValidation({ valid: data.valid !== false, error: data.error });
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
-        // Network error — don't block, clear feedback
         setValidation({ valid: true });
       }
     },
     [required],
   );
 
-  // Debounce validation: wait 400ms after user stops typing
   useEffect(() => {
     if (!touched) return;
     const timer = setTimeout(() => validate(value), 400);
@@ -74,51 +73,35 @@ export default function InviteCodeField({
   const showSuccess = touched && validation.valid && value.trim();
 
   return (
-    <div className="field">
-      <label className="field-label" htmlFor="invite_code">
-        Invite code {required && <span style={{ color: "#ef4444" }}>*</span>}
+    <div className="ff-field">
+      <label className="ff-field__label" htmlFor="invite_code">
+        Invite code {required && <span className="text-[var(--ff-error)]">*</span>}
       </label>
-      <div className="field-wrap">
+      <div className="relative min-w-0">
         <input
           id="invite_code"
           name="invite_code"
           type="text"
-          className={`field-input${showError ? " field-input--error" : showSuccess ? " field-input--success" : ""}`}
+          className={cn(
+            "ff-input",
+            showError && "ff-input--error",
+            showSuccess && "ff-input--success"
+          )}
           placeholder="Enter your invite code"
           autoComplete="off"
           value={value}
           onChange={handleChange}
           onBlur={handleBlur}
-          style={{
-            width: "100%",
-            maxWidth: "100%",
-            padding: "0.625rem 0.875rem",
-            background: "#09090b",
-            border: "none",
-            boxShadow: `0 0 0 1px ${showError ? "#ef4444" : showSuccess ? "#22c55e" : "#27272a"} inset`,
-            borderRadius: "8px",
-            color: "#fafafa",
-            fontSize: "0.9375rem",
-            outline: "none",
-            transition: "box-shadow 0.15s",
-            fontFamily: "inherit",
-            boxSizing: "border-box",
-          }}
         />
       </div>
       <p
         id="invite-validation-msg"
-        className={`invite-validation-msg ${showSuccess ? "valid" : showError ? "invalid" : ""}`}
-        style={{
-          fontSize: "0.8125rem",
-          margin: "0.375rem 0 0",
-          minHeight: "1.2rem",
-          color: showSuccess
-            ? "#22c55e"
-            : showError
-              ? "#f87171"
-              : "transparent",
-        }}
+        className={cn(
+          "text-xs mt-1.5 min-h-[1.2rem]",
+          showSuccess && "text-[var(--ff-success)]",
+          showError && "text-[var(--ff-error)]",
+          !showSuccess && !showError && "text-transparent"
+        )}
       >
         {showSuccess
           ? "✓ Valid invite code"
@@ -126,17 +109,6 @@ export default function InviteCodeField({
             ? `✗ ${validation.error}`
             : ""}
       </p>
-
-      <style>{`
-        .field { display: flex; flex-direction: column; gap: 0.375rem; margin-bottom: 1rem; min-width: 0; }
-        .field-label { font-size: 0.875rem; font-weight: 500; color: #e4e4e7; }
-        .field-wrap { position: relative; min-width: 0; }
-        .field-input { width: 100%; max-width: 100%; box-sizing: border-box; }
-        .field-input:focus { box-shadow: 0 0 0 1px #6366f1 inset; }
-        .field-input--error { box-shadow: 0 0 0 1px #ef4444 inset !important; }
-        .field-input--success { box-shadow: 0 0 0 1px #22c55e inset !important; }
-        .field-input::placeholder { color: #52525b; }
-      `}</style>
     </div>
   );
 }

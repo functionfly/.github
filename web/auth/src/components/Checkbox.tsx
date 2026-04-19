@@ -1,4 +1,5 @@
 import React, { type InputHTMLAttributes, type ReactNode } from "react";
+import { cn } from "../lib/utils";
 
 interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
   label: ReactNode;
@@ -30,25 +31,42 @@ export const Checkbox: React.FC<CheckboxProps> = ({
     }
     if (termsUrl && privacyUrl) {
       return (
-        <span className="checkbox-text">
+        <span className="text-sm text-[var(--ff-secondary-text)]">
           {labelContent}
-          <a href={termsUrl} target="_blank" rel="noopener">Terms of Service</a>
+          <a 
+            href={termsUrl} 
+            target="_blank" 
+            rel="noopener"
+            className="text-[var(--ff-cyan)] hover:text-[var(--ff-flame)] hover:underline font-medium"
+          >
+            Terms of Service
+          </a>
           {" and "}
-          <a href={privacyUrl} target="_blank" rel="noopener">Privacy Policy</a>
+          <a 
+            href={privacyUrl} 
+            target="_blank" 
+            rel="noopener"
+            className="text-[var(--ff-cyan)] hover:text-[var(--ff-flame)] hover:underline font-medium"
+          >
+            Privacy Policy
+          </a>
         </span>
       );
     }
-    return <span className="checkbox-text">{labelContent}</span>;
+    return <span className="text-sm text-[var(--ff-secondary-text)]">{labelContent}</span>;
   };
 
   return (
-    <div className={`checkbox-field ${className}`}>
-      <label className="checkbox-label" htmlFor={inputId}>
+    <div className={cn("mb-4", className)}>
+      <label className="ff-checkbox" htmlFor={inputId}>
         <input
           id={inputId}
           name={name}
           type="checkbox"
-          className={`checkbox-input ${error ? "checkbox-input--error" : ""}`}
+          className={cn(
+            "ff-checkbox__input",
+            error && "border-[var(--ff-error)] shadow-[0_0_0_2px_rgba(255,45,85,0.15)]"
+          )}
           aria-invalid={error ? "true" : undefined}
           aria-describedby={error ? errorId : helperId}
           {...rest}
@@ -57,65 +75,35 @@ export const Checkbox: React.FC<CheckboxProps> = ({
       </label>
 
       {helperText && !error && (
-        <p className="checkbox-helper" id={helperId}>
+        <p 
+          className="text-xs text-[var(--ff-muted-text)] mt-1 ml-7" 
+          id={helperId}
+        >
           {helperText}
         </p>
       )}
 
       {error && (
-        <p className="checkbox-error" id={errorId} role="alert">
+        <p 
+          className="text-xs text-[var(--ff-error)] mt-1 ml-7 flex items-center gap-1" 
+          id={errorId} 
+          role="alert"
+        >
+          <svg 
+            width="12" 
+            height="12" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
           {error}
         </p>
       )}
-
-      <style>{`
-        .checkbox-field {
-          margin-bottom: 1rem;
-        }
-        .checkbox-label {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.625rem;
-          font-size: 0.875rem;
-          color: #a1a1aa;
-          cursor: pointer;
-          line-height: 1.5;
-        }
-        .checkbox-input {
-          margin-top: 0.15rem;
-          width: 16px;
-          height: 16px;
-          accent-color: #6366f1;
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-        .checkbox-input--error {
-          outline: 2px solid #ef4444;
-          outline-offset: 1px;
-        }
-        .checkbox-text {
-          flex: 1;
-        }
-        .checkbox-text a {
-          color: #818cf8;
-          text-decoration: none;
-          font-weight: 500;
-        }
-        .checkbox-text a:hover {
-          text-decoration: underline;
-          color: #a5b4fc;
-        }
-        .checkbox-helper {
-          margin: 0.25rem 0 0 1.625rem;
-          font-size: 0.75rem;
-          color: #71717a;
-        }
-        .checkbox-error {
-          margin: 0.25rem 0 0 1.625rem;
-          font-size: 0.75rem;
-          color: #f87171;
-        }
-      `}</style>
     </div>
   );
 };

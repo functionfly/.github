@@ -6,7 +6,7 @@ const site = process.env.PUBLIC_AUTH_URL || "https://auth.functionfly.com";
 export default defineConfig({
   site,
   integrations: [react()],
-  output: "static",
+  output: "server",
   server: {
     host: true,
     port: 4324,

@@ -13,13 +13,24 @@ const { title, description, maxWidth = "440px" } = Astro.props;
   <div class="auth-shell">
     <div class="auth-brand">
       <a href="/" class="brand-link">
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect width="32" height="32" rx="6" fill="#0F172A"/>
-          <path d="M16 5L27 16L16 27L5 16L16 5Z" fill="#6366F1"/>
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="brand-logo">
+          <defs>
+            <linearGradient id="flame-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#FF6B35"/>
+              <stop offset="50%" style="stop-color:#FF4F5E"/>
+              <stop offset="100%" style="stop-color:#FF8C42"/>
+            </linearGradient>
+            <linearGradient id="cyan-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#00D4FF"/>
+              <stop offset="100%" style="stop-color:#5B7CF5"/>
+            </linearGradient>
+          </defs>
+          <rect width="32" height="32" rx="6" fill="#0D1117"/>
+          <path d="M16 5L27 16L16 27L5 16L16 5Z" fill="url(#flame-gradient)"/>
           <path d="M16 9.5L22.5 16L16 22.5L9.5 16L16 9.5Z" fill="white"/>
-          <path d="M16 12.5L19.5 16L16 19.5L12.5 16L16 12.5Z" fill="#6366F1"/>
+          <path d="M16 12.5L19.5 16L16 19.5L12.5 16L16 12.5Z" fill="url(#flame-gradient)"/>
         </svg>
-        <span>FunctionFly™</span>
+        <span class="ff-gradient-text font-semibold text-lg tracking-tight">FunctionFly™</span>
       </a>
     </div>
 
@@ -28,7 +39,7 @@ const { title, description, maxWidth = "440px" } = Astro.props;
     </main>
 
     <footer class="auth-footer">
-      <p>By continuing, you agree to our <a href={`${MARKETING_ORIGIN}/terms`}>Terms</a> and <a href={`${MARKETING_ORIGIN}/privacy`}>Privacy Policy</a>.</p>
+      <p>By continuing, you agree to our <a href={`${MARKETING_ORIGIN}/terms`} class="auth-link">Terms</a> and <a href={`${MARKETING_ORIGIN}/privacy`} class="auth-link">Privacy Policy</a>.</p>
     </footer>
   </div>
 </BaseLayout>
@@ -42,7 +53,10 @@ const { title, description, maxWidth = "440px" } = Astro.props;
   justify-content: center;
   padding: 2rem 1.5rem;
   gap: 2rem;
-  background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,0.15) 0%, transparent 60%);
+  background: 
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(255, 107, 53, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(0, 212, 255, 0.06) 0%, transparent 50%),
+    var(--ff-tarmac);
 }
 
 .auth-brand {
@@ -55,13 +69,25 @@ const { title, description, maxWidth = "440px" } = Astro.props;
   align-items: center;
   gap: 0.625rem;
   text-decoration: none;
-  color: #fafafa;
+  color: var(--ff-primary-text);
   font-weight: 600;
   font-size: 1.125rem;
   letter-spacing: -0.01em;
+  transition: opacity var(--ff-transition-fast);
 }
 
-.brand-link:hover { opacity: 0.85; }
+.brand-link:hover { 
+  opacity: 0.85; 
+}
+
+.brand-logo {
+  filter: drop-shadow(0 0 8px rgba(255, 107, 53, 0.3));
+  transition: filter var(--ff-transition-fast);
+}
+
+.brand-link:hover .brand-logo {
+  filter: drop-shadow(0 0 12px rgba(255, 107, 53, 0.5));
+}
 
 .auth-card-wrap {
   width: 100%;
@@ -70,14 +96,25 @@ const { title, description, maxWidth = "440px" } = Astro.props;
 }
 
 .auth-footer {
-  color: #71717a;
+  color: var(--ff-muted-text);
   font-size: 0.8125rem;
   text-align: center;
 }
 
 .auth-footer a {
-  color: #a1a1aa;
   text-decoration: none;
 }
-.auth-footer a:hover { color: #fafafa; text-decoration: underline; }
+
+.auth-link {
+  color: var(--ff-cyan);
+  transition: color var(--ff-transition-fast);
+}
+
+.auth-link:hover { 
+  color: var(--ff-flame); 
+  text-decoration: underline; 
+}
+
+/* Import brand velocity styles */
+:global(@import '../styles/brand-velocity.css')
 </style>

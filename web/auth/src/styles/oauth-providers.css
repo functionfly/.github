@@ -1,73 +1,102 @@
+/* ==========================================================================
+   OAuth Providers - Velocity Brand Styling
+   Uses shared variables from velocity-theme.css
+   ========================================================================== */
+
+/* Note: CSS variables imported from velocity-theme.css via BaseLayout.astro */
+
 .oauth-divider {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin: 1.25rem 0;
-  color: #71717a;
+  gap: var(--ff-space-4);
+  margin: var(--ff-space-5) 0;
+  color: var(--ff-muted-text);
   font-size: 0.8125rem;
 }
+
 .oauth-divider::before,
 .oauth-divider::after {
   content: " ";
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #27272a 50%, transparent);
+  background: linear-gradient(
+    90deg, 
+    transparent, 
+    rgba(var(--ff-flame-rgb), 0.3) 50%, 
+    transparent
+  );
 }
+
 .oauth-providers {
   display: flex;
   gap: 0.75rem;
 }
+
+/* Using ff-oauth-btn component class from auth-components.css instead */
+/* Keeping these for backwards compatibility */
+
 .oauth-error {
   margin: 0 0 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid #7f1d1d;
-  background: rgba(127, 29, 29, 0.2);
-  color: #fca5a5;
+  padding: var(--ff-space-3) var(--ff-space-4);
+  border-radius: var(--ff-radius-md);
+  border: 1px solid rgba(255, 45, 85, 0.5);
+  background: rgba(255, 45, 85, 0.15);
+  color: var(--ff-error);
   font-size: 0.8125rem;
 }
+
 .oauth-btn {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.625rem 0.875rem;
-  border-radius: 8px;
-  border: 1px solid #27272a;
-  background: #09090b;
-  color: #e4e4e7;
+  gap: var(--ff-space-2);
+  padding: var(--ff-space-3) var(--ff-space-4);
+  border-radius: var(--ff-radius-md);
+  border: 1px solid var(--ff-border-default);
+  background: var(--ff-tower);
+  color: #E4E4E7;
   text-decoration: none;
   font: inherit;
   font-size: 0.875rem;
   font-weight: 500;
-  transition: all 0.15s ease;
+  transition: all var(--ff-transition-fast);
   cursor: pointer;
 }
+
 .oauth-btn:disabled {
   cursor: wait;
   opacity: 0.85;
 }
+
 .oauth-btn:hover:not(:disabled) {
-  background: #18181b;
-  border-color: #3f3f46;
+  border-color: var(--ff-cyan);
+  background: rgba(var(--ff-cyan-rgb), 0.08);
   transform: translateY(-1px);
+  box-shadow: var(--ff-shadow-glow-cyan);
 }
+
 .oauth-btn:active:not(:disabled) {
   transform: translateY(0);
 }
+
 .oauth-btn-loading {
   opacity: 0.7;
   cursor: wait;
 }
+
 .oauth-btn-github:hover:not(:disabled) {
-  border-color: #6e7681;
-  background: #161b22;
+  border-color: var(--ff-muted-text);
+  background: var(--ff-cockpit);
+  box-shadow: 0 0 20px rgba(110, 118, 129, 0.3);
 }
+
 .oauth-btn-google:hover:not(:disabled) {
-  border-color: #4285f4;
+  border-color: #4285F4;
   background: rgba(66, 133, 244, 0.1);
+  box-shadow: 0 0 20px rgba(66, 133, 244, 0.3);
 }
+
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -77,36 +106,56 @@
   }
 }
 
-/* Invite Modal */
+/* ==========================================================================
+    Invite Modal - Velocity Brand (Deprecated: use ff-modal from auth-components.css)
+   ========================================================================== */
+
 .invite-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgba(13, 17, 23, 0.9);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease;
+  animation: ff-fade-in 0.2s ease;
 }
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+
+@keyframes ff-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
+
 .invite-modal {
-  background: #18181b;
-  border: 1px solid #27272a;
-  border-radius: 12px;
-  padding: 1.5rem;
+  background: var(--ff-cockpit);
+  border: 1px solid var(--ff-border-default);
+  border-radius: var(--ff-radius-lg);
+  padding: var(--ff-space-6);
   width: 90%;
   max-width: 400px;
-  animation: slideUp 0.2s ease;
+  animation: ff-slide-up 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
-@keyframes slideUp {
+
+.invite-modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg, 
+    var(--ff-flame), 
+    var(--ff-cyan), 
+    var(--ff-flame)
+  );
+  opacity: 0.6;
+}
+
+@keyframes ff-slide-up {
   from {
     opacity: 0;
     transform: translateY(16px);
@@ -116,106 +165,133 @@
     transform: translateY(0);
   }
 }
+
 .invite-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: var(--ff-space-4);
 }
+
 .invite-modal-header h3 {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: #fafafa;
+  color: var(--ff-primary-text);
 }
+
 .invite-modal-close {
   background: transparent;
   border: none;
-  color: #71717a;
+  color: var(--ff-muted-text);
   font-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
-  padding: 0.25rem;
-  transition: color 0.15s;
+  padding: var(--ff-space-1);
+  transition: color var(--ff-transition-fast);
 }
+
 .invite-modal-close:hover {
-  color: #e4e4e7;
+  color: var(--ff-flame);
 }
+
 .invite-modal-description {
-  margin: 0 0 1rem;
+  margin: 0 0 var(--ff-space-4);
   font-size: 0.875rem;
-  color: #a1a1aa;
+  color: var(--ff-secondary-text);
   line-height: 1.5;
 }
+
 .invite-modal-input-wrap {
   margin-bottom: 1.25rem;
 }
+
 .invite-modal-input {
   width: 100%;
-  padding: 0.625rem 0.875rem;
-  background: #09090b;
-  border: 1px solid #27272a;
-  border-radius: 8px;
-  color: #e4e4e7;
+  padding: var(--ff-space-3) var(--ff-space-4);
+  background: var(--ff-tower);
+  border: 1px solid var(--ff-border-default);
+  border-radius: var(--ff-radius-md);
+  color: var(--ff-primary-text);
   font-size: 0.875rem;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color var(--ff-transition-fast), 
+              box-shadow var(--ff-transition-fast);
   box-sizing: border-box;
 }
+
 .invite-modal-input:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  border-color: var(--ff-flame);
+  box-shadow: 0 0 0 2px rgba(var(--ff-flame-rgb), 0.2);
 }
+
 .invite-modal-input-error {
-  border-color: #ef4444;
+  border-color: var(--ff-error);
 }
+
 .invite-modal-input-error:focus {
-  border-color: #ef4444;
-  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+  border-color: var(--ff-error);
+  box-shadow: 0 0 0 2px rgba(255, 45, 85, 0.2);
 }
+
 .invite-modal-error {
-  margin: 0.375rem 0 0;
+  margin: var(--ff-space-2) 0 0;
   font-size: 0.75rem;
-  color: #fca5a5;
+  color: var(--ff-error);
 }
+
 .invite-modal-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--ff-space-3);
   justify-content: flex-end;
 }
+
 .invite-modal-btn {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+  padding: var(--ff-space-2) var(--ff-space-4);
+  border-radius: var(--ff-radius-md);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--ff-transition-fast);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--ff-space-2);
 }
+
 .invite-modal-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
 .invite-modal-btn-secondary {
   background: transparent;
-  border: 1px solid #27272a;
-  color: #a1a1aa;
+  border: 1px solid var(--ff-border-default);
+  color: var(--ff-secondary-text);
 }
+
 .invite-modal-btn-secondary:hover:not(:disabled) {
-  background: #27272a;
-  color: #e4e4e7;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--ff-cyan);
+  color: var(--ff-cyan);
 }
+
 .invite-modal-btn-primary {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: linear-gradient(
+    135deg, 
+    var(--ff-flame) 0%, 
+    var(--ff-afterburner) 100%
+  );
   border: none;
   color: #fff;
+  box-shadow: var(--ff-shadow-glow-flame);
 }
+
 .invite-modal-btn-primary:hover:not(:disabled) {
-  opacity: 0.9;
+  opacity: 0.95;
   transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(var(--ff-flame-rgb), 0.5);
 }
+
 .spinner-small {
   width: 14px;
   height: 14px;

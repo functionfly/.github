@@ -1,9 +1,18 @@
 ---
 import AuthLayout from "../layouts/AuthLayout.astro";
+
+// Server-rendered to handle magic link tokens from query params
+export const prerender = false;
+
+// Check for magic link token and redirect to verification page
+const token = Astro.url.searchParams.get("token");
+if (token) {
+  return Astro.redirect(`/magic?token=${encodeURIComponent(token)}`);
+}
+
+// Otherwise redirect to login
+return Astro.redirect("/login");
 ---
 <AuthLayout title="Loading — FunctionFly™">
   <p>Redirecting...</p>
 </AuthLayout>
-<script>
-  window.location.href = "/login";
-</script>

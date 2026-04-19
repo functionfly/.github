@@ -4,21 +4,27 @@ import FormCard from "../components/FormCard";
 import InputField from "../components/InputField";
 import Button from "../components/Button";
 import Checkbox from "../components/Checkbox";
+import TurnstileWidget from "../components/TurnstileWidget";
 import OAuthProviders from "../components/OAuthProviders";
 import { APP_ORIGIN, API_ORIGIN } from "../config";
+
+// Server-rendered to handle query params (invite codes, magic link mode, etc.)
+export const prerender = false;
 
 const inviteCode = Astro.url.searchParams.get("invite_code") || undefined;
 const redirectTo = Astro.url.searchParams.get("redirect_to") || undefined;
 const magicParam = Astro.url.searchParams.get("magic") || undefined;
 const showMagic = magicParam === "true";
 const resetSuccess = Astro.url.searchParams.get("reset") === "success";
+const rememberMe = Astro.url.searchParams.get("remember_me") === "true";
 ---
 
 <AuthLayout title="Sign in — FunctionFly™">
   <FormCard
     title="Welcome back"
-    subtitle="Sign in to your FunctionFly™ account"
-    success={resetSuccess ? "Password updated successfully. Please sign in." : undefined}
+    subtitle={rememberMe ? "You're logged in for 30 days" : "Sign in to your FunctionFly™ account"}
+    tagline="Deploy once. Run everywhere. Never go down."
+    success={resetSuccess ? "Password updated successfully. Please sign in." : rememberMe ? "Logged in for 30 days" : undefined}
     client:load
   >
     <OAuthProviders client:load inviteCode={inviteCode} redirectAfterLogin={redirectTo} />
@@ -40,7 +46,6 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
         aria-pressed={showMagic ? "true" : "false"}
       >
         Magic Link
-        <span class="coming-soon-badge">Coming Soon</span>
       </button>
     </div>
 
@@ -49,12 +54,13 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
       <input type="hidden" name="redirect_to" value={redirectTo || ""} />
       <InputField
         client:load
-        label="Email"
+        label="Username or Email"
         name="email"
-        type="email"
-        placeholder="you@example.com"
+        type="text"
+        placeholder="username or you@example.com"
         required
-        autocomplete="email"
+        autocomplete="username"
+        hint="Sign in with your username or email address"
       />
       <InputField
         client:load
@@ -65,6 +71,33 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
         required
         autocomplete="current-password"
       />
+
+      <!-- Rate Limit Indicator -->
+      <div class="rate-limit-indicator hidden" id="rate-limit-indicator" role="status" aria-live="polite">
+        <div class="rate-limit-warning">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 9v2m0 4h.01M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/>
+          </svg>
+          <span id="rate-limit-message">5 attempts remaining</span>
+        </div>
+        <div class="rate-limit-countdown hidden" id="rate-limit-countdown">
+          Retry in <span id="countdown-timer">--:--</span>
+        </div>
+      </div>
+
+      <!-- Turnstile CAPTCHA - shown after 2 failed attempts -->
+      <div class="captcha-section hidden" id="turnstile-section">
+        <TurnstileWidget
+          client:only="react"
+          onVerify={(token) => {
+            const hiddenInput = document.getElementById("turnstile-token");
+            if (hiddenInput) hiddenInput.value = token;
+          }}
+          action="login"
+          theme="dark"
+        />
+        <input type="hidden" id="turnstile-token" name="turnstile_token" />
+      </div>
 
       <!-- Remember Me & Forgot Password Row -->
       <div class="form-row">
@@ -99,10 +132,14 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
       </Button>
     </form>
 
-    <div slot="footer">
-      Don't have an account?{" "}
-      <a href={`/signup${inviteCode ? `?invite_code=${inviteCode}` : ""}`}>
-        Create one
+    <div slot="footer" class="auth-footer">
+      <span class="auth-footer__text">Don't have an account?</span>
+      <a href={`/signup${inviteCode ? `?invite_code=${inviteCode}` : ""}`} class="auth-footer__link">
+        Create account
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14"/>
+          <path d="m12 5 7 7-7 7"/>
+        </svg>
       </a>
     </div>
   </FormCard>
@@ -114,9 +151,9 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
     gap: 0.5rem;
     margin: 1.5rem 0;
     padding: 0.25rem;
-    background: #18181b;
+    background: #161B22;
     border-radius: 8px;
-    border: 1px solid #27272a;
+    border: 1px solid rgba(255, 255, 255, 0.12);
   }
   .mode-btn {
     flex: 1;
@@ -124,37 +161,19 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
     background: transparent;
     border: none;
     border-radius: 6px;
-    color: #a1a1aa;
+    color: #8B949E;
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s;
   }
   .mode-btn:hover {
-    color: #e4e4e7;
+    color: #F0F6FC;
   }
   .mode-btn.active {
-    background: #27272a;
-    color: #fafafa;
-  }
-  .coming-soon-badge {
-    display: inline-flex;
-    align-items: center;
-    margin-left: 0.5rem;
-    padding: 0.125rem 0.5rem;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    color: #fff;
-    font-size: 0.625rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-radius: 9999px;
-    box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
-    animation: pulse-badge 2s ease-in-out infinite;
-  }
-  @keyframes pulse-badge {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    background: #1C2128;
+    color: #F0F6FC;
+    border: 1px solid rgba(255, 107, 53, 0.3);
   }
   .auth-form {
     animation: fadeIn 0.3s ease;
@@ -167,7 +186,7 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
     to { opacity: 1; transform: translateY(0); }
   }
   .magic-description {
-    color: #71717a;
+    color: #8B949E;
     font-size: 0.875rem;
     margin-bottom: 1rem;
     line-height: 1.5;
@@ -180,22 +199,27 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
     flex-wrap: wrap;
     gap: 0.75rem;
   }
-  .form-row :global(.checkbox-field) {
+  .form-row :global(.ff-field) {
     margin-bottom: 0;
+  }
+  /* Add spacing before submit button */
+  form > :global(.ff-btn) {
+    margin-top: 0.5rem;
   }
   .forgot-link {
     font-size: 0.875rem;
-    color: #a1a1aa;
+    color: #8B949E;
     text-decoration: none;
+    transition: color 0.15s ease;
   }
   .forgot-link:hover {
-    color: #fafafa;
+    color: #FF6B35;
     text-decoration: underline;
   }
   .network-error {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #fca5a5;
+    background: rgba(255, 45, 85, 0.1);
+    border: 1px solid rgba(255, 45, 85, 0.3);
+    color: #FF6B7A;
     padding: 0.75rem 1rem;
     border-radius: 8px;
     font-size: 0.875rem;
@@ -213,12 +237,91 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
   .offline-indicator.visible {
     display: block;
   }
-  .btn-secondary {
-    background: #27272a;
-    border: 1px solid #3f3f46;
+  /* Legacy button styles removed - using ff-btn component classes now */
+  /* Rate limit indicator styles */
+  .rate-limit-indicator {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: rgba(255, 107, 53, 0.1);
+    border: 1px solid rgba(255, 107, 53, 0.3);
+    border-radius: 8px;
   }
-  .btn-secondary:hover {
-    background: #3f3f46;
+  .rate-limit-indicator.hidden {
+    display: none;
+  }
+  .rate-limit-warning {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #FF6B35;
+    font-size: 0.875rem;
+  }
+  .rate-limit-countdown {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: #8B949E;
+    text-align: center;
+  }
+  .rate-limit-countdown.hidden {
+    display: none;
+  }
+  #countdown-timer {
+    font-family: monospace;
+    font-weight: 600;
+    color: #FF6B7A;
+  }
+  /* CAPTCHA section */
+  .captcha-section {
+    margin-bottom: 1rem;
+  }
+  .captcha-section.hidden {
+    display: none;
+  }
+
+  /* Auth footer - Sign up prompt */
+  .auth-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .auth-footer__text {
+    color: #8B949E;
+  }
+
+  .auth-footer__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: #FF6B35;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    padding: 0.25rem 0.5rem;
+    margin: -0.25rem -0.5rem;
+    border-radius: 6px;
+  }
+
+  .auth-footer__link:hover {
+    color: #FF4F5E;
+    background: rgba(255, 107, 53, 0.1);
+    text-decoration: none;
+  }
+
+  .auth-footer__link svg {
+    transition: transform 0.15s ease;
+  }
+
+  .auth-footer__link:hover svg {
+    transform: translateX(2px);
+  }
+
+  .auth-footer__link:focus-visible {
+    outline: 2px solid #FF6B35;
+    outline-offset: 2px;
   }
 </style>
 
@@ -247,8 +350,90 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
     };
   }
 
+  // Rate limiting state
+  let failedAttempts = 0;
+  const MAX_ATTEMPTS = 5;
+  const CAPTCHA_THRESHOLD = 2; // Show CAPTCHA after 2 failures
+  let lockoutEndTime = null;
+  let countdownInterval = null;
+
+  function updateRateLimitUI() {
+    const indicator = document.getElementById('rate-limit-indicator');
+    const message = document.getElementById('rate-limit-message');
+    const countdown = document.getElementById('rate-limit-countdown');
+    const timer = document.getElementById('countdown-timer');
+    const captchaSection = document.getElementById('turnstile-section');
+
+    if (!indicator) return;
+
+    const remaining = Math.max(0, MAX_ATTEMPTS - failedAttempts);
+
+    // Show/hide CAPTCHA based on failed attempts
+    if (failedAttempts >= CAPTCHA_THRESHOLD && captchaSection) {
+      captchaSection.classList.remove('hidden');
+    }
+
+    if (failedAttempts === 0) {
+      indicator.classList.add('hidden');
+      return;
+    }
+
+    indicator.classList.remove('hidden');
+
+    if (remaining > 0) {
+      message.textContent = `${remaining} attempt${remaining === 1 ? '' : 's'} remaining before account lockout`;
+      countdown.classList.add('hidden');
+    } else {
+      message.textContent = 'Account temporarily locked due to too many failed attempts';
+      countdown.classList.remove('hidden');
+      startCountdown();
+    }
+  }
+
+  function startCountdown() {
+    const timer = document.getElementById('countdown-timer');
+    const countdown = document.getElementById('rate-limit-countdown');
+    const btn = document.getElementById('login-btn');
+
+    if (!lockoutEndTime) {
+      // Default 15 minute lockout
+      lockoutEndTime = Date.now() + 15 * 60 * 1000;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+    }
+
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+    }
+
+    countdownInterval = setInterval(() => {
+      const remaining = Math.max(0, lockoutEndTime - Date.now());
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+      if (remaining === 0) {
+        clearInterval(countdownInterval);
+        countdown.classList.add('hidden');
+        failedAttempts = 0;
+        updateRateLimitUI();
+        if (btn) {
+          btn.disabled = false;
+        }
+      }
+    }, 1000);
+  }
+
   // Delay execution to avoid conflicts with React hydration
   setTimeout(() => {
+    // Auto-focus first field
+    const firstEmailInput = document.querySelector('input[type="email"]');
+    if (firstEmailInput && !firstEmailInput.value) {
+      firstEmailInput.focus();
+    }
+
     // Initialize analytics
     const stopTimer = createTimer("login_form_interaction");
 
@@ -354,12 +539,19 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
         password: fd.get("password")
       };
 
+      // Add turnstile token if CAPTCHA is visible
+      const turnstileToken = fd.get("turnstile_token");
+      const captchaSection = document.getElementById('turnstile-section');
+      if (turnstileToken && !captchaSection?.classList.contains('hidden')) {
+        body.turnstile_token = turnstileToken;
+      }
+
       // Store redirect_to and remember for post-login handling
       const redirectTo = fd.get("redirect_to");
       const remember = fd.get("remember");
 
       // Track attempt
-      trackAuth("login_attempt", { method: "password" });
+      trackAuth("login_attempt", { method: "password", has_captcha: !!body.turnstile_token });
 
       const btn = form.querySelector('button[type="submit"]');
       const originalText = btn?.textContent;
@@ -389,10 +581,25 @@ const resetSuccess = Astro.url.searchParams.get("reset") === "success";
           if (data.refresh_token) params.set("refresh_token", data.refresh_token);
           // Pass through the original redirect if provided
           if (redirectTo) params.set("redirect", redirectTo.toString());
+          // Add remember me flag for toast on callback
+          if (remember) params.set("remember_me", "true");
           window.location.replace(appOrigin + "/auth/callback?" + params.toString());
         } else {
           // Track error
           trackAuth("login_error", { method: "password", error: data.message || "unknown" });
+
+          // Increment failed attempts
+          failedAttempts++;
+
+          // Check if server provided lockout info
+          if (data.lockout_until) {
+            lockoutEndTime = new Date(data.lockout_until).getTime();
+          }
+          if (data.remaining_attempts !== undefined) {
+            failedAttempts = MAX_ATTEMPTS - data.remaining_attempts;
+          }
+
+          updateRateLimitUI();
 
           // Show error
           const card = form.closest(".card");

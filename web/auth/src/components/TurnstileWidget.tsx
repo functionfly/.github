@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { cn } from "../lib/utils";
 
 interface TurnstileWidgetProps {
   onVerify: (token: string) => void;
@@ -8,10 +9,9 @@ interface TurnstileWidgetProps {
   theme?: "light" | "dark" | "auto";
 }
 
-// Cloudflare Turnstile site key from environment or default
 const TURNSTILE_SITE_KEY =
   (import.meta.env.PUBLIC_TURNSTILE_SITE_KEY as string | undefined) ||
-  "1x00000000000000000000AA"; // Test key - always passes
+  "1x00000000000000000000AA";
 
 export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   onVerify,
@@ -26,7 +26,6 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    // Load Turnstile script if not already loaded
     if (!document.getElementById("turnstile-script")) {
       const script = document.createElement("script");
       script.id = "turnstile-script";
@@ -44,7 +43,6 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
     }
 
     return () => {
-      // Cleanup widget on unmount
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.remove(widgetIdRef.current);
       }
@@ -54,7 +52,6 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   useEffect(() => {
     if (!isLoaded || !containerRef.current || !window.turnstile) return;
 
-    // Render Turnstile widget
     try {
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey: TURNSTILE_SITE_KEY,
@@ -87,94 +84,34 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   };
 
   return (
-    <div className="turnstile-container">
+    <div className="my-4 min-h-[65px] flex flex-col items-center justify-center">
       {!isLoaded && (
-        <div className="turnstile-loading">
-          <div className="turnstile-spinner" />
+        <div className="flex items-center gap-2 text-sm text-[var(--ff-muted-text)]">
+          <span className="ff-spinner" />
           <span>Loading verification...</span>
         </div>
       )}
 
       {hasError && (
-        <div className="turnstile-error">
-          <p>Verification failed. Please try again.</p>
+        <div className="text-center p-4 rounded-lg mb-2 bg-red-500/10 border border-red-500/30">
+          <p className="text-sm text-[var(--ff-error)] mb-3">
+            Verification failed. Please try again.
+          </p>
           <button
             type="button"
             onClick={handleRetry}
-            className="turnstile-retry"
+            className="ff-btn ff-btn--secondary text-xs px-3 py-1.5"
           >
             Retry
           </button>
         </div>
       )}
 
-      <div ref={containerRef} className="turnstile-widget" />
-
-      <style>{`
-        .turnstile-container {
-          margin: 1rem 0;
-          min-height: 65px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-        .turnstile-loading {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: #71717a;
-          font-size: 0.875rem;
-        }
-        .turnstile-spinner {
-          width: 16px;
-          height: 16px;
-          border: 2px solid #27272a;
-          border-top-color: #6366f1;
-          border-radius: 50%;
-          animation: turnstile-spin 0.8s linear infinite;
-        }
-        @keyframes turnstile-spin {
-          to { transform: rotate(360deg); }
-        }
-        .turnstile-error {
-          text-align: center;
-          padding: 1rem;
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.3);
-          border-radius: 8px;
-          margin-bottom: 0.5rem;
-        }
-        .turnstile-error p {
-          color: #fca5a5;
-          font-size: 0.875rem;
-          margin: 0 0 0.75rem 0;
-        }
-        .turnstile-retry {
-          padding: 0.375rem 1rem;
-          background: #27272a;
-          border: 1px solid #3f3f46;
-          border-radius: 6px;
-          color: #e4e4e7;
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: all 0.15s;
-        }
-        .turnstile-retry:hover {
-          background: #3f3f46;
-        }
-        .turnstile-widget {
-          min-height: 65px;
-        }
-        .turnstile-widget iframe {
-          border-radius: 8px;
-        }
-      `}</style>
+      <div ref={containerRef} className="min-h-[65px]" />
     </div>
   );
 };
 
-// Type declaration for Turnstile global
 declare global {
   interface Window {
     turnstile?: {
