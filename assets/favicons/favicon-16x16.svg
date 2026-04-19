@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
-  <!-- Simplified favicon for 16x16 -->
-  <rect width="16" height="16" rx="3" fill="#6366f1"/>
+  <!-- 16x16 Favicon - FunctionFly Velocity Orange Brand -->
+  <rect width="16" height="16" rx="3" fill="#FF6B35"/>
   <path d="M8 3 L13 6 L13 11 L8 14 L3 11 L3 6 Z" 
         fill="none" 
         stroke="white" 
         stroke-width="1.2"/>
   <path d="M9 5 L7 8 L9 8 L8 11 L11 7 L9 7 L10 5 Z" 
-        fill="#fbbf24"/>
+        fill="#00D4FF"/>
 </svg>

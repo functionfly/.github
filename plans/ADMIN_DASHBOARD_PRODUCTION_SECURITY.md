@@ -898,15 +898,15 @@ Cloudflare (DDOS protection, WAF)
     |
 Load Balancer (internal only)
     |
-VLAN 30: Admin API (10.0.30.0/24)
+VLAN 30: Admin API (<ADMIN_VLAN_CIDR>)
     |   - orchestrator-api (admin endpoints)
     |   - Port 8080 only from load balancer
     |
-VLAN 20: Database (10.0.20.0/24)
+VLAN 20: Database (<DB_VLAN_CIDR>)
     |   - PostgreSQL (port 5432 from VLAN 30 only)
     |   - Redis (port 6379 from VLAN 30 only)
     |
-VLAN 10: Main API (10.0.10.0/24)
+VLAN 10: Main API (<MAIN_VLAN_CIDR>)
     - orchestrator-api (main endpoints)
     - Other services
 ```

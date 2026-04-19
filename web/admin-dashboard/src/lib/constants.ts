@@ -55,6 +55,8 @@ export const API_ROUTES = {
   ADMIN_TENANTS: '/tenants',
   ADMIN_USERS: '/users',
   ADMIN_AUDIT_EVENTS: '/audit-events',
+  // Blog settings
+  ADMIN_BLOG_SETTINGS: '/content/blog/settings',
   // Maintenance
   ADMIN_MAINTENANCE: '/maintenance',
   ADMIN_MAINTENANCE_TEMPLATES: '/maintenance/templates',
@@ -97,6 +99,8 @@ export const CACHE_KEYS = {
   ADMIN_SESSION: 'admin_session',
   ADMIN_ACCESS_TOKEN: 'admin_access_token',
   ADMIN_PERMISSIONS: 'admin_permissions',
+  BLOG_SETTINGS: 'admin_blog_settings',
+  PLATFORM_SETTINGS: 'admin_platform_settings',
 };
 
 export const ERROR_MESSAGES = {

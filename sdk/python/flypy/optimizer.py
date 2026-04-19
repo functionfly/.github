@@ -107,9 +107,21 @@ class BundleOptimizer:
 
     def _tree_to_source(self, tree: ast.AST) -> str:
         """Convert AST back to source code."""
-        # Simple AST to source conversion
-        # In a real implementation, this would use a proper code generator
-        return compile(tree, '<optimized>', 'exec').co_filename  # Placeholder
+        try:
+            import astor
+
+            def _to_source(tree: ast.AST) -> str:
+                return astor.to_source(tree, indent_symbol=" ").rstrip("\n")
+        except ImportError:
+            import warnings
+
+            warnings.warn(
+                "astor not installed;installing flypy[optimize] enables better source generation",
+                stacklevel=2,
+            )
+            _to_source = ast.unparse
+
+        return _to_source(tree)
 
 
 class DeadCodeEliminator(ast.NodeTransformer):

@@ -19,6 +19,14 @@
         "--tools=all",
         "--api-key=sk_test_51TCrFMKxe78JyppiV6MhfvaFjhtQ9Tnxm5ysLbYII8GS3LIiFH5BBvRElQav8stdeqRXQ7B9x9P71HSUUcNt65LO00fMVAs3fv"
       ]
+    },
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@playwright/mcp@0.0.38"
+      ]
     }
   },
   "agent": {

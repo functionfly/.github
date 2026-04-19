@@ -3,20 +3,12 @@
  * Tabbed: Settings, Analytics, Posts (CRUD), Categories (CRUD)
  */
 
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminApiClient } from '@/lib/api/adminClient';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
-import {
-  Settings,
-  BarChart3,
-  FileText,
-  FolderTree,
-  Plus,
-  Pencil,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { adminApiClient } from '@/lib/api/adminClient';
+import { blogSettingsStore, type BlogSettings } from '@/stores/blogSettingsStore';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { BarChart3, FileText, FolderTree, Pencil, Plus, Settings, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 type TabId = 'settings' | 'analytics' | 'posts' | 'categories';
 
@@ -96,23 +88,94 @@ export function AdminBlogPage() {
 }
 
 function BlogSettingsTab() {
-  const [blogTitle, setBlogTitle] = useState('FunctionFly Blog');
-  const [postsPerPage, setPostsPerPage] = useState(10);
-  const [metaDescription, setMetaDescription] = useState('');
+  const queryClient = useQueryClient();
+
+  const { data: remoteSettings } = useQuery({
+    queryKey: ['admin-blog-settings'],
+    queryFn: async () => {
+      const res = await adminApiClient.get<{
+        id: string;
+        blog_title: string;
+        posts_per_page: number;
+        meta_description: string;
+      }>('/content/blog/settings');
+      const raw = res as unknown as {
+        blog_title?: string;
+        posts_per_page?: number;
+        meta_description?: string;
+      };
+      return {
+        blogTitle: raw.blog_title ?? 'FunctionFly Blog',
+        postsPerPage: raw.posts_per_page ?? 10,
+        metaDescription: raw.meta_description ?? '',
+      } as BlogSettings;
+    },
+  });
+
+  const localDefaults = blogSettingsStore.load();
+  const initial: BlogSettings = {
+    blogTitle: remoteSettings?.blogTitle ?? localDefaults.blogTitle,
+    postsPerPage: remoteSettings?.postsPerPage ?? localDefaults.postsPerPage,
+    metaDescription: remoteSettings?.metaDescription ?? localDefaults.metaDescription,
+  };
+
+  const [blogTitle, setBlogTitle] = useState(initial.blogTitle);
+  const [postsPerPage, setPostsPerPage] = useState(initial.postsPerPage);
+  const [metaDescription, setMetaDescription] = useState(initial.metaDescription);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<'success' | 'error' | null>(null);
+
+  useEffect(() => {
+    if (remoteSettings) {
+      setBlogTitle(remoteSettings.blogTitle);
+      setPostsPerPage(remoteSettings.postsPerPage);
+      setMetaDescription(remoteSettings.metaDescription);
+    }
+  }, [remoteSettings]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (settings: BlogSettings) => {
+      await adminApiClient.patch('/content/blog/settings', {
+        blog_title: settings.blogTitle,
+        posts_per_page: settings.postsPerPage,
+        meta_description: settings.metaDescription,
+      });
+    },
+    onSuccess: (_data, variables) => {
+      blogSettingsStore.save(variables);
+      queryClient.invalidateQueries({ queryKey: ['admin-blog-settings'] });
+      setSaveMessage('success');
+      setTimeout(() => setSaveMessage(null), 3000);
+    },
+    onError: () => {
+      setSaveMessage('error');
+    },
+    onSettled: () => {
+      setSaving(false);
+    },
+  });
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setSaveMessage(null);
+    saveMutation.mutate({ blogTitle, postsPerPage, metaDescription });
+  };
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6 max-w-2xl">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Blog settings</h2>
-      <p className="text-gray-600 mb-6">
-        Configure how your blog appears and behaves. Saved locally for now; backend storage can be added later.
-      </p>
-      <form
-        className="space-y-5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          // Placeholder: persist via API when available
-        }}
-      >
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">Blog settings</h2>
+        {saveMessage === 'success' && (
+          <span className="text-sm text-emerald-600 font-medium">Saved</span>
+        )}
+        {saveMessage === 'error' && (
+          <span className="text-sm text-red-600 font-medium">Failed to save</span>
+        )}
+      </div>
+      <p className="text-gray-600 mb-6">Configure how your blog appears and behaves.</p>
+      <form className="space-y-5" onSubmit={handleSave}>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Blog title</label>
           <input
@@ -134,7 +197,9 @@ function BlogSettingsTab() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Default meta description</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Default meta description
+          </label>
           <textarea
             rows={2}
             value={metaDescription}
@@ -145,9 +210,10 @@ function BlogSettingsTab() {
         </div>
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          disabled={saving}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
         >
-          Save settings
+          {saving ? 'Saving…' : 'Save settings'}
         </button>
       </form>
     </div>
@@ -160,7 +226,8 @@ function BlogAnalyticsTab() {
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-2">Blog analytics</h2>
         <p className="text-gray-600 mb-4">
-          Track views, engagement, and top posts. Integrate with your analytics provider (e.g. Google Analytics) or add server-side event tracking to see data here.
+          Track views, engagement, and top posts. Integrate with your analytics provider (e.g.
+          Google Analytics) or add server-side event tracking to see data here.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
@@ -177,7 +244,8 @@ function BlogAnalyticsTab() {
           </div>
         </div>
         <p className="mt-4 text-sm text-gray-500">
-          Platform-wide analytics are available under Admin → Analytics. Blog-specific events can be added in a future release.
+          Platform-wide analytics are available under Admin → Analytics. Blog-specific events can be
+          added in a future release.
         </p>
       </div>
     </div>
@@ -190,10 +258,16 @@ function BlogPostsTab() {
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const { data: listData, isLoading, error: queryError } = useQuery({
+  const {
+    data: listData,
+    isLoading,
+    error: queryError,
+  } = useQuery({
     queryKey: ['admin-blog-posts'],
     queryFn: async () => {
-      const res = await adminApiClient.get<{ posts: BlogPost[]; limit: number; offset: number }>('/content/blog');
+      const res = await adminApiClient.get<{ posts: BlogPost[]; limit: number; offset: number }>(
+        '/content/blog'
+      );
       const raw = res as unknown as { posts?: BlogPost[] };
       return { posts: raw.posts ?? [], limit: 50, offset: 0 };
     },
@@ -222,7 +296,10 @@ function BlogPostsTab() {
           <h2 className="text-lg font-semibold text-gray-900">Blog posts</h2>
           <button
             type="button"
-            onClick={() => { setEditingPost(null); setShowForm(true); }}
+            onClick={() => {
+              setEditingPost(null);
+              setShowForm(true);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             <Plus className="w-4 h-4" />
@@ -236,7 +313,10 @@ function BlogPostsTab() {
         {showForm && (
           <PostForm
             post={editingPost ?? undefined}
-            onClose={() => { setShowForm(false); setEditingPost(null); }}
+            onClose={() => {
+              setShowForm(false);
+              setEditingPost(null);
+            }}
             onSaved={() => {
               queryClient.invalidateQueries({ queryKey: ['admin-blog-posts'] });
               setShowForm(false);
@@ -254,7 +334,10 @@ function BlogPostsTab() {
         <h2 className="text-lg font-semibold text-gray-900">Blog posts</h2>
         <button
           type="button"
-          onClick={() => { setEditingPost(null); setShowForm(true); }}
+          onClick={() => {
+            setEditingPost(null);
+            setShowForm(true);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <Plus className="w-4 h-4" />
@@ -265,7 +348,10 @@ function BlogPostsTab() {
       {showForm && (
         <PostForm
           post={editingPost ?? undefined}
-          onClose={() => { setShowForm(false); setEditingPost(null); }}
+          onClose={() => {
+            setShowForm(false);
+            setEditingPost(null);
+          }}
           onSaved={() => {
             queryClient.invalidateQueries({ queryKey: ['admin-blog-posts'] });
             setShowForm(false);
@@ -310,7 +396,10 @@ function BlogPostsTab() {
                   <td className="px-6 py-4 text-sm text-right">
                     <button
                       type="button"
-                      onClick={() => { setEditingPost(post); setShowForm(true); }}
+                      onClick={() => {
+                        setEditingPost(post);
+                        setShowForm(true);
+                      }}
                       className="text-blue-600 hover:text-blue-800 mr-3"
                     >
                       <Pencil className="w-4 h-4 inline" />
@@ -379,10 +468,13 @@ function PostForm({
         setContent(JSON.stringify(post.body));
       } else if (post.content) {
         // Convert legacy content to TipTap format
-        const paragraphs = post.content.split('\n\n').filter(p => p.trim()).map(p => ({
-          type: 'paragraph',
-          content: [{ type: 'text', text: p.trim() }]
-        }));
+        const paragraphs = post.content
+          .split('\n\n')
+          .filter((p) => p.trim())
+          .map((p) => ({
+            type: 'paragraph',
+            content: [{ type: 'text', text: p.trim() }],
+          }));
         setContent(JSON.stringify({ type: 'doc', content: paragraphs }));
       } else {
         setContent('{"type":"doc","content":[]}');
@@ -409,8 +501,11 @@ function PostForm({
     },
   });
 
-  const tags = tagsStr.split(',').map((t) => t.trim()).filter(Boolean);
-  
+  const tags = tagsStr
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+
   // Parse content as TipTap JSON or fallback to plain text in content field
   let bodyContent: unknown;
   try {
@@ -419,29 +514,36 @@ function PostForm({
     // If not valid JSON, wrap as plain text paragraphs
     bodyContent = {
       type: 'doc',
-      content: content.split('\n\n').filter(p => p.trim()).map(p => ({
-        type: 'paragraph',
-        content: [{ type: 'text', text: p.trim() }]
-      }))
+      content: content
+        .split('\n\n')
+        .filter((p) => p.trim())
+        .map((p) => ({
+          type: 'paragraph',
+          content: [{ type: 'text', text: p.trim() }],
+        })),
     };
   }
-  
+
   // Helper to extract plain text from TipTap JSON
   const extractPlainText = (body: unknown): string => {
     if (typeof body !== 'object' || body === null) return String(body || '');
     const doc = body as { content?: Array<{ content?: Array<{ text?: string }> }> };
     if (!doc.content) return '';
-    return doc.content
-      .map((p) => p.content?.map((c) => c.text).join(' ') || '')
-      .join('\n\n');
+    return doc.content.map((p) => p.content?.map((c) => c.text).join(' ') || '').join('\n\n');
   };
 
   const payload = {
     title,
-    slug: slug || title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-    content: typeof bodyContent === 'object' && bodyContent !== null 
-      ? extractPlainText(bodyContent)
-      : content,
+    slug:
+      slug ||
+      title
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, ''),
+    content:
+      typeof bodyContent === 'object' && bodyContent !== null
+        ? extractPlainText(bodyContent)
+        : content,
     body: bodyContent,
     excerpt,
     author,
@@ -512,7 +614,10 @@ function PostForm({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Content *</label>
           <RichTextEditor
-            content={content || '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Start writing your post..."}]}]}'}
+            content={
+              content ||
+              '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Start writing your post..."}]}]}'
+            }
             onChange={setContent}
             placeholder="Start writing your blog post..."
             minHeight="400px"
@@ -522,7 +627,9 @@ function PostForm({
           </p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Tags (comma-separated)
+          </label>
           <input
             type="text"
             value={tagsStr}
@@ -559,7 +666,11 @@ function PostForm({
           >
             {saving ? 'Saving…' : post ? 'Update post' : 'Create post'}
           </button>
-          <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+          >
             Cancel
           </button>
         </div>
@@ -574,12 +685,16 @@ function BlogCategoriesTab() {
   const [editing, setEditing] = useState<BlogCategory | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const { data: categories = [], isLoading, error: queryError } = useQuery({
+  const {
+    data: categories = [],
+    isLoading,
+    error: queryError,
+  } = useQuery({
     queryKey: ['admin-blog-categories'],
     queryFn: async () => {
       const res = await adminApiClient.get<BlogCategory[]>('/content/categories');
       const raw = res as unknown as BlogCategory[] | { data?: BlogCategory[] };
-      return Array.isArray(raw) ? raw : raw?.data ?? [];
+      return Array.isArray(raw) ? raw : (raw?.data ?? []);
     },
   });
 
@@ -604,7 +719,10 @@ function BlogCategoriesTab() {
           <h2 className="text-lg font-semibold text-gray-900">Categories</h2>
           <button
             type="button"
-            onClick={() => { setEditing(null); setShowAdd(true); }}
+            onClick={() => {
+              setEditing(null);
+              setShowAdd(true);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             <Plus className="w-4 h-4" />
@@ -618,7 +736,10 @@ function BlogCategoriesTab() {
         {(showAdd || editing) && (
           <CategoryForm
             category={editing ?? undefined}
-            onClose={() => { setShowAdd(false); setEditing(null); }}
+            onClose={() => {
+              setShowAdd(false);
+              setEditing(null);
+            }}
             onSaved={() => {
               queryClient.invalidateQueries({ queryKey: ['admin-blog-categories'] });
               setShowAdd(false);
@@ -636,7 +757,10 @@ function BlogCategoriesTab() {
         <h2 className="text-lg font-semibold text-gray-900">Categories</h2>
         <button
           type="button"
-          onClick={() => { setEditing(null); setShowAdd(true); }}
+          onClick={() => {
+            setEditing(null);
+            setShowAdd(true);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <Plus className="w-4 h-4" />
@@ -647,7 +771,10 @@ function BlogCategoriesTab() {
       {(showAdd || editing) && (
         <CategoryForm
           category={editing ?? undefined}
-          onClose={() => { setShowAdd(false); setEditing(null); }}
+          onClose={() => {
+            setShowAdd(false);
+            setEditing(null);
+          }}
           onSaved={() => {
             queryClient.invalidateQueries({ queryKey: ['admin-blog-categories'] });
             setShowAdd(false);
@@ -662,7 +789,9 @@ function BlogCategoriesTab() {
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Title</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Slug</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Description</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                Description
+              </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Order</th>
               <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
             </tr>
@@ -679,12 +808,17 @@ function BlogCategoriesTab() {
                 <tr key={cat.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{cat.title}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{cat.slug}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{cat.description || '—'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                    {cat.description || '—'}
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{cat.order}</td>
                   <td className="px-6 py-4 text-sm text-right">
                     <button
                       type="button"
-                      onClick={() => { setEditing(cat); setShowAdd(false); }}
+                      onClick={() => {
+                        setEditing(cat);
+                        setShowAdd(false);
+                      }}
                       className="text-blue-600 hover:text-blue-800 mr-3"
                     >
                       <Pencil className="w-4 h-4 inline" />
@@ -698,7 +832,11 @@ function BlogCategoriesTab() {
                         >
                           Confirm
                         </button>
-                        <button type="button" onClick={() => setDeleteConfirm(null)} className="text-gray-600">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirm(null)}
+                          className="text-gray-600"
+                        >
                           Cancel
                         </button>
                       </span>
@@ -750,7 +888,8 @@ function CategoryForm({
   }, [category]);
 
   const createMutation = useMutation({
-    mutationFn: (payload: Record<string, unknown>) => adminApiClient.post('/content/categories', payload),
+    mutationFn: (payload: Record<string, unknown>) =>
+      adminApiClient.post('/content/categories', payload),
     onSuccess: () => onSaved(),
   });
   const updateMutation = useMutation({
@@ -761,7 +900,14 @@ function CategoryForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { title: title.trim(), slug: slug.trim() || undefined, description: description.trim(), color, icon, order };
+    const payload = {
+      title: title.trim(),
+      slug: slug.trim() || undefined,
+      description: description.trim(),
+      color,
+      icon,
+      order,
+    };
     if (category) {
       updateMutation.mutate(payload);
     } else {
@@ -774,7 +920,9 @@ function CategoryForm({
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">{category ? 'Edit category' : 'Add category'}</h3>
+        <h3 className="text-lg font-semibold text-gray-900">
+          {category ? 'Edit category' : 'Add category'}
+        </h3>
         <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700">
           <X className="w-5 h-5" />
         </button>
@@ -849,7 +997,11 @@ function CategoryForm({
           >
             {saving ? 'Saving…' : category ? 'Update category' : 'Add category'}
           </button>
-          <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+          >
             Cancel
           </button>
         </div>

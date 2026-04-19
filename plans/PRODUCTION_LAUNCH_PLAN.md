@@ -197,7 +197,7 @@ echo "REDIS_PASSWORD=$REDIS_PASSWORD"
 ### 3.3 Edge VPS Nodes
 
 - [ ] If using self-hosted edge nodes, configure:
-  - `EDGE_NODES=209.46.125.113:Americas/APAC,217.160.124.206:Europe/Africa
+  - `EDGE_NODES=<YOUR_EDGE_IP_1>:Americas/APAC,<YOUR_EDGE_IP_2>:Europe/Africa
 - [ ] Verify edge node connectivity
 
 ---
