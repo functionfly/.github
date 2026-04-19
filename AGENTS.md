@@ -34,6 +34,7 @@ Then in another terminal: `curl http://localhost:8080/api/health`
 | **Cloudflare** | `docs/CLOUDFLARE.md`, `deploy/cloudflare/`, `deploy/dns/` | DNS, CDN, R2, Workers, Tunnel, Pages |
 | **Repo docs (Markdown)** | `docs/` | Design, ops, internal guides (not the public docs site) |
 | **Local PG 17 + pgvector** | `docs/LOCAL_POSTGRES_17.md` | PostgreSQL 17 with pgvector and extensions for local dev |
+| **Go modules** | `go.work`, `go.mod` | Workspace with main module + `cmd/flypy-go/` + `cmd/delete-functions/` for incremental builds |
 
 When adding API surface: add handler in `internal/api/handlers/`, register in `internal/api/routes.go`, and use existing storage/auth patterns.
 
@@ -122,11 +123,124 @@ Vite proxies `/api/*` to the Go backend (port 8080). Use `VITE_API_URL` when the
 - **Go build:** `go build -o bin/orchestrator-api ./cmd/orchestrator-api`
 - **Dashboard:** `cd web/dashboard && npx vitest run` for tests. ESLint has a known broken import (`eslint-import-resolver-typescript` default export); treat as pre-existing.
 
+### Optimized Build & Test Commands
+
+The project uses Go workspaces (`go.work`) and optimized build flags for faster development:
+
+| Command | Purpose |
+|---------|---------|
+| `make build` | Standard build with `-trimpath` |
+| `make build-fast` | Fast dev build (allows multiple errors, smaller binaries) |
+| `make build-ci` | CI-optimized (CGO disabled, stripped binaries) |
+| `make build-all-modules` | Build all workspace modules |
+
+**Test shortcuts (fast feedback):**
+
+| Command | Purpose |
+|---------|---------|
+| `make test-short` | Skip heavy integration tests (uses `-short` flag) |
+| `make test-parallel` | Use all CPU cores (`-parallel=NCPU`) |
+| `make test-fast` | Cached, parallel, short mode — best for local dev |
+| `make test-changed` | Only changed packages (requires `gotestsum`) |
+| `make test-watch` | Watch mode for continuous testing |
+| `make test-ci` | CI-optimized with rerun on failure |
+
+**Build cache management:**
+
+| Command | Purpose |
+|---------|---------|
+| `make cache-info` | Show cache paths |
+| `make cache-stats` | Show disk usage |
+| `make cache-clean` | Clean build cache |
+
+**IDE Performance (VS Code):**
+
+`.vscode/settings.json` includes gopls tuning:
+- Excludes `vendor/`, `testdata/`, `node_modules/`, build dirs from indexing
+- Disables heavy analyses (`unusedparams`, `shadow`)
+- Enables `experimentalWorkspaceModule` for monorepo support
+- Disables auto-updates for faster startup
+
+**Environment variables for build tuning:**
+
+```bash
+# Use RAM disk for build cache (optional speedup)
+mount -t tmpfs -o size=8G tmpfs /mnt/go-cache
+GOCACHE=/mnt/go-cache make build
+
+# Custom module cache location
+GOMODCACHE=/fast-ssd/go-mod make deps
+```
+
+---
+
+## Database Migrations
+
+### Migration Naming Convention
+
+**All new migrations MUST use the timestamp format:** `YYYYMMDDHHMMSS_description.sql`
+
+Use the helper script:
+```bash
+./scripts/create-migration.sh "add_user_preferences_table"
+```
+
+Validate before committing:
+```bash
+./scripts/validate-migrations.sh
+```
+
+See `MIGRATIONS.md` for full policy details.
+
+### Creating Migrations (Idempotent SQL)
+
+When writing migrations, use idempotent operations:
+- `CREATE TABLE IF NOT EXISTS` instead of `CREATE TABLE`
+- `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+- `DROP INDEX IF EXISTS`, `DROP TABLE IF EXISTS` in down migrations
+
+### Migration History
+
+The project previously had duplicate sequence numbers that have been resolved:
+- `000250` duplicates renamed to `20260412180000` and `20260412180100`
+- `20260412175400` duplicates resolved
+
+### Database Indexes for Performance
+
+Recent billing performance indexes (see `migrations/20260419131000_billing_performance_indexes.up.sql`):
+- `idx_payment_retries_status_next_retry` - For dunning scheduler queries
+- `idx_payment_retries_grace_period_status` - For service suspension monitoring
+- `idx_invoices_period_tenant` - For period-based billing reports
+- `idx_cost_allocation_entries_timestamp` - For data retention cleanup queries
+
+### Data Retention Policy (Billing)
+
+Compliance-based data retention is implemented for cost allocation entries:
+
+| Retention Tier | Period | Data Affected | Implementation |
+|---------------|--------|---------------|----------------|
+| Detailed execution logs | 90 days | High-volume cost allocation entries | `CleanupCostAllocationByRetention()` in billing repository |
+| Financial aggregates | 7 years | Invoice-level data (SOX compliance) | `CleanupFinancialAggregatesAfterRetention()` |
+| Audit logs | Configurable | `retention_audit_log` table tracks all deletions | Automatic |
+
+**Configuration (environment variables):**
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `DATA_RETENTION_ENABLED` | Enable scheduled cleanup | `true` |
+| `DATA_RETENTION_CRON` | When to run cleanup | `0 3 * * *` (3 AM daily) |
+| `DATA_RETENTION_DETAILED_DAYS` | Days to keep execution logs | `90` |
+| `DATA_RETENTION_FINANCIAL_YEARS` | Years to keep financial data | `7` |
+| `DATA_RETENTION_DRY_RUN` | Log only, don't delete | `false` |
+| `DATA_RETENTION_SKIP_IF_LEGAL_HOLD` | Skip cleanup if legal holds active | `true` |
+
+**Legal Holds:** Use the `legal_holds` table to block deletion for litigation/audit. Check `is_under_legal_hold()` function before any bulk deletion.
+
 ---
 
 ## Known gotchas
 
-1. **Migrations:** Duplicate sequence numbers in `migrations/` (e.g. two `000001_*.sql`). Use `--skip-migrations` when starting the API; apply schema changes via direct SQL if needed.
+1. ~~**Migrations:** Duplicate sequence numbers have been resolved.~~ Use timestamp format (`YYYYMMDDHHMMSS`) for all new migrations. Use `--skip-migrations` only for local dev if needed.
 2. **resend-go:** Upgraded from v2.0.0 to v2.28.0. `ReplyTo` is now `string` (was `*string`); `client.Keys.Get()` was removed.
 3. **Stub / beta surfaces:** `internal/adapters/functionfly` still returns "not implemented" for some paths. State Fabric routes are registered (admin/platform); verify behavior before promising them in contracts. Grep for `not implemented` in `internal/api/handlers` before launch-critical features.
 4. **Postgres audit trigger:** `audit_trigger_function()` expects `ip_address` cast to `::inet` (fixed in DB setup).
