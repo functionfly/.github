@@ -138,6 +138,20 @@ ORDER BY n_tup_ins DESC;
 
 -- Tenant-specific usage patterns
 CREATE OR REPLACE VIEW tenant_usage_summary AS
+WITH tenant_row_counts AS (
+    SELECT
+        t.id as tenant_id,
+        -- Estimate storage based on row counts × average row sizes
+        -- These multipliers are approximations based on typical row sizes
+        COALESCE((SELECT count(*) FROM users WHERE tenant_id = t.id), 0) * 4000 AS users_size,
+        COALESCE((SELECT count(*) FROM apps WHERE tenant_id = t.id), 0) * 8000 AS apps_size,
+        COALESCE((SELECT count(*) FROM deployments d JOIN apps a ON d.app_id = a.id WHERE a.tenant_id = t.id), 0) * 12000 AS deployments_size,
+        COALESCE((SELECT count(*) FROM usage_events WHERE tenant_id = t.id), 0) * 256 AS events_size,
+        COALESCE((SELECT count(*) FROM audit_events WHERE tenant_id = t.id), 0) * 512 AS audit_size,
+        COALESCE((SELECT count(*) FROM agent_sessions WHERE tenant_id = t.id), 0) * 4096 AS sessions_size,
+        COALESCE((SELECT count(*) FROM agent_execution_records WHERE tenant_id = t.id), 0) * 512 AS exec_records_size
+    FROM tenants t
+)
 SELECT
     t.id as tenant_id,
     t.name as tenant_name,
@@ -147,13 +161,23 @@ SELECT
     COUNT(DISTINCT d.id) as deployment_count,
     COALESCE(SUM(ue.quantity), 0) as total_usage_events,
     MAX(ue.timestamp) as last_activity,
-    pg_size_pretty(0::bigint) as estimated_tenant_size -- Placeholder for now
+    pg_size_pretty(
+        COALESCE(trc.users_size, 0) +
+        COALESCE(trc.apps_size, 0) +
+        COALESCE(trc.deployments_size, 0) +
+        COALESCE(trc.events_size, 0) +
+        COALESCE(trc.audit_size, 0) +
+        COALESCE(trc.sessions_size, 0) +
+        COALESCE(trc.exec_records_size, 0)
+    ) as estimated_tenant_size
 FROM tenants t
 LEFT JOIN users u ON u.tenant_id = t.id
 LEFT JOIN apps a ON a.tenant_id = t.id
 LEFT JOIN deployments d ON d.app_id = a.id
 LEFT JOIN usage_events ue ON ue.tenant_id = t.id
-GROUP BY t.id, t.name, t.plan
+LEFT JOIN tenant_row_counts trc ON trc.tenant_id = t.id
+GROUP BY t.id, t.name, t.plan, trc.users_size, trc.apps_size, trc.deployments_size,
+         trc.events_size, trc.audit_size, trc.sessions_size, trc.exec_records_size
 ORDER BY total_usage_events DESC;
 
 -- Replication lag monitoring (for replicas)

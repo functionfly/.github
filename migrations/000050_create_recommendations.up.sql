@@ -181,6 +181,26 @@ CREATE INDEX IF NOT EXISTS idx_feedback_user ON recommendation_feedback(user_id)
 CREATE INDEX IF NOT EXISTS idx_feedback_function ON recommendation_feedback(function_id);
 CREATE INDEX IF NOT EXISTS idx_feedback_type ON recommendation_feedback(feedback_type);
 
+-- 9. Function execution events (for recommendation tracking)
+-- Tracks function executions with session context for co-occurrence and recommendations
+CREATE TABLE IF NOT EXISTS function_execution_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    function_id UUID NOT NULL REFERENCES registry_functions(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+
+    -- Session context for co-occurrence tracking
+    session_id VARCHAR(100) NOT NULL,
+
+    -- Execution metadata
+    execution_id UUID DEFAULT gen_random_uuid(),
+    executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_func_exec_events_function ON function_execution_events(function_id);
+CREATE INDEX IF NOT EXISTS idx_func_exec_events_session ON function_execution_events(session_id);
+CREATE INDEX IF NOT EXISTS idx_func_exec_events_user ON function_execution_events(user_id) WHERE user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_func_exec_events_executed ON function_execution_events(executed_at DESC);
+
 -- Function to update co-occurrence counts
 CREATE OR REPLACE FUNCTION update_co_occurrence(
     p_function_id_a UUID,
@@ -337,8 +357,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Note: The trigger would be applied to a relevant executions table
--- This is a placeholder for the pattern; actual implementation depends on execution tracking
+-- Apply trigger to function_execution_events for co-occurrence tracking
+DROP TRIGGER IF EXISTS trg_track_session_co_occurrence ON function_execution_events;
+CREATE TRIGGER trg_track_session_co_occurrence
+    AFTER INSERT ON function_execution_events
+    FOR EACH ROW
+    EXECUTE FUNCTION track_session_co_occurrence();
 
 -- Insert some default category similarities (category_a < category_b for chk_category_order)
 INSERT INTO category_similarities (category_a, category_b, similarity_score, shared_functions) VALUES
