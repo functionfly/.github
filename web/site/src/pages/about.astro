@@ -1,11 +1,30 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN } from '../config';
+import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN, SITE_ORIGIN } from '../config';
+
+// About page Article schema for rich snippets
+const aboutSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'AboutPage',
+  mainEntity: {
+    '@type': 'Organization',
+    name: 'FunctionFly',
+    url: SITE_ORIGIN,
+    logo: `${SITE_ORIGIN}/favicon.svg`,
+    sameAs: [
+      'https://github.com/functionfly',
+      'https://x.com/functionflycom',
+      'https://linkedin.com/company/functionfly',
+    ],
+  },
+};
 ---
 
 <Layout
   title="About FunctionFly — The Trust Layer for AI Agents"
   description="FunctionFly builds the trust infrastructure for AI agents: verified functions, signing, sandboxed execution, and auditable trust scores. Publish once, agents run them safely everywhere."
+  schema={aboutSchema}
+  ogImage="/og-about.svg"
 >
 
   <!-- ═══════════════════════════════════════════════

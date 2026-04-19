@@ -1,8 +1,0 @@
----
-// Redirect all blog post traffic to the new standalone blog at blog.functionfly.com
-const { slug } = Astro.params;
-const blogUrl = import.meta.env.PUBLIC_BLOG_URL || 'https://blog.functionfly.com';
-
-const destination = slug ? `${blogUrl}/${slug}` : blogUrl;
-return Astro.redirect(destination);
----

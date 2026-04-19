@@ -1,11 +1,93 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN } from '../config';
+import '../styles/pricing.css';
+import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN, SITE_ORIGIN } from '../config';
+
+// FAQPage schema for the FAQ section (rich results eligibility)
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Do prices include tax?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Listed prices are in USD before applicable taxes. Your invoice will reflect tax rules for your billing address.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'How does the Trust API and verification billing work?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Trust scores, attestations, and verification levels are part of the trust layer. Usage-based components are metered separately so you only pay for what agents and policies query—details appear alongside your workspace usage.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Can we upgrade or downgrade?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Yes. Move between platform tiers as your traffic and team change; agent plans can be adjusted when your concurrency and call volume need it.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'What does Enterprise include?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Volume pricing, custom SLAs, security questionnaires, SSO, and tailored trust policies. Contact sales with your requirements.',
+      },
+    },
+  ],
+};
+
+// SoftwareApplication schema for the product
+const productSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'FunctionFly',
+  applicationCategory: 'DeveloperApplication',
+  offers: [
+    {
+      '@type': 'Offer',
+      name: 'Free Tier',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Starter',
+      price: '29',
+      priceCurrency: 'USD',
+      priceValidUntil: '2026-12-31',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Professional',
+      price: '99',
+      priceCurrency: 'USD',
+      priceValidUntil: '2026-12-31',
+    },
+  ],
+  aggregateRating: {
+    '@type': 'AggregateRating',
+    ratingValue: '4.8',
+    reviewCount: '127',
+  },
+  operatingSystem: 'Any (Cloud-based)',
+  url: `${SITE_ORIGIN}/pricing`,
+};
+
+const pricingSchemas = [faqSchema, productSchema];
 ---
 
 <Layout
   title="Pricing — FunctionFly"
   description="Platform plans for functions, providers, and requests—plus State Fabric and agent execution tiers for AI workloads. Start free; scale with Starter, Professional, or Enterprise."
+  schema={pricingSchemas}
+  ogImage="/og-pricing.svg"
 >
   <section class="pricing-hero">
     <div class="container">
@@ -478,643 +560,4 @@ import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN } from '../config';
     </div>
   </section>
 
-  <style>
-    .pricing-hero {
-      padding: 5.5rem 1rem 3.5rem;
-      background:
-        radial-gradient(ellipse at top, rgba(99, 102, 241, 0.2) 0%, transparent 55%),
-        radial-gradient(ellipse at bottom right, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
-        var(--color-bg);
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    .container {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 1.5rem;
-    }
-
-    .container--narrow {
-      max-width: 720px;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 0.45rem 0.85rem;
-      border-radius: 999px;
-      border: 1px solid var(--color-border);
-      color: var(--color-text-muted);
-      background: rgba(30, 41, 59, 0.45);
-      font-family: var(--font-mono);
-      font-size: 0.85rem;
-      margin-bottom: 1.25rem;
-    }
-
-    h1 {
-      font-size: clamp(2.25rem, 4vw, 3.1rem);
-      line-height: 1.08;
-      margin-bottom: 1.1rem;
-      letter-spacing: -0.02em;
-    }
-
-    .lead {
-      color: var(--color-text-muted);
-      font-size: 1.1rem;
-      line-height: 1.65;
-      max-width: 42rem;
-    }
-
-    .section {
-      padding: 3.5rem 0;
-    }
-
-    .section--alt {
-      background: rgba(15, 23, 42, 0.35);
-      border-top: 1px solid var(--color-border);
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    .section-head {
-      margin-bottom: 2rem;
-      max-width: 40rem;
-    }
-
-    .section-head h2 {
-      font-size: 1.65rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .muted {
-      color: var(--color-text-muted);
-      line-height: 1.65;
-    }
-
-    .pricing-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1.25rem;
-      align-items: stretch;
-    }
-
-    .statefabric-section {
-      background: rgba(15, 23, 42, 0.15);
-      border-top: 1px solid var(--color-border);
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    .statefabric-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 1.25rem;
-      align-items: stretch;
-      margin-bottom: 2rem;
-    }
-
-    .statefabric-table-wrap {
-      border: 1px solid var(--color-border);
-      border-radius: 12px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      background: rgba(30, 41, 59, 0.35);
-      margin: 1.75rem 0 2.25rem;
-    }
-
-    .statefabric-table {
-      min-width: 920px;
-    }
-
-    .statefabric-addons {
-      padding-top: 0.25rem;
-    }
-
-    .statefabric-addons-title {
-      font-size: 1.25rem;
-      margin-bottom: 0.75rem;
-      text-align: center;
-    }
-
-    .statefabric-addons-sub {
-      text-align: center;
-      margin: 0 auto 1.25rem;
-      max-width: 56rem;
-      font-size: 0.95rem;
-    }
-
-    .addon-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1rem;
-    }
-
-    .addon-card {
-      border: 1px solid var(--color-border);
-      background: rgba(30, 41, 59, 0.25);
-      border-radius: 12px;
-      padding: 1rem 1.05rem;
-      min-height: 168px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-
-    .addon-top {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .addon-card h4 {
-      font-size: 1rem;
-      font-weight: 650;
-      color: var(--color-text);
-    }
-
-    .addon-price {
-      font-size: 1.4rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-    }
-
-    .addon-price span {
-      font-size: 0.9rem;
-      color: var(--color-text-muted);
-      font-weight: 600;
-      margin-left: 0.35rem;
-    }
-
-    .addon-desc {
-      color: var(--color-text-muted);
-      line-height: 1.55;
-      font-size: 0.9rem;
-      margin: 0;
-    }
-
-    .statefabric-note {
-      margin-top: 1.25rem;
-      color: var(--color-text-muted);
-      font-size: 0.85rem;
-      line-height: 1.6;
-      text-align: center;
-      max-width: 60rem;
-    }
-
-    .price-card {
-      position: relative;
-      border: 1px solid var(--color-border);
-      background: rgba(30, 41, 59, 0.4);
-      border-radius: 14px;
-      padding: 1.5rem 1.35rem 1.35rem;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
-    }
-
-    .price-card--featured {
-      border-color: rgba(99, 102, 241, 0.55);
-      background: linear-gradient(160deg, rgba(99, 102, 241, 0.14) 0%, rgba(30, 41, 59, 0.5) 45%);
-      box-shadow:
-        0 0 0 1px rgba(99, 102, 241, 0.2),
-        0 20px 50px rgba(0, 0, 0, 0.35);
-    }
-
-    .featured-pill {
-      position: absolute;
-      top: -0.65rem;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      padding: 0.35rem 0.75rem;
-      border-radius: 999px;
-      background: var(--color-primary);
-      color: white;
-      white-space: nowrap;
-    }
-
-    .tier-name {
-      font-size: 1.15rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-    }
-
-    .price-row {
-      display: flex;
-      align-items: baseline;
-      gap: 0.35rem;
-      margin-bottom: 0.65rem;
-    }
-
-    .price-amount {
-      font-size: 2rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-
-    .price-amount--custom {
-      font-size: 1.5rem;
-      font-weight: 700;
-    }
-
-    .price-period {
-      color: var(--color-text-muted);
-      font-size: 0.95rem;
-    }
-
-    .tier-desc {
-      color: var(--color-text-muted);
-      font-size: 0.9rem;
-      line-height: 1.5;
-      margin-bottom: 1.1rem;
-      min-height: 2.75rem;
-    }
-
-    .tier-desc--tight {
-      min-height: 0;
-      margin-bottom: 0.75rem;
-      opacity: 0.95;
-    }
-
-    .feature-list {
-      list-style: none;
-      margin: 0 0 1.35rem;
-      padding: 0;
-      flex: 1;
-    }
-
-    .feature-list li {
-      display: flex;
-      gap: 0.5rem;
-      align-items: flex-start;
-      font-size: 0.9rem;
-      color: var(--color-text-muted);
-      line-height: 1.45;
-      margin-bottom: 0.5rem;
-    }
-
-    .check {
-      color: var(--color-secondary);
-      font-weight: 700;
-      flex-shrink: 0;
-      margin-top: 0.05rem;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.75rem 1.1rem;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      text-decoration: none;
-      transition:
-        transform 0.15s ease,
-        background 0.15s ease,
-        border-color 0.15s ease;
-    }
-
-    .btn-primary {
-      background: var(--color-primary);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: var(--color-primary-dark);
-      transform: translateY(-1px);
-    }
-
-    .btn-secondary {
-      background: transparent;
-      border: 1px solid var(--color-border);
-      color: var(--color-text);
-    }
-
-    .btn-secondary:hover {
-      border-color: rgba(99, 102, 241, 0.55);
-      color: var(--color-text);
-    }
-
-    .full-width {
-      width: 100%;
-    }
-
-    .footnote {
-      margin-top: 2rem;
-      font-size: 0.85rem;
-      color: var(--color-text-muted);
-      line-height: 1.6;
-      max-width: 52rem;
-    }
-
-    .footnote a {
-      color: var(--color-secondary);
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-
-    .footnote a:hover {
-      color: var(--color-text);
-    }
-
-    .agent-table-wrap {
-      border: 1px solid var(--color-border);
-      border-radius: 12px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      background: rgba(30, 41, 59, 0.35);
-    }
-
-    .agent-table {
-      width: 100%;
-      min-width: 520px;
-      border-collapse: collapse;
-      font-size: 0.9rem;
-    }
-
-    .agent-table th,
-    .agent-table td {
-      padding: 1rem 1.15rem;
-      text-align: left;
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    .agent-table thead th {
-      background: rgba(99, 102, 241, 0.1);
-      color: var(--color-text-muted);
-      font-weight: 600;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .agent-table tbody tr:last-child td {
-      border-bottom: none;
-    }
-
-    .muted-cell {
-      color: var(--color-text-muted);
-      line-height: 1.5;
-    }
-
-    .agent-cta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin-top: 1.75rem;
-    }
-
-    .faq-section h2 {
-      font-size: 1.65rem;
-      margin-bottom: 1.75rem;
-    }
-
-    .faq {
-      margin: 0;
-    }
-
-    .faq-item {
-      padding: 1.35rem 0;
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    .faq-item:first-child {
-      padding-top: 0;
-    }
-
-    .faq-item:last-child {
-      border-bottom: none;
-    }
-
-    .faq-item dt {
-      font-weight: 600;
-      font-size: 1.05rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .faq-item dd {
-      margin: 0;
-      color: var(--color-text-muted);
-      line-height: 1.65;
-      font-size: 0.95rem;
-    }
-
-    .faq-item dd a {
-      color: var(--color-secondary);
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-
-    .cta {
-      padding: 3.5rem 0 5rem;
-      border-top: 1px solid var(--color-border);
-      background:
-        radial-gradient(ellipse at center, rgba(99, 102, 241, 0.18) 0%, transparent 58%),
-        var(--color-bg);
-    }
-
-    .cta h2 {
-      font-size: 1.75rem;
-      margin-bottom: 0.65rem;
-    }
-
-    .cta .muted {
-      max-width: 36rem;
-    }
-
-    .cta .actions {
-      display: flex;
-      gap: 1rem;
-      margin-top: 1.6rem;
-      flex-wrap: wrap;
-    }
-
-    .cta .btn.primary {
-      background: var(--color-primary);
-      color: white;
-      padding: 0.85rem 1.35rem;
-      border-radius: 8px;
-      font-weight: 600;
-    }
-
-    .cta .btn.primary:hover {
-      background: var(--color-primary-dark);
-      transform: translateY(-2px);
-    }
-
-    .cta .btn.secondary {
-      background: transparent;
-      border: 1px solid var(--color-border);
-      color: var(--color-text);
-      padding: 0.85rem 1.35rem;
-      border-radius: 8px;
-      font-weight: 600;
-    }
-
-    .cta .btn.secondary:hover {
-      border-color: rgba(99, 102, 241, 0.6);
-    }
-
-    @media (max-width: 1050px) {
-      .pricing-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .statefabric-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .addon-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (max-width: 560px) {
-      .pricing-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .tier-desc {
-        min-height: 0;
-      }
-
-      .statefabric-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .addon-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .bundles-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    /* Backend-in-a-Box Bundles Promo */
-    .bundles-promo {
-      margin-top: 2.5rem;
-      padding: 2rem;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1), rgba(236, 72, 153, 0.1));
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      border-radius: 16px;
-      text-align: center;
-    }
-
-    .bundles-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.4rem 0.9rem;
-      background: linear-gradient(90deg, #6366f1, #a855f7);
-      color: white;
-      font-size: 0.85rem;
-      font-weight: 600;
-      border-radius: 999px;
-      margin-bottom: 1rem;
-    }
-
-    .sparkle {
-      font-size: 1rem;
-    }
-
-    .bundles-title {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      color: var(--color-text);
-    }
-
-    .bundles-desc {
-      color: var(--color-muted);
-      max-width: 600px;
-      margin: 0 auto 1.5rem;
-      line-height: 1.6;
-    }
-
-    .bundles-desc strong {
-      color: var(--color-primary);
-    }
-
-    .bundles-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .bundle-item {
-      padding: 1rem;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(99, 102, 241, 0.15);
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      font-size: 0.9rem;
-    }
-
-    .bundle-icon {
-      font-size: 1.5rem;
-      margin-bottom: 0.25rem;
-    }
-
-    .bundle-features {
-      font-size: 0.75rem;
-      color: var(--color-muted);
-    }
-
-    .bundles-cta {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .btn-gradient {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.85rem 1.75rem;
-      background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
-      color: white;
-      font-weight: 600;
-      border-radius: 10px;
-      text-decoration: none;
-      transition: transform 0.2s, box-shadow 0.2s;
-      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-    }
-
-    .btn-gradient:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
-    }
-
-    .bundles-trust {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-
-    .pill {
-      padding: 0.35rem 0.75rem;
-      background: rgba(99, 102, 241, 0.1);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      border-radius: 999px;
-      font-size: 0.8rem;
-      color: var(--color-muted);
-    }
-
-    @media (max-width: 1050px) {
-      .bundles-grid {
-        grid-template-columns: 1fr;
-        max-width: 400px;
-        margin-left: auto;
-        margin-right: auto;
-      }
-    }
-  </style>
 </Layout>

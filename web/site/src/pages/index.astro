@@ -1,22 +1,93 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { APP_DASHBOARD_ORIGIN, DOCS_ORIGIN, AUTH_ORIGIN } from '../config';
+import { APP_DASHBOARD_ORIGIN, DOCS_ORIGIN, AUTH_ORIGIN, SITE_ORIGIN } from '../config';
 import '../styles/design-system.css';
+import FunctionFlyNexus from '../components/FunctionFlyNexus.tsx';
 
 const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
+
+// Organization Schema for rich snippets
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'FunctionFly',
+  alternateName: 'FunctionFly LLC',
+  url: SITE_ORIGIN,
+  logo: {
+    '@type': 'ImageObject',
+    url: `${SITE_ORIGIN}/favicon.svg`,
+    width: '512',
+    height: '512',
+  },
+  sameAs: [
+    'https://github.com/functionfly',
+    'https://x.com/functionflycom',
+    'https://linkedin.com/company/functionfly',
+    'https://discord.gg/functionfly',
+  ],
+  description: 'The trust layer for AI agents - verified functions, trust scores, and zero-knowledge vault.',
+};
+
+// WebSite Schema with SearchAction for site search in SERPs
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'FunctionFly',
+  url: SITE_ORIGIN,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: `${SITE_ORIGIN}/registry?q={search_term_string}`,
+    },
+    'query-input': 'required name=search_term_string',
+  },
+};
+
+// SoftwareApplication Schema for the main product
+const softwareSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'FunctionFly',
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Any (Cloud-based)',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+    priceValidUntil: '2026-12-31',
+    availability: 'https://schema.org/InStock',
+  },
+  description: 'The platform for AI-accessible functions. Publish in any language, execute in sandboxes, route by trust.',
+  url: SITE_ORIGIN,
+  featureList: [
+    'Multi-language function support (Python, Go, Rust, JavaScript, WebAssembly)',
+    'Sandboxed execution with Firecracker MicroVMs',
+    'Trust scoring and verification',
+    'Agent swarm orchestration',
+    'Policy engine for safe execution',
+  ],
+};
+
+// Combine schemas
+const homePageSchemas = [organizationSchema, websiteSchema, softwareSchema];
 ---
 
 <Layout
   title="FunctionFly™ — Ship Functions. Agents Trust Them."
   description="The platform for AI-accessible functions. Publish in any language, execute in sandboxes, route by trust, and monitor everything — so your agents can call tools safely at scale."
+  schema={homePageSchemas}
+  ogImage="/og-home.svg"
 >
-  <section class="hero ff-aurora-bg ff-grid-bg" data-animate>
+  <section class="hero hero-with-3d ff-aurora-bg ff-grid-bg" data-animate>
+    <!-- 3D Scene Disabled for Performance - Can re-enable later -->
+    <div class="hero-3d-container" style="background: linear-gradient(135deg, rgba(255,107,53,0.15) 0%, rgba(0,212,255,0.15) 50%, rgba(139,92,246,0.15) 100%);"></div>
     <div class="hero-content">
-      <div class="ff-badge ff-badge-primary ff-badge-glow ff-animate-slide-up">
+      <div class="ff-badge ff-badge-lg ff-badge-primary ff-badge-glow ff-animate-slide-up">
         <span class="ff-badge-dot" aria-hidden="true"></span>
         Now in Private Beta
       </div>
-      <h1 class="ff-animate-slide-up ff-delay-100">
+      <h1 class="ff-animate-slide-up ff-delay-100" style="font-family: var(--font-display);">
         <span class="hero-title-line">Ship Functions.</span><br />
         <span class="gradient-text ff-text-gradient">Agents Trust Them.</span>
       </h1>
@@ -28,7 +99,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
         <a href={`${AUTH_ORIGIN}/signup`} class="ff-btn ff-btn-primary ff-btn-xl ff-glow">
           Start Free <span class="hero-arrow" aria-hidden="true">→</span>
         </a>
-        <a href={docsGuidesUrl} class="ff-btn ff-btn-secondary" target="_blank" rel="noopener noreferrer">View Documentation</a>
+        <a href={docsGuidesUrl} class="ff-btn ff-btn-secondary ff-btn-lg" target="_blank" rel="noopener noreferrer">View Documentation</a>
       </div>
       <div class="hero-stats ff-animate-slide-up ff-delay-400">
         <div class="stat">
@@ -49,7 +120,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
 
   <section class="audience ff-py-24 ff-bg-default ff-grid-bg" data-animate>
     <div class="ff-container">
-      <h2 class="ff-text-4xl ff-weight-bold ff-text-center ff-tracking-tight">Who benefits most from FunctionFly™</h2>
+      <h2 class="ff-text-4xl ff-weight-bold ff-text-center ff-tracking-tight ff-font-display">Who benefits most from FunctionFly™</h2>
       <p class="section-subtitle ff-text-lg ff-text-subtle ff-text-center ff-max-w-2xl ff-mx-auto ff-mt-4 ff-mb-12">
         From solo founders to enterprise teams, FunctionFly™ provides the reliability and flexibility you need to focus on building
         great products.
@@ -67,7 +138,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
             </div>
             <div class="audience-badge audience-badge--indie">Indie</div>
           </div>
-          <h3 class="audience-card-title">Indie SaaS Founder</h3>
+          <h3 class="audience-card-title" style="font-family: var(--font-display);">Indie SaaS Founder</h3>
           <p class="audience-card-subtitle">Deploying your first app</p>
           <p class="audience-card-desc">
             You built an amazing product and now need trustworthy agent tooling without enterprise overhead. FunctionFly™ gives you
@@ -124,7 +195,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
             </div>
             <div class="audience-badge audience-badge--startup">Growth</div>
           </div>
-          <h3 class="audience-card-title">Growing Startup</h3>
+          <h3 class="audience-card-title" style="font-family: var(--font-display);">Growing Startup</h3>
           <p class="audience-card-subtitle">Scaling agent + API workloads</p>
           <p class="audience-card-desc">
             Your team is shipping fast and agents are calling more tools every week. You need policy-friendly trust metadata,
@@ -181,7 +252,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
             </div>
             <div class="audience-badge audience-badge--enterprise">Enterprise</div>
           </div>
-          <h3 class="audience-card-title">Enterprise</h3>
+          <h3 class="audience-card-title" style="font-family: var(--font-display);">Enterprise</h3>
           <p class="audience-card-subtitle">Governance and compliance</p>
           <p class="audience-card-desc">
             Your organization needs auditability, least-privilege access to tools, and consistent trust policies across agents and
@@ -231,7 +302,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
 
   <section class="features ff-py-24 ff-bg-subtle ff-grid-bg" data-animate>
     <div class="ff-container">
-      <h2 class="ff-text-4xl ff-weight-bold ff-text-center ff-tracking-tight">Everything agents need to call your functions safely</h2>
+      <h2 class="ff-text-4xl ff-weight-bold ff-text-center ff-tracking-tight ff-font-display">Everything agents need to call your functions safely</h2>
       <p class="section-subtitle ff-text-lg ff-text-subtle ff-text-center ff-max-w-2xl ff-mx-auto ff-mt-4 ff-mb-16">
         Publish once. Agents everywhere can discover, trust, and execute your tools — with full isolation and observability built in.
       </p>
@@ -301,7 +372,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
   <!-- HOW IT WORKS -->
   <section class="how-it-works ff-py-24 ff-bg-default ff-grid-bg" data-animate>
     <div class="ff-container">
-      <h2 class="ff-text-4xl ff-weight-bold ff-text-center ff-tracking-tight">From code to trusted agent tool in four steps</h2>
+      <h2 class="ff-text-4xl ff-weight-bold ff-text-center ff-tracking-tight ff-font-display">From code to trusted agent tool in four steps</h2>
       <p class="section-subtitle ff-text-lg ff-text-subtle ff-text-center ff-max-w-2xl ff-mx-auto ff-mt-4 ff-mb-16">
         FunctionFly™ handles verification, isolation, routing, and observability — so you can focus on writing business logic.
       </p>
@@ -313,7 +384,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path>
             </svg>
           </div>
-          <h3 class="ff-text-xl ff-weight-semibold ff-mb-3">Write</h3>
+          <h3 class="ff-text-xl ff-weight-semibold ff-mb-3 ff-font-display">Write</h3>
           <p class="ff-text-base ff-text-subtle ff-leading-relaxed">Implement your function in Python, Go, Rust, JavaScript, or TypeScript. Your code runs in isolation — it cannot phone home or access the filesystem unless you grant capabilities explicitly.</p>
         </div>
         <div class="ff-step-connector" aria-hidden="true">
@@ -327,7 +398,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <polyline points="8 6 2 12 8 18"></polyline>
             </svg>
           </div>
-          <h3 class="ff-text-xl ff-weight-semibold ff-mb-3">Publish</h3>
+          <h3 class="ff-text-xl ff-weight-semibold ff-mb-3 ff-font-display">Publish</h3>
           <p class="ff-text-base ff-text-subtle ff-leading-relaxed">Run <code class="ff-font-mono ff-text-cyan">ffly deploy</code>. FunctionFly™ bundles your code, compiles it for the target runtime, signs the artifact, and runs multi-level verification checks before making it live.</p>
         </div>
         <div class="ff-step-connector" aria-hidden="true">
@@ -341,7 +412,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <path d="m21 21-4.35-4.35M11 8v6M8 11h6"></path>
             </svg>
           </div>
-          <h3 class="ff-text-xl ff-weight-semibold ff-mb-3">Discover</h3>
+          <h3 class="ff-text-xl ff-weight-semibold ff-mb-3 ff-font-display">Discover</h3>
           <p class="ff-text-base ff-text-subtle ff-leading-relaxed">Agents find your function through manifests and trust filters. Your function's trust score, verification tier, execution history, and capability declarations are all surfaced automatically.</p>
         </div>
         <div class="ff-step-connector" aria-hidden="true">
@@ -354,7 +425,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
             </svg>
           </div>
-          <h3 class="ff-text-xl ff-weight-semibold ff-mb-3">Execute</h3>
+          <h3 class="ff-text-xl ff-weight-semibold ff-mb-3 ff-font-display">Execute</h3>
           <p class="ff-text-base ff-text-subtle ff-leading-relaxed">Agents call your function over HTTPS. FunctionFly™ routes to the right backend, enforces policy limits, runs in a Wasm sandbox, and records every result for trust scoring.</p>
         </div>
       </div>
@@ -364,16 +435,31 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
   <!-- LANGUAGE EXAMPLES -->
   <section class="language-examples ff-py-24 ff-bg-subtle ff-grid-bg" data-animate>
     <div class="ff-container">
-      <h2 class="ff-text-4xl ff-weight-bold ff-text-center ff-tracking-tight">Your function, any language</h2>
+      <h2 class="ff-text-4xl ff-weight-bold ff-text-center ff-tracking-tight ff-font-display">Your function, any language</h2>
       <p class="section-subtitle ff-text-lg ff-text-subtle ff-text-center ff-max-w-2xl ff-mx-auto ff-mt-4 ff-mb-12">
         Write once. Select your runtime at publish time — FunctionFly™ handles compilation, bundling, and isolation.
       </p>
       <div class="lang-tabs" role="tablist">
-        <button class="lang-tab active" role="tab" data-lang="python" aria-selected="true">Python</button>
-        <button class="lang-tab" role="tab" data-lang="go" aria-selected="false">Go</button>
-        <button class="lang-tab" role="tab" data-lang="rust" aria-selected="false">Rust</button>
-        <button class="lang-tab" role="tab" data-lang="javascript" aria-selected="false">JavaScript</button>
-        <button class="lang-tab" role="tab" data-lang="typescript" aria-selected="false">TypeScript</button>
+        <button class="lang-tab active" role="tab" data-lang="python" aria-selected="true">
+          <img class="lang-icon" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" alt="" aria-hidden="true" width="18" height="18"/>
+          Python
+        </button>
+        <button class="lang-tab" role="tab" data-lang="go" aria-selected="false">
+          <img class="lang-icon" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" alt="" aria-hidden="true" width="18" height="18"/>
+          Go
+        </button>
+        <button class="lang-tab" role="tab" data-lang="rust" aria-selected="false">
+          <img class="lang-icon" src="https://www.svgrepo.com/show/376347/rust.svg" alt="" aria-hidden="true" width="18" height="18"/>
+          Rust
+        </button>
+        <button class="lang-tab" role="tab" data-lang="javascript" aria-selected="false">
+          <img class="lang-icon" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg" alt="" aria-hidden="true" width="18" height="18"/>
+          JavaScript
+        </button>
+        <button class="lang-tab" role="tab" data-lang="typescript" aria-selected="false">
+          <img class="lang-icon" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" alt="" aria-hidden="true" width="18" height="18"/>
+          TypeScript
+        </button>
       </div>
       <div class="lang-panels">
         <div class="lang-panel active" data-lang="python">
@@ -402,88 +488,112 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
           </div>
         </div>
         <div class="lang-panel" data-lang="go">
-          <div class="code-block">
-            <pre><code><span class="code-comment">// functionfly.jsonc</span>
-<span class="code-comment">// &#123;"name": "forward-email", "runtime": "go", "capabilities": ["email:send"]\&#125;</span>
+          <div class="ff-code-block">
+            <div class="ff-code-header">
+              <span class="ff-code-dot ff-code-dot-red"></span>
+              <span class="ff-code-dot ff-code-dot-yellow"></span>
+              <span class="ff-code-dot ff-code-dot-green"></span>
+              <span class="ff-text-sm ff-text-subtle ff-ml-auto">forward_email.go</span>
+            </div>
+            <pre><code><span class="ff-code-comment">// functionfly.jsonc</span>
+<span class="ff-code-comment">// &#123;"name": "forward-email", "runtime": "go", "capabilities": ["email:send"]\&#125;</span>
 
-<span class="code-keyword">package</span> functionfly
+<span class="ff-code-keyword">package</span> functionfly
 
-<span class="code-keyword">import</span> <span class="code-punctuation">(</span>
-  <span class="code-string">"context"</span>
-  <span class="code-string">"encoding/json"</span>
-  fly <span class="code-string">"github.com/functionfly/functionfly/sdk/go"</span>
-<span class="code-punctuation">)</span>
+<span class="ff-code-keyword">import</span> <span class="ff-code-operator">(</span>
+  <span class="ff-code-string">"context"</span>
+  <span class="ff-code-string">"encoding/json"</span>
+  fly <span class="ff-code-string">"github.com/functionfly/functionfly/sdk/go"</span>
+<span class="ff-code-operator">)</span>
 
-<span class="code-keyword">type</span> Input <span class="code-keyword">struct</span> <span class="code-punctuation">&#123;</span>
-  To      <span class="code-type">string</span> <span class="code-string">`json:"to"`</span>
-  Subject <span class="code-type">string</span> <span class="code-string">`json:"subject"`</span>
-  Body    <span class="code-type">string</span> <span class="code-string">`json:"body"`</span>
-<span class="code-punctuation">&#125;</span>
+<span class="ff-code-keyword">type</span> Input <span class="ff-code-keyword">struct</span> <span class="ff-code-operator">&#123;</span>
+  To      <span class="ff-code-type">string</span> <span class="ff-code-string">`json:"to"`</span>
+  Subject <span class="ff-code-type">string</span> <span class="ff-code-string">`json:"subject"`</span>
+  Body    <span class="ff-code-type">string</span> <span class="ff-code-string">`json:"body"`</span>
+<span class="ff-code-operator">&#125;</span>
 
-<span class="code-keyword">func</span> <span class="code-fn">Handle</span><span class="code-punctuation">(</span>ctx context<span class="code-punctuation">.</span>Context, input Input<span class="code-punctuation">)</span> <span class="code-punctuation">(</span>any<span class="code-punctuation">,</span> error<span class="code-punctuation">)</span> <span class="code-punctuation">&#123;</span>
-  <span class="code-keyword">return</span> map<span class="code-punctuation">[</span>string<span class="code-punctuation">]</span>any<span class="code-punctuation">&#123;</span>
-    <span class="code-string">"sent"</span><span class="code-punctuation">:</span>   <span class="code-type">true</span><span class="code-punctuation">,</span>
-    <span class="code-string">"to"</span><span class="code-punctuation">:</span>     input<span class="code-punctuation">.</span>To<span class="code-punctuation">,</span>
-    <span class="code-string">"msg_id"</span><span class="code-punctuation">:</span> ctx<span class="code-punctuation">.</span>Value<span class="code-punctuation">(</span>fly<span class="code-punctuation">.</span>TraceIDKey<span class="code-punctuation">)</span><span class="code-punctuation">,</span>
-  <span class="code-punctuation">&#125;</span><span class="code-punctuation">,</span> <span class="code-keyword">nil</span>
-<span class="code-punctuation">&#125;</span></code></pre>
+<span class="ff-code-keyword">func</span> <span class="ff-code-function">Handle</span><span class="ff-code-operator">(</span>ctx context<span class="ff-code-operator">.</span>Context, input Input<span class="ff-code-operator">)</span> <span class="ff-code-operator">(</span>any<span class="ff-code-operator">,</span> error<span class="ff-code-operator">)</span> <span class="ff-code-operator">&#123;</span>
+  <span class="ff-code-keyword">return</span> map<span class="ff-code-operator">[</span>string<span class="ff-code-operator">]</span>any<span class="ff-code-operator">&#123;</span>
+    <span class="ff-code-string">"sent"</span><span class="ff-code-operator">:</span>   <span class="ff-code-type">true</span><span class="ff-code-operator">,</span>
+    <span class="ff-code-string">"to"</span><span class="ff-code-operator">:</span>     input<span class="ff-code-operator">.</span>To<span class="ff-code-operator">,</span>
+    <span class="ff-code-string">"msg_id"</span><span class="ff-code-operator">:</span> ctx<span class="ff-code-operator">.</span>Value<span class="ff-code-operator">(</span>fly<span class="ff-code-operator">.</span>TraceIDKey<span class="ff-code-operator">)</span><span class="ff-code-operator">,</span>
+  <span class="ff-code-operator">&#125;</span><span class="ff-code-operator">,</span> <span class="ff-code-keyword">nil</span>
+<span class="ff-code-operator">&#125;</span></code></pre>
           </div>
         </div>
         <div class="lang-panel" data-lang="rust">
-          <div class="code-block">
-            <pre><code><span class="code-comment">// functionfly.jsonc</span>
-<span class="code-comment">// &#123;"name": "mnemonic-check", "runtime": "wasm", "capabilities": []\&#125;</span>
+          <div class="ff-code-block">
+            <div class="ff-code-header">
+              <span class="ff-code-dot ff-code-dot-red"></span>
+              <span class="ff-code-dot ff-code-dot-yellow"></span>
+              <span class="ff-code-dot ff-code-dot-green"></span>
+              <span class="ff-text-sm ff-text-subtle ff-ml-auto">validate_mnemonic.rs</span>
+            </div>
+            <pre><code><span class="ff-code-comment">// functionfly.jsonc</span>
+<span class="ff-code-comment">// &#123;"name": "mnemonic-check", "runtime": "wasm", "capabilities": []\&#125;</span>
 
-<span class="code-keyword">use</span> functionfly::prelude::*;
+<span class="ff-code-keyword">use</span> functionfly::prelude::*;
 
-<span class="code-punctuation">#[</span>fnfly::function<span class="code-punctuation">]</span>
-<span class="code-keyword">pub fn</span> <span class="code-fn">validate_mnemonic</span><span class="code-punctuation">(</span>phrase<span class="code-punctuation">:</span> String<span class="code-punctuation">)</span> <span class="code-punctuation">-&gt;</span> MnemonicResult <span class="code-punctuation">&#123;</span>
-  <span class="code-keyword">let</span> words<span class="code-punctuation">:</span> Vec<span class="code-punctuation">&lt;</span>String<span class="code-punctuation">&gt;</span> <span class="code-punctuation">=</span> phrase<span class="code-punctuation">.</span><span class="code-fn">split_whitespace</span><span class="code-punctuation">().</span><span class="code-fn">map</span><span class="code-punctuation">(</span>String::from<span class="code-punctuation">).</span><span class="code-fn">collect</span><span class="code-punctuation">();</span>
-  MnemonicResult <span class="code-punctuation">&#123;</span>
-    valid<span class="code-punctuation">:</span> words<span class="code-punctuation">.</span>len<span class="code-punctuation">()</span> <span class="code-punctuation">==</span> <span class="code-number">24</span> <span class="code-punctuation">&amp;&amp;</span> words<span class="code-punctuation">.</span>iter<span class="code-punctuation">().</span><span class="code-fn">all</span><span class="code-punctuation">(</span>is_valid_word<span class="code-punctuation">),</span>
-    word_count<span class="code-punctuation">:</span> words<span class="code-punctuation">.</span>len<span class="code-punctuation">()</span> <span class="code-keyword">as</span> u32<span class="code-punctuation">,</span>
-  <span class="code-punctuation">&#125;</span>
-<span class="code-punctuation">&#125;</span></code></pre>
+<span class="ff-code-operator">#[</span>fnfly::function<span class="ff-code-operator">]</span>
+<span class="ff-code-keyword">pub fn</span> <span class="ff-code-function">validate_mnemonic</span><span class="ff-code-operator">(</span>phrase<span class="ff-code-operator">:</span> String<span class="ff-code-operator">)</span> <span class="ff-code-operator">-&gt;</span> MnemonicResult <span class="ff-code-operator">&#123;</span>
+  <span class="ff-code-keyword">let</span> words<span class="ff-code-operator">:</span> Vec<span class="ff-code-operator">&lt;</span>String<span class="ff-code-operator">&gt;</span> <span class="ff-code-operator">=</span> phrase<span class="ff-code-operator">.</span><span class="ff-code-function">split_whitespace</span><span class="ff-code-operator">().</span><span class="ff-code-function">map</span><span class="ff-code-operator">(</span>String::from<span class="ff-code-operator">).</span><span class="ff-code-function">collect</span><span class="ff-code-operator">();</span>
+  MnemonicResult <span class="ff-code-operator">&#123;</span>
+    valid<span class="ff-code-operator">:</span> words<span class="ff-code-operator">.</span>len<span class="ff-code-operator">()</span> <span class="ff-code-operator">==</span> <span class="ff-code-number">24</span> <span class="ff-code-operator">&amp;&amp;</span> words<span class="ff-code-operator">.</span>iter<span class="ff-code-operator">().</span><span class="ff-code-function">all</span><span class="ff-code-operator">(</span>is_valid_word<span class="ff-code-operator">),</span>
+    word_count<span class="ff-code-operator">:</span> words<span class="ff-code-operator">.</span>len<span class="ff-code-operator">()</span> <span class="ff-code-keyword">as</span> u32<span class="ff-code-operator">,</span>
+  <span class="ff-code-operator">&#125;</span>
+<span class="ff-code-operator">&#125;</span></code></pre>
           </div>
         </div>
         <div class="lang-panel" data-lang="javascript">
-          <div class="code-block">
-            <pre><code><span class="code-comment">// functionfly.config.jsonc</span>
-<span class="code-comment">// &#123;"name": "scrape-metadata", "runtime": "node20", "capabilities": ["fetch:read"]\&#125;</span>
+          <div class="ff-code-block">
+            <div class="ff-code-header">
+              <span class="ff-code-dot ff-code-dot-red"></span>
+              <span class="ff-code-dot ff-code-dot-yellow"></span>
+              <span class="ff-code-dot ff-code-dot-green"></span>
+              <span class="ff-text-sm ff-text-subtle ff-ml-auto">scrape_metadata.js</span>
+            </div>
+            <pre><code><span class="ff-code-comment">// functionfly.config.jsonc</span>
+<span class="ff-code-comment">// &#123;"name": "scrape-metadata", "runtime": "node20", "capabilities": ["fetch:read"]\&#125;</span>
 
-<span class="code-keyword">export async function</span> <span class="code-fn">handle</span><span class="code-punctuation">(</span>input<span class="code-punctuation">)</span> <span class="code-punctuation">&#123;</span>
-  <span class="code-keyword">const</span> <span class="code-punctuation">&#123;</span> url <span class="code-punctuation">&#125;</span> <span class="code-punctuation">=</span> input<span class="code-punctuation">;</span>
-  <span class="code-keyword">const</span> res <span class="code-punctuation">=</span> <span class="code-keyword">await</span> <span class="code-fn">fetch</span><span class="code-punctuation">(</span>url<span class="code-punctuation">);</span>
-  <span class="code-keyword">const</span> html <span class="code-punctuation">=</span> <span class="code-keyword">await</span> res<span class="code-punctuation">.</span><span class="code-fn">text</span><span class="code-punctuation">();</span>
-  <span class="code-keyword">return</span> <span class="code-punctuation">&#123;</span>
-    title<span class="code-punctuation">:</span> <span class="code-fn">extract</span><span class="code-punctuation">(</span><span class="code-string">"&lt;title&gt;(.*?)&lt;/title&gt;"</span><span class="code-punctuation">,</span> html<span class="code-punctuation">),</span>
-    description<span class="code-punctuation">:</span> <span class="code-fn">extract</span><span class="code-punctuation">(</span><span class="code-string">`&lt;meta name="description" content="(.*?)"&gt;`</span><span class="code-punctuation">,</span> html<span class="code-punctuation">),</span>
-  <span class="code-punctuation">};</span>
-<span class="code-punctuation">&#125;</span></code></pre>
+<span class="ff-code-keyword">export async function</span> <span class="ff-code-function">handle</span><span class="ff-code-operator">(</span>input<span class="ff-code-operator">)</span> <span class="ff-code-operator">&#123;</span>
+  <span class="ff-code-keyword">const</span> <span class="ff-code-operator">&#123;</span> url <span class="ff-code-operator">&#125;</span> <span class="ff-code-operator">=</span> input<span class="ff-code-operator">;</span>
+  <span class="ff-code-keyword">const</span> res <span class="ff-code-operator">=</span> <span class="ff-code-keyword">await</span> <span class="ff-code-function">fetch</span><span class="ff-code-operator">(</span>url<span class="ff-code-operator">);</span>
+  <span class="ff-code-keyword">const</span> html <span class="ff-code-operator">=</span> <span class="ff-code-keyword">await</span> res<span class="ff-code-operator">.</span><span class="ff-code-function">text</span><span class="ff-code-operator">();</span>
+  <span class="ff-code-keyword">return</span> <span class="ff-code-operator">&#123;</span>
+    title<span class="ff-code-operator">:</span> <span class="ff-code-function">extract</span><span class="ff-code-operator">(</span><span class="ff-code-string">"&lt;title&gt;(.*?)&lt;/title&gt;"</span><span class="ff-code-operator">,</span> html<span class="ff-code-operator">),</span>
+    description<span class="ff-code-operator">:</span> <span class="ff-code-function">extract</span><span class="ff-code-operator">(</span><span class="ff-code-string">`&lt;meta name="description" content="(.*?)"&gt;`</span><span class="ff-code-operator">,</span> html<span class="ff-code-operator">),</span>
+  <span class="ff-code-operator">};</span>
+<span class="ff-code-operator">&#125;</span></code></pre>
           </div>
         </div>
         <div class="lang-panel" data-lang="typescript">
-          <div class="code-block">
-            <pre><code><span class="code-comment">// functionfly.config.jsonc</span>
-<span class="code-comment">// &#123;"name": "raroc-calculate", "runtime": "node20", "capabilities": ["kv:read", "kv:write"]\&#125;</span>
+          <div class="ff-code-block">
+            <div class="ff-code-header">
+              <span class="ff-code-dot ff-code-dot-red"></span>
+              <span class="ff-code-dot ff-code-dot-yellow"></span>
+              <span class="ff-code-dot ff-code-dot-green"></span>
+              <span class="ff-text-sm ff-text-subtle ff-ml-auto">raroc_calculate.ts</span>
+            </div>
+            <pre><code><span class="ff-code-comment">// functionfly.config.jsonc</span>
+<span class="ff-code-comment">// &#123;"name": "raroc-calculate", "runtime": "node20", "capabilities": ["kv:read", "kv:write"]\&#125;</span>
 
-<span class="code-keyword">import</span> <span class="code-punctuation">&#123;</span> kv <span class="code-punctuation">&#125;</span> <span class="code-keyword">from</span> <span class="code-string">"functionfly"</span><span class="code-punctuation">;</span>
+<span class="ff-code-keyword">import</span> <span class="ff-code-operator">&#123;</span> kv <span class="ff-code-operator">&#125;</span> <span class="ff-code-keyword">from</span> <span class="ff-code-string">"functionfly"</span><span class="ff-code-operator">;</span>
 
-<span class="code-keyword">interface</span> <span class="code-type">RAROCInput</span> <span class="code-punctuation">&#123;</span>
-  pd<span class="code-punctuation">:</span> number<span class="code-punctuation">;</span>
-  lgd<span class="code-punctuation">:</span> number<span class="code-punctuation">;</span>
-  ead<span class="code-punctuation">:</span> number<span class="code-punctuation">;</span>
-  corr<span class="code-punctuation">:</span> number<span class="code-punctuation">;</span>
-<span class="code-punctuation">&#125;</span>
+<span class="ff-code-keyword">interface</span> <span class="ff-code-type">RAROCInput</span> <span class="ff-code-operator">&#123;</span>
+  pd<span class="ff-code-operator">:</span> number<span class="ff-code-operator">;</span>
+  lgd<span class="ff-code-operator">:</span> number<span class="ff-code-operator">;</span>
+  ead<span class="ff-code-operator">:</span> number<span class="ff-code-operator">;</span>
+  corr<span class="ff-code-operator">:</span> number<span class="ff-code-operator">;</span>
+<span class="ff-code-operator">&#125;</span>
 
-<span class="code-keyword">export async function</span> <span class="code-fn">handle</span><span class="code-punctuation">(</span>input<span class="code-punctuation">:</span> <span class="code-type">RAROCInput</span><span class="code-punctuation">)</span><span class="code-punctuation">:</span> <span class="code-type">Promise</span><span class="code-punctuation">&lt;</span><span class="code-type">RAROCResult</span><span class="code-punctuation">&gt;</span> <span class="code-punctuation">{'{'}</span>
-  <span class="code-keyword">const</span> key <span class="code-punctuation">=</span> <span class="code-string">`raroc:</span><span class="code-punctuation">{'$'}{'{'}hash(input){'}'}</span><span class="code-string">`</span><span class="code-punctuation">;</span>
-  <span class="code-keyword">const</span> cached <span class="code-punctuation">=</span> <span class="code-keyword">await</span> kv<span class="code-punctuation">.</span><span class="code-fn">get</span><span class="code-punctuation">(</span>key<span class="code-punctuation">);</span>
-  <span class="code-keyword">if</span> <span class="code-punctuation">(</span>cached<span class="code-punctuation">)</span> <span class="code-keyword">return</span> JSON<span class="code-punctuation">.</span><span class="code-fn">parse</span><span class="code-punctuation">(</span>cached<span class="code-punctuation">);</span>
-  <span class="code-keyword">const</span> result <span class="code-punctuation">=</span> <span class="code-fn">computeRAROC</span><span class="code-punctuation">(</span>input<span class="code-punctuation">);</span>
-  <span class="code-keyword">await</span> kv<span class="code-punctuation">.</span><span class="code-fn">set</span><span class="code-punctuation">(</span>key, JSON<span class="code-punctuation">.</span><span class="code-fn">stringify</span><span class="code-punctuation">(</span>result<span class="code-punctuation">),</span> <span class="code-punctuation">&#123;</span> ttl<span class="code-punctuation">:</span> <span class="code-number">3600</span> <span class="code-punctuation">&#125;</span><span class="code-punctuation">);</span>
-  <span class="code-keyword">return</span> result<span class="code-punctuation">;</span>
-<span class="code-punctuation">&#125;</span></code></pre>
+<span class="ff-code-keyword">export async function</span> <span class="ff-code-function">handle</span><span class="ff-code-operator">(</span>input<span class="ff-code-operator">:</span> <span class="ff-code-type">RAROCInput</span><span class="ff-code-operator">)</span><span class="ff-code-operator">:</span> <span class="ff-code-type">Promise</span><span class="ff-code-operator">&lt;</span><span class="ff-code-type">RAROCResult</span><span class="ff-code-operator">&gt;</span> <span class="ff-code-operator">{'{'}</span>
+  <span class="ff-code-keyword">const</span> key <span class="ff-code-operator">=</span> <span class="ff-code-string">`raroc:</span><span class="ff-code-operator">{'$'}{'{'}hash(input){'}'}</span><span class="ff-code-string">`</span><span class="ff-code-operator">;</span>
+  <span class="ff-code-keyword">const</span> cached <span class="ff-code-operator">=</span> <span class="ff-code-keyword">await</span> kv<span class="ff-code-operator">.</span><span class="ff-code-function">get</span><span class="ff-code-operator">(</span>key<span class="ff-code-operator">);</span>
+  <span class="ff-code-keyword">if</span> <span class="ff-code-operator">(</span>cached<span class="ff-code-operator">)</span> <span class="ff-code-keyword">return</span> JSON<span class="ff-code-operator">.</span><span class="ff-code-function">parse</span><span class="ff-code-operator">(</span>cached<span class="ff-code-operator">);</span>
+  <span class="ff-code-keyword">const</span> result <span class="ff-code-operator">=</span> <span class="ff-code-function">computeRAROC</span><span class="ff-code-operator">(</span>input<span class="ff-code-operator">);</span>
+  <span class="ff-code-keyword">await</span> kv<span class="ff-code-operator">.</span><span class="ff-code-function">set</span><span class="ff-code-operator">(</span>key, JSON<span class="ff-code-operator">.</span><span class="ff-code-function">stringify</span><span class="ff-code-operator">(</span>result<span class="ff-code-operator">),</span> <span class="ff-code-operator">&#123;</span> ttl<span class="ff-code-operator">:</span> <span class="ff-code-number">3600</span> <span class="ff-code-operator">&#125;</span><span class="ff-code-operator">);</span>
+  <span class="ff-code-keyword">return</span> result<span class="ff-code-operator">;</span>
+<span class="ff-code-operator">&#125;</span></code></pre>
           </div>
         </div>
       </div>
@@ -495,7 +605,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     <div class="container">
       <div class="capabilities-layout">
         <div class="capabilities-intro">
-          <h2>Capabilities — what your function can and cannot do</h2>
+          <h2 style="font-family: var(--font-display);">Capabilities — what your function can and cannot do</h2>
           <p class="section-subtitle">Sandbox isolation means every function runs with zero implicit permissions. Capabilities are declared at publish time and enforced at runtime — there is no ambient authority.</p>
           <div class="capability-legend">
             <div class="legend-item">
@@ -549,7 +659,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
   <!-- OBSERVABILITY -->
   <section class="observability">
     <div class="container">
-      <h2>Full observability, every execution</h2>
+      <h2 style="font-family: var(--font-display);">Full observability, every execution</h2>
       <p class="section-subtitle">Execution traces, trust scores, and metrics — so you know exactly what your agents are doing.</p>
       <div class="observability-grid">
         <div class="obs-card">
@@ -558,7 +668,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <path d="M3 3h18v4H3zM3 10h12v4H3zM3 17h6v4H3z"></path>
             </svg>
           </div>
-          <h3>Execution Traces</h3>
+          <h3 style="font-family: var(--font-display);">Execution Traces</h3>
           <p>Every function call is recorded with input, output, latency, cost, and the full call stack. Trace a single execution from agent prompt to function result.</p>
         </div>
         <div class="obs-card">
@@ -567,7 +677,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <path d="M18 20V10M12 20V4M6 20v-6"></path>
             </svg>
           </div>
-          <h3>Trust Score History</h3>
+          <h3 style="font-family: var(--font-display);">Trust Score History</h3>
           <p>Trust scores are computed from real execution outcomes — not static analysis. High trust means a proven track record of correct results.</p>
         </div>
         <div class="obs-card">
@@ -577,7 +687,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <path d="M12 6v6l4 2"></path>
             </svg>
           </div>
-          <h3>Latency and Cost Metrics</h3>
+          <h3 style="font-family: var(--font-display);">Latency and Cost Metrics</h3>
           <p>P50, P95, P99 latency per function. Cost per execution in USD. Set budget alerts and get notified before quotas hit.</p>
         </div>
         <div class="obs-card">
@@ -587,7 +697,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
               <path d="M9 12l2 2 4-4"></path>
             </svg>
           </div>
-          <h3>Verification Audit Log</h3>
+          <h3 style="font-family: var(--font-display);">Verification Audit Log</h3>
           <p>Every verification submission, artifact signing, revocation event, and level change is logged immutably. Exportable to your SIEM.</p>
         </div>
       </div>
@@ -597,7 +707,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
   <!-- COMPARISON -->
   <section class="comparison ff-py-24 ff-bg-default ff-grid-bg" data-animate>
     <div class="ff-container">
-      <h2 class="ff-text-4xl ff-weight-bold ff-text-center ff-tracking-tight">Why teams switch to FunctionFly</h2>
+      <h2 class="ff-text-4xl ff-weight-bold ff-text-center ff-tracking-tight ff-font-display">Why teams switch to FunctionFly</h2>
       <p class="section-subtitle ff-text-lg ff-text-subtle ff-text-center ff-max-w-2xl ff-mx-auto ff-mt-4 ff-mb-16">
         Other options leave agents flying blind. We give them the trust infrastructure they need.
       </p>
@@ -752,7 +862,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
 
   <section class="publish-section">
     <div class="container">
-      <h2>Publish a function in minutes</h2>
+      <h2 style="font-family: var(--font-display);">Publish a function in minutes</h2>
       <p class="section-subtitle">Initialize, configure, deploy, and let agents start calling it — with trust scores computed automatically.</p>
 
       <!-- Per-OS install tabs + CLI block -->
@@ -788,6 +898,8 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
         <div class="install-panel" data-os="linux">
           <div class="code-lines">
             <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Install</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> brew install functionfly/tap/ffly</span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># or</span></span></div>
             <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> curl -fsSL https://raw.githubusercontent.com/functionfly/fly/main/scripts/install.sh | bash</span></div>
             <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># or</span></span></div>
             <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> go install github.com/functionfly/fly/cmd/ffly@latest</span></div>
@@ -807,7 +919,9 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
         </div>
         <div class="install-panel" data-os="windows">
           <div class="code-lines">
-            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Install (requires Go 1.25+)</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># Install (WSL/Git Bash)</span></span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> curl -fsSL https://raw.githubusercontent.com/functionfly/fly/main/scripts/install.sh | bash</span></div>
+            <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># or</span></span></div>
             <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-prompt">$</span> go install github.com/functionfly/fly/cmd/ffly@latest</span></div>
             <div class="code-line"><button class="line-copy-btn" aria-label="Copy"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"><span class="code-comment"># or download from GitHub Releases</span></span></div>
             <div class="code-line code-line--blank"><button class="line-copy-btn" aria-label="Copy" style="visibility:hidden"><svg class="lc-icon lc-icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><svg class="lc-icon lc-icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M20 6L9 17l-5-5"/></svg></button><span class="lc-text"></span></div>
@@ -843,7 +957,7 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
       </p>
       <div class="cta-actions ff-flex ff-justify-center ff-gap-4 ff-mb-12 ff-animate-slide-up ff-delay-200">
         <a href={`${AUTH_ORIGIN}/signup`} class="ff-btn ff-btn-primary ff-btn-xl ff-glow">Start Free</a>
-        <a href="/contact" class="ff-btn ff-btn-outline">Contact Sales</a>
+        <a href="/contact" class="ff-btn ff-btn-outline ff-btn-lg">Contact Sales</a>
       </div>
       <div class="waitlist-form-wrapper ff-max-w-md ff-mx-auto ff-animate-slide-up ff-delay-300">
         <p class="waitlist-tagline ff-text-base ff-text-subtle ff-mb-4">Join the waitlist for early access to new features</p>
@@ -1156,6 +1270,11 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     }
   }
 
+  @keyframes arrow-bounce {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(4px); }
+  }
+
   h1 {
     font-size: 3.5rem;
     font-weight: 800;
@@ -1206,8 +1325,30 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     margin-bottom: 3rem;
   }
 
+  @media (max-width: 640px) {
+    .hero-actions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+
+    .hero-actions .ff-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
   .hero-arrow {
-    margin-left: 0.25rem;
+    margin-left: 0.5rem;
+    font-size: 1.25em;
+    transition: transform 0.3s var(--ease-spring);
+    display: inline-block;
+    animation: arrow-bounce 2s ease-in-out infinite;
+  }
+
+  .ff-btn:hover .hero-arrow {
+    transform: translateX(6px);
+    animation: none;
   }
 
   .btn {
@@ -1835,6 +1976,35 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     font-weight: 500;
   }
 
+  /* Base syntax highlighting (dark mode default) */
+  .code-keyword {
+    color: #c084fc;
+  }
+
+  .code-string {
+    color: #4ade80;
+  }
+
+  .code-fn {
+    color: #60a5fa;
+  }
+
+  .code-type {
+    color: #22d3ee;
+  }
+
+  .code-punctuation {
+    color: #94a3b8;
+  }
+
+  .code-operator {
+    color: #f472b6;
+  }
+
+  .code-number {
+    color: #fb923c;
+  }
+
   .cta {
     padding: 6rem 0;
     background:
@@ -1908,7 +2078,14 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     .hero-actions,
     .cta-actions {
       flex-direction: column;
-      align-items: center;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+
+    .hero-actions .ff-btn,
+    .cta-actions .ff-btn {
+      width: 100%;
+      justify-content: center;
     }
 
     .btn {
@@ -2065,6 +2242,9 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
   }
 
   .lang-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     padding: 0.625rem 1.25rem;
     border-radius: 8px 8px 0 0;
     border: 1px solid var(--color-border);
@@ -2075,6 +2255,19 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     font-weight: 500;
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
+  }
+
+  .lang-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    opacity: 0.9;
+    object-fit: contain;
+  }
+
+  .lang-tab:hover .lang-icon,
+  .lang-tab.active .lang-icon {
+    opacity: 1;
   }
 
   .lang-tab:hover {
@@ -2095,6 +2288,16 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     padding: 2rem;
   }
 
+  html[data-theme='light'] .lang-panels,
+  [data-theme='light'] .lang-panels,
+  html[data-theme='light'] .lang-panels[data-astro-cid-j7pv25f6],
+  [data-theme='light'] .lang-panels[data-astro-cid-j7pv25f6] {
+    background: #f8fafc !important;
+    background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%) !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+  }
+
   .lang-panel {
     display: none;
   }
@@ -2103,13 +2306,24 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     display: block;
   }
 
-  .lang-panel .code-block {
-    margin: 0;
+  .lang-panel .code-block,
+  .lang-panel .ff-code-block {
+    margin: var(--space-4) 0;
     max-width: 100%;
     background: transparent;
     border: none;
     padding: 0;
+    overflow: visible;
+  }
+
+  .lang-panel .code-block pre,
+  .lang-panel .ff-code-block pre {
     overflow-x: auto;
+  }
+
+  .lang-panel .ff-code-header {
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-3);
   }
 
   /* =============================================
@@ -2380,6 +2594,533 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
   }
 
   /* =============================================
+     LIGHT MODE OVERRIDES
+     ============================================= */
+  [data-theme='light'] .lang-tabs .lang-tab {
+    background: #f8fafc !important;
+    color: #64748b !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  [data-theme='light'] .lang-tabs .lang-tab:hover {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  html[data-theme='light'] body .lang-tabs .lang-tab.active,
+  [data-theme='light'] .lang-tabs .lang-tab.active {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #e2e8f0 !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+  }
+
+  html[data-theme='light'] body .lang-tabs .lang-tab,
+  [data-theme='light'] .lang-tabs .lang-tab {
+    background: #f8fafc !important;
+    color: #64748b !important;
+    border: 1px solid #e2e8f0 !important;
+    border-bottom: none !important;
+  }
+
+  html[data-theme='light'] body .lang-tabs .lang-tab:hover,
+  [data-theme='light'] .lang-tabs .lang-tab:hover {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  [data-theme='light'] .lang-panels {
+    background: #f8fafc !important;
+    background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%) !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+  }
+
+  [data-theme='light'] .code-block,
+  [data-theme='light'] .ff-code-block {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.05),
+      0 1px 3px rgba(0, 0, 0, 0.03),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+  }
+
+  [data-theme='light'] .code-block::before,
+  [data-theme='light'] .ff-code-block::before {
+    background: linear-gradient(90deg, transparent, rgba(232, 90, 42, 0.4), transparent) !important;
+  }
+
+  [data-theme='light'] .code-block code {
+    color: #1e293b;
+  }
+
+  [data-theme='light'] .lang-panel .code-block,
+  [data-theme='light'] .lang-panel .ff-code-block {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  [data-theme='light'] .ff-code-header {
+    border-bottom-color: rgba(0, 0, 0, 0.1) !important;
+  }
+
+  [data-theme='light'] .ff-code-header .ff-text-subtle {
+    color: #64748b !important;
+  }
+
+  /* Ensure code blocks inside lang panels show text properly in light mode */
+  [data-theme='light'] .lang-panel .ff-code-block code {
+    color: #1e293b !important;
+  }
+
+  /* System preference light mode for lang tabs */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme='dark']) .lang-tabs .lang-tab {
+      background: #f8fafc !important;
+      color: #64748b !important;
+      border: 1px solid #e2e8f0 !important;
+      border-bottom: none !important;
+    }
+
+    :root:not([data-theme='dark']) .lang-tabs .lang-tab:hover {
+      background: #ffffff !important;
+      color: #0f172a !important;
+    }
+
+    :root:not([data-theme='dark']) .lang-tabs .lang-tab.active {
+      background: #f1f5f9 !important;
+      color: #0f172a !important;
+      border: 1px solid #e2e8f0 !important;
+      border-bottom: 1px solid #f1f5f9 !important;
+    }
+
+    :root:not([data-theme='dark']) .lang-panels {
+      background: #f8fafc !important;
+      background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%) !important;
+      border: 1px solid #e2e8f0 !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+    }
+
+    :root:not([data-theme='dark']) .code-block,
+    :root:not([data-theme='dark']) .ff-code-block {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+      border: 1px solid #e2e8f0 !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+    }
+
+    :root:not([data-theme='dark']) .code-block::before,
+    :root:not([data-theme='dark']) .ff-code-block::before {
+      background: linear-gradient(90deg, transparent, rgba(232, 90, 42, 0.4), transparent) !important;
+    }
+
+    :root:not([data-theme='dark']) .lang-panel .code-block,
+    :root:not([data-theme='dark']) .lang-panel .ff-code-block {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    :root:not([data-theme='dark']) .ff-code-header {
+      border-bottom-color: rgba(0, 0, 0, 0.1) !important;
+    }
+
+    :root:not([data-theme='dark']) .ff-code-header .ff-text-subtle {
+      color: #64748b !important;
+    }
+
+    :root:not([data-theme='dark']) .lang-panel .ff-code-block code {
+      color: #1e293b !important;
+    }
+
+    /* Syntax highlighting for system preference light mode */
+    :root:not([data-theme='dark']) .code-comment {
+      color: #64748b !important;
+    }
+
+    :root:not([data-theme='dark']) .code-keyword {
+      color: #7c3aed !important;
+    }
+
+    :root:not([data-theme='dark']) .code-string {
+      color: #059669 !important;
+    }
+
+    :root:not([data-theme='dark']) .code-fn {
+      color: #2563eb !important;
+    }
+
+    :root:not([data-theme='dark']) .code-type {
+      color: #0891b2 !important;
+    }
+
+    :root:not([data-theme='dark']) .code-punctuation {
+      color: #475569 !important;
+    }
+
+    :root:not([data-theme='dark']) .code-operator {
+      color: #be185d !important;
+    }
+
+    :root:not([data-theme='dark']) .code-number {
+      color: #ea580c !important;
+    }
+  }
+
+  [data-theme='light'] .lang-panel code {
+    color: #1e293b;
+  }
+
+  [data-theme='light'] .copy-btn {
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: #64748b;
+  }
+
+  [data-theme='light'] .copy-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.15);
+    color: #0f172a;
+  }
+
+  /* Syntax highlighting for light mode */
+  [data-theme='light'] .code-comment {
+    color: #64748b !important;
+  }
+
+  [data-theme='light'] .code-keyword {
+    color: #7c3aed !important;
+  }
+
+  [data-theme='light'] .code-string {
+    color: #059669 !important;
+  }
+
+  [data-theme='light'] .code-fn {
+    color: #2563eb !important;
+  }
+
+  [data-theme='light'] .code-type {
+    color: #0891b2 !important;
+  }
+
+  [data-theme='light'] .code-punctuation {
+    color: #475569 !important;
+  }
+
+  [data-theme='light'] .code-operator {
+    color: #be185d !important;
+  }
+
+  [data-theme='light'] .code-number {
+    color: #ea580c !important;
+  }
+
+  [data-theme='light'] .ff-code-comment {
+    color: #64748b;
+  }
+
+  [data-theme='light'] .ff-code-keyword {
+    color: #7c3aed;
+  }
+
+  [data-theme='light'] .ff-code-string {
+    color: #059669;
+  }
+
+  [data-theme='light'] .ff-code-function {
+    color: #2563eb;
+  }
+
+  [data-theme='light'] .ff-code-operator {
+    color: #be185d;
+  }
+
+  /* CLI / Publish section light mode */
+  [data-theme='light'] .publish-cli,
+  html[data-theme='light'] .publish-cli {
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.05),
+      0 1px 3px rgba(0, 0, 0, 0.03),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  [data-theme='light'] .publish-cli::before,
+  html[data-theme='light'] .publish-cli::before {
+    background: linear-gradient(90deg, transparent, rgba(232, 90, 42, 0.4), transparent);
+  }
+
+  [data-theme='light'] .code-footnote,
+  html[data-theme='light'] .code-footnote {
+    background: rgba(241, 245, 249, 0.8);
+    border: 1px solid #e2e8f0;
+    color: #475569;
+  }
+
+  [data-theme='light'] .code-footnote code,
+  html[data-theme='light'] .code-footnote code {
+    background: rgba(0, 0, 0, 0.05);
+    color: #0f172a;
+  }
+
+  [data-theme='light'] .install-os-tab,
+  html[data-theme='light'] .install-os-tab {
+    background: #f8fafc !important;
+    color: #64748b !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  [data-theme='light'] .install-os-tab:hover,
+  html[data-theme='light'] .install-os-tab:hover {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  [data-theme='light'] .install-os-tab.active,
+  html[data-theme='light'] .install-os-tab.active {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #e2e8f0 !important;
+    border-bottom-color: #ffffff !important;
+    box-shadow: 0 -2px 10px rgba(232, 90, 42, 0.15) !important;
+  }
+
+  [data-theme='light'] .install-os-tab.active::before,
+  html[data-theme='light'] .install-os-tab.active::before {
+    background: linear-gradient(90deg, transparent, #E85A2A, transparent) !important;
+  }
+
+  [data-theme='light'] .code-block.publish-cli,
+  html[data-theme='light'] .code-block.publish-cli {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.08),
+      0 0 40px rgba(232, 90, 42, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+  }
+
+  [data-theme='light'] .code-block.publish-cli::before,
+  html[data-theme='light'] .code-block.publish-cli::before {
+    background: linear-gradient(90deg, transparent, rgba(232, 90, 42, 0.3), transparent) !important;
+  }
+
+  [data-theme='light'] .install-panel .code-lines,
+  html[data-theme='light'] .install-panel .code-lines {
+    background: transparent;
+  }
+
+  [data-theme='light'] .install-panel .code-line,
+  html[data-theme='light'] .install-panel .code-line {
+    color: #1e293b;
+  }
+
+  [data-theme='light'] .install-panel .code-line:hover,
+  html[data-theme='light'] .install-panel .code-line:hover {
+    background: rgba(0, 0, 0, 0.03) !important;
+  }
+
+  [data-theme='light'] .install-panel .lc-text,
+  html[data-theme='light'] .install-panel .lc-text {
+    color: #1e293b;
+  }
+
+  [data-theme='light'] .install-panel .code-comment,
+  html[data-theme='light'] .install-panel .code-comment {
+    color: #64748b;
+  }
+
+  [data-theme='light'] .install-panel .code-prompt,
+  html[data-theme='light'] .install-panel .code-prompt {
+    color: #E85A2A;
+  }
+
+  [data-theme='light'] .install-panel .code-success,
+  html[data-theme='light'] .install-panel .code-success {
+    color: #059669;
+  }
+
+  [data-theme='light'] .install-panel .code-info,
+  html[data-theme='light'] .install-panel .code-info {
+    color: #0891b2;
+  }
+
+  [data-theme='light'] .line-copy-btn,
+  html[data-theme='light'] .line-copy-btn {
+    color: #64748b;
+  }
+
+  /* System preference light mode for install tabs */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme='dark']) .install-os-tab,
+    html:not([data-theme='dark']) .install-os-tab {
+      background: #f8fafc !important;
+      color: #64748b !important;
+      border-color: #e2e8f0 !important;
+    }
+
+    :root:not([data-theme='dark']) .install-os-tab:hover,
+    html:not([data-theme='dark']) .install-os-tab:hover {
+      background: #ffffff !important;
+      color: #0f172a !important;
+    }
+
+    :root:not([data-theme='dark']) .install-os-tab.active,
+    html:not([data-theme='dark']) .install-os-tab.active {
+      background: #ffffff !important;
+      color: #0f172a !important;
+      border-color: #e2e8f0 !important;
+      border-bottom-color: #ffffff !important;
+    }
+
+    :root:not([data-theme='dark']) .publish-cli,
+    html:not([data-theme='dark']) .publish-cli {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+      border: 1px solid #e2e8f0 !important;
+      box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.08),
+        0 0 40px rgba(232, 90, 42, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+    }
+
+    :root:not([data-theme='dark']) .publish-cli::before,
+    html:not([data-theme='dark']) .publish-cli::before {
+      background: linear-gradient(90deg, transparent, rgba(232, 90, 42, 0.3), transparent) !important;
+    }
+
+    :root:not([data-theme='dark']) .install-panel .code-line,
+    html:not([data-theme='dark']) .install-panel .code-line {
+      color: #1e293b !important;
+    }
+
+    :root:not([data-theme='dark']) .install-panel .code-line:hover,
+    html:not([data-theme='dark']) .install-panel .code-line:hover {
+      background: rgba(0, 0, 0, 0.03) !important;
+    }
+
+    :root:not([data-theme='dark']) .install-panel .lc-text,
+    html:not([data-theme='dark']) .install-panel .lc-text {
+      color: #1e293b !important;
+    }
+
+    :root:not([data-theme='dark']) .install-panel .code-comment,
+    html:not([data-theme='dark']) .install-panel .code-comment {
+      color: #64748b !important;
+    }
+
+    :root:not([data-theme='dark']) .install-panel .code-prompt,
+    html:not([data-theme='dark']) .install-panel .code-prompt {
+      color: #E85A2A !important;
+    }
+
+    :root:not([data-theme='dark']) .install-os-tabs,
+    html:not([data-theme='dark']) .install-os-tabs {
+      background: transparent !important;
+    }
+
+    :root:not([data-theme='dark']) .install-os-tab:not(.active),
+    html:not([data-theme='dark']) .install-os-tab:not(.active) {
+      background: #f1f5f9 !important;
+      color: #475569 !important;
+      border: 1px solid #cbd5e1 !important;
+      border-bottom: none !important;
+    }
+
+    :root:not([data-theme='dark']) .install-os-tab:not(.active):hover,
+    html:not([data-theme='dark']) .install-os-tab:not(.active):hover {
+      background: #ffffff !important;
+      color: #0f172a !important;
+    }
+  }
+
+  [data-theme='light'] .line-copy-btn:hover,
+  html[data-theme='light'] .line-copy-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #0f172a;
+  }
+
+  /* Light mode - Publish section */
+  [data-theme='light'] .publish-section,
+  html[data-theme='light'] .publish-section {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 50%, #ffffff 100%);
+  }
+
+  [data-theme='light'] .publish-section::before,
+  html[data-theme='light'] .publish-section::before {
+    background: linear-gradient(90deg, transparent, rgba(232, 90, 42, 0.25), transparent);
+  }
+
+  [data-theme='light'] .publish-section h2,
+  html[data-theme='light'] .publish-section h2 {
+    background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Make install tabs container visible in light mode */
+  [data-theme='light'] .install-os-tabs,
+  html[data-theme='light'] .install-os-tabs {
+    background: transparent;
+  }
+
+  [data-theme='light'] .install-os-tab:not(.active),
+  html[data-theme='light'] .install-os-tab:not(.active) {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-bottom: none !important;
+  }
+
+  [data-theme='light'] .install-os-tab:not(.active):hover,
+  html[data-theme='light'] .install-os-tab:not(.active):hover {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  [data-theme='light'] .code-footnote,
+  html[data-theme='light'] .code-footnote {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: #e2e8f0;
+  }
+
+  [data-theme='light'] .code-footnote code,
+  html[data-theme='light'] .code-footnote code {
+    background: rgba(0, 0, 0, 0.05);
+    color: #0f172a;
+  }
+
+  /* System preference light mode for publish section */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme='dark']) .publish-section,
+    html:not([data-theme='dark']) .publish-section {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 50%, #ffffff 100%) !important;
+    }
+
+    :root:not([data-theme='dark']) .publish-section::before,
+    html:not([data-theme='dark']) .publish-section::before {
+      background: linear-gradient(90deg, transparent, rgba(232, 90, 42, 0.25), transparent) !important;
+    }
+
+    :root:not([data-theme='dark']) .publish-section h2,
+    html:not([data-theme='dark']) .publish-section h2 {
+      background: linear-gradient(135deg, #0f172a 0%, #334155 100%) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+    }
+
+    :root:not([data-theme='dark']) .code-footnote,
+    html:not([data-theme='dark']) .code-footnote {
+      background: rgba(255, 255, 255, 0.8) !important;
+      border-color: #e2e8f0 !important;
+    }
+  }
+
+  /* =============================================
      RESPONSIVE
      ============================================= */
 
@@ -2503,6 +3244,122 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     display: none;
   }
 
+  /* Light mode overrides for waitlist form */
+  :global([data-theme='light']) .waitlist-input-group {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  :global([data-theme='light']) .waitlist-input-group:focus-within {
+    border-color: #E85A2A !important;
+    box-shadow: 0 0 0 3px rgba(232, 90, 42, 0.15) !important;
+  }
+
+  :global([data-theme='light']) .waitlist-input-group input {
+    color: #0f172a !important;
+  }
+
+  :global([data-theme='light']) .waitlist-input-group input::placeholder {
+    color: #64748b !important;
+  }
+
+  /* System preference light mode for waitlist */
+  @media (prefers-color-scheme: light) {
+    :global(:root:not([data-theme='dark'])) .waitlist-input-group {
+      background: #f8fafc !important;
+      border-color: #e2e8f0 !important;
+    }
+
+    :global(:root:not([data-theme='dark'])) .waitlist-input-group:focus-within {
+      border-color: #E85A2A !important;
+      box-shadow: 0 0 0 3px rgba(232, 90, 42, 0.15) !important;
+    }
+
+    :global(:root:not([data-theme='dark'])) .waitlist-input-group input {
+      color: #0f172a !important;
+    }
+
+    :global(:root:not([data-theme='dark'])) .waitlist-input-group input::placeholder {
+      color: #64748b !important;
+    }
+  }
+
+  /* 3D Neural Nexus Hero Section */
+  .hero-with-3d {
+    position: relative;
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 6rem 2rem 2rem !important;
+  }
+
+  .hero-3d-container {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    z-index: 1;
+    order: -1;
+    margin-bottom: 2rem;
+  }
+
+  .hero-3d-container > div {
+    width: 100%;
+    height: 100%;
+  }
+
+  .hero-with-3d .hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 2rem;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  [data-theme='light'] .hero-with-3d .hero-content {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(255, 255, 255, 0.7) 50%,
+      rgba(255, 255, 255, 0.9) 100%
+    );
+    border-color: rgba(0, 0, 0, 0.05);
+    box-shadow:
+      0 25px 50px -12px rgba(0, 0, 0, 0.15),
+      0 0 100px rgba(99, 102, 241, 0.1);
+  }
+
+  @media (max-width: 1024px) {
+    .hero-with-3d {
+      padding: 4rem 1.5rem 2rem !important;
+    }
+
+    .hero-3d-container {
+      height: 400px;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-with-3d .hero-content {
+      padding: 1.5rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .hero-with-3d {
+      padding: 3rem 1rem 1.5rem !important;
+    }
+
+    .hero-3d-container {
+      height: 300px;
+      margin-bottom: 1rem;
+    }
+
+    .hero-with-3d .hero-content {
+      padding: 1rem;
+    }
+  }
+
 </style>
 
 <script is:inline>
@@ -2529,3 +3386,47 @@ const docsGuidesUrl = `${DOCS_ORIGIN.replace(/\/$/, '')}/docs/`;
     });
   })();
 </script>
+
+<style>
+  /* Hero headline with display font (Space Grotesk) */
+  .hero-content h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .hero-title-line {
+    display: block;
+  }
+
+  /* Ensure section H2s with display font have proper sizing */
+  h2.ff-font-display {
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    line-height: 1.2;
+  }
+
+  /* Code/CLI blocks with monospace font (Commit Mono / JetBrains Mono) */
+  .ff-code-block,
+  .ff-code-block pre,
+  .ff-code-block code,
+  .publish-cli,
+  .publish-cli .code-lines,
+  .code-block {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    line-height: 1.7;
+  }
+
+  /* CLI command prompts specifically */
+  .code-line .code-prompt,
+  .code-line {
+    font-family: var(--font-mono);
+  }
+
+  /* Ensure code blocks have proper letter spacing for readability */
+  .ff-code-block code {
+    letter-spacing: -0.01em;
+  }
+</style>

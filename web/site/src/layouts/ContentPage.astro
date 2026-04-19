@@ -6,12 +6,18 @@ interface Props {
   description?: string;
   /** Wider column for legal / long-form pages */
   contentWidth?: 'default' | 'wide';
+  /** JSON-LD schema for structured data */
+  schema?: object | object[];
+  /** Custom OG image for this page */
+  ogImage?: string;
+  /** Noindex meta tag */
+  noindex?: boolean;
 }
 
-const { title, description, contentWidth = 'default' } = Astro.props;
+const { title, description, contentWidth = 'default', schema, ogImage, noindex } = Astro.props;
 ---
 
-<Layout title={title} description={description}>
+<Layout title={title} description={description} schema={schema} ogImage={ogImage} noindex={noindex}>
   <article class:list={['content-page', contentWidth === 'wide' && 'content-page--wide']}>
     <div class="content-inner">
       <slot />

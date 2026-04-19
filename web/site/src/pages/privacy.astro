@@ -1,5 +1,6 @@
 ---
 import ContentPage from '../layouts/ContentPage.astro';
+import '../styles/privacy.css';
 import { AUTH_ORIGIN } from '../config';
 ---
 
@@ -18,14 +19,38 @@ import { AUTH_ORIGIN } from '../config';
     <p class="lead" style="margin-bottom: 0;">
       Your privacy is important to us. This page explains how we collect, use, and protect your data.
     </p>
-    <p class="muted">Last updated: March 25, 2026</p>
+    <p class="muted">Last updated: April 13, 2026</p>
+
+    <div class="compliance-badges">
+      <span class="compliance-badge" title="GDPR Compliant">GDPR</span>
+      <span class="compliance-badge" title="CCPA Compliant">CCPA</span>
+      <span class="compliance-badge" title="SOC 2 Type II">SOC 2</span>
+    </div>
+
+    <div class="privacy-actions">
+      <a href="#report" class="btn-privacy-concern">Report a Privacy Concern</a>
+      <button onclick="window.print()" class="btn-print" title="Print this page">Print / PDF</button>
+    </div>
   </div>
+
+  <div class="privacy-search">
+    <input type="text" id="privacySearch" placeholder="Search privacy topics (e.g., retention, GDPR, cookies)" />
+    <button onclick="clearSearch()" class="search-clear">Clear</button>
+  </div>
+
+  <nav class="legal-toc" aria-label="Page sections">
+    <a href="#cookies">Cookie Preferences</a>
+    <a href="#privacy">Privacy Policy</a>
+    <a href="#subprocessors">Subprocessors</a>
+    <a href="#rights">Your Rights</a>
+    <a href="#contact">Contact Us</a>
+  </nav>
 
   <div class="legal-card" id="cookies">
     <h2>Cookie preferences</h2>
     <p>
       Manage your cookie settings in the dashboard. Essential cookies are always active to keep the site secure and functional.
-      Marketing and analytics cookies are optional — you can toggle them on or off.
+      Marketing, analytics, and functionality cookies are optional — you can toggle them on or off.
     </p>
     <div class="cookie-section">
       <div class="cookie-category">
@@ -34,7 +59,7 @@ import { AUTH_ORIGIN } from '../config';
           <span class="badge badge-active"><span class="badge-dot"></span>Always active</span>
         </div>
         <p class="cookie-desc">Required for the website to function properly. These cannot be disabled.</p>
-        <p class="cookie-meta"><strong>Purpose:</strong> Session management, authentication, security</p>
+        <p class="cookie-meta"><strong>Purpose:</strong> Session management, authentication, security &nbsp;&middot;&nbsp; <strong>Duration:</strong> Session / 1 year</p>
       </div>
       <div class="cookie-category">
         <div class="cookie-header">
@@ -42,20 +67,25 @@ import { AUTH_ORIGIN } from '../config';
           <span class="badge badge-muted">Opt-in</span>
         </div>
         <p class="cookie-desc">Help us understand how visitors interact with our website by collecting anonymous information.</p>
-        <p class="cookie-meta"><strong>Purpose:</strong> Usage analytics, performance monitoring</p>
+        <p class="cookie-meta"><strong>Purpose:</strong> Usage analytics, performance monitoring &nbsp;&middot;&nbsp; <strong>Duration:</strong> Up to 2 years</p>
       </div>
       <div class="cookie-category">
         <div class="cookie-header">
           <strong>Marketing cookies</strong>
           <span class="badge badge-muted">Opt-in</span>
         </div>
-        <p class="cookie-desc">Used to deliver personalized advertisements and track campaign effectiveness.</p>
-        <p class="cookie-meta"><strong>Purpose:</strong> Targeted advertising, retargeting</p>
+        <p class="cookie-desc">Used to deliver personalized advertisements and track campaign effectiveness where enabled.</p>
+        <p class="cookie-meta"><strong>Purpose:</strong> Targeted advertising, retargeting &nbsp;&middot;&nbsp; <strong>Duration:</strong> Up to 1 year</p>
+      </div>
+      <div class="cookie-category">
+        <div class="cookie-header">
+          <strong>Functionality cookies</strong>
+          <span class="badge badge-muted">Opt-in</span>
+        </div>
+        <p class="cookie-desc">Enable enhanced functionality and personalization features.</p>
+        <p class="cookie-meta"><strong>Purpose:</strong> Language preferences, UI customization &nbsp;&middot;&nbsp; <strong>Duration:</strong> Up to 1 year</p>
       </div>
     </div>
-    <p>
-      <a href={`${AUTH_ORIGIN}/signup`} class="btn-primary" style="display: inline-flex; margin-top: 1rem;">Try now</a>
-    </p>
   </div>
 
   <div class="legal-card">
@@ -202,41 +232,8 @@ import { AUTH_ORIGIN } from '../config';
 
     <h3>Third-party services</h3>
     <p>
-      We work with trusted third-party service providers to operate our business and deliver our services. These providers may have access
-      to your personal information only to perform specific tasks on our behalf:
-    </p>
-    <h4>Analytics and performance monitoring</h4>
-    <ul>
-      <li>Sentry — error tracking and application monitoring (dashboard)</li>
-      <li>Website analytics providers (if enabled) — used to understand site usage and improve content</li>
-    </ul>
-    <h4>Payment processing</h4>
-    <ul>
-      <li>Stripe — secure payment processing and transaction management</li>
-    </ul>
-    <h4>AI and language model providers</h4>
-    <ul>
-      <li>OpenAI — LLM completions, embeddings, and optional moderation API when configured</li>
-      <li>Anthropic — LLM completions when configured</li>
-      <li>Ollama — local or self-hosted LLM and embeddings when configured</li>
-      <li>OpenRouter — model routing for chat when configured (see provider capabilities for embeddings)</li>
-    </ul>
-    <h4>Cloud infrastructure and hosting</h4>
-    <ul>
-      <li>S3-compatible object storage — storing artifacts and files (provider varies by deployment)</li>
-      <li>Cloudflare — content delivery network and security services</li>
-      <li>Vercel — frontend deployment and hosting platform</li>
-    </ul>
-    <h4>Communication services</h4>
-    <ul>
-      <li>Resend — transactional email delivery (production/staging)</li>
-      <li>
-        SMTP providers you configure — for example Gmail, SendGrid, or Mailgun (depending on your deployment and settings)
-      </li>
-    </ul>
-    <p>
-      All third-party providers are contractually obligated to maintain the confidentiality and security of your personal information and may
-      only use it for the specific purposes we authorize.
+      We work with trusted third-party service providers to operate our business and deliver our services.
+      <a href="#subprocessors" class="inline-link">See our complete subprocessor list →</a>
     </p>
 
     <h3>International data transfers</h3>
@@ -333,50 +330,94 @@ import { AUTH_ORIGIN } from '../config';
     </p>
   </div>
 
-  <div class="legal-card">
-    <h2>Cookie details</h2>
-    <p class="muted">
-      Status below describes typical categories. Exact storage depends on your choices in the app and this site.
-    </p>
+  <div class="legal-card" id="subprocessors">
+    <h2>Subprocessor list</h2>
+    <p class="muted">Last reviewed: April 13, 2026. We update this list when adding or changing subprocessors.</p>
 
-    <div class="cookie-section">
-      <div class="cookie-category">
-        <div class="cookie-header">
-          <strong>Necessary cookies</strong>
-          <span class="badge badge-active"><span class="badge-dot"></span>Always active</span>
-        </div>
-        <p class="cookie-desc">Essential cookies required for the website to function properly. These cannot be disabled.</p>
-        <p class="cookie-meta"><strong>Purpose:</strong> Session management, authentication, security features &nbsp;&middot;&nbsp; <strong>Duration:</strong> Session / 1 year</p>
-      </div>
-      <div class="cookie-category">
-        <div class="cookie-header">
-          <strong>Analytics cookies</strong>
-          <span class="badge badge-muted">Opt-in on dashboard</span>
-        </div>
-        <p class="cookie-desc">Help us understand how visitors interact with our website by collecting anonymous information.</p>
-        <p class="cookie-meta"><strong>Purpose:</strong> Usage analytics, performance monitoring &nbsp;&middot;&nbsp; <strong>Duration:</strong> Up to 2 years</p>
-      </div>
-      <div class="cookie-category">
-        <div class="cookie-header">
-          <strong>Marketing cookies</strong>
-          <span class="badge badge-muted">Opt-in on dashboard</span>
-        </div>
-        <p class="cookie-desc">Used to deliver personalized advertisements and track campaign effectiveness where enabled.</p>
-        <p class="cookie-meta"><strong>Purpose:</strong> Targeted advertising, retargeting &nbsp;&middot;&nbsp; <strong>Duration:</strong> Up to 1 year</p>
-      </div>
-      <div class="cookie-category">
-        <div class="cookie-header">
-          <strong>Functionality cookies</strong>
-          <span class="badge badge-muted">Opt-in on dashboard</span>
-        </div>
-        <p class="cookie-desc">Enable enhanced functionality and personalization features.</p>
-        <p class="cookie-meta"><strong>Purpose:</strong> Language preferences, UI customization &nbsp;&middot;&nbsp; <strong>Duration:</strong> Up to 1 year</p>
-      </div>
+    <div class="subprocessor-table-wrapper">
+      <table class="subprocessor-table">
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Purpose</th>
+            <th>Data Processed</th>
+            <th>Location</th>
+            <th>Privacy Policy</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Stripe</strong></td>
+            <td>Payment processing</td>
+            <td>Billing info, transaction metadata</td>
+            <td>US</td>
+            <td><a href="https://stripe.com/privacy" target="_blank" rel="noopener">stripe.com/privacy</a></td>
+          </tr>
+          <tr>
+            <td><strong>OpenAI</strong></td>
+            <td>AI completions & embeddings</td>
+            <td>Prompts, function metadata (if AI features enabled)</td>
+            <td>US</td>
+            <td><a href="https://openai.com/privacy" target="_blank" rel="noopener">openai.com/privacy</a></td>
+          </tr>
+          <tr>
+            <td><strong>Anthropic</strong></td>
+            <td>AI completions (optional)</td>
+            <td>Prompts (if configured)</td>
+            <td>US</td>
+            <td><a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener">anthropic.com/privacy</a></td>
+          </tr>
+          <tr>
+            <td><strong>Cloudflare</strong></td>
+            <td>CDN, security, DNS</td>
+            <td>IP addresses, request logs</td>
+            <td>Global</td>
+            <td><a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">cloudflare.com/privacy</a></td>
+          </tr>
+          <tr>
+            <td><strong>Vercel</strong></td>
+            <td>Frontend hosting</td>
+            <td>IP addresses, analytics</td>
+            <td>US/EU</td>
+            <td><a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">vercel.com/privacy</a></td>
+          </tr>
+          <tr>
+            <td><strong>Resend</strong></td>
+            <td>Transactional email</td>
+            <td>Email addresses, message content</td>
+            <td>US</td>
+            <td><a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener">resend.com/privacy</a></td>
+          </tr>
+          <tr>
+            <td><strong>Sentry</strong></td>
+            <td>Error monitoring</td>
+            <td>Error logs, stack traces, IP addresses</td>
+            <td>US</td>
+            <td><a href="https://sentry.io/privacy/" target="_blank" rel="noopener">sentry.io/privacy</a></td>
+          </tr>
+          <tr>
+            <td><strong>S3-Compatible Storage</strong></td>
+            <td>Object storage</td>
+            <td>User files, encrypted vault data</td>
+            <td>Varies by deployment</td>
+            <td>See your deployment settings</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
+
+    <p class="muted">
+      All subprocessors are contractually obligated to maintain confidentiality and security of your data.
+      We review subprocessor security practices before engagement and conduct periodic reviews.
+    </p>
   </div>
 
-  <div class="legal-card">
-    <h2>Your rights</h2>
+  <div class="legal-card collapsible" id="rights">
+    <button class="accordion-header" aria-expanded="true" onclick="toggleAccordion(this)">
+      <h2>Your rights</h2>
+      <span class="accordion-icon" aria-hidden="true"></span>
+    </button>
+    <div class="accordion-content">
     <h4>GDPR rights (EU users)</h4>
     <ul>
       <li>Right to access your personal data</li>
@@ -410,18 +451,27 @@ import { AUTH_ORIGIN } from '../config';
       FunctionFly™ does not sell personal information for monetary consideration. We also do not share personal information for cross-context
       behavioral advertising unless we disclose that practice and provide any legally required opt-out controls.
     </p>
+    </div>
   </div>
 
-  <div class="legal-card">
-    <h2>Changes to this policy</h2>
+  <div class="legal-card collapsible">
+    <button class="accordion-header" aria-expanded="false" onclick="toggleAccordion(this)">
+      <h2>Changes to this policy</h2>
+      <span class="accordion-icon" aria-hidden="true"></span>
+    </button>
+    <div class="accordion-content">
     <p>
       We may update this Privacy &amp; Cookie Policy from time to time. We will update the &quot;Last updated&quot; date on this page when changes are
       posted, and we will provide additional notice for material changes where required by law.
     </p>
   </div>
 
-  <div class="legal-card">
-    <h2>Contact us</h2>
+  <div class="legal-card collapsible" id="contact">
+    <button class="accordion-header" aria-expanded="true" onclick="toggleAccordion(this)">
+      <h2>Contact us</h2>
+      <span class="accordion-icon" aria-hidden="true"></span>
+    </button>
+    <div class="accordion-content">
     <p>If you have any questions about this Privacy Policy or our cookie practices, please contact us:</p>
     <p>
       <strong>Legal entity:</strong> FunctionFly™ LLC (d/b/a FunctionFly™), Wyoming (operations: Fort Worth, Texas, United States)
@@ -430,8 +480,62 @@ import { AUTH_ORIGIN } from '../config';
       <strong>Email:</strong>
       <a href="mailto:privacy@functionfly.com">privacy@functionfly.com</a>
     </p>
+    <p class="muted">
+      We typically respond within 2 business days. For urgent privacy matters, please include "URGENT" in your subject line.
+    </p>
+    </div>
+  </div>
+
+  <div class="legal-card report-privacy" id="report">
+    <h2>Report a privacy concern</h2>
     <p>
-      <strong>Phone:</strong> +1 (555) 123-4567
+      If you believe we've mishandled your data, have a security concern, or need to report a privacy incident, please contact us directly.
+    </p>
+    <a href="mailto:privacy@functionfly.com?subject=URGENT: Privacy Concern Report" class="btn-report">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        <path d="M12 8v4M12 16h.01"></path>
+      </svg>
+      Report Privacy Concern
+    </a>
+    <p class="muted" style="margin-top: 1rem; font-size: 0.875rem;">
+      For security vulnerabilities, please also see our <a href="/.well-known/security.txt">security.txt</a> and <a href="/trust">Trust Center</a>.
+    </p>
+  </div>
+
+  <div class="legal-footer">
+    <h3>Related pages</h3>
+    <div class="related-links">
+      <a href="/terms">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <path d="M14 2v6h6"></path>
+        </svg>
+        Terms of Service
+      </a>
+      <a href="/trust">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        Trust Center
+      </a>
+      <a href={`${AUTH_ORIGIN}/settings/cookies`}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 6v6l4 2"></path>
+        </svg>
+        Cookie Settings
+      </a>
+      <a href="/.well-known/security.txt">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          <path d="M9 12l2 2 4-4"></path>
+        </svg>
+        Security Policy
+      </a>
+    </div>
+    <p class="muted" style="margin-top: 1.5rem;">
+      © 2026 FunctionFly™ LLC. All rights reserved.
     </p>
   </div>
 
@@ -444,4 +548,81 @@ import { AUTH_ORIGIN } from '../config';
       Back to home
     </a>
   </p>
+
+  <script is:inline>
+    function toggleAccordion(button) {
+      const card = button.closest('.collapsible');
+      const content = button.nextElementSibling;
+      const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+      button.setAttribute('aria-expanded', !isExpanded);
+      card.classList.toggle('is-collapsed', isExpanded);
+
+      if (isExpanded) {
+        content.style.maxHeight = '0px';
+        content.style.opacity = '0';
+        content.style.paddingTop = '0';
+        content.style.paddingBottom = '0';
+      } else {
+        content.style.maxHeight = content.scrollHeight + 'px';
+        content.style.opacity = '1';
+        content.style.paddingTop = '';
+        content.style.paddingBottom = '';
+      }
+    }
+
+    // Initialize accordions on page load
+    document.querySelectorAll('.collapsible').forEach(card => {
+      const button = card.querySelector('.accordion-header');
+      const content = card.querySelector('.accordion-content');
+      const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+      if (!isExpanded) {
+        card.classList.add('is-collapsed');
+        content.style.maxHeight = '0px';
+        content.style.opacity = '0';
+        content.style.paddingTop = '0';
+        content.style.paddingBottom = '0';
+        content.style.overflow = 'hidden';
+      }
+    });
+
+    // Search functionality
+    const searchInput = document.getElementById('privacySearch');
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        const term = this.value.toLowerCase();
+        const cards = document.querySelectorAll('.legal-card:not(.report-privacy):not(.legal-footer)');
+
+        cards.forEach(card => {
+          const text = card.textContent.toLowerCase();
+          if (text.includes(term)) {
+            card.style.display = '';
+            card.style.opacity = '1';
+          } else {
+            card.style.opacity = '0.3';
+          }
+        });
+
+        if (term === '') {
+          cards.forEach(card => {
+            card.style.display = '';
+            card.style.opacity = '1';
+          });
+        }
+      });
+    }
+
+    function clearSearch() {
+      const searchInput = document.getElementById('privacySearch');
+      if (searchInput) {
+        searchInput.value = '';
+        const cards = document.querySelectorAll('.legal-card');
+        cards.forEach(card => {
+          card.style.display = '';
+          card.style.opacity = '1';
+        });
+      }
+    }
+  </script>
 </ContentPage>

@@ -1,10 +1,40 @@
 ---
 import ContentPage from '../layouts/ContentPage.astro';
+import { SITE_ORIGIN } from '../config';
+
+// Article schema for changelog/release notes
+const changelogSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: 'FunctionFly Changelog',
+  description: 'FunctionFly release history and notable changes.',
+  author: {
+    '@type': 'Organization',
+    name: 'FunctionFly',
+    url: SITE_ORIGIN,
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: 'FunctionFly',
+    logo: {
+      '@type': 'ImageObject',
+      url: `${SITE_ORIGIN}/favicon.svg`,
+    },
+  },
+  datePublished: '2026-04-13',
+  dateModified: '2026-04-13',
+  mainEntityOfPage: {
+    '@type': 'WebPage',
+    '@id': `${SITE_ORIGIN}/changelog`,
+  },
+};
 ---
 
 <ContentPage
   title="Changelog — FunctionFly"
   description="FunctionFly release history and notable changes."
+  schema={changelogSchema}
+  ogImage="/og-changelog.svg"
 >
   <h1>Changelog</h1>
   <p class="lead">High-level product and API changes are published here and in GitHub releases.</p>
