@@ -1,0 +1,280 @@
+/* FunctionFly Docs - Velocity Brand Custom CSS for Starlight */
+
+/* Import dashboard themes - correct relative path from web/docs/src/styles/ */
+@import '../../../dashboard/src/styles/themes.css';
+
+/* Override Starlight's default colors with Velocity Brand */
+:root {
+  /* Velocity Brand Core */
+  --sl-color-accent: #FF6B35;
+  --sl-color-accent-high: #FF8C42;
+  --sl-color-accent-low: #E85A2A;
+  
+  /* Text colors */
+  --sl-color-white: #F0F6FC;
+  --sl-color-gray-1: #8B949E;
+  --sl-color-gray-2: #6E7681;
+  --sl-color-gray-3: #4B5563;
+  --sl-color-gray-4: #21262D;
+  --sl-color-gray-5: #161B22;
+  --sl-color-gray-6: #0D1117;
+  --sl-color-black: #0D1117;
+  
+  /* Velocity Brand Aliases */
+  --ff-flame: #FF6B35;
+  --ff-flame-rgb: 255, 107, 53;
+  --ff-flame-dark: #E85A2A;
+  --ff-flame-light: #FF8C42;
+  --ff-afterburner: #FF4F5E;
+  --ff-cyan: #00D4FF;
+  --ff-cyan-rgb: 0, 212, 255;
+  --ff-cyan-dark: #00B8E0;
+  --ff-tarmac: #0D1117;
+  --ff-cockpit: #161B22;
+  --ff-flightdeck: #21262D;
+  --ff-sky: #FFFFFF;
+  --ff-sky-subtle: #F6F8FA;
+  --ff-primary-text: #F0F6FC;
+  --ff-secondary-text: #8B949E;
+  --ff-muted-text: #6E7681;
+  --ff-dark-text: #0D1117;
+  --ff-dark-secondary: #4B5563;
+  --ff-dark-muted: #6B7280;
+  --ff-taxiway: #00FF9D;
+  --ff-beacon: #FFB800;
+  --ff-stratosphere: #5B7CF5;
+}
+
+/* Light theme overrides */
+[data-theme='light'] {
+  --sl-color-accent: #E85A2A;
+  --sl-color-accent-high: #FF6B35;
+  --sl-color-accent-low: #D14A1A;
+  
+  --sl-color-white: #0D1117;
+  --sl-color-gray-1: #4B5563;
+  --sl-color-gray-2: #6B7280;
+  --sl-color-gray-3: #8B949E;
+  --sl-color-gray-4: #EEF1F5;
+  --sl-color-gray-5: #F6F8FA;
+  --sl-color-gray-6: #FFFFFF;
+  --sl-color-black: #FFFFFF;
+  
+  --ff-flame: #E85A2A;
+  --ff-flame-light: #FF6B35;
+  --ff-cyan: #00A8CC;
+}
+
+/* Starlight specific component overrides */
+
+/* Header/Navbar */
+.site-title {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 700;
+}
+
+/* Links */
+a[href]:not([class]) {
+  color: var(--ff-flame);
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 107, 53, 0.3);
+}
+
+a[href]:not([class]):hover {
+  color: var(--ff-flame-light);
+  text-decoration-color: var(--ff-flame);
+}
+
+/* Sidebar navigation */
+.sidebar-content a {
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.sidebar-content a:hover {
+  color: var(--ff-flame);
+  background: rgba(255, 107, 53, 0.08);
+}
+
+.sidebar-content a[aria-current="page"] {
+  color: var(--ff-flame);
+  background: rgba(255, 107, 53, 0.12);
+  border-left: 3px solid var(--ff-flame);
+}
+
+/* Right sidebar (TOC) */
+.right-sidebar a {
+  transition: color 0.2s ease;
+}
+
+.right-sidebar a:hover {
+  color: var(--ff-flame);
+}
+
+/* Cards */
+.card {
+  border: 1px solid rgba(255, 107, 53, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+  border-color: rgba(255, 107, 53, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Badges */
+.badge {
+  font-weight: 600;
+}
+
+.badge--tip {
+  background: rgba(0, 255, 157, 0.15);
+  color: #00FF9D;
+  border: 1px solid rgba(0, 255, 157, 0.3);
+}
+
+.badge--caution {
+  background: rgba(255, 184, 0, 0.15);
+  color: #FFB800;
+  border: 1px solid rgba(255, 184, 0, 0.3);
+}
+
+.badge--danger {
+  background: rgba(255, 45, 85, 0.15);
+  color: #FF2D55;
+  border: 1px solid rgba(255, 45, 85, 0.3);
+}
+
+.badge--success {
+  background: rgba(0, 255, 157, 0.15);
+  color: #00FF9D;
+  border: 1px solid rgba(0, 255, 157, 0.3);
+}
+
+/* Buttons in hero */
+.hero .action.primary {
+  background: linear-gradient(135deg, #FF6B35 0%, #FF4F5E 100%);
+  border: none;
+  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hero .action.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.5);
+}
+
+.hero .action.secondary {
+  border-color: var(--ff-flame);
+  color: var(--ff-flame);
+  transition: all 0.2s ease;
+}
+
+.hero .action.secondary:hover {
+  background: rgba(255, 107, 53, 0.1);
+  border-color: var(--ff-flame-light);
+  color: var(--ff-flame-light);
+}
+
+/* Code blocks */
+code {
+  color: var(--ff-cyan);
+  background: rgba(0, 212, 255, 0.1);
+}
+
+pre code {
+  color: inherit;
+  background: transparent;
+}
+
+/* Expressive code blocks (Starlight's code component) */
+.expressive-code {
+  --ec-frm-frameBoxShadowCss: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.expressive-code .frame {
+  border: 1px solid rgba(255, 107, 53, 0.15);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', 'Instrument Sans', system-ui, sans-serif;
+  font-weight: 600;
+}
+
+/* Tables */
+table {
+  border-color: rgba(255, 107, 53, 0.15);
+}
+
+th {
+  background: rgba(255, 107, 53, 0.08);
+  color: var(--ff-flame);
+}
+
+tr:hover {
+  background: rgba(255, 107, 53, 0.05);
+}
+
+/* Search */
+.search-container input:focus {
+  border-color: var(--ff-flame);
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.2);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ff-cockpit);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ff-flame-dark);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ff-flame);
+}
+
+/* Selection */
+::selection {
+  background: rgba(255, 107, 53, 0.3);
+  color: var(--ff-primary-text);
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--ff-flame);
+  outline-offset: 2px;
+}
+
+/* Light theme specific overrides */
+[data-theme='light'] .card {
+  border-color: rgba(232, 90, 42, 0.15);
+}
+
+[data-theme='light'] .card:hover {
+  border-color: rgba(232, 90, 42, 0.3);
+  box-shadow: 0 4px 12px rgba(232, 90, 42, 0.1);
+}
+
+[data-theme='light'] table {
+  border-color: rgba(232, 90, 42, 0.1);
+}
+
+[data-theme='light'] th {
+  background: rgba(232, 90, 42, 0.08);
+}
+
+[data-theme='light'] ::-webkit-scrollbar-track {
+  background: var(--ff-sky-subtle);
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: var(--ff-flame);
+}

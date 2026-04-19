@@ -1,0 +1,5904 @@
+{
+  "components": {
+    "parameters": {
+      "Author": {
+        "description": "Function author's username",
+        "in": "path",
+        "name": "author",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "FunctionName": {
+        "description": "Function name",
+        "in": "path",
+        "name": "name",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "Limit": {
+        "in": "query",
+        "name": "limit",
+        "schema": {
+          "default": 20,
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "Offset": {
+        "in": "query",
+        "name": "offset",
+        "schema": {
+          "default": 0,
+          "minimum": 0,
+          "type": "integer"
+        }
+      }
+    },
+    "schemas": {
+      "AIGenerateRequest": {
+        "properties": {
+          "category": {
+            "example": "notifications",
+            "type": "string"
+          },
+          "dependencies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "description": {
+            "example": "A function that sends an email via SendGrid",
+            "type": "string"
+          },
+          "runtime": {
+            "default": "node",
+            "enum": [
+              "node",
+              "python",
+              "go",
+              "rust",
+              "wasm"
+            ],
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "type": "object"
+      },
+      "AIGenerateResponse": {
+        "properties": {
+          "explanation": {
+            "description": "AI's explanation of the generated function",
+            "type": "string"
+          },
+          "function": {
+            "properties": {
+              "manifest": {
+                "type": "object"
+              },
+              "name": {
+                "type": "string"
+              },
+              "source_code": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "AISchema": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parameters": {
+            "description": "JSON Schema for function parameters (OpenAI tools format)",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "APIKey": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "key_prefix": {
+            "example": "ff_live_sk_...",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "partner_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "permissions": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "APIKeyCreated": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "key": {
+            "description": "The full API key - only shown once, store securely",
+            "example": "ff_live_sk_a1b2c3d4e5f6...",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Alert": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "resolved_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "warning",
+              "critical"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Attestation": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "function_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "issued_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AttestationChain": {
+        "properties": {
+          "function_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/Attestation"
+          },
+          "partners": {
+            "items": {
+              "$ref": "#/components/schemas/Attestation"
+            },
+            "type": "array"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Attestation"
+          }
+        },
+        "type": "object"
+      },
+      "ChangelogEntry": {
+        "properties": {
+          "category": {
+            "enum": [
+              "added",
+              "changed",
+              "deprecated",
+              "removed",
+              "fixed",
+              "security"
+            ],
+            "type": "string"
+          },
+          "date": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CostAllocation": {
+        "properties": {
+          "breakdown": {
+            "items": {
+              "properties": {
+                "cost_usd": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "percentage": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "period": {
+            "type": "string"
+          },
+          "total_cost_usd": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "CreateAPIKeyRequest": {
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "CreateAPIKeyUserRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "CreatePartnerRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "website": {
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ],
+        "type": "object"
+      },
+      "CreateTeamRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "CreateUsageAlertRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "threshold_usd": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "threshold_usd"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "detail": {
+            "example": "Additional error details",
+            "type": "string"
+          },
+          "message": {
+            "example": "An error occurred",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ExecutionResult": {
+        "properties": {
+          "duration_ms": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "error": {
+            "type": "string"
+          },
+          "execution_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "output": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "ExportRequest": {
+        "properties": {
+          "format": {
+            "default": "csv",
+            "enum": [
+              "csv",
+              "json"
+            ],
+            "type": "string"
+          },
+          "period": {
+            "description": "ISO date range or \"all\"",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ExportResponse": {
+        "properties": {
+          "download_url": {
+            "format": "uri",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "export_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "processing",
+              "ready",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "FRGWebhook": {
+        "properties": {
+          "events": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "FRGWebhookRequest": {
+        "properties": {
+          "events": {
+            "items": {
+              "enum": [
+                "execution.started",
+                "execution.completed",
+                "execution.failed"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "secret": {
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "events"
+        ],
+        "type": "object"
+      },
+      "FunctionDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/FunctionSummary"
+          },
+          {
+            "properties": {
+              "changelog": {
+                "items": {
+                  "$ref": "#/components/schemas/ChangelogEntry"
+                },
+                "type": "array"
+              },
+              "manifest": {
+                "description": "Function manifest (input/output schema, dependencies, etc.)",
+                "type": "object"
+              },
+              "readme": {
+                "type": "string"
+              },
+              "source_code": {
+                "description": "Function source code (only visible to owner)",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "FunctionSummary": {
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "downloads": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_verified": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rating": {
+            "format": "double",
+            "type": "number"
+          },
+          "runtime": {
+            "enum": [
+              "node",
+              "python",
+              "go",
+              "rust",
+              "wasm"
+            ],
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "example": "1.0.0",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "FunctionVersion": {
+        "properties": {
+          "download_count": {
+            "type": "integer"
+          },
+          "is_latest": {
+            "type": "boolean"
+          },
+          "is_stable": {
+            "type": "boolean"
+          },
+          "published_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "example": "1.0.0",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "FunctionVersionDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/FunctionVersion"
+          },
+          {
+            "properties": {
+              "changelog": {
+                "$ref": "#/components/schemas/ChangelogEntry"
+              },
+              "manifest": {
+                "type": "object"
+              },
+              "source_code": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "GraphEdge": {
+        "properties": {
+          "from": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "to": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GraphNode": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "function",
+              "external",
+              "trigger"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "example": "ok",
+            "type": "string"
+          },
+          "timestamp": {
+            "example": 1744000000,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "example": "user@example.com",
+            "format": "email",
+            "type": "string"
+          },
+          "password": {
+            "example": "secret123",
+            "format": "password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object"
+      },
+      "MFASetupResponse": {
+        "properties": {
+          "otpauth_url": {
+            "format": "uri",
+            "type": "string"
+          },
+          "qr_code": {
+            "description": "Base64-encoded QR code image",
+            "type": "string"
+          },
+          "secret": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "MFAStatusResponse": {
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "enrolled_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "totp",
+              "webauthn"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "MFAVerifyRequest": {
+        "properties": {
+          "code": {
+            "description": "TOTP code from authenticator app",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      },
+      "Notification": {
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "OAuthProvider": {
+        "properties": {
+          "icon_url": {
+            "format": "uri",
+            "type": "string"
+          },
+          "id": {
+            "example": "github",
+            "type": "string"
+          },
+          "name": {
+            "example": "GitHub",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PaginatedAttestations": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/Attestation"
+            },
+            "type": "array"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "PaginatedFunctions": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/FunctionSummary"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "PaginatedNotifications": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            },
+            "type": "array"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "PaginatedRevocations": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/Revocation"
+            },
+            "type": "array"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "PaginatedSecurityEvents": {
+        "properties": {
+          "data": {
+            "items": {
+              "properties": {
+                "created_at": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "ip_address": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "user_id": {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "PaginationParams": {
+        "properties": {
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "offset": {
+            "default": 0,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "Partner": {
+        "properties": {
+          "api_key_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "suspended",
+              "revoked"
+            ],
+            "type": "string"
+          },
+          "trust_level": {
+            "enum": [
+              "basic",
+              "standard",
+              "premium"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PartnerUsage": {
+        "properties": {
+          "avg_latency_ms": {
+            "format": "double",
+            "type": "number"
+          },
+          "errors": {
+            "type": "integer"
+          },
+          "partner_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "quota_limit": {
+            "type": "integer"
+          },
+          "quota_used": {
+            "type": "integer"
+          },
+          "requests": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "PasswordResetConfirmRequest": {
+        "properties": {
+          "new_password": {
+            "format": "password",
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "new_password"
+        ],
+        "type": "object"
+      },
+      "PlatformMetadata": {
+        "properties": {
+          "name": {
+            "example": "functionfly",
+            "type": "string"
+          },
+          "public_key": {
+            "description": "Ed25519 public key for signature verification",
+            "type": "string"
+          },
+          "trust_api_endpoint": {
+            "format": "uri",
+            "type": "string"
+          },
+          "verification_endpoint": {
+            "format": "uri",
+            "type": "string"
+          },
+          "version": {
+            "example": "1.0",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RefreshRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "refresh_token"
+        ],
+        "type": "object"
+      },
+      "Revocation": {
+        "properties": {
+          "function_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "lifted_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "lifted_by": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "revoked_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "revoked_by": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RevokeRequest": {
+        "properties": {
+          "evidence": {
+            "type": "string"
+          },
+          "function_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "security",
+              "policy",
+              "abuse",
+              "other"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "function_id",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "RuntimeGraph": {
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdge"
+            },
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNode"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "SignupRequest": {
+        "properties": {
+          "email": {
+            "example": "user@example.com",
+            "format": "email",
+            "type": "string"
+          },
+          "invite_code": {
+            "example": "OPTIONAL-CODE",
+            "type": "string"
+          },
+          "password": {
+            "example": "secret123",
+            "format": "password",
+            "minLength": 8,
+            "type": "string"
+          },
+          "username": {
+            "example": "newuser",
+            "pattern": "^[a-zA-Z0-9_-]{3,20}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "username"
+        ],
+        "type": "object"
+      },
+      "StateHistoryEntry": {
+        "properties": {
+          "changed_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "changed_by": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "StateValue": {
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "ttl": {
+            "description": "Seconds until expiration (0 = no expiry)",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "value": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "StateValueCreate": {
+        "properties": {
+          "ttl": {
+            "description": "TTL in seconds",
+            "type": "integer"
+          },
+          "value": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "type": "object"
+      },
+      "SystemStatus": {
+        "properties": {
+          "components": {
+            "additionalProperties": {
+              "properties": {
+                "latency_ms": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "status": {
+                  "enum": [
+                    "ok",
+                    "degraded",
+                    "down"
+                  ],
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "operational",
+              "degraded",
+              "incident"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Team": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "member_count": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TeamMember": {
+        "properties": {
+          "joined_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "admin",
+              "member"
+            ],
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "type": "string"
+          },
+          "expires_in": {
+            "description": "Seconds until token expiration",
+            "example": 3600,
+            "type": "integer"
+          },
+          "refresh_token": {
+            "example": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...",
+            "type": "string"
+          },
+          "token_type": {
+            "example": "Bearer",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TrustReportRequest": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "object"
+          },
+          "function_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "report_type": {
+            "enum": [
+              "vulnerability",
+              "policy_violation",
+              "malware",
+              "other"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "function_id",
+          "report_type"
+        ],
+        "type": "object"
+      },
+      "TrustScore": {
+        "properties": {
+          "factors": {
+            "type": "string"
+          },
+          "function_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "last_updated": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "untrusted",
+              "low",
+              "standard",
+              "high",
+              "verified"
+            ],
+            "type": "string"
+          },
+          "score": {
+            "format": "double",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "UpdatePartnerRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "suspended"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateTeamRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateUserRequest": {
+        "properties": {
+          "avatar_url": {
+            "format": "uri",
+            "type": "string"
+          },
+          "bio": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UsageAlert": {
+        "properties": {
+          "current_value_usd": {
+            "format": "double",
+            "type": "number"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_triggered": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "threshold_usd": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "UsageForecastResponse": {
+        "properties": {
+          "confidence": {
+            "format": "double",
+            "type": "number"
+          },
+          "period": {
+            "type": "string"
+          },
+          "projected_cost_usd": {
+            "format": "double",
+            "type": "number"
+          },
+          "projected_functions": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "UsageResponse": {
+        "properties": {
+          "bandwidth_mb": {
+            "format": "double",
+            "type": "number"
+          },
+          "compute_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "cost_usd": {
+            "format": "double",
+            "type": "number"
+          },
+          "functions_executed": {
+            "type": "integer"
+          },
+          "period": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UserAPIKey": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "key_prefix": {
+            "type": "string"
+          },
+          "last_used_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UserAPIKeyCreated": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "key": {
+            "description": "Full API key - only shown once",
+            "example": "ff_live_...",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UserResponse": {
+        "properties": {
+          "avatar_url": {
+            "format": "uri",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "is_verified": {
+            "type": "boolean"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "VaultKey": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "last_retrieved_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "VaultKeyCreate": {
+        "properties": {
+          "ciphertext": {
+            "description": "AES-256-GCM encrypted value (base64)",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "iv": {
+            "description": "Initialization vector (base64)",
+            "type": "string"
+          },
+          "name": {
+            "description": "Human-readable key name",
+            "type": "string"
+          },
+          "salt": {
+            "description": "Key derivation salt (base64)",
+            "type": "string"
+          },
+          "tag": {
+            "description": "Authentication tag (base64)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "ciphertext",
+          "iv",
+          "salt",
+          "tag"
+        ],
+        "type": "object"
+      },
+      "VerificationStatus": {
+        "properties": {
+          "checks": {
+            "properties": {
+              "container": {
+                "enum": [
+                  "pending",
+                  "passed",
+                  "failed",
+                  "skipped"
+                ],
+                "type": "string"
+              },
+              "policy": {
+                "enum": [
+                  "pending",
+                  "passed",
+                  "failed",
+                  "skipped"
+                ],
+                "type": "string"
+              },
+              "semantic": {
+                "enum": [
+                  "pending",
+                  "passed",
+                  "failed",
+                  "skipped"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "completed_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "function_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "in_progress",
+              "passed",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "verification_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Wallet": {
+        "properties": {
+          "balance_usd": {
+            "format": "double",
+            "type": "number"
+          },
+          "lifetime_earnings_usd": {
+            "format": "double",
+            "type": "number"
+          },
+          "lifetime_fees_usd": {
+            "format": "double",
+            "type": "number"
+          },
+          "user_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "description": "Platform API key for partner integrations.\nObtain via `POST /v1/partners/{partner_id}/api-keys`.\n",
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      },
+      "BearerAuth": {
+        "bearerFormat": "JWT",
+        "description": "JWT access token obtained from `/auth/login` or `/auth/signup`.\nPass as `Authorization: Bearer \u003ctoken\u003e`.\n",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "contact": {
+      "email": "contact@functionfly.com"
+    },
+    "description": "FunctionFly is a function registry and execution platform with AI composition capabilities.\n\n## Authentication\n\nThis API supports two authentication methods:\n\n- **Bearer Token** (JWT): Obtain via `POST /auth/login` or `POST /auth/signup`\n- **API Key** (Partners): Obtain via `POST /v1/partners/{partner_id}/api-keys`\n\n## OpenAI Compatibility\n\nFunctionFly is designed to work seamlessly with OpenAI's function calling:\n\n- **Tool Schema**: `GET /registry/functions/{author}/{name}/ai-schema` returns JSON Schema\n  compatible with OpenAI's `tools` parameter format\n- **AI Composer**: `POST /ai/composer/generate` and `GET /ai/composer/generate/stream` for\n  AI-powered function generation\n- **Streaming**: Server-Sent Events (SSE) streaming responses where indicated\n\n## Rate Limits\n\nDifferent endpoints have different rate limits:\n- Public endpoints: 60 requests/minute\n- Authenticated endpoints: 300 requests/minute\n- Partner API endpoints: 1000 requests/minute\n",
+    "license": {
+      "name": "Proprietary",
+      "url": "https://functionfly.com/terms"
+    },
+    "title": "FunctionFly Platform API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.3",
+  "paths": {
+    "/.well-known/functionfly.json": {
+      "get": {
+        "description": "Returns the platform's public key and metadata for verification.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformMetadata"
+                }
+              }
+            },
+            "description": "Platform metadata"
+          }
+        },
+        "security": [],
+        "summary": "Platform discovery",
+        "tags": [
+          "WellKnown"
+        ]
+      }
+    },
+    "/auth/api-key": {
+      "post": {
+        "description": "Validates a platform API key and returns a short-lived JWT for programmatic access.\nUse this endpoint to obtain tokens for CI/CD pipelines and automated workflows.\n",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "api_key": {
+                    "description": "Platform API key (ff_live_...)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "api_key"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Authentication successful"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid API key"
+          }
+        },
+        "security": [],
+        "summary": "Authenticate with API key",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "description": "Authenticates a user with email/password and returns JWT tokens.\nTokens are valid for the duration specified in `expires_in`.\n",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "user@example.com",
+                "password": "secret123"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Login successful"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          }
+        },
+        "security": [],
+        "summary": "User login",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "description": "Invalidates the current session and refresh token.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "example": "logged out",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Logged out successfully"
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/mfa/disable": {
+      "post": {
+        "description": "Disables MFA for the authenticated user. Requires current MFA code.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MFAVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "enabled": {
+                      "example": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "MFA disabled"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid MFA code"
+          }
+        },
+        "summary": "Disable MFA",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/mfa/enable": {
+      "post": {
+        "description": "Enables MFA for the authenticated user after successful verification.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "enabled": {
+                      "example": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "MFA enabled"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Enable MFA",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/mfa/setup": {
+      "post": {
+        "description": "Generates a new TOTP secret for MFA enrollment. Call `verify` after scanning the QR code.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "method": {
+                    "default": "totp",
+                    "enum": [
+                      "totp",
+                      "webauthn"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "method"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MFASetupResponse"
+                }
+              }
+            },
+            "description": "MFA secret generated"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Setup MFA",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/mfa/status": {
+      "get": {
+        "description": "Returns the current MFA enrollment status for the authenticated user.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MFAStatusResponse"
+                }
+              }
+            },
+            "description": "MFA status"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Get MFA status",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/mfa/verify": {
+      "post": {
+        "description": "Verifies the TOTP code to complete MFA enrollment or verification.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MFAVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MFASetupResponse"
+                }
+              }
+            },
+            "description": "MFA verified"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid MFA code"
+          }
+        },
+        "summary": "Verify MFA code",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/oauth/providers": {
+      "get": {
+        "description": "Returns the list of supported OAuth providers for social login.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OAuthProvider"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "List of OAuth providers"
+          }
+        },
+        "security": [],
+        "summary": "List OAuth providers",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/oauth/url": {
+      "get": {
+        "description": "Returns the authorization URL for the specified OAuth provider.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "enum": [
+                "github",
+                "google",
+                "discord",
+                "twitter"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Post-authentication redirect URI",
+            "in": "query",
+            "name": "redirect_uri",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "url": {
+                      "format": "uri",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authorization URL"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid provider"
+          }
+        },
+        "security": [],
+        "summary": "Get OAuth authorization URL",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/oauth/{provider}/callback": {
+      "get": {
+        "description": "Handles the OAuth callback from the identity provider.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "enum": [
+                "github",
+                "google",
+                "discord",
+                "twitter"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "OAuth authentication successful"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "OAuth authentication failed"
+          }
+        },
+        "security": [],
+        "summary": "OAuth callback",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/password-reset": {
+      "post": {
+        "description": "Sends a password reset email to the user's registered address.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "email": {
+                    "format": "email",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Reset email sent if account exists"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          }
+        },
+        "security": [],
+        "summary": "Request password reset",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/password-reset/confirm": {
+      "post": {
+        "description": "Sets a new password using a valid reset token.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Password updated successfully"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired reset token"
+          }
+        },
+        "security": [],
+        "summary": "Confirm password reset",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "description": "Exchanges a valid refresh token for a new access token.\nThe old refresh token is invalidated after use.\n",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Token refreshed"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired refresh token"
+          }
+        },
+        "security": [],
+        "summary": "Refresh access token",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/signup": {
+      "post": {
+        "description": "Creates a new user account. Sends a verification email to the provided address.\nThe account is activated after email verification.\n",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "email": "user@example.com",
+                "invite_code": "optional-code",
+                "password": "secret123",
+                "username": "newuser"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Account created, verification email sent"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Email or username already exists"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          }
+        },
+        "security": [],
+        "summary": "User registration",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/verify-email": {
+      "get": {
+        "description": "Verifies a user's email address using a token sent to their email.\nRedirects to the dashboard on success.\n",
+        "parameters": [
+          {
+            "description": "Verification token from email link",
+            "in": "query",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to dashboard on success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token"
+          }
+        },
+        "security": [],
+        "summary": "Verify email address",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Returns the health status of the API server",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Server is healthy"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server is unavailable"
+          }
+        },
+        "summary": "Health check",
+        "tags": [
+          "Monitoring"
+        ]
+      }
+    },
+    "/metrics": {
+      "get": {
+        "description": "Returns Prometheus-compatible metrics endpoint.",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Prometheus metrics"
+          }
+        },
+        "security": [],
+        "summary": "Prometheus metrics",
+        "tags": [
+          "Monitoring"
+        ]
+      }
+    },
+    "/users/me": {
+      "get": {
+        "description": "Returns the profile of the authenticated user.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "User profile"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Get current user",
+        "tags": [
+          "Users"
+        ]
+      },
+      "patch": {
+        "description": "Updates the profile of the authenticated user.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Profile updated"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Update current user",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/users/{username}": {
+      "get": {
+        "description": "Returns the public profile of any user by username.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "User profile"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "User not found"
+          }
+        },
+        "security": [],
+        "summary": "Get user profile",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/v1/admin/alerts": {
+      "get": {
+        "description": "Returns all active alerts across the platform (admin only).",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Alert"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "List of alerts"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Admin access required"
+          }
+        },
+        "summary": "List all alerts",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/admin/retention/cleanup": {
+      "post": {
+        "description": "Triggers an on-demand execution log cleanup (admin only).",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "job_id": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cleanup started"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Admin access required"
+          }
+        },
+        "summary": "Trigger cleanup",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/admin/security-events": {
+      "get": {
+        "description": "Returns paginated security events (admin only).",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedSecurityEvents"
+                }
+              }
+            },
+            "description": "List of security events"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Admin access required"
+          }
+        },
+        "summary": "List security events",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/ai/composer/generate": {
+      "post": {
+        "description": "Generates a new function from a natural language description using AI.\nThe generated function is returned as source code ready for review and publishing.\n",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "category": "notifications",
+                "description": "A function that sends an email via SendGrid",
+                "runtime": "node",
+                "tags": [
+                  "email",
+                  "notifications"
+                ]
+              },
+              "schema": {
+                "$ref": "#/components/schemas/AIGenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIGenerateResponse"
+                }
+              }
+            },
+            "description": "Generated function"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "Generate function (AI Composer)",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/ai/composer/generate/stream": {
+      "get": {
+        "description": "Streams the AI-generated function code as it is being written.\nUses Server-Sent Events (SSE) for real-time streaming.\n",
+        "parameters": [
+          {
+            "description": "Natural language description of the desired function",
+            "in": "query",
+            "name": "description",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Target runtime",
+            "in": "query",
+            "name": "runtime",
+            "schema": {
+              "default": "node",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Function category",
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Streaming function code"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          }
+        },
+        "summary": "Generate function with streaming",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/ai/health": {
+      "get": {
+        "description": "Returns the health status of the AI service backing the composer.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "model": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "AI service status"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "AI service unavailable"
+          }
+        },
+        "security": [],
+        "summary": "AI service health",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
+    "/v1/apikeys": {
+      "get": {
+        "description": "Returns all API keys for the authenticated user.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserAPIKey"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "List of API keys"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "List API keys",
+        "tags": [
+          "API Keys"
+        ]
+      },
+      "post": {
+        "description": "Creates a new API key for programmatic access.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAPIKeyUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAPIKeyCreated"
+                }
+              }
+            },
+            "description": "API key created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Create API key",
+        "tags": [
+          "API Keys"
+        ]
+      }
+    },
+    "/v1/apikeys/{key_id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "API key revoked"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Key not found"
+          }
+        },
+        "summary": "Revoke API key",
+        "tags": [
+          "API Keys"
+        ]
+      }
+    },
+    "/v1/billing/alerts": {
+      "get": {
+        "description": "Returns all configured usage alerts for the authenticated user.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UsageAlert"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "List of alerts"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "List usage alerts",
+        "tags": [
+          "Billing"
+        ]
+      },
+      "post": {
+        "description": "Creates a new usage alert to notify when a threshold is crossed.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUsageAlertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageAlert"
+                }
+              }
+            },
+            "description": "Alert created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Create usage alert",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/v1/billing/alerts/{alertId}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "alertId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Alert deleted"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Alert not found"
+          }
+        },
+        "summary": "Delete usage alert",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/v1/billing/cost-allocation": {
+      "get": {
+        "description": "Returns usage costs broken down by team, project, or function.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "group_by",
+            "schema": {
+              "enum": [
+                "team",
+                "project",
+                "function"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostAllocation"
+                }
+              }
+            },
+            "description": "Cost allocation breakdown"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Get cost allocation",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/v1/billing/export": {
+      "post": {
+        "description": "Initiates an asynchronous export of usage data to a downloadable file.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportResponse"
+                }
+              }
+            },
+            "description": "Export initiated"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Export usage data",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/v1/billing/export/{exportId}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exportId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportResponse"
+                }
+              }
+            },
+            "description": "Export status"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Export not found"
+          }
+        },
+        "summary": "Get export status",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/v1/billing/usage": {
+      "get": {
+        "description": "Returns the current billing period usage metrics for the authenticated user.",
+        "parameters": [
+          {
+            "description": "Billing period to query",
+            "in": "query",
+            "name": "period",
+            "schema": {
+              "default": "current",
+              "enum": [
+                "current",
+                "last"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageResponse"
+                }
+              }
+            },
+            "description": "Usage metrics"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Get usage",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/v1/billing/usage/forecast": {
+      "get": {
+        "description": "Predicts end-of-period usage based on current usage patterns.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "schema": {
+              "default": "current",
+              "enum": [
+                "current",
+                "last"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageForecastResponse"
+                }
+              }
+            },
+            "description": "Usage forecast"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Get usage forecast",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/v1/billing/wallet": {
+      "get": {
+        "description": "Returns the authenticated user's platform wallet with balance and earnings.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Wallet"
+                }
+              }
+            },
+            "description": "Wallet details"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Wallet service unavailable"
+          }
+        },
+        "summary": "Get wallet",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/v1/frg/execute": {
+      "post": {
+        "description": "Executes a function within the context of its runtime dependency graph.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "function_id": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "graph_scope": {
+                    "default": "full",
+                    "enum": [
+                      "full",
+                      "partial"
+                    ],
+                    "type": "string"
+                  },
+                  "input": {
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionResult"
+                }
+              }
+            },
+            "description": "Execution result"
+          }
+        },
+        "summary": "Execute with graph",
+        "tags": [
+          "FRG"
+        ]
+      }
+    },
+    "/v1/frg/graph": {
+      "get": {
+        "description": "Returns the live runtime dependency graph for a function or app.",
+        "parameters": [
+          {
+            "description": "Graph scope",
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "enum": [
+                "function",
+                "app"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeGraph"
+                }
+              }
+            },
+            "description": "Runtime graph"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Entity not found"
+          }
+        },
+        "summary": "Get Function Runtime Graph",
+        "tags": [
+          "FRG"
+        ]
+      }
+    },
+    "/v1/frg/webhook": {
+      "post": {
+        "description": "Registers a webhook callback for FRG execution events.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FRGWebhookRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FRGWebhook"
+                }
+              }
+            },
+            "description": "Webhook registered"
+          }
+        },
+        "summary": "Register FRG webhook",
+        "tags": [
+          "FRG"
+        ]
+      }
+    },
+    "/v1/functions/{functionId}/versions": {
+      "get": {
+        "description": "Returns all versions for a function identified by its UUID.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "functionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionVersion"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "List of versions"
+          }
+        },
+        "summary": "List function versions by ID",
+        "tags": [
+          "Versions"
+        ]
+      }
+    },
+    "/v1/functions/{functionId}/versions/{version}": {
+      "get": {
+        "description": "Returns the details of a specific function version.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "functionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionVersionDetail"
+                }
+              }
+            },
+            "description": "Version details"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Version not found"
+          }
+        },
+        "summary": "Get function version",
+        "tags": [
+          "Versions"
+        ]
+      }
+    },
+    "/v1/monitoring/metrics": {
+      "get": {
+        "description": "Returns Prometheus-formatted metrics for the platform.",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Prometheus metrics"
+          }
+        },
+        "security": [],
+        "summary": "Get metrics",
+        "tags": [
+          "Monitoring"
+        ]
+      }
+    },
+    "/v1/monitoring/status": {
+      "get": {
+        "description": "Returns the current operational status of all platform components.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            },
+            "description": "System status"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            },
+            "description": "Some components are unhealthy"
+          }
+        },
+        "security": [],
+        "summary": "Get system status",
+        "tags": [
+          "Monitoring"
+        ]
+      }
+    },
+    "/v1/notifications": {
+      "get": {
+        "description": "Returns the authenticated user's notifications.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedNotifications"
+                }
+              }
+            },
+            "description": "List of notifications"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "List notifications",
+        "tags": [
+          "Notifications"
+        ]
+      },
+      "ws": {
+        "get": {
+          "description": "Establishes a WebSocket connection for real-time push notifications.\nUse the `Authorization` header with the Bearer token to authenticate.\n",
+          "responses": {
+            "101": {
+              "description": "WebSocket upgrade successful"
+            },
+            "401": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              },
+              "description": "Authentication failed"
+            }
+          },
+          "summary": "WebSocket for real-time notifications",
+          "tags": [
+            "Notifications"
+          ]
+        }
+      }
+    },
+    "/v1/partners": {
+      "get": {
+        "description": "Lists all partners the authenticated user manages.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Partner"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "List of partners"
+          }
+        },
+        "summary": "List partners",
+        "tags": [
+          "Partners"
+        ]
+      },
+      "post": {
+        "description": "Creates a new partner account for platform integration.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePartnerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Partner"
+                }
+              }
+            },
+            "description": "Partner created"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Partner with this name already exists"
+          }
+        },
+        "security": [],
+        "summary": "Create partner",
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/v1/partners/{partner_id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Partner"
+                }
+              }
+            },
+            "description": "Partner details"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Partner not found"
+          }
+        },
+        "summary": "Get partner",
+        "tags": [
+          "Partners"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePartnerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Partner"
+                }
+              }
+            },
+            "description": "Partner updated"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Partner not found"
+          }
+        },
+        "summary": "Update partner",
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/v1/partners/{partner_id}/api-keys": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/APIKey"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "List of API keys"
+          }
+        },
+        "summary": "List API keys",
+        "tags": [
+          "Partners"
+        ]
+      },
+      "post": {
+        "description": "Creates a new API key for a partner account.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAPIKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIKeyCreated"
+                }
+              }
+            },
+            "description": "API key created"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authorized"
+          }
+        },
+        "summary": "Create API key",
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/v1/partners/{partner_id}/api-keys/{key_id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "API key revoked"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Key not found"
+          }
+        },
+        "summary": "Revoke API key",
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/v1/partners/{partner_id}/usage": {
+      "get": {
+        "description": "Returns usage metrics for a specific partner.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "schema": {
+              "enum": [
+                "current",
+                "last"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerUsage"
+                }
+              }
+            },
+            "description": "Partner usage"
+          }
+        },
+        "summary": "Get partner usage",
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/v1/privacy/delete": {
+      "delete": {
+        "description": "Requests GDPR account deletion. All personal data is purged after the retention period.",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "deletion_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "scheduled_at": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Deletion requested"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Request account deletion",
+        "tags": [
+          "Privacy"
+        ]
+      }
+    },
+    "/v1/privacy/export": {
+      "post": {
+        "description": "Requests a GDPR data export for the authenticated user.",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "export_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Export requested"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Request data export",
+        "tags": [
+          "Privacy"
+        ]
+      }
+    },
+    "/v1/registry/functions": {
+      "delete": {
+        "description": "Deletes all functions owned by the authenticated user.",
+        "responses": {
+          "204": {
+            "description": "All functions deleted"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Delete all functions",
+        "tags": [
+          "Functions"
+        ]
+      },
+      "get": {
+        "description": "Returns a paginated list of all public functions in the registry.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
+          },
+          {
+            "description": "Filter by category",
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by runtime (node, python, go, rust, wasm)",
+            "in": "query",
+            "name": "runtime",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Full-text search query",
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "default": "downloads",
+              "enum": [
+                "downloads",
+                "rating",
+                "created_at",
+                "updated_at"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedFunctions"
+                }
+              }
+            },
+            "description": "List of functions"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid query parameters"
+          }
+        },
+        "security": [],
+        "summary": "List functions",
+        "tags": [
+          "Functions"
+        ]
+      }
+    },
+    "/v1/registry/functions/{author}/{name}": {
+      "delete": {
+        "description": "Deletes a function and all its versions. Requires ownership.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Author"
+          },
+          {
+            "$ref": "#/components/parameters/FunctionName"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Function deleted"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not the function owner"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Function not found"
+          }
+        },
+        "summary": "Delete function",
+        "tags": [
+          "Functions"
+        ]
+      },
+      "get": {
+        "description": "Returns the details of a specific function including its manifest and metadata.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Author"
+          },
+          {
+            "$ref": "#/components/parameters/FunctionName"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionDetail"
+                }
+              }
+            },
+            "description": "Function details"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Function not found"
+          }
+        },
+        "security": [],
+        "summary": "Get function",
+        "tags": [
+          "Functions"
+        ]
+      }
+    },
+    "/v1/registry/functions/{author}/{name}/ai-schema": {
+      "get": {
+        "description": "Returns the function's parameter schema in OpenAI's function calling format.\nUse this endpoint to populate the `tools` parameter when calling GPT-4 or Claude.\n",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Author"
+          },
+          {
+            "$ref": "#/components/parameters/FunctionName"
+          },
+          {
+            "description": "Specific version to get schema for",
+            "in": "query",
+            "name": "version",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "description": "Get the current weather for a location",
+                  "name": "get_weather",
+                  "parameters": {
+                    "properties": {
+                      "location": {
+                        "description": "City name",
+                        "type": "string"
+                      },
+                      "unit": {
+                        "enum": [
+                          "celsius",
+                          "fahrenheit"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "location"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/AISchema"
+                }
+              }
+            },
+            "description": "OpenAI-compatible function schema"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Function not found"
+          }
+        },
+        "security": [],
+        "summary": "Get OpenAI function schema",
+        "tags": [
+          "Functions",
+          "AI"
+        ]
+      }
+    },
+    "/v1/registry/functions/{author}/{name}/versions": {
+      "get": {
+        "description": "Returns all published versions of a function.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Author"
+          },
+          {
+            "$ref": "#/components/parameters/FunctionName"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FunctionVersion"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "List of versions"
+          }
+        },
+        "security": [],
+        "summary": "List function versions",
+        "tags": [
+          "Versions"
+        ]
+      }
+    },
+    "/v1/registry/search": {
+      "get": {
+        "description": "Full-text and semantic search across the function registry.",
+        "parameters": [
+          {
+            "description": "Search query",
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "runtime",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "default": "relevance",
+              "enum": [
+                "relevance",
+                "downloads",
+                "rating"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedFunctions"
+                }
+              }
+            },
+            "description": "Search results"
+          }
+        },
+        "security": [],
+        "summary": "Search functions",
+        "tags": [
+          "Functions"
+        ]
+      }
+    },
+    "/v1/run/{appSlug}/{functionName}/execute": {
+      "post": {
+        "description": "Executes a function belonging to a specific app (organization).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appSlug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "functionName",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionResult"
+                }
+              }
+            },
+            "description": "Execution result"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Function not found"
+          }
+        },
+        "security": [],
+        "summary": "Execute app function",
+        "tags": [
+          "Playground"
+        ]
+      }
+    },
+    "/v1/run/{author}/{name}/execute": {
+      "post": {
+        "description": "Executes a function with the provided input parameters and returns the result.\nSupports streaming responses for long-running functions via the `Accept: text/event-stream` header.\n",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Author"
+          },
+          {
+            "$ref": "#/components/parameters/FunctionName"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Function input parameters (schema defined in function manifest)",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionResult"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Execution result"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Function not found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          }
+        },
+        "security": [],
+        "summary": "Execute function",
+        "tags": [
+          "Playground"
+        ]
+      }
+    },
+    "/v1/state/{key}": {
+      "get": {
+        "description": "Returns the current value for a state key.",
+        "parameters": [
+          {
+            "description": "State key (dot-separated, e.g. `user.123.preferences.theme`)",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateValue"
+                }
+              }
+            },
+            "description": "State value"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Key not found"
+          }
+        },
+        "summary": "Get state value",
+        "tags": [
+          "State"
+        ]
+      },
+      "put": {
+        "description": "Sets a value for a state key with optional TTL.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StateValueCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateValue"
+                }
+              }
+            },
+            "description": "State value set"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid value"
+          }
+        },
+        "summary": "Set state value",
+        "tags": [
+          "State"
+        ]
+      }
+    },
+    "/v1/state/{key}/history": {
+      "get": {
+        "description": "Returns the change history for a state key.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StateHistoryEntry"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "State history"
+          }
+        },
+        "summary": "Get state history",
+        "tags": [
+          "State"
+        ]
+      }
+    },
+    "/v1/teams": {
+      "get": {
+        "description": "Returns all teams the authenticated user belongs to.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Team"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "List of teams"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "List teams",
+        "tags": [
+          "Teams"
+        ]
+      },
+      "post": {
+        "description": "Creates a new team or organization.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTeamRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Team"
+                }
+              }
+            },
+            "description": "Team created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Team name already taken"
+          }
+        },
+        "summary": "Create team",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/v1/teams/{team_id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Team"
+                }
+              }
+            },
+            "description": "Team details"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Team not found"
+          }
+        },
+        "summary": "Get team",
+        "tags": [
+          "Teams"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTeamRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Team"
+                }
+              }
+            },
+            "description": "Team updated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authorized"
+          }
+        },
+        "summary": "Update team",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/v1/teams/{team_id}/members": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TeamMember"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "List of team members"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Team not found"
+          }
+        },
+        "summary": "List team members",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/v1/teams/{team_id}/members/{user_id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "team_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Member removed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authorized"
+          }
+        },
+        "summary": "Remove team member",
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/v1/trust/attestations": {
+      "get": {
+        "description": "Returns all valid attestations for the authenticated partner's functions.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedAttestations"
+                }
+              }
+            },
+            "description": "List of attestations"
+          }
+        },
+        "summary": "List attestations",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/attestations/{attestation_id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attestation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attestation"
+                }
+              }
+            },
+            "description": "Attestation details"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Attestation not found"
+          }
+        },
+        "summary": "Get attestation",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/attestations/{attestation_id}/verify": {
+      "get": {
+        "description": "Verifies the cryptographic authenticity of an attestation.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attestation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "details": {
+                      "type": "string"
+                    },
+                    "valid": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Attestation verification result"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Attestation not found"
+          }
+        },
+        "summary": "Verify attestation",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/attestations/{function_id}/chain": {
+      "get": {
+        "description": "Returns the full attestation chain (origin → platform → partner signatures) for a function.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "function_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationChain"
+                }
+              }
+            },
+            "description": "Full attestation chain"
+          }
+        },
+        "summary": "Get attestation chain",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/batch": {
+      "post": {
+        "description": "Returns trust scores for multiple functions in a single request.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "function_ids": {
+                    "items": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "function_ids"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "scores": {
+                      "items": {
+                        "$ref": "#/components/schemas/TrustScore"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Batch trust scores"
+          }
+        },
+        "summary": "Batch trust scores",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/history/{function_id}": {
+      "get": {
+        "description": "Returns historical trust score data for a function.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "function_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "schema": {
+              "default": "30d",
+              "enum": [
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "function_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "history": {
+                      "items": {
+                        "$ref": "#/components/schemas/TrustScore"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Trust score history"
+          }
+        },
+        "summary": "Get trust history",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/report": {
+      "post": {
+        "description": "Submits a report against a function (vulnerability, policy violation, etc.).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrustReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "report_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Report submitted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid report"
+          }
+        },
+        "summary": "Submit trust report",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/revoke": {
+      "post": {
+        "description": "Revokes trust for a function (admin/authorized partner only).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Revocation"
+                }
+              }
+            },
+            "description": "Trust revoked"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authorized to revoke"
+          }
+        },
+        "summary": "Revoke trust",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/revoke/revoked": {
+      "get": {
+        "description": "Returns all active trust revocations.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Offset"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedRevocations"
+                }
+              }
+            },
+            "description": "List of revocations"
+          }
+        },
+        "summary": "List revocations",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/revoke/revoked/{function_id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "function_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "revocation": {
+                      "$ref": "#/components/schemas/Revocation"
+                    },
+                    "revoked": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Revocation status"
+          }
+        },
+        "summary": "Check if function is revoked",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/revoke/{revocation_id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revocation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Revocation"
+                }
+              }
+            },
+            "description": "Revocation details"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Revocation not found"
+          }
+        },
+        "summary": "Get revocation",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/revoke/{revocation_id}/lift": {
+      "post": {
+        "description": "Lifts (unrevokes) a previously revoked function.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revocation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Revocation"
+                }
+              }
+            },
+            "description": "Revocation lifted"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authorized"
+          }
+        },
+        "summary": "Lift revocation",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/score/{function_id}": {
+      "get": {
+        "description": "Returns the trust score and level for a function.",
+        "parameters": [
+          {
+            "description": "Function ID to query",
+            "in": "path",
+            "name": "function_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrustScore"
+                }
+              }
+            },
+            "description": "Trust score"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Function not found"
+          }
+        },
+        "summary": "Get trust score",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/verify": {
+      "post": {
+        "description": "Submits a function for trust verification (container scan, policy check).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "check_types": {
+                    "description": "Types of verification to perform",
+                    "items": {
+                      "enum": [
+                        "container",
+                        "policy",
+                        "semantic",
+                        "behavior"
+                      ],
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "function_id": {
+                    "format": "uuid",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "function_id"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "verification_id": {
+                      "format": "uuid",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Verification started"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Submit for verification",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/trust/verify/{verification_id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "verification_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationStatus"
+                }
+              }
+            },
+            "description": "Verification status"
+          }
+        },
+        "summary": "Get verification status",
+        "tags": [
+          "Trust"
+        ]
+      }
+    },
+    "/v1/vault/keys": {
+      "get": {
+        "description": "Returns metadata for all keys in the authenticated user's vault (values are never returned).",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VaultKey"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "List of vault keys"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "List vault keys",
+        "tags": [
+          "Vault"
+        ]
+      },
+      "post": {
+        "description": "Stores a new secret in the vault. The secret is encrypted client-side with AES-256-GCM\nbefore being sent to the server. The server never sees the plaintext or the passphrase.\n",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VaultKeyCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaultKey"
+                }
+              }
+            },
+            "description": "Secret stored"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "summary": "Store secret",
+        "tags": [
+          "Vault"
+        ]
+      }
+    },
+    "/v1/vault/keys/{key_id}": {
+      "delete": {
+        "description": "Permanently deletes a vault key.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Key deleted"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Key not found"
+          }
+        },
+        "summary": "Delete vault key",
+        "tags": [
+          "Vault"
+        ]
+      },
+      "get": {
+        "description": "Returns metadata for a specific vault key (not the value).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaultKey"
+                }
+              }
+            },
+            "description": "Vault key metadata"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Key not found"
+          }
+        },
+        "summary": "Get vault key metadata",
+        "tags": [
+          "Vault"
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    },
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "description": "Production server",
+      "url": "https://api.functionfly.com"
+    },
+    {
+      "description": "Staging server",
+      "url": "https://api.staging.functionfly.com"
+    },
+    {
+      "description": "Local development server",
+      "url": "http://localhost:8080"
+    }
+  ],
+  "tags": [
+    {
+      "description": "Authentication, sessions, and token management",
+      "name": "Auth"
+    },
+    {
+      "description": "User profiles and settings",
+      "name": "Users"
+    },
+    {
+      "description": "Function registry, search, and execution",
+      "name": "Functions"
+    },
+    {
+      "description": "Function version management",
+      "name": "Versions"
+    },
+    {
+      "description": "Interactive function execution playground",
+      "name": "Playground"
+    },
+    {
+      "description": "AI-powered function generation and composition",
+      "name": "AI"
+    },
+    {
+      "description": "Usage tracking, billing, and wallet management",
+      "name": "Billing"
+    },
+    {
+      "description": "Team and organization management",
+      "name": "Teams"
+    },
+    {
+      "description": "Partner trust scores, attestations, and revocation",
+      "name": "Trust"
+    },
+    {
+      "description": "Partner API key and quota management",
+      "name": "Partners"
+    },
+    {
+      "description": "Encrypted secrets vault",
+      "name": "Vault"
+    },
+    {
+      "description": "Distributed state fabric",
+      "name": "State"
+    },
+    {
+      "description": "Metrics, alerts, and system health",
+      "name": "Monitoring"
+    },
+    {
+      "description": "Administrative operations",
+      "name": "Admin"
+    }
+  ]
+}

@@ -1,0 +1,3876 @@
+openapi: 3.0.3
+info:
+  title: FunctionFly Platform API
+  description: |
+    FunctionFly is a function registry and execution platform with AI composition capabilities.
+
+    ## Authentication
+
+    This API supports two authentication methods:
+
+    - **Bearer Token** (JWT): Obtain via `POST /auth/login` or `POST /auth/signup`
+    - **API Key** (Partners): Obtain via `POST /v1/partners/{partner_id}/api-keys`
+
+    ## OpenAI Compatibility
+
+    FunctionFly is designed to work seamlessly with OpenAI's function calling:
+
+    - **Tool Schema**: `GET /registry/functions/{author}/{name}/ai-schema` returns JSON Schema
+      compatible with OpenAI's `tools` parameter format
+    - **AI Composer**: `POST /ai/composer/generate` and `GET /ai/composer/generate/stream` for
+      AI-powered function generation
+    - **Streaming**: Server-Sent Events (SSE) streaming responses where indicated
+
+    ## Rate Limits
+
+    Different endpoints have different rate limits:
+    - Public endpoints: 60 requests/minute
+    - Authenticated endpoints: 300 requests/minute
+    - Partner API endpoints: 1000 requests/minute
+
+  version: 1.0.0
+  contact:
+    email: contact@functionfly.com
+  license:
+    name: Proprietary
+    url: https://functionfly.com/terms
+
+servers:
+  - url: https://api.functionfly.com
+    description: Production server
+  - url: https://api.staging.functionfly.com
+    description: Staging server
+  - url: http://localhost:8080
+    description: Local development server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication, sessions, and token management
+  - name: Users
+    description: User profiles and settings
+  - name: Functions
+    description: Function registry, search, and execution
+  - name: Versions
+    description: Function version management
+  - name: Playground
+    description: Interactive function execution playground
+  - name: AI
+    description: AI-powered function generation and composition
+  - name: Billing
+    description: Usage tracking, billing, and wallet management
+  - name: Teams
+    description: Team and organization management
+  - name: Trust
+    description: Partner trust scores, attestations, and revocation
+  - name: Partners
+    description: Partner API key and quota management
+  - name: Vault
+    description: Encrypted secrets vault
+  - name: State
+    description: Distributed state fabric
+  - name: Monitoring
+    description: Metrics, alerts, and system health
+  - name: Admin
+    description: Administrative operations
+
+paths:
+  /health:
+    get:
+      tags:
+        - Monitoring
+      summary: Health check
+      description: Returns the health status of the API server
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Server is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: User login
+      description: |
+        Authenticates a user with email/password and returns JWT tokens.
+        Tokens are valid for the duration specified in `expires_in`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: user@example.com
+              password: secret123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/signup:
+    post:
+      tags:
+        - Auth
+      summary: User registration
+      description: |
+        Creates a new user account. Sends a verification email to the provided address.
+        The account is activated after email verification.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+            example:
+              email: user@example.com
+              username: newuser
+              password: secret123
+              invite_code: optional-code
+      responses:
+        '201':
+          description: Account created, verification email sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '409':
+          description: Email or username already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Refresh access token
+      description: |
+        Exchanges a valid refresh token for a new access token.
+        The old refresh token is invalidated after use.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/verify-email:
+    get:
+      tags:
+        - Auth
+      summary: Verify email address
+      description: |
+        Verifies a user's email address using a token sent to their email.
+        Redirects to the dashboard on success.
+      security: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Verification token from email link
+      responses:
+        '302':
+          description: Redirect to dashboard on success
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/password-reset:
+    post:
+      tags:
+        - Auth
+      summary: Request password reset
+      description: Sends a password reset email to the user's registered address.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Reset email sent if account exists
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/password-reset/confirm:
+    post:
+      tags:
+        - Auth
+      summary: Confirm password reset
+      description: Sets a new password using a valid reset token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+      responses:
+        '200':
+          description: Password updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Invalid or expired reset token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/mfa/setup:
+    post:
+      tags:
+        - Auth
+      summary: Setup MFA
+      description: Generates a new TOTP secret for MFA enrollment. Call `verify` after scanning the QR code.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - method
+              properties:
+                method:
+                  type: string
+                  enum: [totp, webauthn]
+                  default: totp
+      responses:
+        '200':
+          description: MFA secret generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MFASetupResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/mfa/verify:
+    post:
+      tags:
+        - Auth
+      summary: Verify MFA code
+      description: Verifies the TOTP code to complete MFA enrollment or verification.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFAVerifyRequest'
+      responses:
+        '200':
+          description: MFA verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MFASetupResponse'
+        '401':
+          description: Invalid MFA code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/mfa/enable:
+    post:
+      tags:
+        - Auth
+      summary: Enable MFA
+      description: Enables MFA for the authenticated user after successful verification.
+      responses:
+        '200':
+          description: MFA enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                    example: true
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/mfa/disable:
+    post:
+      tags:
+        - Auth
+      summary: Disable MFA
+      description: Disables MFA for the authenticated user. Requires current MFA code.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFAVerifyRequest'
+      responses:
+        '200':
+          description: MFA disabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                    example: false
+        '401':
+          description: Invalid MFA code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/mfa/status:
+    get:
+      tags:
+        - Auth
+      summary: Get MFA status
+      description: Returns the current MFA enrollment status for the authenticated user.
+      responses:
+        '200':
+          description: MFA status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MFAStatusResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/oauth/providers:
+    get:
+      tags:
+        - Auth
+      summary: List OAuth providers
+      description: Returns the list of supported OAuth providers for social login.
+      security: []
+      responses:
+        '200':
+          description: List of OAuth providers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OAuthProvider'
+
+  /auth/oauth/url:
+    get:
+      tags:
+        - Auth
+      summary: Get OAuth authorization URL
+      description: Returns the authorization URL for the specified OAuth provider.
+      security: []
+      parameters:
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [github, google, discord, twitter]
+        - name: redirect_uri
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Post-authentication redirect URI
+      responses:
+        '200':
+          description: Authorization URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    format: uri
+        '400':
+          description: Invalid provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/oauth/{provider}/callback:
+    get:
+      tags:
+        - Auth
+      summary: OAuth callback
+      description: Handles the OAuth callback from the identity provider.
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [github, google, discord, twitter]
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OAuth authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: OAuth authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Logout
+      description: Invalidates the current session and refresh token.
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: logged out
+
+  /auth/api-key:
+    post:
+      tags:
+        - Auth
+      summary: Authenticate with API key
+      description: |
+        Validates a platform API key and returns a short-lived JWT for programmatic access.
+        Use this endpoint to obtain tokens for CI/CD pipelines and automated workflows.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_key
+              properties:
+                api_key:
+                  type: string
+                  description: Platform API key (ff_live_...)
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: Get current user
+      description: Returns the profile of the authenticated user.
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      tags:
+        - Users
+      summary: Update current user
+      description: Updates the profile of the authenticated user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{username}:
+    get:
+      tags:
+        - Users
+      summary: Get user profile
+      description: Returns the public profile of any user by username.
+      security: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/registry/functions:
+    get:
+      tags:
+        - Functions
+      summary: List functions
+      description: Returns a paginated list of all public functions in the registry.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category
+        - name: runtime
+          in: query
+          schema:
+            type: string
+          description: Filter by runtime (node, python, go, rust, wasm)
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Full-text search query
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [downloads, rating, created_at, updated_at]
+            default: downloads
+      responses:
+        '200':
+          description: List of functions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFunctions'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Functions
+      summary: Delete all functions
+      description: Deletes all functions owned by the authenticated user.
+      responses:
+        '204':
+          description: All functions deleted
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/registry/functions/{author}/{name}:
+    get:
+      tags:
+        - Functions
+      summary: Get function
+      description: Returns the details of a specific function including its manifest and metadata.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Author'
+        - $ref: '#/components/parameters/FunctionName'
+      responses:
+        '200':
+          description: Function details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionDetail'
+        '404':
+          description: Function not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Functions
+      summary: Delete function
+      description: Deletes a function and all its versions. Requires ownership.
+      parameters:
+        - $ref: '#/components/parameters/Author'
+        - $ref: '#/components/parameters/FunctionName'
+      responses:
+        '204':
+          description: Function deleted
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not the function owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Function not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/registry/functions/{author}/{name}/ai-schema:
+    get:
+      tags:
+        - Functions
+        - AI
+      summary: Get OpenAI function schema
+      description: |
+        Returns the function's parameter schema in OpenAI's function calling format.
+        Use this endpoint to populate the `tools` parameter when calling GPT-4 or Claude.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Author'
+        - $ref: '#/components/parameters/FunctionName'
+        - name: version
+          in: query
+          description: Specific version to get schema for
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OpenAI-compatible function schema
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AISchema'
+              example:
+                name: get_weather
+                description: Get the current weather for a location
+                parameters:
+                  type: object
+                  properties:
+                    location:
+                      type: string
+                      description: City name
+                    unit:
+                      type: string
+                      enum: [celsius, fahrenheit]
+                  required: [location]
+        '404':
+          description: Function not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/registry/functions/{author}/{name}/versions:
+    get:
+      tags:
+        - Versions
+      summary: List function versions
+      description: Returns all published versions of a function.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Author'
+        - $ref: '#/components/parameters/FunctionName'
+      responses:
+        '200':
+          description: List of versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FunctionVersion'
+
+  /v1/registry/search:
+    get:
+      tags:
+        - Functions
+      summary: Search functions
+      description: Full-text and semantic search across the function registry.
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: runtime
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [relevance, downloads, rating]
+            default: relevance
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFunctions'
+
+  /v1/functions/{functionId}/versions:
+    get:
+      tags:
+        - Versions
+      summary: List function versions by ID
+      description: Returns all versions for a function identified by its UUID.
+      parameters:
+        - name: functionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FunctionVersion'
+
+  /v1/functions/{functionId}/versions/{version}:
+    get:
+      tags:
+        - Versions
+      summary: Get function version
+      description: Returns the details of a specific function version.
+      parameters:
+        - name: functionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Version details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionVersionDetail'
+        '404':
+          description: Version not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/run/{author}/{name}/execute:
+    post:
+      tags:
+        - Playground
+      summary: Execute function
+      description: |
+        Executes a function with the provided input parameters and returns the result.
+        Supports streaming responses for long-running functions via the `Accept: text/event-stream` header.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Author'
+        - $ref: '#/components/parameters/FunctionName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Function input parameters (schema defined in function manifest)
+      responses:
+        '200':
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResult'
+            text/event-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Function not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/run/{appSlug}/{functionName}/execute:
+    post:
+      tags:
+        - Playground
+      summary: Execute app function
+      description: Executes a function belonging to a specific app (organization).
+      security: []
+      parameters:
+        - name: appSlug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: functionName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResult'
+        '404':
+          description: Function not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/ai/composer/generate:
+    post:
+      tags:
+        - AI
+      summary: Generate function (AI Composer)
+      description: |
+        Generates a new function from a natural language description using AI.
+        The generated function is returned as source code ready for review and publishing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIGenerateRequest'
+            example:
+              description: A function that sends an email via SendGrid
+              runtime: node
+              category: notifications
+              tags: [email, notifications]
+      responses:
+        '200':
+          description: Generated function
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIGenerateResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/ai/composer/generate/stream:
+    get:
+      tags:
+        - AI
+      summary: Generate function with streaming
+      description: |
+        Streams the AI-generated function code as it is being written.
+        Uses Server-Sent Events (SSE) for real-time streaming.
+      parameters:
+        - name: description
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Natural language description of the desired function
+        - name: runtime
+          in: query
+          schema:
+            type: string
+            default: node
+          description: Target runtime
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Function category
+      responses:
+        '200':
+          description: Streaming function code
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/ai/health:
+    get:
+      tags:
+        - AI
+      summary: AI service health
+      description: Returns the health status of the AI service backing the composer.
+      security: []
+      responses:
+        '200':
+          description: AI service status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  model:
+                    type: string
+        '503':
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/billing/wallet:
+    get:
+      tags:
+        - Billing
+      summary: Get wallet
+      description: Returns the authenticated user's platform wallet with balance and earnings.
+      responses:
+        '200':
+          description: Wallet details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Wallet service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/billing/usage:
+    get:
+      tags:
+        - Billing
+      summary: Get usage
+      description: Returns the current billing period usage metrics for the authenticated user.
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [current, last]
+            default: current
+          description: Billing period to query
+      responses:
+        '200':
+          description: Usage metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/billing/usage/forecast:
+    get:
+      tags:
+        - Billing
+      summary: Get usage forecast
+      description: Predicts end-of-period usage based on current usage patterns.
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [current, last]
+            default: current
+      responses:
+        '200':
+          description: Usage forecast
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageForecastResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/billing/alerts:
+    get:
+      tags:
+        - Billing
+      summary: List usage alerts
+      description: Returns all configured usage alerts for the authenticated user.
+      responses:
+        '200':
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsageAlert'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Billing
+      summary: Create usage alert
+      description: Creates a new usage alert to notify when a threshold is crossed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUsageAlertRequest'
+      responses:
+        '201':
+          description: Alert created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageAlert'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/billing/alerts/{alertId}:
+    delete:
+      tags:
+        - Billing
+      summary: Delete usage alert
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Alert deleted
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Alert not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/billing/export:
+    post:
+      tags:
+        - Billing
+      summary: Export usage data
+      description: Initiates an asynchronous export of usage data to a downloadable file.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+      responses:
+        '202':
+          description: Export initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/billing/export/{exportId}:
+    get:
+      tags:
+        - Billing
+      summary: Get export status
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Export status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Export not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/billing/cost-allocation:
+    get:
+      tags:
+        - Billing
+      summary: Get cost allocation
+      description: Returns usage costs broken down by team, project, or function.
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+        - name: group_by
+          in: query
+          schema:
+            type: string
+            enum: [team, project, function]
+      responses:
+        '200':
+          description: Cost allocation breakdown
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostAllocation'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/trust/score/{function_id}:
+    get:
+      tags:
+        - Trust
+      summary: Get trust score
+      description: Returns the trust score and level for a function.
+      parameters:
+        - name: function_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Function ID to query
+      responses:
+        '200':
+          description: Trust score
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustScore'
+        '404':
+          description: Function not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/trust/batch:
+    post:
+      tags:
+        - Trust
+      summary: Batch trust scores
+      description: Returns trust scores for multiple functions in a single request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - function_ids
+              properties:
+                function_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  maxItems: 100
+      responses:
+        '200':
+          description: Batch trust scores
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scores:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TrustScore'
+
+  /v1/trust/history/{function_id}:
+    get:
+      tags:
+        - Trust
+      summary: Get trust history
+      description: Returns historical trust score data for a function.
+      parameters:
+        - name: function_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
+            default: 30d
+      responses:
+        '200':
+          description: Trust score history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  function_id:
+                    type: string
+                    format: uuid
+                  history:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TrustScore'
+
+  /v1/trust/verify:
+    post:
+      tags:
+        - Trust
+      summary: Submit for verification
+      description: Submits a function for trust verification (container scan, policy check).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - function_id
+              properties:
+                function_id:
+                  type: string
+                  format: uuid
+                check_types:
+                  type: array
+                  items:
+                    type: string
+                    enum: [container, policy, semantic, behavior]
+                  description: Types of verification to perform
+      responses:
+        '202':
+          description: Verification started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verification_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/trust/verify/{verification_id}:
+    get:
+      tags:
+        - Trust
+      summary: Get verification status
+      parameters:
+        - name: verification_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Verification status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationStatus'
+
+  /v1/trust/report:
+    post:
+      tags:
+        - Trust
+      summary: Submit trust report
+      description: Submits a report against a function (vulnerability, policy violation, etc.).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrustReportRequest'
+      responses:
+        '201':
+          description: Report submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report_id:
+                    type: string
+                    format: uuid
+        '400':
+          description: Invalid report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/trust/attestations:
+    get:
+      tags:
+        - Trust
+      summary: List attestations
+      description: Returns all valid attestations for the authenticated partner's functions.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: List of attestations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAttestations'
+
+  /v1/trust/attestations/{attestation_id}:
+    get:
+      tags:
+        - Trust
+      summary: Get attestation
+      parameters:
+        - name: attestation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Attestation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attestation'
+        '404':
+          description: Attestation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/trust/attestations/{attestation_id}/verify:
+    get:
+      tags:
+        - Trust
+      summary: Verify attestation
+      description: Verifies the cryptographic authenticity of an attestation.
+      parameters:
+        - name: attestation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Attestation verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  details:
+                    type: string
+        '404':
+          description: Attestation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/trust/attestations/{function_id}/chain:
+    get:
+      tags:
+        - Trust
+      summary: Get attestation chain
+      description: Returns the full attestation chain (origin → platform → partner signatures) for a function.
+      parameters:
+        - name: function_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Full attestation chain
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttestationChain'
+
+  /v1/trust/revoke:
+    post:
+      tags:
+        - Trust
+      summary: Revoke trust
+      description: Revokes trust for a function (admin/authorized partner only).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeRequest'
+      responses:
+        '201':
+          description: Trust revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revocation'
+        '403':
+          description: Not authorized to revoke
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/trust/revoke/revoked:
+    get:
+      tags:
+        - Trust
+      summary: List revocations
+      description: Returns all active trust revocations.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: List of revocations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRevocations'
+
+  /v1/trust/revoke/revoked/{function_id}:
+    get:
+      tags:
+        - Trust
+      summary: Check if function is revoked
+      parameters:
+        - name: function_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Revocation status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revoked:
+                    type: boolean
+                  revocation:
+                    $ref: '#/components/schemas/Revocation'
+
+  /v1/trust/revoke/{revocation_id}:
+    get:
+      tags:
+        - Trust
+      summary: Get revocation
+      parameters:
+        - name: revocation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Revocation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revocation'
+        '404':
+          description: Revocation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/trust/revoke/{revocation_id}/lift:
+    post:
+      tags:
+        - Trust
+      summary: Lift revocation
+      description: Lifts (unrevokes) a previously revoked function.
+      parameters:
+        - name: revocation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Revocation lifted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revocation'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/partners:
+    post:
+      tags:
+        - Partners
+      summary: Create partner
+      description: Creates a new partner account for platform integration.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePartnerRequest'
+      responses:
+        '201':
+          description: Partner created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Partner'
+        '409':
+          description: Partner with this name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Partners
+      summary: List partners
+      description: Lists all partners the authenticated user manages.
+      responses:
+        '200':
+          description: List of partners
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Partner'
+
+  /v1/partners/{partner_id}:
+    get:
+      tags:
+        - Partners
+      summary: Get partner
+      parameters:
+        - name: partner_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Partner details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Partner'
+        '404':
+          description: Partner not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      tags:
+        - Partners
+      summary: Update partner
+      parameters:
+        - name: partner_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePartnerRequest'
+      responses:
+        '200':
+          description: Partner updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Partner'
+        '404':
+          description: Partner not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/partners/{partner_id}/usage:
+    get:
+      tags:
+        - Partners
+      summary: Get partner usage
+      description: Returns usage metrics for a specific partner.
+      parameters:
+        - name: partner_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [current, last]
+      responses:
+        '200':
+          description: Partner usage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerUsage'
+
+  /v1/partners/{partner_id}/api-keys:
+    post:
+      tags:
+        - Partners
+      summary: Create API key
+      description: Creates a new API key for a partner account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAPIKeyRequest'
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIKeyCreated'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Partners
+      summary: List API keys
+      parameters:
+        - name: partner_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/APIKey'
+
+  /v1/partners/{partner_id}/api-keys/{key_id}:
+    delete:
+      tags:
+        - Partners
+      summary: Revoke API key
+      parameters:
+        - name: partner_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: key_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: API key revoked
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/teams:
+    get:
+      tags:
+        - Teams
+      summary: List teams
+      description: Returns all teams the authenticated user belongs to.
+      responses:
+        '200':
+          description: List of teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Team'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Teams
+      summary: Create team
+      description: Creates a new team or organization.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeamRequest'
+      responses:
+        '201':
+          description: Team created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Team name already taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/teams/{team_id}:
+    get:
+      tags:
+        - Teams
+      summary: Get team
+      parameters:
+        - name: team_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Team details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '404':
+          description: Team not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      tags:
+        - Teams
+      summary: Update team
+      parameters:
+        - name: team_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTeamRequest'
+      responses:
+        '200':
+          description: Team updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/teams/{team_id}/members:
+    get:
+      tags:
+        - Teams
+      summary: List team members
+      parameters:
+        - name: team_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of team members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamMember'
+        '404':
+          description: Team not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/teams/{team_id}/members/{user_id}:
+    delete:
+      tags:
+        - Teams
+      summary: Remove team member
+      parameters:
+        - name: team_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Member removed
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/vault/keys:
+    get:
+      tags:
+        - Vault
+      summary: List vault keys
+      description: Returns metadata for all keys in the authenticated user's vault (values are never returned).
+      responses:
+        '200':
+          description: List of vault keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VaultKey'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Vault
+      summary: Store secret
+      description: |
+        Stores a new secret in the vault. The secret is encrypted client-side with AES-256-GCM
+        before being sent to the server. The server never sees the plaintext or the passphrase.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaultKeyCreate'
+      responses:
+        '201':
+          description: Secret stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaultKey'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/vault/keys/{key_id}:
+    get:
+      tags:
+        - Vault
+      summary: Get vault key metadata
+      description: Returns metadata for a specific vault key (not the value).
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Vault key metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaultKey'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Vault
+      summary: Delete vault key
+      description: Permanently deletes a vault key.
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Key deleted
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/state/{key}:
+    get:
+      tags:
+        - State
+      summary: Get state value
+      description: Returns the current value for a state key.
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+          description: State key (dot-separated, e.g. `user.123.preferences.theme`)
+      responses:
+        '200':
+          description: State value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StateValue'
+        '404':
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - State
+      summary: Set state value
+      description: Sets a value for a state key with optional TTL.
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StateValueCreate'
+      responses:
+        '200':
+          description: State value set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StateValue'
+        '400':
+          description: Invalid value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/state/{key}/history:
+    get:
+      tags:
+        - State
+      summary: Get state history
+      description: Returns the change history for a state key.
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: State history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StateHistoryEntry'
+
+  /v1/monitoring/metrics:
+    get:
+      tags:
+        - Monitoring
+      summary: Get metrics
+      description: Returns Prometheus-formatted metrics for the platform.
+      security: []
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /v1/monitoring/status:
+    get:
+      tags:
+        - Monitoring
+      summary: Get system status
+      description: Returns the current operational status of all platform components.
+      security: []
+      responses:
+        '200':
+          description: System status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStatus'
+        '503':
+          description: Some components are unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStatus'
+
+  /v1/admin/retention/cleanup:
+    post:
+      tags:
+        - Admin
+      summary: Trigger cleanup
+      description: Triggers an on-demand execution log cleanup (admin only).
+      responses:
+        '202':
+          description: Cleanup started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+        '403':
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/admin/alerts:
+    get:
+      tags:
+        - Admin
+      summary: List all alerts
+      description: Returns all active alerts across the platform (admin only).
+      responses:
+        '200':
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alert'
+        '403':
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/admin/security-events:
+    get:
+      tags:
+        - Admin
+      summary: List security events
+      description: Returns paginated security events (admin only).
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: List of security events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSecurityEvents'
+        '403':
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/frg/graph:
+    get:
+      tags:
+        - FRG
+      summary: Get Function Runtime Graph
+      description: Returns the live runtime dependency graph for a function or app.
+      parameters:
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [function, app]
+          description: Graph scope
+        - name: id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Runtime graph
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeGraph'
+        '404':
+          description: Entity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/frg/execute:
+    post:
+      tags:
+        - FRG
+      summary: Execute with graph
+      description: Executes a function within the context of its runtime dependency graph.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                function_id:
+                  type: string
+                  format: uuid
+                input:
+                  type: object
+                graph_scope:
+                  type: string
+                  enum: [full, partial]
+                  default: full
+      responses:
+        '200':
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResult'
+
+  /v1/frg/webhook:
+    post:
+      tags:
+        - FRG
+      summary: Register FRG webhook
+      description: Registers a webhook callback for FRG execution events.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FRGWebhookRequest'
+      responses:
+        '201':
+          description: Webhook registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FRGWebhook'
+
+  /v1/privacy/export:
+    post:
+      tags:
+        - Privacy
+      summary: Request data export
+      description: Requests a GDPR data export for the authenticated user.
+      responses:
+        '202':
+          description: Export requested
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  export_id:
+                    type: string
+                    format: uuid
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/privacy/delete:
+    delete:
+      tags:
+        - Privacy
+      summary: Request account deletion
+      description: Requests GDPR account deletion. All personal data is purged after the retention period.
+      responses:
+        '202':
+          description: Deletion requested
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deletion_id:
+                    type: string
+                    format: uuid
+                  scheduled_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/notifications:
+    get:
+      tags:
+        - Notifications
+      summary: List notifications
+      description: Returns the authenticated user's notifications.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotifications'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    ws:
+      get:
+        tags:
+          - Notifications
+        summary: WebSocket for real-time notifications
+        description: |
+          Establishes a WebSocket connection for real-time push notifications.
+          Use the `Authorization` header with the Bearer token to authenticate.
+        responses:
+          '101':
+            description: WebSocket upgrade successful
+          '401':
+            description: Authentication failed
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/apikeys:
+    get:
+      tags:
+        - API Keys
+      summary: List API keys
+      description: Returns all API keys for the authenticated user.
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserAPIKey'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - API Keys
+      summary: Create API key
+      description: Creates a new API key for programmatic access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAPIKeyUserRequest'
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAPIKeyCreated'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/apikeys/{key_id}:
+    delete:
+      tags:
+        - API Keys
+      summary: Revoke API key
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: API key revoked
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /metrics:
+    get:
+      tags:
+        - Monitoring
+      summary: Prometheus metrics
+      description: Returns Prometheus-compatible metrics endpoint.
+      security: []
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /.well-known/functionfly.json:
+    get:
+      tags:
+        - WellKnown
+      summary: Platform discovery
+      description: Returns the platform's public key and metadata for verification.
+      security: []
+      responses:
+        '200':
+          description: Platform metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformMetadata'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token obtained from `/auth/login` or `/auth/signup`.
+        Pass as `Authorization: Bearer <token>`.
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        Platform API key for partner integrations.
+        Obtain via `POST /v1/partners/{partner_id}/api-keys`.
+
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Author:
+      name: author
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Function author's username
+    FunctionName:
+      name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Function name
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        timestamp:
+          type: integer
+          format: int64
+          example: 1744000000
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: An error occurred
+        detail:
+          type: string
+          example: Additional error details
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refresh_token:
+          type: string
+          example: dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...
+        expires_in:
+          type: integer
+          description: Seconds until token expiration
+          example: 3600
+        token_type:
+          type: string
+          example: Bearer
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: secret123
+
+    SignupRequest:
+      type: object
+      required:
+        - email
+        - password
+        - username
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        username:
+          type: string
+          pattern: "^[a-zA-Z0-9_-]{3,20}$"
+          example: newuser
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: secret123
+        invite_code:
+          type: string
+          example: OPTIONAL-CODE
+
+    RefreshRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+
+    PasswordResetConfirmRequest:
+      type: object
+      required:
+        - token
+        - new_password
+      properties:
+        token:
+          type: string
+        new_password:
+          type: string
+          format: password
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+        avatar_url:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+        is_verified:
+          type: boolean
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        avatar_url:
+          type: string
+          format: uri
+        bio:
+          type: string
+          maxLength: 500
+
+    OAuthProvider:
+      type: object
+      properties:
+        id:
+          type: string
+          example: github
+        name:
+          type: string
+          example: GitHub
+        icon_url:
+          type: string
+          format: uri
+
+    MFASetupResponse:
+      type: object
+      properties:
+        secret:
+          type: string
+        otpauth_url:
+          type: string
+          format: uri
+        qr_code:
+          type: string
+          description: Base64-encoded QR code image
+
+    MFAVerifyRequest:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+          description: TOTP code from authenticator app
+
+    MFAStatusResponse:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        method:
+          type: string
+          enum: [totp, webauthn]
+        enrolled_at:
+          type: string
+          format: date-time
+
+    PaginationParams:
+      type: object
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        offset:
+          type: integer
+          minimum: 0
+          default: 0
+
+    PaginatedFunctions:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FunctionSummary'
+
+    FunctionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        author:
+          type: string
+        name:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        version:
+          type: string
+          example: 1.0.0
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        runtime:
+          type: string
+          enum: [node, python, go, rust, wasm]
+        rating:
+          type: number
+          format: double
+        downloads:
+          type: integer
+          format: int64
+        is_verified:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FunctionDetail:
+      allOf:
+        - $ref: '#/components/schemas/FunctionSummary'
+        - type: object
+          properties:
+            manifest:
+              type: object
+              description: Function manifest (input/output schema, dependencies, etc.)
+            source_code:
+              type: string
+              description: Function source code (only visible to owner)
+            readme:
+              type: string
+            changelog:
+              type: array
+              items:
+                $ref: '#/components/schemas/ChangelogEntry'
+
+    FunctionVersion:
+      type: object
+      properties:
+        version:
+          type: string
+          example: 1.0.0
+        published_at:
+          type: string
+          format: date-time
+        is_latest:
+          type: boolean
+        is_stable:
+          type: boolean
+        download_count:
+          type: integer
+
+    FunctionVersionDetail:
+      allOf:
+        - $ref: '#/components/schemas/FunctionVersion'
+        - type: object
+          properties:
+            manifest:
+              type: object
+            source_code:
+              type: string
+            changelog:
+              $ref: '#/components/schemas/ChangelogEntry'
+
+    ChangelogEntry:
+      type: object
+      properties:
+        version:
+          type: string
+        date:
+          type: string
+          format: date-time
+        category:
+          type: string
+          enum: [added, changed, deprecated, removed, fixed, security]
+        description:
+          type: string
+
+    AISchema:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        parameters:
+          type: object
+          description: JSON Schema for function parameters (OpenAI tools format)
+
+    AIGenerateRequest:
+      type: object
+      required:
+        - description
+      properties:
+        description:
+          type: string
+          example: A function that sends an email via SendGrid
+        runtime:
+          type: string
+          default: node
+          enum: [node, python, go, rust, wasm]
+        category:
+          type: string
+          example: notifications
+        tags:
+          type: array
+          items:
+            type: string
+        dependencies:
+          type: array
+          items:
+            type: string
+
+    AIGenerateResponse:
+      type: object
+      properties:
+        function:
+          type: object
+          properties:
+            name:
+              type: string
+            source_code:
+              type: string
+            manifest:
+              type: object
+        explanation:
+          type: string
+          description: AI's explanation of the generated function
+
+    ExecutionResult:
+      type: object
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+        output:
+          type: object
+        duration_ms:
+          type: integer
+          format: int64
+        error:
+          type: string
+
+    TrustScore:
+      type: object
+      properties:
+        function_id:
+          type: string
+          format: uuid
+        score:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+        level:
+          type: string
+          enum: [untrusted, low, standard, high, verified]
+        factors:
+          type: string
+        last_updated:
+          type: string
+          format: date-time
+
+    TrustReportRequest:
+      type: object
+      required:
+        - function_id
+        - report_type
+      properties:
+        function_id:
+          type: string
+          format: uuid
+        report_type:
+          type: string
+          enum: [vulnerability, policy_violation, malware, other]
+        description:
+          type: string
+        evidence:
+          type: object
+
+    VerificationStatus:
+      type: object
+      properties:
+        verification_id:
+          type: string
+          format: uuid
+        function_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, in_progress, passed, failed]
+        checks:
+          type: object
+          properties:
+            container:
+              type: string
+              enum: [pending, passed, failed, skipped]
+            policy:
+              type: string
+              enum: [pending, passed, failed, skipped]
+            semantic:
+              type: string
+              enum: [pending, passed, failed, skipped]
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+    Attestation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        function_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        issuer:
+          type: string
+        issued_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        signature:
+          type: string
+        payload:
+          type: object
+
+    AttestationChain:
+      type: object
+      properties:
+        function_id:
+          type: string
+          format: uuid
+        origin:
+          $ref: '#/components/schemas/Attestation'
+        platform:
+          $ref: '#/components/schemas/Attestation'
+        partners:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attestation'
+
+    PaginatedAttestations:
+      type: object
+      properties:
+        total:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attestation'
+
+    RevokeRequest:
+      type: object
+      required:
+        - function_id
+        - reason
+      properties:
+        function_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum: [security, policy, abuse, other]
+        evidence:
+          type: string
+
+    Revocation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        function_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        revoked_by:
+          type: string
+        revoked_at:
+          type: string
+          format: date-time
+        lifted_at:
+          type: string
+          format: date-time
+        lifted_by:
+          type: string
+
+    PaginatedRevocations:
+      type: object
+      properties:
+        total:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Revocation'
+
+    APIKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        key_prefix:
+          type: string
+          example: ff_live_sk_...
+        permissions:
+          type: string
+        partner_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+
+    APIKeyCreated:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+          description: The full API key - only shown once, store securely
+          example: ff_live_sk_a1b2c3d4e5f6...
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateAPIKeyRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        expires_at:
+          type: string
+          format: date-time
+
+    CreateAPIKeyUserRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+
+    UserAPIKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        key_prefix:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+
+    UserAPIKeyCreated:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+          description: Full API key - only shown once
+          example: ff_live_...
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Partner:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        api_key_id:
+          type: string
+          format: uuid
+        trust_level:
+          type: string
+          enum: [basic, standard, premium]
+        status:
+          type: string
+          enum: [active, suspended, revoked]
+        created_at:
+          type: string
+          format: date-time
+
+    CreatePartnerRequest:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        website:
+          type: string
+          format: uri
+
+    UpdatePartnerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, suspended]
+
+    PartnerUsage:
+      type: object
+      properties:
+        partner_id:
+          type: string
+          format: uuid
+        period:
+          type: string
+        requests:
+          type: integer
+        errors:
+          type: integer
+        avg_latency_ms:
+          type: number
+          format: double
+        quota_limit:
+          type: integer
+        quota_used:
+          type: integer
+
+    Wallet:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        balance_usd:
+          type: number
+          format: double
+        lifetime_earnings_usd:
+          type: number
+          format: double
+        lifetime_fees_usd:
+          type: number
+          format: double
+
+    UsageResponse:
+      type: object
+      properties:
+        period:
+          type: string
+        functions_executed:
+          type: integer
+        compute_seconds:
+          type: number
+          format: double
+        bandwidth_mb:
+          type: number
+          format: double
+        cost_usd:
+          type: number
+          format: double
+
+    UsageForecastResponse:
+      type: object
+      properties:
+        period:
+          type: string
+        projected_cost_usd:
+          type: number
+          format: double
+        projected_functions:
+          type: integer
+        confidence:
+          type: number
+          format: double
+
+    UsageAlert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        threshold_usd:
+          type: number
+          format: double
+        current_value_usd:
+          type: number
+          format: double
+        is_triggered:
+          type: boolean
+
+    CreateUsageAlertRequest:
+      type: object
+      required:
+        - name
+        - threshold_usd
+      properties:
+        name:
+          type: string
+        threshold_usd:
+          type: number
+          format: double
+
+    ExportRequest:
+      type: object
+      properties:
+        format:
+          type: string
+          enum: [csv, json]
+          default: csv
+        period:
+          type: string
+          description: ISO date range or "all"
+
+    ExportResponse:
+      type: object
+      properties:
+        export_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, processing, ready, failed]
+        download_url:
+          type: string
+          format: uri
+        expires_at:
+          type: string
+          format: date-time
+
+    CostAllocation:
+      type: object
+      properties:
+        period:
+          type: string
+        total_cost_usd:
+          type: number
+          format: double
+        breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              cost_usd:
+                type: number
+                format: double
+              percentage:
+                type: number
+                format: double
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        member_count:
+          type: integer
+
+    TeamMember:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member]
+        joined_at:
+          type: string
+          format: date-time
+
+    CreateTeamRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+
+    UpdateTeamRequest:
+      type: object
+      properties:
+        name:
+          type: string
+
+    VaultKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_retrieved_at:
+          type: string
+          format: date-time
+
+    VaultKeyCreate:
+      type: object
+      required:
+        - name
+        - ciphertext
+        - iv
+        - salt
+        - tag
+      properties:
+        name:
+          type: string
+          description: Human-readable key name
+        description:
+          type: string
+        ciphertext:
+          type: string
+          description: AES-256-GCM encrypted value (base64)
+        iv:
+          type: string
+          description: Initialization vector (base64)
+        salt:
+          type: string
+          description: Key derivation salt (base64)
+        tag:
+          type: string
+          description: Authentication tag (base64)
+
+    StateValue:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: object
+        updated_at:
+          type: string
+          format: date-time
+        ttl:
+          type: integer
+          description: Seconds until expiration (0 = no expiry)
+
+    StateValueCreate:
+      type: object
+      required:
+        - value
+      properties:
+        value:
+          type: object
+        ttl:
+          type: integer
+          description: TTL in seconds
+
+    StateHistoryEntry:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: object
+        changed_by:
+          type: string
+        changed_at:
+          type: string
+          format: date-time
+
+    SystemStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [operational, degraded, incident]
+        components:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [ok, degraded, down]
+              latency_ms:
+                type: number
+                format: double
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+
+    PaginatedSecurityEvents:
+      type: object
+      properties:
+        total:
+          type: integer
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              type:
+                type: string
+              severity:
+                type: string
+              ip_address:
+                type: string
+              user_id:
+                type: string
+                format: uuid
+              created_at:
+                type: string
+                format: date-time
+
+    RuntimeGraph:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphEdge'
+
+    GraphNode:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [function, external, trigger]
+        label:
+          type: string
+        metadata:
+          type: object
+
+    GraphEdge:
+      type: object
+      properties:
+        from:
+          type: string
+          format: uuid
+        to:
+          type: string
+          format: uuid
+        label:
+          type: string
+
+    FRGWebhookRequest:
+      type: object
+      required:
+        - url
+        - events
+      properties:
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+            enum: [execution.started, execution.completed, execution.failed]
+        secret:
+          type: string
+
+    FRGWebhook:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+
+    PaginatedNotifications:
+      type: object
+      properties:
+        total:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    PlatformMetadata:
+      type: object
+      properties:
+        name:
+          type: string
+          example: functionfly
+        version:
+          type: string
+          example: "1.0"
+        public_key:
+          type: string
+          description: Ed25519 public key for signature verification
+        verification_endpoint:
+          type: string
+          format: uri
+        trust_api_endpoint:
+          type: string
+          format: uri
