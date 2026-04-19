@@ -662,8 +662,8 @@ mod tests {
             // Drop guard - instance should return to pool
             drop(guard.unwrap());
 
-            // Give a moment for the drop to complete
-            tokio::time::sleep(Duration::from_millis(10)).await;
+            // Yield to let the drop complete (faster than sleep)
+            tokio::task::yield_now().await;
 
             let stats = pool.stats().await;
             assert_eq!(stats.idle_count, 1, "Instance should be back in pool");
@@ -852,7 +852,8 @@ mod tests {
             // Drop dirty guard - instance should NOT return to pool
             drop(guard);
 
-            tokio::time::sleep(Duration::from_millis(10)).await;
+            // Yield to let async cleanup complete (faster than sleep)
+            tokio::task::yield_now().await;
 
             let stats = pool.stats().await;
             assert_eq!(stats.idle_count, 0, "Dirty instance should not return to pool");

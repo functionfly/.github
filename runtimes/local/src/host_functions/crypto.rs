@@ -20,7 +20,7 @@
 //!
 //! All functions return 0 on success, or a negative error code.
 
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sha2::{Digest, Sha256, Sha512};
 use wasmtime_wasi::p1::WasiP1Ctx;
 

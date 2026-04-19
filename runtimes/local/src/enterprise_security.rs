@@ -12,14 +12,22 @@ use regex::Regex;
 
 use crate::logging::StructuredLogger;
 
-/// Policy for handling dangerous capability combinations
+/// Policy for handling dangerous capability combinations.
+/// 
+/// Currently only `Block` is actively used as the default policy.
+/// `AllowWithAudit` and `RequireApproval` are defined for future
+/// configuration support via the enterprise security settings.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DangerousCapabilityPolicy {
     /// Block dangerous combinations immediately
     Block,
-    /// Allow but log audit entry (monitoring mode)
+    /// Allow but log audit entry (monitoring mode).
+    /// Reserved for future use via configuration.
+    #[allow(dead_code)]
     AllowWithAudit,
-    /// Require admin approval before allowing
+    /// Require admin approval before allowing.
+    /// Reserved for future use via configuration.
+    #[allow(dead_code)]
     RequireApproval,
 }
 
@@ -80,6 +88,14 @@ pub enum ValidationResult {
     Suspicious(String), // Warning about suspicious content
 }
 
+/// Pre-approved function+capability combination
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct PreApprovedCombo {
+    function_key: String,
+    /// Sorted, normalized capability list for consistent comparison
+    capabilities_hash: String,
+}
+
 /// Enterprise security enforcer
 pub struct EnterpriseSecurityEnforcer {
     /// Configuration
@@ -93,6 +109,8 @@ pub struct EnterpriseSecurityEnforcer {
     logger: Arc<StructuredLogger>,
     /// Audit log entries
     audit_log: Arc<RwLock<Vec<AuditEntry>>>,
+    /// Pre-approved function+capability combinations (for RequireApproval policy)
+    pre_approved_combos: Arc<RwLock<HashSet<PreApprovedCombo>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -129,9 +147,58 @@ impl EnterpriseSecurityEnforcer {
             security_patterns: Arc::new(RwLock::new(HashMap::new())),
             logger,
             audit_log: Arc::new(RwLock::new(Vec::new())),
+            pre_approved_combos: Arc::new(RwLock::new(HashSet::new())),
         };
 
         enforcer
+    }
+
+    /// Add a pre-approved function+capability combination
+    /// This allows specific functions to use dangerous capability combinations
+    /// when the dangerous_capability_policy is set to RequireApproval
+    pub async fn add_pre_approved_combo(&self, function_key: &str, capabilities: &[String]) {
+        let mut combos = self.pre_approved_combos.write().await;
+        let mut caps = capabilities.to_vec();
+        caps.sort();
+        let combo = PreApprovedCombo {
+            function_key: function_key.to_string(),
+            capabilities_hash: caps.join(","),
+        };
+        combos.insert(combo);
+        tracing::info!(
+            function_key = %function_key,
+            capabilities = %caps.join(","),
+            "Added pre-approved capability combination"
+        );
+    }
+
+    /// Remove a pre-approved function+capability combination
+    pub async fn remove_pre_approved_combo(&self, function_key: &str, capabilities: &[String]) {
+        let mut combos = self.pre_approved_combos.write().await;
+        let mut caps = capabilities.to_vec();
+        caps.sort();
+        let combo = PreApprovedCombo {
+            function_key: function_key.to_string(),
+            capabilities_hash: caps.join(","),
+        };
+        combos.remove(&combo);
+        tracing::info!(
+            function_key = %function_key,
+            capabilities = %caps.join(","),
+            "Removed pre-approved capability combination"
+        );
+    }
+
+    /// Check if a function+capability combination is pre-approved
+    async fn is_pre_approved(&self, function_key: &str, capabilities: &[String]) -> bool {
+        let combos = self.pre_approved_combos.read().await;
+        let mut caps = capabilities.to_vec();
+        caps.sort();
+        let combo = PreApprovedCombo {
+            function_key: function_key.to_string(),
+            capabilities_hash: caps.join(","),
+        };
+        combos.contains(&combo)
     }
 
     /// Initialize security patterns lazily on first use
@@ -311,9 +378,20 @@ impl EnterpriseSecurityEnforcer {
                         // Continue to check other validations, but log the dangerous combination
                     }
                     DangerousCapabilityPolicy::RequireApproval => {
+                        // Check if this function+capability combo has been pre-approved
+                        if self.is_pre_approved(function_key, capabilities).await {
+                            self.log_audit_entry(
+                                function_key,
+                                "sandboxing",
+                                "pre_approved",
+                                &format!("{} - pre-approved combination", violation_reason),
+                                None,
+                                None
+                            ).await;
+                            // Allow this dangerous combination since it's pre-approved
+                            continue;
+                        }
                         self.log_audit_entry(function_key, "sandboxing", "pending_approval", &violation_reason, None, None).await;
-                        // TODO: Check if this function+capability combo has been pre-approved
-                        // For now, treat as blocked until approval system is implemented
                         return ValidationResult::Invalid(format!("{} - requires admin approval", violation_reason));
                     }
                 }

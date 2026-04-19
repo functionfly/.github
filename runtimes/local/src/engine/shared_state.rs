@@ -32,13 +32,24 @@ pub struct SharedState {
 }
 
 impl SharedState {
-    pub fn new(pool: InstancePool, config: Config, logger: StructuredLogger, security_monitor: Arc<crate::security::SecurityMonitor>) -> Self {
+    pub fn new(
+        pool: InstancePool,
+        config: Config,
+        logger: StructuredLogger,
+        security_monitor: Arc<crate::security::SecurityMonitor>,
+    ) -> Self {
         // Create orchestrator client for Enterprise tier first
         let orchestrator_client = if config.enterprise_enabled {
-            Some(Arc::new(OrchestratorClient::new(
+            match OrchestratorClient::new(
                 config.orchestrator_url.clone(),
                 config.orchestrator_timeout_secs,
-            )))
+            ) {
+                Ok(client) => Some(Arc::new(client)),
+                Err(e) => {
+                    tracing::warn!("Failed to create orchestrator client: {}", e);
+                    None
+                }
+            }
         } else {
             None
         };
@@ -50,8 +61,11 @@ impl SharedState {
                 Some(Arc::new(state))
             }
             Err(e) => {
-                tracing::warn!("Failed to create shared Python engine: {}. \
-                    RustPython fallback will create engines per-request.", e);
+                tracing::warn!(
+                    "Failed to create shared Python engine: {}. \
+                    RustPython fallback will create engines per-request.",
+                    e
+                );
                 None
             }
         };
@@ -82,6 +96,9 @@ impl SharedState {
             None
         };
 
+        // Create the cache before the monitor so we can pass it
+        let cache = Arc::new(RwLock::new(ResultCache::new(config.cache_ttl)));
+
         // Attach pool manager to the engine for warm instance reuse
         if let Some(ref pool_mgr) = wasm_pool {
             engine.set_pool_manager(Arc::clone(pool_mgr));
@@ -90,11 +107,11 @@ impl SharedState {
         Self {
             engine: Arc::new(engine),
             pool: Arc::new(RwLock::new(pool)),
-            cache: Arc::new(RwLock::new(ResultCache::new(config.cache_ttl))),
+            cache,
             kv: Arc::new(RwLock::new(crate::kv::KVStore::new(10000))), // Max 10k entries
             config: config.clone(),
             logger: logger.clone(),
-            monitor: Arc::new(ResourceMonitor::new(Some(Arc::new(logger)))),
+            monitor: Arc::new(ResourceMonitor::new(Some(Arc::new(logger)), None)),
             orchestrator_client,
             wasm_pool,
         }

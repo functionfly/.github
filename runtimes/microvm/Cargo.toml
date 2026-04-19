@@ -51,3 +51,26 @@ tower-http = { version = "0.6.8", features = ["cors"] }
 
 [dev-dependencies]
 tempfile = "3.25.0"
+
+# Test profile: balance between compile time and runtime speed
+[profile.test]
+opt-level = 1
+debug = true
+debug-assertions = true
+overflow-checks = true
+lto = false
+codegen-units = 16
+panic = "unwind"
+
+# Fast test profile for CI: optimized but still fast to compile
+[profile.fast-test]
+inherits = "test"
+opt-level = 2
+codegen-units = 4
+
+# Integration test profile - for tests that need release-level speed
+[profile.test-release]
+inherits = "release"
+debug = true
+debug-assertions = true
+lto = "thin"

@@ -92,6 +92,15 @@ mod syscall_nr {
     pub const FSTATAT: i64 = 262;
     pub const GETDENTS64: i64 = 217;
     pub const MADVISE: i64 = 28;
+    // Required by Rust's thread/local-runtime and the dynamic linker for
+    // memory-segment configuration (e.g. SET_STACK_RLIMIT, ADDR_NO_RANDOMIZE).
+    // Without these, libc/libpthread calls that internally invoke prctl can
+    // return ENOSYS which manifests as a SIGSYS crash rather than a graceful error.
+    pub const PRCTL: i64 = 157;
+    // x86_64-only: used by the dynamic linker for segment layout operations.
+    pub const ARCH_PRCTL: i64 = 158;
+    // Extended stat (used by crash reporters and some filesystem code).
+    pub const STATX: i64 = 293;
 
     // Reserved for optional/relaxed seccomp profiles
     #[allow(dead_code)]
@@ -234,8 +243,8 @@ mod syscall_nr {
     pub const MADVISE: i64 = 233;
     pub const RENAMEAT: i64 = 38;
     pub const STATX: i64 = 291;
+    pub const PRCTL: i64 = 167;
     pub const IOCTL: i64 = 29;
-    pub const DUMMY: i64 = 0; // placeholder for aarch64
 }
 
 use syscall_nr::*;
@@ -282,88 +291,41 @@ fn apply_seccomp_linux(strict: bool) -> anyhow::Result<()> {
     // Allowed syscalls — minimal set for a network server + WASM runtime.
     // These are used in the strict profile. The relaxed profile includes additional
     // syscalls like RENAME, MKDIR, UNLINK, READLINK, FCHMOD.
-    let allowed: &[i64] = &[
+    //
+    // Build as a Vec so we can extend with ARCH_PRCTL on x86_64 only.
+    let mut allowed: Vec<i64> = vec![
         // I/O
-        READ,
-        WRITE,
-        CLOSE,
-        PREAD64,
-        PWRITE64,
-        READV,
-        WRITEV,
+        READ, WRITE, CLOSE, PREAD64, PWRITE64, READV, WRITEV,
         // File ops
-        FSTAT,
-        LSEEK,
-        OPENAT,
-        NEWFSTATAT,
-        GETDENTS64,
-        FSTATAT,
+        FSTAT, LSEEK, OPENAT, NEWFSTATAT, GETDENTS64, FSTATAT,
         // Memory
-        MMAP,
-        MPROTECT,
-        MUNMAP,
-        BRK,
-        MADVISE,
+        MMAP, MPROTECT, MUNMAP, BRK, MADVISE,
         // Networking
-        SOCKET,
-        CONNECT,
-        ACCEPT4,
-        SENDTO,
-        RECVFROM,
-        SENDMSG,
-        RECVMSG,
-        SHUTDOWN,
-        BIND,
-        LISTEN,
-        GETSOCKNAME,
-        GETPEERNAME,
-        SETSOCKOPT,
-        GETSOCKOPT,
+        SOCKET, CONNECT, ACCEPT4, SENDTO, RECVFROM, SENDMSG, RECVMSG,
+        SHUTDOWN, BIND, LISTEN, GETSOCKNAME, GETPEERNAME, SETSOCKOPT, GETSOCKOPT,
         // Polling
-        EPOLL_CREATE1,
-        EPOLL_CTL,
-        EPOLL_PWAIT,
-        EVENTFD2,
-        PIPE2,
-        TIMERFD_CREATE,
-        TIMERFD_SETTIME,
-        TIMERFD_GETTIME,
+        EPOLL_CREATE1, EPOLL_CTL, EPOLL_PWAIT, EVENTFD2, PIPE2,
+        TIMERFD_CREATE, TIMERFD_SETTIME, TIMERFD_GETTIME,
         // Signal handling
-        SIGALTSTACK,
-        RT_SIGACTION,
-        RT_SIGPROCMASK,
-        RT_SIGRETURN,
-        SIGNALFD4,
+        SIGALTSTACK, RT_SIGACTION, RT_SIGPROCMASK, RT_SIGRETURN, SIGNALFD4,
         // Process / thread
-        CLONE,
-        EXIT,
-        EXIT_GROUP,
-        WAIT4,
-        GETTID,
-        GETUID,
-        GETGID,
-        GETEUID,
-        GETEGID,
+        CLONE, EXIT, EXIT_GROUP, WAIT4, GETTID, GETUID, GETGID, GETEUID, GETEGID,
         // Scheduling
-        FUTEX,
-        SCHED_YIELD,
-        SCHED_GETAFFINITY,
+        FUTEX, SCHED_YIELD, SCHED_GETAFFINITY,
         // Time
-        CLOCK_GETTIME,
-        NANOSLEEP,
+        CLOCK_GETTIME, NANOSLEEP,
         // Misc
-        FCNTL,
-        DUP3,
-        GETRANDOM,
-        // Additional syscalls used by WASM runtimes and common libraries
-        RENAME,
-        MKDIR,
-        UNLINK,
-        READLINK,
-        FCHMOD,
-        // Allow fork/vfork/kill only if absolutely needed; comment out for stricter profile
-        // FORK, VFORK, KILL,
+        FCNTL, DUP3, GETRANDOM,
+        // File operations
+        RENAME, MKDIR, UNLINK, READLINK, FCHMOD,
+        // Thread / memory control — required by libc/libpthread and the dynamic linker.
+        PRCTL,
+        STATX,
     ];
+
+    // ARCH_PRCTL is x86_64-only; the dynamic linker uses it for segment layout.
+    #[cfg(target_arch = "x86_64")]
+    allowed.push(ARCH_PRCTL);
 
     // Build a BPF program that allows the listed syscalls and returns ENOSYS for everything else.
     let mut bpf = Vec::<sock_filter>::new();
@@ -379,12 +341,12 @@ fn apply_seccomp_linux(strict: bool) -> anyhow::Result<()> {
     }); // A = syscall_nr
 
     // For each allowed syscall: if matches, allow
-    for &syscall in allowed {
+    for syscall in &allowed {
         bpf.push(sock_filter {
             code: BPF_JMP | BPF_JEQ | BPF_K,
             jt: 0,
             jf: 1,
-            k: syscall as u32,
+            k: *syscall as u32,
         });
         bpf.push(sock_filter {
             code: BPF_RET | BPF_K,

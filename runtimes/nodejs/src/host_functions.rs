@@ -121,7 +121,6 @@ pub struct TimingHandler {
     next_id: RwLock<u64>,
 }
 
-#[derive(Debug, Clone)]
 struct TimerEntry {
     callback: Box<dyn Fn() + Send + 'static>,
     interval_ms: u64,
@@ -239,6 +238,7 @@ impl FetchHandler {
             .map_err(|e| format!("Fetch error: {}", e))?;
         
         let status = response.status().as_u16();
+        let status_text = response.status().canonical_reason().unwrap_or("").to_string();
         let headers: HashMap<String, String> = response
             .headers()
             .iter()
@@ -250,7 +250,7 @@ impl FetchHandler {
         
         Ok(FetchResponse {
             status,
-            status_text: response.status().canonical_reason().unwrap_or("").to_string(),
+            status_text,
             headers,
             body,
         })

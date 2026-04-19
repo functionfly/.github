@@ -13,7 +13,7 @@ use super::types::AppState;
 pub async fn monitoring_stats(State(state): State<Arc<AppState>>) -> axum::response::Response {
     let report = state.monitor.generate_report().await;
     let correlation_id = state.logger.generate_correlation_id().await;
-    let cache_stats = state.monitor.get_cache_stats();
+    let cache_stats = state.monitor.get_cache_stats().await;
     let memory_stats = state.monitor.get_memory_stats();
 
     state.logger.log_cache_stats(

@@ -400,12 +400,12 @@ impl WasiLinker {
             HostFunctionsLinker::new(kv_store.clone(), logger, config.clone(), security_monitor);
         host_functions_linker.add_to_linker(&mut linker)?;
 
-        // Add KV functions directly to the linker if KV store is available
-        if let Some(ref kv) = kv_store {
-            if let Err(e) = crate::host_functions::kv::add_kv_functions(kv.clone(), &mut linker) {
-                tracing::warn!("Failed to add KV functions to linker: {}", e);
-            }
-        }
+        // FunctionFly host functions (including KV) are already added by
+        // HostFunctionsLinker::add_to_linker() called above; the KV functions
+        // registered there use {tenant_id}:{function_key} namespacing to prevent
+        // cross-tenant data leakage.  Do NOT call add_kv_functions() here again —
+        // doing so would register a second un-namespaced handler that overwrites
+        // the secure one.
 
         Ok(Self {
             linker: std::sync::Mutex::new(linker),

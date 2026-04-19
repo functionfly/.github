@@ -6,7 +6,7 @@ use crate::config::Config;
 use crate::errors::RuntimeError;
 use crate::wasi::{WasiContext, WasiLinker};
 
-use super::memory_limiter::{install_memory_limiter, with_limiter};
+use super::memory_limiter::{install_memory_limiter, with_limiter, LimiterGuard};
 
 /// Synchronous WASI execution function for use in spawn_blocking.
 /// Accepts an optional pre-compiled module (from the AOT cache) to skip re-compilation.
@@ -50,13 +50,6 @@ pub fn execute_wasi_sync_inner(
     };
     store.set_fuel(fuel_limit)?;
 
-    // --- Epoch-based wall-clock timeout (P1.5) ---
-    // The epoch ticker thread (started in with_config) increments the epoch
-    // every 1ms.  Setting the deadline to timeout_ms means the store will
-    // trap after approximately timeout_ms milliseconds of wall-clock time.
-    store.set_epoch_deadline(config.timeout_ms);
-    store.epoch_deadline_trap();
-
     // Compile module (or use pre-compiled AOT module)
     let module = if let Some(m) = precompiled {
         m
@@ -66,35 +59,55 @@ pub fn execute_wasi_sync_inner(
     };
 
     // Instantiate module with WASI
-    let instance = linker.linker().instantiate(&mut store, &module)
+    let instance = linker
+        .linker()
+        .instantiate(&mut store, &module)
         .map_err(|e| anyhow::anyhow!(RuntimeError::wasm_instantiation(e.to_string())))?;
 
     // Execute the function. Prefer handler when we have input so Python WASM (and other
     // handler-based modules) receive input and can return a value via memory; otherwise try _start/main.
-    let handler_result_ptr: Option<i32> = if let Ok(func) = instance.get_typed_func::<(i32, i32), i32>(&mut store, "handler") {
-        if let Some(memory) = instance.get_memory(&mut store, "memory") {
-            use crate::wasm_interface::memory;
+    let handler_result_ptr: Option<i32> =
+        if let Ok(func) = instance.get_typed_func::<(i32, i32), i32>(&mut store, "handler") {
+            if let Some(memory) = instance.get_memory(&mut store, "memory") {
+                use crate::wasm_interface::memory;
 
-            let input_ptr = memory::write_string(&memory, &mut store, input)?;
-            let input_len = input.len() as i32;
+                let input_ptr = memory::write_string(&memory, &mut store, input)?;
+                let input_len = input.len() as i32;
 
-            let result_ptr = func.call(&mut store, (input_ptr, input_len)).map_err(|e| {
-                anyhow::anyhow!(RuntimeError::wasm_execution(format!("Handler function failed: {}", e)))
+                let result_ptr = func.call(&mut store, (input_ptr, input_len)).map_err(|e| {
+                    anyhow::anyhow!(RuntimeError::wasm_execution(format!(
+                        "Handler function failed: {}",
+                        e
+                    )))
+                })?;
+                tracing::info!("Handler function returned: {}", result_ptr);
+                Some(result_ptr)
+            } else {
+                return Err(anyhow::anyhow!(
+                    "No memory export found for handler function"
+                ));
+            }
+        } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut store, "_start") {
+            func.call(&mut store, ()).map_err(|e| {
+                anyhow::anyhow!(RuntimeError::wasm_execution(format!(
+                    "_start function failed: {}",
+                    e
+                )))
             })?;
-            tracing::info!("Handler function returned: {}", result_ptr);
-            Some(result_ptr)
+            None
+        } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut store, "main") {
+            func.call(&mut store, ()).map_err(|e| {
+                anyhow::anyhow!(RuntimeError::wasm_execution(format!(
+                    "main function failed: {}",
+                    e
+                )))
+            })?;
+            None
         } else {
-            return Err(anyhow::anyhow!("No memory export found for handler function"));
-        }
-    } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut store, "_start") {
-        func.call(&mut store, ()).map_err(|e| anyhow::anyhow!(RuntimeError::wasm_execution(format!("_start function failed: {}", e))))?;
-        None
-    } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut store, "main") {
-        func.call(&mut store, ()).map_err(|e| anyhow::anyhow!(RuntimeError::wasm_execution(format!("main function failed: {}", e))))?;
-        None
-    } else {
-        return Err(anyhow::anyhow!(RuntimeError::function_not_found("handler, _start, or main")));
-    };
+            return Err(anyhow::anyhow!(RuntimeError::function_not_found(
+                "handler, _start, or main"
+            )));
+        };
 
     // Log execution time
     let execution_time = execution_start.elapsed();
@@ -117,12 +130,21 @@ pub fn execute_wasi_sync_inner(
             let stderr = stderr_pipe.contents();
             let stdout = stdout_pipe.contents();
             if !stderr.is_empty() {
-                return Err(anyhow::anyhow!("Handler error: {}", String::from_utf8_lossy(&stderr)));
+                return Err(anyhow::anyhow!(
+                    "Handler error: {}",
+                    String::from_utf8_lossy(&stderr)
+                ));
             }
             if !stdout.is_empty() {
-                return Err(anyhow::anyhow!("Handler error: {}", String::from_utf8_lossy(&stdout)));
+                return Err(anyhow::anyhow!(
+                    "Handler error: {}",
+                    String::from_utf8_lossy(&stdout)
+                ));
             }
-            return Err(anyhow::anyhow!("Handler returned error indicator ({})", result_ptr));
+            return Err(anyhow::anyhow!(
+                "Handler returned error indicator ({})",
+                result_ptr
+            ));
         }
     }
 
@@ -161,7 +183,10 @@ pub fn execute_wasi_sync_inner(
     if !stdout.is_empty() {
         Ok(String::from_utf8_lossy(&stdout).to_string())
     } else if !stderr.is_empty() {
-        Err(anyhow::anyhow!("WASM stderr: {}", String::from_utf8_lossy(&stderr)))
+        Err(anyhow::anyhow!(
+            "WASM stderr: {}",
+            String::from_utf8_lossy(&stderr)
+        ))
     } else {
         Ok("".to_string())
     }
@@ -170,6 +195,13 @@ pub fn execute_wasi_sync_inner(
 /// Execute WASI with a pre-compiled module and an existing store.
 ///
 /// This is used by the pooled execution path to reuse compiled modules and WASI contexts.
+///
+/// Note: For pooled execution, output capture is handled by the caller via
+/// `PooledWasmInstance::reset_for_execution()` which sets up fresh pipes. The
+/// handler result is extracted from memory return pointer when available.
+///
+/// Memory growth is hard-capped via Wasmtime's `Store::limiter()` API using
+/// `FunctionMemoryLimiter`, enforcing the limit declared in `config.memory_mb`.
 pub fn execute_wasi_with_module_and_store(
     linker: &WasiLinker,
     module: &Module,
@@ -177,62 +209,81 @@ pub fn execute_wasi_with_module_and_store(
     config: &Config,
     _wasi_ctx: &wasmtime_wasi::p1::WasiP1Ctx,
 ) -> anyhow::Result<String> {
-    use wasmtime_wasi::p2::pipe::MemoryOutputPipe;
-
-    // Get pipe handles from the store data for reading output after execution
-    // We need to create fresh pipes since WasiP1Ctx doesn't expose them directly
-    let pipe_capacity = if config.max_output_bytes > 0 {
-        config.max_output_bytes
-    } else {
-        1024 * 1024
-    };
-
+    // Apply hard memory cap via Store::limiter() — enforces config.memory_mb
+    // at the Wasm linear-memory level so memory.grow returns -1 (not OOM panic).
+    let _limiter_guard = install_memory_limiter(config.memory_mb);
+    store.limiter(|_data| unsafe { with_limiter(|l| l) });
     // Instantiate module with WASI
-    let instance = linker.linker().instantiate(store, module)
+    let instance = linker
+        .linker()
+        .instantiate(&mut *store, module)
         .map_err(|e| anyhow::anyhow!(RuntimeError::wasm_instantiation(e.to_string())))?;
 
     // Execute the function
-    let handler_result_ptr: Option<i32> = if let Ok(func) = instance.get_typed_func::<(i32, i32), i32>(store, "handler") {
-        if let Some(memory) = instance.get_memory(store, "memory") {
-            use crate::wasm_interface::memory;
+    let handler_result_ptr: Option<i32> =
+        if let Ok(func) = instance.get_typed_func::<(i32, i32), i32>(&mut *store, "handler") {
+            if let Some(memory) = instance.get_memory(&mut *store, "memory") {
+                use crate::wasm_interface::memory;
 
-            // For pooled execution, we need to write the input to memory
-            // The input was already set via reset_for_execution which updates stdin
-            // But for handler-based modules, we need to pass input via memory
-            let input = ""; // Input is passed via stdin in pooled execution
-            let input_ptr = memory::write_string(&memory, store, input)?;
-            let input_len = 0i32;
+                // For pooled execution, we need to write the input to memory
+                // The input was already set via reset_for_execution which updates stdin
+                // But for handler-based modules, we need to pass input via memory
+                let input = ""; // Input is passed via stdin in pooled execution
+                let input_ptr = memory::write_string(&memory, &mut *store, input)?;
+                let input_len = 0i32;
 
-            let result_ptr = func.call(store, (input_ptr, input_len)).map_err(|e| {
-                anyhow::anyhow!(RuntimeError::wasm_execution(format!("Handler function failed: {}", e)))
+                let result_ptr = func
+                    .call(&mut *store, (input_ptr, input_len))
+                    .map_err(|e| {
+                        anyhow::anyhow!(RuntimeError::wasm_execution(format!(
+                            "Handler function failed: {}",
+                            e
+                        )))
+                    })?;
+                tracing::info!("Pooled handler function returned: {}", result_ptr);
+                Some(result_ptr)
+            } else {
+                return Err(anyhow::anyhow!(
+                    "No memory export found for handler function"
+                ));
+            }
+        } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut *store, "_start") {
+            func.call(&mut *store, ()).map_err(|e| {
+                anyhow::anyhow!(RuntimeError::wasm_execution(format!(
+                    "_start function failed: {}",
+                    e
+                )))
             })?;
-            tracing::info!("Pooled handler function returned: {}", result_ptr);
-            Some(result_ptr)
+            None
+        } else if let Ok(func) = instance.get_typed_func::<(), ()>(&mut *store, "main") {
+            func.call(&mut *store, ()).map_err(|e| {
+                anyhow::anyhow!(RuntimeError::wasm_execution(format!(
+                    "main function failed: {}",
+                    e
+                )))
+            })?;
+            None
         } else {
-            return Err(anyhow::anyhow!("No memory export found for handler function"));
-        }
-    } else if let Ok(func) = instance.get_typed_func::<(), ()>(store, "_start") {
-        func.call(store, ()).map_err(|e| anyhow::anyhow!(RuntimeError::wasm_execution(format!("_start function failed: {}", e))))?;
-        None
-    } else if let Ok(func) = instance.get_typed_func::<(), ()>(store, "main") {
-        func.call(store, ()).map_err(|e| anyhow::anyhow!(RuntimeError::wasm_execution(format!("main function failed: {}", e))))?;
-        None
-    } else {
-        return Err(anyhow::anyhow!(RuntimeError::function_not_found("handler, _start, or main")));
-    };
+            return Err(anyhow::anyhow!(RuntimeError::function_not_found(
+                "handler, _start, or main"
+            )));
+        };
 
     // If handler returned a non-null, valid pointer, extract output from memory
     if let Some(result_ptr) = handler_result_ptr {
         if result_ptr > 0 {
-            if let Some(memory) = instance.get_memory(store, "memory") {
-                match read_handler_result(&memory, store, result_ptr) {
+            if let Some(memory) = instance.get_memory(&mut *store, "memory") {
+                match read_handler_result(&memory, &*store, result_ptr) {
                     Ok(s) if !s.is_empty() => return Ok(s),
                     Ok(_) => {}
                     Err(e) => tracing::debug!("Could not read handler result from memory: {}", e),
                 }
             }
         } else if result_ptr < 0 {
-            return Err(anyhow::anyhow!("Handler returned error indicator ({})", result_ptr));
+            return Err(anyhow::anyhow!(
+                "Handler returned error indicator ({})",
+                result_ptr
+            ));
         }
     }
 
@@ -244,23 +295,34 @@ pub fn execute_wasi_with_module_and_store(
 /// Reads the handler return value from WASM memory. Supports (1) direct pointer to a
 /// null-terminated string, and (2) embedder result structure: 12 bytes with status (0),
 /// input_ref (4), result_data (8) where result_data is the pointer to the output string.
-pub fn read_handler_result(memory: &wasmtime::Memory, store: &impl wasmtime::AsContext, result_ptr: i32) -> anyhow::Result<String> {
+pub fn read_handler_result(
+    memory: &wasmtime::Memory,
+    store: &impl wasmtime::AsContext,
+    result_ptr: i32,
+) -> anyhow::Result<String> {
     use crate::wasm_interface::memory;
 
     // Negative values (e.g. -1) are error indicators from the guest, not valid pointers.
     if result_ptr < 0 {
-        return Err(anyhow::anyhow!("Handler returned error pointer {}", result_ptr));
+        return Err(anyhow::anyhow!(
+            "Handler returned error pointer {}",
+            result_ptr
+        ));
     }
 
     let data = memory.data(store);
     let ptr = result_ptr as usize;
     // Reject out-of-bounds ptr (e.g. -1 cast to usize becomes huge)
     if ptr >= data.len() || ptr + 12 > data.len() {
-        return Err(anyhow::anyhow!("Handler result pointer out of bounds: {}", result_ptr));
+        return Err(anyhow::anyhow!(
+            "Handler result pointer out of bounds: {}",
+            result_ptr
+        ));
     }
 
     if ptr + 12 <= data.len() {
-        let result_data_ptr = i32::from_le_bytes([data[ptr + 8], data[ptr + 9], data[ptr + 10], data[ptr + 11]]);
+        let result_data_ptr =
+            i32::from_le_bytes([data[ptr + 8], data[ptr + 9], data[ptr + 10], data[ptr + 11]]);
         let status = i32::from_le_bytes([data[ptr], data[ptr + 1], data[ptr + 2], data[ptr + 3]]);
 
         if status == 1 && result_data_ptr != 0 && result_data_ptr != -1 {

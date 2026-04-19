@@ -14,7 +14,22 @@ use tower_http::trace::TraceLayer;
 
 use crate::config::Config;
 use crate::engine::SharedState;
-use crate::handlers::{execute_function, execute_function_daemon, health_check, ready_check, monitoring_stats, budget_analysis, security_status, kv_status, webhook_status, orchestrator_status, prometheus_metrics, scheduler_status, scheduler_mark_unhealthy, scheduler_mark_healthy, scheduler_remove_node, resource_status, function_metadata, execution_result_info, scheduling_simulate, execution_metrics, micropython_status, runtime_config, runtime_control, runtime_metrics, runtime_status, shutdown_status, execution_result_examples, update_global_limits, set_function_quotas, isolation_utils, capability_introspection, error_status, AppState, python_cache_status, python_cache_control, create_wasi_context, engine_status};
+use crate::engine::sar_executor::SarNodeExecutor;
+use crate::handlers::{
+    analyze_graph, apply_optimization, budget_analysis, capability_introspection,
+    create_wasi_context, engine_status, error_status, estimate_cost, execute_chunked,
+    execute_function, execute_function_daemon, execute_graph, flush_costs,
+    function_metadata, get_costs, get_mutation_log, get_suggestions, health_check,
+    isolation_utils, kv_status, micropython_status, monitoring_stats,
+    orchestrator_status, prometheus_metrics, python_cache_control, python_cache_status,
+    ready_check, resource_status, rollback_mutation, scheduler_mark_healthy,
+    scheduler_mark_unhealthy, scheduler_remove_node, scheduler_status, scheduling_simulate,
+    security_status, set_function_quotas, shutdown_status, update_global_limits,
+    webhook_status, AppState, execution_metrics, execution_result_examples,
+    execution_result_info, runtime_config, runtime_control, runtime_metrics, runtime_status,
+};
+use crate::memory::layer::MemoryLayer;
+use crate::router::{FlyMindClient, FlyMindConfig};
 use crate::kv::SharedKVStore;
 use crate::logging::{CorrelationId, StructuredLogger};
 use crate::micropython::{ExecutorConfig, MicroPythonExecutor};
@@ -22,9 +37,15 @@ use crate::enterprise_security::EnterpriseSecurityEnforcer;
 use crate::package::PackageManager;
 use crate::resource_enforcer::ResourceEnforcer;
 use crate::scheduler::{BinPackingScheduler, NodeCapacity};
+use crate::agent_scheduler::agent_scheduler::{AgentScheduler, RateLimitConfig};
+use crate::agent_scheduler::worker::{JobTracker, spawn_scheduler_workers};
 use crate::security::SecurityMonitor;
 use crate::pool::InstancePool;
+use crate::engine::wasm_cell::WasmCellExecutor;
 use crate::monitoring::ResourceMonitor;
+use crate::observability::cost::{CostAttributor, CostAttributorConfig};
+use crate::optimizer::optimizer::GraphOptimizer;
+use crate::optimizer::config::ThresholdConfig;
 use crate::shutdown::{ComponentShutdown, ResourceManager, ShutdownCoordinator};
 use crate::yara_scanner::YaraScanner;
 use crate::errors::ErrorRecovery;
@@ -101,6 +122,34 @@ pub async fn run_server(
     // Pass the same security_monitor to ensure consistent violation tracking.
     let shared_state = SharedState::new(pool, config.clone(), (*logger).clone(), security_monitor.clone());
 
+    // Create WASI linker for host function injection (kv, ai, fetch, etc.)
+    // This is used by WasmCellExecutor for graph node WASM isolation.
+    let wasi_linker = match crate::wasi::WasiLinker::new(
+        shared_state.engine.engine(),
+        &shared_state.config,
+        Some(shared_state.kv.clone()),
+        (*logger).clone(),
+        security_monitor.clone(),
+    ) {
+        Ok(l) => Some(Arc::new(l)),
+        Err(e) => {
+            tracing::warn!("Failed to create WASI linker: {}. Graph node WASM isolation will be unavailable.", e);
+            None
+        }
+    };
+
+    // Create WASM cell executor for graph node isolation (Phase 2).
+    // This executor is used by the graph engine to run Tool and Memory nodes
+    // as isolated WASM cells with host function injection.
+    let wasm_cell_executor: Option<Arc<WasmCellExecutor>> = if wasi_linker.is_some() {
+        Some(Arc::new(WasmCellExecutor::new(
+            shared_state.config.wasm_pool_max_concurrent.max(4),
+            shared_state.config.wasm_pool_max_idle.max(2),
+        )))
+    } else {
+        None
+    };
+
     // Use the KV store from SharedState for AppState
     let kv_store = shared_state.kv.clone();
 
@@ -114,16 +163,17 @@ pub async fn run_server(
 
     // Create package manager for Enterprise tier
     let package_manager = if config.enterprise_enabled && config.package_caching_enabled {
-        Some(Arc::new(PackageManager::new(
+        let pm = PackageManager::new(
             shared_state.cache.clone(),
             config.package_cache_dir.clone().into(),
             config.package_cache_size_mb,
             config.network_whitelist.clone(),
             config.strict_network_whitelist,
-        ).unwrap_or_else(|e| {
+        ).map_err(|e| {
             tracing::error!("Failed to create package manager: {}", e);
-            panic!("Package manager creation failed");
-        })))
+            anyhow::anyhow!("Package manager creation failed: {}", e)
+        })?;
+        Some(Arc::new(pm))
     } else {
         None
     };
@@ -160,7 +210,13 @@ pub async fn run_server(
     // Create YARA scanner for WASM artifact validation (Phase 2)
     let yara_scanner = if config.enterprise_enabled {
         let scanner_config = crate::yara_scanner::YaraScannerConfig::default();
-        Some(Arc::new(YaraScanner::new(scanner_config)))
+        match YaraScanner::new(scanner_config) {
+            Ok(scanner) => Some(Arc::new(scanner)),
+            Err(e) => {
+                tracing::warn!("Failed to create YARA scanner: {}. YARA scanning will be unavailable.", e);
+                None
+            }
+        }
     } else {
         None
     };
@@ -222,6 +278,69 @@ pub async fn run_server(
         None
     };
 
+    // Create multi-tier memory layer (Phase 3) — connects to Redis + PostgreSQL if configured
+    let memory_layer = Arc::new(MemoryLayer::with_tiers(
+        std::env::var("REDIS_URL").ok().as_deref(),
+        std::env::var("DATABASE_URL").ok().as_deref(),
+        10_000, // hot tier capacity per tenant
+    ));
+    // Connect to Redis and PostgreSQL (non-blocking — falls back to in-process if unavailable)
+    let memory_layer_for_connect = memory_layer.clone();
+    tokio::spawn(async move {
+        memory_layer_for_connect.connect_tiers().await;
+    });
+
+    // Create FlyMind model router client (Phase 4) — routes LLM nodes to Python ai-service
+    let flymind_config = FlyMindConfig::default();
+    let flymind_client = Arc::new(FlyMindClient::new(flymind_config));
+
+    // Create self-optimization engine (Phase 7) — analyzes execution history, emits suggestions
+    let optimizer = Arc::new(GraphOptimizer::new(
+        memory_layer.state().clone(),
+        ThresholdConfig::default(),
+    ));
+    tracing::info!("Graph optimizer initialized — pattern detection active");
+
+    // Create cost attributor (Phase 6) — tracks per-agent, per-execution-path cost
+    let cost_attributor = Arc::new(CostAttributor::new(CostAttributorConfig::default()));
+    tracing::info!("Cost attributor initialized — billing records will be emitted to Go backend");
+
+    // Create the integrated SAR node executor (wires Memory + FlyMind + WASM cells)
+    let sar_executor = match SarNodeExecutor::from_app_state(
+        Some(memory_layer.clone()),
+        Some(flymind_client.clone()),
+        wasm_cell_executor.clone(),
+    ) {
+        Ok(executor) => {
+            tracing::info!("SAR Node Executor initialized with real service implementations");
+            Some(Arc::new(executor))
+        }
+        Err(e) => {
+            tracing::warn!("Failed to create SAR Node Executor (falling back to stubs): {}", e);
+            None
+        }
+    };
+
+    // Create agent scheduler (Phase 5) — priority queues with rate limiting and backpressure
+    let agent_scheduler = Arc::new(tokio::sync::RwLock::new(AgentScheduler::new(
+        RateLimitConfig::default(),
+    )));
+    tracing::info!("Agent scheduler initialized with 4 priority queues");
+
+    // Create job tracker for async execution status (retains last 10k jobs)
+    let job_tracker = Arc::new(JobTracker::new(10_000));
+
+    // Start real scheduler worker tasks to dequeue and execute graphs
+    // Pass cost_attributor for Phase 6 observability in async executions
+    spawn_scheduler_workers(
+        agent_scheduler.clone(),
+        sar_executor.clone(),
+        job_tracker.clone(),
+        Some(cost_attributor.clone()),
+        4, // 4 worker threads
+    );
+    tracing::info!("Scheduler workers spawned (4 threads)");
+
     // Create app state
     let app_state = Arc::new(AppState {
         engine: shared_state.engine.clone(),
@@ -244,6 +363,14 @@ pub async fn run_server(
         error_recovery,
         python_pool,
         wasm_pool: shared_state.wasm_pool.clone(),
+        wasm_cell_executor,
+        memory_layer: Some(memory_layer),
+        flymind_client: Some(flymind_client),
+        sar_executor,
+        agent_scheduler: Some(agent_scheduler),
+        job_tracker: Some(job_tracker),
+        optimizer: Some(optimizer),
+        cost_attributor: Some(cost_attributor),
     });
 
     // Register resources with ResourceManager for cleanup on shutdown
@@ -296,6 +423,8 @@ pub async fn run_server(
     // Build router
     let app = Router::new()
         .route("/", post(execute_function))
+        .route("/execute/chunked", post(execute_chunked))
+        .route("/execute/graph", post(execute_graph))
         .route("/execute/{function_id}/{version}", post(execute_function_daemon))
         .route("/health", get(health_check))
         .route("/ready", get(ready_check))
@@ -320,6 +449,16 @@ pub async fn run_server(
         .route("/scheduler/node/{node_id}/healthy", post(scheduler_mark_healthy))
         .route("/scheduler/node/{node_id}", delete(scheduler_remove_node))
         .route("/metrics/execution", get(execution_metrics))
+        // Optimizer endpoints (Phase 7: Self-Optimization)
+        .route("/graphs/analyze", post(analyze_graph))
+        .route("/graphs/{graph_id}/suggestions", get(get_suggestions))
+        .route("/graphs/{graph_id}/optimize", post(apply_optimization))
+        .route("/graphs/{graph_id}/mutations", get(get_mutation_log))
+        .route("/mutations/{mutation_id}/rollback", post(rollback_mutation))
+        // Billing endpoints (Phase 6: Cost Attribution)
+        .route("/billing/costs", get(get_costs))
+        .route("/billing/costs/flush", post(flush_costs))
+        .route("/billing/estimate", get(estimate_cost))
         // Resource quota management endpoints
         .route("/resources/limits", post(update_global_limits))
         .route("/resources/quotas", post(set_function_quotas))

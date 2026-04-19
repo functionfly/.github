@@ -19,6 +19,9 @@ pub struct ResultCache {
     /// Stored as raw `Vec<u8>` to avoid the 2× memory overhead of hex-encoding.
     binary_cache: LruCache<String, CachedBinary>,
     ttl: Duration,
+    /// Cumulative hit and miss counters for cache statistics.
+    hits: u64,
+    misses: u64,
 }
 
 /// A cached string result with metadata
@@ -45,6 +48,8 @@ impl ResultCache {
             cache: LruCache::new(NonZeroUsize::new(1000).unwrap()),
             binary_cache: LruCache::new(NonZeroUsize::new(256).unwrap()),
             ttl: Duration::from_secs(ttl_secs),
+            hits: 0,
+            misses: 0,
         }
     }
 
@@ -63,6 +68,7 @@ impl ResultCache {
             // Check if expired
             if cached.cached_at.elapsed() < self.ttl {
                 tracing::debug!("Cache hit for key: {}", &key[..16]);
+                self.hits += 1;
                 return Some(cached.result.clone());
             } else {
                 // Remove expired entry
@@ -70,6 +76,7 @@ impl ResultCache {
             }
         }
 
+        self.misses += 1;
         None
     }
 
@@ -105,7 +112,19 @@ impl ResultCache {
             entries: self.cache.len(),
             binary_entries: self.binary_cache.len(),
             ttl_secs: self.ttl.as_secs(),
+            hits: self.hits,
+            misses: self.misses,
         }
+    }
+
+    /// Get cumulative hit count (useful for cache hit rate calculation).
+    pub fn hit_count(&self) -> u64 {
+        self.hits
+    }
+
+    /// Get cumulative miss count (useful for cache hit rate calculation).
+    pub fn miss_count(&self) -> u64 {
+        self.misses
     }
 
     /// Python-specific caching methods.
@@ -262,6 +281,10 @@ pub struct CacheStats {
     /// Number of entries in the binary blob cache
     pub binary_entries: usize,
     pub ttl_secs: u64,
+    /// Cumulative cache hits since cache creation
+    pub hits: u64,
+    /// Cumulative cache misses since cache creation
+    pub misses: u64,
 }
 
 #[cfg(test)]

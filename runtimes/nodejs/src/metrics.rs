@@ -1,5 +1,5 @@
 //! Metrics Collection
-//! 
+//!
 //! This module provides metrics collection for the Node.js runtime.
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -8,25 +8,25 @@ use std::sync::atomic::{AtomicU64, Ordering};
 pub struct ExecutorMetrics {
     /// Total number of executions
     pub total_executions: AtomicU64,
-    
+
     /// Number of successful executions
     pub successful_executions: AtomicU64,
-    
+
     /// Number of failed executions
     pub errors: AtomicU64,
-    
+
     /// Number of timeouts
     pub timeouts: AtomicU64,
-    
+
     /// Number of panics
     pub panics: AtomicU64,
-    
+
     /// Cache hits
     pub cache_hits: AtomicU64,
-    
+
     /// Cache misses
     pub cache_misses: AtomicU64,
-    
+
     /// Total execution time (nanoseconds)
     pub total_execution_time_ns: AtomicU64,
 }
@@ -48,7 +48,8 @@ impl ExecutorMetrics {
 
     /// Record execution time
     pub fn execution_time(&self, ns: u64) {
-        self.total_execution_time_ns.fetch_add(ns, Ordering::Relaxed);
+        self.total_execution_time_ns
+            .fetch_add(ns, Ordering::Relaxed);
     }
 
     /// Get metrics snapshot
@@ -91,11 +92,9 @@ impl ExecutorMetricsSnapshot {
         if self.total_executions == 0 {
             return 100.0;
         }
-        
-        let successful = self.total_executions 
-            - self.errors.load(Ordering::Relaxed) 
-            - self.timeouts.load(Ordering::Relaxed);
-        
+
+        let successful = self.total_executions - self.errors - self.timeouts;
+
         (successful as f64 / self.total_executions as f64) * 100.0
     }
 
@@ -104,7 +103,7 @@ impl ExecutorMetricsSnapshot {
         if self.total_executions == 0 {
             return 0.0;
         }
-        
+
         (self.total_execution_time_ns as f64 / 1_000_000.0) / self.total_executions as f64
     }
 
@@ -114,7 +113,7 @@ impl ExecutorMetricsSnapshot {
         if total == 0 {
             return 0.0;
         }
-        
+
         (self.cache_hits as f64 / total as f64) * 100.0
     }
 }

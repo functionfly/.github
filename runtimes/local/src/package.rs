@@ -330,16 +330,14 @@ impl PackageManager {
         // Try to use the current runtime if available, otherwise spawn blocking
         match tokio::runtime::Handle::try_current() {
             Ok(handle) => {
-                // We're in an async context - use spawn_blocking to avoid nested runtime
-                let current_cache_size = Arc::clone(&self.current_cache_size);
-                let _ = handle.spawn_blocking(move || {
-                    // This runs on a blocking thread, but we still can't use block_on
-                    // So we'll just set the value without awaiting
-                    // This is a limitation - the caller should prefer update_cache_size_async
+                // We're in an async context - use block_in_place to update the cache size
+                // This is safe because block_in_place yields the current task to the runtime
+                // and runs the blocking operation on the same thread
+                tokio::task::block_in_place(|| {
+                    handle.block_on(async {
+                        *self.current_cache_size.write().await = total_size;
+                    });
                 });
-                // For now, just ignore the update when called from sync context in async runtime
-                // The async methods should call update_cache_size_async instead
-                let _ = total_size;
             }
             Err(_) => {
                 // No runtime available - create a new one

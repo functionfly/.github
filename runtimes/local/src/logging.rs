@@ -346,7 +346,10 @@ pub fn init_structured_logging(verbose: bool) -> StructuredLogger {
     // This prevents issues in tests where multiple initializations occur
     static INIT: std::sync::Once = std::sync::Once::new();
     INIT.call_once(|| {
-        let filter = if verbose {
+        // Respect RUST_LOG environment variable if set, otherwise use defaults
+        let filter = if std::env::var("RUST_LOG").is_ok() {
+            tracing_subscriber::EnvFilter::from_default_env()
+        } else if verbose {
             tracing_subscriber::EnvFilter::new("functionfly=debug")
         } else {
             tracing_subscriber::EnvFilter::new("functionfly=info")

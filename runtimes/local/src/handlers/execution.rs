@@ -4,7 +4,7 @@ use axum::{extract::Json, response::IntoResponse, extract::State};
 use std::sync::Arc;
 use uuid::Uuid;
 
-use super::types::{AppState, ErrorResponse, ExecuteRequest, ExecuteResponse};
+use super::types::{AppState, ChunkedExecuteRequest, ChunkedExecuteResponse, ChunkedCompleteResponse, ErrorResponse, ExecuteRequest, ExecuteResponse};
 use crate::errors::{RuntimeError, RecoveryStrategy};
 use crate::logging::{CorrelationId, RequestContext};
 use crate::scheduler::SchedulingRequest;
@@ -507,4 +507,255 @@ async fn execute_with_error_handling(
     };
 
     result
+}
+
+// ---------------------------------------------------------------------------
+// Chunked WASM execution handler (streaming / memory-efficient processing)
+// ---------------------------------------------------------------------------
+
+/// Maximum number of chunks per chunked execution session.
+const MAX_CHUNKED_CHUNKS: u32 = 1000;
+/// Maximum total WASM size across all chunks (50 MB).
+const MAX_CHUNKED_TOTAL_WASM_BYTES: usize = 50 * 1024 * 1024;
+
+/// In-memory buffer for accumulating WASM chunks.
+struct ChunkedSession {
+    chunks: Vec<Vec<u8>>,
+    total_size: usize,
+    input: Option<String>,
+    timeout_ms: u64,
+    memory_mb: Option<u32>,
+    function: Option<String>,
+    version: Option<String>,
+    tenant_id: Option<String>,
+}
+
+impl ChunkedSession {
+    fn new() -> Self {
+        Self {
+            chunks: Vec::new(),
+            total_size: 0,
+            input: None,
+            timeout_ms: 30_000,
+            memory_mb: None,
+            function: None,
+            version: None,
+            tenant_id: None,
+        }
+    }
+
+    fn add_chunk(&mut self, index: u32, data: Vec<u8>, is_last: bool) -> Result<(), &'static str> {
+        if index as usize != self.chunks.len() {
+            return Err("Chunk index out of order");
+        }
+        if self.total_size + data.len() > MAX_CHUNKED_TOTAL_WASM_BYTES {
+            return Err("Total WASM size exceeds 50 MB limit");
+        }
+        if self.chunks.len() as u32 >= MAX_CHUNKED_CHUNKS {
+            return Err("Too many chunks");
+        }
+        self.total_size += data.len();
+        self.chunks.push(data);
+        if is_last {
+            // No-op: session stays open; caller should stop sending
+        }
+        Ok(())
+    }
+
+    fn is_complete(&self) -> bool {
+        // Session is considered complete when at least one chunk has been received.
+        !self.chunks.is_empty()
+    }
+
+    fn combine_wasm(&self) -> Vec<u8> {
+        let mut combined = Vec::with_capacity(self.total_size);
+        for chunk in &self.chunks {
+            combined.extend_from_slice(chunk);
+        }
+        combined
+    }
+}
+
+/// Base64 decode helper (mirrors daemon.rs).
+fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
+    let input = input.replace(['\n', '\r', ' '], "");
+    let mut output = Vec::new();
+    let mut buf: u32 = 0;
+    let mut bits: u32 = 0;
+
+    for ch in input.bytes() {
+        let val = match ch {
+            b'A'..=b'Z' => (ch - b'A') as u32,
+            b'a'..=b'z' => (ch - b'a' + 26) as u32,
+            b'0'..=b'9' => (ch - b'0' + 52) as u32,
+            b'+' => 62,
+            b'/' => 63,
+            b'=' => break,
+            _ => return Err(format!("Invalid base64 character: {}", ch as char)),
+        };
+        buf = (buf << 6) | val;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            output.push((buf >> bits) as u8);
+            buf &= (1 << bits) - 1;
+        }
+    }
+    Ok(output)
+}
+
+/// Execute a function via streamed WASM chunks.
+///
+/// Protocol:
+/// 1. Client sends N POST requests to /execute/chunked with ChunkedExecuteRequest
+/// 2. Server accumulates chunks in memory (no persistence across restarts)
+/// 3. After each chunk, server responds with ChunkedExecuteResponse (partial_output, etc.)
+/// 4. After is_last=true, server executes accumulated WASM and returns ChunkedCompleteResponse
+///
+/// Only one active session per runtime process (suitable for low-concurrency scenarios).
+pub async fn execute_chunked(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<ChunkedExecuteRequest>,
+) -> axum::response::Response {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
+
+    // Session storage: keyed by a fixed sentinel (singleton per process).
+    // For multi-tenant / multi-function scenarios a per-tenant key would be needed.
+    static SESSION: Mutex<Option<ChunkedSession>> = Mutex::const_new(None);
+
+    let correlation_id = state.logger.generate_correlation_id().await;
+
+    // --- First chunk: initialise session ---
+    {
+        let mut session_guard = SESSION.lock().await;
+        if session_guard.is_none() {
+            let mut sess = ChunkedSession::new();
+            sess.input = payload.input.clone();
+            sess.timeout_ms = payload.timeout_ms.unwrap_or(30_000);
+            sess.memory_mb = payload.memory_mb;
+            sess.function = payload.function.clone();
+            sess.version = payload.version.clone();
+            sess.tenant_id = payload.tenant_id.clone();
+            *session_guard = Some(sess);
+            tracing::debug!(correlation_id = %correlation_id, "Chunked session started");
+        }
+    }
+
+    // --- Decode this chunk ---
+    let chunk_bytes = match base64_decode(&payload.chunk_data) {
+        Ok(b) => b,
+        Err(e) => {
+            return ErrorResponse {
+                error: format!("Failed to decode chunk: {}", e),
+                correlation_id: Some(correlation_id.to_string()),
+                recovery_suggestions: vec!["Ensure chunk_data is valid base64".to_string()],
+            }
+            .into_response();
+        }
+    };
+
+    // --- Accumulate chunk ---
+    {
+        let mut session_guard = SESSION.lock().await;
+        let session = session_guard.as_mut().expect("Session must be initialised");
+        if let Err(msg) = session.add_chunk(payload.chunk_index, chunk_bytes, payload.is_last) {
+            // Reset on error
+            *session_guard = None;
+            return ErrorResponse {
+                error: msg.to_string(),
+                correlation_id: Some(correlation_id.to_string()),
+                recovery_suggestions: vec![],
+            }
+            .into_response();
+        }
+    }
+
+    // --- Return per-chunk acknowledgment ---
+    if !payload.is_last {
+        return Json(ChunkedExecuteResponse {
+            chunk_index: payload.chunk_index,
+            is_last: false,
+            partial_output: String::new(),
+            exec_time_ms: 0,
+            done: false,
+        })
+        .into_response();
+    }
+
+    // --- Last chunk received: execute ---
+    let (wasm_bytes, input, timeout_ms, memory_mb, function, version, tenant_id) = {
+        let mut session_guard = SESSION.lock().await;
+        let _session = session_guard.as_mut().expect("Session must be initialised");
+        let sess = std::mem::replace(
+            &mut *session_guard,
+            None,
+        );
+        let mut session = sess.expect("Session must be present");
+        (session.combine_wasm(), session.input.unwrap_or_default(), session.timeout_ms, session.memory_mb, session.function, session.version, session.tenant_id)
+    };
+
+    let start = std::time::Instant::now();
+
+    // Build config for execution
+    let mut exec_config = state.config.clone();
+    if let Some(f) = function {
+        exec_config.function = f;
+    }
+    if let Some(v) = version {
+        exec_config.version = v;
+    }
+    if let Some(ms) = Some(timeout_ms) {
+        exec_config.timeout_ms = ms;
+    }
+    if let Some(mb) = memory_mb {
+        exec_config.memory_mb = mb;
+    }
+    if let Some(tid) = tenant_id {
+        exec_config.tenant_id = Some(tid);
+    }
+
+    let result = state
+        .engine
+        .execute(
+            &wasm_bytes,
+            &input,
+            &exec_config,
+            state.python_pool.clone(),
+            state.micropython_executor.clone(),
+        )
+        .await;
+
+    let exec_time_ms = start.elapsed().as_millis() as u64;
+
+    match result {
+        Ok(output) => {
+            // Log execution
+            state.logger.log_function_execution(
+                &correlation_id,
+                &exec_config.function,
+                exec_time_ms,
+                true,
+                false,
+            );
+
+            Json(ChunkedCompleteResponse {
+                result: output,
+                total_exec_time_ms: exec_time_ms,
+                chunks_processed: ((wasm_bytes.len() + 65535) / 65536) as u32,
+                cache_hit: false,
+            })
+            .into_response()
+        }
+        Err(e) => ErrorResponse {
+            error: format!("Execution failed: {}", e),
+            correlation_id: Some(correlation_id.to_string()),
+            recovery_suggestions: vec![
+                "Verify the WASM binary is valid".to_string(),
+                "Check that resource limits are sufficient".to_string(),
+            ],
+        }
+        .into_response(),
+    }
 }

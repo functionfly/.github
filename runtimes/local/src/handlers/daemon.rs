@@ -8,10 +8,12 @@ use super::types::{AppState, DaemonExecuteRequest, ErrorResponse, ExecuteRespons
 
 /// Execute a function via the daemon endpoint (Phase 3.2).
 ///
-/// This handler is used by SandboxClient when the runtime runs in daemon mode.
-/// It receives the WASM binary (base64) and per-request resource limits,
-/// allowing a single runtime process to serve multiple functions with
-/// independent memory/CPU/timeout constraints.
+/// Pool-aware execution strategy:
+/// 1. engine.execute() handles pool acquisition internally (fast path if pool is warm).
+/// 2. If the pool is empty (cold start), engine.execute() falls back to execute_wasm_standard
+///    which compiles the module.
+/// 3. After a successful cold-start execution, we pre-warm the pool with the compiled
+///    module so subsequent requests use warm pooled instances.
 pub async fn execute_function_daemon(
     State(state): State<Arc<AppState>>,
     Path((function_id, version)): Path<(String, String)>,
@@ -69,15 +71,44 @@ pub async fn execute_function_daemon(
     }
     // Store execution context for downstream use
     let execution_context = payload.context.clone();
+    let function_key = format!("{}@{}", exec_config.function, exec_config.version);
 
     let start = std::time::Instant::now();
 
-    // Execute using the engine with per-request config
-    let result = match state
+    // Pool-aware execution:
+    // 1. engine.execute() handles pool acquisition internally (fast path if pool is warm).
+    // 2. If the pool is empty (cold start), engine.execute() falls back to execute_wasm_standard.
+    // 3. After a successful cold-start execution, we pre-warm the pool so the next request is fast.
+    let is_pool_warm = if let Some(ref pm) = state.wasm_pool {
+        pm.is_warmed(&function_key).await
+    } else {
+        false
+    };
+
+    let result = state
         .engine
         .execute(&wasm_bytes, &payload.input, &exec_config, state.python_pool.clone(), state.micropython_executor.clone())
-        .await
-    {
+        .await;
+
+    // Pre-warm the pool after a cold start (successful fallback execution)
+    // The pre-warm is fire-and-forget at the pool level — we don't await it.
+    if result.is_ok() && !is_pool_warm {
+        if let Some(ref pool_manager) = state.wasm_pool {
+            let wasm_bytes_for_prewarm = wasm_bytes.clone();
+            let function_key_for_prewarm = function_key.clone();
+            let pool_manager_clone = pool_manager.clone();
+            let engine = state.engine.clone();
+            tracing::debug!(function = %function_key_for_prewarm, "Pre-warming pool after cold start");
+            tokio::spawn(async move {
+                if let Err(e) = engine.prewarm_pool(&wasm_bytes_for_prewarm, &function_key_for_prewarm, pool_manager_clone).await {
+                    tracing::warn!(function = %function_key_for_prewarm, "Failed to pre-warm pool: {}", e);
+                }
+            });
+        }
+    }
+
+    // Handle result or error
+    let result = match result {
         Ok(output) => output,
         Err(e) => {
             return ErrorResponse {

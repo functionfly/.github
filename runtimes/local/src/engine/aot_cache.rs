@@ -189,3 +189,12 @@ impl Default for AotCache {
         Self::new()
     }
 }
+
+impl Clone for AotCache {
+    fn clone(&self) -> Self {
+        Self {
+            cache: Arc::clone(&self.cache),
+            counter: Arc::clone(&self.counter),
+        }
+    }
+}

@@ -104,12 +104,11 @@ pub struct YaraScanner {
 
 impl YaraScanner {
     /// Create a new YARA scanner.
-    pub fn new(config: YaraScannerConfig) -> Self {
+    pub fn new(config: YaraScannerConfig) -> Result<Self, reqwest::Error> {
         let client = reqwest::Client::builder()
             .timeout(config.timeout)
-            .build()
-            .expect("Failed to build YARA scanner HTTP client");
-        Self { config, client }
+            .build()?;
+        Ok(Self { config, client })
     }
 
     /// Scan `wasm_bytes` using the YARA service.
@@ -260,7 +259,7 @@ mod tests {
             enabled: false,
             ..Default::default()
         };
-        let scanner = YaraScanner::new(config);
+        let scanner = YaraScanner::new(config).expect("Failed to create scanner");
         let result = scanner.scan(b"\x00asm\x01\x00\x00\x00").await;
         assert!(!result.matched);
         assert!(!result.skipped);
@@ -274,7 +273,7 @@ mod tests {
             fail_open: true,
             timeout: Duration::from_millis(100),
         };
-        let scanner = YaraScanner::new(config);
+        let scanner = YaraScanner::new(config).expect("Failed to create scanner");
         let result = scanner.scan(b"\x00asm\x01\x00\x00\x00").await;
         // fail_open: should be skipped, not blocked
         assert!(result.skipped);
@@ -289,7 +288,7 @@ mod tests {
             fail_open: false,
             timeout: Duration::from_millis(100),
         };
-        let scanner = YaraScanner::new(config);
+        let scanner = YaraScanner::new(config).expect("Failed to create scanner");
         let result = scanner.scan(b"\x00asm\x01\x00\x00\x00").await;
         // fail_closed: should block
         assert!(result.should_block());

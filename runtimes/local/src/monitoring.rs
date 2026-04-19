@@ -66,11 +66,16 @@ pub struct ResourceMonitor {
     logger: Option<Arc<StructuredLogger>>,
     /// Maximum metrics to retain in memory
     max_metrics_retained: usize,
+    /// Optional reference to the result cache for cache statistics
+    cache: Option<Arc<tokio::sync::RwLock<crate::cache::ResultCache>>>,
 }
 
 impl ResourceMonitor {
     /// Create a new resource monitor
-    pub fn new(logger: Option<Arc<StructuredLogger>>) -> Self {
+    pub fn new(
+        logger: Option<Arc<StructuredLogger>>,
+        cache: Option<Arc<tokio::sync::RwLock<crate::cache::ResultCache>>>,
+    ) -> Self {
         Self {
             metrics: Arc::new(RwLock::new(Vec::new())),
             function_limits: Arc::new(RwLock::new(HashMap::new())),
@@ -88,6 +93,7 @@ impl ResourceMonitor {
             start_time: Instant::now(),
             logger,
             max_metrics_retained: 10000, // Retain last 10k metrics
+            cache,
         }
     }
 
@@ -274,11 +280,19 @@ impl ResourceMonitor {
     ///
     /// Removes metrics whose Unix timestamp (`m.timestamp`) is older than 1 hour.
     /// Get cache statistics for logging
-    pub fn get_cache_stats(&self) -> CacheStatsOutput {
+    pub async fn get_cache_stats(&self) -> CacheStatsOutput {
+        let (entries, hits, misses) = if let Some(ref cache) = self.cache {
+            let cache_guard = cache.read().await;
+            let stats = cache_guard.stats();
+            (stats.entries, stats.hits, stats.misses)
+        } else {
+            (0, 0, 0)
+        };
+
         CacheStatsOutput {
-            entries: 0, // Placeholder - would need access to cache internals
-            hits: 0,
-            misses: 0,
+            entries,
+            hits,
+            misses,
         }
     }
 
@@ -365,13 +379,13 @@ mod tests {
 
     #[test]
     fn test_monitor_creation() {
-        let monitor = ResourceMonitor::new(None);
+        let monitor = ResourceMonitor::new(None, None);
         assert!(monitor.start_time.elapsed() < std::time::Duration::from_millis(100));
     }
 
     #[tokio::test]
     async fn test_record_execution() {
-        let monitor = ResourceMonitor::new(None);
+        let monitor = ResourceMonitor::new(None, None);
 
         let metrics = ExecutionMetrics {
             function_name: "test".to_string(),

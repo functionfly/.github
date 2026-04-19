@@ -321,7 +321,7 @@ mod rand {
         let mut hasher = state.build_hasher();
         hasher.write_u128(std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos());
 
         let hash = hasher.finish();

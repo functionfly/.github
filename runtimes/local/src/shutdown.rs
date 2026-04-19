@@ -74,7 +74,7 @@ impl ShutdownCoordinator {
         // Wait for shutdown to complete or timeout
         match timeout(self.timeout, self.wait_for_cleanup(&correlation_id)).await {
             Ok(result) => {
-                let elapsed = self.shutdown_start.unwrap().elapsed();
+                let elapsed = self.shutdown_start.map(|s| s.elapsed()).unwrap_or_default();
                 self.logger.log_with_correlation(
                     crate::logging::LogLevel::Info,
                     format!("Shutdown completed successfully in {:.2}s", elapsed.as_secs_f64()),

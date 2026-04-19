@@ -11,6 +11,7 @@ pub mod native_modules;
 pub mod host_functions;
 pub mod config;
 pub mod metrics;
+pub mod wasm_entry;
 
 use std::sync::Arc;
 use std::future::Future;
@@ -33,7 +34,7 @@ pub use config::{RuntimeConfig, RuntimeVersion};
 // Error Types
 // ============================================================================
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum RuntimeError {
     #[error("Compilation error: {0}")]
     Compilation(String),
@@ -63,6 +64,34 @@ impl Serialize for RuntimeError {
         S: serde::Serializer,
     {
         serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for RuntimeError {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        // Parse the string to determine the error type
+        if s.starts_with("Compilation error:") {
+            Ok(RuntimeError::Compilation(s.trim_start_matches("Compilation error: ").to_string()))
+        } else if s.starts_with("Execution error:") {
+            Ok(RuntimeError::Execution(s.trim_start_matches("Execution error: ").to_string()))
+        } else if s.starts_with("Timeout after") {
+            let num = s.trim_start_matches("Timeout after ").trim_end_matches("ms");
+            Ok(RuntimeError::Timeout(num.parse().unwrap_or(0)))
+        } else if s.starts_with("Memory limit exceeded:") {
+            Ok(RuntimeError::MemoryLimit(s.trim_start_matches("Memory limit exceeded: ").to_string()))
+        } else if s.starts_with("Sandbox violation:") {
+            Ok(RuntimeError::SecurityViolation(s.trim_start_matches("Sandbox violation: ").to_string()))
+        } else if s.starts_with("Invalid input:") {
+            Ok(RuntimeError::InvalidInput(s.trim_start_matches("Invalid input: ").to_string()))
+        } else if s.starts_with("Runtime not ready:") {
+            Ok(RuntimeError::NotReady(s.trim_start_matches("Runtime not ready: ").to_string()))
+        } else {
+            Ok(RuntimeError::Execution(s))
+        }
     }
 }
 
@@ -155,11 +184,11 @@ pub trait Runtime: Send + Sync {
     ) -> ExecutionResult;
 
     /// Execute a function asynchronously (returns a Future)
-    fn execute_async(
-        &self,
-        code: &str,
+    fn execute_async<'a>(
+        &'a self,
+        code: &'a str,
         input: ExecutionInput,
-    ) -> Pin<Box<dyn Future<Output = ExecutionResult> + Send + '_>>;
+    ) -> Pin<Box<dyn Future<Output = ExecutionResult> + Send + 'a>>;
 
     /// Get runtime information
     fn info(&self) -> RuntimeInfo;

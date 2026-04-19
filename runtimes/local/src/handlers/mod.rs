@@ -20,11 +20,14 @@
 //! callers can import everything from `crate::handlers` without knowing the
 //! internal module layout.
 
+pub mod billing_handlers;
 pub mod daemon;
 pub mod execution;
+pub mod graph;
 pub mod health;
 pub mod metrics_handlers;
 pub mod monitoring;
+pub mod optimizer_handlers;
 pub mod prometheus;
 pub mod runtime_handlers;
 pub mod scheduler_handlers;
@@ -41,7 +44,8 @@ pub mod types;
 pub use types::{AppState};
 
 // Execution
-pub use execution::execute_function;
+pub use execution::{execute_function, execute_chunked};
+pub use graph::execute_graph;
 
 // Health
 pub use health::{health_check, ready_check};
@@ -57,6 +61,12 @@ pub use daemon::execute_function_daemon;
 
 // Scheduler
 pub use scheduler_handlers::{scheduler_mark_healthy, scheduler_mark_unhealthy, scheduler_remove_node, scheduler_status, scheduling_simulate};
+
+// Optimizer (Phase 7)
+pub use optimizer_handlers::{analyze_graph, get_suggestions, apply_optimization, get_mutation_log, rollback_mutation};
+
+// Billing (Phase 6)
+pub use billing_handlers::{get_costs, flush_costs, estimate_cost};
 
 // Metrics
 pub use metrics_handlers::{

@@ -146,6 +146,12 @@ pub fn add_kv_functions_namespaced(
 }
 
 /// Add KV functions without namespacing (backward-compatible wrapper).
+/// 
+/// This function is kept for backward compatibility with code that uses the
+/// non-namespaced KV API. New code should use `add_kv_functions_namespaced`
+/// which provides tenant isolation. This function is not currently used
+/// internally but is exposed for external consumers.
+#[allow(dead_code)]
 pub fn add_kv_functions(
     kv_store: SharedKVStore,
     linker: &mut wasmtime::Linker<WasiP1Ctx>,

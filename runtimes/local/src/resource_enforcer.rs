@@ -345,28 +345,66 @@ impl ResourceEnforcer {
     /// Check predictive throttling based on usage patterns
     /// Note: function_key reserved for per-function throttling policies
     async fn check_predictive_throttling(&self, _function_key: &str) -> Option<Duration> {
-        // Simple predictive throttling based on recent trends
-        // In a real implementation, this would use ML models or time-series analysis
-
-        let recent_metrics = self.monitor.get_recent_metrics(10).await;
+        let recent_metrics = self.monitor.get_recent_metrics(20).await;
 
         if recent_metrics.len() < 5 {
-            return None; // Not enough data for prediction
+            return None;
         }
 
-        // Check if execution times are trending up
-        let avg_execution_time = recent_metrics.iter()
+        let execution_times: Vec<f64> = recent_metrics.iter()
             .map(|m| m.execution_time_ms as f64)
-            .sum::<f64>() / recent_metrics.len() as f64;
+            .collect();
 
-        let recent_avg = recent_metrics.iter()
-            .rev()
-            .take(3)
-            .map(|m| m.execution_time_ms as f64)
-            .sum::<f64>() / 3.0;
+        let timestamps: Vec<f64> = recent_metrics.iter()
+            .map(|m| m.timestamp as f64)
+            .collect();
 
-        // If recent executions are 50% slower than average, throttle
-        if recent_avg > avg_execution_time * 1.5 {
+        let n = execution_times.len() as f64;
+
+        // Exponential Moving Average (alpha=0.3 weights recent data more)
+        let alpha = 0.3;
+        let mut ema = execution_times[0];
+        for &et in &execution_times[1..] {
+            ema = alpha * et + (1.0 - alpha) * ema;
+        }
+
+        // Linear regression for trend slope
+        let sum_t = timestamps.iter().sum::<f64>();
+        let sum_et = execution_times.iter().sum::<f64>();
+        let sum_t_et: f64 = timestamps.iter().zip(execution_times.iter())
+            .map(|(t, et)| t * et).sum::<f64>();
+        let sum_t_sq: f64 = timestamps.iter().map(|t| t * t).sum::<f64>();
+
+        let slope = if (n * sum_t_sq - sum_t * sum_t).abs() > f64::EPSILON {
+            (n * sum_t_et - sum_t * sum_et) / (n * sum_t_sq - sum_t * sum_t)
+        } else {
+            0.0
+        };
+
+        // Normalize slope to per-millisecond for readability
+        let time_range = timestamps.last().copied().unwrap_or(0.0) - timestamps.first().copied().unwrap_or(0.0);
+        let slope_per_ms = if time_range > 0.0 { slope / time_range } else { 0.0 };
+
+        // Standard deviation for anomaly detection
+        let mean = sum_et / n;
+        let variance = execution_times.iter()
+            .map(|et| (et - mean).powi(2)).sum::<f64>() / n;
+        let std_dev = variance.sqrt();
+
+        // Throttle condition 1: Strong upward trend with elevated EMA
+        if slope_per_ms > 0.001 && ema > mean * 1.2 {
+            return Some(Duration::from_secs(5));
+        }
+
+        // Throttle condition 2: Anomaly — recent spike beyond 2σ
+        let recent_avg = execution_times.iter().rev().take(3).sum::<f64>() / 3.0;
+        if recent_avg > mean + 2.0 * std_dev {
+            return Some(Duration::from_secs(3));
+        }
+
+        // Throttle condition 3: Sustained degradation (recent avg >> overall avg)
+        let overall_avg = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
+        if recent_avg > overall_avg * 1.5 {
             return Some(Duration::from_secs(2));
         }
 
@@ -423,7 +461,7 @@ mod tests {
     #[tokio::test]
     async fn test_resource_enforcer_creation() {
         let logger = Arc::new(init_structured_logging(false));
-        let monitor = Arc::new(ResourceMonitor::new(Some(logger)));
+        let monitor = Arc::new(ResourceMonitor::new(Some(logger), None));
         let config = Config::default();
 
         let enforcer = ResourceEnforcer::new(monitor, config);
@@ -436,7 +474,7 @@ mod tests {
     #[tokio::test]
     async fn test_execution_allowed() {
         let logger = Arc::new(init_structured_logging(false));
-        let monitor = Arc::new(ResourceMonitor::new(Some(logger)));
+        let monitor = Arc::new(ResourceMonitor::new(Some(logger), None));
         let config = Config::default();
 
         let enforcer = ResourceEnforcer::new(monitor, config);
@@ -454,11 +492,11 @@ mod tests {
         let allow = EnforcementDecision::Allow;
         let _throttle = EnforcementDecision::Throttle(Duration::from_secs(5));
         let block = EnforcementDecision::Block("test reason".to_string());
-        
+
         // Clone should work
         let allow_clone = allow.clone();
         assert!(matches!(allow_clone, EnforcementDecision::Allow));
-        
+
         let block_clone = block.clone();
         assert!(matches!(block_clone, EnforcementDecision::Block(ref msg) if msg == "test reason"));
     }
@@ -483,7 +521,7 @@ mod tests {
             current_usage: 0.0,
             last_reset: Instant::now(),
         };
-        
+
         assert!(matches!(quota.quota_type, QuotaType::CpuTimePerMinute));
         assert_eq!(quota.limit, 60000.0);
         assert!(quota.current_usage < quota.limit);
@@ -498,7 +536,7 @@ mod tests {
             predictive_scaling: true,
             priority: 150,
         };
-        
+
         assert_eq!(policy.name, "test_policy");
         assert_eq!(policy.throttle_threshold_percent, 75.0);
         assert!(policy.predictive_scaling);
@@ -513,7 +551,7 @@ mod tests {
         let concurrent_quota = QuotaType::ConcurrentExecutions;
         let hourly_quota = QuotaType::ExecutionsPerHour;
         let bw_quota = QuotaType::BandwidthPerMinute;
-        
+
         // Verify they are different variants
         assert_ne!(format!("{:?}", cpu_quota), format!("{:?}", mem_quota));
         assert_ne!(format!("{:?}", concurrent_quota), format!("{:?}", hourly_quota));
@@ -523,11 +561,11 @@ mod tests {
     #[tokio::test]
     async fn test_update_global_limits() {
         let logger = Arc::new(init_structured_logging(false));
-        let monitor = Arc::new(ResourceMonitor::new(Some(logger)));
+        let monitor = Arc::new(ResourceMonitor::new(Some(logger), None));
         let config = Config::default();
-        
+
         let enforcer = ResourceEnforcer::new(monitor, config);
-        
+
         // Update limits
         let new_limits = GlobalResourceLimits {
             max_total_memory_mb: 4096,
@@ -538,9 +576,9 @@ mod tests {
             max_concurrent_per_tenant: 10,
             max_executions_per_tenant_per_minute: 300,
         };
-        
+
         enforcer.update_global_limits(new_limits.clone()).await;
-        
+
         let report = enforcer.get_resource_report().await;
         assert_eq!(report.global_limits.max_total_memory_mb, 4096);
         assert_eq!(report.global_limits.max_total_cpu_percent, 85.0);
@@ -550,11 +588,11 @@ mod tests {
     #[tokio::test]
     async fn test_set_and_get_function_quotas() {
         let logger = Arc::new(init_structured_logging(false));
-        let monitor = Arc::new(ResourceMonitor::new(Some(logger)));
+        let monitor = Arc::new(ResourceMonitor::new(Some(logger), None));
         let config = Config::default();
-        
+
         let enforcer = ResourceEnforcer::new(monitor, config);
-        
+
         let quotas = vec![
             ResourceQuota {
                 quota_type: QuotaType::CpuTimePerMinute,
@@ -564,9 +602,9 @@ mod tests {
                 last_reset: Instant::now(),
             },
         ];
-        
+
         enforcer.set_function_quotas("test-fn@1.0.0".to_string(), quotas).await;
-        
+
         let report = enforcer.get_resource_report().await;
         assert!(report.function_quotas.contains_key("test-fn@1.0.0"));
     }
@@ -574,11 +612,11 @@ mod tests {
     #[tokio::test]
     async fn test_record_usage_updates_quotas() {
         let logger = Arc::new(init_structured_logging(false));
-        let monitor = Arc::new(ResourceMonitor::new(Some(logger)));
+        let monitor = Arc::new(ResourceMonitor::new(Some(logger), None));
         let config = Config::default();
-        
+
         let enforcer = ResourceEnforcer::new(monitor, config);
-        
+
         // Record usage for a function
         let metrics = ExecutionMetrics {
             function_name: "test".to_string(),
@@ -595,9 +633,9 @@ mod tests {
                 .unwrap_or_default()
                 .as_secs(),
         };
-        
+
         enforcer.record_usage("test@1.0.0", &metrics).await;
-        
+
         // Verify quotas were created for this function
         let report = enforcer.get_resource_report().await;
         assert!(report.function_quotas.contains_key("test@1.0.0"));

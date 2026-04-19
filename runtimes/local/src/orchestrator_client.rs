@@ -81,7 +81,7 @@ impl OrchestratorClient {
     ///
     /// `api_token` is read from `FUNCTIONFLY_MICROVM_API_TOKEN` in the environment;
     /// if the env-var is absent, requests are unauthenticated (dev mode only).
-    pub fn new(orchestrator_url: String, timeout_seconds: u64) -> Self {
+    pub fn new(orchestrator_url: String, timeout_seconds: u64) -> Result<Self> {
         let api_token = std::env::var("FUNCTIONFLY_MICROVM_API_TOKEN")
             .ok()
             .filter(|t| !t.is_empty());
@@ -89,14 +89,14 @@ impl OrchestratorClient {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(timeout_seconds))
             .build()
-            .expect("Failed to create HTTP client");
+            .context("Failed to create HTTP client")?;
 
-        Self {
+        Ok(Self {
             client,
             orchestrator_url: orchestrator_url.trim_end_matches('/').to_string(),
             timeout: Duration::from_secs(timeout_seconds),
             api_token,
-        }
+        })
     }
 
     /// Execute a function in a MicroVM
@@ -188,6 +188,7 @@ impl OrchestratorClient {
 impl Default for OrchestratorClient {
     fn default() -> Self {
         Self::new("http://localhost:9091".to_string(), 30)
+            .expect("Failed to create default OrchestratorClient")
     }
 }
 

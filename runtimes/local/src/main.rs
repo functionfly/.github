@@ -6,6 +6,8 @@ use anyhow::Result;
 use clap::Parser;
 use std::sync::Arc;
 
+mod actions;
+mod agent_scheduler;
 mod budget;
 mod cache;
 mod capability;
@@ -16,9 +18,12 @@ mod handlers;
 mod host_functions;
 mod kv;
 mod logging;
+mod memory;
 mod monitoring;
 mod netns;
+mod observability;
 mod orchestrator_client;
+mod optimizer;
 mod package;
 pub mod pool;
 mod python;
@@ -26,6 +31,7 @@ mod python_pool;
 mod micropython;
 mod enterprise_security;
 mod resource_enforcer;
+mod router;
 mod scheduler;
 mod seccomp;
 mod security;
@@ -38,6 +44,7 @@ mod yara_scanner;
 
 use config::Config;
 use logging::init_structured_logging;
+use observability::init_tracing;
 use server::run_server;
 use shutdown::{handle_shutdown_signals, ShutdownCoordinator};
 
@@ -46,10 +53,21 @@ fn init_structured_logger(config: &Config) -> logging::StructuredLogger {
     init_structured_logging(config.verbose)
 }
 
+/// Initialize OpenTelemetry tracing (Phase 6: Observability)
+fn init_otel_tracing() {
+    if let Err(e) = init_tracing() {
+        eprintln!("Warning: Failed to initialize OpenTelemetry tracing: {}", e);
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // Parse command line arguments first
     let config = Config::parse();
+
+    // Initialize OpenTelemetry tracing (Phase 6: Observability)
+    // This sets up distributed tracing spans for graph node execution
+    init_otel_tracing();
 
     // Initialize structured logging
     let logger = Arc::new(init_structured_logger(&config));

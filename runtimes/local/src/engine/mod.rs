@@ -24,6 +24,9 @@ mod shared_state;
 mod aot_cache;
 mod memory_limiter;
 mod execution;
+pub mod graph;
+pub mod wasm_cell;
+pub mod sar_executor;
 
 // Re-export public types
 pub use runtime_type::RuntimeType;
@@ -31,6 +34,17 @@ pub use shared_state::SharedState;
 pub use aot_cache::{AotCache, AotCacheEntry};
 pub use memory_limiter::{FunctionMemoryLimiter, install_memory_limiter, with_limiter, LimiterGuard};
 pub use execution::{execute_wasi_sync_inner, execute_wasi_with_module_and_store};
+pub use graph::{
+    Graph, Node, NodeId, NodeType, Edge, EdgeType, GraphExecutor, GraphExecutionInput,
+    GraphExecutionResult, ExecutionContext, ExecutionStatus, ExecutionPriority,
+    NodeExecutor, NodeExecutionError, NodeResult, DefaultNodeExecutor,
+    LlmTrafficType, MemoryOp, ControlKind, Expr, OptStrategy, RetryPolicy,
+};
+pub use wasm_cell::{
+    WasmCell, WasmCellPool, WasmCellGuard, WasmCellExecutor, CellConfig,
+    CellPoolStats, HostFunction,
+};
+pub use sar_executor::SarNodeExecutor;
 
 /// Check if an error message indicates an epoch deadline (timeout) failure.
 /// Wasmtime uses epoch-based interruption for wall-clock timeouts.
@@ -346,19 +360,17 @@ impl WasmEngine {
 
                                 let mut store = instance.create_store(&engine);
 
-                                // Install memory limiter
-                                let _limiter_guard = crate::engine::memory_limiter::install_memory_limiter(config_for_closure.memory_mb);
-                                store.limiter(|_data| unsafe {
-                                    crate::engine::memory_limiter::with_limiter(|l| l)
-                                });
+                                // execute_wasi_with_module_and_store applies the hard memory cap
+                                // via Store::limiter() using FunctionMemoryLimiter.
 
-                                // Set fuel and epoch deadline
+                                // Set fuel for CPU-based timeout enforcement (fuel_for_timeout
+                                // returns calibrated fuel based on timeout_ms, cpu_ms_limit,
+                                // or cpu_fuel_limit). Wall-clock enforcement is done by the
+                                // outer tokio::time::timeout() around the spawn_blocking call.
                                 let fuel_limit = config_for_closure.fuel_for_timeout();
                                 if fuel_limit > 0 {
                                     store.set_fuel(fuel_limit)?;
                                 }
-                                store.set_epoch_deadline(timeout_ms);
-                                store.epoch_deadline_trap();
 
                                 // Execute using the WASI linker if available
                                 if let Some(ref linker) = wasi_linker {
@@ -617,7 +629,7 @@ impl WasmEngine {
         let engine = self.engine.clone();
         let config = config.clone();
         let wasi_linker = self.wasi_linker.clone();
-        let aot_cache = AotCache::new();
+        let aot_cache = self.aot_cache.clone();
 
         let timeout_ms = config.timeout_ms;
         let timeout_duration = std::time::Duration::from_millis(timeout_ms);
@@ -697,6 +709,40 @@ impl WasmEngine {
         );
 
         Ok((module, pooled))
+    }
+
+    /// Pre-warm the pool for a function after successful execution.
+    ///
+    /// Compiles the module (blocking) and adds it to the pool so subsequent
+    /// requests use warm pooled instances instead of paying cold-start cost.
+    ///
+    /// Called from `execute_function_daemon` after `engine.execute()` succeeds
+    /// via the fallback (non-pooled) path.
+    pub async fn prewarm_pool(
+        &self,
+        wasm_bytes: &[u8],
+        function_key: &str,
+        pool_manager: Arc<PoolManager>,
+    ) -> anyhow::Result<()> {
+        let wasm_bytes = wasm_bytes.to_vec();
+        let function_key_str = function_key.to_string();
+        let engine = self.engine.clone();
+        let config = self.config.clone();
+        let aot_cache = self.aot_cache.clone();
+
+        // Do blocking work (module compilation) in spawn_blocking
+        let (module, wasi_ctx) = tokio::task::spawn_blocking(move || {
+            // Use AOT cache to get or compile the module
+            let module = aot_cache.get_or_compile_module(&engine, &wasm_bytes, &config)?;
+
+            // Create a basic WASI context for the pooled instance
+            let wasi_ctx = WasiContext::new_with_input(&config, function_key_str.clone(), "")?;
+            Ok::<_, anyhow::Error>((module, wasi_ctx))
+        }).await??;
+
+        // Call async prewarm_instance in the async context
+        pool_manager.prewarm_instance(&function_key, module, wasi_ctx.ctx).await;
+        Ok(())
     }
 
     /// Get a WASI context for the given function key.
