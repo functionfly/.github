@@ -1,0 +1,198 @@
+/* ==========================================================================
+   FunctionFly Theme System - Velocity Brand Integration
+   Premium Dark & Light Mode with "Jet Stream" Brand Palette
+   ========================================================================== */
+
+/* NOTE: Do NOT import tailwindcss here - it's imported by the parent index.css */
+
+/* ==========================================================================
+   Design Tokens - Velocity Brand Palette (Tailwind v4 @theme block)
+   ========================================================================== */
+
+@theme {
+  /* --------------------------------------------------------------------------
+     Brand Core - The Jet Stream (Velocity Palette)
+     Static brand colors that don't change with theme
+     -------------------------------------------------------------------------- */
+  --color-ff-flame: #FF6B35;
+  --color-ff-flame-dark: #E85A2A;
+  --color-ff-flame-light: #FF8C42;
+  --color-ff-afterburner: #FF4F5E;
+  --color-ff-cyan: #00D4FF;
+  --color-ff-cyan-dark: #00B8E0;
+  --color-ff-stratosphere: #5B7CF5;
+  --color-ff-tarmac: #0D1117;
+  --color-ff-cockpit: #161B22;
+  --color-ff-taxiway: #00FF9D;
+  --color-ff-beacon: #FFB800;
+  
+  /* Theme-aware colors - reference runtime variables defined in index.css */
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-glass: var(--bg-glass);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-accent: var(--text-accent);
+
+  /* --------------------------------------------------------------------------
+     Brand Colors - Velocity Gradients (Replaces old indigo)
+     -------------------------------------------------------------------------- */
+  --color-brand-50: rgba(255, 107, 53, 0.1);
+  --color-brand-100: rgba(255, 107, 53, 0.15);
+  --color-brand-200: rgba(255, 107, 53, 0.2);
+  --color-brand-300: rgba(255, 107, 53, 0.3);
+  --color-brand-400: rgba(255, 107, 53, 0.4);
+  --color-brand-500: #FF6B35;
+  --color-brand-600: #E85A2A;
+  --color-brand-700: #D14A20;
+  --color-brand-800: #B83D18;
+  --color-brand-900: #9F3212;
+
+  /* --------------------------------------------------------------------------
+     Status Colors - Aviation Inspired
+     -------------------------------------------------------------------------- */
+  --color-status-online: #00FF9D;
+  --color-status-offline: #FF2D55;
+  --color-status-degraded: #FFB800;
+  --color-status-pending: #6B7280;
+
+  /* --------------------------------------------------------------------------
+     Semantic Colors - Dark Mode
+     -------------------------------------------------------------------------- */
+  --color-success: #00FF9D;
+  --color-success-glow: rgba(0, 255, 157, 0.4);
+  --color-error: #FF2D55;
+  --color-error-glow: rgba(255, 45, 85, 0.4);
+  --color-warning: #FFB800;
+  --color-warning-glow: rgba(255, 184, 0, 0.4);
+  --color-info: #00D4FF;
+  --color-info-glow: rgba(0, 212, 255, 0.4);
+
+  /* --------------------------------------------------------------------------
+     Semantic Colors - Light Mode
+     -------------------------------------------------------------------------- */
+  --color-success-light: #059669;
+  --color-success-glow-light: rgba(5, 150, 105, 0.25);
+  --color-error-light: #DC2626;
+  --color-error-glow-light: rgba(220, 38, 38, 0.25);
+  --color-warning-light: #D97706;
+  --color-warning-glow-light: rgba(217, 119, 6, 0.25);
+  --color-info-light: #2563EB;
+  --color-info-glow-light: rgba(37, 99, 235, 0.25);
+
+  /* Border Colors - reference runtime variables */
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
+  --color-border-glow: var(--border-glow, rgba(255, 107, 53, 0.3));
+
+  /* Card Colors - reference runtime variables */
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  /* Button Colors - reference runtime variables */
+  --color-button-primary: var(--button-primary);
+  --color-button-primary-hover: var(--button-primary-hover);
+  --color-button-secondary: var(--button-secondary);
+  --color-button-secondary-hover: var(--button-secondary-hover);
+  --color-button-ghost: var(--button-ghost);
+  --color-button-ghost-hover: var(--button-ghost-hover);
+  --color-button-outline: var(--button-outline);
+  --color-button-outline-hover: var(--button-outline-hover);
+  --color-button-destructive: var(--button-destructive);
+  --color-button-destructive-hover: var(--button-destructive-hover);
+
+  /* Input Colors - reference runtime variables */
+  --color-input: var(--input);
+  --color-input-foreground: var(--input-foreground);
+
+  /* --------------------------------------------------------------------------
+     Provider Colors
+     -------------------------------------------------------------------------- */
+  --color-cloudflare: #f48120;
+  --color-vercel: #000000;
+  --color-fly: #7b68ee;
+  --color-deno: #000000;
+
+  /* --------------------------------------------------------------------------
+     Typography - 2026 Velocity Brand Stack
+     -------------------------------------------------------------------------- */
+  /* Primary: Instrument Sans (Google Fonts, professional, trending SaaS 2025-2026) */
+  --font-sans: 'Instrument Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  /* Display: Ranade (cdnfonts.com, 2025 breakout, technical precision with warmth) */
+  --font-display: 'Ranade', 'Instrument Sans', system-ui, sans-serif;
+  /* Monospace: Commit Mono (UI-optimized, calm, highly legible at small sizes) */
+  --font-mono: 'Commit Mono', 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* --------------------------------------------------------------------------
+     Spacing Extensions
+     -------------------------------------------------------------------------- */
+  --spacing-18: 4.5rem;
+  --spacing-88: 22rem;
+  --spacing-128: 32rem;
+
+  /* --------------------------------------------------------------------------
+     Shadow System - Dark Mode (Glow Effects)
+     -------------------------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -2px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -4px rgba(0, 0, 0, 0.7);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7);
+  --shadow-glow-sm: 0 0 10px rgba(255, 107, 53, 0.3);
+  --shadow-glow: 0 0 20px rgba(255, 107, 53, 0.4);
+  --shadow-glow-lg: 0 0 40px rgba(255, 107, 53, 0.5);
+  --shadow-glow-success: 0 0 20px rgba(0, 255, 157, 0.4);
+  --shadow-glow-error: 0 0 20px rgba(255, 45, 85, 0.4);
+  --shadow-glow-warning: 0 0 20px rgba(255, 184, 0, 0.4);
+  --shadow-glow-cyan: 0 0 20px rgba(0, 212, 255, 0.4);
+
+  /* --------------------------------------------------------------------------
+     Shadow System - Light Mode (Soft Elevated Shadows)
+     -------------------------------------------------------------------------- */
+  --shadow-sm-light: 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-default-light: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.08);
+  --shadow-md-light: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg-light: 0 10px 15px -3px rgba(0, 0, 0, 0.12), 0 4px 6px -4px rgba(0, 0, 0, 0.12);
+  --shadow-xl-light: 0 20px 25px -5px rgba(0, 0, 0, 0.14), 0 8px 10px -6px rgba(0, 0, 0, 0.14);
+  --shadow-2xl-light: 0 25px 50px -12px rgba(0, 0, 0, 0.18);
+  --shadow-glow-sm-light: 0 0 15px rgba(232, 90, 42, 0.2);
+  --shadow-glow-light: 0 0 30px rgba(232, 90, 42, 0.25);
+  --shadow-glow-lg-light: 0 0 50px rgba(232, 90, 42, 0.3);
+
+  /* --------------------------------------------------------------------------
+     Gradient Definitions - Velocity Brand
+     -------------------------------------------------------------------------- */
+  --gradient-primary: linear-gradient(135deg, #FF6B35 0%, #FF4F5E 50%, #FF8C42 100%);
+  --gradient-success: linear-gradient(135deg, #00FF9D 0%, #00D4FF 100%);
+  --gradient-warning: linear-gradient(135deg, #FFB800 0%, #FF8C42 100%);
+  --gradient-danger: linear-gradient(135deg, #FF2D55 0%, #FF4F5E 100%);
+  --gradient-info: linear-gradient(135deg, #00D4FF 0%, #5B7CF5 100%);
+  --gradient-velocity: linear-gradient(
+    135deg,
+    #FF6B35 0%,
+    #FF4F5E 25%,
+    #FF8C42 50%,
+    #00D4FF 75%,
+    #5B7CF5 100%
+  );
+
+  --gradient-mesh-1:
+    radial-gradient(at 40% 20%, rgba(255, 107, 53, 0.15) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(0, 212, 255, 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(0, 255, 157, 0.08) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(91, 124, 245, 0.08) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(255, 107, 53, 0.12) 0px, transparent 50%);
+  
+  --gradient-mesh-light:
+    radial-gradient(at 40% 20%, rgba(255, 107, 53, 0.08) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(0, 212, 255, 0.05) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(0, 255, 157, 0.05) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(91, 124, 245, 0.05) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(255, 107, 53, 0.06) 0px, transparent 50%);
+}

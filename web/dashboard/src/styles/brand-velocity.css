@@ -1,0 +1,774 @@
+/* ==========================================================================
+   FunctionFly™ "Velocity" Brand Color Palette
+   Jet exhaust flames at sunset altitude — energy, speed, premium performance
+   
+   This palette differentiates FunctionFly from the sea of "tech indigo" 
+   competitors (Vercel, Netlify, AWS Amplify) with a warm-to-cool gradient
+   system that triggers action and authentically connects to aviation.
+   
+   Primary Strategy:
+   - Flame Orange (#FF6B35): High-conversion CTAs (21-34% better than blue)
+   - Afterburner Coral (#FF4F5E): Premium intensity, hover states
+   - Altitude Cyan (#00D4FF): Trust, speed, CLI accent
+   - Stratosphere Blue (#5B7CF5): Enterprise stability
+   - Tarmac Dark (#0D1117): Deep focus backgrounds
+   ========================================================================== */
+
+/* ==========================================================================
+   BRAND CORE - Jet Stream Colors
+   ========================================================================== */
+
+:root {
+  /* Primary Brand Colors - The Thrust */
+  --ff-flame: #FF6B35;
+  --ff-flame-rgb: 255, 107, 53;
+  --ff-flame-dark: #E85A2A;
+  --ff-flame-light: #FF8C42;
+  
+  --ff-afterburner: #FF4F5E;
+  --ff-afterburner-rgb: 255, 79, 94;
+  --ff-afterburner-dark: #E84553;
+  --ff-afterburner-light: #FF6B7A;
+  
+  /* Secondary Brand Colors - The Altitude */
+  --ff-cyan: #00D4FF;
+  --ff-cyan-rgb: 0, 212, 255;
+  --ff-cyan-dark: #00B8E0;
+  --ff-cyan-light: #33DDFF;
+  
+  --ff-stratosphere: #5B7CF5;
+  --ff-stratosphere-rgb: 91, 124, 245;
+  --ff-stratosphere-dark: #4A6AE0;
+  --ff-stratosphere-light: #7A99FF;
+  
+  /* Neutral Foundation - The Tarmac */
+  --ff-tarmac: #0D1117;
+  --ff-tarmac-rgb: 13, 17, 23;
+  --ff-cockpit: #161B22;
+  --ff-cockpit-rgb: 22, 27, 34;
+  --ff-panel: #1C2128;
+  --ff-panel-rgb: 28, 33, 40;
+  --ff-instrument: #242B33;
+  --ff-instrument-rgb: 36, 43, 51;
+  
+  /* Light Mode Foundation */
+  --ff-sky: #FFFFFF;
+  --ff-sky-rgb: 255, 255, 255;
+  --ff-cloud: #F6F8FA;
+  --ff-cloud-rgb: 246, 248, 250;
+  --ff-atmosphere: #EEF1F5;
+  --ff-atmosphere-rgb: 238, 241, 245;
+  
+  /* Text Colors */
+  --ff-text-primary-dark: #F0F6FC;
+  --ff-text-secondary-dark: #8B949E;
+  --ff-text-muted-dark: #6E7681;
+  
+  --ff-text-primary-light: #0D1117;
+  --ff-text-secondary-light: #4B5563;
+  --ff-text-muted-light: #6B7280;
+  
+  /* Semantic Colors - Status */
+  --ff-taxiway: #00FF9D;
+  --ff-taxiway-rgb: 0, 255, 157;
+  --ff-taxiway-dark: #00CC7D;
+  --ff-beacon: #FFB800;
+  --ff-beacon-rgb: 255, 184, 0;
+  --ff-emergency: #FF2D55;
+  --ff-emergency-rgb: 255, 45, 85;
+  
+  /* Gradient System - The Horizon */
+  --ff-gradient-cta: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-afterburner) 100%);
+  --ff-gradient-cta-hover: linear-gradient(135deg, var(--ff-flame-light) 0%, var(--ff-afterburner-light) 100%);
+  
+  --ff-gradient-altitude: linear-gradient(135deg, var(--ff-cyan) 0%, var(--ff-stratosphere) 100%);
+  --ff-gradient-altitude-hover: linear-gradient(135deg, var(--ff-cyan-light) 0%, var(--ff-stratosphere-light) 100%);
+  
+  --ff-gradient-jet-plume: linear-gradient(135deg, 
+    var(--ff-flame) 0%, 
+    var(--ff-afterburner) 40%, 
+    var(--ff-cyan) 100%
+  );
+  
+  --ff-gradient-sunset-approach: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(var(--ff-flame-rgb), 0.15) 0%, transparent 50%),
+                                   radial-gradient(ellipse 60% 40% at 80% 80%, rgba(var(--ff-cyan-rgb), 0.1) 0%, transparent 50%);
+  
+  --ff-gradient-hero-mesh: 
+    radial-gradient(ellipse 60% 40% at 30% 30%, rgba(var(--ff-flame-rgb), 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 30% at 70% 60%, rgba(var(--ff-cyan-rgb), 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse 40% 25% at 40% 80%, rgba(var(--ff-taxiway-rgb), 0.05) 0%, transparent 35%);
+  
+  /* Glow Effects */
+  --ff-glow-flame: 0 0 20px rgba(var(--ff-flame-rgb), 0.4), 0 0 60px rgba(var(--ff-flame-rgb), 0.2);
+  --ff-glow-flame-sm: 0 0 10px rgba(var(--ff-flame-rgb), 0.3);
+  --ff-glow-flame-lg: 0 0 40px rgba(var(--ff-flame-rgb), 0.5), 0 0 80px rgba(var(--ff-flame-rgb), 0.3);
+  
+  --ff-glow-cyan: 0 0 20px rgba(var(--ff-cyan-rgb), 0.4), 0 0 60px rgba(var(--ff-cyan-rgb), 0.2);
+  --ff-glow-cyan-sm: 0 0 10px rgba(var(--ff-cyan-rgb), 0.3);
+  --ff-glow-cyan-lg: 0 0 40px rgba(var(--ff-cyan-rgb), 0.5), 0 0 80px rgba(var(--ff-cyan-rgb), 0.3);
+  
+  --ff-glow-taxiway: 0 0 15px rgba(var(--ff-taxiway-rgb), 0.5);
+  
+  /* Border Colors */
+  --ff-border-subtle-dark: rgba(255, 255, 255, 0.08);
+  --ff-border-default-dark: rgba(255, 255, 255, 0.12);
+  --ff-border-strong-dark: rgba(255, 255, 255, 0.2);
+  --ff-border-flame: rgba(var(--ff-flame-rgb), 0.3);
+  --ff-border-cyan: rgba(var(--ff-cyan-rgb), 0.3);
+  
+  --ff-border-subtle-light: rgba(0, 0, 0, 0.08);
+  --ff-border-default-light: rgba(0, 0, 0, 0.12);
+  --ff-border-strong-light: rgba(0, 0, 0, 0.2);
+}
+
+/* ==========================================================================
+   DARK MODE - Tarmac (Default)
+   ========================================================================== */
+
+:root,
+[data-theme='dark'] {
+  /* Backgrounds */
+  --ff-bg-primary: var(--ff-tarmac);
+  --ff-bg-secondary: var(--ff-cockpit);
+  --ff-bg-tertiary: var(--ff-panel);
+  --ff-bg-elevated: var(--ff-instrument);
+  --ff-bg-glass: rgba(22, 27, 34, 0.7);
+  --ff-bg-glass-strong: rgba(22, 27, 34, 0.9);
+  
+  /* Text */
+  --ff-text-primary: var(--ff-text-primary-dark);
+  --ff-text-secondary: var(--ff-text-secondary-dark);
+  --ff-text-muted: var(--ff-text-muted-dark);
+  --ff-text-accent: var(--ff-flame);
+  
+  /* Borders */
+  --ff-border-subtle: var(--ff-border-subtle-dark);
+  --ff-border-default: var(--ff-border-default-dark);
+  --ff-border-strong: var(--ff-border-strong-dark);
+  --ff-border-focus: rgba(var(--ff-flame-rgb), 0.5);
+  
+  /* Semantic Colors (Dark Mode) */
+  --ff-success: var(--ff-taxiway);
+  --ff-success-glow: var(--ff-glow-taxiway);
+  --ff-warning: var(--ff-beacon);
+  --ff-error: var(--ff-emergency);
+  --ff-info: var(--ff-cyan);
+  
+  /* Brand Accent */
+  --ff-brand-primary: var(--ff-flame);
+  --ff-brand-secondary: var(--ff-cyan);
+  --ff-brand-gradient: var(--ff-gradient-cta);
+  
+  /* Shadows */
+  --ff-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --ff-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.5);
+  --ff-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.6);
+  --ff-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.7);
+}
+
+/* ==========================================================================
+   LIGHT MODE - Sky
+   ========================================================================== */
+
+[data-theme='light'] {
+  /* Backgrounds */
+  --ff-bg-primary: var(--ff-sky);
+  --ff-bg-secondary: var(--ff-cloud);
+  --ff-bg-tertiary: var(--ff-atmosphere);
+  --ff-bg-elevated: var(--ff-sky);
+  --ff-bg-glass: rgba(255, 255, 255, 0.85);
+  --ff-bg-glass-strong: rgba(255, 255, 255, 0.95);
+  
+  /* Text */
+  --ff-text-primary: var(--ff-text-primary-light);
+  --ff-text-secondary: var(--ff-text-secondary-light);
+  --ff-text-muted: var(--ff-text-muted-light);
+  --ff-text-accent: var(--ff-flame-dark);
+  
+  /* Borders */
+  --ff-border-subtle: var(--ff-border-subtle-light);
+  --ff-border-default: var(--ff-border-default-light);
+  --ff-border-strong: var(--ff-border-strong-light);
+  --ff-border-focus: rgba(var(--ff-flame-rgb), 0.4);
+  
+  /* Semantic Colors (Light Mode) */
+  --ff-success: #059669;
+  --ff-success-glow: 0 0 15px rgba(5, 150, 105, 0.3);
+  --ff-warning: #D97706;
+  --ff-error: #DC2626;
+  --ff-info: #2563EB;
+  
+  /* Brand Accent (Darker for light mode contrast) */
+  --ff-brand-primary: var(--ff-flame-dark);
+  --ff-brand-secondary: var(--ff-stratosphere-dark);
+  --ff-brand-gradient: linear-gradient(135deg, var(--ff-flame-dark) 0%, var(--ff-afterburner-dark) 100%);
+  
+  /* Shadows (Lighter for light mode) */
+  --ff-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --ff-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
+  --ff-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --ff-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+}
+
+/* ==========================================================================
+   COMPONENT STYLES - High-Conversion UI Elements
+   ========================================================================== */
+
+/* Primary CTA Button - "Deploy Now" / "Get Started" 
+   This orange CTA converts 21-34% better than blue */
+.ff-btn-velocity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--ff-gradient-cta);
+  color: white;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  letter-spacing: 0.02em;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 
+    0 4px 14px rgba(var(--ff-flame-rgb), 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ff-btn-velocity::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+
+.ff-btn-velocity:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ff-glow-flame), 0 8px 25px rgba(var(--ff-flame-rgb), 0.3);
+}
+
+.ff-btn-velocity:hover::before {
+  transform: translateX(100%);
+}
+
+.ff-btn-velocity:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.ff-btn-velocity:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Secondary "Fly" Button - CLI/Terminal Actions */
+.ff-btn-fly {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  border: 1.5px solid var(--ff-cyan);
+  color: var(--ff-cyan);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  letter-spacing: 0.02em;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 20px rgba(var(--ff-cyan-rgb), 0.05);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ff-btn-fly::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--ff-cyan-rgb), 0.1);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.ff-btn-fly:hover {
+  color: white;
+  box-shadow: var(--ff-glow-cyan);
+  border-color: var(--ff-cyan-light);
+}
+
+.ff-btn-fly:hover::before {
+  opacity: 1;
+}
+
+/* Tertiary/Outline Button */
+.ff-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  border: 1px solid var(--ff-border-default);
+  color: var(--ff-text-primary);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ff-btn-outline:hover {
+  border-color: var(--ff-cyan);
+  color: var(--ff-cyan);
+  background: rgba(var(--ff-cyan-rgb), 0.05);
+}
+
+/* Ghost Button */
+.ff-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  border: none;
+  color: var(--ff-text-secondary);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ff-btn-ghost:hover {
+  color: var(--ff-text-primary);
+  background: var(--ff-bg-tertiary);
+}
+
+/* ==========================================================================
+   STATUS INDICATORS - Aviation Inspired
+   ========================================================================== */
+
+.ff-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.ff-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Online/Running - Taxiway Green */
+.ff-status-active::before {
+  background: var(--ff-taxiway);
+  box-shadow: 0 0 12px rgba(var(--ff-taxiway-rgb), 0.8);
+}
+
+.ff-status-active {
+  color: var(--ff-taxiway);
+}
+
+/* Deploying/Warming - Flame Pulse */
+.ff-status-deploying::before {
+  background: var(--ff-flame);
+  animation: ff-pulse-flame 2s ease-in-out infinite;
+}
+
+.ff-status-deploying {
+  color: var(--ff-flame);
+}
+
+@keyframes ff-pulse-flame {
+  0%, 100% { 
+    box-shadow: 0 0 8px rgba(var(--ff-flame-rgb), 0.6);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(var(--ff-flame-rgb), 1), 0 0 40px rgba(var(--ff-flame-rgb), 0.6);
+    transform: scale(1.1);
+  }
+}
+
+/* Warning - Beacon Amber */
+.ff-status-warning::before {
+  background: var(--ff-beacon);
+  animation: ff-pulse-beacon 1.5s ease-in-out infinite;
+}
+
+.ff-status-warning {
+  color: var(--ff-beacon);
+}
+
+@keyframes ff-pulse-beacon {
+  0%, 100% { box-shadow: 0 0 8px rgba(var(--ff-beacon-rgb), 0.6); }
+  50% { box-shadow: 0 0 16px rgba(var(--ff-beacon-rgb), 1); }
+}
+
+/* Error - Emergency Red */
+.ff-status-error::before {
+  background: var(--ff-emergency);
+  box-shadow: 0 0 12px rgba(var(--ff-emergency-rgb), 0.7);
+}
+
+.ff-status-error {
+  color: var(--ff-emergency);
+}
+
+/* Info - Altitude Cyan */
+.ff-status-info::before {
+  background: var(--ff-cyan);
+  box-shadow: 0 0 12px rgba(var(--ff-cyan-rgb), 0.5);
+}
+
+.ff-status-info {
+  color: var(--ff-cyan);
+}
+
+/* ==========================================================================
+   BADGES & LABELS
+   ========================================================================== */
+
+.ff-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.ff-badge-primary {
+  background: rgba(var(--ff-flame-rgb), 0.15);
+  color: var(--ff-flame);
+  border: 1px solid rgba(var(--ff-flame-rgb), 0.3);
+}
+
+.ff-badge-secondary {
+  background: rgba(var(--ff-cyan-rgb), 0.15);
+  color: var(--ff-cyan);
+  border: 1px solid rgba(var(--ff-cyan-rgb), 0.3);
+}
+
+.ff-badge-success {
+  background: rgba(var(--ff-taxiway-rgb), 0.15);
+  color: var(--ff-taxiway);
+  border: 1px solid rgba(var(--ff-taxiway-rgb), 0.3);
+}
+
+.ff-badge-pro {
+  background: var(--ff-gradient-cta);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(var(--ff-flame-rgb), 0.3);
+}
+
+.ff-badge-enterprise {
+  background: var(--ff-gradient-altitude);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(var(--ff-cyan-rgb), 0.3);
+}
+
+/* ==========================================================================
+   CARDS - Glass & Solid Variants
+   ========================================================================== */
+
+.ff-card {
+  background: var(--ff-bg-secondary);
+  border: 1px solid var(--ff-border-subtle);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.ff-card:hover {
+  border-color: var(--ff-border-default);
+  transform: translateY(-2px);
+  box-shadow: var(--ff-shadow-md);
+}
+
+.ff-card-velocity {
+  background: var(--ff-bg-secondary);
+  border: 1px solid var(--ff-border-subtle);
+  border-radius: 12px;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.ff-card-velocity::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--ff-gradient-jet-plume);
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.ff-card-velocity:hover {
+  border-color: rgba(var(--ff-flame-rgb), 0.3);
+  box-shadow: var(--ff-glow-flame-sm), var(--ff-shadow-lg);
+  transform: translateY(-4px);
+}
+
+.ff-card-velocity:hover::before {
+  opacity: 1;
+}
+
+.ff-card-glass {
+  background: var(--ff-bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--ff-border-default);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.ff-card-glass:hover {
+  border-color: rgba(var(--ff-cyan-rgb), 0.3);
+  box-shadow: var(--ff-glow-cyan-sm);
+}
+
+/* ==========================================================================
+   BACKGROUNDS - Hero & Section
+   ========================================================================== */
+
+.ff-bg-hero {
+  background-color: var(--ff-bg-primary);
+  background-image: var(--ff-gradient-hero-mesh);
+  min-height: 100vh;
+}
+
+.ff-bg-sunset {
+  background: 
+    radial-gradient(ellipse 80% 50% at 50% -30%, rgba(var(--ff-flame-rgb), 0.2) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 20% 100%, rgba(var(--ff-cyan-rgb), 0.1) 0%, transparent 50%),
+    var(--ff-bg-primary);
+}
+
+.ff-bg-cockpit {
+  background: linear-gradient(180deg, var(--ff-tarmac) 0%, var(--ff-cockpit) 100%);
+}
+
+/* ==========================================================================
+   TYPOGRAPHY - Velocity Text Styles
+   ========================================================================== */
+
+.ff-text-velocity {
+  background: var(--ff-gradient-jet-plume);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.ff-text-flame {
+  color: var(--ff-flame);
+}
+
+.ff-text-cyan {
+  color: var(--ff-cyan);
+}
+
+.ff-text-taxiway {
+  color: var(--ff-taxiway);
+}
+
+/* ==========================================================================
+   METER / PROGRESS - Aviation Instrument Style
+   ========================================================================== */
+
+.ff-meter {
+  height: 4px;
+  background: var(--ff-bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ff-meter-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ff-gradient-cta);
+  box-shadow: 0 0 10px rgba(var(--ff-flame-rgb), 0.5);
+  transition: width 0.5s ease;
+  position: relative;
+}
+
+.ff-meter-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: ff-meter-shine 2s ease-in-out infinite;
+}
+
+@keyframes ff-meter-shine {
+  0% { transform: translateX(-20px); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateX(20px); opacity: 0; }
+}
+
+/* ==========================================================================
+   INPUT FIELDS
+   ========================================================================== */
+
+.ff-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--ff-bg-tertiary);
+  border: 1px solid var(--ff-border-default);
+  border-radius: 8px;
+  color: var(--ff-text-primary);
+  font-size: 0.9375rem;
+  transition: all 0.2s ease;
+}
+
+.ff-input::placeholder {
+  color: var(--ff-text-muted);
+}
+
+.ff-input:focus {
+  outline: none;
+  border-color: var(--ff-cyan);
+  box-shadow: 0 0 0 3px rgba(var(--ff-cyan-rgb), 0.15), inset 0 0 10px rgba(var(--ff-cyan-rgb), 0.05);
+}
+
+/* ==========================================================================
+   TOOLTIPS & POPOVERS
+   ========================================================================== */
+
+.ff-tooltip {
+  background: var(--ff-bg-elevated);
+  border: 1px solid var(--ff-border-default);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--ff-text-primary);
+  box-shadow: var(--ff-shadow-lg);
+}
+
+.ff-tooltip-primary {
+  background: var(--ff-gradient-cta);
+  border: none;
+  color: white;
+}
+
+/* ==========================================================================
+   DIVIDERS
+   ========================================================================== */
+
+.ff-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ff-border-default), transparent);
+  margin: 1.5rem 0;
+}
+
+.ff-divider-flame {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(var(--ff-flame-rgb), 0.5), transparent);
+  margin: 1.5rem 0;
+}
+
+/* ==========================================================================
+   SELECTION & FOCUS
+   ========================================================================== */
+
+::selection {
+  background: rgba(var(--ff-flame-rgb), 0.4);
+  color: white;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ff-flame);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   ANIMATIONS
+   ========================================================================== */
+
+@keyframes ff-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ff-slide-in-left {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes ff-glow-pulse {
+  0%, 100% { box-shadow: var(--ff-glow-flame); }
+  50% { box-shadow: var(--ff-glow-flame-lg); }
+}
+
+.ff-animate-fade {
+  animation: ff-fade-in 0.3s ease-out;
+}
+
+.ff-animate-slide-left {
+  animation: ff-slide-in-left 0.3s ease-out;
+}
+
+/* ==========================================================================
+   SCROLLBAR
+   ========================================================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ff-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ff-bg-elevated);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--ff-flame-rgb), 0.5);
+}
+
+/* ==========================================================================
+   UTILITY CLASSES
+   ========================================================================== */
+
+.ff-border-flame { border-color: rgba(var(--ff-flame-rgb), 0.3) !important; }
+.ff-border-cyan { border-color: rgba(var(--ff-cyan-rgb), 0.3) !important; }
+.ff-glow-flame { box-shadow: var(--ff-glow-flame) !important; }
+.ff-glow-cyan { box-shadow: var(--ff-glow-cyan) !important; }
+.ff-text-gradient { background: var(--ff-gradient-jet-plume); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+[data-theme='light'] .ff-text-gradient {
+  background: linear-gradient(135deg, var(--ff-flame-dark) 0%, var(--ff-afterburner-dark) 50%, var(--ff-stratosphere-dark) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}

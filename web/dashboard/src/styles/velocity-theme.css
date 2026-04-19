@@ -1,0 +1,1018 @@
+/* ==========================================================================
+   FunctionFly Velocity Theme - Unified Light/Dark Mode Integration
+   Complete set of utility classes that respond to data-theme attribute
+   ========================================================================== */
+
+/* ==========================================================================
+   BASE THEME VARIABLES - Velocity Brand
+   These are applied based on data-theme attribute
+   ========================================================================== */
+
+:root {
+  /* Default to dark mode (Tarmac) */
+  --v-bg-primary: #0D1117;
+  --v-bg-secondary: #161B22;
+  --v-bg-tertiary: #1C2128;
+  --v-bg-elevated: #242B33;
+  --v-bg-hover: #2D343C;
+  
+  --v-text-primary: #F0F6FC;
+  --v-text-secondary: #8B949E;
+  --v-text-muted: #6E7681;
+  
+  --v-brand-primary: #FF6B35;
+  --v-brand-secondary: #00D4FF;
+  --v-brand-accent: #FF4F5E;
+  
+  --v-success: #00FF9D;
+  --v-warning: #FFB800;
+  --v-error: #FF2D55;
+  --v-info: #00D4FF;
+  
+  --v-border-subtle: rgba(255, 255, 255, 0.08);
+  --v-border-default: rgba(255, 255, 255, 0.12);
+  --v-border-focus: rgba(255, 107, 53, 0.6);
+  
+  --v-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --v-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.5);
+  --v-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.6);
+  
+  --v-glow-brand: 0 0 20px rgba(255, 107, 53, 0.4);
+  --v-glow-cyan: 0 0 20px rgba(0, 212, 255, 0.4);
+  --v-glow-success: 0 0 20px rgba(0, 255, 157, 0.4);
+}
+
+/* Light Mode (Sky) Overrides - Enhanced contrast for readability */
+[data-theme="light"] {
+  --v-bg-primary: #FFFFFF;
+  --v-bg-secondary: #F6F8FA;
+  --v-bg-tertiary: #EEF1F5;
+  --v-bg-elevated: #FFFFFF;
+  --v-bg-hover: #F0F2F5;
+  
+  /* Darker text colors for better contrast on light backgrounds */
+  --v-text-primary: #111827;    /* Near-black, high contrast */
+  --v-text-secondary: #374151;  /* Dark gray, good readability */
+  --v-text-muted: #4B5563;      /* Medium gray, still readable */
+  
+  --v-brand-primary: #E85A2A;
+  --v-brand-secondary: #00B8E0;
+  --v-brand-accent: #D14A20;
+  
+  --v-success: #059669;
+  --v-warning: #D97706;
+  --v-error: #DC2626;
+  --v-info: #2563EB;
+  
+  --v-border-subtle: rgba(0, 0, 0, 0.08);
+  --v-border-default: rgba(0, 0, 0, 0.12);
+  --v-border-focus: rgba(232, 90, 42, 0.4);
+  
+  --v-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --v-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
+  --v-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  
+  --v-glow-brand: 0 0 20px rgba(232, 90, 42, 0.25);
+  --v-glow-cyan: 0 0 20px rgba(0, 184, 224, 0.25);
+  --v-glow-success: 0 0 20px rgba(5, 150, 105, 0.25);
+}
+
+/* ==========================================================================
+   VELOCITY BACKGROUND UTILITIES
+   ========================================================================== */
+
+.v-bg-primary {
+  background-color: var(--v-bg-primary);
+}
+
+.v-bg-secondary {
+  background-color: var(--v-bg-secondary);
+}
+
+.v-bg-tertiary {
+  background-color: var(--v-bg-tertiary);
+}
+
+.v-bg-elevated {
+  background-color: var(--v-bg-elevated);
+}
+
+.v-bg-hover:hover {
+  background-color: var(--v-bg-hover);
+}
+
+/* Brand gradient backgrounds */
+.v-bg-gradient-brand {
+  background: linear-gradient(135deg, var(--v-brand-primary) 0%, var(--v-brand-accent) 50%, var(--v-brand-secondary) 100%);
+}
+
+.v-bg-gradient-sunset {
+  background: linear-gradient(135deg, #FF6B35 0%, #FF4F5E 40%, #00D4FF 100%);
+}
+
+[data-theme="light"] .v-bg-gradient-sunset {
+  background: linear-gradient(135deg, #E85A2A 0%, #D14A20 40%, #00B8E0 100%);
+}
+
+.v-bg-gradient-mesh {
+  background:
+    radial-gradient(at 40% 20%, rgba(255, 107, 53, 0.15) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(0, 212, 255, 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(0, 255, 157, 0.08) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(91, 124, 245, 0.08) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(255, 107, 53, 0.12) 0px, transparent 50%),
+    var(--v-bg-primary);
+}
+
+/* ==========================================================================
+   VELOCITY TEXT UTILITIES
+   ========================================================================== */
+
+.v-text-primary {
+  color: var(--v-text-primary);
+}
+
+.v-text-secondary {
+  color: var(--v-text-secondary);
+}
+
+.v-text-muted {
+  color: var(--v-text-muted);
+}
+
+.v-text-brand {
+  color: var(--v-brand-primary);
+}
+
+.v-text-cyan {
+  color: #00D4FF;
+}
+
+[data-theme="light"] .v-text-cyan {
+  color: #00B8E0;
+}
+
+.v-text-success {
+  color: var(--v-success);
+}
+
+.v-text-warning {
+  color: var(--v-warning);
+}
+
+.v-text-error {
+  color: var(--v-error);
+}
+
+/* Gradient text */
+.v-text-gradient {
+  background: linear-gradient(135deg, var(--v-brand-primary) 0%, var(--v-brand-secondary) 50%, var(--v-brand-accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.v-text-gradient-flame {
+  background: linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="light"] .v-text-gradient-flame {
+  background: linear-gradient(135deg, #E85A2A 0%, #D14A20 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ==========================================================================
+   VELOCITY BORDER UTILITIES
+   ========================================================================== */
+
+.v-border-subtle {
+  border: 1px solid var(--v-border-subtle);
+}
+
+.v-border-default {
+  border: 1px solid var(--v-border-default);
+}
+
+.v-border-brand {
+  border: 1px solid rgba(255, 107, 53, 0.3);
+}
+
+[data-theme="light"] .v-border-brand {
+  border-color: rgba(232, 90, 42, 0.3);
+}
+
+.v-border-focus:focus {
+  outline: none;
+  border-color: var(--v-brand-primary);
+  box-shadow: 0 0 0 3px var(--v-border-focus);
+}
+
+/* ==========================================================================
+   VELOCITY SHADOW UTILITIES
+   ========================================================================== */
+
+.v-shadow-sm {
+  box-shadow: var(--v-shadow-sm);
+}
+
+.v-shadow-md {
+  box-shadow: var(--v-shadow-md);
+}
+
+.v-shadow-lg {
+  box-shadow: var(--v-shadow-lg);
+}
+
+.v-glow-brand {
+  box-shadow: var(--v-glow-brand);
+}
+
+.v-glow-cyan {
+  box-shadow: var(--v-glow-cyan);
+}
+
+.v-glow-success {
+  box-shadow: var(--v-glow-success);
+}
+
+.v-hover-glow:hover {
+  box-shadow: var(--v-glow-brand);
+}
+
+/* ==========================================================================
+   VELOCITY BUTTON COMPONENTS
+   ========================================================================== */
+
+.v-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, var(--v-brand-primary) 0%, var(--v-brand-accent) 100%);
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+}
+
+.v-btn-primary:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--v-glow-brand), 0 8px 25px rgba(255, 107, 53, 0.3);
+}
+
+.v-btn-primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.v-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  color: var(--v-text-primary);
+  background: var(--v-bg-secondary);
+  border: 1px solid var(--v-border-default);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.v-btn-secondary:hover {
+  background: var(--v-bg-hover);
+  border-color: var(--v-brand-primary);
+}
+
+.v-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  color: var(--v-text-primary);
+  background: transparent;
+  border: 1px solid var(--v-brand-primary);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.v-btn-outline:hover {
+  background: rgba(255, 107, 53, 0.1);
+  box-shadow: var(--v-glow-brand);
+}
+
+[data-theme="light"] .v-btn-outline:hover {
+  background: rgba(232, 90, 42, 0.08);
+}
+
+.v-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  color: var(--v-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.v-btn-ghost:hover {
+  color: var(--v-text-primary);
+  background: var(--v-bg-hover);
+}
+
+/* ==========================================================================
+   VELOCITY CARD COMPONENTS
+   ========================================================================== */
+
+.v-card {
+  background: var(--v-bg-secondary);
+  border: 1px solid var(--v-border-subtle);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.v-card:hover {
+  border-color: var(--v-border-default);
+  box-shadow: var(--v-shadow-md);
+  transform: translateY(-2px);
+}
+
+.v-card-glass {
+  background: rgba(22, 27, 34, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--v-border-default);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+[data-theme="light"] .v-card-glass {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.v-card-glass:hover {
+  border-color: rgba(255, 107, 53, 0.3);
+  box-shadow: var(--v-glow-brand);
+}
+
+.v-card-gradient {
+  position: relative;
+  background: var(--v-bg-secondary);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  overflow: hidden;
+}
+
+.v-card-gradient::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--v-brand-primary), var(--v-brand-secondary));
+}
+
+/* ==========================================================================
+   VELOCITY INPUT COMPONENTS
+   ========================================================================== */
+
+.v-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--v-text-primary);
+  background: var(--v-bg-tertiary);
+  border: 1px solid var(--v-border-subtle);
+  border-radius: 0.75rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.v-input::placeholder {
+  color: var(--v-text-muted);
+}
+
+.v-input:hover {
+  border-color: var(--v-border-default);
+}
+
+.v-input:focus {
+  border-color: var(--v-brand-primary);
+  box-shadow: 0 0 0 3px var(--v-border-focus);
+}
+
+/* ==========================================================================
+   VELOCITY BADGE COMPONENTS
+   ========================================================================== */
+
+.v-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.v-badge-brand {
+  background: rgba(255, 107, 53, 0.15);
+  color: var(--v-brand-primary);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+}
+
+[data-theme="light"] .v-badge-brand {
+  background: rgba(232, 90, 42, 0.12);
+  border-color: rgba(232, 90, 42, 0.25);
+}
+
+.v-badge-success {
+  background: rgba(0, 255, 157, 0.15);
+  color: var(--v-success);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+}
+
+[data-theme="light"] .v-badge-success {
+  background: rgba(5, 150, 105, 0.12);
+  border-color: rgba(5, 150, 105, 0.25);
+}
+
+.v-badge-warning {
+  background: rgba(255, 184, 0, 0.15);
+  color: var(--v-warning);
+  border: 1px solid rgba(255, 184, 0, 0.3);
+}
+
+[data-theme="light"] .v-badge-warning {
+  background: rgba(217, 119, 6, 0.12);
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
+.v-badge-error {
+  background: rgba(255, 45, 85, 0.15);
+  color: var(--v-error);
+  border: 1px solid rgba(255, 45, 85, 0.3);
+}
+
+[data-theme="light"] .v-badge-error {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+/* ==========================================================================
+   VELOCITY STATUS INDICATORS
+   ========================================================================== */
+
+.v-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.v-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.v-status-online::before {
+  background: var(--v-success);
+  box-shadow: 0 0 12px rgba(0, 255, 157, 0.8);
+}
+
+[data-theme="light"] .v-status-online::before {
+  box-shadow: 0 0 12px rgba(5, 150, 105, 0.6);
+}
+
+.v-status-deploying::before {
+  background: var(--v-brand-primary);
+  animation: v-pulse-flame 2s ease-in-out infinite;
+}
+
+.v-status-warning::before {
+  background: var(--v-warning);
+  animation: v-pulse-beacon 1.5s ease-in-out infinite;
+}
+
+.v-status-error::before {
+  background: var(--v-error);
+  box-shadow: 0 0 12px rgba(255, 45, 85, 0.7);
+}
+
+[data-theme="light"] .v-status-error::before {
+  box-shadow: 0 0 12px rgba(220, 38, 38, 0.5);
+}
+
+@keyframes v-pulse-flame {
+  0%, 100% { 
+    box-shadow: 0 0 8px rgba(255, 107, 53, 0.6);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(255, 107, 53, 1), 0 0 40px rgba(255, 107, 53, 0.6);
+    transform: scale(1.1);
+  }
+}
+
+[data-theme="light"] @keyframes v-pulse-flame {
+  0%, 100% { 
+    box-shadow: 0 0 8px rgba(232, 90, 42, 0.5);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(232, 90, 42, 0.8), 0 0 40px rgba(232, 90, 42, 0.4);
+    transform: scale(1.1);
+  }
+}
+
+@keyframes v-pulse-beacon {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 184, 0, 0.6); }
+  50% { box-shadow: 0 0 16px rgba(255, 184, 0, 1); }
+}
+
+[data-theme="light"] @keyframes v-pulse-beacon {
+  0%, 100% { box-shadow: 0 0 8px rgba(217, 119, 6, 0.5); }
+  50% { box-shadow: 0 0 16px rgba(217, 119, 6, 0.9); }
+}
+
+/* ==========================================================================
+   VELOCITY DIVIDERS
+   ========================================================================== */
+
+.v-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--v-border-default), transparent);
+  margin: 1.5rem 0;
+}
+
+.v-divider-brand {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 107, 53, 0.5), transparent);
+  margin: 1.5rem 0;
+}
+
+[data-theme="light"] .v-divider-brand {
+  background: linear-gradient(90deg, transparent, rgba(232, 90, 42, 0.4), transparent);
+}
+
+/* ==========================================================================
+   VELOCITY ANIMATION UTILITIES
+   ========================================================================== */
+
+.v-animate-fade {
+  animation: v-fade-in 0.3s ease-out;
+}
+
+.v-animate-slide-up {
+  animation: v-slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.v-animate-glow {
+  animation: v-glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes v-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes v-slide-up {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes v-glow-pulse {
+  0%, 100% {
+    box-shadow: var(--v-glow-brand);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 107, 53, 0.6), 0 0 60px rgba(255, 107, 53, 0.3);
+  }
+}
+
+[data-theme="light"] @keyframes v-glow-pulse {
+  0%, 100% {
+    box-shadow: var(--v-glow-brand);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(232, 90, 42, 0.5), 0 0 60px rgba(232, 90, 42, 0.25);
+  }
+}
+
+/* ==========================================================================
+   VELOCITY SCROLLBAR STYLING
+   ========================================================================== */
+
+.v-scrollbar ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.v-scrollbar ::-webkit-scrollbar-track {
+  background: var(--v-bg-primary);
+}
+
+.v-scrollbar ::-webkit-scrollbar-thumb {
+  background: var(--v-bg-elevated);
+  border-radius: 4px;
+}
+
+.v-scrollbar ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 107, 53, 0.5);
+}
+
+[data-theme="light"] .v-scrollbar ::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 90, 42, 0.4);
+}
+
+/* ==========================================================================
+   SELECTION STYLING
+   ========================================================================== */
+
+::selection {
+  background: rgba(255, 107, 53, 0.4);
+  color: white;
+}
+
+[data-theme="light"] ::selection {
+  background: rgba(232, 90, 42, 0.3);
+  color: var(--v-text-primary);
+}
+
+/* Focus visible styling */
+:focus-visible {
+  outline: 2px solid var(--v-brand-primary);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   REDUCED MOTION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .v-animate-fade,
+  .v-animate-slide-up,
+  .v-animate-glow,
+  .v-status-deploying::before,
+  .v-status-warning::before {
+    animation: none !important;
+    transition: none !important;
+  }
+  
+  .v-card:hover,
+  .v-card-glass:hover,
+  .v-btn-primary:hover,
+  .v-btn-secondary:hover {
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   VELOCITY BRAND ACCENT STYLES - More Brand Color Throughout UI
+   ========================================================================== */
+
+/* Brand Left Border - Active Navigation/Selection */
+.v-brand-border-left {
+  position: relative;
+}
+
+.v-brand-border-left::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #FF6B35, #FF4F5E);
+  border-radius: 0 2px 2px 0;
+}
+
+[data-theme="light"] .v-brand-border-left::before {
+  background: linear-gradient(180deg, #E85A2A, #D14A20);
+}
+
+/* Brand Icon Container */
+.v-icon-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.15) 0%, rgba(255, 79, 94, 0.1) 100%);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+  color: #FF6B35;
+}
+
+[data-theme="light"] .v-icon-brand {
+  background: linear-gradient(135deg, rgba(232, 90, 42, 0.12) 0%, rgba(209, 74, 32, 0.08) 100%);
+  border-color: rgba(232, 90, 42, 0.25);
+  color: #E85A2A;
+}
+
+/* Brand Section Header with Gradient Underline */
+.v-section-header {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.v-section-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #FF6B35, #FF4F5E, transparent);
+  border-radius: 2px;
+}
+
+[data-theme="light"] .v-section-header::after {
+  background: linear-gradient(90deg, #E85A2A, #D14A20, transparent);
+}
+
+/* Brand Gradient Border Cards */
+.v-card-brand-border {
+  position: relative;
+  background: var(--v-bg-secondary);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.v-card-brand-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.6), rgba(0, 212, 255, 0.3), rgba(255, 107, 53, 0.2));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+[data-theme="light"] .v-card-brand-border::before {
+  background: linear-gradient(135deg, rgba(232, 90, 42, 0.5), rgba(0, 184, 224, 0.25), rgba(232, 90, 42, 0.15));
+}
+
+/* Brand Accent Background */
+.v-bg-brand-subtle {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.08) 0%, rgba(255, 79, 94, 0.05) 100%);
+}
+
+[data-theme="light"] .v-bg-brand-subtle {
+  background: linear-gradient(135deg, rgba(232, 90, 42, 0.06) 0%, rgba(209, 74, 32, 0.04) 100%);
+}
+
+/* Brand Number/Stat Display */
+.v-stat-brand {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #FF6B35 0%, #FF4F5E 50%, #FF8C42 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="light"] .v-stat-brand {
+  background: linear-gradient(135deg, #E85A2A 0%, #D14A20 50%, #C43E1A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Brand Accent Pill/Tag */
+.v-pill-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 1rem;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.2) 0%, rgba(255, 79, 94, 0.15) 100%);
+  border: 1px solid rgba(255, 107, 53, 0.4);
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #FF6B35;
+}
+
+[data-theme="light"] .v-pill-brand {
+  background: linear-gradient(135deg, rgba(232, 90, 42, 0.15) 0%, rgba(209, 74, 32, 0.1) 100%);
+  border-color: rgba(232, 90, 42, 0.35);
+  color: #E85A2A;
+}
+
+/* Brand Hover Accent */
+.v-hover-brand {
+  transition: all 0.2s ease;
+}
+
+.v-hover-brand:hover {
+  border-color: rgba(255, 107, 53, 0.5);
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.15);
+}
+
+[data-theme="light"] .v-hover-brand:hover {
+  border-color: rgba(232, 90, 42, 0.4);
+  box-shadow: 0 0 20px rgba(232, 90, 42, 0.1);
+}
+
+/* Brand Active State */
+.v-active-brand {
+  border-left: 3px solid #FF6B35;
+  background: linear-gradient(90deg, rgba(255, 107, 53, 0.1) 0%, transparent 100%);
+}
+
+[data-theme="light"] .v-active-brand {
+  border-left-color: #E85A2A;
+  background: linear-gradient(90deg, rgba(232, 90, 42, 0.08) 0%, transparent 100%);
+}
+
+/* Brand Dot Indicator */
+.v-dot-brand {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FF6B35;
+  box-shadow: 0 0 12px rgba(255, 107, 53, 0.8);
+}
+
+[data-theme="light"] .v-dot-brand {
+  background: #E85A2A;
+  box-shadow: 0 0 12px rgba(232, 90, 42, 0.6);
+}
+
+/* Brand Underline Link */
+.v-link-brand {
+  position: relative;
+  color: var(--v-text-secondary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.v-link-brand::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #FF6B35, #FF4F5E);
+  transition: width 0.3s ease;
+}
+
+.v-link-brand:hover {
+  color: #FF6B35;
+}
+
+.v-link-brand:hover::after {
+  width: 100%;
+}
+
+[data-theme="light"] .v-link-brand::after {
+  background: linear-gradient(90deg, #E85A2A, #D14A20);
+}
+
+[data-theme="light"] .v-link-brand:hover {
+  color: #E85A2A;
+}
+
+/* Brand Gradient Top Border */
+.v-top-border-brand {
+  position: relative;
+}
+
+.v-top-border-brand::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #FF6B35, #FF4F5E, #00D4FF, transparent);
+  border-radius: 2px 2px 0 0;
+}
+
+[data-theme="light"] .v-top-border-brand::before {
+  background: linear-gradient(90deg, #E85A2A, #D14A20, #00B8E0, transparent);
+}
+
+/* Brand Button Secondary Style */
+.v-btn-brand-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  color: #FF6B35;
+  background: transparent;
+  border: 1.5px solid rgba(255, 107, 53, 0.5);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.v-btn-brand-secondary:hover {
+  background: rgba(255, 107, 53, 0.1);
+  border-color: rgba(255, 107, 53, 0.8);
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.2);
+}
+
+[data-theme="light"] .v-btn-brand-secondary {
+  color: #E85A2A;
+  border-color: rgba(232, 90, 42, 0.4);
+}
+
+[data-theme="light"] .v-btn-brand-secondary:hover {
+  background: rgba(232, 90, 42, 0.08);
+  border-color: rgba(232, 90, 42, 0.7);
+  box-shadow: 0 0 20px rgba(232, 90, 42, 0.15);
+}
+
+/* Brand Sparkline/Chart accent */
+.v-chart-brand {
+  stroke: #FF6B35;
+  filter: drop-shadow(0 0 4px rgba(255, 107, 53, 0.5));
+}
+
+[data-theme="light"] .v-chart-brand {
+  stroke: #E85A2A;
+  filter: drop-shadow(0 0 4px rgba(232, 90, 42, 0.4));
+}
+
+/* ==========================================================================
+   SUMMARY: Brand Color Classes Available
+   ==========================================================================
+   
+   Text:
+   - .v-text-brand - Brand primary text color
+   - .v-text-gradient - Gradient text (flame → cyan → coral)
+   - .v-text-gradient-flame - Flame gradient text
+   - .v-stat-brand - Large stat numbers with brand gradient
+   
+   Backgrounds:
+   - .v-bg-brand-subtle - Subtle brand gradient background
+   - .v-bg-gradient-brand - Full brand gradient background
+   
+   Borders:
+   - .v-border-brand - Brand colored border
+   - .v-brand-border-left - Left accent border
+   - .v-top-border-brand - Top gradient border
+   - .v-card-brand-border - Full gradient border card
+   
+   Icons:
+   - .v-icon-brand - Brand colored icon container
+   - .v-dot-brand - Brand colored dot indicator
+   
+   Buttons:
+   - .v-btn-primary - Primary brand gradient button
+   - .v-btn-brand-secondary - Outline brand button
+   
+   Cards:
+   - .v-card-brand-border - Card with gradient border
+   - .v-card-brand-glow - Card with brand glow on hover
+   - .v-top-border-brand - Top brand accent border
+   
+   UI Elements:
+   - .v-section-header - Section header with gradient underline
+   - .v-pill-brand - Brand accent pill/tag
+   - .v-active-brand - Active state with brand left border
+   - .v-link-brand - Link with brand underline hover
+   - .v-hover-brand - Hover state with brand accent
+   
+   ========================================================================== */

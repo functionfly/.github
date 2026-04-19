@@ -1,0 +1,770 @@
+/* ==========================================================================
+   FunctionFly Provider Page Theme Enhancements
+   Status-Based Glow, Aviation Accents, Glass Morphism, and Density Modes
+   ========================================================================== */
+
+/* ==========================================================================
+   1. STATUS-BASED GLOW SYSTEM
+   Ambient glow effects based on connection health
+   ========================================================================== */
+
+/* Base provider card styling - Ensure visibility in both modes */
+.provider-card {
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+}
+
+[data-theme="light"] .provider-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Base provider card with glow capability */
+.provider-card-glow {
+  background: var(--card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] .provider-card-glow {
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .provider-card-glow:hover {
+  border-color: rgba(232, 90, 42, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Online Status - Taxiway Green Glow */
+.provider-card-glow.status-online {
+  box-shadow:
+    0 0 20px rgba(0, 255, 157, 0.15),
+    0 0 40px rgba(0, 255, 157, 0.08),
+    inset 0 1px 0 rgba(0, 255, 157, 0.1);
+  border-color: rgba(0, 255, 157, 0.3);
+}
+
+.provider-card-glow.status-online:hover {
+  box-shadow:
+    0 0 30px rgba(0, 255, 157, 0.25),
+    0 0 60px rgba(0, 255, 157, 0.12),
+    inset 0 1px 0 rgba(0, 255, 157, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Degraded Status - Beacon Amber Glow */
+.provider-card-glow.status-degraded {
+  box-shadow:
+    0 0 20px rgba(255, 184, 0, 0.15),
+    0 0 40px rgba(255, 184, 0, 0.08),
+    inset 0 1px 0 rgba(255, 184, 0, 0.1);
+  border-color: rgba(255, 184, 0, 0.3);
+  animation: glow-pulse-beacon 2s ease-in-out infinite;
+}
+
+.provider-card-glow.status-degraded:hover {
+  box-shadow:
+    0 0 30px rgba(255, 184, 0, 0.25),
+    0 0 60px rgba(255, 184, 0, 0.12);
+}
+
+/* Offline Status - Afterburner Red Glow */
+.provider-card-glow.status-offline {
+  box-shadow:
+    0 0 20px rgba(255, 79, 94, 0.15),
+    0 0 40px rgba(255, 79, 94, 0.08),
+    inset 0 1px 0 rgba(255, 79, 94, 0.1);
+  border-color: rgba(255, 79, 94, 0.3);
+}
+
+.provider-card-glow.status-offline:hover {
+  box-shadow:
+    0 0 30px rgba(255, 79, 94, 0.25),
+    0 0 60px rgba(255, 79, 94, 0.12);
+}
+
+/* Pending/Connecting Status - Flame Orange Pulse */
+.provider-card-glow.status-pending {
+  box-shadow:
+    0 0 20px rgba(255, 107, 53, 0.15),
+    0 0 40px rgba(255, 107, 53, 0.08);
+  border-color: rgba(255, 107, 53, 0.3);
+  animation: glow-pulse-flame 2s ease-in-out infinite;
+}
+
+/* Light Mode Adjustments */
+[data-theme="light"] .provider-card-glow.status-online {
+  box-shadow:
+    0 0 15px rgba(5, 150, 105, 0.12),
+    0 0 30px rgba(5, 150, 105, 0.06);
+  border-color: rgba(5, 150, 105, 0.25);
+}
+
+[data-theme="light"] .provider-card-glow.status-degraded {
+  box-shadow:
+    0 0 15px rgba(217, 119, 6, 0.12),
+    0 0 30px rgba(217, 119, 6, 0.06);
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
+[data-theme="light"] .provider-card-glow.status-offline {
+  box-shadow:
+    0 0 15px rgba(220, 38, 38, 0.12),
+    0 0 30px rgba(220, 38, 38, 0.06);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+/* Glow Animations */
+@keyframes glow-pulse-flame {
+  0%, 100% {
+    box-shadow:
+      0 0 20px rgba(255, 107, 53, 0.15),
+      0 0 40px rgba(255, 107, 53, 0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 30px rgba(255, 107, 53, 0.25),
+      0 0 60px rgba(255, 107, 53, 0.12),
+      0 0 90px rgba(255, 107, 53, 0.06);
+  }
+}
+
+@keyframes glow-pulse-beacon {
+  0%, 100% {
+    box-shadow:
+      0 0 20px rgba(255, 184, 0, 0.15),
+      0 0 40px rgba(255, 184, 0, 0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 35px rgba(255, 184, 0, 0.3),
+      0 0 70px rgba(255, 184, 0, 0.15);
+  }
+}
+
+/* ==========================================================================
+   2. GLASS MORPHISM CARDS
+   Premium translucent card styles
+   ========================================================================== */
+
+.provider-card-glass {
+  background: rgba(22, 27, 34, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.provider-card-glass:hover {
+  background: rgba(22, 27, 34, 0.75);
+  border-color: rgba(255, 107, 53, 0.3);
+  box-shadow:
+    0 0 30px rgba(255, 107, 53, 0.1),
+    0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .provider-card-glass {
+  background: #FFFFFF;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .provider-card-glass:hover {
+  background: #FFFFFF;
+  border-color: rgba(232, 90, 42, 0.4);
+  box-shadow:
+    0 0 20px rgba(232, 90, 42, 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Light mode - glass morphism with status integration */
+[data-theme="light"] .provider-card-glass.status-online {
+  background: #F0FDF4;
+  border-color: rgba(5, 150, 105, 0.3);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 0 15px rgba(5, 150, 105, 0.15);
+}
+
+[data-theme="light"] .provider-card-glass.status-degraded {
+  background: #FEF3C7;
+  border-color: rgba(217, 119, 6, 0.3);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 0 15px rgba(217, 119, 6, 0.15);
+}
+
+[data-theme="light"] .provider-card-glass.status-offline {
+  background: #FEF2F2;
+  border-color: rgba(220, 38, 38, 0.3);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 0 15px rgba(220, 38, 38, 0.15);
+}
+
+/* Glass morphism with status integration - Dark Mode */
+.provider-card-glass.status-online {
+  background: rgba(0, 255, 157, 0.05);
+  border-color: rgba(0, 255, 157, 0.2);
+}
+
+.provider-card-glass.status-degraded {
+  background: rgba(255, 184, 0, 0.05);
+  border-color: rgba(255, 184, 0, 0.2);
+}
+
+.provider-card-glass.status-offline {
+  background: rgba(255, 79, 94, 0.05);
+  border-color: rgba(255, 79, 94, 0.2);
+}
+
+/* Light Mode Status Backgrounds - High Contrast */
+[data-theme="light"] .provider-card-glow.status-online {
+  background: #F0FDF4;
+  box-shadow:
+    0 0 15px rgba(5, 150, 105, 0.15),
+    inset 0 1px 0 rgba(5, 150, 105, 0.1);
+  border-color: rgba(5, 150, 105, 0.35);
+}
+
+[data-theme="light"] .provider-card-glow.status-online:hover {
+  box-shadow:
+    0 0 25px rgba(5, 150, 105, 0.2),
+    0 0 40px rgba(5, 150, 105, 0.1),
+    inset 0 1px 0 rgba(5, 150, 105, 0.15);
+}
+
+[data-theme="light"] .provider-card-glow.status-degraded {
+  background: #FEF3C7;
+  box-shadow:
+    0 0 15px rgba(217, 119, 6, 0.15),
+    inset 0 1px 0 rgba(217, 119, 6, 0.1);
+  border-color: rgba(217, 119, 6, 0.35);
+}
+
+[data-theme="light"] .provider-card-glow.status-degraded:hover {
+  box-shadow:
+    0 0 25px rgba(217, 119, 6, 0.2),
+    0 0 40px rgba(217, 119, 6, 0.1),
+    inset 0 1px 0 rgba(217, 119, 6, 0.15);
+}
+
+[data-theme="light"] .provider-card-glow.status-offline {
+  background: #FEF2F2;
+  box-shadow:
+    0 0 15px rgba(220, 38, 38, 0.15),
+    inset 0 1px 0 rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+[data-theme="light"] .provider-card-glow.status-offline:hover {
+  box-shadow:
+    0 0 25px rgba(220, 38, 38, 0.2),
+    0 0 40px rgba(220, 38, 38, 0.1),
+    inset 0 1px 0 rgba(220, 38, 38, 0.15);
+}
+
+[data-theme="light"] .provider-card-glow.status-pending {
+  background: #FFF7ED;
+  box-shadow:
+    0 0 15px rgba(232, 90, 42, 0.12),
+    inset 0 1px 0 rgba(232, 90, 42, 0.08);
+  border-color: rgba(232, 90, 42, 0.3);
+}
+
+/* ==========================================================================
+   3. AVIATION-THEMED ACCENTS
+   Flight deck inspired styling
+   ========================================================================== */
+
+/* Tarmac Dark Surface */
+.provider-surface-tarmac {
+  background: #0D1117;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Cockpit Control Surface */
+.provider-surface-cockpit {
+  background: #161B22;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Taxiway Green Accents */
+.provider-accent-taxiway {
+  --accent-color: #00FF9D;
+  --accent-glow: rgba(0, 255, 157, 0.4);
+}
+
+/* Beacon Amber Accents */
+.provider-accent-beacon {
+  --accent-color: #FFB800;
+  --accent-glow: rgba(255, 184, 0, 0.4);
+}
+
+/* Stratosphere Blue Accents */
+.provider-accent-stratosphere {
+  --accent-color: #5B7CF5;
+  --accent-glow: rgba(91, 124, 245, 0.4);
+}
+
+/* Aviation Status Strip - Top accent bar */
+.provider-status-strip {
+  position: relative;
+}
+
+.provider-status-strip::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    var(--accent-color, #FF6B35) 0%,
+    var(--accent-color, #FF6B35) 33%,
+    transparent 33%,
+    transparent 66%,
+    var(--accent-color, #FF6B35) 66%,
+    var(--accent-color, #FF6B35) 100%
+  );
+  opacity: 0.6;
+}
+
+.provider-status-strip.status-online::before {
+  background: linear-gradient(90deg, #00FF9D 0%, #00FF9D 100%);
+  box-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+}
+
+.provider-status-strip.status-degraded::before {
+  background: linear-gradient(90deg,
+    #00FF9D 0%, #00FF9D 30%,
+    #FFB800 30%, #FFB800 70%,
+    #FF2D55 70%, #FF2D55 100%
+  );
+  animation: beacon-flash 1s ease-in-out infinite;
+}
+
+.provider-status-strip.status-offline::before {
+  background: linear-gradient(90deg, #FF2D55 0%, #FF2D55 100%);
+  box-shadow: 0 0 10px rgba(255, 45, 85, 0.5);
+}
+
+@keyframes beacon-flash {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* ==========================================================================
+   4. DATA DENSITY MODES
+   Compact, Comfortable, and Dashboard layouts
+   ========================================================================== */
+
+/* Density Mode: COMPACT */
+.provider-density-compact .provider-card {
+  padding: 1rem;
+}
+
+.provider-density-compact .provider-card-header {
+  margin-bottom: 0.5rem;
+}
+
+.provider-density-compact .provider-card-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.provider-density-compact .provider-card-title {
+  font-size: 0.875rem;
+}
+
+.provider-density-compact .provider-metrics {
+  display: none;
+}
+
+.provider-density-compact .provider-sparkline {
+  height: 24px;
+}
+
+.provider-density-compact .provider-actions {
+  gap: 0.25rem;
+}
+
+.provider-density-compact .provider-actions button {
+  padding: 0.375rem;
+  font-size: 0.75rem;
+}
+
+/* Density Mode: COMFORTABLE (default) */
+.provider-density-comfortable .provider-card {
+  padding: 1.5rem;
+}
+
+.provider-density-comfortable .provider-card-header {
+  margin-bottom: 1rem;
+}
+
+.provider-density-comfortable .provider-card-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+.provider-density-comfortable .provider-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.provider-density-comfortable .provider-sparkline {
+  height: 40px;
+}
+
+/* Density Mode: DASHBOARD (minimal) */
+.provider-density-dashboard .provider-card {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.provider-density-dashboard .provider-card-header {
+  margin-bottom: 0.25rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.provider-density-dashboard .provider-card-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.provider-density-dashboard .provider-card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.provider-density-dashboard .provider-card-description,
+.provider-density-dashboard .provider-metrics,
+.provider-density-dashboard .provider-capabilities {
+  display: none;
+}
+
+.provider-density-dashboard .provider-health-bar {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  margin-top: 0.5rem;
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+
+.provider-density-dashboard .provider-health-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.provider-density-dashboard .provider-status-dot {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.provider-density-dashboard .provider-actions {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.provider-density-dashboard .provider-card:hover .provider-actions {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   5. ANIMATED HEALTH INDICATORS
+   Aviation-inspired status animations
+   ========================================================================== */
+
+/* Runway Light Status Dot */
+.status-dot-runway {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot-runway.online {
+  background: #00FF9D;
+  box-shadow:
+    0 0 8px rgba(0, 255, 157, 0.8),
+    0 0 16px rgba(0, 255, 157, 0.4),
+    0 0 24px rgba(0, 255, 157, 0.2);
+}
+
+.status-dot-runway.degraded {
+  background: #FFB800;
+  box-shadow:
+    0 0 8px rgba(255, 184, 0, 0.8),
+    0 0 16px rgba(255, 184, 0, 0.4);
+  animation: beacon-pulse 1.5s ease-in-out infinite;
+}
+
+.status-dot-runway.offline {
+  background: #FF2D55;
+  box-shadow:
+    0 0 8px rgba(255, 45, 85, 0.8),
+    0 0 16px rgba(255, 45, 85, 0.4);
+}
+
+.status-dot-runway.pending {
+  background: #FF6B35;
+  box-shadow:
+    0 0 8px rgba(255, 107, 53, 0.8),
+    0 0 16px rgba(255, 107, 53, 0.4);
+  animation: flame-pulse 1s ease-in-out infinite;
+}
+
+@keyframes beacon-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 8px rgba(255, 184, 0, 0.8),
+      0 0 16px rgba(255, 184, 0, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 12px rgba(255, 184, 0, 1),
+      0 0 24px rgba(255, 184, 0, 0.6),
+      0 0 36px rgba(255, 184, 0, 0.3);
+    transform: scale(1.2);
+  }
+}
+
+@keyframes flame-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 8px rgba(255, 107, 53, 0.8),
+      0 0 16px rgba(255, 107, 53, 0.4);
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    box-shadow:
+      0 0 15px rgba(255, 107, 53, 1),
+      0 0 30px rgba(255, 107, 53, 0.6),
+      0 0 45px rgba(255, 107, 53, 0.3);
+    transform: scale(1.15);
+    opacity: 0.9;
+  }
+}
+
+/* Altitude Indicator - Vertical status bar */
+.altitude-indicator {
+  position: relative;
+  width: 4px;
+  height: 100%;
+  min-height: 60px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.altitude-indicator-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-radius: 2px;
+  transition: height 0.5s ease, background-color 0.3s ease;
+}
+
+.altitude-indicator-fill.online {
+  background: linear-gradient(180deg, #00FF9D 0%, rgba(0, 255, 157, 0.3) 100%);
+  box-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+}
+
+.altitude-indicator-fill.degraded {
+  background: linear-gradient(180deg, #FFB800 0%, rgba(255, 184, 0, 0.3) 100%);
+  box-shadow: 0 0 10px rgba(255, 184, 0, 0.5);
+}
+
+.altitude-indicator-fill.offline {
+  background: linear-gradient(180deg, #FF2D55 0%, rgba(255, 45, 85, 0.3) 100%);
+  box-shadow: 0 0 10px rgba(255, 45, 85, 0.5);
+}
+
+/* Flight Path Sparkline - Enhanced animation */
+.sparkline-flight-path {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: draw-path 1s ease-out forwards;
+}
+
+@keyframes draw-path {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ==========================================================================
+   6. BRAND ACCENT INTEGRATION
+   Enhanced provider brand colors with aviation theme
+   ========================================================================== */
+
+/* Provider accent with glow */
+.provider-brand-accent {
+  position: relative;
+}
+
+.provider-brand-accent::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--provider-brand-color, #FF6B35);
+  box-shadow: 0 0 10px var(--provider-brand-color, #FF6B35);
+  opacity: 0.8;
+}
+
+/* Cloudflare Orange */
+.provider-accent-workers {
+  --provider-brand-color: #f48120;
+  --provider-glow: rgba(244, 129, 32, 0.3);
+}
+
+/* Vercel Black/White */
+.provider-accent-vercel {
+  --provider-brand-color: #171717;
+  --provider-glow: rgba(23, 23, 23, 0.2);
+}
+
+[data-theme="light"] .provider-accent-vercel {
+  --provider-brand-color: #000000;
+  --provider-glow: rgba(0, 0, 0, 0.15);
+}
+
+/* Fly Purple */
+.provider-accent-fly {
+  --provider-brand-color: #7b68ee;
+  --provider-glow: rgba(123, 104, 238, 0.3);
+}
+
+/* Deno Black */
+.provider-accent-deno {
+  --provider-brand-color: #0a0a0a;
+  --provider-glow: rgba(10, 10, 10, 0.2);
+}
+
+/* FunctionFly Edge Orange */
+.provider-accent-functionfly {
+  --provider-brand-color: #f97316;
+  --provider-glow: rgba(249, 115, 22, 0.4);
+}
+
+/* ==========================================================================
+   7. UTILITY CLASSES
+   Quick application helpers
+   ========================================================================== */
+
+/* Apply glow based on status class */
+.glow-online { box-shadow: 0 0 20px rgba(0, 255, 157, 0.2) !important; }
+.glow-degraded { box-shadow: 0 0 20px rgba(255, 184, 0, 0.2) !important; }
+.glow-offline { box-shadow: 0 0 20px rgba(255, 79, 94, 0.2) !important; }
+.glow-pending { box-shadow: 0 0 20px rgba(255, 107, 53, 0.2) !important; }
+
+/* Border accents */
+.border-taxiway { border-color: rgba(0, 255, 157, 0.3) !important; }
+.border-beacon { border-color: rgba(255, 184, 0, 0.3) !important; }
+.border-afterburner { border-color: rgba(255, 79, 94, 0.3) !important; }
+.border-stratosphere { border-color: rgba(91, 124, 245, 0.3) !important; }
+
+/* Text accents */
+.text-taxiway { color: #00FF9D !important; }
+.text-beacon { color: #FFB800 !important; }
+.text-afterburner { color: #FF4F5E !important; }
+.text-stratosphere { color: #5B7CF5 !important; }
+
+[data-theme="light"] .text-taxiway { color: #047857 !important; } /* emerald-700 */
+[data-theme="light"] .text-beacon { color: #9a3412 !important; } /* amber-800 */
+[data-theme="light"] .text-afterburner { color: #b91c1c !important; } /* red-700 */
+[data-theme="light"] .text-stratosphere { color: #4F46E5 !important; }
+
+/* ==========================================================================
+   8. REDUCED MOTION
+   Accessibility preferences
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .provider-card-glow.status-degraded,
+  .provider-card-glow.status-pending,
+  .status-dot-runway.degraded,
+  .status-dot-runway.pending,
+  .provider-status-strip.status-degraded::before {
+    animation: none !important;
+  }
+
+  .sparkline-flight-path {
+    animation: none !important;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+
+  .provider-card-glow,
+  .provider-card-glass {
+    transition: none !important;
+  }
+}
+
+/* ==========================================================================
+   9. RESPONSIVE ADJUSTMENTS
+   Mobile and tablet optimizations
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .provider-density-comfortable .provider-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-card-glass {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .status-dot-runway {
+    width: 8px;
+    height: 8px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .provider-card-glow.status-online {
+    border-width: 2px;
+    border-color: #00FF9D;
+  }
+
+  .provider-card-glow.status-degraded {
+    border-width: 2px;
+    border-color: #FFB800;
+  }
+
+  .provider-card-glow.status-offline {
+    border-width: 2px;
+    border-color: #FF2D55;
+  }
+}
